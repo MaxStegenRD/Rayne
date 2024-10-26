@@ -27,6 +27,8 @@ namespace RN
 
 			UIAPI void SetImageNormal(Texture *image);
 			UIAPI void SetImageHighlight(Texture *image);
+			UIAPI void SetImageColorNormal(const Color &color);
+			UIAPI void SetImageColorHighlight(const Color &color);
 			UIAPI void SetBackgroundColorNormal(const Color &color);
 			UIAPI void SetBackgroundColorHighlight(const Color &color);
 			UIAPI void SetTextColorNormal(const Color &color);
@@ -53,6 +55,8 @@ namespace RN
 			
 			Texture *_imageNormal;
 			Texture *_imageHighlight;
+			Color _imageColorNormal;
+			Color _imageColorHighlight;
 			Color _backgroundColorNormal;
 			Color _backgroundColorHighlight;
 			Color _textColorNormal;

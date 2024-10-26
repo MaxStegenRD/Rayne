@@ -14,7 +14,7 @@ namespace RN
 	{
 		RNDefineMeta(Button, ImageView)
 
-		Button::Button(const TextAttributes &defaultTextAttributes) : _imageNormal(nullptr), _imageHighlight(nullptr), _backgroundColorNormal(Color::ClearColor()), _backgroundColorHighlight(Color::ClearColor()), _textColorNormal(Color::White()), _textColorHighlight(Color::Gray()), _isHighlighted(false), _wasHighlighted(false)
+		Button::Button(const TextAttributes &defaultTextAttributes) : _imageNormal(nullptr), _imageHighlight(nullptr), _imageColorNormal(Color::White()), _imageColorHighlight(Color::White()), _backgroundColorNormal(Color::ClearColor()), _backgroundColorHighlight(Color::ClearColor()), _textColorNormal(Color::White()), _textColorHighlight(Color::Gray()), _isHighlighted(false), _wasHighlighted(false)
 		{
 			_label = new Label(defaultTextAttributes);
 			AddSubview(_label->Autorelease());
@@ -53,6 +53,18 @@ namespace RN
 			SafeRetain(_imageHighlight);
 			
 			if(_isHighlighted) SetImage(_imageHighlight);
+		}
+	
+		void Button::SetImageColorNormal(const Color &color)
+		{
+			_imageColorNormal = color;
+			if(!_isHighlighted) SetColor(_imageColorNormal);
+		}
+		
+		void Button::SetImageColorHighlight(const Color &color)
+		{
+			_imageColorHighlight = color;
+			if(_isHighlighted) SetColor(_imageColorHighlight);
 		}
 	
 		void Button::SetBackgroundColorNormal(const Color &color)
@@ -103,19 +115,21 @@ namespace RN
 				_label->SetTextColor(_textColorHighlight);
 				SetBackgroundColor(_backgroundColorHighlight);
 				SetImage(_imageHighlight);
+				SetColor(_imageColorHighlight);
 			}
 			else
 			{
 				_label->SetTextColor(_textColorNormal);
 				SetBackgroundColor(_backgroundColorNormal);
 				SetImage(_imageNormal);
+				SetColor(_imageColorNormal);
 			}
 			
 			_wasHighlighted = _isHighlighted;
 		}
 	
 		void Button::SetIsHighlighted(bool isHighlighted)
-	{
+		{
 			_wasHighlighted = _isHighlighted;
 			_isHighlighted = isHighlighted;
 			UpdateForHighlight();
