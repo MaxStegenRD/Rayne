@@ -24,6 +24,7 @@ set(SOURCES
         RNUIButton.cpp
         RNUIScrollView.cpp
         RNUIGridView.cpp
+        RNUIStackView.cpp
         RNUISlider.cpp)
 
 set(RESOURCES
@@ -43,6 +44,7 @@ set(HEADERS
         RNUIButton.h
         RNUIScrollView.h
         RNUIGridView.h
+        RNUIStackView.h
         RNUISlider.h
         RNUI.h)
 
