@@ -14,14 +14,14 @@ namespace RN
 	{
 		RNDefineMeta(StackView, View)
 
-		StackView::StackView(StackViewProtocol *delegate) : _delegate(delegate), _pushPopAnimationFactor(0.0f), _currentPopAnimationType(AnimationTypeNone), _currentPushAnimationType(AnimationTypeNone)
+		StackView::StackView(StackViewProtocol *delegate) : _delegate(delegate), _pushPopAnimationFactor(0.0f), _currentPopAnimationType(AnimationTypeNone), _currentPushAnimationType(AnimationTypeNone), _isReplace(false)
 		{
 			_viewStack = new Array();
 			_containerView = new View();
 			AddSubview(_containerView->Autorelease());
 		}
 	
-		StackView::StackView(const Rect &frame, StackViewProtocol *delegate) : View(frame), _delegate(delegate), _pushPopAnimationFactor(0.0f), _currentPopAnimationType(AnimationTypeNone), _currentPushAnimationType(AnimationTypeNone)
+		StackView::StackView(const Rect &frame, StackViewProtocol *delegate) : View(frame), _delegate(delegate), _pushPopAnimationFactor(0.0f), _currentPopAnimationType(AnimationTypeNone), _currentPushAnimationType(AnimationTypeNone), _isReplace(false)
 		{
 			_viewStack = new Array();
 			_containerView = new View(GetBounds());
@@ -39,6 +39,15 @@ namespace RN
 			_containerView->SetFrame(GetBounds());
 		}
 	
+		void StackView::ReplaceTopView(View *view, AnimationType animationType)
+		{
+			if(animationType == AnimationTypeNone) Pop();
+			else _isReplace = true;
+			Push(view, animationType);
+			
+			
+		}
+	
 		void StackView::Push(View *view, AnimationType animationType)
 		{
 			if(_viewStack->GetLastObject() == view) return;
@@ -48,6 +57,7 @@ namespace RN
 			_pushPopAnimationFactor = 0.0f;
 			
 			View *oldTopView = _viewStack->GetLastObject<View>();
+			if(oldTopView) oldTopView->UpdateCursorPosition(RN::Vector2(-100000, -100000)); //Not great, but the goal is to unhighlight any potentially highlighted buttons
 			if(animationType == AnimationTypeNone && _viewStack->GetCount() > 0) //Only immediately remove the previous view if the transition is not animated
 			{
 				if(_delegate) _delegate->StackViewViewChangedVisibility(oldTopView, false);
@@ -87,9 +97,11 @@ namespace RN
 			_pushPopAnimationFactor = 1.0f;
 			
 			View *view = _viewStack->GetLastObject<View>();
+			view->UpdateCursorPosition(RN::Vector2(-100000, -100000)); //Not great, but the goal is to unhighlight any potentially highlighted buttons
 			view->RemoveFromSuperview(); //Need to keep the previous top view as top view, so remove, add previous view and put this one on top again
 			
 			View *newTopView = _viewStack->GetCount() > 1? _viewStack->GetObjectAtIndex<View>(_viewStack->GetCount() - 2) : nullptr;
+			if(newTopView) newTopView->UpdateCursorPosition(RN::Vector2(-100000, -100000)); //Not great, but the goal is to unhighlight any potentially highlighted buttons
 			if(animationType == AnimationTypeNone) //Only immediately remove the popped view if the transition is not animated
 			{
 				if(_delegate) _delegate->StackViewViewChangedVisibility(view, false);
@@ -150,6 +162,8 @@ namespace RN
 						if(_delegate) _delegate->StackViewViewChangedTransitionState(oldTopView, false);
 						if(_delegate) _delegate->StackViewViewChangedVisibility(oldTopView, false);
 						oldTopView->RemoveFromSuperview();
+						
+						if(_isReplace) _viewStack->RemoveObject(oldTopView);
 					}
 					
 					View *topView = _viewStack->GetFirstObject<View>();

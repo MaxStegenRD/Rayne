@@ -40,6 +40,7 @@ namespace RN
 			
 			UIAPI void Update(float delta) override;
 			
+			UIAPI void ReplaceTopView(View *view, AnimationType animationType = AnimationTypeNone);
 			UIAPI void Push(View *view, AnimationType animationType = AnimationTypeNone);
 			UIAPI void Pop(AnimationType animationType = AnimationTypeNone);
 			UIAPI View *GetTopView() const;
@@ -57,6 +58,7 @@ namespace RN
 			AnimationType _currentPushAnimationType;
 			AnimationType _currentPopAnimationType;
 			float _pushPopAnimationFactor;
+			bool _isReplace;
 
 			RNDeclareMetaAPI(StackView, UIAPI)
 		};
