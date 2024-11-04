@@ -45,6 +45,8 @@ namespace RN
 		Color operator* (float other) const;
 		Color operator/ (float other) const;
 		
+		Color GetLerp(const Color &other, float factor) const;
+		
 		Vector4 GetHSV() const;
 		Color GammaToLinear();
 		Color LinearToGamma();
@@ -427,6 +429,11 @@ namespace RN
 		}
 		
 		return *this;
+	}
+
+	RN_INLINE Color Color::GetLerp(const Color &other, float factor) const
+	{
+		return *this*(1.0f-factor)+other*factor;
 	}
 	
 	RN_INLINE Vector4 Color::GetHSV() const
