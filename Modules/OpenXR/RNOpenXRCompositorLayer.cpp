@@ -73,7 +73,7 @@ namespace RN
 
 			_internals->layerProjection.type = XR_TYPE_COMPOSITION_LAYER_PROJECTION;
 			_internals->layerProjection.next = nullptr;
-			_internals->layerProjection.layerFlags = XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT | XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+			_internals->layerProjection.layerFlags = XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT | XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT | XR_COMPOSITION_LAYER_UNPREMULTIPLIED_ALPHA_BIT;
 			_internals->layerProjection.space = window->_internals->trackingSpace;
 			_internals->layerProjection.viewCount = 2;
 			_internals->layerProjection.views = _internals->layerProjectionViews;
