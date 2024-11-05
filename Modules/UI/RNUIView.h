@@ -59,6 +59,7 @@ namespace RN
 			UIAPI void SetBackgroundColor(const Color &colorTopLeft, const Color &colorTopRight, const Color &colorBottomLeft, const Color &colorBottomRight);
 			Color GetBackgroundColor(int index) const { return _backgroundColor[index]; }
 			UIAPI void SetDepthModeAndWrite(DepthMode depthMode, bool writeDepth, float depthFactor, float depthOffset, bool writeColor = true, bool writeAlpha = false);
+			UIAPI void SetCullMode(CullMode cullMode);
 			UIAPI void SetBlending(BlendFactor sourceFactorRGB, BlendFactor destinationFactorRGB, BlendOperation operationRGB, BlendFactor sourceFactorA, BlendFactor destinationFactorA, BlendOperation operationA);
 			UIAPI void SetCornerRadius(Vector4 radius);
 			UIAPI Vector4 GetCornerRadius() const { return _cornerRadius; }
@@ -99,6 +100,7 @@ namespace RN
 			int32 _renderPriorityOverride;
 			int32 _renderPriorityOffset;
 			DepthMode _depthMode;
+			CullMode _cullMode;
 			bool _isDepthWriteEnabled;
 			bool _isColorWriteEnabled;
 			bool _isAlphaWriteEnabled;

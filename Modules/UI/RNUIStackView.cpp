@@ -44,8 +44,6 @@ namespace RN
 			if(animationType == AnimationTypeNone) Pop();
 			else _isReplace = true;
 			Push(view, animationType);
-			
-			
 		}
 	
 		void StackView::Push(View *view, AnimationType animationType)

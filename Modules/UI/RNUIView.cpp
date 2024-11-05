@@ -32,6 +32,7 @@ namespace RN
 			_isColorWriteEnabled(true),
 			_isAlphaWriteEnabled(false),
 			_depthMode(DepthMode::GreaterOrEqual),
+			_cullMode(CullMode::None),
 			_depthOffset(200.0f),
 			_depthFactor(50.0f),
 			_opacityFactor(1.0f),
@@ -510,6 +511,19 @@ namespace RN
 				material->SetColorWriteMask(_isColorWriteEnabled, _isColorWriteEnabled, _isColorWriteEnabled, _isAlphaWriteEnabled);
 				material->SetDepthMode(_depthMode);
 				material->SetPolygonOffset(_isDepthWriteEnabled, _depthFactor, _depthOffset);
+			}
+			Unlock();
+		}
+	
+		void View::SetCullMode(CullMode cullMode)
+		{
+			Lock();
+			_cullMode = cullMode;
+			RN::Model *model = GetModel();
+			if(model)
+			{
+				Material *material = model->GetLODStage(0)->GetMaterialAtIndex(0);
+				material->SetCullMode(cullMode);
 			}
 			Unlock();
 		}
@@ -1268,7 +1282,7 @@ namespace RN
 				if(_isCircle) shaderOptions->AddDefine("RN_UI_CIRCLE", "1");
 				if(_hasOutline) shaderOptions->AddDefine("RN_UI_OUTLINE", "1");
 				material->SetAlphaToCoverage(false);
-				material->SetCullMode(CullMode::None);
+				material->SetCullMode(_cullMode);
 				material->SetDepthMode(_depthMode);
 				material->SetDepthWriteEnabled(_isDepthWriteEnabled);
 				material->SetColorWriteMask(_isColorWriteEnabled, _isColorWriteEnabled, _isColorWriteEnabled, _isAlphaWriteEnabled);
