@@ -88,7 +88,7 @@ namespace RN
 
 		void StackView::Pop(AnimationType animationType)
 		{
-			if(_viewStack->GetCount() <= 1) return;
+			if(_viewStack->GetCount() == 0) return;
 			if(_currentPushAnimationType != AnimationTypeNone || _currentPopAnimationType != AnimationTypeNone) return;
 			
 			_currentPopAnimationType = animationType;
@@ -167,6 +167,7 @@ namespace RN
 					View *topView = _viewStack->GetFirstObject<View>();
 					if(_delegate && topView) _delegate->StackViewViewChangedTransitionState(topView, false);
 					
+					_isReplace = false;
 					_currentPushAnimationType = AnimationTypeNone;
 				}
 			}
@@ -186,6 +187,7 @@ namespace RN
 					View *newTopView = _viewStack->GetLastObject<View>();
 					if(_delegate && newTopView) _delegate->StackViewViewChangedTransitionState(newTopView, false);
 					
+					_isReplace = false;
 					_currentPopAnimationType = AnimationTypeNone;
 				}
 			}
