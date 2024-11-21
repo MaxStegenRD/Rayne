@@ -210,6 +210,33 @@ namespace RN
 		return sky->Autorelease();
 	}
 
+	Model *Model::WithCube(const RN::Color &color)
+	{
+		Model *cube = new Model();
+		LODStage *stage = cube->AddLODStage(1.0f);
+
+		Mesh *cubeMesh = Mesh::WithColoredCube(1.0f, color);
+		Material *cubeMaterial = Material::WithShaders(nullptr, nullptr);
+
+		Shader::Options *shaderOptions = Shader::Options::WithMesh(cubeMesh);
+
+		cubeMaterial->SetVertexShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Vertex, shaderOptions, Shader::UsageHint::Default));
+		cubeMaterial->SetFragmentShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Fragment, shaderOptions, Shader::UsageHint::Default));
+		cubeMaterial->SetVertexShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Vertex, shaderOptions, Shader::UsageHint::Depth), Shader::UsageHint::Depth);
+		cubeMaterial->SetFragmentShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Fragment, shaderOptions, Shader::UsageHint::Depth), Shader::UsageHint::Depth);
+		cubeMaterial->SetVertexShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Vertex, shaderOptions, Shader::UsageHint::Instancing), Shader::UsageHint::Instancing);
+		cubeMaterial->SetFragmentShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Fragment, shaderOptions, Shader::UsageHint::Instancing), Shader::UsageHint::Instancing);
+		cubeMaterial->SetVertexShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Vertex, shaderOptions, Shader::UsageHint::Multiview), Shader::UsageHint::Multiview);
+		cubeMaterial->SetFragmentShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Fragment, shaderOptions, Shader::UsageHint::Multiview), Shader::UsageHint::Multiview);
+		cubeMaterial->SetVertexShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Vertex, shaderOptions, Shader::UsageHint::DepthMultiview), Shader::UsageHint::DepthMultiview);
+		cubeMaterial->SetFragmentShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Fragment, shaderOptions, Shader::UsageHint::DepthMultiview), Shader::UsageHint::DepthMultiview);
+
+		stage->AddMesh(cubeMesh, cubeMaterial);
+
+		cube->CalculateBoundingVolumes();
+
+		return cube->Autorelease();
+	}
 
 	Model::LODStage *Model::AddLODStage(float distance)
 	{
