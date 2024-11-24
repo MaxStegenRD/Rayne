@@ -31,6 +31,8 @@ namespace RN
 		bool ContainsPoint(const Vector2 &point) const;
 		bool IntersectsRect(const Rect &other) const;
 		bool ContainsRect(const Rect &other) const;
+		
+		float GetDistanceToPoint(const Vector2 &point) const;
 
 		Rect &Inset(float dx, float dy);
 		Rect &Integral();
@@ -141,6 +143,13 @@ namespace RN
 	RN_INLINE bool Rect::ContainsRect(const Rect &other) const
 	{
 		return ((x <= other.x && x + width >= other.x + other.width) && (y <= other.y && y + height >= other.y + other.height));
+	}
+
+	RN_INLINE float Rect::GetDistanceToPoint(const Vector2 &point) const
+	{
+		float dx = std::max(std::max(x - point.x, point.x - x - width), 0.0f);
+		float dy = std::max(std::max(y - point.y, point.y - y - height), 0.0f);
+		return Math::Sqrt(dx*dx + dy*dy);
 	}
 
 
