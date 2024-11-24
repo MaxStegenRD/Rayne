@@ -39,6 +39,11 @@ namespace RN
 			_containerView->SetFrame(GetBounds());
 		}
 	
+		void StackView::SetDelegate(StackViewProtocol *delegate)
+		{
+			_delegate = delegate;
+		}
+	
 		void StackView::ReplaceTopView(View *view, AnimationType animationType)
 		{
 			if(animationType == AnimationTypeNone) Pop();
@@ -46,7 +51,7 @@ namespace RN
 			Push(view, animationType);
 		}
 	
-		void StackView::Push(View *view, AnimationType animationType)
+		void StackView::Push(View *view, AnimationType animationType, int32 renderPriorityOffsetFactor)
 		{
 			if(_viewStack->GetLastObject() == view) return;
 			if(_currentPushAnimationType != AnimationTypeNone || _currentPopAnimationType != AnimationTypeNone) return;
@@ -62,8 +67,8 @@ namespace RN
 				oldTopView->RemoveFromSuperview();
 			}
 			
-			//This is a bit hacky cause the 20 is a bit of a magic value, but good enough for now
-			view->SetRenderPriorityOffset(20 * _viewStack->GetCount() + 1); //Make sure the new view is displayed above all content of the previous view to prevent issues with the transition
+			//This is a bit hacky cause renderPriorityOffsetFactor is a bit of a magic value, but good enough for now
+			view->SetRenderPriorityOffset(renderPriorityOffsetFactor * (_viewStack->GetCount() + 1) + 1); //Make sure the new view is displayed above all content of the previous view to prevent issues with the transition
 			_viewStack->AddObject(view);
 			_containerView->AddSubview(view);
 			if(_delegate) _delegate->StackViewViewChangedVisibility(view, true);

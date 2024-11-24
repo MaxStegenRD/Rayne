@@ -37,11 +37,12 @@ namespace RN
 			UIAPI ~StackView();
 			
 			UIAPI void SetFrame(const Rect &frame) override;
+			UIAPI void SetDelegate(StackViewProtocol *delegate);
 			
 			UIAPI void Update(float delta) override;
 			
 			UIAPI void ReplaceTopView(View *view, AnimationType animationType = AnimationTypeNone);
-			UIAPI void Push(View *view, AnimationType animationType = AnimationTypeNone);
+			UIAPI void Push(View *view, AnimationType animationType = AnimationTypeNone, int32 renderPriorityOffsetFactor = 20);
 			UIAPI void Pop(AnimationType animationType = AnimationTypeNone);
 			UIAPI View *GetTopView() const;
 			
