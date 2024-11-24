@@ -169,7 +169,7 @@ namespace RN
 						if(_isReplace) _viewStack->RemoveObject(oldTopView);
 					}
 					
-					View *topView = _viewStack->GetFirstObject<View>();
+					View *topView = _viewStack->GetLastObject<View>();
 					if(_delegate && topView) _delegate->StackViewViewChangedTransitionState(topView, false);
 					
 					_isReplace = false;
