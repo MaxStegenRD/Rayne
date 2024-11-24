@@ -42,7 +42,7 @@ namespace RN
 			UIAPI void Update(float delta) override;
 			
 			UIAPI void ReplaceTopView(View *view, AnimationType animationType = AnimationTypeNone);
-			UIAPI void Push(View *view, AnimationType animationType = AnimationTypeNone, int32 renderPriorityOffsetFactor = 20);
+			UIAPI void Push(View *view, AnimationType animationType = AnimationTypeNone, int32 renderPriorityOffset = 0);
 			UIAPI void Pop(AnimationType animationType = AnimationTypeNone);
 			UIAPI View *GetTopView() const;
 			

@@ -51,7 +51,7 @@ namespace RN
 			Push(view, animationType);
 		}
 	
-		void StackView::Push(View *view, AnimationType animationType, int32 renderPriorityOffsetFactor)
+		void StackView::Push(View *view, AnimationType animationType, int32 renderPriorityOffset)
 		{
 			if(_viewStack->GetLastObject() == view) return;
 			if(_currentPushAnimationType != AnimationTypeNone || _currentPopAnimationType != AnimationTypeNone) return;
@@ -67,8 +67,10 @@ namespace RN
 				oldTopView->RemoveFromSuperview();
 			}
 			
-			//This is a bit hacky cause renderPriorityOffsetFactor is a bit of a magic value, but good enough for now
-			view->SetRenderPriorityOffset(renderPriorityOffsetFactor * (_viewStack->GetCount() + 1) + 1); //Make sure the new view is displayed above all content of the previous view to prevent issues with the transition
+			//Make sure the new view is displayed above all content of the previous view to prevent issues with the transition
+			RN::int32 previousRenderPriorityOffset = oldTopView? oldTopView->GetMaxRenderPriorityOffset() : 0;
+			view->SetRenderPriorityOffset(previousRenderPriorityOffset + 1 + renderPriorityOffset);
+			
 			_viewStack->AddObject(view);
 			_containerView->AddSubview(view);
 			if(_delegate) _delegate->StackViewViewChangedVisibility(view, true);

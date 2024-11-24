@@ -578,6 +578,16 @@ namespace RN
 			RN_DEBUG_ASSERT(!_superview, "Needs to be called BEFORE adding to a superview to work");
 		}
 	
+		int32 View::GetMaxRenderPriorityOffset() const
+		{
+			int32 offset = _renderPriorityOffset;
+			int32 maxAdditionalOffset = 0;
+			GetSubviews()->Enumerate<View>([&](View *view, size_t index, bool &stop){
+				maxAdditionalOffset = std::max(maxAdditionalOffset, view->GetMaxRenderPriorityOffset());
+			});
+			return offset + maxAdditionalOffset;
+		}
+	
 		void View::SetRenderGroupForAll(uint8 renderGroup)
 		{
 			SetRenderGroup(renderGroup);

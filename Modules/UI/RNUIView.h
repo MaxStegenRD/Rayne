@@ -74,6 +74,8 @@ namespace RN
 			UIAPI void SetClipToBounds(bool enabled);
 			UIAPI void SetRenderPriorityOverride(int32 renderPriority);
 			UIAPI void SetRenderPriorityOffset(int32 offset);
+			int32 GetRenderPriorityOffset() const { return _renderPriorityOffset; }
+			UIAPI int32 GetMaxRenderPriorityOffset() const;
 			
 			UIAPI void SetRenderGroupForAll(uint8 renderGroup);
 			
