@@ -373,8 +373,6 @@ namespace RN
 			if(_frame == frame) return;
 			
 			Lock();
-			Vector2 oldSize = _frame.GetSize();
-
 			_frame = frame;
 			
 			RN::Vector3 newPosition(_frame.x, -_frame.y, 0.0f);
@@ -387,11 +385,6 @@ namespace RN
 
 			_bounds.width  = frame.width;
 			_bounds.height = frame.height;
-			
-			if(oldSize.GetSquaredDistance(_frame.GetSize()) > k::EpsilonFloat)
-			{
-				_needsMeshUpdate = true;
-			}
 			Unlock();
 			
 			CalculateScissorRect();
@@ -1378,6 +1371,16 @@ namespace RN
 			else
 			{
 				RemoveFlags(SceneNode::Flags::Hidden);
+			}
+			
+			if(!_isHidden && !isParentHidden && _combinedOpacityFactor > k::EpsilonFloat)
+			{
+				//Update mesh if the frame size changed
+				if(_oldFrameSize.GetSquaredDistance(_frame.GetSize()) > k::EpsilonFloat)
+				{
+					_needsMeshUpdate = true;
+				}
+				_oldFrameSize = _frame.GetSize();
 			}
 			
 			if(_needsMeshUpdate && !_isHidden && !isParentHidden && _combinedOpacityFactor > k::EpsilonFloat)
