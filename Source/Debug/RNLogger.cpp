@@ -18,7 +18,7 @@ namespace RN
 
 	Logger::Logger()
 	{
-		_queue = new WorkQueue(WorkQueue::Priority::Background, WorkQueue::Flags::Serial, RNCSTR("net.uberpixel.rayne.queue.logger"));
+		_queue = new WorkQueue(WorkQueue::Priority::Background, WorkQueue::Flags::Serial, RNCSTR("RN::Logger"));
 		_engines = new Array();
 		_threadEngines = new Array();
 		_flag.clear(std::memory_order_release);

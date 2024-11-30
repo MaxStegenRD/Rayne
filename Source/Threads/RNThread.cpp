@@ -25,13 +25,17 @@ typedef struct tagTHREADNAME_INFO
 #pragma pack(pop)
 #endif
 
+#if RN_PLATFORM_LINUX || RN_PLATFORM_ANDROID
+#include <sys/prctl.h>
+#endif
+
 void RNSetThreadName(char *threadName)
 {
 #if RN_PLATFORM_MAC_OS
 		pthread_setname_np(threadName);
 #endif
 #if RN_PLATFORM_LINUX || RN_PLATFORM_ANDROID
-		pthread_setname_np(pthread_self(), threadName);
+		prctl(PR_SET_NAME, threadName); //pthread_setname_np is supposed to work too, but fails with too long names, while prctl just truncates
 #endif
 #if RN_PLATFORM_WINDOWS
 	#if RN_COMPILER_MSVC

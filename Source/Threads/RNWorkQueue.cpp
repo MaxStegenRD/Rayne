@@ -64,10 +64,10 @@ namespace RN
 
 	void WorkQueue::InitializeQueues()
 	{
-		__WorkQueues[0] = new WorkQueue(Priority::High, Flags::Concurrent, RNCSTR("net.uberpixel.rayne.queue.high"));
-		__WorkQueues[1] = new WorkQueue(Priority::Default, Flags::Concurrent, RNCSTR("net.uberpixel.rayne.queue.default"));
-		__WorkQueues[2] = new WorkQueue(Priority::Background, Flags::Concurrent, RNCSTR("net.uberpixel.rayne.queue.background"));
-		__WorkQueues[3] = new WorkQueue(Priority::Default, kRNWorkQueueFlagMainThread, RNCSTR("net.uberpixel.rayne.queue.main"));
+		__WorkQueues[0] = new WorkQueue(Priority::High, Flags::Concurrent, RNCSTR("RN::High"));
+		__WorkQueues[1] = new WorkQueue(Priority::Default, Flags::Concurrent, RNCSTR("RN::Default"));
+		__WorkQueues[2] = new WorkQueue(Priority::Background, Flags::Concurrent, RNCSTR("RN::Backgrnd")); //Gets truncated on android if too long, so shorten a little
+		__WorkQueues[3] = new WorkQueue(Priority::Default, kRNWorkQueueFlagMainThread, RNCSTR("RN::Main"));
 	}
 
 	void WorkQueue::TearDownQueues()
