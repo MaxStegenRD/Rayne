@@ -404,10 +404,10 @@ namespace RN
 
 	bool SceneNode::CanRenderUtil(Renderer *renderer, Camera *camera) const
 	{
-		if(_flags.load(std::memory_order_acquire) & Flags::Hidden)
+		if((_renderGroup & camera->GetRenderGroup()) == 0)
 			return false;
 		
-		if((_renderGroup & camera->GetRenderGroup()) == 0)
+		if(_flags.load(std::memory_order_acquire) & Flags::Hidden)
 			return false;
 		
 		if(_flags.load(std::memory_order_acquire) & Flags::NoCulling)
