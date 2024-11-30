@@ -32,6 +32,7 @@ namespace RN
 				   SortFrontToBack    = (1 << 6),
 				   NoRender     = (1 << 7),
 				   NoDepthWrite = (1 << 8),
+				   NoOcclusionCulling = (1 << 9),
 
 				   InheritPosition   = (1 << 12),
 				   InheritFrame      = (1 << 13),
@@ -46,6 +47,7 @@ namespace RN
 				   UseFog          = (1 << 24),
 				   UseClipPlanes   = (1 << 25),
 				   UseSimpleCulling = (1 << 26),
+				   UseUIFastPath = (1 << 27),
 
 				   Defaults = (UseFog | SortTransparentBackToFront));// | SortFrontToBack));
 

@@ -454,21 +454,29 @@ namespace RN
 				size_t firstTransparentIndex = 0;
 				size_t lastTransparentIndex = 0;
 				
-				//Collect all occluders
+				occluders.reserve(_renderNodes.GetCount());
+				sceneNodesToRender.reserve(_renderNodes.GetCount());
+				
 				IntrusiveList<SceneNode>::Member *nodeMember = _renderNodes.GetHead();
-				while(nodeMember)
+				if(!(camera->GetFlags() & Camera::Flags::NoOcclusionCulling))
 				{
-					SceneNode *node = nodeMember->Get();
-					if(node->HasFlags(SceneNode::Flags::Occluder) && node->CanRender(renderer, camera))
+					ZoneScopedN("Collect Occluders");
+					//Collect all occluders
+					while(nodeMember)
 					{
-						occluders.push_back(node);
+						SceneNode *node = nodeMember->Get();
+						if(node->HasFlags(SceneNode::Flags::Occluder) && node->CanRender(renderer, camera))
+						{
+							occluders.push_back(node);
+						}
+						
+						nodeMember = nodeMember->GetNext();
 					}
-
-					nodeMember = nodeMember->GetNext();
+					
+					nodeMember = _renderNodes.GetHead();
 				}
 				
 				//Do occlusion culling if there are 1 or more occluders!
-				nodeMember = _renderNodes.GetHead();
 				if(occluders.size() > 0)
 				{
 					ZoneScopedN("Collect Entities with Occlusion Culling");
@@ -581,6 +589,31 @@ namespace RN
 							
 							sceneNodesToRender.push_back(node);
 						}
+					}
+				}
+				else if(camera->GetFlags() & Camera::Flags::UseUIFastPath)
+				{
+					ZoneScopedN("Collect UI Entities");
+					while(nodeMember)
+					{
+						SceneNode *node = nodeMember->Get();
+						if((node->GetRenderGroup() & camera->GetRenderGroup()) == 0 || node->HasFlags(RN::SceneNode::Flags::Hidden))
+						{
+							nodeMember = nodeMember->GetNext();
+							continue;
+						}
+						
+						if(node->GetRenderPriority() == SceneNode::RenderTransparent)
+						{
+							if(firstTransparentIndex == 0)
+							{
+								firstTransparentIndex = sceneNodesToRender.size();
+							}
+							lastTransparentIndex = sceneNodesToRender.size();
+						}
+						sceneNodesToRender.push_back(node);
+
+						nodeMember = nodeMember->GetNext();
 					}
 				}
 				else
