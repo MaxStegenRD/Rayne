@@ -457,7 +457,8 @@ namespace RN
 				occluders.reserve(_renderNodes.GetCount());
 				sceneNodesToRender.reserve(_renderNodes.GetCount());
 				
-				IntrusiveList<SceneNode>::Member *nodeMember = _renderNodes.GetHead();
+				IntrusiveList<SceneNode>::Member *firstNodeMember = camera->_firstNodeMember? camera->_firstNodeMember : _renderNodes.GetHead();
+				IntrusiveList<SceneNode>::Member *nodeMember = firstNodeMember;
 				if(!(camera->GetFlags() & Camera::Flags::NoOcclusionCulling))
 				{
 					ZoneScopedN("Collect Occluders");
@@ -473,7 +474,7 @@ namespace RN
 						nodeMember = nodeMember->GetNext();
 					}
 					
-					nodeMember = _renderNodes.GetHead();
+					nodeMember = firstNodeMember;
 				}
 				
 				//Do occlusion culling if there are 1 or more occluders!

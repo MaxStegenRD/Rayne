@@ -96,6 +96,8 @@ namespace RN
 		_frustumPlaneOffsets[1] = 0.0f;
 		_frustumPlaneOffsets[2] = 0.0f;
 		_frustumPlaneOffsets[3] = 0.0f;
+		
+		_firstNodeMember = nullptr;
 	}
 
 	// Setter
@@ -515,5 +517,10 @@ namespace RN
 	{
 		_multiviewCameras->RemoveObject(camera);
 		camera->_isMultiviewCamera = false;
+	}
+
+	void Camera::SetFirstSceneNodeMember(IntrusiveList<SceneNode>::Member *member)
+	{
+		_firstNodeMember = member;
 	}
 }

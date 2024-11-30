@@ -120,7 +120,11 @@ namespace RN
 		const RN::Array *GetMultiviewCameras() const { return _multiviewCameras; }
 		bool GetIsMultiviewCamera() const { return _isMultiviewCamera; }
 		
-		IntrusiveList<Camera>::Member _cameraSceneEntry; //TODO: Make private but keep accessible to user made scene implementations
+		void SetFirstSceneNodeMember(IntrusiveList<SceneNode>::Member *member); //If this is set, it has to be reset if the member is removed from the scene!
+		
+		//TODO: Make private but keep accessible to user made scene implementations
+		IntrusiveList<Camera>::Member _cameraSceneEntry;
+		IntrusiveList<SceneNode>::Member *_firstNodeMember; //Start rendering with this node if it is set! Useful when rendering UI into a separate camera, skipping a lot of work.
 
 	private:
 		void UpdateProjection();
