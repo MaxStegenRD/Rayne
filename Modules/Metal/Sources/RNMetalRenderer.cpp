@@ -32,6 +32,7 @@ namespace RN
 		_currentMultiviewLayer(0),
 		_currentMultiviewFallbackRenderPass(nullptr)
 	{
+		ZoneScoped;
 		_internals->device = device->GetDevice();
 		_internals->commandQueue = [_internals->device newCommandQueue];
 		_internals->stateCoordinator.SetDevice(_internals->device);
@@ -42,6 +43,7 @@ namespace RN
 
 	MetalRenderer::~MetalRenderer()
 	{
+		ZoneScoped;
 		[_internals->commandQueue release];
 		[_internals->device release];
 
@@ -54,6 +56,7 @@ namespace RN
 
 	Window *MetalRenderer::CreateAWindow(const Vector2 &size, Screen *screen, const Window::SwapChainDescriptor &descriptor)
 	{
+		ZoneScoped;
 		MetalWindow *window = new MetalWindow(size, screen, this, descriptor);
 		if(!_mainWindow)
 			_mainWindow = window->Retain();
@@ -63,22 +66,26 @@ namespace RN
 
 	Window *MetalRenderer::GetMainWindow()
 	{
+		ZoneScoped;
 		return _mainWindow;
 	}
 	
 	void MetalRenderer::SetMainWindow(Window *window)
 	{
+		ZoneScoped;
 		_mainWindow = window;
 	}
 
 	id MetalRenderer::GetCommandQueue() const
 	{
+		ZoneScoped;
 		return _internals->commandQueue;
 	}
 
 
 	void MetalRenderer::CreateMipMapForTexture(MetalTexture *texture)
 	{
+		ZoneScoped;
 		_lock.Lock();
 		_mipMapTextures->AddObject(texture);
 		_lock.Unlock();
@@ -86,6 +93,7 @@ namespace RN
 
 	void MetalRenderer::CreateMipMaps()
 	{
+		ZoneScoped;
 		if(_mipMapTextures->GetCount() == 0)
 			return;
 
@@ -109,6 +117,7 @@ namespace RN
 
 	void MetalRenderer::Render(Function &&function)
 	{
+		ZoneScoped;
 		@autoreleasepool {
 			_internals->renderPasses.clear();
 			_internals->swapChains.clear();
@@ -252,12 +261,15 @@ namespace RN
 				swapChain->PostPresent(_internals->commandBuffer);
 			}
 			
+			FrameMark;
+			
 			_internals->commandBuffer = nil;
 		}
 	}
 	
 	void MetalRenderer::RenderAPIRenderPass(const MetalRenderPass &renderPass)
 	{
+		ZoneScoped;
 		switch(renderPass.type)
 		{
 			case MetalRenderPass::Type::Convert:
@@ -328,6 +340,7 @@ namespace RN
 
 	void MetalRenderer::SubmitCamera(Camera *camera, Function &&function)
 	{
+		ZoneScoped;
 		const Array *multiviewCameras = camera->GetMultiviewCameras();
 		if(multiviewCameras && multiviewCameras->GetCount() > 0)
 		{
@@ -429,6 +442,7 @@ namespace RN
 	
 	void MetalRenderer::SubmitRenderPass(RenderPass *renderPass, MetalRenderPass &previousRenderPass, Function &&function)
 	{
+		ZoneScoped;
 		// Set up
 		MetalRenderPass metalRenderPass;
 		metalRenderPass.type = MetalRenderPass::Type::Default;
@@ -555,6 +569,7 @@ namespace RN
 	//TODO: Move into an utility class
 	MTLResourceOptions MetalRenderer::MetalResourceOptionsFromOptions(GPUResource::AccessOptions options)
 	{
+		ZoneScoped;
 #if RN_PLATFORM_MAC_OS
 		switch(options)
 		{
@@ -580,6 +595,7 @@ namespace RN
 
 	GPUBuffer *MetalRenderer::CreateBufferWithLength(size_t length, GPUResource::UsageOptions usageOptions, GPUResource::AccessOptions accessOptions, bool streameable)
 	{
+		ZoneScoped;
 		MTLResourceOptions resourceOptions = MetalResourceOptionsFromOptions(accessOptions);
 		id<MTLBuffer> buffer = [_internals->device newBufferWithLength:length options:resourceOptions];
 		if(!buffer)
@@ -590,45 +606,53 @@ namespace RN
 	
 	MetalUniformBufferReference *MetalRenderer::GetUniformBufferReference(size_t size, size_t index)
 	{
+		ZoneScoped;
 		LockGuard<Lockable> lock(_lock);
 		return _uniformBufferPool->GetUniformBufferReference(size, index);
 	}
 
 	void MetalRenderer::UpdateUniformBufferReference(MetalUniformBufferReference *reference, bool align)
 	{
+		ZoneScoped;
 		LockGuard<Lockable> lock(_lock);
 		return _uniformBufferPool->UpdateUniformBufferReference(reference, align);
 	}
 
 	ShaderLibrary *MetalRenderer::CreateShaderLibraryWithFile(const String *file)
 	{
+		ZoneScoped;
 		MetalShaderLibrary *lib = new MetalShaderLibrary(_internals->device, file, &_internals->stateCoordinator);
 		return lib;
 	}
 	ShaderLibrary *MetalRenderer::CreateShaderLibraryWithSource(const String *source)
 	{
+		ZoneScoped;
 		MetalShaderLibrary *lib = new MetalShaderLibrary(_internals->device, nullptr, &_internals->stateCoordinator);
 		return lib;
 	}
 	
 	ShaderLibrary *MetalRenderer::GetDefaultShaderLibrary()
 	{
+		ZoneScoped;
 		return _defaultShaderLibrary;
 	}
 
 	bool MetalRenderer::SupportsTextureFormat(const String *format) const
 	{
+		ZoneScoped;
 		//TODO: Fix this
 		return true;
 	}
 	bool MetalRenderer::SupportsDrawMode(DrawMode mode) const
 	{
+		ZoneScoped;
 		return true;
 	}
 
 	// https://developer.apple.com/library/ios/documentation/Metal/Reference/MetalShadingLanguageGuide/MetalShadingLanguageGuide.pdf
 	size_t MetalRenderer::GetAlignmentForType(PrimitiveType type) const
 	{
+		ZoneScoped;
 		switch(type)
 		{
 			case PrimitiveType::Uint8:
@@ -664,6 +688,7 @@ namespace RN
 
 	size_t MetalRenderer::GetSizeForType(PrimitiveType type) const
 	{
+		ZoneScoped;
 		switch(type)
 		{
 			case PrimitiveType::Uint8:
@@ -703,6 +728,7 @@ namespace RN
 
 	Texture *MetalRenderer::CreateTextureWithDescriptor(const Texture::Descriptor &descriptor)
 	{
+		ZoneScoped;
 		MTLTextureDescriptor *metalDescriptor = MetalTexture::DescriptorForTextureDescriptor(descriptor);
 		id<MTLTexture> texture = [_internals->device newTextureWithDescriptor:metalDescriptor];
 		[metalDescriptor release];
@@ -712,6 +738,7 @@ namespace RN
 	
 	Texture *MetalRenderer::CreateTextureWithDescriptorAndIOSurface(const Texture::Descriptor &descriptor, IOSurfaceRef ioSurface)
 	{
+		ZoneScoped;
 		MTLTextureDescriptor *metalDescriptor = MetalTexture::DescriptorForTextureDescriptor(descriptor, true);
 		id<MTLTexture> texture = [_internals->device newTextureWithDescriptor:metalDescriptor iosurface:ioSurface plane:0];
 		[metalDescriptor release];
@@ -721,22 +748,26 @@ namespace RN
 
 	Framebuffer *MetalRenderer::CreateFramebuffer(const Vector2 &size)
 	{
+		ZoneScoped;
 		return new MetalFramebuffer(size);
 	}
 
 	Drawable *MetalRenderer::CreateDrawable()
 	{
+		ZoneScoped;
 		MetalDrawable *drawable = new MetalDrawable();
 		return drawable;
 	}
 
 	void MetalRenderer::DeleteDrawable(Drawable *drawable)
 	{
+		ZoneScoped;
 		delete drawable;
 	}
 
 	void MetalRenderer::FillUniformBuffer(Shader::ArgumentBuffer *argument, MetalUniformBufferReference *uniformBufferReference, MetalDrawable *drawable, const Material::Properties &materialProperties)
 	{
+		ZoneScoped;
 		GPUBuffer *gpuBuffer = uniformBufferReference->uniformBuffer->GetActiveBuffer();
 		uint8 *buffer = reinterpret_cast<uint8 *>(gpuBuffer->GetBuffer()) + uniformBufferReference->offset;
 
@@ -1187,6 +1218,7 @@ namespace RN
 
 	void MetalRenderer::SubmitLight(const Light *light)
 	{
+		ZoneScoped;
 		//TODO: Limit number of lights somehow!? Currently it is just limited by what the shader supports
 		MetalRenderPass &renderPass = _internals->renderPasses[_internals->currentRenderPassIndex];
 		if(light->GetType() == Light::Type::DirectionalLight)
@@ -1213,6 +1245,7 @@ namespace RN
 
 	void MetalRenderer::SubmitDrawable(Drawable *tdrawable)
 	{
+		ZoneScoped;
 		MetalDrawable *drawable = static_cast<MetalDrawable *>(tdrawable);
 		drawable->AddCameraSepecificsIfNeeded(_internals->currentRenderPassIndex);
 
@@ -1282,6 +1315,7 @@ namespace RN
 
 	void MetalRenderer::RenderDrawable(MetalDrawable *drawable, uint32 instanceCount)
 	{
+		ZoneScoped;
 		id<MTLRenderCommandEncoder> encoder = _internals->commandEncoder;
 		if(_internals->currentRenderState != drawable->_cameraSpecifics[_internals->currentRenderPassIndex].pipelineState)
 		{

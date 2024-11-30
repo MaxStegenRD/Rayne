@@ -9,6 +9,8 @@
 #ifndef __RAYNE_RAYNE_H__
 #define __RAYNE_RAYNE_H__
 
+#include <tracy/Tracy.hpp>
+
 #include "Base/RNArgumentParser.h"
 #include "Base/RNApplication.h"
 #include "Base/RNBase.h"

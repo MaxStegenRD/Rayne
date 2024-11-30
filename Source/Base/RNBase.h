@@ -15,6 +15,8 @@
 	#include "../RayneConfig.h"
 #endif
 
+#include <tracy/Tracy.hpp>
+
 // ---------------------------
 // Platform dependent includes
 // ---------------------------

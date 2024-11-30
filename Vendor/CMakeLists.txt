@@ -50,6 +50,7 @@ set(ZLIB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/zlib ${CMAKE_CURRENT_BINARY_DIR
 add_subdirectory("jansson")
 add_subdirectory("libpng")
 add_subdirectory("libzip")
+add_subdirectory("tracy")
 
 if(IOS)
     add_subdirectory("OIS")

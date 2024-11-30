@@ -131,6 +131,8 @@ rayne_add_library(RayneVulkan "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${
 rayne_set_module_output_directory(RayneVulkan)
 rayne_set_module_resources(RayneVulkan ${RESOURCES})
 
+target_link_libraries(RayneVulkan PUBLIC TracyClient)
+
 add_dependencies(VulkanGenerateDispatchTable vulkan_headers)
 add_dependencies(RayneVulkan_copyHeaderTarget VulkanGenerateDispatchTable)
 add_dependencies(RayneVulkan_copyHeaderTarget spirvcross)

@@ -31,28 +31,32 @@ namespace RN
 
 	SceneBasicInfo::SceneBasicInfo(Scene *scene) : SceneInfo(scene), occludedFrameCounter(0)
 	{
-		
+		ZoneScoped;
 	}
 
 	SceneBasic::SceneBasic() : _nodesToRemove(new Array()), _occlusionDepthBufferWidth(40), _occlusionDepthBufferHeight(40), _currentFrameCount(0)
 	{
+		ZoneScoped;
 		_occlusionDepthBuffer = new float[_occlusionDepthBufferWidth * _occlusionDepthBufferHeight];
 	}
 	
 	SceneBasic::~SceneBasic()
 	{
+		ZoneScoped;
 		_nodesToRemove->Release();
 		delete _occlusionDepthBuffer;
 	}
 
 	void SceneBasic::Update(float delta)
 	{
+		ZoneScoped;
 		WillUpdate(delta);
 
 		WorkQueue *queue = WorkQueue::GetGlobalQueue(WorkQueue::Priority::Default);
 
 		for(size_t i = 0; i < 4; i ++)
 		{
+			ZoneScopedN("Update by Priority");
             WorkGroup *group = nullptr;
 			IntrusiveList<SceneNode>::Member *member = _updateNodes[i].GetHead();
 			IntrusiveList<SceneNode>::Member *first = member;
@@ -65,6 +69,8 @@ namespace RN
 				{
 				    if(!group) group = new WorkGroup();
 					group->Perform(queue, [&, member, first] {
+						
+						ZoneScopedN("Update Batch");
 
 						AutoreleasePool pool;
 						auto iterator = first;
@@ -90,6 +96,8 @@ namespace RN
 			if(first != member)
 			{
 //				group->Perform(queue, [&, member, first] {
+				
+					ZoneScopedN("Update Last Batch");
 
 					AutoreleasePool pool;
 					auto iterator = first;
@@ -119,6 +127,7 @@ namespace RN
 
 	void SceneBasic::FlushDeletionQueue()
 	{
+		ZoneScoped;
 		bool didUpdateCameras = false;
 		_nodesToRemove->Enumerate<SceneNode>([&](SceneNode *node, size_t index, bool &stop) {
 
@@ -406,6 +415,7 @@ namespace RN
 
 	void SceneBasic::Render(Renderer *renderer)
 	{
+		ZoneScoped;
 		WillRender(renderer);
 		
 		//Run camera PostUpdate once for each camera
@@ -422,6 +432,7 @@ namespace RN
 			cameraMember = _cameras.GetHead();
 			while(cameraMember)
 			{
+				ZoneScoped;
 				Camera *camera = cameraMember->Get();
 
 				//Early out if camera is not supposed to render or if this isn't it's priority loop
@@ -460,6 +471,7 @@ namespace RN
 				nodeMember = _renderNodes.GetHead();
 				if(occluders.size() > 0)
 				{
+					ZoneScopedN("Collect Entities with Occlusion Culling");
 					std::vector<SceneNode *> visibleOccluders;
 					
 					//Sort occluders by approximated size on the screen
@@ -573,19 +585,20 @@ namespace RN
 				}
 				else
 				{
+					ZoneScopedN("Collect Entities");
 					while(nodeMember)
 					{
 						SceneNode *node = nodeMember->Get();
 						if(node->CanRender(renderer, camera))
 						{
-                            if(node->GetRenderPriority() == SceneNode::RenderTransparent)
-                            {
-                                if(firstTransparentIndex == 0)
-                                {
-                                    firstTransparentIndex = sceneNodesToRender.size();
-                                }
-                                lastTransparentIndex = sceneNodesToRender.size();
-                            }
+							if(node->GetRenderPriority() == SceneNode::RenderTransparent)
+							{
+								if(firstTransparentIndex == 0)
+								{
+									firstTransparentIndex = sceneNodesToRender.size();
+								}
+								lastTransparentIndex = sceneNodesToRender.size();
+							}
 							sceneNodesToRender.push_back(node);
 						}
 
@@ -595,6 +608,7 @@ namespace RN
 
 				if(camera->GetFlags() & Camera::Flags::SortFrontToBack)
 				{
+					ZoneScopedN("Sort Opaque");
 					const RN::Vector3 cameraWorldPosition = camera->GetWorldPosition();
 					std::sort(sceneNodesToRender.begin(), sceneNodesToRender.end(), [cameraWorldPosition](
 							SceneNode *a, SceneNode *b) {
@@ -608,6 +622,7 @@ namespace RN
 				
 				if(camera->GetFlags() & Camera::Flags::SortTransparentBackToFront && firstTransparentIndex < lastTransparentIndex)
 				{
+					ZoneScopedN("Sort Transparent");
 					const RN::Vector3 cameraWorldPosition = camera->GetWorldPosition();
 					std::sort(sceneNodesToRender.begin() + firstTransparentIndex, sceneNodesToRender.begin() + lastTransparentIndex + 1, [cameraWorldPosition](
 							SceneNode *a, SceneNode *b) {
@@ -618,7 +633,7 @@ namespace RN
 				//RNInfo("Number of objects: " << sceneNodesToRender.size());
 
 				renderer->SubmitCamera(camera, [&] {
-					
+					ZoneScopedN("Submit Drawables");
 					//TODO: Add back some multithreading while not breaking the priorities.
 					
 					//Submit lights first
@@ -651,6 +666,8 @@ namespace RN
 
 	void SceneBasic::AddRenderNode(SceneNode *node)
 	{
+		ZoneScoped;
+		
 		Lock();
 		int32 renderPriority = node->GetRenderPriority();
 		if(!_renderNodes.GetHead() || _renderNodes.GetHead()->Get()->GetRenderPriority() >= renderPriority)
@@ -677,11 +694,13 @@ namespace RN
 
 	void SceneBasic::RemoveRenderNode(SceneNode *node)
 	{
+		ZoneScoped;
 		_renderNodes.Erase(node->_sceneRenderEntry);
 	}
 
 	void SceneBasic::AddNode(SceneNode *node)
 	{
+		ZoneScoped;
 		//Remove from deletion list if scheduled for deletion if the scene didn't change.
 		if(node->GetSceneInfo() && node->GetSceneInfo()->GetScene() == this && node->_scheduledForRemovalFromScene)
 		{
@@ -737,6 +756,7 @@ namespace RN
 	
 	void SceneBasic::RemoveNode(SceneNode *node)
 	{
+		ZoneScoped;
 		RN_ASSERT(node->GetSceneInfo() && node->GetSceneInfo()->GetScene() == this && node->_scheduledForRemovalFromScene == false, "RemoveNode() must be called on a Node owned by the scene");
 		
 		_nodesToRemove->Lock();

@@ -14,15 +14,19 @@ namespace RN
 
 	Entity::Entity() :
 		_model(nullptr)
-	{}
+	{
+		ZoneScoped;
+	}
 	Entity::Entity(Model *model) :
 		_model(nullptr)
 	{
+		ZoneScoped;
 		SetModel(model);
 	}
 
 	Entity::~Entity()
 	{
+		ZoneScoped;
 		SafeRelease(_model);
 		ClearDrawables();
 	}
@@ -30,6 +34,7 @@ namespace RN
 
 	void Entity::ClearDrawables()
 	{
+		ZoneScoped;
 		if(Renderer::IsHeadless()) return;
 		
 		Renderer *renderer = Renderer::GetActiveRenderer();
@@ -49,6 +54,7 @@ namespace RN
 
 	void Entity::SetModel(Model *model)
 	{
+		ZoneScoped;
 		SafeRelease(_model);
 		_model = SafeRetain(model);
 
@@ -127,6 +133,7 @@ namespace RN
 
 	void Entity::MakeDirty()
 	{
+		ZoneScoped;
 		if(!_model) return;
 		
 		size_t lodStageCount = _model->GetLODStageCount();

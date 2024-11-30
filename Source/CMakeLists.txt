@@ -417,9 +417,11 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/RayneConfig.h.in ${CMAKE_CURRENT_BINA
 rayne_add_library(Rayne "${TARGET_SOURCES}" "${TARGET_HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
 
 target_include_directories(Rayne SYSTEM PRIVATE "${INCLUDE_DIRECTORIES}")
-target_link_libraries(Rayne "${LINK_LIBRARIES}")
+target_link_libraries(Rayne PUBLIC "${LINK_LIBRARIES}")
 target_compile_definitions(Rayne PRIVATE "${COMPILE_DEFINITIONS}")
 target_compile_options(Rayne PRIVATE ${COMPILE_OPTIONS})
+
+target_link_libraries(Rayne PUBLIC TracyClient)
 
 #rayne_install(Rayne Rayne ${_TARGETS} LIBRARY DESTINATION lib ARCHIVE DESTINATION lib)
 rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/. DESTINATION include/Rayne)
