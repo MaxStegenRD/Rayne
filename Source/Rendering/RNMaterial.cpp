@@ -104,8 +104,6 @@ namespace RN
 	Material::Material(Shader *vertexShader, Shader *fragmentShader) :
 		_override(0),
 		_textures(new Array()),
-		_vertexBuffers(nullptr),
-		_fragmentBuffers(nullptr),
 		_skipRendering(false)
 	{
 		for(uint8 i = 0; i < static_cast<uint8>(Shader::UsageHint::COUNT); i++)
@@ -129,8 +127,6 @@ namespace RN
 	Material::Material(const Material *other) :
 		_override(other->_override),
 		_textures(SafeCopy(other->_textures)),
-		_vertexBuffers(SafeCopy(other->_vertexBuffers)),
-		_fragmentBuffers(SafeCopy(other->_fragmentBuffers)),
 		_skipRendering(other->_skipRendering),
 		_properties(other->_properties)
 	{
@@ -143,8 +139,6 @@ namespace RN
 
 	Material::~Material()
 	{
-		SafeRelease(_vertexBuffers);
-		SafeRelease(_fragmentBuffers);
 		SafeRelease(_textures);
 
 		for(uint8 i = 0; i < static_cast<uint8>(Shader::UsageHint::COUNT); i++)
@@ -224,17 +218,6 @@ namespace RN
 	void Material::SetDepthMode(DepthMode mode)
 	{
 		_properties.depthMode = mode;
-	}
-
-	void Material::SetFragmentBuffers(const Array *buffers)
-	{
-		SafeRelease(_fragmentBuffers);
-		_fragmentBuffers = SafeCopy(buffers);
-	}
-	void Material::SetVertexBuffers(const Array *buffers)
-	{
-		SafeRelease(_vertexBuffers);
-		_vertexBuffers = SafeCopy(buffers);
 	}
 
 	void Material::SetTextureTileFactor(float factor)

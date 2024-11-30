@@ -181,9 +181,6 @@ namespace RN
 		RNAPI void SetTextureTileFactor(float factor);
 		RNAPI void SetCullMode(CullMode mode);
 
-		RNAPI void SetFragmentBuffers(const Array *buffers);
-		RNAPI void SetVertexBuffers(const Array *buffers);
-
 		RNAPI void SetPolygonOffset(bool enable, float factor = 1.1f, float units = 0.1f);
 		RNAPI void SetAlphaToCoverage(bool enabled, float min = 0.3, float max = 0.8);
 		
@@ -220,9 +217,6 @@ namespace RN
 		float GetTextureTileFactor() const { return _properties.textureTileFactor; }
 		CullMode GetCullMode() const { return _properties.cullMode; }
 
-		const Array *GetFragmentBuffers() const { return _fragmentBuffers; }
-		const Array *GetVertexBuffers() const { return _vertexBuffers; }
-
 		bool GetUsePolygonOffset() const { return _properties.usePolygonOffset; }
 		float GetPolygonOffsetFactor() const { return _properties.polygonOffsetFactor; }
 		float GetPolygonOffsetUnits() const { return _properties.polygonOffsetUnits; }
@@ -241,8 +235,6 @@ namespace RN
 		Shader *_vertexShader[static_cast<uint8>(Shader::UsageHint::COUNT)];
 
 		Array *_textures;
-		Array *_vertexBuffers;
-		Array *_fragmentBuffers;
 		
 		bool _skipRendering;
 
