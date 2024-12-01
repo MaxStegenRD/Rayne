@@ -63,6 +63,10 @@ namespace RN
 		SceneBasicInfo(Scene *scene);
 		
 		size_t occludedFrameCounter;
+		float occluderSize;
+		float occluderDistance;
+		bool isActiveOccluder;
+		bool isVisibleOccluder;
 		
 		__RNDeclareMetaInternal(SceneBasicInfo)
 	};

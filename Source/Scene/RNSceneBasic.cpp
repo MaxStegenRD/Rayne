@@ -160,6 +160,8 @@ namespace RN
 
 	void SceneBasic::RasterizeClipSpaceTriangle(Vector4 A, Vector4 B, Vector4 C)
 	{
+		if(edgeFunction(Vector2(A), Vector2(B), Vector2(C)) < 0) return; //Triangle is facing away, can just skip completely
+		
 		A /= A.w;
 		A.x = A.x * 0.5f + 0.5f;
 		A.x *= _occlusionDepthBufferWidth;
@@ -178,14 +180,13 @@ namespace RN
 		C.y = C.y * 0.5f + 0.5f;
 		C.y *= _occlusionDepthBufferHeight;
 		
-		float area = edgeFunction(Vector2(A), Vector2(B), Vector2(C));
-		if(area < 0) return; //Triangle is facing away, can just skip completely at this point
-		
 		uint16 minX = std::min(std::max(std::min(A.x, std::min(B.x, C.x)), 0.0f), static_cast<float>(_occlusionDepthBufferWidth-1));
 		uint16 minY = std::min(std::max(std::min(A.y, std::min(B.y, C.y)), 0.0f), static_cast<float>(_occlusionDepthBufferHeight-1));
 		
 		uint16 maxX = std::min(std::max(std::max(A.x, std::max(B.x, C.x)), 0.0f), static_cast<float>(_occlusionDepthBufferWidth-1));
 		uint16 maxY = std::min(std::max(std::max(A.y, std::max(B.y, C.y)), 0.0f), static_cast<float>(_occlusionDepthBufferHeight-1));
+		
+		float area = edgeFunction(Vector2(A), Vector2(B), Vector2(C));
 		
 		for(uint16 y = minY; y <= maxY; y++)
 		{
@@ -194,22 +195,19 @@ namespace RN
 				Vector2 point(x, y);
 				
 				float w0 = edgeFunction(Vector2(B), Vector2(C), point);
+				if(w0 < 0) continue;
 				float w1 = edgeFunction(Vector2(C), Vector2(A), point);
+				if(w1 < 0) continue;
 				float w2 = edgeFunction(Vector2(A), Vector2(B), point);
-				if(w0 >= 0 && w1 >= 0 && w2 >= 0)
+				if(w2 < 0) continue;
+				
+				float depth = (w0 * A.z + w1 * B.z + w2 * C.z) / area - 0.000001f; //Add a bit of an offset to prevent precision issues
+				if(depth <= 1.0f)
 				{
-					w0 /= area;
-					w1 /= area;
-					w2 /= area;
-					float depth = w0 * A.z + w1 * B.z + w2 * C.z - 0.000001f; //Add a bit of an offset to prevent precision issues
-					
-					if(depth <= 1.0f)
+					//depth *= 10000.0f;
+					if(depth > _occlusionDepthBuffer[_occlusionDepthBufferWidth * (_occlusionDepthBufferHeight - y - 1) + x])
 					{
-						//depth *= 10000.0f;
-						if(depth > _occlusionDepthBuffer[_occlusionDepthBufferWidth * (_occlusionDepthBufferHeight - y - 1) + x])
-						{
-							_occlusionDepthBuffer[_occlusionDepthBufferWidth * (_occlusionDepthBufferHeight - y - 1) + x] = depth;
-						}
+						_occlusionDepthBuffer[_occlusionDepthBufferWidth * (_occlusionDepthBufferHeight - y - 1) + x] = depth;
 					}
 				}
 			}
@@ -462,12 +460,17 @@ namespace RN
 				if(!(camera->GetFlags() & Camera::Flags::NoOcclusionCulling))
 				{
 					ZoneScopedN("Collect Occluders");
+					const RN::Vector3 cameraWorldPosition = camera->GetWorldPosition();
 					//Collect all occluders
 					while(nodeMember)
 					{
 						SceneNode *node = nodeMember->Get();
 						if(node->HasFlags(SceneNode::Flags::Occluder) && node->CanRender(renderer, camera))
 						{
+							SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo*>(node->GetSceneInfo());
+							sceneInfo->occluderDistance = std::max(node->GetWorldPosition().GetSquaredDistance(cameraWorldPosition), 1.0f);
+							sceneInfo->occluderSize = node->GetBoundingSphere().radius * node->GetBoundingSphere().radius / sceneInfo->occluderDistance;
+							sceneInfo->isActiveOccluder = false;
 							occluders.push_back(node);
 						}
 						
@@ -481,25 +484,27 @@ namespace RN
 				if(occluders.size() > 0)
 				{
 					ZoneScopedN("Collect Entities with Occlusion Culling");
-					std::vector<SceneNode *> visibleOccluders;
-					
-					//Sort occluders by approximated size on the screen
-					const RN::Vector3 cameraWorldPosition = camera->GetWorldPosition();
-					std::sort(occluders.begin(), occluders.end(), [cameraWorldPosition](
-							SceneNode *a, SceneNode *b) {
-						float distanceA = std::max(a->GetWorldPosition().GetSquaredDistance(cameraWorldPosition), 1.0f);
-						float distanceB = std::max(b->GetWorldPosition().GetSquaredDistance(cameraWorldPosition), 1.0f);
+					{
+						ZoneScopedN("Find 30 biggest occluders");
 						
-						return a->GetBoundingSphere().radius * a->GetBoundingSphere().radius / distanceA > b->GetBoundingSphere().radius * b->GetBoundingSphere().radius / distanceB;
-					});
-					
-					occluders.resize(std::min(static_cast<size_t>(30), occluders.size())); //Only keep the biggest 30 occluders in the list
-					
-					//Sort remaining occluders front to back
-					std::sort(occluders.begin(), occluders.end(), [cameraWorldPosition](
-							SceneNode *a, SceneNode *b) {
-						return a->GetWorldPosition().GetSquaredDistance(cameraWorldPosition) < b->GetWorldPosition().GetSquaredDistance(cameraWorldPosition);
-					});
+						//Sort occluders by approximated size on the screen
+						std::sort(occluders.begin(), occluders.end(), [](
+								SceneNode *a, SceneNode *b) {
+							SceneBasicInfo *sceneInfoA = static_cast<SceneBasicInfo*>(a->GetSceneInfo());
+							SceneBasicInfo *sceneInfoB = static_cast<SceneBasicInfo*>(b->GetSceneInfo());
+							return sceneInfoA->occluderSize > sceneInfoB->occluderSize;
+						});
+						
+						occluders.resize(std::min(static_cast<size_t>(30), occluders.size())); //Only keep the biggest 30 occluders in the list
+						
+						//Sort remaining occluders front to back
+						std::sort(occluders.begin(), occluders.end(), [](
+								SceneNode *a, SceneNode *b) {
+							SceneBasicInfo *sceneInfoA = static_cast<SceneBasicInfo*>(a->GetSceneInfo());
+							SceneBasicInfo *sceneInfoB = static_cast<SceneBasicInfo*>(b->GetSceneInfo());
+							return sceneInfoA->occluderDistance < sceneInfoB->occluderDistance;
+						});
+					}
 					
 					//Clear occlusion depth map
 					std::fill(_occlusionDepthBuffer, _occlusionDepthBuffer + _occlusionDepthBufferWidth * _occlusionDepthBufferHeight, 0.0f);
@@ -515,80 +520,94 @@ namespace RN
 						matViewProj = multiviewCamera->GetProjectionMatrix() * multiviewCamera->GetViewMatrix();
 					}
 					
-					//Render occluders to depth buffer first (first test if the bounding box is visible at all)
-					for(SceneNode *node : occluders)
 					{
-						bool testResult = TestBoundingBox(matViewProj, node->GetBoundingBox(), screenPixelSize);
-						SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo*>(node->GetSceneInfo());
-						if(!testResult && sceneInfo->occludedFrameCounter < 1000)
+						ZoneScopedN("Render Occluder Depth");
+						
+						//Render occluders to depth buffer first (first test if the bounding box is visible at all)
+						for(SceneNode *node : occluders)
 						{
-							sceneInfo->occludedFrameCounter += 1;
-						}
-						if(testResult || sceneInfo->occludedFrameCounter < 50)
-						{
-							if(testResult)
+							bool testResult = TestBoundingBox(matViewProj, node->GetBoundingBox(), screenPixelSize);
+							SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo*>(node->GetSceneInfo());
+							sceneInfo->isActiveOccluder = true;
+							if(!testResult && sceneInfo->occludedFrameCounter < 1000)
 							{
-								sceneInfo->occludedFrameCounter = 0;
+								sceneInfo->occludedFrameCounter += 1;
+							}
+							if(testResult || sceneInfo->occludedFrameCounter < 50)
+							{
+								if(testResult)
+								{
+									sceneInfo->occludedFrameCounter = 0;
+								}
 							}
 							
-							visibleOccluders.push_back(node);
-						}
-						
-						if(testResult)
-						{
-							//TODO: Deal with models that have multiple meshes, also what lod stage should be used if there are multiple?
-							RN::Entity *entity = node->Downcast<Entity>();
-							if(entity)
+							if(testResult)
 							{
-								Model *model = entity->GetModel();
-								RN::Mesh *mesh = model->GetLODStage(0)->GetMeshAtIndex(0);
-								Matrix matModelViewProj = matViewProj * node->GetWorldTransform();
-								RasterizeMesh(matModelViewProj, mesh);
+								RN::Entity *entity = node->Downcast<Entity>();
+								if(entity)
+								{
+									Matrix matModelViewProj = matViewProj * node->GetWorldTransform();
+									
+									Model *model = entity->GetModel();
+									RN::Model::LODStage *lodStage = model->GetLODStage(0);
+									for(int i = 0; i < lodStage->GetCount(); i++)
+									{
+										RN::Mesh *mesh = lodStage->GetMeshAtIndex(i);
+										RasterizeMesh(matModelViewProj, mesh);
+									}
+								}
 							}
 						}
 					}
 					
-					//Test all visible objects against depth buffer
-					while(nodeMember)
 					{
-						SceneNode *node = nodeMember->Get();
-						nodeMember = nodeMember->GetNext();
-						if(!node->CanRender(renderer, camera)) continue;
-						if(node->GetRenderPriority() >= SceneNode::RenderSky)
+						ZoneScopedN("Test Objects");
+						
+						//Test all visible objects against depth buffer
+						while(nodeMember)
 						{
-							if(node->GetRenderPriority() == SceneNode::RenderTransparent)
+							SceneNode *node = nodeMember->Get();
+							nodeMember = nodeMember->GetNext();
+							if(!node->CanRender(renderer, camera)) continue;
+							if(node->GetRenderPriority() >= SceneNode::RenderSky)
 							{
-								if(firstTransparentIndex == 0)
+								if(node->GetRenderPriority() == SceneNode::RenderTransparent)
 								{
-									firstTransparentIndex = sceneNodesToRender.size();
+									if(firstTransparentIndex == 0)
+									{
+										firstTransparentIndex = sceneNodesToRender.size();
+									}
+									lastTransparentIndex = sceneNodesToRender.size();
 								}
-								lastTransparentIndex = sceneNodesToRender.size();
-							}
-							sceneNodesToRender.push_back(node);
-							continue;
-						}
-						
-						//TODO: Find a better way to check if an occluder is visible and should be added to the render queue
-						if(node->GetFlags() & SceneNode::Flags::Occluder && std::find(visibleOccluders.begin(), visibleOccluders.end(), node) != visibleOccluders.end())
-						{
-							sceneNodesToRender.push_back(node);
-							continue;
-						}
-						
-						bool testResult = TestBoundingBox(matViewProj, node->GetBoundingBox(), screenPixelSize);
-						SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo*>(node->GetSceneInfo());
-						if(!testResult && sceneInfo->occludedFrameCounter < 1000)
-						{
-							sceneInfo->occludedFrameCounter += 1;
-						}
-						if(testResult || sceneInfo->occludedFrameCounter < 50)
-						{
-							if(testResult)
-							{
-								sceneInfo->occludedFrameCounter = 0;
+								sceneNodesToRender.push_back(node);
+								continue;
 							}
 							
-							sceneNodesToRender.push_back(node);
+							if(node->GetFlags() & SceneNode::Flags::Occluder)
+							{
+								SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo*>(node->GetSceneInfo());
+								if(sceneInfo->isActiveOccluder && sceneInfo->occludedFrameCounter < 50)
+								{
+									sceneNodesToRender.push_back(node);
+									continue;
+								}
+							}
+							
+							bool testResult = TestBoundingBox(matViewProj, node->GetBoundingBox(), screenPixelSize);
+							SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo*>(node->GetSceneInfo());
+							if(!testResult && sceneInfo->occludedFrameCounter < 1000)
+							{
+								sceneInfo->occludedFrameCounter += 1;
+							}
+							if(testResult || sceneInfo->occludedFrameCounter < 50)
+							{
+								if(testResult)
+								{
+									sceneInfo->occludedFrameCounter = 0;
+								}
+								
+								sceneNodesToRender.push_back(node);
+							}
 						}
 					}
 				}
