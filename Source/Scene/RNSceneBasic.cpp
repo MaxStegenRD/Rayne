@@ -19,6 +19,12 @@
 #define kRNSceneUpdateBatchSize 8192 //1024
 #define kRNSceneRenderBatchSize 32
 
+#define OCCLUSION_VISUALIZE_DEPTH 0
+
+#define OCCLUSION_DEPTH_BIAS 0.000001f
+#define OCCLUSION_FRAMECOUNT 50
+#define OCCLUSION_JITTER 0.15f
+
 namespace RN
 {
 	RNDefineMeta(SceneBasic, Scene)
@@ -201,11 +207,12 @@ namespace RN
 				float w2 = edgeFunction(Vector2(A), Vector2(B), point);
 				if(w2 < 0) continue;
 				
-				float depth = (w0 * A.z + w1 * B.z + w2 * C.z) / area - 0.000001f; //Add a bit of an offset to prevent precision issues
+				float depth = (w0 * A.z + w1 * B.z + w2 * C.z) / area - OCCLUSION_DEPTH_BIAS; //Add a bit of an offset to prevent precision issues
 				if(depth <= 1.0f)
 				{
-					//depth *= 10000.0f;
-					if(depth > _occlusionDepthBuffer[_occlusionDepthBufferWidth * (_occlusionDepthBufferHeight - y - 1) + x])
+#if OCCLUSION_VISUALIZE_DEPTH
+					depth *= 10000.0f;
+#endif
 					{
 						_occlusionDepthBuffer[_occlusionDepthBufferWidth * (_occlusionDepthBufferHeight - y - 1) + x] = depth;
 					}
@@ -395,7 +402,9 @@ namespace RN
 		uint16 minY = std::max(std::min(std::floor(minCorners.y) - 1.0f, static_cast<float>(_occlusionDepthBufferHeight - 1)), 0.0f);
 		uint16 maxY = std::max(std::min(std::ceil(maxCorners.y) + 1.0f, static_cast<float>(_occlusionDepthBufferHeight - 1)), 0.0f);
 
-		//maxCorners.z *= 10000.0f;
+#if OCCLUSION_VISUALIZE_DEPTH
+		maxCorners.z *= 10000.0f;
+#endif
 
 		for(uint16 y = minY; y <= maxY; y++)
 		{
@@ -511,7 +520,7 @@ namespace RN
 					
 					Vector2 screenPixelSize = Vector2(1.0f/camera->GetRenderPass()->GetFrame().width, 1.0f/camera->GetRenderPass()->GetFrame().height);
 					
-					Vector3 randomCameraOffset = RandomNumberGenerator::GetSharedGenerator()->GetRandomVector3Range(RN::Vector3(-0.15f, -0.15f, 0.0f), RN::Vector3(0.15f, 0.15f, 0.0f));
+					Vector3 randomCameraOffset = RandomNumberGenerator::GetSharedGenerator()->GetRandomVector3Range(RN::Vector3(-OCCLUSION_JITTER, -OCCLUSION_JITTER, 0.0f), RN::Vector3(OCCLUSION_JITTER, OCCLUSION_JITTER, 0.0f));
 					Matrix matViewProj = camera->GetProjectionMatrix() * Matrix::WithTranslation(randomCameraOffset) * camera->GetViewMatrix();
 					if(camera->GetIsMultiviewCamera())
 					{
@@ -533,7 +542,7 @@ namespace RN
 							{
 								sceneInfo->occludedFrameCounter += 1;
 							}
-							if(testResult || sceneInfo->occludedFrameCounter < 50)
+							if(testResult || sceneInfo->occludedFrameCounter < OCCLUSION_FRAMECOUNT)
 							{
 								if(testResult)
 								{
@@ -586,7 +595,7 @@ namespace RN
 							if(node->GetFlags() & SceneNode::Flags::Occluder)
 							{
 								SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo*>(node->GetSceneInfo());
-								if(sceneInfo->isActiveOccluder && sceneInfo->occludedFrameCounter < 50)
+								if(sceneInfo->isActiveOccluder && sceneInfo->occludedFrameCounter < OCCLUSION_FRAMECOUNT)
 								{
 									sceneNodesToRender.push_back(node);
 									continue;
@@ -599,7 +608,7 @@ namespace RN
 							{
 								sceneInfo->occludedFrameCounter += 1;
 							}
-							if(testResult || sceneInfo->occludedFrameCounter < 50)
+							if(testResult || sceneInfo->occludedFrameCounter < OCCLUSION_FRAMECOUNT)
 							{
 								if(testResult)
 								{
