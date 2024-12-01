@@ -592,6 +592,13 @@ namespace RN
 		void View::SetOpacityFromParent(float parentCombinedOpacity)
 		{
 			Lock();
+			
+			if(Math::Compare(_combinedOpacityFactor, parentCombinedOpacity * _opacityFactor))
+			{
+				Unlock();
+				return;
+			}
+			
 			_combinedOpacityFactor = parentCombinedOpacity * _opacityFactor;
 			_subviews->Enumerate<View>([&](View *view, size_t index, bool &stop){
 				view->SetOpacityFromParent(_combinedOpacityFactor);
@@ -740,23 +747,25 @@ namespace RN
 			bool needsRedraw = false;
 			
 			Lock();
-			//Copy to prevent multithreading issues with adding/removing/moving subviews
+			/*//Copy to prevent multithreading issues with adding/removing/moving subviews
 			//TODO: This is called often, instead _subviews should be updated asynchroneously
 			Array *subviewsCopy = _subviews->Copy();
-			Unlock();
+			Unlock();*/
 			
 			// Update all children
-			size_t count = subviewsCopy->GetCount();
+			size_t count = _subviews->GetCount();
 			for(size_t i = 0; i < count; i ++)
 			{
-				View *child = subviewsCopy->GetObjectAtIndex<View>(i);
+				View *child = _subviews->GetObjectAtIndex<View>(i);
 				if(child->UpdateCursorPosition(cursorPosition))
 				{
 					needsRedraw = true;
 				}
 			}
 			
-			subviewsCopy->Release();
+			Unlock();
+			
+			//subviewsCopy->Release();
 			
 			return needsRedraw;
 		}
@@ -1364,29 +1373,27 @@ namespace RN
 		void View::Draw(bool isParentHidden)
 		{
 			_isHiddenByParent = isParentHidden;
-			if(_isHidden || isParentHidden || !_bounds.IntersectsRect(_scissorRect) || _combinedOpacityFactor <= k::EpsilonFloat)
+			bool isHidden = _isHidden || isParentHidden || !_bounds.IntersectsRect(_scissorRect) || _combinedOpacityFactor <= k::EpsilonFloat;
+			if(isHidden)
 			{
 				AddFlags(SceneNode::Flags::Hidden);
 			}
 			else
 			{
 				RemoveFlags(SceneNode::Flags::Hidden);
-			}
-			
-			if(!_isHidden && !isParentHidden && _combinedOpacityFactor > k::EpsilonFloat)
-			{
+				
 				//Update mesh if the frame size changed
 				if(_oldFrameSize.GetSquaredDistance(_frame.GetSize()) > k::EpsilonFloat)
 				{
 					_needsMeshUpdate = true;
 				}
 				_oldFrameSize = _frame.GetSize();
-			}
-			
-			if(_needsMeshUpdate && !_isHidden && !isParentHidden && _combinedOpacityFactor > k::EpsilonFloat)
-			{
-				UpdateModel();
-				_needsMeshUpdate = false;
+				
+				if(_needsMeshUpdate)
+				{
+					UpdateModel();
+					_needsMeshUpdate = false;
+				}
 			}
 			
 			// Draw all children
