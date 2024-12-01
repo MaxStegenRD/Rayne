@@ -1386,8 +1386,8 @@ namespace RN
 				if(_oldFrameSize.GetSquaredDistance(_frame.GetSize()) > k::EpsilonFloat)
 				{
 					_needsMeshUpdate = true;
+					_oldFrameSize = _frame.GetSize();
 				}
-				_oldFrameSize = _frame.GetSize();
 				
 				if(_needsMeshUpdate)
 				{
