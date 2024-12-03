@@ -31,13 +31,14 @@ namespace RN
 		VulkanDynamicGPUBuffer(Renderer *renderer, size_t size, GPUResource::UsageOptions usageOptions);
 		~VulkanDynamicGPUBuffer();
 
-		VKAPI GPUBuffer *Advance(size_t currentFrame, size_t completedFrame);
+		VKAPI void Advance(size_t currentFrame, size_t completedFrame, bool isOwnedByPool);
 		GPUBuffer *GetActiveGPUBuffer() const { return _buffers[_bufferIndex]; }
-		void *GetBuffer() override { return _buffers[_bufferIndex]->GetBuffer(); }
+		void *GetBuffer() override { return _buffers[_hostBufferIndex]->GetBuffer(); }
 
 		void UnmapBuffer() override { } //Can't be unmapped and is just permanently mapped
 		void InvalidateRange(const Range &range) override { _buffers[_bufferIndex]->InvalidateRange(range); }
 		VKAPI void FlushRange(const Range &range) override;
+		void FlushInternal(); //Used internally by the dynamic buffer pool for flushing without advancing
 		virtual size_t GetLength() const override { return _totalSize; }
 
 		virtual VkBuffer GetVulkanBuffer() const override { return _buffers[_bufferIndex]->GetVulkanBuffer(); }
@@ -52,6 +53,7 @@ namespace RN
 		std::vector<VulkanStaticGPUBuffer*> _buffers;
 		std::vector<size_t> _bufferFrames;
 		size_t _bufferIndex;
+		size_t _hostBufferIndex; //This will usually be one ahead of _bufferIndex, used to write data to from the CPU when streaming meshes
 
 		size_t _sizeUsed;
 		size_t _offsetToFreeData;
