@@ -120,7 +120,7 @@ namespace RN
 		const RN::Array *GetMultiviewCameras() const { return _multiviewCameras; }
 		bool GetIsMultiviewCamera() const { return _isMultiviewCamera; }
 		
-		void SetFirstSceneNodeMember(IntrusiveList<SceneNode>::Member *member); //If this is set, it has to be reset if the member is removed from the scene!
+		RNAPI void SetFirstSceneNodeMember(IntrusiveList<SceneNode>::Member *member); //If this is set, it has to be reset if the member is removed from the scene!
 		
 		//TODO: Make private but keep accessible to user made scene implementations
 		IntrusiveList<Camera>::Member _cameraSceneEntry;

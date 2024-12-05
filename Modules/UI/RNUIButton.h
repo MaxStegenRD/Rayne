@@ -43,7 +43,7 @@ namespace RN
 			const Color &GetTextColorHighlight() const { return _textColorHighlight; }
 			
 			bool GetIsHighlighted() const { return _isHighlighted; }
-			void SetIsHighlighted(bool isHighlighted);
+			UIAPI void SetIsHighlighted(bool isHighlighted);
 			
 		protected:
 			UIAPI virtual bool UpdateCursorPosition(const Vector2 &cursorPosition) override;
