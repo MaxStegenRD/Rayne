@@ -37,8 +37,7 @@ namespace RN
 	{
 		uint32 plane = (character >> 16);
 
-		if(RN_EXPECT_FALSE(plane != 0))
-			throw InconsistencyException("CharacterSet only supports plane 0 characters");
+		if(RN_EXPECT_FALSE(plane != 0)) return false; //CharacterSet only supports plane 0 characters, so if the tested character is outside of that, it's not part of the charset
 
 		uint16 n = static_cast<uint16>(character);
 		return (_bitmap[n >> 3] & (static_cast<uint32>(1) << (n  & 7)));
