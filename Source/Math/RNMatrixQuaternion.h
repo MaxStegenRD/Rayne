@@ -129,6 +129,8 @@ namespace RN
 		float GetLength() const;
 		float GetDotProduct(const Quaternion &other) const;
 		
+		Vector3 GetAngularVelocity(const Quaternion &other, float deltaTime) const;
+		
 		bool IsEqual(const Quaternion &other, float epsilon) const;
 		bool IsValid() const;
 

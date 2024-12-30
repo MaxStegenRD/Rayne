@@ -552,6 +552,17 @@ namespace RN
 		}
 		return res;
 	}
+
+	RN_INLINE Vector3 Quaternion::GetAngularVelocity(const Quaternion &other, float deltaTime) const
+	{
+		Vector3 angularVelocity;
+		angularVelocity.x = w * other.x - x * other.w - y * other.z + z * other.y;
+		angularVelocity.y = w * other.y + x * other.z - y * other.w - z * other.x;
+		angularVelocity.z = w * other.z - x * other.y + y * other.x - z * other.w;
+		angularVelocity *= 2.0f / deltaTime;
+		
+		return angularVelocity;
+	}
 	
 	RN_INLINE float Quaternion::GetLength() const
 	{
