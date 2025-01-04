@@ -1887,8 +1887,10 @@ namespace RN
 							//RNDebug("Changed pose: (" << referenceSpaceChangePendingEvent.poseInPreviousSpace.position.x << ", " << referenceSpaceChangePendingEvent.poseInPreviousSpace.position.y << ", " << referenceSpaceChangePendingEvent.poseInPreviousSpace.position.z << ")");
 						}
 
+#if RN_PLATFORM_ANDROID
 						_internals->_trackingSpaceCounterRotation = RN::Vector3(_hmdTrackingState.rotation.GetEulerAngle().x, 0.0f, 0.0f);
                         RNInfo("Recenter: " << _internals->_trackingSpaceCounterRotation.GetEulerAngle().x);
+#endif
 
 						NotificationManager::GetSharedInstance()->PostNotification(kRNVRDidRecenter, nullptr);
 						break;
@@ -2058,7 +2060,9 @@ namespace RN
 				{
 					//On pico the velocity is somehow wrong after recentering the view, this rotation corrects for that
 					//TODO: This will break if they ever fix it...
+#if RN_PLATFORM_ANDROID
 					_controllerTrackingState[0].velocityLinear = _internals->_trackingSpaceCounterRotation.GetRotatedVector(Vector3(velocity.linearVelocity.x, velocity.linearVelocity.y, velocity.linearVelocity.z));
+#endif
 				}
 				else
 				{
@@ -2214,7 +2218,9 @@ namespace RN
 				{
 					//On pico the velocity is somehow wrong after recentering the view, this rotation corrects for that
 					//TODO: This will break if they ever fix it...
+#if RN_PLATFORM_ANDROID
 					_controllerTrackingState[1].velocityLinear = _internals->_trackingSpaceCounterRotation.GetRotatedVector(Vector3(velocity.linearVelocity.x, velocity.linearVelocity.y, velocity.linearVelocity.z));
+#endif
 				}
 				else
 				{
