@@ -186,11 +186,7 @@ namespace RN
 			_internals->layerQuad.size.height = _scale.y;
 		}
 
-		if(window->_supportsDynamicResolution
-#if RN_OPENXR_SUPPORTS_PICO_LOADER
-			&& !window->_supportsControllerInteractionPICO //Don't use dynamic resolution on pico as it adjusts resolution before it goes up with gpu levels...
-#endif
-		)
+		if(window->_supportsDynamicResolution && window->_deviceType != VRWindow::DeviceType::PicoVR) //Don't use dynamic resolution on pico as it adjusts resolution before it goes up with gpu levels...
 		{
 			XrRecommendedLayerResolutionGetInfoMETA recommendedLayerResolutionGetInfo;
 			recommendedLayerResolutionGetInfo.type = XR_TYPE_RECOMMENDED_LAYER_RESOLUTION_GET_INFO_META;

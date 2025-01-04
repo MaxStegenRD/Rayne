@@ -139,67 +139,6 @@ namespace RN
 		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
 		ANativeActivity_setWindowFlags(app->activity, AWINDOW_FLAG_KEEP_SCREEN_ON, 0);
 
-		JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
-		jclass build_class = env->FindClass("android/os/Build");
-		jfieldID model_id = env->GetStaticFieldID(build_class, "MANUFACTURER", "Ljava/lang/String;");
-		jstring model_obj  = (jstring)env->GetStaticObjectField(build_class, model_id);
-		const char *manufacturerName = env->GetStringUTFChars(model_obj, 0); //TODO: Pretty sure the string needs to be freed again later
-		String *manufacturerNameString = RNSTR(manufacturerName);
-		manufacturerNameString->MakeLowercase();
-		RNDebug("Android Device manufacturer: " << manufacturerNameString);
-
-		void *module = nullptr;
-		xrGetInstanceProcAddr = nullptr;
-
-		//TODO: Ideally these should all use the same official loader library,
-		// unfortunately PICOs extensions are not official yet and even oculus needs their own loader on quest
-		// So not much I can do here for now, but this can definitely be improved in the future
-		//UPDATE: The situation is better now: PICO now doesn't need special extensions,
-		// but needs their own loader and META now supports the official loader
-
-		//TODO: The manufacturer names could potentially change in the future. Pico could rebrand,
-		// Oculus will most likely become Meta.
-
-#if RN_OPENXR_SUPPORTS_PICO_LOADER
-		if(!module && manufacturerNameString->HasPrefix(RNCSTR("pico")))
-		{
-			module = dlopen("libopenxr_loader_pico.so", RTLD_NOW | RTLD_LOCAL);
-		}
-#endif
-#if RN_OPENXR_SUPPORTS_METAQUEST_LOADER
-		if(!module)// && manufacturerNameString->HasPrefix(RNCSTR("oculus")))
-		{
-			module = dlopen("libopenxr_loader_meta.so", RTLD_NOW | RTLD_LOCAL);
-		}
-#endif
-
-		if(!module)
-		{
-			//Fallback to the default loader name if the previous platform specific ones don't exist
-			module = dlopen("libopenxr_loader.so", RTLD_NOW | RTLD_LOCAL);
-		}
-
-		if(module)
-		{
-			xrGetInstanceProcAddr = reinterpret_cast<PFN_xrGetInstanceProcAddr>(dlsym(module, "xrGetInstanceProcAddr"));
-		}
-
-		if(!module || !xrGetInstanceProcAddr)
-		{
-			RNError("Couldn't load OpenXR loader");
-
-			if(module)
-			{
-				dlclose(module);
-				module = nullptr;
-			}
-
-			//TODO: Handle this somehow...
-			RN_ASSERT(false, "No OpenXR Loader found!");
-		}
-
-		PopulateOpenXRDispatchTable(XR_NULL_HANDLE);
-
 		PFN_xrInitializeLoaderKHR initializeLoader = nullptr;
 		if(XR_SUCCEEDED(xrGetInstanceProcAddr(XR_NULL_HANDLE, "xrInitializeLoaderKHR", (PFN_xrVoidFunction*)(&initializeLoader))))
 		{
@@ -287,19 +226,16 @@ namespace RN
 				_supportsAndroidThreadType = true;
 			}
 #endif
-#if RN_OPENXR_SUPPORTS_PICO_LOADER
-				else if(std::strcmp(extension.extensionName, "XR_PICO_controller_interaction") == 0)
+			else if(std::strcmp(extension.extensionName, XR_BD_CONTROLLER_INTERACTION_EXTENSION_NAME) == 0)
 			{
 				extensions.push_back(extension.extensionName);
 				_supportsControllerInteractionPICO = true;
 			}
-#elif RN_OPENXR_SUPPORTS_METAQUEST_LOADER
 			else if(std::strcmp(extension.extensionName, XR_META_LOCAL_DIMMING_EXTENSION_NAME) == 0)
 			{
 				extensions.push_back(extension.extensionName);
 				_supportsLocalDimming = true;
 			}
-#endif
 			else if(std::strcmp(extension.extensionName, XR_FB_FOVEATION_EXTENSION_NAME) == 0)
 			{
 				extensions.push_back(extension.extensionName);
@@ -350,10 +286,6 @@ namespace RN
 			RN_ASSERT(false, "Failed creating OpenXR instance");
 		}
 
-#if XR_USE_PLATFORM_ANDROID
-		PopulateOpenXRDispatchTable(_internals->instance); //Fetch remaining methods that require the instance pointer
-#endif
-
 		XrSystemGetInfo systemInfo;
 		systemInfo.type = XR_TYPE_SYSTEM_GET_INFO;
 		systemInfo.next = nullptr;
@@ -392,7 +324,7 @@ namespace RN
 		{
 			_deviceType = DeviceType::PicoVR;
 		}
-		else if(std::strcmp(_internals->systemProperties.systemName, "PICO 4") == 0)
+		else if(std::strcmp(_internals->systemProperties.systemName, "PICO 4 HMD") == 0)
 		{
 			_deviceType = DeviceType::PicoVR;
 		}
@@ -1093,7 +1025,6 @@ namespace RN
 			RNDebug("failed action profile suggested binding");
 		}
 
-#if RN_OPENXR_SUPPORTS_PICO_LOADER
 		//Pico Neo 3 bindings
 		//Left hand
 		xrStringToPath(_internals->instance, "/user/hand/left/input/aim/pose", &handLeftAimPosePath);
@@ -1222,7 +1153,6 @@ namespace RN
 		{
 			RNDebug("failed action profile suggested binding");
 		}
-#endif
 
 
 		//Vive wand bindings
@@ -1637,7 +1567,6 @@ namespace RN
 				frameEndInfo.layerCount = layers.size();
 				frameEndInfo.layers = layers.data();
 
-#if RN_OPENXR_SUPPORTS_METAQUEST_LOADER
 				XrLocalDimmingFrameEndInfoMETA xrLocalDimmingFrameEndInfoMETA;
 				if(_supportsLocalDimming)
 				{
@@ -1646,7 +1575,6 @@ namespace RN
 					xrLocalDimmingFrameEndInfoMETA.next = nullptr;
 					frameEndInfo.next = (void *) &xrLocalDimmingFrameEndInfoMETA;
 				}
-#endif
 
 				if(XR_FAILED(xrEndFrame(_internals->session, &frameEndInfo)))
 				{
@@ -1959,10 +1887,8 @@ namespace RN
 							//RNDebug("Changed pose: (" << referenceSpaceChangePendingEvent.poseInPreviousSpace.position.x << ", " << referenceSpaceChangePendingEvent.poseInPreviousSpace.position.y << ", " << referenceSpaceChangePendingEvent.poseInPreviousSpace.position.z << ")");
 						}
 
-#if RN_OPENXR_SUPPORTS_PICO_LOADER
 						_internals->_trackingSpaceCounterRotation = RN::Vector3(_hmdTrackingState.rotation.GetEulerAngle().x, 0.0f, 0.0f);
                         RNInfo("Recenter: " << _internals->_trackingSpaceCounterRotation.GetEulerAngle().x);
-#endif
 
 						NotificationManager::GetSharedInstance()->PostNotification(kRNVRDidRecenter, nullptr);
 						break;
@@ -2052,14 +1978,12 @@ namespace RN
 		_controllerTrackingState[0].type = GetControllerTypeForInteractionProfile(_internals->instance, leftHandInteractionProfileState.interactionProfile);
 		_controllerTrackingState[1].type = GetControllerTypeForInteractionProfile(_internals->instance, rightHandInteractionProfileState.interactionProfile);
 #else
-#if RN_OPENXR_SUPPORTS_PICO_LOADER
-		if(_supportsControllerInteractionPICO) //This is only gonna be true on a PICO device
+		if(_supportsControllerInteractionPICO && _deviceType == PicoVR)
 		{
 			_controllerTrackingState[0].type = VRControllerTrackingState::Type::PicoNeo3Controller;
 			_controllerTrackingState[1].type = VRControllerTrackingState::Type::PicoNeo3Controller;
 		}
 		else
-#endif
 		{
 			_controllerTrackingState[0].type = VRControllerTrackingState::Type::OculusTouchController;
 			_controllerTrackingState[1].type = VRControllerTrackingState::Type::OculusTouchController;
@@ -2130,15 +2054,13 @@ namespace RN
 
 			if(velocity.velocityFlags & XR_SPACE_VELOCITY_LINEAR_VALID_BIT)
 			{
-#if RN_OPENXR_SUPPORTS_PICO_LOADER
-				if(_supportsControllerInteractionPICO)
+				if(_controllerTrackingState[0].type == VRControllerTrackingState::Type::PicoNeo3Controller)
 				{
 					//On pico the velocity is somehow wrong after recentering the view, this rotation corrects for that
 					//TODO: This will break if they ever fix it...
 					_controllerTrackingState[0].velocityLinear = _internals->_trackingSpaceCounterRotation.GetRotatedVector(Vector3(velocity.linearVelocity.x, velocity.linearVelocity.y, velocity.linearVelocity.z));
 				}
 				else
-#endif
 				{
 					_controllerTrackingState[0].velocityLinear = Vector3(velocity.linearVelocity.x, velocity.linearVelocity.y, velocity.linearVelocity.z);
 				}
@@ -2288,15 +2210,13 @@ namespace RN
 
 			if(velocity.velocityFlags & XR_SPACE_VELOCITY_LINEAR_VALID_BIT)
 			{
-#if RN_OPENXR_SUPPORTS_PICO_LOADER
-				if(_supportsControllerInteractionPICO)
+				if(_controllerTrackingState[1].type == VRControllerTrackingState::Type::PicoNeo3Controller)
 				{
 					//On pico the velocity is somehow wrong after recentering the view, this rotation corrects for that
 					//TODO: This will break if they ever fix it...
 					_controllerTrackingState[1].velocityLinear = _internals->_trackingSpaceCounterRotation.GetRotatedVector(Vector3(velocity.linearVelocity.x, velocity.linearVelocity.y, velocity.linearVelocity.z));
 				}
 				else
-#endif
 				{
 					_controllerTrackingState[1].velocityLinear = Vector3(velocity.linearVelocity.x, velocity.linearVelocity.y, velocity.linearVelocity.z);
 				}

@@ -31,15 +31,6 @@
 #include "openxr/openxr_platform.h"
 #include "openxr/openxr.h"
 
-#if XR_USE_PLATFORM_ANDROID
-    #if RN_OPENXR_SUPPORTS_PICO_LOADER
-		//Include any pico specific extension headers here if they aren't part of the official headers yet
-    #elif RN_OPENXR_SUPPORTS_METAQUEST_LOADER
-        //Include any meta specific extension headers here if they aren't part of the official headers yet
-    #endif
-#include "RNOpenXRDispatchTable.h"
-#endif
-
 namespace RN
 {
 	struct OpenXRWindowInternals
@@ -124,10 +115,7 @@ namespace RN
 
 #if XR_USE_PLATFORM_ANDROID
 		PFN_xrSetAndroidApplicationThreadKHR SetAndroidApplicationThreadKHR;
-#endif
-
-#if RN_OPENXR_SUPPORTS_PICO_LOADER
-		RN::Quaternion _trackingSpaceCounterRotation;
+		RN::Quaternion _trackingSpaceCounterRotation; //TODO: Only used on pico as a workaround when resetting the view
 #endif
 	};
 

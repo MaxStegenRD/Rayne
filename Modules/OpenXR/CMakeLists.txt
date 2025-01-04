@@ -5,9 +5,6 @@ include(../../CMake/LibraryTarget.cmake)
 include(../../CMake/Rayne.cmake)
 include(ExternalProject)
 
-option(RN_OPENXR_SUPPORT_METAQUEST "Include the loader library for Meta Quest" ON)
-option(RN_OPENXR_SUPPORT_PICO "Include the loader library for Pico android devices" ON)
-
 ExternalProject_Add(OpenXRSDK
 	GIT_REPOSITORY https://github.com/KhronosGroup/OpenXR-SDK.git
 	GIT_TAG refs/tags/release-1.1.40
@@ -32,6 +29,8 @@ ExternalProject_Add(OpenXRSDK
 		"${CMAKE_CURRENT_BINARY_DIR}/OpenXRSDK-prefix/src/OpenXRSDK-build/src/loader/Debug/libopenxr_loader.a"
 		"${CMAKE_CURRENT_BINARY_DIR}/OpenXRSDK-prefix/src/OpenXRSDK-build/src/loader/RelWithDebInfo/libopenxr_loader.a"
 		"${CMAKE_CURRENT_BINARY_DIR}/OpenXRSDK-prefix/src/OpenXRSDK-build/src/loader/Release/libopenxr_loader.a"
+
+		"${CMAKE_CURRENT_BINARY_DIR}/OpenXRSDK-prefix/src/OpenXRSDK-build/src/loader/libopenxr_loader.a"
 	INSTALL_COMMAND "")
 
 add_library(OpenXRLoader STATIC IMPORTED)
@@ -42,6 +41,9 @@ if(APPLE)
 		IMPORTED_LOCATION_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/OpenXRSDK-prefix/src/OpenXRSDK-build/src/loader/Debug/libopenxr_loader.a"
 		IMPORTED_LOCATION_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/OpenXRSDK-prefix/src/OpenXRSDK-build/src/loader/Release/libopenxr_loader.a"
 		IMPORTED_LOCATION_RELWITHDEBINFO "${CMAKE_CURRENT_BINARY_DIR}/OpenXRSDK-prefix/src/OpenXRSDK-build/src/loader/RelWithDebInfo/libopenxr_loader.a")
+elseif(ANDROID)
+	set_target_properties(OpenXRLoader PROPERTIES
+		IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/OpenXRSDK-prefix/src/OpenXRSDK-build/src/loader/libopenxr_loader.a")
 else()
 	set_target_properties(OpenXRLoader PROPERTIES
 		IMPORTED_CONFIGURATIONS "Debug;Release;RelWithDebInfo"
@@ -72,45 +74,8 @@ set(HEADERS
 
 set(DEFINES RN_BUILD_OPENXR)
 
-if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/Pico_OpenXR_SDK_220/include/openxr)
-	set(RN_OPENXR_SUPPORT_PICO OFF)
-endif()
-
-
-if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/ovr_openxr_mobile_sdk_1/OpenXR)
-	set(RN_OPENXR_SUPPORT_METAQUEST OFF)
-endif()
-
 if(ANDROID)
-	set(DEFINES ${DEFINES} XR_USE_PLATFORM_ANDROID XR_NO_PROTOTYPES) #Use indirect linking on android to allow different loaders
-	set(SOURCES ${SOURCES} RNOpenXRDispatchTable.c)
-	set(HEADERS ${HEADERS} RNOpenXRDispatchTable.h)
-
-	if(RN_OPENXR_SUPPORT_PICO)
-		set(DEFINES ${DEFINES} RN_OPENXR_SUPPORTS_PICO_LOADER)
-
-		execute_process(COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/Pico_OpenXR_SDK_220/libs/android.arm64-v8a/libopenxr_loader.so ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/Pico_OpenXR_SDK_220/libs/android.arm64-v8a/libopenxr_loader_pico.so)
-		execute_process(COMMAND patchelf --set-soname libopenxr_loader_pico.so ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/Pico_OpenXR_SDK_220/libs/android.arm64-v8a/libopenxr_loader_pico.so)
-
-		add_library(OpenXRPico SHARED IMPORTED)
-		set_target_properties(OpenXRPico PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/Pico_OpenXR_SDK_220/libs/android.arm64-v8a/libopenxr_loader_pico.so INTERFACE_LINK_LIBRARIES "" IMPORTED_IMPLIB "")
-	endif()
-
-	if(RN_OPENXR_SUPPORT_METAQUEST)
-		set(DEFINES ${DEFINES} RN_OPENXR_SUPPORTS_METAQUEST_LOADER)
-		add_library(OpenXRMeta SHARED IMPORTED)
-
-		if(${RN_BUILD_CONFIGURATION} STREQUAL "oculus")
-			#Do not rename when building for oculus, as the build will fail processing on the store if the library name is not libopenxr_loader.so
-			#Hopfully the quest specifics can be removed soon, if they start supporting the official android OpenXR loader.
-			set_target_properties(OpenXRMeta PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/ovr_openxr_mobile_sdk_1/OpenXR/Libs/Android/arm64-v8a/Release/libopenxr_loader.so INTERFACE_LINK_LIBRARIES "" IMPORTED_IMPLIB "")
-		else()
-			execute_process(COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/ovr_openxr_mobile_sdk_1/OpenXR/Libs/Android/arm64-v8a/Release/libopenxr_loader.so ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/ovr_openxr_mobile_sdk_1/OpenXR/Libs/Android/arm64-v8a/Release/libopenxr_loader_meta.so)
-			execute_process(COMMAND patchelf --set-soname libopenxr_loader_meta.so ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/ovr_openxr_mobile_sdk_1/OpenXR/Libs/Android/arm64-v8a/Release/libopenxr_loader_meta.so)
-			set_target_properties(OpenXRMeta PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/ovr_openxr_mobile_sdk_1/OpenXR/Libs/Android/arm64-v8a/Release/libopenxr_loader_meta.so INTERFACE_LINK_LIBRARIES "" IMPORTED_IMPLIB "")
-		endif()
-	endif()
-
+	set(DEFINES ${DEFINES} XR_USE_PLATFORM_ANDROID)
 elseif(WIN32)
 	set(DEFINES ${DEFINES} XR_USE_PLATFORM_WIN32)
 elseif(UNIX AND NOT APPLE)
@@ -144,22 +109,7 @@ rayne_add_library(RayneOpenXR "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${
 rayne_set_module_output_directory(RayneOpenXR)
 add_dependencies(RayneOpenXR OpenXRSDK)
 
-if(ANDROID)
-	if(RN_OPENXR_SUPPORT_PICO)
-		set(INCLUDE_DIRECTORIES ${INCLUDE_DIRECTORIES} ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/Pico_OpenXR_SDK_220/include/openxr) #include directory for pico specific openxr header
-		target_link_libraries(RayneOpenXR PRIVATE OpenXRPico)
-	endif()
-	if(RN_OPENXR_SUPPORT_METAQUEST)
-		target_link_libraries(RayneOpenXR PRIVATE OpenXRMeta)
-	endif()
-else()
-	target_link_libraries(RayneOpenXR PRIVATE OpenXRLoader)
-endif()
-
-#Include files from the meta openxr sdk for features that aren't part of the openxr specification yet
-if(RN_OPENXR_SUPPORT_METAQUEST)
-	set(INCLUDE_DIRECTORIES ${INCLUDE_DIRECTORIES} ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/ovr_openxr_mobile_sdk_1/OpenXR/Include) #include directory for meta specific openxr headers
-endif()
+target_link_libraries(RayneOpenXR PRIVATE OpenXRLoader)
 
 if(MSVC AND ${RN_BUILD_D3D12_MODULE})
 	ExternalProject_Get_property(D3D12MemoryAllocator SOURCE_DIR)
