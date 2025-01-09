@@ -147,7 +147,7 @@ def copyAndroidBuildSystem(fromdir, projectRoot, buildConfig, platform, isDemo):
 			if dependency["type"] == "gradle":
 				dependenciesString += b"	implementation '" + dependency["name"].encode('utf-8') + b"'\n";
 			elif dependency["type"] == "aar" and (not "platforms" in dependency or platform in dependency["platforms"]):
-				dependenciesString += b"	implementation files('" + os.path.join(projectRoot, dependency["path"]).encode('utf-8') + b"')\n";
+				dependenciesString += b"	implementation files('" + os.path.join(projectRoot, dependency["path"]).replace('\\','/').encode('utf-8') + b"')\n";
 
 	applicationPropertiesString = b""
 	androidIcons = getSettingFromConfig("android", platform, "icons", buildConfig)

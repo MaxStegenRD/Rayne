@@ -4,6 +4,7 @@ import subprocess
 import shutil
 import Utilities
 import json
+import platform
 
 
 def main():
@@ -127,7 +128,10 @@ def main():
 		subprocess.run(cmakeCall)
 	elif operatingSystem == 'android':
 		shutil.copytree(os.path.join(buildHelperPath, "gradle-wrapper"), buildDirectory, dirs_exist_ok=True)
-		subprocess.run([os.path.join(buildDirectory, 'gradlew'), 'init', '--type', 'basic', '--dsl', 'groovy', '--project-name', configName])
+		if platform.system() == "Windows":
+			subprocess.run([os.path.join(buildDirectory, 'gradlew.bat'), 'init', '--type', 'basic', '--dsl', 'groovy', '--project-name', configName])
+		else:
+			subprocess.run([os.path.join(buildDirectory, 'gradlew'), 'init', '--type', 'basic', '--dsl', 'groovy', '--project-name', configName])
 		Utilities.copyAndroidBuildSystem(os.path.join(buildHelperPath, "android-buildsystem"), projectRootPath, buildConfigData, configuration, isDemo)
 		if configIconsDirectory:
 			shutil.copytree(os.path.join(projectRootPath, configIconsDirectory), os.path.join(buildDirectory, "app/src/main/res"), dirs_exist_ok=True)

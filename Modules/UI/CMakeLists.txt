@@ -54,8 +54,8 @@ set(DEFINES
 
 set(RAYNE_LIBRARIES Rayne)
 
-set(KALLIGRAPH_SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/kalligraph-prefix/src/kalligraph)
-set(KALLIGRAPH_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/kalligraph-prefix/src/kalligraph-build)
+set(KALLIGRAPH_SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Kalligraph-prefix/src/Kalligraph)
+set(KALLIGRAPH_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/Kalligraph-prefix/src/Kalligraph-build)
 
 set(INCLUDE_DIRECTORIES ${Rayne_BINARY_DIR}/include ${KALLIGRAPH_SOURCE_DIR}/Sources ${CMAKE_CURRENT_SOURCE_DIR}/Vendor)
 
@@ -94,7 +94,8 @@ ExternalProject_Add(Kalligraph
                 ${KALLIGRAPH_BINARY_DIR}/Debug/Kalligraph.lib
                 ${KALLIGRAPH_BINARY_DIR}/Release/Kalligraph.lib
         INSTALL_COMMAND ""
-        UPDATE_COMMAND "")
+        UPDATE_COMMAND ""
+       )
 
 add_library(KalligraphLib STATIC IMPORTED)
 
@@ -121,6 +122,7 @@ else()
 endif()
 
 add_dependencies(KalligraphLib Kalligraph)
+add_dependencies(RayneUI KalligraphLib)
 target_link_libraries(RayneUI PUBLIC KalligraphLib)
 
 target_include_directories(RayneUI SYSTEM PRIVATE "${INCLUDE_DIRECTORIES}")
