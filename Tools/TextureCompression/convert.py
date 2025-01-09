@@ -83,14 +83,12 @@ def prepare():
         subprocess.call(['cmake', '..'], cwd=os.path.abspath(imgeResizerPath))
         subprocess.call([msbuildPath, 'ImageResizer.sln', '/p:configuration=Release'], cwd=os.path.abspath(imgeResizerPath))
 
-        #TODO: Make it compile on windows (it doesn't come with cmake file only a vs2019 solution and makefile)
-        #astcencPath = os.path.dirname(sys.argv[0])
-        #subprocess.call([msbuildPath, 'astcenc.sln', '/p:configuration=Release'], cwd=os.path.abspath(os.path.join(astcencPath, 'Vendor/astc-encoder/Source/VS2019')))
-        #astcencPath = os.path.join(astcencPath, 'Vendor/astc-encoder/Source/astcenc-avx2')
-        #if not os.path.isfile(astcencPath):
-        #    astcencPath = os.path.dirname(sys.argv[0])
-        #    astcencPath = os.path.join(astcencPath, 'Vendor/astc-encoder/Source/astcenc-nointrin')
-        #subprocess.call(['chmod', '+x', astcencPath])
+        astcencPath = os.path.dirname(sys.argv[0])
+        astcencPath = os.path.join(astcencPath, 'Vendor/astc-encoder/build')
+        os.makedirs(astcencPath)
+        subprocess.call(['cmake', '..'], cwd=os.path.abspath(astcencPath))
+        subprocess.call(['cmake', '--build',  '.', '--config', 'Release'], cwd=os.path.abspath(astcencPath))
+        astcencPath = os.path.join(astcencPath, 'Source/Release/astcenc-native.exe')
 
         bc7encPath = os.path.dirname(sys.argv[0])
         bc7encPath = os.path.join(bc7encPath, 'Vendor/bc7enc_rdo')
@@ -194,7 +192,7 @@ def main():
         bc7encPath = os.path.join(bc7encPath, 'Vendor/bc7enc_rdo/build/bc7enc')
         imageResizerPath = os.path.join(imageResizerPath, 'ImageResizer/build/resizer')
     elif platform.system() == 'Windows':
-        astcencPath = os.path.join(astcencPath, 'Vendor/astc-encoder/Binary/windows-x64/astcenc.exe')
+        astcencPath = os.path.join(astcencPath, 'Vendor/astc-encoder/build/Source/Release/astcenc-native.exe')
         bc7encPath = os.path.join(bc7encPath, 'Vendor/bc7enc_rdo/build/Release/bc7enc.exe')
         imageResizerPath = os.path.join(imageResizerPath, 'ImageResizer/build/Release/resizer.exe')
 
