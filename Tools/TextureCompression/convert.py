@@ -64,16 +64,6 @@ def prepare():
         if os.path.isfile(resizerPath):
             return
 
-        vswhereOutput = subprocess.check_output([os.path.join(os.environ["ProgramFiles(x86)"], "Microsoft Visual Studio/Installer/vswhere.exe"), "-latest", "-requires", "Microsoft.Component.MSBuild", "-find", "MSBuild\\**\\Bin\\MSBuild.exe"])
-        vswhereLines = vswhereOutput.splitlines()
-        msbuildPath = None
-        if len(vswhereLines) > 0:
-            msbuildPath = vswhereLines[0].decode("utf-8").strip()
-            print("found msbuild: " + msbuildPath)
-        if not msbuildPath:
-            print("No visual studio installation with MSBuild found!")
-            return
-
         #windows
         imgeResizerPath = os.path.dirname(sys.argv[0])
         imgeResizerPath = os.path.join(imgeResizerPath, 'ImageResizer/build')
@@ -81,7 +71,7 @@ def prepare():
             shutil.rmtree(imgeResizerPath)
         os.makedirs(imgeResizerPath)
         subprocess.call(['cmake', '..'], cwd=os.path.abspath(imgeResizerPath))
-        subprocess.call([msbuildPath, 'ImageResizer.sln', '/p:configuration=Release'], cwd=os.path.abspath(imgeResizerPath))
+        subprocess.call(['cmake', '--build',  '.', '--config', 'Release'], cwd=os.path.abspath(imgeResizerPath))
 
         astcencPath = os.path.dirname(sys.argv[0])
         astcencPath = os.path.join(astcencPath, 'Vendor/astc-encoder/build')
@@ -109,7 +99,7 @@ def prepare():
             subprocess.call(['cmake', '-D SUPPORT_BC7E=TRUE', '..'], cwd=os.path.abspath(bc7encPath))
         else:
             subprocess.call(['cmake', '..'], cwd=os.path.abspath(bc7encPath))
-        subprocess.call([msbuildPath, 'bc7enc.sln', '/p:configuration=Release'], cwd=os.path.abspath(bc7encPath))
+        subprocess.call(['cmake', '--build',  '.', '--config', 'Release'], cwd=os.path.abspath(bc7encPath))
 
     elif platform.system() == 'Linux':
         #Stop preparation if nvcompress file already exists
