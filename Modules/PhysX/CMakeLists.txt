@@ -22,6 +22,11 @@ set(PHYSX_CMAKE_ARGS
 
 set(PHYSX_PATCH_COMMAND "")
 
+ set(SED_PATH "sed")
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
+    set(SED_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/super-sed/sed.exe")
+endif()
+
 if(IOS OR VISIONOS)
     #set(PHYSX_CXX_FLAGS "-Wno-unknown-warning-option -Wno-invalid-noreturn -Wno-unused-private-field -Wno-unused-local-typedef -D__ANDROID__ -O3 -DNDEBUG")
     set(PHYSX_CMAKE_ARGS ${PHYSX_CMAKE_ARGS}
@@ -119,11 +124,6 @@ elseif(APPLE)
         COMMAND sed -i.bak /arch/d <SOURCE_DIR>/physx/source/compiler/cmake/mac/CMakeLists.txt
         COMMAND sed -i.bak s/-Werror//g <SOURCE_DIR>/physx/source/compiler/cmake/mac/CMakeLists.txt)
 elseif(ANDROID)
-    set(SED_PATH "sed")
-    if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
-        set(SED_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/super-sed/sed.exe")
-    endif()
-
     set(PHYSX_PATCH_COMMAND ${SED_PATH} -i.bak s/-Werror//g <SOURCE_DIR>/physx/source/compiler/cmake/android/CMakeLists.txt COMMAND ${SED_PATH} -i.bak -e "/PX_FORCE_INLINE Vec4V V4SplatElement(Vec4V a)/ {" -e "n$<SEMICOLON> n$<SEMICOLON> s/\#if .*/\#if 1/" -e "}" <SOURCE_DIR>/physx/source/foundation/include/unix/neon/PsUnixNeonInlineAoS.h)
 
     set(PHYSX_CXX_FLAGS "-Wno-unknown-warning-option -Wno-invalid-noreturn -Wno-unused-private-field -Wno-unused-local-typedef -D__ANDROID__ -O3 -DNDEBUG")
@@ -180,6 +180,8 @@ else()
         -DPHYSX_CXX_FLAGS_DEBUG=/MDd
         -DCMAKE_SYSTEM_VERSION=${CMAKE_SYSTEM_VERSION})
     set(RN_PHYSX_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/win.x86_64.vc142.md)
+
+    set(PHYSX_PATCH_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/patch.bat ${SED_PATH} <SOURCE_DIR>/physx/source/compiler/cmake/windows/CMakeLists.txt)
 
     set(RN_PHYSX_BUILD_BYPRODUCTS
         "${RN_PHYSX_BUILD_DIR}/debug/PhysXFoundation_static_64.lib"

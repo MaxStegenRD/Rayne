@@ -1,0 +1,2 @@
+%1 -i.bak2 "s\/WX\\g" %2
+%1 -i.bak "s/SET(PHYSX_WINDOWS_DEBUG_COMPILE_DEFS   \"PX_DEBUG=1;PX_CHECKED=1;${NVTX_FLAG};PX_SUPPORT_PVD=1\" CACHE INTERNAL \"Debug PhysX preprocessor definitions\")/SET(PHYSX_WINDOWS_DEBUG_COMPILE_DEFS   \"PX_PROFILE=1;${NVTX_FLAG};PX_SUPPORT_PVD=1\" CACHE INTERNAL \"Debug PhysX preprocessor definitions\")/g" %2
