@@ -421,10 +421,6 @@ target_link_libraries(Rayne PUBLIC "${LINK_LIBRARIES}")
 target_compile_definitions(Rayne PRIVATE "${COMPILE_DEFINITIONS}")
 target_compile_options(Rayne PRIVATE ${COMPILE_OPTIONS})
 
-if(MSVC)
-    target_compile_options(Rayne PRIVATE "/MP")
-endif()
-
 target_link_libraries(Rayne PUBLIC TracyClient)
 
 #rayne_install(Rayne Rayne ${_TARGETS} LIBRARY DESTINATION lib ARCHIVE DESTINATION lib)

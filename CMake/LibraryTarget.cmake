@@ -80,10 +80,6 @@ macro(__rayne_create_target _NAME _TYPE _SOURCES _HEADERS _RAYNE_LIBRARIES _VERS
         target_compile_options(${TARGET_NAME} PUBLIC -m64)
     endif()
 
-    if(MSVC)
-        target_compile_options(${TARGET_NAME} PRIVATE "/MP")
-    endif()
-
     if(ANDROID)
         target_include_directories("${TARGET_NAME}" SYSTEM PRIVATE ${ANDROID_NDK}/sources/android/native_app_glue)
     endif()
