@@ -1735,7 +1735,7 @@ namespace RN
 	bool OpenXRWindow::InitializePassthrough(bool startRunning)
 	{
 		RN_ASSERT(!_internals->passthroughSessionFB, "Passthrough has already been initialized!");
-		if(!_internals->CreatePassthroughFB) return false;
+		if(!_internals->CreatePassthroughFB) return false; //Passthrough is not supported
 
 		XrPassthroughCreateInfoFB passthroughCreateInfo = {XR_TYPE_PASSTHROUGH_CREATE_INFO_FB};
 		passthroughCreateInfo.flags = startRunning? XR_PASSTHROUGH_IS_RUNNING_AT_CREATION_BIT_FB : 0;
@@ -1752,9 +1752,11 @@ namespace RN
 
 	void OpenXRWindow::SetPassthroughActive(bool active)
 	{
+		if(!_internals->CreatePassthroughFB) return; //Passthrough is not supported
+		
 		if(_internals->passthroughSessionFB == XR_NULL_HANDLE) return;
 		
-		if(active) _internals->PassthroughResumeFB(_internals->passthroughSessionFB);
+		if(active) _internals->PassthroughStartFB(_internals->passthroughSessionFB);
 		else _internals->PassthroughPauseFB(_internals->passthroughSessionFB);
 	}
 
