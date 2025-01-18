@@ -45,6 +45,8 @@ namespace RN
 
 		XrView *views;
 
+		XrPassthroughFB passthroughSessionFB;
+
 		XrActionSet gameActionSet;
 
 		XrAction handLeftAimPoseAction;
@@ -113,6 +115,16 @@ namespace RN
 		PFN_xrGetVisibilityMaskKHR GetVisibilityMaskKHR;
 		PFN_xrGetRecommendedLayerResolutionMETA GetRecommendedLayerResolutionMETA;
 
+		PFN_xrCreatePassthroughFB CreatePassthroughFB;
+		PFN_xrDestroyPassthroughFB DestroyPassthroughFB;
+		PFN_xrPassthroughStartFB PassthroughStartFB;
+		PFN_xrPassthroughPauseFB PassthroughPauseFB;
+		PFN_xrCreatePassthroughLayerFB CreatePassthroughLayerFB;
+		PFN_xrDestroyPassthroughLayerFB DestroyPassthroughLayerFB;
+		PFN_xrPassthroughLayerPauseFB PassthroughLayerPauseFB;
+		PFN_xrPassthroughLayerResumeFB PassthroughLayerResumeFB;
+		PFN_xrPassthroughLayerSetStyleFB PassthroughLayerSetStyleFB;
+
 #if XR_USE_PLATFORM_ANDROID
 		PFN_xrSetAndroidApplicationThreadKHR SetAndroidApplicationThreadKHR;
 		RN::Quaternion _trackingSpaceCounterRotation; //TODO: Only used on pico as a workaround when resetting the view
@@ -134,6 +146,9 @@ namespace RN
 		XrCompositionLayerProjection layerProjection;
 
 		XrCompositionLayerQuad layerQuad;
+
+		XrPassthroughLayerFB layerPassthroughFb;
+		XrCompositionLayerPassthroughFB layerPassthroughCompFb;
 
 		//Will point at the layer above that is in use by this class
 		XrCompositionLayerBaseHeader *layerBaseHeader;

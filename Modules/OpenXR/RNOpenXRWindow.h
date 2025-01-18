@@ -36,6 +36,9 @@ namespace RN
 		OXRAPI void StopRendering() final;
 		OXRAPI bool IsRendering() const final;
 
+		OXRAPI bool InitializePassthrough(bool startRunning) final;
+		OXRAPI void SetPassthroughActive(bool active) final;
+
 		OXRAPI void SetFixedFoveatedRenderingLevel(uint8 level, bool dynamic) final;
 		OXRAPI void SetPreferredFramerate(float framerate) final;
 		OXRAPI void SetPerformanceLevel(uint8 cpuLevel, uint8 gpuLevel) final;

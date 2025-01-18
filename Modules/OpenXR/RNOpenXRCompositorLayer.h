@@ -41,10 +41,11 @@ namespace RN
 
 	private:
 		void SetSessionActive(bool active);
-		void UpdateForCurrentFrame(const OpenXRWindow *window);
+		void UpdateForCurrentFrame();
 
 		OpenXRCompositorLayerInternals *_internals;
 
+		OpenXRWindow *_window;
 		OpenXRSwapChain *_swapChain;
 		bool _isActive;
 		bool _isSessionActive;

@@ -83,7 +83,7 @@ namespace RN
 	{
 		if(!_isActive) return;
 
-		_layer->UpdateForCurrentFrame(_xrWindow);
+		_layer->UpdateForCurrentFrame();
 
         XrSwapchainImageAcquireInfo swapchainImageAcquireInfo;
         swapchainImageAcquireInfo.type = XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO;

@@ -14,12 +14,14 @@ namespace RN
 {
 	RNDefineMeta(OpenXRCompositorLayer, VRCompositorLayer)
 
-	OpenXRCompositorLayer::OpenXRCompositorLayer(Type type, const Window::SwapChainDescriptor &descriptor, Vector2 resolution, bool supportFoveation, OpenXRWindow *window) : VRCompositorLayer(type), _internals(new OpenXRCompositorLayerInternals()), _swapChain(nullptr), _isActive(true), _isSessionActive(false), _shouldDisplay(true)
+	OpenXRCompositorLayer::OpenXRCompositorLayer(Type type, const Window::SwapChainDescriptor &descriptor, Vector2 resolution, bool supportFoveation, OpenXRWindow *window) : VRCompositorLayer(type), _internals(new OpenXRCompositorLayerInternals()), _window(window), _swapChain(nullptr), _isActive(true), _isSessionActive(false), _shouldDisplay(true)
 	{
 		Window::SwapChainDescriptor tempDescriptor = descriptor;
 
 		if(type == TypeProjectionView) tempDescriptor.layerCount = 2; //Force two layers here, one for each view
 		else if(type == TypeQuad) tempDescriptor.layerCount = 1; //Force one layer here
+
+		_internals->layerPassthroughFb = XR_NULL_HANDLE;
 		
 		if(type != TypePassthrough)
 		{
@@ -41,6 +43,28 @@ namespace RN
 				_swapChain = new OpenXRMetalSwapChain(window, this, tempDescriptor, resolution);
 			}
 #endif
+		}
+		else if(window->_internals->CreatePassthroughLayerFB)
+		{
+			//Passthrough layer
+			if(!window->_internals->passthroughSessionFB)
+			{
+				window->InitializePassthrough(true);
+			}
+
+			if(window->_internals->passthroughSessionFB)
+			{
+				XrPassthroughLayerCreateInfoFB layerCreateInfo = {XR_TYPE_PASSTHROUGH_LAYER_CREATE_INFO_FB};
+				layerCreateInfo.passthrough = window->_internals->passthroughSessionFB;
+				layerCreateInfo.purpose = XR_PASSTHROUGH_LAYER_PURPOSE_RECONSTRUCTION_FB;
+				layerCreateInfo.flags = XR_PASSTHROUGH_IS_RUNNING_AT_CREATION_BIT_FB;
+
+				XrResult result = window->_internals->CreatePassthroughLayerFB(window->_internals->session, &layerCreateInfo, &_internals->layerPassthroughFb);
+				if(XR_FAILED(result))
+				{
+					RNError("Failed creating passthrough layer with result: " << result);
+				}
+			}
 		}
 
 		_internals->layerSettings.type = XR_TYPE_COMPOSITION_LAYER_SETTINGS_FB;
@@ -105,10 +129,26 @@ namespace RN
 
 			_internals->layerBaseHeader = reinterpret_cast<XrCompositionLayerBaseHeader*>(&_internals->layerQuad);
 		}
+		else if(type == TypePassthrough)
+		{
+			_internals->layerPassthroughCompFb.type = XR_TYPE_COMPOSITION_LAYER_PASSTHROUGH_FB;
+			_internals->layerPassthroughCompFb.next = nullptr;
+			_internals->layerPassthroughCompFb.layerHandle = _internals->layerPassthroughFb;
+			_internals->layerPassthroughCompFb.flags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+			_internals->layerPassthroughCompFb.space = XR_NULL_HANDLE;
+
+			_internals->layerBaseHeader = reinterpret_cast<XrCompositionLayerBaseHeader*>(&_internals->layerPassthroughCompFb);
+		}
 	}
 
 	OpenXRCompositorLayer::~OpenXRCompositorLayer()
 	{
+		if(_internals->layerPassthroughFb != XR_NULL_HANDLE)
+		{
+			_window->_internals->DestroyPassthroughLayerFB(_internals->layerPassthroughFb);
+			_internals->layerPassthroughFb = XR_NULL_HANDLE;
+		}
+		
 		if(_swapChain)
 		{
 #ifdef XR_USE_GRAPHICS_API_D3D12
@@ -142,12 +182,12 @@ namespace RN
 		}
 	}
 
-	void OpenXRCompositorLayer::UpdateForCurrentFrame(const OpenXRWindow *window)
+	void OpenXRCompositorLayer::UpdateForCurrentFrame()
 	{
 		if(_type == TypeProjectionView)
 		{
-			_internals->layerProjectionViews[0].pose = window->_internals->views[0].pose;
-			_internals->layerProjectionViews[0].fov = window->_internals->views[0].fov;
+			_internals->layerProjectionViews[0].pose = _window->_internals->views[0].pose;
+			_internals->layerProjectionViews[0].fov = _window->_internals->views[0].fov;
 			_internals->layerProjectionViews[0].subImage.swapchain = _swapChain->_internals->swapchain;
 			_internals->layerProjectionViews[0].subImage.imageRect.offset.x = 0;
 			_internals->layerProjectionViews[0].subImage.imageRect.offset.y = 0;
@@ -155,8 +195,8 @@ namespace RN
 			_internals->layerProjectionViews[0].subImage.imageRect.extent.height = _swapChain->GetSwapChainSize().y;
 			_internals->layerProjectionViews[0].subImage.imageArrayIndex = 0;
 
-			_internals->layerProjectionViews[1].pose = window->_internals->views[1].pose;
-			_internals->layerProjectionViews[1].fov = window->_internals->views[1].fov;
+			_internals->layerProjectionViews[1].pose = _window->_internals->views[1].pose;
+			_internals->layerProjectionViews[1].fov = _window->_internals->views[1].fov;
 			_internals->layerProjectionViews[1].subImage.swapchain = _swapChain->_internals->swapchain;
 			_internals->layerProjectionViews[1].subImage.imageRect.offset.x = 0;
 			_internals->layerProjectionViews[1].subImage.imageRect.offset.y = 0;
@@ -164,11 +204,11 @@ namespace RN
 			_internals->layerProjectionViews[1].subImage.imageRect.extent.height = _swapChain->GetSwapChainSize().y;
 			_internals->layerProjectionViews[1].subImage.imageArrayIndex = 1;
 
-			_internals->layerProjection.space = window->_internals->trackingSpace;
+			_internals->layerProjection.space = _window->_internals->trackingSpace;
 		}
 		else if(_type == TypeQuad)
 		{
-			_internals->layerQuad.space = window->_internals->trackingSpace;
+			_internals->layerQuad.space = _window->_internals->trackingSpace;
 			_internals->layerQuad.subImage.swapchain = _swapChain->_internals->swapchain;
 			_internals->layerQuad.subImage.imageRect.offset.x = 0;
 			_internals->layerQuad.subImage.imageRect.offset.y = 0;
@@ -186,15 +226,15 @@ namespace RN
 			_internals->layerQuad.size.height = _scale.y;
 		}
 
-		if(window->_supportsDynamicResolution && window->_deviceType != VRWindow::DeviceType::PicoVR) //Don't use dynamic resolution on pico as it adjusts resolution before it goes up with gpu levels...
+		if(_window->_supportsDynamicResolution && _type != TypePassthrough && _window->_deviceType != VRWindow::DeviceType::PicoVR) //Don't use dynamic resolution on pico as it adjusts resolution before it goes up with gpu levels...
 		{
 			XrRecommendedLayerResolutionGetInfoMETA recommendedLayerResolutionGetInfo;
 			recommendedLayerResolutionGetInfo.type = XR_TYPE_RECOMMENDED_LAYER_RESOLUTION_GET_INFO_META;
 			recommendedLayerResolutionGetInfo.next = nullptr;
 			recommendedLayerResolutionGetInfo.layer = _internals->layerBaseHeader;
-			recommendedLayerResolutionGetInfo.predictedDisplayTime = window->_internals->predictedDisplayTime;
+			recommendedLayerResolutionGetInfo.predictedDisplayTime = _window->_internals->predictedDisplayTime;
 			XrRecommendedLayerResolutionMETA recommendedLayerResolution;
-			if(!XR_FAILED(window->_internals->GetRecommendedLayerResolutionMETA(window->_internals->session, &recommendedLayerResolutionGetInfo, &recommendedLayerResolution)))
+			if(!XR_FAILED(_window->_internals->GetRecommendedLayerResolutionMETA(_window->_internals->session, &recommendedLayerResolutionGetInfo, &recommendedLayerResolution)))
 			{
 				if(recommendedLayerResolution.isValid)
 				{
@@ -225,18 +265,22 @@ namespace RN
 	{
 		_isActive = active;
 
-		if(!_swapChain) return;
-		_swapChain->SetActive(_isSessionActive && _isActive);
+		if(_swapChain) _swapChain->SetActive(_isSessionActive && _isActive);
+		if(_internals->layerPassthroughFb)
+		{
+			if(_isActive && _isSessionActive) _window->_internals->PassthroughLayerResumeFB(_internals->layerPassthroughFb);
+			else _window->_internals->PassthroughLayerPauseFB(_internals->layerPassthroughFb);
+		}
 	}
 
 	void OpenXRCompositorLayer::SetFixedFoveatedRenderingLevel(uint8 level, bool dynamic)
 	{
-		_swapChain->SetFixedFoveatedRenderingLevel(level, dynamic);
+		if(_swapChain) _swapChain->SetFixedFoveatedRenderingLevel(level, dynamic);
 	}
 
 	Vector2 OpenXRCompositorLayer::GetSize() const
 	{
-		return _swapChain->GetSwapChainSize();
+		return _swapChain? _swapChain->GetSwapChainSize() : RN::Vector2();
 	}
 
 	size_t OpenXRCompositorLayer::GetImageCount() const
@@ -265,7 +309,11 @@ namespace RN
 	{
 		_isSessionActive = active;
 
-		if(!_swapChain) return;
-		_swapChain->SetActive(_isSessionActive && _isActive);
+		if(_swapChain) _swapChain->SetActive(_isSessionActive && _isActive);
+		if(_internals->layerPassthroughFb)
+		{
+			if(_isActive && _isSessionActive) _window->_internals->PassthroughLayerResumeFB(_internals->layerPassthroughFb);
+			else _window->_internals->PassthroughLayerPauseFB(_internals->layerPassthroughFb);
+		}
 	}
 }

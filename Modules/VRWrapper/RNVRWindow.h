@@ -82,6 +82,9 @@ namespace RN
 		RNVRAPI virtual void BeginFrame(float delta) {}
 		RNVRAPI virtual void Update(float delta, float near, float far) = 0;
 
+		RNVRAPI virtual bool InitializePassthrough(bool startRunning) { return false; } //returns false if passthrough is not supported or failed initializing
+		RNVRAPI virtual void SetPassthroughActive(bool active) {}
+
 		RNVRAPI virtual VRCompositorLayer *CreateCompositorLayer(VRCompositorLayer::Type type, const SwapChainDescriptor &descriptor, RN::Vector2 resolution, bool supportsFoveation) { return nullptr; }
 		RNVRAPI virtual void AddCompositorLayer(VRCompositorLayer *layer, bool isUnderlay, bool lowest) { return; }
 		RNVRAPI virtual void RemoveCompositorLayer(VRCompositorLayer *layer) { return; }

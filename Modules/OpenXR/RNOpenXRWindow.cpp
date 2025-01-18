@@ -100,6 +100,7 @@ namespace RN
 		_supportsControllerInteractionPICO = false;
 
 		_internals->session = XR_NULL_HANDLE;
+		_internals->passthroughSessionFB = XR_NULL_HANDLE;
 
 #if XR_USE_GRAPHICS_API_VULKAN
 		_internals->GetVulkanInstanceExtensionsKHR = nullptr;
@@ -127,6 +128,16 @@ namespace RN
 
 		_internals->UpdateSwapchainFB = nullptr;
 		_internals->GetSwapchainStateFB = nullptr;
+
+		_internals->CreatePassthroughFB = nullptr;
+		_internals->DestroyPassthroughFB = nullptr;
+		_internals->PassthroughStartFB = nullptr;
+		_internals->PassthroughPauseFB = nullptr;
+		_internals->CreatePassthroughLayerFB = nullptr;
+		_internals->DestroyPassthroughLayerFB = nullptr;
+		_internals->PassthroughLayerPauseFB = nullptr;
+		_internals->PassthroughLayerResumeFB = nullptr;
+		_internals->PassthroughLayerSetStyleFB = nullptr;
 
 #if XR_USE_PLATFORM_ANDROID
 		_internals->SetAndroidApplicationThreadKHR = nullptr;
@@ -459,6 +470,20 @@ namespace RN
 			}
 		}
 
+		if(_supportsPassthrough)
+		{
+			//XR_FB_PASSTHROUGH_EXTENSION_NAME
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrCreatePassthroughFB", (PFN_xrVoidFunction*)(&_internals->CreatePassthroughFB)))){}
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrDestroyPassthroughFB", (PFN_xrVoidFunction*)(&_internals->DestroyPassthroughFB)))){}
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrPassthroughStartFB", (PFN_xrVoidFunction*)(&_internals->PassthroughStartFB)))){}
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrPassthroughPauseFB", (PFN_xrVoidFunction*)(&_internals->PassthroughPauseFB)))){}
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrCreatePassthroughLayerFB", (PFN_xrVoidFunction*)(&_internals->CreatePassthroughLayerFB)))){}
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrDestroyPassthroughLayerFB", (PFN_xrVoidFunction*)(&_internals->DestroyPassthroughLayerFB)))){}
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrPassthroughLayerPauseFB", (PFN_xrVoidFunction*)(&_internals->PassthroughLayerPauseFB)))){}
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrPassthroughLayerResumeFB", (PFN_xrVoidFunction*)(&_internals->PassthroughLayerResumeFB)))){}
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrPassthroughLayerSetStyleFB", (PFN_xrVoidFunction*)(&_internals->PassthroughLayerSetStyleFB)))){}
+		}
+
 #if XR_USE_PLATFORM_ANDROID
 		if(_supportsAndroidThreadType)
 		{
@@ -475,6 +500,13 @@ namespace RN
 	{
 		SafeRelease(_layersUnderlay);
 		SafeRelease(_layersOverlay);
+		
+		if(_internals->passthroughSessionFB != XR_NULL_HANDLE)
+		{
+			_internals->DestroyPassthroughFB(_internals->passthroughSessionFB);
+			_internals->passthroughSessionFB = XR_NULL_HANDLE;
+		}
+		
 		StopRendering();
 		SafeRelease(_runtimeName);
 		xrDestroyInstance(_internals->instance);
@@ -1698,6 +1730,32 @@ namespace RN
 	bool OpenXRWindow::IsRendering() const
 	{
 		return true;
+	}
+
+	bool OpenXRWindow::InitializePassthrough(bool startRunning)
+	{
+		RN_ASSERT(!_internals->passthroughSessionFB, "Passthrough has already been initialized!");
+		if(!_internals->CreatePassthroughFB) return false;
+
+		XrPassthroughCreateInfoFB passthroughCreateInfo = {XR_TYPE_PASSTHROUGH_CREATE_INFO_FB};
+		passthroughCreateInfo.flags = startRunning? XR_PASSTHROUGH_IS_RUNNING_AT_CREATION_BIT_FB : 0;
+
+		XrResult result = _internals->CreatePassthroughFB(_internals->session, &passthroughCreateInfo, &_internals->passthroughSessionFB);
+		if(XR_FAILED(result))
+		{
+			RNError("Failed initializing passthrough with result: " << result);
+			return false;
+		}
+
+		return true;
+	}
+
+	void OpenXRWindow::SetPassthroughActive(bool active)
+	{
+		if(_internals->passthroughSessionFB == XR_NULL_HANDLE) return;
+		
+		if(active) _internals->PassthroughResumeFB(_internals->passthroughSessionFB);
+		else _internals->PassthroughPauseFB(_internals->passthroughSessionFB);
 	}
 
 	void OpenXRWindow::SetFixedFoveatedRenderingLevel(uint8 level, bool dynamic)
