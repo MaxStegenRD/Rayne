@@ -44,8 +44,8 @@ namespace RN
 		_material->SetFragmentShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Fragment, shaderOptions, Shader::UsageHint::Multiview), Shader::UsageHint::Multiview);
 		
 		_material->SetDepthWriteEnabled(false);
-		_material->SetBlendOperation(BlendOperation::Add, BlendOperation::Add);
-		_material->SetBlendFactorSource(BlendFactor::One, BlendFactor::Zero);
+		_material->SetBlendOperation(BlendOperation::Add, BlendOperation::Max);
+		_material->SetBlendFactorSource(BlendFactor::One, BlendFactor::One);
 		_material->SetBlendFactorDestination(BlendFactor::OneMinusSourceAlpha, BlendFactor::One);
 		
 		SetMaxParticles(_maxParticles);

@@ -86,8 +86,8 @@ namespace RN
 				material->SetDepthMode(_depthMode);
 				material->SetDepthWriteEnabled(false);
 				material->SetCullMode(CullMode::None);
-				material->SetBlendOperation(BlendOperation::Add, BlendOperation::Add);
-				material->SetBlendFactorSource(BlendFactor::SourceAlpha, BlendFactor::Zero);
+				material->SetBlendOperation(BlendOperation::Add, BlendOperation::Max);
+				material->SetBlendFactorSource(BlendFactor::SourceAlpha, BlendFactor::One);
 				material->SetBlendFactorDestination(BlendFactor::OneMinusSourceAlpha, BlendFactor::One);
 				
 				Color finalColor = _color;
