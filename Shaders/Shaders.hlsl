@@ -184,6 +184,8 @@ float4 gouraud_fragment(FragmentVertex vert) : SV_TARGET
 	color *= vert.color;
 #endif
 
+color.rgb *= cameraAmbientColor.rgb;
+
 #if RN_NORMALS && (RN_LIGHTS_DIRECTIONAL || RN_LIGHTS_POINT)
 	float4 light = 0.0;
 	#if RN_LIGHTS_DIRECTIONAL
@@ -193,8 +195,8 @@ float4 gouraud_fragment(FragmentVertex vert) : SV_TARGET
 		light += getPointLights(vert.worldPosition, normalize(vert.normal), pointLights);
 	#endif
 
-	return color * (ambientColor + light) * cameraAmbientColor;
+	return color * (ambientColor + light);
 #else
-	return color * (ambientColor) * cameraAmbientColor;
+	return color * ambientColor;
 #endif
 }
