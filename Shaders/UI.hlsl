@@ -105,7 +105,7 @@ FragmentVertex ui_vertex(InputVertex vert)
 	result.clipDistance.z = -uiClippingRect.z - position.y;
 	result.clipDistance.w = position.y + uiClippingRect.w;
 
-	float4 colorFactor = cameraAmbientColor;
+	float4 colorFactor = float4(cameraAmbientColor.rgb, 1.0);
 
 #if RN_COLOR
 	colorFactor *= vert.color;
