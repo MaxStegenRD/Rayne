@@ -273,7 +273,7 @@ namespace RN
 			pipelineStateDescriptor.colorAttachments[0].rgbBlendOperation = static_cast<MTLBlendOperation>(materialProperties.blendOperationRGB);
 			pipelineStateDescriptor.colorAttachments[0].sourceRGBBlendFactor = static_cast<MTLBlendFactor>(materialProperties.blendFactorSourceRGB);
 			pipelineStateDescriptor.colorAttachments[0].destinationRGBBlendFactor = static_cast<MTLBlendFactor>(materialProperties.blendFactorDestinationRGB);
-			pipelineStateDescriptor.colorAttachments[0].rgbBlendOperation = static_cast<MTLBlendOperation>(materialProperties.blendOperationAlpha);
+			pipelineStateDescriptor.colorAttachments[0].alphaBlendOperation = static_cast<MTLBlendOperation>(materialProperties.blendOperationAlpha);
 			pipelineStateDescriptor.colorAttachments[0].sourceAlphaBlendFactor = static_cast<MTLBlendFactor>(materialProperties.blendFactorSourceAlpha);
 			pipelineStateDescriptor.colorAttachments[0].destinationAlphaBlendFactor = static_cast<MTLBlendFactor>(materialProperties.blendFactorDestinationAlpha);
 		}
