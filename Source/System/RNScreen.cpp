@@ -71,7 +71,7 @@ namespace RN
 
 		::EnumDisplayMonitors(nullptr, nullptr, (MONITORENUMPROC)&__MonitorEnumProc, 0);
 
-		for(HMONITOR monitor: __MonitorHandles)
+		for(HMONITOR monitor : __MonitorHandles)
 		{
 			try
 			{

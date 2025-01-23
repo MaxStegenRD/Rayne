@@ -107,7 +107,7 @@ namespace RN
 		JPH::AllHitCollisionCollector<JPH::CastShapeCollector> results;
 		physics->GetNarrowPhaseQuery().CastShape(castInfo, castSettings, JPH::RVec3Arg(0, 0, 0), results, physics->GetDefaultBroadPhaseLayerFilter(objectLayer), physics->GetDefaultLayerFilter(objectLayer));
 
-		for(auto result: results.mHits)
+		for(auto result : results.mHits)
 		{
 			JoltContactInfo hit;
 
@@ -262,7 +262,7 @@ namespace RN
 		uint16 objectLayer = JoltWorld::GetSharedInstance()->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1);
 		physics->GetNarrowPhaseQuery().CollideShape(_shape->GetJoltShape(), JPH::Vec3Arg(1, 1, 1), worldTransform.PreTranslated(_shape->GetJoltShape()->GetCenterOfMass()), collideSettings, JPH::RVec3Arg(0, 0, 0), results, physics->GetDefaultBroadPhaseLayerFilter(objectLayer), physics->GetDefaultLayerFilter(objectLayer));
 
-		for(auto result: results.mHits)
+		for(auto result : results.mHits)
 		{
 			JoltContactInfo hit;
 			hit.distance = 0.0f;

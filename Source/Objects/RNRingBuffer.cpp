@@ -84,7 +84,7 @@ namespace RN
 	{
 		RingBuffer *ringbuffer = new RingBuffer(objects.size());
 
-		for(Object *object: objects)
+		for(Object *object : objects)
 			ringbuffer->PushObject(object);
 
 		return ringbuffer->Autorelease();

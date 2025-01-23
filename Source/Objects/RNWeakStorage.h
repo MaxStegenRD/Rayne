@@ -32,7 +32,7 @@ namespace RN
 		{
 			bool stop = false;
 
-			for(Entry &entry: _storage)
+			for(Entry &entry : _storage)
 			{
 				Object *object = entry.object.Load();
 				if(!object)
@@ -50,7 +50,7 @@ namespace RN
 		{
 			bool stop = false;
 
-			for(Entry &entry: _storage)
+			for(Entry &entry : _storage)
 			{
 				Object *object = entry.object.Load();
 				if(!object)

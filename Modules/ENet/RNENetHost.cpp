@@ -38,7 +38,7 @@ namespace RN
 
 	bool ENetHost::HasReliableDataInTransit()
 	{
-		for(auto iter: _peers)
+		for(auto iter : _peers)
 		{
 			if(iter.second.peer->reliableDataInTransit > 0)
 			{

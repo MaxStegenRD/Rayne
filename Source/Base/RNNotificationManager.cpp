@@ -46,7 +46,7 @@ namespace RN
 		std::vector<Subscriber> copy = iterator->second;
 		lock.Unlock();
 
-		for(auto &subscriber: copy)
+		for(auto &subscriber : copy)
 			subscriber.callback(notification);
 	}
 

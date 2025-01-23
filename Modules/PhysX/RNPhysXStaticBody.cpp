@@ -24,7 +24,7 @@ namespace RN
 		if(shape->IsKindOfClass(PhysXCompoundShape::GetMetaClass()))
 		{
 			PhysXCompoundShape *compound = shape->Downcast<PhysXCompoundShape>();
-			for(PhysXShape *tempShape: compound->_shapes)
+			for(PhysXShape *tempShape : compound->_shapes)
 			{
 				_actor->attachShape(*tempShape->GetPhysXShape());
 			}
@@ -71,7 +71,7 @@ namespace RN
 		if(_shape->IsKindOfClass(PhysXCompoundShape::GetMetaClass()))
 		{
 			PhysXCompoundShape *compound = _shape->Downcast<PhysXCompoundShape>();
-			for(PhysXShape *tempShape: compound->_shapes)
+			for(PhysXShape *tempShape : compound->_shapes)
 			{
 				PhysXWorld::GetSharedInstance()->Lock();
 				tempShape->GetPhysXShape()->setSimulationFilterData(filterData);

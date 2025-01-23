@@ -50,7 +50,7 @@ namespace RN
 
 	OSXHIDDevice::~OSXHIDDevice()
 	{
-		for(auto iterator: _inputReports)
+		for(auto iterator : _inputReports)
 			iterator.second->Release();
 
 		CFRelease(_device);
@@ -272,7 +272,7 @@ namespace RN
 		}
 
 		// Prepare the queue
-		for(HIDElement *element: _allElements)
+		for(HIDElement *element : _allElements)
 			IOHIDQueueAddElement(_queue, element->element);
 	}
 
@@ -286,7 +286,7 @@ namespace RN
 
 		IOHIDDeviceClose(_device, kIOHIDOptionsTypeNone);
 
-		for(HIDElement *element: _allElements)
+		for(HIDElement *element : _allElements)
 			delete element;
 	}
 
@@ -594,7 +594,7 @@ namespace RN
 		if(_deltaYAxis)
 			_deltaYAxis->SetValue(_lastDelta.y);
 
-		for(auto &pair: _buttonEvents)
+		for(auto &pair : _buttonEvents)
 		{
 			if(pair.first >= _buttonControls->GetCount()) continue;
 

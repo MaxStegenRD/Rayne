@@ -52,7 +52,7 @@ namespace RN
 
 		Array *objects = new Array();
 
-		for(Entry &entry: _storage)
+		for(Entry &entry : _storage)
 		{
 			Object *object = entry.object.Load();
 			if(!object)

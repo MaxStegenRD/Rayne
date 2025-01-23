@@ -104,7 +104,7 @@ namespace RN
 				_featureSet(0),
 				_names(nullptr)
 			{
-				for(auto &attribute: _attributes)
+				for(auto &attribute : _attributes)
 				{
 					_featureSet |= (1 << static_cast<uint32>(attribute.GetFeature()));
 

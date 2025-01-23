@@ -102,7 +102,7 @@ namespace RN
 
 			_reloadAll = false;
 
-			for(View *cell: cellsToRemove)
+			for(View *cell : cellsToRemove)
 			{
 				RecycleCell(cell);
 			}

@@ -194,7 +194,7 @@ namespace RN
 
 	JoltCompoundShape::~JoltCompoundShape()
 	{
-		for(auto shape: _shapes)
+		for(auto shape : _shapes)
 		{
 			shape->Release();
 		}

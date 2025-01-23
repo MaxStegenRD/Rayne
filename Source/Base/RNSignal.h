@@ -100,7 +100,7 @@ namespace RN
 
 			lock1.Unlock();
 
-			for(Slot &slot: slots)
+			for(Slot &slot : slots)
 				slot.callback(std::forward<SigCompatible>(args)...);
 
 			lock1.Lock();

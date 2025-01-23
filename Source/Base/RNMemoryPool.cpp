@@ -37,7 +37,7 @@ namespace RN
 
 		RN_ASSERT(size <= 512, "MemoryPool serves a maximum of 512 bytes!");
 
-		for(SizePool &pool: _pools)
+		for(SizePool &pool : _pools)
 		{
 			if(pool.GetSize() == size)
 				return pool.Allocate();
@@ -67,7 +67,7 @@ namespace RN
 
 	void *MemoryPool::SizePool::Allocate()
 	{
-		for(Node &node: _nodes)
+		for(Node &node : _nodes)
 		{
 			if(node.TryLock())
 			{

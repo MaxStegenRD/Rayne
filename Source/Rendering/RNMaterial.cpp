@@ -24,7 +24,7 @@ namespace RN
 
 	Material::Properties::~Properties()
 	{
-		for(auto const &data: _customShaderUniforms)
+		for(auto const &data : _customShaderUniforms)
 		{
 			data.second->Release();
 		}
@@ -63,7 +63,7 @@ namespace RN
 		_customShaderUniforms.clear();
 		_customShaderUniforms.insert(properties._customShaderUniforms.begin(), properties._customShaderUniforms.end());
 
-		for(auto const &data: _customShaderUniforms)
+		for(auto const &data : _customShaderUniforms)
 		{
 			data.second->Retain();
 		}
@@ -450,12 +450,12 @@ namespace RN
 		_mergedProperties._customShaderUniforms.insert(_properties._customShaderUniforms.begin(), _properties._customShaderUniforms.end());
 		if(!(overrideMaterial->GetOverride() & Override::CustomUniforms) && !(_override & Override::CustomUniforms) && overrideMaterial->_properties._customShaderUniforms.size() > 0)
 		{
-			for(auto const &data: overrideMaterial->_properties._customShaderUniforms)
+			for(auto const &data : overrideMaterial->_properties._customShaderUniforms)
 			{
 				_mergedProperties._customShaderUniforms[data.first] = data.second;
 			}
 		}
-		for(auto const &data: _mergedProperties._customShaderUniforms)
+		for(auto const &data : _mergedProperties._customShaderUniforms)
 		{
 			data.second->Retain();
 		}

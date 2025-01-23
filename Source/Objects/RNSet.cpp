@@ -94,7 +94,7 @@ namespace RN
 	{
 		Set *set = new Set(objects.size());
 
-		for(Object *object: objects)
+		for(Object *object : objects)
 			set->AddObject(object);
 
 		return set->Autorelease();

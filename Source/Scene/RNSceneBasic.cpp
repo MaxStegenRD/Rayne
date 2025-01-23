@@ -530,7 +530,7 @@ namespace RN
 						ZoneScopedN("Render Occluder Depth");
 
 						//Render occluders to depth buffer first (first test if the bounding box is visible at all)
-						for(SceneNode *node: occluders)
+						for(SceneNode *node : occluders)
 						{
 							bool testResult = TestBoundingBox(matViewProj, node->GetBoundingBox(), screenPixelSize);
 							SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo *>(node->GetSceneInfo());
@@ -705,7 +705,7 @@ namespace RN
 					}
 
 					//Submit all drawables for rendering
-					for(SceneNode *node: sceneNodesToRender)
+					for(SceneNode *node : sceneNodesToRender)
 					{
 						node->Render(renderer, camera);
 					}

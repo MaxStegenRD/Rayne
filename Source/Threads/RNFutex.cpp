@@ -322,7 +322,7 @@ namespace RN
 				_threadQueue.erase(iterator);
 			}
 
-			for(ThreadData *data: threads)
+			for(ThreadData *data : threads)
 			{
 				{
 					std::unique_lock<std::mutex> lock(data->lock);

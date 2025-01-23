@@ -18,7 +18,7 @@ namespace RN
 
 	WorkGroup::~WorkGroup()
 	{
-		for(auto &pair: _waiters)
+		for(auto &pair : _waiters)
 		{
 			WorkQueue *queue = std::get<0>(pair);
 			queue->Release();
@@ -52,7 +52,7 @@ namespace RN
 				LockGuard<Lockable> lock(_lock);
 				_signal.NotifyAll();
 
-				for(auto &pair: _waiters)
+				for(auto &pair : _waiters)
 				{
 					WorkQueue *queue = std::get<0>(pair);
 					queue->Perform(std::move(std::get<1>(pair)));

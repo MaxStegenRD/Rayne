@@ -26,7 +26,7 @@ namespace RN
 	void ResonanceAudioWorld::AudioCallback(void *outputBuffer, const void *inputBuffer, unsigned int frameSize, unsigned int status)
 	{
 		AutoreleasePool pool;
-		for(ResonanceAudioSource *source: _instance->_audioSources)
+		for(ResonanceAudioSource *source : _instance->_audioSources)
 		{
 			source->Update();
 		}
@@ -110,7 +110,7 @@ namespace RN
 		_audioAPI->SetReverbProperties(vraudio::ComputeReverbProperties(roomProperties));
 		_audioAPI->SetReflectionProperties(vraudio::ComputeReflectionProperties(roomProperties));
 
-		for(ResonanceAudioSource *source: _instance->_audioSources)
+		for(ResonanceAudioSource *source : _instance->_audioSources)
 		{
 			Vector3 sourcePosition = source->GetWorldPosition();
 			vraudio::WorldPosition audioSourcePosition;

@@ -74,7 +74,7 @@ namespace RN
 
 		result->Append(_data);
 
-		for(uint64 location: _jumpTable)
+		for(uint64 location : _jumpTable)
 		{
 			location += offset + 5;
 
@@ -119,7 +119,7 @@ namespace RN
 
 				uint64 location = iterator->second + offset;
 
-				for(uint64 index: locations)
+				for(uint64 index : locations)
 				{
 					result->ReplaceBytes(&header, Range(index + offset, sizeof(header)));
 					result->ReplaceBytes(&location, Range(index + offset + sizeof(header), sizeof(uint64)));

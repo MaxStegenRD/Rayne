@@ -39,12 +39,12 @@ namespace RN
 
 		Renderer *renderer = Renderer::GetActiveRenderer();
 #if RN_MODEL_LOD_DISABLED
-		for(auto *drawable: _drawables)
+		for(auto *drawable : _drawables)
 			renderer->DeleteDrawable(drawable);
 #else
-		for(auto &drawables: _drawables)
+		for(auto &drawables : _drawables)
 		{
-			for(Drawable *drawable: drawables)
+			for(Drawable *drawable : drawables)
 				renderer->DeleteDrawable(drawable);
 		}
 #endif

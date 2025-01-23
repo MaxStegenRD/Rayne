@@ -354,7 +354,7 @@ namespace RN
 		setupNonDrivableSurface(chassisQryFilterData);*/
 
 		int counter = 0;
-		for(PhysXShape *tempShape: compoundShape->_shapes)
+		for(PhysXShape *tempShape : compoundShape->_shapes)
 		{
 			physx::PxShape *physxShape = tempShape->GetPhysXShape();
 			vehActor->attachShape(*physxShape);

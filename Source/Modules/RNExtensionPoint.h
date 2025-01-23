@@ -82,7 +82,7 @@ namespace RN
 		{
 			Array *array = new Array(_descriptors.size());
 
-			for(auto iterator: _descriptors)
+			for(auto iterator : _descriptors)
 				array->AddObject(iterator._object);
 
 			return array->Autorelease();

@@ -126,7 +126,7 @@ namespace RN
 	void Shader::Options::Enumerate(const std::function<void(const std::string &value, const std::string &key, bool &stop)> &callback) const
 	{
 		bool stop = false;
-		for(auto pair: _defines)
+		for(auto pair : _defines)
 		{
 			callback(pair.first, pair.second, stop);
 			if(stop) return;
@@ -141,7 +141,7 @@ namespace RN
 	size_t Shader::Options::GetHash() const
 	{
 		size_t hash = 0;
-		for(auto pair: _defines)
+		for(auto pair : _defines)
 		{
 			RN::HashCombine(hash, pair.first);
 			RN::HashCombine(hash, pair.second);

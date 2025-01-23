@@ -254,7 +254,7 @@ namespace RN
 		}
 
 		std::vector<uint16> peersToDisconnect;
-		for(auto &pair: _peers)
+		for(auto &pair : _peers)
 		{
 			if(pair.second._wantsDisconnect)
 			{
@@ -266,7 +266,7 @@ namespace RN
 			}
 		}
 
-		for(uint16 clientID: peersToDisconnect)
+		for(uint16 clientID : peersToDisconnect)
 		{
 			DisconnectUser(clientID, 0);
 		}

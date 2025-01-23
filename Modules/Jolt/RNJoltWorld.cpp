@@ -112,7 +112,7 @@ namespace RN
 
 		JPH::BodyIDVector bodyIDs;
 		_physicsSystem->GetActiveBodies(JPH::EBodyType::RigidBody, bodyIDs);
-		for(JPH::BodyID bodyID: bodyIDs)
+		for(JPH::BodyID bodyID : bodyIDs)
 		{
 			uint64 userData = _physicsSystem->GetBodyInterface().GetUserData(bodyID);
 			JoltCollisionObject *collisionObject = reinterpret_cast<JoltCollisionObject *>(userData);
@@ -298,7 +298,7 @@ namespace RN
 		uint16 objectLayer = GetObjectLayer(filterGroup, filterMask, 1);
 		_physicsSystem->GetNarrowPhaseQuery().CollideShape(shape->GetJoltShape(), JPH::Vec3Arg(scale.x, scale.y, scale.z), worldTransform.PreTranslated(shape->GetJoltShape()->GetCenterOfMass()), collideSettings, JPH::RVec3Arg(0, 0, 0), results, _physicsSystem->GetDefaultBroadPhaseLayerFilter(objectLayer), _physicsSystem->GetDefaultLayerFilter(objectLayer));
 
-		for(auto result: results.mHits)
+		for(auto result : results.mHits)
 		{
 			JoltContactInfo hit;
 			hit.distance = 0.0f;

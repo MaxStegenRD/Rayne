@@ -91,7 +91,7 @@ namespace RN
 			_wantsDeviceUpdate = false;
 		}
 
-		for(const auto call: _queue)
+		for(const auto call : _queue)
 		{
 			call();
 		}

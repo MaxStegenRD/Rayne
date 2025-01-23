@@ -132,7 +132,7 @@ namespace RN
 		uint8 currentIndex = 1;
 		for(int i = 1; i < 6 && currentIndex < 4; i++)
 		{
-			for(uint32 index: extremeIndicesList[i])
+			for(uint32 index : extremeIndicesList[i])
 			{
 				bool isNew = true;
 				for(int n = 0; n < currentIndex; n++)
@@ -280,7 +280,7 @@ namespace RN
 		newShape->_indices = _indices;
 		newShape->_vertices.reserve(_vertices.size());
 
-		for(const Vector3 &vertex: _vertices)
+		for(const Vector3 &vertex : _vertices)
 		{
 			Vector3 transformedVertex = transformation * vertex;
 			newShape->_vertices.push_back(transformedVertex);
@@ -295,9 +295,9 @@ namespace RN
 		Vector3 closestVertices[3];
 		float closestDistance[3] = {FLT_MAX, FLT_MAX, FLT_MAX};
 
-		for(const Vector3 &vertex1: _vertices)
+		for(const Vector3 &vertex1 : _vertices)
 		{
-			for(const Vector3 &vertex2: otherShape->_vertices)
+			for(const Vector3 &vertex2 : otherShape->_vertices)
 			{
 				Vector3 result = vertex1 - vertex2;
 				float distance = result.x * result.x + result.y * result.y + result.z * result.z;
@@ -350,7 +350,7 @@ namespace RN
 			const Vector3 &vertex = *vertexIterator;
 
 			bool skip = false;
-			for(const Vector3 &other: vertices)
+			for(const Vector3 &other : vertices)
 			{
 				if(vertex.GetDistance(other) < k::EpsilonFloat * 5.0f)
 				{
@@ -404,7 +404,7 @@ namespace RN
 
 	SplashCompoundShape::~SplashCompoundShape()
 	{
-		for(auto shape: _shapes)
+		for(auto shape : _shapes)
 		{
 			shape->Release();
 		}

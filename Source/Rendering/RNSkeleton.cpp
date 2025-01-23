@@ -56,7 +56,7 @@ namespace RN
 
 	void Animation::MakeLoop()
 	{
-		for(auto bone: bones)
+		for(auto bone : bones)
 		{
 			AnimationBone *temp = bone.second;
 			temp->prevFrame->nextFrame = new AnimationBone(temp->prevFrame, temp, temp->prevFrame->time + 1 + temp->time, temp->position, temp->scale, temp->rotation);
@@ -67,7 +67,7 @@ namespace RN
 	float Animation::GetLength()
 	{
 		float length = 0.0f;
-		for(auto bone: bones)
+		for(auto bone : bones)
 		{
 			if(bone.second->prevFrame)
 				length = fmaxf(length, bone.second->prevFrame->time);
@@ -427,7 +427,7 @@ namespace RN
 		Animation *toanim = new Animation(to);
 		animations->SetObjectForKey(toanim->Autorelease(), to);
 
-		for(auto firstbone: fromanim->bones)
+		for(auto firstbone : fromanim->bones)
 		{
 			auto bone = firstbone.second;
 			float maxtime = bone->time;
@@ -485,7 +485,7 @@ namespace RN
 		_blendanim->Autorelease();
 		_blendanim->Retain();
 
-		for(auto bone: _curranim->bones)
+		for(auto bone : _curranim->bones)
 		{
 			Bone &currbone = bones[bone.first];
 			AnimationBone *frombone = new AnimationBone(0, 0, 0.0f, currbone.position, currbone.scale, currbone.rotation);

@@ -179,7 +179,7 @@ namespace RN
 			_isRunning.store(false);
 			_exitSignal.NotifyAll();
 
-			for(auto &pair: _exitFunctions)
+			for(auto &pair : _exitFunctions)
 				pair.first(pair.second);
 		}
 

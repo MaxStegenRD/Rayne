@@ -40,7 +40,7 @@ namespace RN
 			uint64 collision = upperBits | lowerBits;
 
 			size_t counter = 0;
-			for(uint64 value: _objectLayerMapping)
+			for(uint64 value : _objectLayerMapping)
 			{
 				if(value == collision)
 				{

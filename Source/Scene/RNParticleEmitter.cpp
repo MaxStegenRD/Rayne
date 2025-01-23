@@ -72,7 +72,7 @@ namespace RN
 
 	ParticleEmitter::~ParticleEmitter()
 	{
-		for(Particle *particle: _particles)
+		for(Particle *particle : _particles)
 		{
 			delete particle;
 		}

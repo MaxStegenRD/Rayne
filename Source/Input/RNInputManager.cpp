@@ -56,7 +56,7 @@ namespace RN
 
 		void Perform(const InputManager::Action &action)
 		{
-			for(auto &callback: _callbacks)
+			for(auto &callback : _callbacks)
 				callback.first(action);
 		}
 

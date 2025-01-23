@@ -129,7 +129,7 @@ namespace RN
 	{
 		Array *result = new Array();
 
-		for(const ExecutionPort &port: _executionPorts)
+		for(const ExecutionPort &port : _executionPorts)
 			result->AddObject(port.command);
 
 		return result->Autorelease();
@@ -169,7 +169,7 @@ namespace RN
 
 	const InputDevice::ExecutionPort *InputDevice::GetExecutionPortMatching(const String *command, MetaClass *meta) const
 	{
-		for(const ExecutionPort &port: _executionPorts)
+		for(const ExecutionPort &port : _executionPorts)
 		{
 			if(command->IsEqual(port.command))
 			{

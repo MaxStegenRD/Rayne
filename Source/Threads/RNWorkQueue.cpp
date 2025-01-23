@@ -125,12 +125,12 @@ namespace RN
 
 
 		// Cancel all threads, wake them up and then wait for their exit
-		for(Thread *thread: threads)
+		for(Thread *thread : threads)
 			thread->Cancel();
 
 		_internals->workSignal.NotifyAll();
 
-		for(Thread *thread: threads)
+		for(Thread *thread : threads)
 			thread->WaitForExit();
 
 		_identifier->Release();

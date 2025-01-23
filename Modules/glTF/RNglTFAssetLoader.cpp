@@ -279,7 +279,7 @@ namespace RN
 
 			tinygltf::Primitive primitive = gltfMesh.primitives[i];
 
-			for(auto &attrib: primitive.attributes)
+			for(auto &attrib : primitive.attributes)
 			{
 				tinygltf::Accessor accessor = gltfModel.accessors[attrib.second];
 				vertexCount = accessor.count;

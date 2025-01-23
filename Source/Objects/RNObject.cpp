@@ -49,7 +49,7 @@ namespace RN
 		if(!std::uncaught_exception())
 			RN_ASSERT(_refCount.load(std::memory_order_relaxed) <= 1, "refCount must be <= 1 upon destructor call. Use object->Unlock(); instead of delete object;");
 
-		for(auto &pair: _associatedObjects)
+		for(auto &pair : _associatedObjects)
 		{
 			MemoryPolicy policy = std::get<1>(pair.second);
 
@@ -364,7 +364,7 @@ namespace RN
 
 		std::vector<ObservableProperty *> result;
 
-		for(ObservableProperty *property: _properties)
+		for(ObservableProperty *property : _properties)
 		{
 			if(property->_opaque == meta)
 				result.push_back(property);
@@ -387,7 +387,7 @@ namespace RN
 	{
 		_properties.reserve(_properties.size() + properties.size());
 
-		for(ObservableProperty *property: properties)
+		for(ObservableProperty *property : properties)
 			AddObservable(property);
 	}
 
@@ -427,7 +427,7 @@ namespace RN
 	{
 		LockGuard<RecursiveLockable> lock(const_cast<RecursiveLockable &>(_lock));
 
-		for(ObservableProperty *property: _properties)
+		for(ObservableProperty *property : _properties)
 		{
 			if(strcmp(property->_name, key) == 0)
 				return property;
@@ -439,7 +439,7 @@ namespace RN
 
 	Object *Object::GetPrimitiveValueForKey(const char *key) const
 	{
-		for(ObservableProperty *property: _properties)
+		for(ObservableProperty *property : _properties)
 		{
 			if(strcmp(key, property->_name) == 0)
 				return property->GetValue();
@@ -530,7 +530,7 @@ namespace RN
 
 	void Object::SetPrimitiveValueForKey(Object *value, const char *key)
 	{
-		for(ObservableProperty *property: _properties)
+		for(ObservableProperty *property : _properties)
 		{
 			if(strcmp(key, property->_name) == 0)
 				property->SetValue(value);

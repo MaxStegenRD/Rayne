@@ -171,7 +171,7 @@ namespace RN
 		if(_pingTimer > 5.0)
 		{
 			_pingTimer = 0.0f;
-			for(auto &pair: _peers)
+			for(auto &pair : _peers)
 			{
 				SendPing(pair.first, false, 0);
 			}
@@ -259,9 +259,9 @@ namespace RN
 
 		//size_t scheduled_count = 0;
 		//size_t sent_count = 0;
-		for(auto &peer: _peers)
+		for(auto &peer : _peers)
 		{
-			for(auto &pair: peer.second._scheduledPackets)
+			for(auto &pair : peer.second._scheduledPackets)
 			{
 				auto &scheduledPackets = pair.second;
 				while(scheduledPackets.size() > 0)
@@ -396,7 +396,7 @@ namespace RN
 
 	uint16 EOSHost::GetUserIDForInternalID(EOS_ProductUserId internalID)
 	{
-		for(auto &pair: _peers)
+		for(auto &pair : _peers)
 		{
 			if(pair.second.internalID == internalID)
 			{
@@ -409,7 +409,7 @@ namespace RN
 
 	bool EOSHost::HasReliableDataInTransit()
 	{
-		for(auto &iter: _peers)
+		for(auto &iter : _peers)
 		{
 			if(iter.second._hasReliableInTransit)
 			{

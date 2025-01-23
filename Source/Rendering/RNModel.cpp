@@ -337,7 +337,7 @@ namespace RN
 
 		LODStage *stage = GetLODStage(0);
 
-		for(LODStage::Group &group: stage->_groups)
+		for(LODStage::Group &group : stage->_groups)
 		{
 			Mesh *mesh = group._mesh;
 

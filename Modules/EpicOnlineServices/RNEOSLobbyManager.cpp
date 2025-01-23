@@ -462,7 +462,7 @@ namespace RN
 
 	void EOSLobbyManager::ResetLobbySearchCallback()
 	{
-		for(auto search: _lobbySearches)
+		for(auto search : _lobbySearches)
 		{
 			if(search->handle) EOS_LobbySearch_Release(search->handle);
 			delete search;

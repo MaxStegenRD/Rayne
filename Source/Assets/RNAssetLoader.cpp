@@ -29,7 +29,7 @@ namespace RN
 		_magicBytesOffset = config._magicBytesOffset;
 		_fileExtensions = SafeRetain(config._extensions);
 
-		for(MetaClass *meta: _resourceClasses)
+		for(MetaClass *meta : _resourceClasses)
 		{
 			RN_ASSERT(meta->InheritsFromClass(Asset::GetMetaClass()), "AssetLoader must support loading Asset subclasses only");
 		}
@@ -124,7 +124,7 @@ namespace RN
 
 	bool AssetLoader::SupportsResourceClass(MetaClass *meta) const
 	{
-		for(auto tmeta: _resourceClasses)
+		for(auto tmeta : _resourceClasses)
 		{
 			if(meta->InheritsFromClass(tmeta))
 				return true;

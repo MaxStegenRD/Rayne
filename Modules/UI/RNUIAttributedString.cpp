@@ -131,7 +131,7 @@ namespace RN
 
 		const TextAttributes *AttributedString::GetAttributesAtIndex(size_t index) const
 		{
-			for(const TextAttributes &attributes: _attributes)
+			for(const TextAttributes &attributes : _attributes)
 			{
 				if(attributes._range.Contains(RN::Range(index, 1)))
 				{

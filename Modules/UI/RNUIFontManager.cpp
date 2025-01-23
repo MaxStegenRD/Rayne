@@ -283,7 +283,7 @@ namespace RN
 			attributes.emplace_back(RN::Mesh::VertexAttribute::Feature::Indices, RN::PrimitiveType::Uint32);
 
 			RN::int32 vertexFloatCount = 0;
-			for(KG::TriangleMesh::VertexFeature feature: triangleMesh.features)
+			for(KG::TriangleMesh::VertexFeature feature : triangleMesh.features)
 			{
 				switch(feature)
 				{
@@ -324,7 +324,7 @@ namespace RN
 	}
 
 			RN::uint32 offset = 0;
-			for(KG::TriangleMesh::VertexFeature feature: triangleMesh.features)
+			for(KG::TriangleMesh::VertexFeature feature : triangleMesh.features)
 			{
 				switch(feature)
 				{

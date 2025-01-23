@@ -109,7 +109,7 @@ namespace RN
 	{
 		Array *array = new Array(objects.size());
 
-		for(Object *object: objects)
+		for(Object *object : objects)
 			array->AddObject(object);
 
 		return array->Autorelease();

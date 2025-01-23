@@ -215,7 +215,7 @@ namespace RN
 
 	ODECompoundShape::~ODECompoundShape()
 	{
-		for(auto shape: _shapes)
+		for(auto shape : _shapes)
 		{
 			shape->Release();
 		}

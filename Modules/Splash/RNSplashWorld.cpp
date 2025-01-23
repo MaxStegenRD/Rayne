@@ -52,7 +52,7 @@ namespace RN
 
 	void SplashWorld::StepSimulation(float delta)
 	{
-		for(SplashBody *body: _bodies)
+		for(SplashBody *body : _bodies)
 		{
 			body->CalculateVelocities(delta);
 			body->PrepareCollision(delta);
@@ -69,7 +69,7 @@ namespace RN
 			}
 		}
 
-		for(SplashBody *body: _bodies)
+		for(SplashBody *body : _bodies)
 		{
 			body->Move(delta);
 		}

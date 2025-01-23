@@ -192,7 +192,7 @@ namespace RN
 		uint32_t instanceExtensionCount;
 		xrEnumerateInstanceExtensionProperties(nullptr, 0, &instanceExtensionCount, nullptr);
 		std::vector<XrExtensionProperties> allExtensions(instanceExtensionCount);
-		for(XrExtensionProperties &extension: allExtensions)
+		for(XrExtensionProperties &extension : allExtensions)
 		{
 			extension.type = XR_TYPE_EXTENSION_PROPERTIES;
 		}
@@ -200,7 +200,7 @@ namespace RN
 
 		int numberOfSupportedFoveationExtensions = 0;
 		RNDebug("Available Extensions (" << instanceExtensionCount << "):");
-		for(const XrExtensionProperties &extension: allExtensions)
+		for(const XrExtensionProperties &extension : allExtensions)
 		{
 			if(std::strcmp(extension.extensionName, XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME) == 0)
 			{

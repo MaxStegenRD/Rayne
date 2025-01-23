@@ -114,7 +114,7 @@ namespace RN
 
 	void SceneWithVisibilityLists::RenderVolumeList(Renderer *renderer, Camera *camera, const Volume *volume)
 	{
-		for(SceneNode *node: volume->nodes)
+		for(SceneNode *node : volume->nodes)
 		{
 			if(node->CanRender(renderer, camera))
 				node->Render(renderer, camera);
@@ -182,7 +182,7 @@ namespace RN
 		_volumes->AddObject(volume);
 
 		_isAddingVolume = true;
-		for(SceneNode *node: volume->nodes)
+		for(SceneNode *node : volume->nodes)
 		{
 			if(!node->GetSceneInfo())
 				AddNode(node);
@@ -250,7 +250,7 @@ namespace RN
 		_updateNodes[static_cast<size_t>(node->GetUpdatePriority())].Erase(node->_sceneUpdateEntry);
 
 		SceneWithVisibilityListsInfo *sceneInfo = node->GetSceneInfo()->Downcast<SceneWithVisibilityListsInfo>();
-		for(Volume *volume: sceneInfo->volumes)
+		for(Volume *volume : sceneInfo->volumes)
 		{
 			auto iterator = std::find(volume->nodes.begin(), volume->nodes.end(), node);
 			if(iterator != volume->nodes.end())

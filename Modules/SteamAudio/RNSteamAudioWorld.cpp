@@ -550,7 +550,7 @@ namespace RN
 			//TODO: Create scene!
 
 			int counter = 0;
-			for(const SteamAudioMaterial &material: _sceneMaterials)
+			for(const SteamAudioMaterial &material : _sceneMaterials)
 			{
 				iplSetSceneMaterial(_scene, counter++, IPLMaterial {material.lowFrequencyAbsorption, material.midFrequencyAbsorption, material.highFrequencyAbsorption, material.scattering});
 			}
@@ -559,7 +559,7 @@ namespace RN
 			std::vector<IPLTriangle> triangles;
 			std::vector<IPLint32> materials;
 
-			for(const SteamAudioGeometry &geometry: _sceneGeometry)
+			for(const SteamAudioGeometry &geometry : _sceneGeometry)
 			{
 				const Mesh::VertexAttribute *vertexAttribute = geometry.mesh->GetAttribute(Mesh::VertexAttribute::Feature::Vertices);
 				RN_ASSERT(vertexAttribute && vertexAttribute->GetType() == PrimitiveType::Vector3, "SteamAudioGeometry mesh has an unsupported vertex format.");

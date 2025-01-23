@@ -96,7 +96,7 @@ namespace RN
 		size_t initialAlignment = kRNNotFound;
 
 		size_t attributeCounter = 0;
-		for(VertexAttribute &attribute: _vertexAttributes)
+		for(VertexAttribute &attribute : _vertexAttributes)
 		{
 			attribute._typeSize = __PrimitiveTypeTable[static_cast<size_t>(attribute._type)].size;
 			if(!Renderer::IsHeadless())
@@ -238,7 +238,7 @@ namespace RN
 		}
 		else
 		{
-			for(auto &attribute: _vertexAttributes)
+			for(auto &attribute : _vertexAttributes)
 			{
 				if(attribute._feature == feature)
 				{
@@ -277,7 +277,7 @@ namespace RN
 
 	void Mesh::SetElementData(const String *name, const void *tdata)
 	{
-		for(auto &attribute: _vertexAttributes)
+		for(auto &attribute : _vertexAttributes)
 		{
 			if(attribute._name && attribute._name->IsEqual(name))
 			{
@@ -315,7 +315,7 @@ namespace RN
 
 	const Mesh::VertexAttribute *Mesh::GetAttribute(VertexAttribute::Feature feature) const
 	{
-		for(auto &attribute: _vertexAttributes)
+		for(auto &attribute : _vertexAttributes)
 		{
 			if(attribute._feature == feature)
 				return &attribute;
@@ -326,7 +326,7 @@ namespace RN
 
 	const Mesh::VertexAttribute *Mesh::GetAttribute(const String *name) const
 	{
-		for(auto &attribute: _vertexAttributes)
+		for(auto &attribute : _vertexAttributes)
 		{
 			if(attribute._name && attribute._name->IsEqual(name))
 				return &attribute;

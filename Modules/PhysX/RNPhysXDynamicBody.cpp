@@ -25,7 +25,7 @@ namespace RN
 		if(shape->IsKindOfClass(PhysXCompoundShape::GetMetaClass()))
 		{
 			PhysXCompoundShape *compound = shape->Downcast<PhysXCompoundShape>();
-			for(PhysXShape *tempShape: compound->_shapes)
+			for(PhysXShape *tempShape : compound->_shapes)
 			{
 				_actor->attachShape(*tempShape->GetPhysXShape());
 			}
@@ -69,7 +69,7 @@ namespace RN
 		if(_shape->IsKindOfClass(PhysXCompoundShape::GetMetaClass()))
 		{
 			PhysXCompoundShape *compound = _shape->Downcast<PhysXCompoundShape>();
-			for(PhysXShape *tempShape: compound->_shapes)
+			for(PhysXShape *tempShape : compound->_shapes)
 			{
 				tempShape->GetPhysXShape()->setSimulationFilterData(filterData);
 				tempShape->GetPhysXShape()->setQueryFilterData(filterData);
@@ -95,7 +95,7 @@ namespace RN
 		if(_shape->IsKindOfClass(PhysXCompoundShape::GetMetaClass()))
 		{
 			PhysXCompoundShape *compound = _shape->Downcast<PhysXCompoundShape>();
-			for(PhysXShape *tempShape: compound->_shapes)
+			for(PhysXShape *tempShape : compound->_shapes)
 			{
 				tempShape->GetPhysXShape()->setSimulationFilterData(filterData);
 				tempShape->GetPhysXShape()->setQueryFilterData(filterData);
@@ -305,12 +305,12 @@ namespace RN
 		if(_shape->IsKindOfClass(PhysXCompoundShape::GetMetaClass()))
 		{
 			PhysXCompoundShape *compound = _shape->Downcast<PhysXCompoundShape>();
-			for(PhysXShape *tempShape: compound->_shapes)
+			for(PhysXShape *tempShape : compound->_shapes)
 			{
 				physx::PxShape *shape = tempShape->GetPhysXShape();
 				shape->setFlag(physx::PxShapeFlag::eSCENE_QUERY_SHAPE, false);
 			}
-			for(PhysXShape *tempShape: compound->_shapes)
+			for(PhysXShape *tempShape : compound->_shapes)
 			{
 				physx::PxShape *shape = tempShape->GetPhysXShape();
 				scene->sweep(shape->getGeometry().any(), pose, normalizedDirection, length, hit, physx::PxHitFlags(physx::PxHitFlag::eDEFAULT), physx::PxQueryFilterData(filterData, physx::PxQueryFlag::eDYNAMIC | physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::ePREFILTER | physx::PxQueryFlag::eNO_BLOCK), &filterCallback, nullptr, inflation);
@@ -332,7 +332,7 @@ namespace RN
 					contactInfo.push_back(contact);
 				}
 			}
-			for(PhysXShape *tempShape: compound->_shapes)
+			for(PhysXShape *tempShape : compound->_shapes)
 			{
 				physx::PxShape *shape = tempShape->GetPhysXShape();
 				shape->setFlag(physx::PxShapeFlag::eSCENE_QUERY_SHAPE, true);

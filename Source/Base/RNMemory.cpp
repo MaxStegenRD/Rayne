@@ -116,7 +116,7 @@ namespace RN
 						_freeBuckets.push_back(std::move(*i));
 				}
 
-				for(auto &bucket: _freeBuckets)
+				for(auto &bucket : _freeBuckets)
 					bucket.offset = 0;
 			}
 

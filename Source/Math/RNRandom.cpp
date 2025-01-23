@@ -111,7 +111,7 @@ namespace RN
 			if(hue >= 334.0f && hue <= 360.0f)
 				hue -= 360.0f;
 
-			for(const ColorInfo &info: __ColorDefinitions)
+			for(const ColorInfo &info : __ColorDefinitions)
 			{
 				if(hue >= info.hueRange.first && hue <= info.hueRange.second)
 					return info;
