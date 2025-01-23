@@ -40,10 +40,23 @@ namespace RN
 		foveationSwapChainCreateInfo.type = XR_TYPE_SWAPCHAIN_CREATE_INFO_FOVEATION_FB;
 		foveationSwapChainCreateInfo.next = nullptr;
 		foveationSwapChainCreateInfo.flags = XR_SWAPCHAIN_CREATE_FOVEATION_FRAGMENT_DENSITY_MAP_BIT_FB;
+
 		if(_xrWindow->_supportsFoveatedRendering && supportFoveation)
 		{
 			RNDebug("Foveated Rendering is enabled.");
 			swapchainCreateInfo.next = &foveationSwapChainCreateInfo;
+		}
+
+		XrVulkanSwapchainCreateInfoMETA vulkanSwapChainCreateInfoMeta;
+		vulkanSwapChainCreateInfoMeta.type = XR_TYPE_VULKAN_SWAPCHAIN_CREATE_INFO_META;
+		vulkanSwapChainCreateInfoMeta.next = nullptr;
+		vulkanSwapChainCreateInfoMeta.additionalCreateFlags = VK_IMAGE_CREATE_SUBSAMPLED_BIT_EXT;
+		vulkanSwapChainCreateInfoMeta.additionalUsageFlags = 0;
+
+		if(_xrWindow->_supportsVulkanSwapchainCreateInfoMETA && _xrWindow->_supportsFoveatedRendering && supportFoveation)
+		{
+			RNDebug("Subsampled Foveated Rendering is enabled.");
+			foveationSwapChainCreateInfo.next = &vulkanSwapChainCreateInfoMeta;
 		}
 
 		if(!XR_SUCCEEDED(xrCreateSwapchain(_xrWindow->_internals->session, &swapchainCreateInfo, &_internals->swapchain)))
