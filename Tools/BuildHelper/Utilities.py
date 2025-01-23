@@ -122,23 +122,32 @@ def copyAndroidBuildSystem(fromdir, projectRoot, buildConfig, platform, isDemo):
 		newCmakeTargetList.append(("\""+target+"\"").encode('utf-8'))
 	cmakeTargets = b", ".join(newCmakeTargetList)
 	androidPermissions = getSettingFromConfig("android", platform, "permissions", buildConfig)
+	featuresString = b""
 	permissionsString = b""
 	queriesString = b""
 	if androidPermissions:
 		for permission in androidPermissions:
 			if type(permission) is str:
-				permissionsString += b"    <uses-permission android:name=\"" + permission.encode('utf-8') + b"\" />\n";
+				permissionsString += b"    <uses-permission android:name=\"" + permission.encode('utf-8') + b"\" />\n"
 			elif not "platforms" in permission or platform in permission["platforms"]:
 				if not "type" in permission or permission["type"] == "permission":
 					if "maxSdkVersion" in permission:
-						permissionsString += b"    <uses-permission android:name=\"" + permission["name"].encode('utf-8') + b"\" android:maxSdkVersion=\"" + str(permission["maxSdkVersion"]).encode('utf-8') + b"\" />\n";
+						permissionsString += b"    <uses-permission android:name=\"" + permission["name"].encode('utf-8') + b"\" android:maxSdkVersion=\"" + str(permission["maxSdkVersion"]).encode('utf-8') + b"\" />\n"
 					else:
-						permissionsString += b"    <uses-permission android:name=\"" + permission["name"].encode('utf-8') + b"\" />\n";
+						permissionsString += b"    <uses-permission android:name=\"" + permission["name"].encode('utf-8') + b"\" />\n"
 				elif permission["type"] == "query":
-					queriesString += b"       <package android:name=\"" + permission["name"].encode('utf-8') + b"\" />\n";
+					queriesString += b"       <package android:name=\"" + permission["name"].encode('utf-8') + b"\" />\n"
+				elif permission["type"] == "feature":
+					requiredString = "false"
+					if "required" in permission and permission["required"] == True:
+						requiredString = "true"
+					featuresString += b"    <uses-feature android:name=\"" + permission["name"].encode('utf-8') + b"\" android:required=\"" + requiredString.encode('utf-8') + b"\" />\n"
 
 		if len(queriesString) > 0:
-			permissionsString += b"\n    <queries>\n" + queriesString + b"    </queries>";
+			permissionsString += b"\n    <queries>\n" + queriesString + b"    </queries>"
+
+		if len(featuresString) > 0:
+			permissionsString = featuresString + b"\n" + permissionsString
 
 	androidDependencies = getSettingFromConfig("android", platform, "android-dependencies", buildConfig)
 	dependenciesString = b""
@@ -147,7 +156,7 @@ def copyAndroidBuildSystem(fromdir, projectRoot, buildConfig, platform, isDemo):
 			if dependency["type"] == "gradle":
 				dependenciesString += b"	implementation '" + dependency["name"].encode('utf-8') + b"'\n";
 			elif dependency["type"] == "aar" and (not "platforms" in dependency or platform in dependency["platforms"]):
-				dependenciesString += b"	implementation files('" + os.path.join(projectRoot, dependency["path"]).replace('\\','/').encode('utf-8') + b"')\n";
+				dependenciesString += b"	implementation files('" + os.path.join(projectRoot, dependency["path"]).replace('\\','/').encode('utf-8') + b"')\n"
 
 	applicationPropertiesString = b""
 	androidIcons = getSettingFromConfig("android", platform, "icons", buildConfig)
