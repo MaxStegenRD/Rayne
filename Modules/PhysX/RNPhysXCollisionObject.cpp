@@ -14,20 +14,20 @@
 namespace RN
 {
 	RNDefineMeta(PhysXCollisionObject, SceneNodeAttachment)
-		
-		PhysXCollisionObject::PhysXCollisionObject() :
+
+	PhysXCollisionObject::PhysXCollisionObject() :
 		_collisionFilterGroup(0),
 		_collisionFilterMask(0xffffffff),
 		_collisionFilterID(0),
 		_collisionFilterIgnoreID(0),
 		_owner(nullptr)
 	{}
-		
+
 	PhysXCollisionObject::~PhysXCollisionObject()
 	{
 	}
-		
-		
+
+
 	void PhysXCollisionObject::SetCollisionFilter(uint32 group, uint32 mask)
 	{
 		_collisionFilterGroup = group;
@@ -39,12 +39,12 @@ namespace RN
 		_collisionFilterID = id;
 		_collisionFilterIgnoreID = ignoreid;
 	}
-		
-	void PhysXCollisionObject::SetContactCallback(std::function<void (PhysXCollisionObject *, const PhysXContactInfo&, ContactState)> &&callback)
+
+	void PhysXCollisionObject::SetContactCallback(std::function<void(PhysXCollisionObject *, const PhysXContactInfo &, ContactState)> &&callback)
 	{
 		_contactCallback = std::move(callback);
 	}
-		
+
 	void PhysXCollisionObject::SetPositionOffset(RN::Vector3 offset)
 	{
 		_positionOffset = offset;
@@ -56,11 +56,11 @@ namespace RN
 		_rotationOffset = offset;
 		UpdatePosition();
 	}
-		
-		
+
+
 	void PhysXCollisionObject::DidUpdate(SceneNode::ChangeSet changeSet)
 	{
-/*		if(changeSet & SceneNode::ChangeSet::World)
+		/*		if(changeSet & SceneNode::ChangeSet::World)
 		{
 			World *world = GetParent()->GetWorld();
 				
@@ -77,4 +77,4 @@ namespace RN
 			}
 		}*/
 	}
-}
+} // namespace RN

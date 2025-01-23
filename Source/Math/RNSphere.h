@@ -21,8 +21,8 @@ namespace RN
 		Sphere(const Vector3 &offset, float radius);
 		Sphere(const AABB &aabb);
 
-		Sphere operator* (const Vector3 &other) const;
-		Sphere &operator*= (const Vector3 &other);
+		Sphere operator*(const Vector3 &other) const;
+		Sphere &operator*=(const Vector3 &other);
 
 		void SetRotation(const Quaternion &rotation);
 
@@ -48,7 +48,7 @@ namespace RN
 	{
 	}
 
-	RN_INLINE Sphere Sphere::operator* (const Vector3 &other) const
+	RN_INLINE Sphere Sphere::operator*(const Vector3 &other) const
 	{
 		float scale = std::max(std::max(other.x, other.y), other.z);
 
@@ -59,7 +59,7 @@ namespace RN
 		return result;
 	}
 
-	RN_INLINE Sphere &Sphere::operator*= (const Vector3 &other)
+	RN_INLINE Sphere &Sphere::operator*=(const Vector3 &other)
 	{
 		float scale = std::max(std::max(other.x, other.y), other.z);
 		radius *= scale;
@@ -71,6 +71,6 @@ namespace RN
 	{
 		offset = rotation.GetRotatedVector(offset);
 	}
-}
+} // namespace RN
 
 #endif /* __RAYNE_SPHERE_H__ */

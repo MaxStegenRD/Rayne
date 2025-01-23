@@ -10,7 +10,7 @@
 
 namespace RN
 {
-/*	void BulletRigidBodyMotionState::SetSceneNode(SceneNodeAttachment *attachment)
+	/*	void BulletRigidBodyMotionState::SetSceneNode(SceneNodeAttachment *attachment)
 	{
 		_attachment = attachment;
 	}

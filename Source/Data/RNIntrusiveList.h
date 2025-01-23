@@ -34,7 +34,6 @@ namespace RN
 			Member *GetPrevious() const { return _prev; }
 
 		private:
-
 			Member *_next;
 			Member *_prev;
 			T *_value;
@@ -69,7 +68,7 @@ namespace RN
 				_head = &value;
 
 			_tail = &value;
-			_count ++;
+			_count++;
 		}
 		void PushFront(Member &value)
 		{
@@ -81,14 +80,14 @@ namespace RN
 				_tail = &value;
 
 			_head = &value;
-			_count ++;
+			_count++;
 		}
-		
+
 		void InsertAfter(Member &newValue, Member *previous)
 		{
 			newValue._next = previous->_next;
 			newValue._prev = previous;
-			
+
 			if(previous->_next)
 			{
 				previous->_next->_prev = &newValue;
@@ -96,10 +95,10 @@ namespace RN
 
 			if(RN_EXPECT_FALSE(!_tail) || _tail == previous)
 				_tail = &newValue;
-			
+
 			previous->_next = &newValue;
-			
-			_count ++;
+
+			_count++;
 		}
 
 		Member *Erase(Member &value, bool returnNext = true)
@@ -124,7 +123,7 @@ namespace RN
 			value->_next = nullptr;
 			value->_prev = nullptr;
 
-			_count --;
+			_count--;
 
 			return result;
 		}
@@ -139,7 +138,7 @@ namespace RN
 		Member *_tail;
 		size_t _count;
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_INTRUSIVELIST_H_ */

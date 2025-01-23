@@ -23,14 +23,14 @@ namespace RN
 
 	private:
 		GlTFAssetLoader(const Config &config);
-		
+
 		void LoadGLTFLODStage(tinygltf::Model &gltfModel, Model::LODStage *stage, const LoadOptions &options);
 		std::pair<Mesh *, Material *> LoadGLTFMeshGroup(tinygltf::Model &gltfModel, tinygltf::Mesh &gltfMesh, const LoadOptions &options);
 		Mesh *LoadGLTFMesh(tinygltf::Model &gltfModel, tinygltf::Mesh &gltfMesh);
 
 		RNDeclareMetaAPI(GlTFAssetLoader, TFAPI)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_GLTFASSETLOADER_H_ */

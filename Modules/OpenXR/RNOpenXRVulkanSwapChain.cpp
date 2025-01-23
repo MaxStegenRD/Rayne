@@ -7,14 +7,15 @@
 //
 
 #include "RNOpenXRVulkanSwapChain.h"
-#include "RNOpenXRWindow.h"
 #include "RNOpenXRInternals.h"
+#include "RNOpenXRWindow.h"
 
 namespace RN
 {
 	RNDefineMeta(OpenXRVulkanSwapChain, VulkanSwapChain)
 
-	OpenXRVulkanSwapChain::OpenXRVulkanSwapChain(const OpenXRWindow *window, OpenXRCompositorLayer *layer, const Window::SwapChainDescriptor &descriptor, const Vector2 &size, bool supportFoveation) : OpenXRSwapChain(window, layer, SwapChainType::Vulkan), _swapchainImages(nullptr), _swapchainFoveationImages(nullptr), _swapChainFoveationImagesSize(nullptr)
+	OpenXRVulkanSwapChain::OpenXRVulkanSwapChain(const OpenXRWindow *window, OpenXRCompositorLayer *layer, const Window::SwapChainDescriptor &descriptor, const Vector2 &size, bool supportFoveation) :
+		OpenXRSwapChain(window, layer, SwapChainType::Vulkan), _swapchainImages(nullptr), _swapchainFoveationImages(nullptr), _swapChainFoveationImagesSize(nullptr)
 	{
 		_descriptor = descriptor;
 		_descriptor.depthStencilFormat = Texture::Format::Invalid;
@@ -61,7 +62,7 @@ namespace RN
 
 		if(!XR_SUCCEEDED(xrCreateSwapchain(_xrWindow->_internals->session, &swapchainCreateInfo, &_internals->swapchain)))
 		{
-		   RN_ASSERT(false, "failed creating swapchain");
+			RN_ASSERT(false, "failed creating swapchain");
 		}
 
 		uint32 numberOfSwapChainImages = 0;
@@ -90,7 +91,7 @@ namespace RN
 				swapchainImages[i].next = &swapchainFoveationImages[i];
 			}
 		}
-		xrEnumerateSwapchainImages(_internals->swapchain, numberOfSwapChainImages, &numberOfSwapChainImages, (XrSwapchainImageBaseHeader*)swapchainImages);
+		xrEnumerateSwapchainImages(_internals->swapchain, numberOfSwapChainImages, &numberOfSwapChainImages, (XrSwapchainImageBaseHeader *)swapchainImages);
 		_descriptor.bufferCount = numberOfSwapChainImages;
 
 		for(int i = 0; i < numberOfSwapChainImages; i++)
@@ -120,7 +121,7 @@ namespace RN
 		}
 
 		VulkanRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<VulkanRenderer>();
-		_framebuffer = new VulkanFramebuffer(_size, _descriptor.layerCount, this, renderer, _descriptor.colorFormat, _descriptor.depthStencilFormat, _swapchainFoveationImages? Texture::Format::RG_8 : Texture::Format::Invalid);
+		_framebuffer = new VulkanFramebuffer(_size, _descriptor.layerCount, this, renderer, _descriptor.colorFormat, _descriptor.depthStencilFormat, _swapchainFoveationImages ? Texture::Format::RG_8 : Texture::Format::Invalid);
 	}
 
 	OpenXRVulkanSwapChain::~OpenXRVulkanSwapChain()
@@ -145,13 +146,13 @@ namespace RN
 
 		_layer->UpdateForCurrentFrame();
 
-        XrSwapchainImageAcquireInfo swapchainImageAcquireInfo;
-        swapchainImageAcquireInfo.type = XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO;
-        swapchainImageAcquireInfo.next = nullptr;
+		XrSwapchainImageAcquireInfo swapchainImageAcquireInfo;
+		swapchainImageAcquireInfo.type = XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO;
+		swapchainImageAcquireInfo.next = nullptr;
 
-        uint32_t imageIndex = 0;
-        xrAcquireSwapchainImage(_internals->swapchain, &swapchainImageAcquireInfo, &imageIndex);
-        _semaphoreIndex = _frameIndex = imageIndex;
+		uint32_t imageIndex = 0;
+		xrAcquireSwapchainImage(_internals->swapchain, &swapchainImageAcquireInfo, &imageIndex);
+		_semaphoreIndex = _frameIndex = imageIndex;
 
 		XrSwapchainImageWaitInfo swapchainImageWaitInfo;
 		swapchainImageWaitInfo.type = XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO;
@@ -160,24 +161,22 @@ namespace RN
 		xrWaitSwapchainImage(_internals->swapchain, &swapchainImageWaitInfo);
 	}
 
-    void OpenXRVulkanSwapChain::Prepare(VkCommandBuffer commandBuffer)
+	void OpenXRVulkanSwapChain::Prepare(VkCommandBuffer commandBuffer)
 	{
-
 	}
 
-    void OpenXRVulkanSwapChain::Finalize(VkCommandBuffer commandBuffer)
+	void OpenXRVulkanSwapChain::Finalize(VkCommandBuffer commandBuffer)
 	{
-
 	}
 
-    void OpenXRVulkanSwapChain::PresentBackBuffer(VkQueue queue)
+	void OpenXRVulkanSwapChain::PresentBackBuffer(VkQueue queue)
 	{
 		if(!_isActive) return;
 
-        XrSwapchainImageReleaseInfo swapchainImageReleaseInfo;
-        swapchainImageReleaseInfo.type = XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO;
-        swapchainImageReleaseInfo.next = nullptr;
-        xrReleaseSwapchainImage(_internals->swapchain, &swapchainImageReleaseInfo);
+		XrSwapchainImageReleaseInfo swapchainImageReleaseInfo;
+		swapchainImageReleaseInfo.type = XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO;
+		swapchainImageReleaseInfo.next = nullptr;
+		xrReleaseSwapchainImage(_internals->swapchain, &swapchainImageReleaseInfo);
 
 		_hasContent = true;
 
@@ -187,12 +186,12 @@ namespace RN
 		}
 	}
 
-    VkImage OpenXRVulkanSwapChain::GetVulkanColorBuffer(int i) const
+	VkImage OpenXRVulkanSwapChain::GetVulkanColorBuffer(int i) const
 	{
 		return _swapchainImages[i];
 	}
 
-    VkImage OpenXRVulkanSwapChain::GetVulkanDepthBuffer(int i) const
+	VkImage OpenXRVulkanSwapChain::GetVulkanDepthBuffer(int i) const
 	{
 		return nullptr;
 	}
@@ -219,7 +218,7 @@ namespace RN
 		foveationLevelProfileCreateInfo.type = XR_TYPE_FOVEATION_LEVEL_PROFILE_CREATE_INFO_FB;
 		foveationLevelProfileCreateInfo.next = nullptr;
 		foveationLevelProfileCreateInfo.level = (XrFoveationLevelFB)level;
-		foveationLevelProfileCreateInfo.dynamic = dynamic? XR_FOVEATION_DYNAMIC_LEVEL_ENABLED_FB : XR_FOVEATION_DYNAMIC_DISABLED_FB;
+		foveationLevelProfileCreateInfo.dynamic = dynamic ? XR_FOVEATION_DYNAMIC_LEVEL_ENABLED_FB : XR_FOVEATION_DYNAMIC_DISABLED_FB;
 		foveationLevelProfileCreateInfo.verticalOffset = 0.0f;
 
 		XrFoveationProfileCreateInfoFB foveationProfileCreateInfo;
@@ -232,14 +231,14 @@ namespace RN
 		swapchainStateFoveation.next = nullptr;
 		swapchainStateFoveation.flags = 0;
 		swapchainStateFoveation.profile = _internals->currentFoveationProfile;
-		_xrWindow->_internals->UpdateSwapchainFB(_internals->swapchain, (XrSwapchainStateBaseHeaderFB *) & swapchainStateFoveation);
+		_xrWindow->_internals->UpdateSwapchainFB(_internals->swapchain, (XrSwapchainStateBaseHeaderFB *)&swapchainStateFoveation);
 	}
 
-	void OpenXRVulkanSwapChain::ResizeSwapChain(const Vector2& size)
+	void OpenXRVulkanSwapChain::ResizeSwapChain(const Vector2 &size)
 	{
 		_size = size;
 		//_framebuffer->WillUpdateSwapChain(); //As all it does is free the swap chain d3d buffer resources, it would free the targetTexture resource and should't be called in this case...
-/*		SafeRelease(_targetTexture);
+		/*		SafeRelease(_targetTexture);
 		Texture::Descriptor textureDescriptor = Texture::Descriptor::With2DTextureAndFormat(_descriptor.colorFormat, _size.x, _size.y, false);
 		textureDescriptor.usageHint = Texture::UsageHint::RenderTarget;
 		textureDescriptor.depth = _descriptor.layerCount;
@@ -256,4 +255,4 @@ namespace RN
 	{
 		return GetFramebuffer();
 	}
-}
+} // namespace RN

@@ -24,7 +24,7 @@ namespace RN
 
 		RNAPI const String *GetDescription() const override;
 		RNAPI const String *GetName() const;
-		
+
 		RNAPI void SetKeepAlive(bool keepAlive);
 
 	protected:
@@ -40,7 +40,7 @@ namespace RN
 
 		__RNDeclareMetaInternal(Asset)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_ASSET_H_ */

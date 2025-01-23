@@ -21,48 +21,48 @@ namespace RN
 	{
 	public:
 		NewtonShape(NewtonCollision *shape);
-			
+
 		NDAPI NewtonCollision *GetNewtonShape() const { return _shape; }
-			
+
 	protected:
 		NewtonShape();
 		~NewtonShape() override;
-			
+
 		NewtonCollision *_shape;
-			
+
 		RNDeclareMetaAPI(NewtonShape, NDAPI)
 	};
-		
+
 	class NewtonSphereShape : public NewtonShape
 	{
 	public:
 		NDAPI NewtonSphereShape(float radius);
-			
+
 		NDAPI static NewtonSphereShape *WithRadius(float radius);
-			
+
 		RNDeclareMetaAPI(NewtonSphereShape, NDAPI)
 	};
-		
+
 	class NewtonBoxShape : public NewtonShape
 	{
 	public:
 		NDAPI NewtonBoxShape(const Vector3 &halfExtents);
-			
-		NDAPI static NewtonBoxShape *WithHalfExtents(const Vector3& halfExtents);
-			
+
+		NDAPI static NewtonBoxShape *WithHalfExtents(const Vector3 &halfExtents);
+
 		RNDeclareMetaAPI(NewtonBoxShape, NDAPI)
 	};
-		
+
 	class NewtonCapsuleShape : public NewtonShape
 	{
 	public:
 		NDAPI NewtonCapsuleShape(float radius, float height);
-			
+
 		NDAPI static NewtonCapsuleShape *WithRadius(float radius, float height);
-			
+
 		RNDeclareMetaAPI(NewtonCapsuleShape, NDAPI)
 	};
-		
+
 	class NewtonTriangleMeshShape : public NewtonShape
 	{
 	public:
@@ -90,10 +90,9 @@ namespace RN
 		NDAPI static NewtonConvexHullShape *WithMesh(Mesh *mesh);
 
 	private:
-
 		RNDeclareMetaAPI(NewtonConvexHullShape, NDAPI)
 	};
-		
+
 	class NewtonCompoundShape : public NewtonShape
 	{
 	public:
@@ -105,16 +104,16 @@ namespace RN
 		void AddChild(NewtonShape *shape, const RN::Vector3 &position, const RN::Quaternion &rotation);
 
 		NDAPI static NewtonCompoundShape *WithModel(Model *model);
-			
+
 	private:
 		std::vector<NewtonShape *> _shapes;
 		std::vector<RN::Vector3> _positions;
 		std::vector<RN::Quaternion> _rotations;
 
 		bool _isEditMode;
-			
+
 		RNDeclareMetaAPI(NewtonCompoundShape, NDAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_NEWTONSHAPE_H_) */

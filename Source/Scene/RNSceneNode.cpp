@@ -17,7 +17,7 @@ namespace RN
 	std::atomic<uint64> __SceneNodeIDs;
 
 	SceneNode::SceneNode() :
-        _sceneUpdateEntry(this),
+		_sceneUpdateEntry(this),
 		_sceneRenderEntry(this),
 		_scheduledForRemovalFromScene(false),
 		_uid(__SceneNodeIDs.fetch_add(1)),
@@ -30,7 +30,7 @@ namespace RN
 		_attachments(nullptr)
 	{
 		Initialize();
-		AddObservables({ &_tag, &_position, &_rotation, &_scale });
+		AddObservables({&_tag, &_position, &_rotation, &_scale});
 		SetBoundingBox(AABB(Vector3(-1.0f), Vector3(1.0f)));
 	}
 
@@ -58,15 +58,15 @@ namespace RN
 		SetRotation(other->GetRotation());
 		SetScale(other->GetScale());
 
-		_renderGroup    = other->_renderGroup;
+		_renderGroup = other->_renderGroup;
 		_collisionGroup = other->_collisionGroup;
 
 		_updatePriority = other->_updatePriority;
 		_renderPriority = other->_renderPriority;
-		_flags    = other->_flags.load();
-		_tag      = other->_tag;
+		_flags = other->_flags.load();
+		_tag = other->_tag;
 
-		other->GetChildren()->Enumerate<RN::SceneNode>([&](RN::SceneNode *node, size_t index, bool &stop){
+		other->GetChildren()->Enumerate<RN::SceneNode>([&](RN::SceneNode *node, size_t index, bool &stop) {
 			SceneNode *nodeCopy = node->Copy();
 			AddChild(nodeCopy);
 			nodeCopy->Release();
@@ -76,7 +76,7 @@ namespace RN
 	SceneNode::~SceneNode()
 	{
 		//Set parent of child nodes to null when it gets released
-		_children->Enumerate<SceneNode>([](SceneNode *child, size_t index, bool &stop){
+		_children->Enumerate<SceneNode>([](SceneNode *child, size_t index, bool &stop) {
 			child->WillUpdate(ChangeSet::Parent);
 			child->_parent = nullptr;
 			child->DidUpdate(ChangeSet::Parent);
@@ -89,7 +89,6 @@ namespace RN
 	}
 
 
-
 	SceneNode::SceneNode(Deserializer *deserializer) :
 		SceneNode()
 	{
@@ -99,18 +98,18 @@ namespace RN
 
 		uint32 groups = static_cast<uint32>(deserializer->DecodeInt32());
 
-		_renderGroup    = (groups & 0xff);
+		_renderGroup = (groups & 0xff);
 		_collisionGroup = (groups >> 8);
 
 		_updatePriority = static_cast<UpdatePriority>(deserializer->DecodeInt32());
 		_renderPriority = deserializer->DecodeInt32();
-		_flags    = static_cast<Flags>(deserializer->DecodeInt32());
+		_flags = static_cast<Flags>(deserializer->DecodeInt32());
 
 		_tag = static_cast<Tag>(deserializer->DecodeInt64());
 		_lid = deserializer->DecodeInt64();
 
 		size_t count = static_cast<size_t>(deserializer->DecodeInt64());
-		for(size_t i = 0; i < count; i ++)
+		for(size_t i = 0; i < count; i++)
 		{
 			SceneNode *child = static_cast<SceneNode *>(deserializer->DecodeObject());
 
@@ -138,14 +137,12 @@ namespace RN
 		serializer->EncodeInt64(static_cast<uint64>(_children->GetCount()));
 
 		_children->Enumerate<SceneNode>([&](SceneNode *node, size_t index, bool &stop) {
-
 			bool noSave = (node->_flags & Flags::NoSave);
 
 			if(noSave)
 				serializer->EncodeConditionalObject(node);
 			else
 				serializer->EncodeObject(node);
-
 		});
 	}
 
@@ -200,7 +197,7 @@ namespace RN
 	void SceneNode::SetUpdatePriority(UpdatePriority priority)
 	{
 		RN_ASSERT(_sceneInfo == nullptr, "SetUpdatePriority() must be called before adding the node to the scene.");
-		
+
 		WillUpdate(ChangeSet::UpdatePriority);
 		_updatePriority = priority;
 		DidUpdate(ChangeSet::UpdatePriority);
@@ -210,14 +207,14 @@ namespace RN
 	{
 		WillUpdate(ChangeSet::RenderPriority);
 		_renderPriority = priority;
-		
+
 		if(_sceneInfo && !_scheduledForRemovalFromScene)
 		{
 			//Readd to scene to update the render priority
 			_sceneInfo->GetScene()->RemoveNode(this);
 			_sceneInfo->GetScene()->AddNode(this);
 		}
-		
+
 		DidUpdate(ChangeSet::RenderPriority);
 	}
 
@@ -269,8 +266,8 @@ namespace RN
 
 	void SceneNode::UpdateSceneInfo(SceneInfo *sceneInfo)
 	{
-        WillUpdate(ChangeSet::World);
-        
+		WillUpdate(ChangeSet::World);
+
 		if(_sceneInfo)
 		{
 			_children->Enumerate<SceneNode>([&](SceneNode *node, size_t index, bool &stop) {
@@ -289,8 +286,8 @@ namespace RN
 				sceneInfo->GetScene()->AddNode(node);
 			});
 		}
-        
-        DidUpdate(ChangeSet::World);
+
+		DidUpdate(ChangeSet::World);
 	}
 
 	void SceneNode::__CompleteAttachmentWithScene(SceneInfo *sceneInfo)
@@ -347,7 +344,7 @@ namespace RN
 			child->__CompleteAttachmentWithScene(nullptr);
 
 			DidRemoveChild(child);
-			
+
 			child->Release();
 		}
 	}
@@ -406,10 +403,10 @@ namespace RN
 	{
 		if((_renderGroup & camera->GetRenderGroup()) == 0)
 			return false;
-		
+
 		if(_flags.load(std::memory_order_acquire) & Flags::Hidden)
 			return false;
-		
+
 		if(_flags.load(std::memory_order_acquire) & Flags::NoCulling)
 			return true;
 
@@ -460,7 +457,7 @@ namespace RN
 			_updatedTransform = true;
 			_updatedInverseTransform = true;
 			_updatedBounds = true;
-			
+
 			//Updated flag Needs to be passed on to all children and their children
 			_children->Enumerate<SceneNode>([](SceneNode *child, size_t index, bool &stop) {
 				child->DidUpdate(ChangeSet::Position);
@@ -475,12 +472,12 @@ namespace RN
 				SetWorldRotation(_rotation);
 				SetWorldScale(_scale);
 			}
-			
+
 			_updated = true;
 			_updatedTransform = true;
 			_updatedInverseTransform = true;
 			_updatedBounds = true;
-			
+
 			//Updated flag Needs to be passed on to all children and their children
 			_children->Enumerate<SceneNode>([](SceneNode *child, size_t index, bool &stop) {
 				child->DidUpdate(ChangeSet::Parent);
@@ -549,7 +546,7 @@ namespace RN
 	{
 		if(_updatedInverseTransform)
 		{
-			_inverseLocalTransform = Matrix::WithScaling(_scale != 0.0f? (Vector3(1.0f, 1.0f, 1.0f) / _scale) : Vector3(0.0f, 0.0f, 0.0f));
+			_inverseLocalTransform = Matrix::WithScaling(_scale != 0.0f ? (Vector3(1.0f, 1.0f, 1.0f) / _scale) : Vector3(0.0f, 0.0f, 0.0f));
 			_inverseLocalTransform.Rotate(_rotation->GetConjugated());
 			_inverseLocalTransform.Translate(_position * -1.0f);
 
@@ -586,4 +583,4 @@ namespace RN
 			_updatedBounds = false;
 		}
 	}
-}
+} // namespace RN

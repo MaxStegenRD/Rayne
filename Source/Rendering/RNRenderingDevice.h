@@ -53,7 +53,6 @@ namespace RN
 		RNAPI RenderingDevice(const String *name, const Descriptor &descriptor);
 
 	private:
-
 		String *_name;
 
 		uint32 _apiVersion;
@@ -64,7 +63,7 @@ namespace RN
 
 		__RNDeclareMetaInternal(RenderingDevice)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_RENDERINGDEVICE_H_ */

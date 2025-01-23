@@ -10,8 +10,8 @@
 #include "Newton.h"
 #include "RNNewtonWorld.h"
 
-#include "dCustomKinematicController.h"
 #include "KCJoint.h"
+#include "dCustomKinematicController.h"
 
 namespace RN
 {
@@ -19,15 +19,15 @@ namespace RN
 	RNDefineMeta(NewtonFixedConstraint, NewtonConstraint)
 	RNDefineMeta(NewtonKinematicConstraint, NewtonConstraint)
 	RNDefineMeta(NewtonKinematicConstraint2, NewtonConstraint)
-		
+
 	NewtonConstraint::NewtonConstraint() :
 		_constraint(nullptr)
 	{}
-		
+
 	NewtonConstraint::NewtonConstraint(NewtonJoint *constraint) :
 		_constraint(constraint)
 	{}
-		
+
 	NewtonConstraint::~NewtonConstraint()
 	{
 		if(_constraint)
@@ -36,15 +36,15 @@ namespace RN
 			NewtonDestroyJoint(netwonInstance, _constraint);
 		}
 	}
-	
-	
+
+
 	NewtonFixedConstraint::NewtonFixedConstraint(NewtonRigidBody *body1, const RN::Vector3 &offset1, const RN::Quaternion &rotation1, NewtonRigidBody *body2, const RN::Vector3 &offset2, const RN::Quaternion &rotation2)
 	{
 		//TODO: Implement
-//		::NewtonWorld *netwonInstance = NewtonWorld::GetSharedInstance()->GetNewtonInstance();
-//		_constraint = NewtonConstraintCreateUserJoint(netwonInstance, 0, SubmitCallback, body1->GetNewtonBody(), body2->GetNewtonBody());
+		//		::NewtonWorld *netwonInstance = NewtonWorld::GetSharedInstance()->GetNewtonInstance();
+		//		_constraint = NewtonConstraintCreateUserJoint(netwonInstance, 0, SubmitCallback, body1->GetNewtonBody(), body2->GetNewtonBody());
 	}
-		
+
 	NewtonFixedConstraint *NewtonFixedConstraint::WithBodiesAndOffsets(NewtonRigidBody *body1, const RN::Vector3 &offset1, const RN::Quaternion &rotation1, NewtonRigidBody *body2, const RN::Vector3 &offset2, const RN::Quaternion &rotation2)
 	{
 		NewtonFixedConstraint *constraint = new NewtonFixedConstraint(body1, offset1, rotation1, body2, offset2, rotation2);
@@ -52,7 +52,7 @@ namespace RN
 	}
 
 
-	NewtonKinematicConstraint::NewtonKinematicConstraint(class NewtonRigidBody* body, const RN::Vector3& offset)
+	NewtonKinematicConstraint::NewtonKinematicConstraint(class NewtonRigidBody *body, const RN::Vector3 &offset)
 	{
 		_joint = new dCustomKinematicController(body->GetNewtonBody(), dVector(offset.x, offset.y, offset.z, 1.0));
 
@@ -73,14 +73,14 @@ namespace RN
 		_joint->SetTargetRotation(dQuaternion(rotation.w, rotation.x, rotation.y, rotation.z));
 	}
 
-	NewtonKinematicConstraint* NewtonKinematicConstraint::WithBodyAndPose(class NewtonRigidBody* body, const RN::Vector3& offset)
+	NewtonKinematicConstraint *NewtonKinematicConstraint::WithBodyAndPose(class NewtonRigidBody *body, const RN::Vector3 &offset)
 	{
 		NewtonKinematicConstraint *constraint = new NewtonKinematicConstraint(body, offset);
 		return constraint->Autorelease();
 	}
 
 
-	NewtonKinematicConstraint2::NewtonKinematicConstraint2(class NewtonRigidBody* body, const RN::Vector3& offset)
+	NewtonKinematicConstraint2::NewtonKinematicConstraint2(class NewtonRigidBody *body, const RN::Vector3 &offset)
 	{
 		::NewtonWorld *netwonInstance = NewtonWorld::GetSharedInstance()->GetNewtonInstance();
 
@@ -116,9 +116,9 @@ namespace RN
 		_joint->m_maxAngularFriction = angular;
 	}
 
-	NewtonKinematicConstraint2* NewtonKinematicConstraint2::WithBodyAndPose(class NewtonRigidBody* body, const RN::Vector3& offset)
+	NewtonKinematicConstraint2 *NewtonKinematicConstraint2::WithBodyAndPose(class NewtonRigidBody *body, const RN::Vector3 &offset)
 	{
 		NewtonKinematicConstraint2 *constraint = new NewtonKinematicConstraint2(body, offset);
 		return constraint->Autorelease();
 	}
-}
+} // namespace RN

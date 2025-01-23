@@ -31,7 +31,7 @@ namespace RN
 	private:
 		struct Allocation
 		{
-			bool operator < (const Allocation &other) const { return size < other.size; }
+			bool operator<(const Allocation &other) const { return size < other.size; }
 
 			uint8 *memory;
 			size_t size;
@@ -45,6 +45,6 @@ namespace RN
 		size_t _currentSize;
 		size_t _maxSize;
 	};
-}
+} // namespace RN
 
 #endif /* __RN_BUMP_ALLOCATOR_H__ */

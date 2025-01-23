@@ -6,12 +6,12 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
+#include "RNSGMAssetLoader.h"
 #include "../Rendering/RNRenderer.h"
-#include "../Rendering/RNSkeleton.h"
 #include "../Rendering/RNShadowVolume.h"
+#include "../Rendering/RNSkeleton.h"
 #include "../System/RNFileManager.h"
 #include "../Threads/RNWorkQueue.h"
-#include "RNSGMAssetLoader.h"
 #include "RNAssetManager.h"
 
 namespace RN
@@ -22,7 +22,7 @@ namespace RN
 
 	void SGMAssetLoader::Register()
 	{
-		uint8 magic[] = { 0x90, 0x22, 0x5, 0x15 };
+		uint8 magic[] = {0x90, 0x22, 0x5, 0x15};
 
 		Config config(Model::GetMetaClass());
 		config.SetExtensions(Set::WithObjects({RNCSTR("sgm")}));
@@ -49,7 +49,7 @@ namespace RN
 			Number *number = options.settings->GetObjectForKey<Number>(RNCSTR("autoLoadLOD"));
 			autoLoadLOD = number->GetBoolValue();
 		}
-		
+
 		if(options.settings->GetObjectForKey(RNCSTR("wantsShadowVolume")))
 		{
 			Number *number = options.settings->GetObjectForKey<Number>(RNCSTR("wantsShadowVolume"));
@@ -66,40 +66,40 @@ namespace RN
 		String *basePath = path->StringByDeletingLastPathComponent();
 
 		LoadLODStage(file, model->AddLODStage(lodFactors[0]), options);
-		
+
 		uint8 hasAnimations = file->ReadInt8();
 		if(hasAnimations == 1)
 		{
 			size_t length = file->ReadUint16();
 			char *buffer = new char[length];
-			
+
 			file->Read(buffer, length);
-			
+
 			String *animationFile = RNSTR(buffer);
 			String *fullPath = path->StringByDeletingLastPathComponent();
 			fullPath = fullPath->StringByAppendingPathComponent(animationFile);
 			String *normalized = FileManager::GetSharedInstance()->GetNormalizedPathFromFullPath(fullPath);
-			
+
 			delete[] buffer;
-			
+
 			Skeleton *skeleton = nullptr;
 			if(options.queue)
 			{
 				std::shared_future<StrongRef<Asset>> future = AssetManager::GetSharedInstance()->GetFutureAssetWithName<Skeleton>(normalized, nullptr);
 				WorkQueue *queue = WorkQueue::GetCurrentWorkQueue();
-				
+
 				if(queue)
 					queue->YieldWithFuture(future);
 				else
 					future.wait();
-				
+
 				skeleton = future.get()->Downcast<Skeleton>();
 			}
 			else
 			{
 				skeleton = AssetManager::GetSharedInstance()->GetAssetWithName<Skeleton>(normalized, nullptr);
 			}
-			
+
 			model->SetSkeleton(skeleton);
 		}
 
@@ -108,7 +108,7 @@ namespace RN
 			String *extension = path->GetPathExtension();
 			String *name = path->GetLastPathComponent()->StringByDeletingLastPathComponent();
 
-			stageIndex ++;
+			stageIndex++;
 
 			while(stageIndex < lodFactors.size())
 			{
@@ -121,15 +121,15 @@ namespace RN
 					Model::LODStage *stage = model->AddLODStage(lodFactors[stageIndex]);
 					LoadLODStage(lodFile, stage, options);
 				}
-				catch(Exception )
+				catch(Exception)
 				{
 					break;
 				}
 
-				stageIndex ++;
+				stageIndex++;
 			}
 		}
-		
+
 		if(wantsShadowVolume)
 		{
 			ShadowVolume *shadowVolume = new ShadowVolume();
@@ -146,33 +146,33 @@ namespace RN
 		const String *path = file->GetPath()->StringByDeletingLastPathComponent();
 
 		file->Seek(4); // Skip over magic bytes
-        RN::uint32 version = file->ReadUint8();
+		RN::uint32 version = file->ReadUint8();
 
 		uint8 materialCount = file->ReadUint8();
 
-		std::vector<std::pair<bool, Material*>> materials;
+		std::vector<std::pair<bool, Material *>> materials;
 
 		// Get Materials
 		Array *materialPlaceholder = new Array();
 
-		for(uint8 i = 0; i < materialCount; i ++)
+		for(uint8 i = 0; i < materialCount; i++)
 		{
 			Array *textures = new Array();
 
 			file->ReadUint8();
 
-			uint8 uvCount = (version > 2)? file->ReadUint8() : 1;
+			uint8 uvCount = (version > 2) ? file->ReadUint8() : 1;
 
-			for(uint8 u = 0; u < uvCount; u ++)
+			for(uint8 u = 0; u < uvCount; u++)
 			{
 				uint8 textureCount = file->ReadUint8();
 
-				for(uint8 n = 0; n < textureCount; n ++)
+				for(uint8 n = 0; n < textureCount; n++)
 				{
-                    if(version > 2)
-                    {
-					/*RN_UNUSED uint8 usageHint =*/ file->ReadUint8();
-                    }
+					if(version > 2)
+					{
+						/*RN_UNUSED uint8 usageHint =*/file->ReadUint8();
+					}
 
 					size_t length = file->ReadUint16();
 					char *buffer = new char[length];
@@ -182,13 +182,13 @@ namespace RN
 					if(!RN::Renderer::IsHeadless())
 					{
 						String *filename = RNSTR(buffer);
-						
+
 						if(filename->HasSuffix(RNCSTR(".*")))
 						{
-							filename = filename->GetSubstring(Range(0, filename->GetLength()-1));
+							filename = filename->GetSubstring(Range(0, filename->GetLength() - 1));
 							filename->Append(AssetManager::GetSharedInstance()->GetPreferredTextureFileExtension());
 						}
-						
+
 						String *fullPath = path->StringByAppendingPathComponent(filename);
 
 						String *normalized = FileManager::GetSharedInstance()->GetNormalizedPathFromFullPath(fullPath);
@@ -206,22 +206,22 @@ namespace RN
 			}
 
 			Color diffuseColor;
-            if(version > 2)
-            {
-                uint8 colorCount = file->ReadUint8();
-                for(uint8 u = 0; u < colorCount; u ++)
-                {
-                    uint8 usagehint = file->ReadUint8();
-                    Color color;
-                    color.r = file->ReadFloat();
-                    color.g = file->ReadFloat();
-                    color.b = file->ReadFloat();
-                    color.a = file->ReadFloat();
+			if(version > 2)
+			{
+				uint8 colorCount = file->ReadUint8();
+				for(uint8 u = 0; u < colorCount; u++)
+				{
+					uint8 usagehint = file->ReadUint8();
+					Color color;
+					color.r = file->ReadFloat();
+					color.g = file->ReadFloat();
+					color.b = file->ReadFloat();
+					color.a = file->ReadFloat();
 
-                    if(usagehint == 0 && u == 0)
-                        diffuseColor = color;
-                }
-            }
+					if(usagehint == 0 && u == 0)
+						diffuseColor = color;
+				}
+			}
 
 			Dictionary *info = new Dictionary();
 			info->SetObjectForKey(textures, RNCSTR("textures"));
@@ -235,16 +235,14 @@ namespace RN
 
 		// Collect the loaded textures
 		materialPlaceholder->Enumerate<Dictionary>([&](Dictionary *info, size_t index, bool &stop) {
-
 			Array *textures = info->GetObjectForKey<Array>(RNCSTR("textures"));
 
 			Material *material = Material::WithShaders(nullptr, nullptr);
 			bool wantsDiscard = false;
 
 			textures->Enumerate<String>([&](String *file, size_t index, bool &stop) {
-
 				Texture *texture;
-				
+
 				if(options.queue)
 				{
 					std::shared_future<StrongRef<Asset>> future = AssetManager::GetSharedInstance()->GetFutureAssetWithName<Texture>(file, nullptr);
@@ -268,7 +266,6 @@ namespace RN
 				//Activate discarding of transparent pixels if first texture has alpha
 				//if(index == 0 && texture->HasColorChannel(Texture::ColorChannel::Alpha))
 				//	wantsDiscard = true;
-
 			});
 
 			Value *diffuseColor = info->GetObjectForKey<Value>(RNCSTR("diffusecolor"));
@@ -278,7 +275,6 @@ namespace RN
 			}
 
 			materials.emplace_back(std::make_pair(wantsDiscard, material->Retain()));
-
 		});
 
 		materialPlaceholder->Release();
@@ -287,20 +283,20 @@ namespace RN
 		// Get Meshes
 		size_t meshCount = file->ReadUint8();
 
-		for(size_t i = 0; i < meshCount; i ++)
+		for(size_t i = 0; i < meshCount; i++)
 		{
 			file->ReadUint8();
 
 			auto &materialPair = materials[file->ReadUint8()];
 
-			uint32 verticesCount = (version == 1)?file->ReadUint16() : file->ReadUint32(); //Only difference to version 1 with magic number... makes index size support further down kinda useless :D
-			uint8 uvCount   = file->ReadUint8();
+			uint32 verticesCount = (version == 1) ? file->ReadUint16() : file->ReadUint32(); //Only difference to version 1 with magic number... makes index size support further down kinda useless :D
+			uint8 uvCount = file->ReadUint8();
 			uint8 dataCount = file->ReadUint8();
 			bool hasTangent = file->ReadUint8();
-			bool hasBones   = file->ReadUint8();
+			bool hasBones = file->ReadUint8();
 
 			std::vector<Mesh::VertexAttribute> attributes;
-			
+
 			//TODO: Also add an options for bones data
 			//TODO: Add an option for 16bit int uv coords? but they require shader changes I think....
 			//TODO: Add an option for 8bit colors?
@@ -324,12 +320,12 @@ namespace RN
 				use16bitColors = number->GetBoolValue();
 			}
 
-			attributes.emplace_back(Mesh::VertexAttribute::Feature::Vertices, use16bitPositions? PrimitiveType::HalfVector3 : PrimitiveType::Vector3);
-			attributes.emplace_back(Mesh::VertexAttribute::Feature::Normals, use16bitNormalsAndTangents? PrimitiveType::HalfVector3 : PrimitiveType::Vector3);
+			attributes.emplace_back(Mesh::VertexAttribute::Feature::Vertices, use16bitPositions ? PrimitiveType::HalfVector3 : PrimitiveType::Vector3);
+			attributes.emplace_back(Mesh::VertexAttribute::Feature::Normals, use16bitNormalsAndTangents ? PrimitiveType::HalfVector3 : PrimitiveType::Vector3);
 
 			size_t originalVertexSize = 2 * sizeof(Vector3);
-			size_t size = use16bitPositions? sizeof(uint16) * 3 : sizeof(Vector3);
-			size += use16bitNormalsAndTangents? sizeof(uint16) * 3 : sizeof(Vector3);
+			size_t size = use16bitPositions ? sizeof(uint16) * 3 : sizeof(Vector3);
+			size += use16bitNormalsAndTangents ? sizeof(uint16) * 3 : sizeof(Vector3);
 
 			size_t uv0Offset = 0;
 			size_t uv1Offset = 0;
@@ -345,7 +341,7 @@ namespace RN
 				size += sizeof(Vector2);
 				originalVertexSize += sizeof(Vector2);
 			}
-			
+
 			if(uvCount > 1)
 			{
 				attributes.emplace_back(Mesh::VertexAttribute::Feature::UVCoords1, PrimitiveType::Vector2);
@@ -356,17 +352,17 @@ namespace RN
 
 			if(dataCount == 4)
 			{
-				attributes.emplace_back(Mesh::VertexAttribute::Feature::Color0, use16bitColors? PrimitiveType::HalfVector4 : PrimitiveType::Color);
+				attributes.emplace_back(Mesh::VertexAttribute::Feature::Color0, use16bitColors ? PrimitiveType::HalfVector4 : PrimitiveType::Color);
 				colorOffset = originalVertexSize;
-				size += use16bitColors? sizeof(uint16) * 4 : sizeof(Color);
+				size += use16bitColors ? sizeof(uint16) * 4 : sizeof(Color);
 				originalVertexSize += sizeof(Color);
 			}
-			
+
 			if(hasTangent)
 			{
-				attributes.emplace_back(Mesh::VertexAttribute::Feature::Tangents, use16bitNormalsAndTangents? PrimitiveType::HalfVector4 : PrimitiveType::Vector4);
+				attributes.emplace_back(Mesh::VertexAttribute::Feature::Tangents, use16bitNormalsAndTangents ? PrimitiveType::HalfVector4 : PrimitiveType::Vector4);
 				tangentOffset = originalVertexSize;
-				size += use16bitNormalsAndTangents? sizeof(uint16) * 4 : sizeof(Vector4);
+				size += use16bitNormalsAndTangents ? sizeof(uint16) * 4 : sizeof(Vector4);
 				originalVertexSize += sizeof(Vector4);
 			}
 
@@ -376,7 +372,7 @@ namespace RN
 				boneWeightOffset = originalVertexSize;
 				size += sizeof(Vector4);
 				originalVertexSize += sizeof(Vector4);
-				
+
 				attributes.emplace_back(Mesh::VertexAttribute::Feature::BoneIndices, PrimitiveType::Vector4);
 				boneIndicesOffset = originalVertexSize;
 				size += sizeof(Vector4);
@@ -391,7 +387,7 @@ namespace RN
 
 			uint32 indicesCount = file->ReadUint32();
 			uint8 indicesSize = file->ReadUint8();
-			attributes.emplace_back(Mesh::VertexAttribute::Feature::Indices, indicesSize < 4? PrimitiveType::Uint16 : PrimitiveType::Uint32);
+			attributes.emplace_back(Mesh::VertexAttribute::Feature::Indices, indicesSize < 4 ? PrimitiveType::Uint16 : PrimitiveType::Uint32);
 
 
 			// Create the mesh
@@ -401,41 +397,45 @@ namespace RN
 			// Tear the mesh apart
 			uint8 *buildBuffer = new uint8[verticesCount * sizeof(Vector4)];
 
-#define CopyVertexData(elementSize, offset, feature) \
-			do { \
-				uint8 *tempBuffer = buffer; \
-				uint8 *tempBuildBuffer = buildBuffer; \
-	            for(size_t i = 0; i < verticesCount; i ++) \
-    	        { \
-					std::copy(tempBuffer + offset, tempBuffer + offset + elementSize, tempBuildBuffer); \
-	                tempBuildBuffer += elementSize; \
-					tempBuffer += originalVertexSize; \
-            	} \
-				mesh->SetElementData(feature, buildBuffer); \
-            } while(0)
-			
-#define CopyVertexDataCompressed(floatCount, originalOffset, feature) \
-			do { \
-				float *tempBuffer = reinterpret_cast<float*>(buffer + originalOffset); \
-				uint16 *tempBuildBuffer = reinterpret_cast<uint16*>(buildBuffer); \
-				for(size_t i = 0; i < verticesCount; i ++) \
-				{ \
-					for(uint8 f = 0; f < floatCount; f++) \
-					{ \
-						uint16 compressed = Math::ConvertFloatToHalf(*tempBuffer); \
-						std::copy(&compressed, &compressed + 1, tempBuildBuffer); \
-						tempBuffer += 1; \
-						tempBuildBuffer += 1; \
-					} \
-					tempBuffer += std::max((originalVertexSize / 4 - floatCount), static_cast<size_t>(0)); \
-				} \
-				mesh->SetElementData(feature, buildBuffer); \
-			} while(0)
+#define CopyVertexData(elementSize, offset, feature)                                            \
+	do {                                                                                        \
+		uint8 *tempBuffer = buffer;                                                             \
+		uint8 *tempBuildBuffer = buildBuffer;                                                   \
+		for(size_t i = 0; i < verticesCount; i++)                                               \
+		{                                                                                       \
+			std::copy(tempBuffer + offset, tempBuffer + offset + elementSize, tempBuildBuffer); \
+			tempBuildBuffer += elementSize;                                                     \
+			tempBuffer += originalVertexSize;                                                   \
+		}                                                                                       \
+		mesh->SetElementData(feature, buildBuffer);                                             \
+	} while(0)
 
-			if(use16bitPositions) CopyVertexDataCompressed(3, 0, Mesh::VertexAttribute::Feature::Vertices);
-			else CopyVertexData(sizeof(Vector3), 0, Mesh::VertexAttribute::Feature::Vertices);
-			if(use16bitNormalsAndTangents) CopyVertexDataCompressed(3, sizeof(Vector3), Mesh::VertexAttribute::Feature::Normals);
-			else CopyVertexData(sizeof(Vector3), sizeof(Vector3), Mesh::VertexAttribute::Feature::Normals);
+#define CopyVertexDataCompressed(floatCount, originalOffset, feature)                              \
+	do {                                                                                           \
+		float *tempBuffer = reinterpret_cast<float *>(buffer + originalOffset);                    \
+		uint16 *tempBuildBuffer = reinterpret_cast<uint16 *>(buildBuffer);                         \
+		for(size_t i = 0; i < verticesCount; i++)                                                  \
+		{                                                                                          \
+			for(uint8 f = 0; f < floatCount; f++)                                                  \
+			{                                                                                      \
+				uint16 compressed = Math::ConvertFloatToHalf(*tempBuffer);                         \
+				std::copy(&compressed, &compressed + 1, tempBuildBuffer);                          \
+				tempBuffer += 1;                                                                   \
+				tempBuildBuffer += 1;                                                              \
+			}                                                                                      \
+			tempBuffer += std::max((originalVertexSize / 4 - floatCount), static_cast<size_t>(0)); \
+		}                                                                                          \
+		mesh->SetElementData(feature, buildBuffer);                                                \
+	} while(0)
+
+			if(use16bitPositions)
+				CopyVertexDataCompressed(3, 0, Mesh::VertexAttribute::Feature::Vertices);
+			else
+				CopyVertexData(sizeof(Vector3), 0, Mesh::VertexAttribute::Feature::Vertices);
+			if(use16bitNormalsAndTangents)
+				CopyVertexDataCompressed(3, sizeof(Vector3), Mesh::VertexAttribute::Feature::Normals);
+			else
+				CopyVertexData(sizeof(Vector3), sizeof(Vector3), Mesh::VertexAttribute::Feature::Normals);
 
 			if(uvCount > 0)
 			{
@@ -447,13 +447,17 @@ namespace RN
 			}
 			if(dataCount == 4)
 			{
-				if(use16bitNormalsAndTangents) CopyVertexDataCompressed(4, colorOffset, Mesh::VertexAttribute::Feature::Color0);
-				else CopyVertexData(sizeof(Color), colorOffset, Mesh::VertexAttribute::Feature::Color0);
+				if(use16bitNormalsAndTangents)
+					CopyVertexDataCompressed(4, colorOffset, Mesh::VertexAttribute::Feature::Color0);
+				else
+					CopyVertexData(sizeof(Color), colorOffset, Mesh::VertexAttribute::Feature::Color0);
 			}
 			if(hasTangent)
 			{
-				if(use16bitNormalsAndTangents) CopyVertexDataCompressed(4, tangentOffset, Mesh::VertexAttribute::Feature::Tangents);
-				else CopyVertexData(sizeof(Vector4), tangentOffset, Mesh::VertexAttribute::Feature::Tangents);
+				if(use16bitNormalsAndTangents)
+					CopyVertexDataCompressed(4, tangentOffset, Mesh::VertexAttribute::Feature::Tangents);
+				else
+					CopyVertexData(sizeof(Vector4), tangentOffset, Mesh::VertexAttribute::Feature::Tangents);
 			}
 			if(hasBones)
 			{
@@ -481,7 +485,7 @@ namespace RN
 				shaderOptions->EnableAlpha();
 				material->SetAlphaToCoverage(true);
 			}
-			
+
 			if(options.settings->GetObjectForKey(RNCSTR("enablePointLights")))
 			{
 				Number *number = options.settings->GetObjectForKey<Number>(RNCSTR("enablePointLights"));
@@ -490,14 +494,14 @@ namespace RN
 					shaderOptions->EnablePointLights();
 				}
 			}
-			
+
 			if(options.settings->GetObjectForKey(RNCSTR("enableDirectionalLights")))
 			{
 				Number *number = options.settings->GetObjectForKey<Number>(RNCSTR("enableDirectionalLights"));
 				if(number->GetBoolValue())
 				{
 					shaderOptions->EnableDirectionalLights();
-					
+
 					if(options.settings->GetObjectForKey(RNCSTR("enableDirectionalShadows")))
 					{
 						Number *number = options.settings->GetObjectForKey<Number>(RNCSTR("enableDirectionalShadows"));
@@ -536,4 +540,4 @@ namespace RN
 
 		return (version == 3 || version == 2 || version == 1);
 	}
-}
+} // namespace RN

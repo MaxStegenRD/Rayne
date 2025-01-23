@@ -9,11 +9,11 @@
 #ifndef __RAYNE_INPUTOSX_H_
 #define __RAYNE_INPUTOSX_H_
 
-#include <IOKit/hid/IOHIDLib.h>
-#include <IOKit/IOCFPlugIn.h>
 #include "../Base/RNBase.h"
 #include "RNHIDDevice.h"
 #include "RNInputManager.h"
+#include <IOKit/IOCFPlugIn.h>
+#include <IOKit/hid/IOHIDLib.h>
 
 namespace RN
 {
@@ -23,7 +23,7 @@ namespace RN
 		~HIDElement();
 
 		HIDElement(HIDElement &&other) = default;
-		HIDElement &operator =(HIDElement &&other) = default;
+		HIDElement &operator=(HIDElement &&other) = default;
 
 		IOHIDElementRef element;
 		IOHIDElementCookie cookie;
@@ -117,8 +117,6 @@ namespace RN
 	};
 
 
-
-
 	class OSXHIDDevice : public HIDDevice
 	{
 	public:
@@ -167,7 +165,7 @@ namespace RN
 	};
 
 
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_INPUTOSX_H_ */

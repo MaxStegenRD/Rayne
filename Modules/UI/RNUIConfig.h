@@ -12,9 +12,9 @@
 #include <Rayne.h>
 
 #if defined(RN_BUILD_UI)
-#define UIAPI RN_EXPORT
+	#define UIAPI RN_EXPORT
 #else
-#define UIAPI RN_IMPORT
+	#define UIAPI RN_IMPORT
 #endif
 
 

@@ -20,25 +20,25 @@ namespace RN
 		alGenBuffers(1, &_bufferID);
 		alBufferData(_bufferID, GetALFormat(resource->GetChannels(), resource->GetBytesPerSample() * 8), resource->GetData()->GetBytes(), static_cast<int>(resource->GetData()->GetLength()), resource->GetSampleRate());
 	}
-		
+
 	OpenALResourceAttachment::~OpenALResourceAttachment()
 	{
 		alDeleteBuffers(1, &_bufferID);
 	}
-		
+
 	int OpenALResourceAttachment::GetALFormat(short channels, short bitsPerSample)
 	{
 		bool stereo = (channels > 1);
-			
+
 		switch(bitsPerSample / channels)
 		{
 			case 16:
-				if (stereo)
+				if(stereo)
 					return AL_FORMAT_STEREO16;
 				else
 					return AL_FORMAT_MONO16;
 			case 8:
-				if (stereo)
+				if(stereo)
 					return AL_FORMAT_STEREO8;
 				else
 					return AL_FORMAT_MONO8;
@@ -46,7 +46,7 @@ namespace RN
 				return -1;
 		}
 	}
-		
+
 	OpenALResourceAttachment *OpenALResourceAttachment::GetAttachmentForResource(RN::AudioAsset *resource)
 	{
 		RN::Object *object = resource->GetAssociatedObject(kResourceAttachmentKey);
@@ -56,11 +56,11 @@ namespace RN
 			RN_ASSERT(resourceAttachment, "Audio Resource attachment must be of Type AudioResourceAttachment");
 			return resourceAttachment;
 		}
-			
+
 		OpenALResourceAttachment *resourceAttachment = new OpenALResourceAttachment(resource);
 		resource->SetAssociatedObject(kResourceAttachmentKey, resourceAttachment, RN::Object::MemoryPolicy::Retain);
 		resourceAttachment->Release();
-			
+
 		return resourceAttachment;
 	}
-}
+} // namespace RN

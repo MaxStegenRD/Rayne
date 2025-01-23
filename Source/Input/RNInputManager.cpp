@@ -6,24 +6,24 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
+#include "RNInputManager.h"
 #include "../Base/RNNotificationManager.h"
 #include "../Base/RNScopeAllocator.h"
 #include "../Debug/RNLogger.h"
 #include "Devices/RNPS4Controller.h"
-#include "RNInputManager.h"
 
 #if RN_PLATFORM_LINUX
-#include <X11/X.h>
-#include <X11/Xlib.h>
-//#include <X11/Intrinsic.h>
-#include <X11/extensions/Xfixes.h>
-#include <X11/extensions/XInput.h>
-#include <X11/extensions/XInput2.h>
+	#include <X11/X.h>
+	#include <X11/Xlib.h>
+	//#include <X11/Intrinsic.h>
+	#include <X11/extensions/XInput.h>
+	#include <X11/extensions/XInput2.h>
+	#include <X11/extensions/Xfixes.h>
 #endif
 
 #if RN_PLATFORM_IOS
-#include "OISInputManager.h"
-#include "OISMultiTouch.h"
+	#include "OISInputManager.h"
+	#include "OISMultiTouch.h"
 #endif
 
 namespace RN
@@ -48,7 +48,7 @@ namespace RN
 					break;
 				}
 
-				iterator ++;
+				iterator++;
 			}
 
 			return (_callbacks.size() == 0);
@@ -56,7 +56,7 @@ namespace RN
 
 		void Perform(const InputManager::Action &action)
 		{
-			for(auto &callback : _callbacks)
+			for(auto &callback: _callbacks)
 				callback.first(action);
 		}
 
@@ -74,8 +74,8 @@ namespace RN
 	{
 	public:
 		OISInputHandler(InputManager *inputManager) { _inputManager = inputManager; }
-		
-		bool touchMoved(const OIS::MultiTouchEvent& arg) override
+
+		bool touchMoved(const OIS::MultiTouchEvent &arg) override
 		{
 			_inputManager->_lock.Lock();
 			_inputManager->_mouseMovement = Vector3(arg.state.X.rel, arg.state.Y.rel, arg.state.Z.rel);
@@ -83,7 +83,7 @@ namespace RN
 			return true;
 		}
 
-		bool touchPressed(const OIS::MultiTouchEvent& arg) override
+		bool touchPressed(const OIS::MultiTouchEvent &arg) override
 		{
 			_inputManager->_lock.Lock();
 			_inputManager->_currentTouchCount += 1;
@@ -91,7 +91,7 @@ namespace RN
 			return true;
 		}
 
-		bool touchReleased(const OIS::MultiTouchEvent& arg) override
+		bool touchReleased(const OIS::MultiTouchEvent &arg) override
 		{
 			_inputManager->_lock.Lock();
 			_inputManager->_currentTouchCount -= 1;
@@ -99,14 +99,14 @@ namespace RN
 			return true;
 		}
 
-		bool touchCancelled(const OIS::MultiTouchEvent& arg) override
+		bool touchCancelled(const OIS::MultiTouchEvent &arg) override
 		{
 			_inputManager->_lock.Lock();
 			_inputManager->_currentTouchCount -= 1;
 			_inputManager->_lock.Unlock();
 			return true;
 		}
-		
+
 	private:
 		InputManager *_inputManager;
 	};
@@ -124,7 +124,7 @@ namespace RN
 		__sharedInstance = this;
 
 #if RN_PLATFORM_WINDOWS || RN_PLATFORM_MAC_OS || RN_PLATFORM_LINUX
-		memset(_keyPressed, 0, 256*sizeof(bool));
+		memset(_keyPressed, 0, 256 * sizeof(bool));
 		memset(_mouseButton, 0, 2 * sizeof(bool));
 #endif
 
@@ -133,12 +133,12 @@ namespace RN
 
 		Rid[0].usUsagePage = 0x01;
 		Rid[0].usUsage = 0x02;
-		Rid[0].dwFlags = 0;   // adds HID mouse and also ignores legacy mouse messages
+		Rid[0].dwFlags = 0; // adds HID mouse and also ignores legacy mouse messages
 		Rid[0].hwndTarget = 0;
 
 		Rid[1].usUsagePage = 0x01;
 		Rid[1].usUsage = 0x06;
-		Rid[1].dwFlags = 0;   // adds HID keyboard and also ignores legacy keyboard messages
+		Rid[1].dwFlags = 0; // adds HID keyboard and also ignores legacy keyboard messages
 		Rid[1].hwndTarget = 0;
 
 		RN_ASSERT(RegisterRawInputDevices(Rid, 2, sizeof(Rid[0])), "Raw input shit is broken, yo!");
@@ -177,7 +177,7 @@ namespace RN
 
 		XIEventMask evmask;
 
-		uint8 maskLen = (XI_LASTEVENT + 7)/8;
+		uint8 maskLen = (XI_LASTEVENT + 7) / 8;
 		unsigned char mask1[maskLen];
 		memset(mask1, 0, sizeof(mask1));
 
@@ -193,18 +193,18 @@ namespace RN
 		XISelectEvents(_xDisplay, DefaultRootWindow(_xDisplay), &evmask, 1);
 		XFlush(_xDisplay);
 #endif
-		
+
 #if RN_PLATFORM_IOS
 		_currentTouchCount = 0;
-		
+
 		OIS::ParamList pl;
 		_inputManager = OIS::InputManager::createInputSystem(pl);
-		
+
 		//Lets enable all addons that were compiled in:
 		_inputManager->enableAddOnFactory(OIS::InputManager::AddOn_All);
-		
-		OIS::MultiTouch *multitouch = (OIS::MultiTouch*)_inputManager->createInputObject(OIS::OISMultiTouch, true);
-		
+
+		OIS::MultiTouch *multitouch = (OIS::MultiTouch *)_inputManager->createInputObject(OIS::OISMultiTouch, true);
+
 		_oisInputHandler = new OISInputHandler(this);
 		multitouch->setEventCallback(_oisInputHandler);
 #endif
@@ -213,7 +213,7 @@ namespace RN
 
 		// Avoid any and all re-ordering
 		std::atomic_thread_fence(std::memory_order_seq_cst);
-		
+
 #if !RN_PLATFORM_IOS && !RN_PLATFORM_VISIONOS
 		BuildPlatformDeviceTree();
 #endif
@@ -224,11 +224,11 @@ namespace RN
 #if !RN_PLATFORM_IOS && !RN_PLATFORM_VISIONOS
 		TearDownPlatformDeviceTree();
 #endif
-		
+
 #if RN_PLATFORM_IOS
 		delete _oisInputHandler;
 #endif
-		
+
 		_devices->Release();
 		_bindings->Release();
 		_mouseDevices->Release();
@@ -250,9 +250,9 @@ namespace RN
 		GetRawInputData(lParam, RID_INPUT, nullptr, &dwSize, sizeof(RAWINPUTHEADER));
 		auto lpb = allocator.AllocBytes<BYTE>(dwSize);
 
-		RN_ASSERT(GetRawInputData(lParam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER)) == dwSize , "GetRawInputData does not return correct size!");
+		RN_ASSERT(GetRawInputData(lParam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER)) == dwSize, "GetRawInputData does not return correct size!");
 
-		RAWINPUT* rawInput = (RAWINPUT*)lpb;
+		RAWINPUT *rawInput = (RAWINPUT *)lpb;
 
 		if(rawInput->header.dwType == RIM_TYPEKEYBOARD)
 		{
@@ -266,8 +266,9 @@ namespace RN
 
 			if((rawInput->data.mouse.usButtonFlags & RI_MOUSE_WHEEL) == RI_MOUSE_WHEEL)
 			{
-				 float wheelDelta = (float)(short)rawInput->data.mouse.usButtonData;
-				 _mouseMovement.z = wheelDelta / WHEEL_DELTA;;
+				float wheelDelta = (float)(short)rawInput->data.mouse.usButtonData;
+				_mouseMovement.z = wheelDelta / WHEEL_DELTA;
+				;
 			}
 
 			if((rawInput->data.mouse.usButtonFlags & RI_MOUSE_LEFT_BUTTON_DOWN) == RI_MOUSE_LEFT_BUTTON_DOWN)
@@ -292,7 +293,7 @@ namespace RN
 		}
 	}
 #endif
-	
+
 #if RN_PLATFORM_MAC_OS
 	void InputManager::ProcessKeyEvent(uint16 keyCode, bool state)
 	{
@@ -364,11 +365,9 @@ namespace RN
 		});
 
 		_mouseDevices->Enumerate<InputDevice>([&](InputDevice *device, size_t index, bool &stop) {
-
 			Array *controls = device->GetControlsWithType(InputDevice::Type::DeltaAxis);
 
 			controls->Enumerate<DeltaAxisControl>([&](DeltaAxisControl *control, size_t index, bool &stop) {
-
 				Number *value = control->GetValue<Number>();
 				if(!value)
 					return;
@@ -388,9 +387,7 @@ namespace RN
 					default:
 						break;
 				}
-
 			});
-
 		});
 
 #if RN_PLATFORM_LINUX
@@ -407,7 +404,7 @@ namespace RN
 			{
 				case XI_RawMotion:
 				{
-					XIRawEvent *re = (XIRawEvent *) cookie->data;
+					XIRawEvent *re = (XIRawEvent *)cookie->data;
 
 					double *raw_valuator = re->raw_values;
 					double *valuator = re->valuators.values;
@@ -429,14 +426,14 @@ namespace RN
 
 				case XI_RawKeyPress:
 				{
-					XIRawEvent *re = (XIRawEvent *) cookie->data;
+					XIRawEvent *re = (XIRawEvent *)cookie->data;
 					_keyPressed[re->detail] = true;
 					break;
 				}
 
 				case XI_RawKeyRelease:
 				{
-					XIRawEvent *re = (XIRawEvent *) cookie->data;
+					XIRawEvent *re = (XIRawEvent *)cookie->data;
 					_keyPressed[re->detail] = false;
 					break;
 				}
@@ -449,7 +446,7 @@ namespace RN
 		_mouseDelta += _mouseMovement;
 		_mouseMovement = Vector3();
 #endif
-		
+
 #if RN_PLATFORM_IOS
 		_lock.Lock();
 		_mouseDelta += _mouseMovement;
@@ -475,10 +472,8 @@ namespace RN
 		{
 			LockGuard<Lockable> lock(_lock);
 			_devices->Enumerate<InputDevice>([&](InputDevice *device, size_t index, bool &stop) {
-
 				if(device->GetCategory() & categories)
 					result->AddObject(device);
-
 			});
 		}
 
@@ -514,7 +509,7 @@ namespace RN
 				}
 			}
 
-			iterator ++;
+			iterator++;
 		}
 	}
 
@@ -535,7 +530,7 @@ namespace RN
 				}
 			}
 
-			iterator ++;
+			iterator++;
 		}
 	}
 	void InputManager::RemoveTarget(void *target)
@@ -550,7 +545,7 @@ namespace RN
 				continue;
 			}
 
-			iterator ++;
+			iterator++;
 		}
 	}
 
@@ -580,7 +575,7 @@ namespace RN
 				_bindings->RemoveObjectForKey(name);
 		}
 	}
-	
+
 	void InputManager::PerformEvent(Event event, InputDevice *device, InputControl *control, Object *value)
 	{
 		LockGuard<Lockable> lock(_lock);
@@ -600,14 +595,14 @@ namespace RN
 			if((iterator->events & event) && (iterator->device == device || (iterator->device == nullptr && iterator->categories & device->GetCategory())))
 				iterator->callback(action);
 
-			iterator ++;
+			iterator++;
 		}
 	}
 
-	bool InputManager:: IsControlToggling(const String *name) const
+	bool InputManager::IsControlToggling(const String *name) const
 	{
 		size_t count = _devices->GetCount();
-		for(size_t i = 0; i < count; i ++)
+		for(size_t i = 0; i < count; i++)
 		{
 			InputDevice *device = static_cast<InputDevice *>(_devices->GetObjectAtIndex(i));
 			if(device->IsControlToggling(name))
@@ -772,12 +767,12 @@ namespace RN
 			return _keyPressed[0x10];
 		}
 
-		if (name->IsEqual(RNCSTR("ESC")))
+		if(name->IsEqual(RNCSTR("ESC")))
 		{
 			return _keyPressed[0x1B];
 		}
 #endif
-		
+
 #if RN_PLATFORM_MAC_OS
 		//TODO: Support all keys
 		if(name->IsEqual(RNCSTR("0")))
@@ -820,7 +815,7 @@ namespace RN
 		{
 			return _keyPressed[25];
 		}
-		
+
 		if(name->IsEqual(RNCSTR("A")))
 		{
 			return _keyPressed[0];
@@ -925,7 +920,7 @@ namespace RN
 		{
 			return _keyPressed[6];
 		}
-		
+
 		if(name->IsEqual(RNCSTR("SPACE")))
 		{
 			return _keyPressed[49];
@@ -934,8 +929,8 @@ namespace RN
 		{
 			return _keyPressed[56] || _keyPressed[60];
 		}
-		
-		if (name->IsEqual(RNCSTR("ESC")))
+
+		if(name->IsEqual(RNCSTR("ESC")))
 		{
 			return _keyPressed[53];
 		}
@@ -967,12 +962,12 @@ namespace RN
 		{
 			return _keyPressed[41];
 		}
-		if (name->IsEqual(RNCSTR("ESC")))
+		if(name->IsEqual(RNCSTR("ESC")))
 		{
 			return _keyPressed[9];
 		}
 #endif
-		
+
 #if RN_PLATFORM_IOS
 		if(name->IsEqual(RNCSTR("W")))
 		{
@@ -981,10 +976,10 @@ namespace RN
 			_lock.Lock();
 			touchCount = _currentTouchCount;
 			_lock.Unlock();*/
-			
+
 			return (_currentTouchCount == 2);
 		}
-		
+
 		if(name->IsEqual(RNCSTR("E")))
 		{
 			//Simulate W button for forward movement if more than one finger touches the screen
@@ -992,7 +987,7 @@ namespace RN
 			_lock.Lock();
 			touchCount = _currentTouchCount;
 			_lock.Unlock();*/
-			
+
 			return (_currentTouchCount == 3);
 		}
 #endif
@@ -1002,7 +997,7 @@ namespace RN
 	Object *InputManager::GetControlValue(const String *name) const
 	{
 		size_t count = _devices->GetCount();
-		for(size_t i = 0; i < count; i ++)
+		for(size_t i = 0; i < count; i++)
 		{
 			Object *value;
 			InputDevice *device = static_cast<InputDevice *>(_devices->GetObjectAtIndex(i));
@@ -1019,13 +1014,11 @@ namespace RN
 		HIDDevice *result = nullptr;
 
 		_hidDevices->Enumerate<HIDDevice>([&](HIDDevice *device, size_t index, bool &stop) {
-
 			if(device->GetProductID() == productID && device->GetVendorID() == vendorID)
 			{
 				result = device;
 				stop = true;
 			}
-
 		});
 
 		if(result)
@@ -1053,4 +1046,4 @@ namespace RN
 
 		NotificationManager::GetSharedInstance()->PostNotification(kRNInputManagerHIDDeviceRemoved, device);
 	}
-}
+} // namespace RN

@@ -9,7 +9,7 @@
 #include "RNOpenALWorld.h"
 
 #if RN_PLATFORM_MAC_OS
-#include <AVFoundation/AVFoundation.h>
+	#include <AVFoundation/AVFoundation.h>
 #endif
 
 #include "AL/al.h"
@@ -19,14 +19,14 @@
 namespace RN
 {
 	RNDefineMeta(OpenALWorld, SceneAttachment)
-		
+
 	OpenALWorld::OpenALWorld(String *outputDeviceName) :
 		_audioListener(nullptr), _outputDevice(nullptr), _inputDevice(nullptr), _inputBuffer(nullptr), _inputBufferTemp(nullptr)
 	{
 		if(outputDeviceName)
 			_outputDevice = alcOpenDevice(outputDeviceName->GetUTF8String());
 		else
-		    _outputDevice = alcOpenDevice(nullptr);
+			_outputDevice = alcOpenDevice(nullptr);
 		if(!_outputDevice)
 		{
 			RNDebug("rayne-openal: Could not open output audio device.");
@@ -35,7 +35,7 @@ namespace RN
 
 		//Enable HRTF
 		int attributes[7] = {ALC_HRTF_SOFT, ALC_TRUE, ALC_MONO_SOURCES, 512, ALC_STEREO_SOURCES, 256, 0};
-			
+
 		_context = alcCreateContext(_outputDevice, attributes);
 		alcMakeContextCurrent(_context);
 		if(!_context)
@@ -54,7 +54,7 @@ namespace RN
 			RNDebug("HRTF enabled, using " << name);
 		}
 	}
-		
+
 	OpenALWorld::~OpenALWorld()
 	{
 		if(_inputDevice)
@@ -62,11 +62,11 @@ namespace RN
 			alcCaptureStop(_inputDevice);
 			alcCaptureCloseDevice(_inputDevice);
 		}
-		
+
 		alcMakeContextCurrent(nullptr);
 		alcDestroyContext(_context);
 		alcCloseDevice(_outputDevice);
-		
+
 		if(_inputBufferTemp)
 		{
 			delete[] _inputBufferTemp;
@@ -79,13 +79,15 @@ namespace RN
 		if(permissionState == MicrophonePermissionStateNotDetermined)
 		{
 #if RN_PLATFORM_MAC_OS
-			if (@available(macOS 10.14, *)) {
-				[AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio completionHandler:^(BOOL granted) {
-					/* if(granted)
+			if(@available(macOS 10.14, *))
+			{
+				[AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio
+										 completionHandler:^(BOOL granted) {
+										 /* if(granted)
 					 {
 						_inputDevice = alcCaptureOpenDevice(inputDeviceName?inputDeviceName->GetUTF8String():nullptr, 48000, AL_FORMAT_MONO16, 480);
 					 }*/
-				 }];
+										 }];
 			}
 #elif RN_PLATFORM_ANDROID
 			android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
@@ -116,7 +118,7 @@ namespace RN
 					RNDebug("wrong jni version (should be 1.6)");
 					return;
 			}*/
-			
+
 			//Check for and clear any pending jni exceptions that would prevent the previous code from working
 			jboolean flag = env->ExceptionCheck();
 			if(flag)
@@ -141,7 +143,7 @@ namespace RN
 			jint requestCode = 1;
 			jmethodID requestPermissionsMethod = env->GetStaticMethodID(activityCompatClass, "requestPermissions", "(Landroid/app/Activity;[Ljava/lang/String;I)V");
 			env->CallStaticVoidMethod(activityCompatClass, requestPermissionsMethod, app->activity->clazz, permissions, requestCode);
-			
+
 			env->DeleteLocalRef(permissions);
 
 			/*if(isNewEnv)
@@ -155,31 +157,34 @@ namespace RN
 	OpenALWorld::MicrophonePermissionState OpenALWorld::GetMicrophonePermissionState()
 	{
 #if RN_PLATFORM_MAC_OS
-			// Request permission to access the microphone.
-			if (@available(macOS 10.14, *)) {
-				switch([AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeAudio])
+		// Request permission to access the microphone.
+		if(@available(macOS 10.14, *))
+		{
+			switch([AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeAudio])
+			{
+				case AVAuthorizationStatusAuthorized:
 				{
-					case AVAuthorizationStatusAuthorized:
-					{
-						return MicrophonePermissionStateAuthorized;
-					}
-					case AVAuthorizationStatusNotDetermined:
-					{
-						return MicrophonePermissionStateNotDetermined;
-					}
-					case AVAuthorizationStatusDenied:
-					case AVAuthorizationStatusRestricted:
-						return MicrophonePermissionStateForbidden;
+					return MicrophonePermissionStateAuthorized;
 				}
-			} else {
-				// Fallback on earlier versions
-				return MicrophonePermissionStateAuthorized;
+				case AVAuthorizationStatusNotDetermined:
+				{
+					return MicrophonePermissionStateNotDetermined;
+				}
+				case AVAuthorizationStatusDenied:
+				case AVAuthorizationStatusRestricted:
+					return MicrophonePermissionStateForbidden;
 			}
+		}
+		else
+		{
+			// Fallback on earlier versions
+			return MicrophonePermissionStateAuthorized;
+		}
 #elif RN_PLATFORM_ANDROID
-			android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
-			JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
+		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
+		JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
 
-			/*JNIEnv* env = nullptr;
+		/*JNIEnv* env = nullptr;
 			bool isNewEnv = false;
 
 			switch(app->activity->vm->GetEnv((void**)&env, RN_JNI_VERSION_1_6))
@@ -204,45 +209,45 @@ namespace RN
 					RNDebug("wrong jni version (should be 1.6)");
 					return MicrophonePermissionStateNotDetermined;
 			}*/
-		
-			//Check for and clear any pending jni exceptions that would prevent the previous code from working
-			jboolean flag = env->ExceptionCheck();
-			if(flag)
-			{
-				env->ExceptionDescribe();
-				env->ExceptionClear();
-			}
 
-			jclass activityClass = env->FindClass("android/app/NativeActivity");
-			jmethodID getClassLoaderMethod = env->GetMethodID(activityClass, "getClassLoader", "()Ljava/lang/ClassLoader;");
-			jobject classLoaderObject = env->CallObjectMethod(app->activity->clazz, getClassLoaderMethod);
-			jclass classLoaderClass = env->FindClass("java/lang/ClassLoader");
-			jmethodID loadClassMethod = env->GetMethodID(classLoaderClass, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;");
+		//Check for and clear any pending jni exceptions that would prevent the previous code from working
+		jboolean flag = env->ExceptionCheck();
+		if(flag)
+		{
+			env->ExceptionDescribe();
+			env->ExceptionClear();
+		}
 
-			jstring contextCompatClassName = env->NewStringUTF("androidx.core.content.ContextCompat");
-			jclass contextCompatClass = reinterpret_cast<jclass>(env->CallObjectMethod(classLoaderObject, loadClassMethod, contextCompatClassName));
-			env->DeleteLocalRef(contextCompatClassName);
+		jclass activityClass = env->FindClass("android/app/NativeActivity");
+		jmethodID getClassLoaderMethod = env->GetMethodID(activityClass, "getClassLoader", "()Ljava/lang/ClassLoader;");
+		jobject classLoaderObject = env->CallObjectMethod(app->activity->clazz, getClassLoaderMethod);
+		jclass classLoaderClass = env->FindClass("java/lang/ClassLoader");
+		jmethodID loadClassMethod = env->GetMethodID(classLoaderClass, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;");
 
-			jmethodID checkSelfPermissionMethod = env->GetStaticMethodID(contextCompatClass, "checkSelfPermission", "(Landroid/content/Context;Ljava/lang/String;)I");
-			jstring permissionName = env->NewStringUTF("android.permission.RECORD_AUDIO");
-			int returnValue = env->CallStaticIntMethod(contextCompatClass, checkSelfPermissionMethod, app->activity->clazz, permissionName);
-			env->DeleteLocalRef(permissionName);
+		jstring contextCompatClassName = env->NewStringUTF("androidx.core.content.ContextCompat");
+		jclass contextCompatClass = reinterpret_cast<jclass>(env->CallObjectMethod(classLoaderObject, loadClassMethod, contextCompatClassName));
+		env->DeleteLocalRef(contextCompatClassName);
 
-			/*if(isNewEnv)
+		jmethodID checkSelfPermissionMethod = env->GetStaticMethodID(contextCompatClass, "checkSelfPermission", "(Landroid/content/Context;Ljava/lang/String;)I");
+		jstring permissionName = env->NewStringUTF("android.permission.RECORD_AUDIO");
+		int returnValue = env->CallStaticIntMethod(contextCompatClass, checkSelfPermissionMethod, app->activity->clazz, permissionName);
+		env->DeleteLocalRef(permissionName);
+
+		/*if(isNewEnv)
 			{
 				app->activity->vm->DetachCurrentThread();
 			}*/
 
-			//Permission not granted
-			if(returnValue == -1)
-			{
-				return MicrophonePermissionStateNotDetermined;
-			}
-			//Permission granted
-			else if(returnValue == 0)
-			{
-				return MicrophonePermissionStateAuthorized;
-			}
+		//Permission not granted
+		if(returnValue == -1)
+		{
+			return MicrophonePermissionStateNotDetermined;
+		}
+		//Permission granted
+		else if(returnValue == 0)
+		{
+			return MicrophonePermissionStateAuthorized;
+		}
 #else
 		return MicrophonePermissionStateAuthorized;
 #endif
@@ -257,19 +262,19 @@ namespace RN
 			alcCaptureCloseDevice(_inputDevice);
 			_inputDevice = nullptr;
 		}
-		
+
 		if(GetMicrophonePermissionState() != MicrophonePermissionStateAuthorized) return;
-		
+
 		if(inputDeviceName)
 		{
 			if(inputDeviceName->IsEqual(RNCSTR("default"))) inputDeviceName = nullptr;
-			
+
 #if RN_PLATFORM_MAC_OS
-			_inputDevice = alcCaptureOpenDevice(inputDeviceName?inputDeviceName->GetUTF8String():nullptr, 48000, AL_FORMAT_MONO16, 1920);
+			_inputDevice = alcCaptureOpenDevice(inputDeviceName ? inputDeviceName->GetUTF8String() : nullptr, 48000, AL_FORMAT_MONO16, 1920);
 #else
-			_inputDevice = alcCaptureOpenDevice(inputDeviceName?inputDeviceName->GetUTF8String():nullptr, 48000, AL_FORMAT_MONO16, 960);
+			_inputDevice = alcCaptureOpenDevice(inputDeviceName ? inputDeviceName->GetUTF8String() : nullptr, 48000, AL_FORMAT_MONO16, 960);
 #endif
-			
+
 			if(!_inputDevice)
 			{
 				RNDebug("rayne-openal: Could not open input audio device.");
@@ -284,7 +289,7 @@ namespace RN
 
 	Array *OpenALWorld::GetOutputDeviceNames()
 	{
-		const char *bytes = static_cast<const char*>(alcGetString(nullptr, ALC_DEVICE_SPECIFIER));
+		const char *bytes = static_cast<const char *>(alcGetString(nullptr, ALC_DEVICE_SPECIFIER));
 		Array *devices = new Array();
 		String *deviceString = String::WithString(bytes, true);
 		while(deviceString->GetLength() > 0)
@@ -293,13 +298,13 @@ namespace RN
 			bytes += deviceString->GetLength() + 1;
 			deviceString = String::WithString(bytes, true);
 		}
-		
+
 		return devices;
 	}
 
 	Array *OpenALWorld::GetInputDeviceNames()
 	{
-		const char *bytes = static_cast<const char*>(alcGetString(nullptr, ALC_CAPTURE_DEVICE_SPECIFIER));
+		const char *bytes = static_cast<const char *>(alcGetString(nullptr, ALC_CAPTURE_DEVICE_SPECIFIER));
 		Array *devices = new Array();
 		String *deviceString = String::WithString(bytes, true);
 		while(deviceString->GetLength() > 0)
@@ -308,10 +313,10 @@ namespace RN
 			bytes += deviceString->GetLength() + 1;
 			deviceString = String::WithString(bytes, true);
 		}
-		
+
 		return devices;
 	}
-		
+
 	void OpenALWorld::Update(float delta)
 	{
 		if(_inputDevice && _inputBuffer)
@@ -334,18 +339,18 @@ namespace RN
 		SafeRelease(_inputBuffer);
 		_inputBuffer = SafeRetain(bufferAsset);
 	}
-		
+
 	void OpenALWorld::SetListener(OpenALListener *attachment)
 	{
 		if(_audioListener)
 			_audioListener->RemoveFromWorld();
-			
+
 		_audioListener = attachment;
-			
+
 		if(_audioListener)
 			_audioListener->InsertIntoWorld(this);
 	}
-		
+
 	OpenALSource *OpenALWorld::PlaySound(AudioAsset *resource)
 	{
 		if(_audioListener)
@@ -358,4 +363,4 @@ namespace RN
 		}
 		return nullptr;
 	}
-}
+} // namespace RN

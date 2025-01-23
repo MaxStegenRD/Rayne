@@ -12,9 +12,9 @@ namespace RN
 {
 	RNDefineMeta(BHapticsDevice, Object)
 
-	BHapticsDevice::BHapticsDevice() : address(nullptr), deviceName(nullptr), position(BHapticsDevicePosition::Vest), isConnected(false), isPaired(false)
+	BHapticsDevice::BHapticsDevice() :
+		address(nullptr), deviceName(nullptr), position(BHapticsDevicePosition::Vest), isConnected(false), isPaired(false)
 	{
-		
 	}
 
 	BHapticsDevice::~BHapticsDevice()
@@ -25,35 +25,35 @@ namespace RN
 
 	BHapticsDevicePosition BHapticsDevice::StringToDevicePosition(const String *positionString)
 	{
-		if (positionString->IsEqual(RNCSTR("ForearmL")))
+		if(positionString->IsEqual(RNCSTR("ForearmL")))
 		{
 			return BHapticsDevicePosition::ForearmL;
 		}
-		else if (positionString->IsEqual(RNCSTR("ForearmR")))
+		else if(positionString->IsEqual(RNCSTR("ForearmR")))
 		{
 			return BHapticsDevicePosition::ForearmR;
 		}
-		else if (positionString->IsEqual(RNCSTR("Vest")))
+		else if(positionString->IsEqual(RNCSTR("Vest")))
 		{
 			return BHapticsDevicePosition::Vest;
 		}
-		else if (positionString->IsEqual(RNCSTR("Head")))
+		else if(positionString->IsEqual(RNCSTR("Head")))
 		{
 			return BHapticsDevicePosition::Head;
 		}
-		else if (positionString->IsEqual(RNCSTR("HandL")))
+		else if(positionString->IsEqual(RNCSTR("HandL")))
 		{
 			return BHapticsDevicePosition::HandL;
 		}
-		else if (positionString->IsEqual(RNCSTR("HandR")))
+		else if(positionString->IsEqual(RNCSTR("HandR")))
 		{
 			return BHapticsDevicePosition::HandR;
 		}
-		else if (positionString->IsEqual(RNCSTR("FootL")))
+		else if(positionString->IsEqual(RNCSTR("FootL")))
 		{
 			return BHapticsDevicePosition::FootL;
 		}
-		else if (positionString->IsEqual(RNCSTR("FootR")))
+		else if(positionString->IsEqual(RNCSTR("FootR")))
 		{
 			return BHapticsDevicePosition::FootR;
 		}
@@ -63,39 +63,39 @@ namespace RN
 
 	const String *BHapticsDevice::DevicePositionToString(BHapticsDevicePosition position)
 	{
-		if (position == BHapticsDevicePosition::ForearmL)
+		if(position == BHapticsDevicePosition::ForearmL)
 		{
 			return RNCSTR("ForearmL");
 		}
-		else if (position == BHapticsDevicePosition::ForearmR)
+		else if(position == BHapticsDevicePosition::ForearmR)
 		{
 			return RNCSTR("ForearmR");
 		}
-		else if (position == BHapticsDevicePosition::Vest)
+		else if(position == BHapticsDevicePosition::Vest)
 		{
 			return RNCSTR("Vest");
 		}
-		else if (position == BHapticsDevicePosition::Head)
+		else if(position == BHapticsDevicePosition::Head)
 		{
 			return RNCSTR("Head");
 		}
-		else if (position == BHapticsDevicePosition::HandL)
+		else if(position == BHapticsDevicePosition::HandL)
 		{
 			return RNCSTR("HandL");
 		}
-		else if (position == BHapticsDevicePosition::HandR)
+		else if(position == BHapticsDevicePosition::HandR)
 		{
 			return RNCSTR("HandR");
 		}
-		else if (position == BHapticsDevicePosition::FootL)
+		else if(position == BHapticsDevicePosition::FootL)
 		{
 			return RNCSTR("FootL");
 		}
-		else if (position == BHapticsDevicePosition::FootR)
+		else if(position == BHapticsDevicePosition::FootR)
 		{
 			return RNCSTR("FootR");
 		}
 
 		return nullptr;
 	}
-}
+} // namespace RN

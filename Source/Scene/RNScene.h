@@ -12,10 +12,10 @@
 #include "../Base/RNBase.h"
 #include "../Objects/RNObject.h"
 #include "../Rendering/RNRenderer.h"
-#include "RNSceneNode.h"
 #include "RNCamera.h"
 #include "RNLight.h"
 #include "RNSceneAttachment.h"
+#include "RNSceneNode.h"
 
 namespace RN
 {
@@ -26,10 +26,10 @@ namespace RN
 		friend class SceneManager;
 
 		RNAPI ~Scene();
-		
+
 		RNAPI virtual void AddNode(SceneNode *node) = 0;
 		RNAPI virtual void RemoveNode(SceneNode *node) = 0;
-		
+
 		RNAPI void AddAttachment(SceneAttachment *attachment);
 		RNAPI void RemoveAttachment(SceneAttachment *attachment);
 
@@ -50,29 +50,29 @@ namespace RN
 
 		RNAPI virtual void Update(float delta);
 		RNAPI virtual void Render(Renderer *renderer) = 0;
-		
+
 		RNAPI void UpdateNode(SceneNode *node, float delta);
-		
+
 	private:
 		Array *_attachments;
 
 		__RNDeclareMetaInternal(Scene)
 	};
-	
+
 	class SceneInfo : public Object
 	{
 	public:
 		RNAPI SceneInfo(Scene *scene);
 		RNAPI ~SceneInfo();
-		
+
 		RNAPI Scene *GetScene() const;
-		
+
 	private:
 		Scene *_scene;
-		
+
 		__RNDeclareMetaInternal(SceneInfo)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_SCENE_H__ */

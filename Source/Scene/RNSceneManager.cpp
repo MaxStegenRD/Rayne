@@ -54,4 +54,4 @@ namespace RN
 			scene->Render(renderer);
 		});
 	}
-}
+} // namespace RN

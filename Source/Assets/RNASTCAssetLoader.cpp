@@ -8,10 +8,10 @@
 
 #include <png.h>
 
-#include "../Objects/RNSet.h"
-#include "../Objects/RNDictionary.h"
-#include "../Rendering/RNRenderer.h"
 #include "../Debug/RNLogger.h"
+#include "../Objects/RNDictionary.h"
+#include "../Objects/RNSet.h"
+#include "../Rendering/RNRenderer.h"
 
 #include "RNASTCAssetLoader.h"
 #include "RNAssetManager.h"
@@ -27,7 +27,7 @@ namespace RN
 	{
 		uint8 magic[] = {0x13, 0xab, 0xa1, 0x5c};
 
-		Config config({ Texture::GetMetaClass() });
+		Config config({Texture::GetMetaClass()});
 		config.SetExtensions(Set::WithObjects({RNCSTR("astc")}));
 		config.SetMagicBytes(Data::WithBytes(magic, 4), 0);
 		config.supportsBackgroundLoading = true;
@@ -47,23 +47,23 @@ namespace RN
 		bool isLinear = false;
 		Number *wrapper = options.settings->GetObjectForKey<Number>(RNCSTR("isLinear"));
 		if(wrapper) isLinear = wrapper->GetBoolValue();
-		
+
 		Texture *texture = nullptr;
 		uint8 *data = nullptr;
-		
+
 		int mipIndex = 0;
 		while(file->GetOffset() < file->GetSize())
 		{
 			ASTCFormatHeader mipHeader;
 			file->Read(&mipHeader, sizeof(ASTCFormatHeader));
-			
+
 			RN::uint32 mipWidth = mipHeader.xsize[0] + (mipHeader.xsize[1] << 8) + (mipHeader.xsize[2] << 16);
 			RN::uint32 mipHeight = mipHeader.ysize[0] + (mipHeader.ysize[1] << 8) + (mipHeader.ysize[2] << 16);
-			
+
 			size_t xblocks = (mipWidth + mipHeader.blockdim_x - 1) / mipHeader.blockdim_x;
 			size_t yblocks = (mipHeight + mipHeader.blockdim_y - 1) / mipHeader.blockdim_y;
 			size_t mipDataSize = xblocks * yblocks << 4;
-			
+
 			if(!texture)
 			{
 				Texture::Format textureFormat = Texture::Format::Invalid;
@@ -129,12 +129,12 @@ namespace RN
 					else if(mipHeader.blockdim_x == 12 && mipHeader.blockdim_y == 12)
 						textureFormat = Texture::Format::RGBA_ASTC_12X12_SRGB;
 				}
-				
+
 				bool mipMapped = ((mipDataSize + sizeof(ASTCFormatHeader)) < file->GetSize());
 				Texture::Descriptor descriptor = Texture::Descriptor::With2DTextureAndFormat(textureFormat, mipWidth, mipHeight, mipMapped);
 				texture = Renderer::GetActiveRenderer()->CreateTextureWithDescriptor(descriptor);
 			}
-			
+
 			if(!data) data = (uint8 *)malloc(mipDataSize);
 			file->Read(data, mipDataSize);
 
@@ -144,8 +144,8 @@ namespace RN
 		}
 
 		delete[] data;
-		
+
 		if(!texture) return nullptr;
 		return texture->Autorelease();
 	}
-}
+} // namespace RN

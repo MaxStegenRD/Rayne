@@ -15,7 +15,8 @@ namespace RN
 
 	SplashWorld *SplashWorld::_sharedInstance = nullptr;
 
-	SplashWorld::SplashWorld(const Vector3 &gravity) : _stepsPerFrame(1), _paused(false)
+	SplashWorld::SplashWorld(const Vector3 &gravity) :
+		_stepsPerFrame(1), _paused(false)
 	{
 		RN_ASSERT(!_sharedInstance, "There can only be one SplashWorld at a time!");
 
@@ -51,7 +52,7 @@ namespace RN
 
 	void SplashWorld::StepSimulation(float delta)
 	{
-		for(SplashBody *body : _bodies)
+		for(SplashBody *body: _bodies)
 		{
 			body->CalculateVelocities(delta);
 			body->PrepareCollision(delta);
@@ -68,7 +69,7 @@ namespace RN
 			}
 		}
 
-		for(SplashBody *body : _bodies)
+		for(SplashBody *body: _bodies)
 		{
 			body->Move(delta);
 		}
@@ -93,4 +94,4 @@ namespace RN
 			_bodies.erase(attachment);
 		}
 	}
-}
+} // namespace RN

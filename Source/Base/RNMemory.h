@@ -23,7 +23,7 @@ namespace RN
 	{
 		RNAPI void *AllocateAligned(size_t size, size_t alignment);
 		RNAPI void FreeAligned(void *ptr);
-		
+
 		RNAPI void *Allocate(size_t size);
 		RNAPI void *AllocateArray(size_t size);
 		RNAPI void *Allocate(size_t size, const std::nothrow_t &n) RN_NOEXCEPT;
@@ -32,24 +32,24 @@ namespace RN
 		RNAPI void FreeArray(void *ptr) RN_NOEXCEPT;
 		RNAPI void Free(void *ptr, const std::nothrow_t &n) RN_NOEXCEPT;
 		RNAPI void FreeArray(void *ptr, const std::nothrow_t &n) RN_NOEXCEPT;
-		
+
 		class PoolAllocator;
 		class Pool
 		{
 		public:
 			RNAPI Pool(size_t alignment = 8);
 			RNAPI ~Pool();
-			
+
 			RNAPI void *Allocate(size_t size);
 			RNAPI void *Allocate(size_t size, const std::nothrow_t &n) RN_NOEXCEPT;
-			
+
 			RNAPI void Evict(bool willReuse = false);
-			
+
 		private:
 			PoolAllocator *_allocator;
 		};
-	};
-}
+	}; // namespace Memory
+} // namespace RN
 
 //Overwrite new and delete here to use custom memory allocator for everything, but default ones are pretty good already.
 /*

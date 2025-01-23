@@ -13,7 +13,7 @@
 
 namespace RN
 {
-/*	Jolt::PxFilterFlags JoltCallback::CollisionFilterShader(
+	/*	Jolt::PxFilterFlags JoltCallback::CollisionFilterShader(
 		Jolt::PxFilterObjectAttributes attributes0, Jolt::PxFilterData filterData0,
 		Jolt::PxFilterObjectAttributes attributes1, Jolt::PxFilterData filterData1,
 		Jolt::PxPairFlags& pairFlags, const void* constantBlock, Jolt::PxU32 constantBlockSize)
@@ -146,11 +146,11 @@ namespace RN
 	{
 		/* Default do nothing */
 		JoltContactInfo info;
-		
-		info.collisionObject = reinterpret_cast<JoltCollisionObject*>(JoltWorld::GetSharedInstance()->GetJoltInstance()->GetBodyInterface().GetUserData(inBodyID2));
+
+		info.collisionObject = reinterpret_cast<JoltCollisionObject *>(JoltWorld::GetSharedInstance()->GetJoltInstance()->GetBodyInterface().GetUserData(inBodyID2));
 		if(info.collisionObject) info.node = info.collisionObject->GetParent();
 		if(info.node) info.node->Retain()->Autorelease();
-		
+
 		info.position.x = inContactPosition.GetX();
 		info.position.y = inContactPosition.GetY();
 		info.position.z = inContactPosition.GetZ();
@@ -165,5 +165,4 @@ namespace RN
 	{
 		/* Default do nothing */
 	}
-}
-
+} // namespace RN

@@ -83,7 +83,7 @@ namespace RN
 
 		__RNDeclareMetaInternal(Screen)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_SCREEN_H_ */

@@ -6,14 +6,14 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
-#include <jansson.h>
 #include "RNJSONSerialization.h"
-#include "RNAutoreleasePool.h"
 #include "RNArray.h"
+#include "RNAutoreleasePool.h"
 #include "RNDictionary.h"
+#include "RNNull.h"
 #include "RNNumber.h"
 #include "RNString.h"
-#include "RNNull.h"
+#include <jansson.h>
 
 namespace RN
 {
@@ -34,8 +34,6 @@ namespace RN
 			__JSONNullClass = Null::GetMetaClass();
 		});
 	}
-
-
 
 
 	bool JSONSerialization::IsValidJSONObject(const Object *object)
@@ -121,7 +119,6 @@ namespace RN
 			json = json_object();
 
 			dictionary->Enumerate([&](Object *object, const Object *key, bool &stop) {
-
 				if(key->IsKindOfClass(__JSONStringClass))
 				{
 					const String *string = static_cast<const String *>(key);
@@ -180,7 +177,7 @@ namespace RN
 				size_t size = json_array_size(json);
 				Array *array = new Array(size);
 
-				for(size_t i = 0; i < size; i ++)
+				for(size_t i = 0; i < size; i++)
 				{
 					json_t *value = json_array_get(json, i);
 					Object *object = DeserializeObject(value);
@@ -219,7 +216,6 @@ namespace RN
 
 		return data ? data->Autorelease() : data;
 	}
-
 
 
 	void *JSONSerialization::SerializeObject(const Object *root, Options options)
@@ -265,7 +261,6 @@ namespace RN
 	}
 
 
-
 	Object *JSONSerialization::DeserializeFromUTF8String(const char *string, Options options)
 	{
 		JSONReadClasses();
@@ -303,4 +298,4 @@ namespace RN
 	{
 		return DeserializeFromUTF8String(data->GetBytes<char>(), options);
 	}
-}
+} // namespace RN

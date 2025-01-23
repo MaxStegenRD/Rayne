@@ -19,10 +19,10 @@ namespace RN
 	{
 	public:
 		friend ENetClientEncryptor;
-		
+
 		ENAPI ENetClient(uint32 channelCount = 1);
 		ENAPI ~ENetClient();
-		
+
 		ENAPI void EnableEncryption(String *trustedCertStorePath);
 
 		ENAPI void Connect(String *ip, uint32 port = 1234);
@@ -30,13 +30,13 @@ namespace RN
 
 	protected:
 		ENAPI virtual void Update(float delta) override;
-			
+
 	private:
 		void ForceDisconnect();
 		ENetClientEncryptorSharedInternals *_encryptorSharedInternals;
-			
+
 		RNDeclareMetaAPI(ENetClient, ENAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_ENETCLIENT_H_) */

@@ -11,8 +11,8 @@
 
 #include "../Base/RNBase.h"
 #include "../Debug/RNLogger.h"
-#include "../Objects/RNObject.h"
 #include "../Objects/RNArray.h"
+#include "../Objects/RNObject.h"
 #include "../Objects/RNString.h"
 
 namespace RN
@@ -44,7 +44,7 @@ namespace RN
 				priority(source.priority),
 				_object(SafeRetain(source._object))
 			{}
-			Descriptor &operator = (const Descriptor &source)
+			Descriptor &operator=(const Descriptor &source)
 			{
 				SafeRelease(_object);
 
@@ -82,7 +82,7 @@ namespace RN
 		{
 			Array *array = new Array(_descriptors.size());
 
-			for(auto iterator : _descriptors)
+			for(auto iterator: _descriptors)
 				array->AddObject(iterator._object);
 
 			return array->Autorelease();
@@ -172,7 +172,7 @@ namespace RN
 	private:
 		Delegate *_delegate;
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_EXTENSIONPOINT_H_ */

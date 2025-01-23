@@ -9,9 +9,9 @@
 #ifndef __RAYNE_UIBUTTON_H_
 #define __RAYNE_UIBUTTON_H_
 
-#include "RNUIView.h"
-#include "RNUILabel.h"
 #include "RNUIImageView.h"
+#include "RNUILabel.h"
+#include "RNUIView.h"
 
 namespace RN
 {
@@ -22,7 +22,7 @@ namespace RN
 		public:
 			UIAPI Button(const TextAttributes &defaultTextAttributes);
 			UIAPI ~Button();
-			
+
 			UIAPI void SetFrame(const Rect &frame) override;
 
 			UIAPI void SetImageNormal(Texture *image);
@@ -33,7 +33,7 @@ namespace RN
 			UIAPI void SetBackgroundColorHighlight(const Color &color);
 			UIAPI void SetTextColorNormal(const Color &color);
 			UIAPI void SetTextColorHighlight(const Color &color);
-			
+
 			Label *GetLabel() const { return _label; }
 			Texture *GetImageNormal() const { return _imageNormal; }
 			Texture *GetImageHighlight() const { return _imageHighlight; }
@@ -41,18 +41,18 @@ namespace RN
 			const Color &GetBackgroundColorHighlight() const { return _backgroundColorHighlight; }
 			const Color &GetTextColorNormal() const { return _textColorNormal; }
 			const Color &GetTextColorHighlight() const { return _textColorHighlight; }
-			
+
 			bool GetIsHighlighted() const { return _isHighlighted; }
 			UIAPI void SetIsHighlighted(bool isHighlighted);
-			
+
 		protected:
 			UIAPI virtual bool UpdateCursorPosition(const Vector2 &cursorPosition) override;
 
 		private:
 			void UpdateForHighlight();
-			
+
 			Label *_label;
-			
+
 			Texture *_imageNormal;
 			Texture *_imageHighlight;
 			Color _imageColorNormal;
@@ -61,14 +61,14 @@ namespace RN
 			Color _backgroundColorHighlight;
 			Color _textColorNormal;
 			Color _textColorHighlight;
-			
+
 			bool _isHighlighted;
 			bool _wasHighlighted;
 
 			RNDeclareMetaAPI(Button, UIAPI)
 		};
-	}
-}
+	} // namespace UI
+} // namespace RN
 
 
 #endif /* __RAYNE_UIBUTTON_H_ */

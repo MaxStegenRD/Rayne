@@ -7,36 +7,36 @@
 //
 
 #include "RNJoltCollisionObject.h"
-#include "RNJoltWorld.h"
 #include "RNJoltInternals.h"
+#include "RNJoltWorld.h"
 
 
 namespace RN
 {
 	RNDefineMeta(JoltCollisionObject, SceneNodeAttachment)
-		
-		JoltCollisionObject::JoltCollisionObject() :
+
+	JoltCollisionObject::JoltCollisionObject() :
 		_collisionFilterGroup(1),
 		_collisionFilterMask(0xffffffff),
 		_owner(nullptr)
 	{}
-		
+
 	JoltCollisionObject::~JoltCollisionObject()
 	{
 	}
-		
-		
+
+
 	void JoltCollisionObject::SetCollisionFilter(uint32 group, uint32 mask)
 	{
 		_collisionFilterGroup = group;
 		_collisionFilterMask = mask;
 	}
-		
-	void JoltCollisionObject::SetContactCallback(std::function<void (JoltCollisionObject *, const JoltContactInfo&)> &&callback)
+
+	void JoltCollisionObject::SetContactCallback(std::function<void(JoltCollisionObject *, const JoltContactInfo &)> &&callback)
 	{
 		_contactCallback = std::move(callback);
 	}
-		
+
 	void JoltCollisionObject::SetPositionOffset(RN::Vector3 offset)
 	{
 		_positionOffset = offset;
@@ -48,11 +48,11 @@ namespace RN
 		_rotationOffset = offset;
 		UpdatePosition();
 	}
-		
-		
+
+
 	void JoltCollisionObject::DidUpdate(SceneNode::ChangeSet changeSet)
 	{
-/*		if(changeSet & SceneNode::ChangeSet::World)
+		/*		if(changeSet & SceneNode::ChangeSet::World)
 		{
 			World *world = GetParent()->GetWorld();
 				
@@ -69,5 +69,4 @@ namespace RN
 			}
 		}*/
 	}
-}
-
+} // namespace RN

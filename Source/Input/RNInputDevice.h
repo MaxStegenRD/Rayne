@@ -10,8 +10,8 @@
 #define __RAYNE_INPUTDEVICE_H_
 
 #include "../Base/RNBase.h"
-#include "../Objects/RNObject.h"
 #include "../Objects/RNArray.h"
+#include "../Objects/RNObject.h"
 #include "../Objects/RNString.h"
 #include "RNInputControl.h"
 
@@ -28,7 +28,7 @@ namespace RN
 				   Mouse = (1 << 0),
 				   Keyboard = (1 << 1),
 				   Pen = (1 << 2),
-				   Gamepad  = (1 << 3),
+				   Gamepad = (1 << 3),
 				   Joystick = (1 << 4));
 
 		struct Descriptor
@@ -107,7 +107,7 @@ namespace RN
 		RNAPI InputDevice(const Descriptor &descriptor);
 
 		RNAPI void SetSerialNumber(const String *serialNumber);
-		RNAPI void BindCommand(const String *command, std::function<Object * (Object *)> &&action, std::vector<MetaClass *> &&arguments);
+		RNAPI void BindCommand(const String *command, std::function<Object *(Object *)> &&action, std::vector<MetaClass *> &&arguments);
 
 		RNAPI virtual bool __Activate() = 0;
 		RNAPI virtual bool __Deactivate() = 0;
@@ -129,7 +129,7 @@ namespace RN
 				supportedArguments(other.supportedArguments)
 			{}
 
-			ExecutionPort &operator =(const ExecutionPort &other)
+			ExecutionPort &operator=(const ExecutionPort &other)
 			{
 				command->Autorelease();
 				command = other.command->Retain();
@@ -146,7 +146,7 @@ namespace RN
 			}
 
 			String *command;
-			std::function<Object * (Object *)> action;
+			std::function<Object *(Object *)> action;
 			std::vector<MetaClass *> supportedArguments;
 		};
 
@@ -165,6 +165,6 @@ namespace RN
 
 		__RNDeclareMetaInternal(InputDevice)
 	};
-}
+} // namespace RN
 
 #endif /* __RAYNE_INPUTDEVICE_H_ */

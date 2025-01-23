@@ -13,8 +13,8 @@
 #include "../Base/RNBase.h"
 #include "../Math/RNPlane.h"
 #include "../Math/RNRect.h"
-#include "../Rendering/RNRenderPass.h"
 #include "../Rendering/RNMaterial.h"
+#include "../Rendering/RNRenderPass.h"
 #include "RNSceneNode.h"
 
 namespace RN
@@ -28,29 +28,28 @@ namespace RN
 		friend class Light;
 
 		RN_OPTIONS(Flags, uint32,
-				   SortTransparentBackToFront    = (1 << 5),
-				   SortFrontToBack    = (1 << 6),
-				   NoRender     = (1 << 7),
+				   SortTransparentBackToFront = (1 << 5),
+				   SortFrontToBack = (1 << 6),
+				   NoRender = (1 << 7),
 				   NoDepthWrite = (1 << 8),
 				   NoOcclusionCulling = (1 << 9),
 
-				   InheritPosition   = (1 << 12),
-				   InheritFrame      = (1 << 13),
+				   InheritPosition = (1 << 12),
+				   InheritFrame = (1 << 13),
 				   InheritProjection = (1 << 14),
-				   
+
 				   RenderEarly = (1 << 19),
 				   RenderLate = (1 << 20),
 
 				   Orthogonal = (1 << 21),
-				   Hidden     = (1 << 22),
+				   Hidden = (1 << 22),
 
-				   UseFog          = (1 << 24),
-				   UseClipPlanes   = (1 << 25),
+				   UseFog = (1 << 24),
+				   UseClipPlanes = (1 << 25),
 				   UseSimpleCulling = (1 << 26),
 				   UseUIFastPath = (1 << 27),
 
-				   Defaults = (UseFog | SortTransparentBackToFront));// | SortFrontToBack));
-
+				   Defaults = (UseFog | SortTransparentBackToFront)); // | SortFrontToBack));
 
 
 		RNAPI Camera(RenderPass *renderPass = nullptr);
@@ -63,7 +62,7 @@ namespace RN
 		RNAPI void SetFlags(Flags flags);
 		RNAPI void SetShaderHint(Shader::UsageHint hint);
 		RNAPI void SetMaterial(Material *material);
-//		RNAPI void SetLightManager(LightManager *lightManager);
+		//		RNAPI void SetLightManager(LightManager *lightManager);
 		RNAPI void SetLODCamera(Camera *camera);
 		RNAPI void SetPriority(int32 priority);
 		RNAPI void SetFOV(float fov);
@@ -78,9 +77,9 @@ namespace RN
 		RNAPI void SetClipPlane(const Plane &clipPlane);
 		RNAPI void SetOrthogonalFrustum(float top, float bottom, float left, float right);
 		RNAPI void SetProjectionMatrix(const Matrix &projectionMatrix);
-		
+
 		RNAPI void SetFrustumPlaneOffset(float topOffset, float bottomOffset, float leftOffset, float rightOffset);
-		
+
 		RNAPI void AddMultiviewCamera(RN::Camera *camera);
 		RNAPI void RemoveMultiviewCamera(RN::Camera *camera);
 
@@ -101,7 +100,7 @@ namespace RN
 		Flags GetFlags() const { return _flags; }
 		Shader::UsageHint GetShaderHint() const { return _shaderHint; }
 		Camera *GetLODCamera() const { return _lodCamera ? _lodCamera : const_cast<Camera *>(this); }
-//		LightManager *GetLightManager();
+		//		LightManager *GetLightManager();
 		int32 GetPriority() const { return _priority; }
 		float GetFOV() const { return _fov; }
 		float GetAspectRatio() const { return _aspect; }
@@ -119,9 +118,9 @@ namespace RN
 		const Matrix &GetInverseViewMatrix() const { return _inverseViewMatrix; }
 		const RN::Array *GetMultiviewCameras() const { return _multiviewCameras; }
 		bool GetIsMultiviewCamera() const { return _isMultiviewCamera; }
-		
+
 		RNAPI void SetFirstSceneNodeMember(IntrusiveList<SceneNode>::Member *member); //If this is set, it has to be reset if the member is removed from the scene!
-		
+
 		//TODO: Make private but keep accessible to user made scene implementations
 		IntrusiveList<Camera>::Member _cameraSceneEntry;
 		IntrusiveList<SceneNode>::Member *_firstNodeMember; //Start rendering with this node if it is set! Useful when rendering UI into a separate camera, skipping a lot of work.
@@ -144,7 +143,7 @@ namespace RN
 
 		Vector3 _frustumCenter;
 		float _frustumRadius;
-		
+
 		float _frustumPlaneOffsets[4];
 
 		struct
@@ -170,7 +169,7 @@ namespace RN
 		Color _ambient;
 
 		Plane _clipPlane;
-//		LightManager *_lightManager;
+		//		LightManager *_lightManager;
 		Shader::UsageHint _shaderHint;
 
 		Matrix _projectionMatrix;
@@ -188,13 +187,13 @@ namespace RN
 		RenderPass *_renderPass;
 		Material *_material;
 		Camera *_lodCamera;
-		
+
 		RN::Array *_multiviewCameras;
 		bool _isMultiviewCamera;
 
 		__RNDeclareMetaInternal(Camera);
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_CAMERA_H__ */

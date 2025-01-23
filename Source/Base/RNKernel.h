@@ -9,23 +9,23 @@
 #ifndef __RAYNE_KERNEL_H__
 #define __RAYNE_KERNEL_H__
 
-#include "RNBase.h"
-#include "RNApplication.h"
-#include "RNSettings.h"
-#include "RNArgumentParser.h"
-#include "RNNotificationManager.h"
+#include "../Assets/RNAssetManager.h"
 #include "../Debug/RNLogger.h"
+#include "../Input/RNInputManager.h"
+#include "../Modules/RNModuleManager.h"
 #include "../Objects/RNDictionary.h"
 #include "../Objects/RNString.h"
-#include "../Input/RNInputManager.h"
-#include "../Assets/RNAssetManager.h"
-#include "../Modules/RNModuleManager.h"
-#include "../System/RNFileManager.h"
 #include "../Rendering/RNRenderer.h"
 #include "../Scene/RNSceneManager.h"
-#include "../Threads/RNThread.h"
+#include "../System/RNFileManager.h"
 #include "../Threads/RNRunLoop.h"
+#include "../Threads/RNThread.h"
 #include "../Threads/RNWorkQueue.h"
+#include "RNApplication.h"
+#include "RNArgumentParser.h"
+#include "RNBase.h"
+#include "RNNotificationManager.h"
+#include "RNSettings.h"
 
 #define kRNManifestApplicationKey RNCSTR("RNApplication")
 #define kRNManifestSearchPathsKey RNCSTR("RNSearchPaths")
@@ -44,10 +44,10 @@ namespace RN
 
 		RNAPI void Run();
 		RNAPI void Exit();
-		
+
 		RNAPI void SetMaxFPS(uint32 maxFPS);
 
-		double GetTotalTime() const{ return _time; }
+		double GetTotalTime() const { return _time; }
 		float GetScaleFactor() const { return 1.0f; }
 
 		bool GetWantsToExit() const { return _wantsToExit; }
@@ -85,12 +85,12 @@ namespace RN
 		RNAPI void SetJNIEnvForRayneMainThread(JNIEnv *jniEnv);
 		JNIEnv *GetJNIEnvForRayneMainThread() const { return _jniEnv; }
 #endif
-		
+
 #if RN_PLATFORM_IOS
 		RNAPI void SetMetalLayer(void *metalLayer);
 		void *GetMetalLayer() const { return _metalLayer; }
 #endif
-		
+
 #if RN_PLATFORM_VISIONOS
 		RNAPI void SetLayerRenderer(void *layerRenderer);
 		void *GetLayerRenderer() const { return _layerRenderer; }
@@ -158,6 +158,6 @@ namespace RN
 
 		bool _isActive;
 	};
-}
+} // namespace RN
 
 #endif /* __RAYME_KERNEL_H___ */

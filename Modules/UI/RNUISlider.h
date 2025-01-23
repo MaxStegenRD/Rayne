@@ -25,9 +25,9 @@ namespace RN
 			float GetValue() const { return _value; }
 			UIAPI void SetValue(float value);
 			UIAPI void SetRange(float from, float to, float step = 0.0f);
-			
+
 			bool GetIsActive() const { return _isActive; }
-			
+
 			View *GetRangeView() const { return _rangeView; }
 			View *GetHandleView() const { return _handleView; }
 
@@ -36,16 +36,16 @@ namespace RN
 			float _from;
 			float _to;
 			float _step;
-			
+
 			bool _isActive;
-			
+
 			View *_rangeView;
 			View *_handleView;
 
 			RNDeclareMetaAPI(Slider, UIAPI)
 		};
-	}
-}
+	} // namespace UI
+} // namespace RN
 
 
 #endif /* __RAYNE_UISLIDER_H_ */

@@ -26,7 +26,7 @@ namespace RN
 
 		RNAPI ScopeAllocator *GetThreadAllocator();
 
-		template<class T, typename ...Args>
+		template<class T, typename... Args>
 		T *Alloc(Args &&...args)
 		{
 			void *mem;
@@ -51,7 +51,10 @@ namespace RN
 
 	private:
 		template<class T>
-		static void Destructor(void *ptr) { static_cast<T *>(ptr)->~T(); }
+		static void Destructor(void *ptr)
+		{
+			static_cast<T *>(ptr)->~T();
+		}
 
 		RNAPI void *AllocWithDestructor(size_t size, size_t alignment, void (*fn)(void *ptr));
 		RNAPI void *Alloc(size_t size, size_t alignment);
@@ -61,6 +64,6 @@ namespace RN
 		size_t _nonFinalizerSize;
 		ScopeAllocator *_previous;
 	};
-}
+} // namespace RN
 
 #endif /* __RN_SCOPE_ALLOCATOR_H__ */

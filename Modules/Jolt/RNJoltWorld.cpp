@@ -15,20 +15,21 @@ namespace RN
 
 	JoltWorld *JoltWorld::_sharedInstance = nullptr;
 
-	JoltWorld::JoltWorld(const Vector3 &gravity, uint32 maxBodies, uint32 maxBodyPairs, uint32 maxContactConstraints) : _substeps(1), _paused(false), _isSimulating(false), _isLoadingLevel(false)
+	JoltWorld::JoltWorld(const Vector3 &gravity, uint32 maxBodies, uint32 maxBodyPairs, uint32 maxContactConstraints) :
+		_substeps(1), _paused(false), _isSimulating(false), _isLoadingLevel(false)
 	{
 		RN_ASSERT(!_sharedInstance, "There can only be one Jolt instance at a time!");
 		_sharedInstance = this;
-		
+
 		// Register allocation hook
 		JPH::RegisterDefaultAllocator();
-		
+
 		// Create a factory
 		JPH::Factory::sInstance = new JPH::Factory();
 
 		// Register all Jolt physics types
 		JPH::RegisterTypes();
-		
+
 		_internals->tempAllocator = new JPH::TempAllocatorImpl(10 * 1024 * 1024); //Preallocate 10mb for temp allocations during physics update
 
 		// We need a job system that will execute physics jobs on multiple threads. Typically
@@ -38,26 +39,26 @@ namespace RN
 
 		_physicsSystem = new JPH::PhysicsSystem();
 		_physicsSystem->Init(maxBodies, 0, maxBodyPairs, maxContactConstraints, _internals->objectLayerMapper, _internals->objectLayerMapper, _internals->objectLayerMapper);
-		
+
 		_physicsSystem->SetContactListener(&_internals->contactListener);
-		
+
 		SetGravity(gravity);
 	}
 
 	JoltWorld::~JoltWorld()
 	{
 		delete _physicsSystem;
-		
+
 		delete _internals->tempAllocator;
 		delete _internals->jobSystem;
-		
+
 		// Unregisters all types with the factory and cleans up the default material
 		JPH::UnregisterTypes();
 
 		// Destroy the factory
 		delete JPH::Factory::sInstance;
 		JPH::Factory::sInstance = nullptr;
-		
+
 		_sharedInstance = nullptr;
 	}
 
@@ -85,8 +86,8 @@ namespace RN
 	void JoltWorld::Update(float delta)
 	{
 		SceneAttachment::Update(delta);
-		
-/*		if(_paused)
+
+		/*		if(_paused)
 			return;
 		
 		if(delta > 0.1f || delta < k::EpsilonFloat)
@@ -96,7 +97,7 @@ namespace RN
 		_physicsSystem->Update(delta, _substeps, _internals->tempAllocator, _internals->jobSystem); //This waits for all jobs to finish! Maybe it can be split up into simulate and finish like with physx (wait here for all jobs, but start them in WillUpdate)
 		_isSimulating = false;*/
 
-/*
+		/*
 		Jolt::PxU32 actorCount = 0;
 		Jolt::PxActor **actors = _scene->getActiveActors(actorCount);
 		for(int i = 0; i < actorCount; i++)
@@ -108,13 +109,13 @@ namespace RN
 				collisionObject->UpdatePosition();
 			}
 		}*/
-		
+
 		JPH::BodyIDVector bodyIDs;
 		_physicsSystem->GetActiveBodies(JPH::EBodyType::RigidBody, bodyIDs);
-		for(JPH::BodyID bodyID : bodyIDs)
+		for(JPH::BodyID bodyID: bodyIDs)
 		{
 			uint64 userData = _physicsSystem->GetBodyInterface().GetUserData(bodyID);
-			JoltCollisionObject *collisionObject = reinterpret_cast<JoltCollisionObject*>(userData);
+			JoltCollisionObject *collisionObject = reinterpret_cast<JoltCollisionObject *>(userData);
 			if(collisionObject) collisionObject->UpdatePosition();
 		}
 	}
@@ -122,12 +123,12 @@ namespace RN
 	void JoltWorld::WillUpdate(float delta)
 	{
 		SceneAttachment::WillUpdate(delta);
-		
+
 		//_physicsSystem->OptimizeBroadPhase();
-		
+
 		if(_paused)
 			return;
-		
+
 		if(delta > 0.1f || delta < k::EpsilonFloat)
 			return;
 
@@ -148,13 +149,13 @@ namespace RN
 	{
 		RN_DEBUG_ASSERT(_isLoadingLevel, "PrepareLoadingLevel was not called or loading was already finalized!");
 		_isLoadingLevel = false;
-		
+
 		if(_internals->bodiesToAddLoadingLevel.size() == 0) return;
-		
+
 		JPH::BodyInterface &bodyInterface = _physicsSystem->GetBodyInterface();
 		JPH::BodyInterface::AddState state = bodyInterface.AddBodiesPrepare(_internals->bodiesToAddLoadingLevel.data(), _internals->bodiesToAddLoadingLevel.size());
 		bodyInterface.AddBodiesFinalize(_internals->bodiesToAddLoadingLevel.data(), _internals->bodiesToAddLoadingLevel.size(), state, JPH::EActivation::DontActivate);
-		
+
 		_internals->bodiesToAddLoadingLevel.clear();
 	}
 
@@ -178,21 +179,21 @@ namespace RN
 		hit.node = nullptr;
 		hit.collisionObject = nullptr;
 
-        Vector3 diff = to - from;
-		
+		Vector3 diff = to - from;
+
 		//TODO: Limit max distance of raycast or the result
-		
+
 		JPH::RRayCast rayInfo;
 		rayInfo.mOrigin = JPH::Vec3(from.x, from.y, from.z);
 		rayInfo.mDirection = JPH::Vec3(diff.x, diff.y, diff.z);
-		
+
 		JPH::RayCastResult result;
 		uint16 objectLayer = GetObjectLayer(filterGroup, filterMask, 1);
 		if(!_physicsSystem->GetNarrowPhaseQuery().CastRay(rayInfo, result, _physicsSystem->GetDefaultBroadPhaseLayerFilter(objectLayer), _physicsSystem->GetDefaultLayerFilter(objectLayer)))
 		{
 			return hit;
 		}
-		
+
 		JPH::Vec3 position = rayInfo.GetPointOnRay(result.mFraction);
 		JPH::Vec3 normal;
 
@@ -203,27 +204,27 @@ namespace RN
 			{
 				const JPH::Body &body = lock.GetBody();
 				normal = body.GetWorldSpaceSurfaceNormal(result.mSubShapeID2, position);
-				hit.collisionObject = reinterpret_cast<JoltCollisionObject*>(body.GetUserData());
+				hit.collisionObject = reinterpret_cast<JoltCollisionObject *>(body.GetUserData());
 			}
 			else
 			{
 				return hit;
 			}
 		}
-		
+
 		hit.position.x = position.GetX();
 		hit.position.y = position.GetY();
 		hit.position.z = position.GetZ();
-		
+
 		hit.normal.x = normal.GetX();
 		hit.normal.y = normal.GetY();
 		hit.normal.z = normal.GetZ();
 
 		hit.distance = from.GetDistance(hit.position);
-		
+
 		if(hit.collisionObject) hit.node = hit.collisionObject->GetParent();
 		if(hit.node) hit.node->Retain()->Autorelease();
-		
+
 		return hit;
 	}
 
@@ -235,15 +236,15 @@ namespace RN
 		hit.collisionObject = nullptr;
 
 		Vector3 diff = to - from;
-		
+
 		JPH::Mat44 worldTransform = JPH::Mat44::sRotationTranslation(JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), JPH::Vec3Arg(from.x, from.y, from.z));
-		
+
 		//TODO: Limit max distance of raycast or the result
-		
+
 		JPH::RShapeCast castInfo = JPH::RShapeCast::sFromWorldTransform(shape->GetJoltShape(), JPH::Vec3Arg(scale.x, scale.y, scale.z), worldTransform, JPH::Vec3Arg(diff.x, diff.y, diff.z));
-		
+
 		JPH::ShapeCastSettings castSettings; //Defaults seem ok for now!?
-		
+
 		uint16 objectLayer = GetObjectLayer(filterGroup, filterMask, 1);
 		JPH::ClosestHitCollisionCollector<JPH::CastShapeCollector> result;
 		_physicsSystem->GetNarrowPhaseQuery().CastShape(castInfo, castSettings, JPH::RVec3Arg(0, 0, 0), result, _physicsSystem->GetDefaultBroadPhaseLayerFilter(objectLayer), _physicsSystem->GetDefaultLayerFilter(objectLayer));
@@ -251,8 +252,8 @@ namespace RN
 		{
 			return hit;
 		}
-		
-		JPH::Vec3 position = result.mHit.mContactPointOn2;//castInfo.GetPointOnRay(result.mHit.mFraction);
+
+		JPH::Vec3 position = result.mHit.mContactPointOn2; //castInfo.GetPointOnRay(result.mHit.mFraction);
 		JPH::Vec3 normal;
 
 		// Scoped lock
@@ -262,27 +263,27 @@ namespace RN
 			{
 				const JPH::Body &body = lock.GetBody();
 				normal = body.GetWorldSpaceSurfaceNormal(result.mHit.mSubShapeID2, position);
-				hit.collisionObject = reinterpret_cast<JoltCollisionObject*>(body.GetUserData());
+				hit.collisionObject = reinterpret_cast<JoltCollisionObject *>(body.GetUserData());
 			}
 			else
 			{
 				return hit;
 			}
 		}
-		
+
 		hit.position.x = position.GetX();
 		hit.position.y = position.GetY();
 		hit.position.z = position.GetZ();
-		
+
 		hit.normal.x = normal.GetX();
 		hit.normal.y = normal.GetY();
 		hit.normal.z = normal.GetZ();
 
 		hit.distance = from.GetDistance(hit.position);
-		
+
 		if(hit.collisionObject) hit.node = hit.collisionObject->GetParent();
 		if(hit.node) hit.node->Retain()->Autorelease();
-		
+
 		return hit;
 	}
 
@@ -292,26 +293,26 @@ namespace RN
 
 		JPH::Mat44 worldTransform = JPH::Mat44::sRotationTranslation(JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), JPH::Vec3Arg(position.x, position.y, position.z));
 		JPH::CollideShapeSettings collideSettings; //Defaults seem ok for now!?
-		
+
 		JPH::AllHitCollisionCollector<JPH::CollideShapeCollector> results;
 		uint16 objectLayer = GetObjectLayer(filterGroup, filterMask, 1);
 		_physicsSystem->GetNarrowPhaseQuery().CollideShape(shape->GetJoltShape(), JPH::Vec3Arg(scale.x, scale.y, scale.z), worldTransform.PreTranslated(shape->GetJoltShape()->GetCenterOfMass()), collideSettings, JPH::RVec3Arg(0, 0, 0), results, _physicsSystem->GetDefaultBroadPhaseLayerFilter(objectLayer), _physicsSystem->GetDefaultLayerFilter(objectLayer));
-		
-		for(auto result : results.mHits)
+
+		for(auto result: results.mHits)
 		{
 			JoltContactInfo hit;
 			hit.distance = 0.0f;
 			hit.position = position;
 			hit.node = nullptr;
 			hit.collisionObject = nullptr;
-			
-			hit.collisionObject = reinterpret_cast<JoltCollisionObject*>(_physicsSystem->GetBodyInterface().GetUserData(result.mBodyID2));
+
+			hit.collisionObject = reinterpret_cast<JoltCollisionObject *>(_physicsSystem->GetBodyInterface().GetUserData(result.mBodyID2));
 			if(hit.collisionObject) hit.node = hit.collisionObject->GetParent();
 			if(hit.node) hit.node->Retain()->Autorelease();
 
 			hits.push_back(hit);
 		}
-		
+
 		return hits;
 	}
-}
+} // namespace RN

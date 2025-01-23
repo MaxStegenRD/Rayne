@@ -11,9 +11,9 @@
 #define __RAYNE_RENDERERDESCRIPTOR_H__
 
 #include "../Base/RNBase.h"
+#include "../Modules/RNExtensionPoint.h"
 #include "../Objects/RNObject.h"
 #include "../Objects/RNString.h"
-#include "../Modules/RNExtensionPoint.h"
 #include "RNRenderingDevice.h"
 
 namespace RN
@@ -62,6 +62,6 @@ namespace RN
 
 		__RNDeclareMetaInternal(RendererDescriptor)
 	};
-}
+} // namespace RN
 
 #endif /* __RAYNE_RENDERERDESCRIPTOR_H__ */

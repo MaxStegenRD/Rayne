@@ -22,12 +22,12 @@
 // ---------------------------
 
 #if RN_PLATFORM_MAC_OS
-	#include <mach/mach.h>
 	#include <CoreGraphics/CoreGraphics.h>
+	#include <mach/mach.h>
 #endif
 #if RN_PLATFORM_WINDOWS
 	#ifndef WIN32_LEAN_AND_MEAN
-		#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers.
+		#define WIN32_LEAN_AND_MEAN // Exclude rarely-used stuff from Windows headers.
 	#endif
 
 	#ifndef NOMINMAX
@@ -41,13 +41,13 @@
 	//#define _AMD64_
 
 	//#include <ntdef.h>
+	#include <NTDDNDIS.h>
 	#include <WinSock2.h>
 	#include <windows.h>
-	#include <NTDDNDIS.h>
 
-	#include <commdlg.h>
-	#include <ShlObj.h>
 	#include <Psapi.h>
+	#include <ShlObj.h>
+	#include <commdlg.h>
 
 	#undef near
 	#undef far
@@ -61,7 +61,7 @@
 		#define RN_JNI_VERSION_1_6 0x00010006
 	#endif
 
-	#define RN_JNI_METHOD __attribute__ ((visibility ("default"))) extern "C"
+	#define RN_JNI_METHOD __attribute__((visibility("default"))) extern "C"
 
 	#define kRNAndroidWindowDidChange RNCSTR("kRNAndroidWindowDidChange")
 	#define kRNAndroidOnResume RNCSTR("kRNAndroidOnResume")
@@ -75,65 +75,73 @@
 #include "RNMemory.h"
 
 #include <assert.h>
-#include <string.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include <math.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <cstdarg>
 
-#include <type_traits>
-#include <iostream>
-#include <iomanip>
-#include <fstream>
 #include <algorithm>
-#include <string>
-#include <sstream>
-#include <iterator>
 #include <array>
-#include <vector>
-#include <map>
-#include <tuple>
-#include <chrono>
-#include <utility>
-#include <regex>
-#include <thread>
-#include <future>
-#include <mutex>
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
+#include <fstream>
+#include <future>
+#include <iomanip>
+#include <iostream>
+#include <iterator>
+#include <map>
+#include <mutex>
+#include <regex>
+#include <sstream>
+#include <string>
+#include <thread>
+#include <tuple>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
+#include <vector>
 
-#include "RNException.h"
-#include "RNOptions.h"
-#include "RNExpected.h"
-#include "RNScopeGuard.h"
 #include "../Math/RNConstants.h"
 #include "../Math/RNMath.h"
 #include "../Threads/RNCondition.h"
+#include "../Threads/RNLockGuard.h"
+#include "../Threads/RNLockWrapper.h"
 #include "../Threads/RNLockable.h"
 #include "../Threads/RNRecursiveLockable.h"
-#include "../Threads/RNLockGuard.h"
 #include "../Threads/RNUniqueLock.h"
-#include "../Threads/RNLockWrapper.h"
+#include "RNException.h"
+#include "RNExpected.h"
+#include "RNOptions.h"
+#include "RNScopeGuard.h"
 
 
 // ---------------------------
 // Helper macros
 // ---------------------------
 
-#define RN_REGISTER_INITIALIZER(name, body) \
-	namespace { \
-		static void __RNGlobalInit##name##Callback() { body; } \
-		static RN::Initializer __RNGlobalInit##name (__RNGlobalInit##name##Callback, nullptr); \
+#define RN_REGISTER_INITIALIZER(name, body)                                                   \
+	namespace                                                                                 \
+	{                                                                                         \
+		static void __RNGlobalInit##name##Callback()                                          \
+		{                                                                                     \
+			body;                                                                             \
+		}                                                                                     \
+		static RN::Initializer __RNGlobalInit##name(__RNGlobalInit##name##Callback, nullptr); \
 	}
 
-#define RN_REGISTER_DESTRUCTOR(name, body) \
-	namespace { \
-		static void __RNGlobalDestructor##name##Callback() { body; } \
-		static RN::Initializer __RNGlobalDestructor##name (nullptr, __RNGlobalDestructor##name##Callback); \
+#define RN_REGISTER_DESTRUCTOR(name, body)                                                                \
+	namespace                                                                                             \
+	{                                                                                                     \
+		static void __RNGlobalDestructor##name##Callback()                                                \
+		{                                                                                                 \
+			body;                                                                                         \
+		}                                                                                                 \
+		static RN::Initializer __RNGlobalDestructor##name(nullptr, __RNGlobalDestructor##name##Callback); \
 	}
 
 #define RNVersionMake(major, minor, patch) \
@@ -188,12 +196,12 @@ namespace RN
 
 	enum class ComparisonResult : int
 	{
-		LessThan   = -1, // lhs < rhs
-		EqualTo     = 0, // lhs == rhs
-		GreaterThan = 1  // lhs > rhs
+		LessThan = -1, // lhs < rhs
+		EqualTo = 0, // lhs == rhs
+		GreaterThan = 1 // lhs > rhs
 	};
 
-	static RN_INLINE std::ostream &operator<< (std::ostream &os, const ComparisonResult &result)
+	static RN_INLINE std::ostream &operator<<(std::ostream &os, const ComparisonResult &result)
 	{
 		switch(result)
 		{
@@ -214,7 +222,7 @@ namespace RN
 		typedef void (*Callback)();
 
 		Initializer(Callback ctor, Callback dtor) :
-				_dtor(dtor)
+			_dtor(dtor)
 		{
 			if(ctor)
 				ctor();
@@ -235,8 +243,8 @@ namespace RN
 	public:
 		Range() = default;
 		Range(size_t torigin, size_t tlength) :
-				origin(torigin),
-				length(tlength)
+			origin(torigin),
+			length(tlength)
 		{}
 
 		size_t GetEnd() const
@@ -254,14 +262,14 @@ namespace RN
 			return (GetEnd() >= other.origin && origin <= other.GetEnd());
 		}
 
-		bool operator ==(const Range &other) const
+		bool operator==(const Range &other) const
 		{
 			if(origin == kRNNotFound || other.origin == kRNNotFound)
 				return (origin == other.origin);
 
 			return (origin == other.origin && length == other.length);
 		}
-		bool operator !=(const Range &other) const
+		bool operator!=(const Range &other) const
 		{
 			return !(*this == other);
 		}
@@ -270,34 +278,34 @@ namespace RN
 		size_t length;
 	};
 
-	static RN_INLINE std::ostream &operator<< (std::ostream &os, const Range &range)
+	static RN_INLINE std::ostream &operator<<(std::ostream &os, const Range &range)
 	{
 		return os << "{" << range.origin << ", " << range.length << "}";
 	}
 
-	template <class T>
+	template<class T>
 	class PIMPL
 	{
 	public:
-		template<class ...Args>
+		template<class... Args>
 		PIMPL(Args &&...args) :
-				_ptr(new T(std::forward<Args>(args)...))
+			_ptr(new T(std::forward<Args>(args)...))
 		{}
 
-		operator T* ()
+		operator T *()
 		{
 			return _ptr.get();
 		}
-		operator const T* () const
+		operator const T *() const
 		{
 			return _ptr.get();
 		}
 
-		T *operator ->()
+		T *operator->()
 		{
 			return _ptr.get();
 		}
-		const T *operator ->() const
+		const T *operator->() const
 		{
 			return _ptr.get();
 		}
@@ -305,6 +313,6 @@ namespace RN
 	private:
 		std::unique_ptr<T> _ptr;
 	};
-}
+} // namespace RN
 
 #endif /* _RAYNE_BASE_H_ */

@@ -10,8 +10,8 @@
 #define __RAYNE_FILE_H_
 
 #include "../Base/RNBase.h"
-#include "../Objects/RNObject.h"
 #include "../Objects/RNData.h"
+#include "../Objects/RNObject.h"
 
 namespace RN
 {
@@ -80,7 +80,7 @@ namespace RN
 	RNExceptionType(FileNotFound)
 	RNExceptionType(FileIO)
 	RNExceptionType(FileGeneric)
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_FILE_H_ */

@@ -72,12 +72,12 @@ namespace RN
 
 	private:
 		Semaphore(const Semaphore &other) = delete;
-		Semaphore &operator =(const Semaphore &other) = delete;
+		Semaphore &operator=(const Semaphore &other) = delete;
 
 		HANDLE _semaphore;
 	};
 
 #endif
-}
+} // namespace RN
 
 #endif /* __RAYNE_SEMAPHORE_H__ */

@@ -16,41 +16,41 @@ namespace RN
 	class Color
 	{
 	public:
-		Color(float n=1.0f);
-		Color(float r, float g, float b, float a=1.0f);
-		Color(int r, int g, int b, int a=255);
+		Color(float n = 1.0f);
+		Color(float r, float g, float b, float a = 1.0f);
+		Color(int r, int g, int b, int a = 255);
 
-		bool operator== (const Color &other) const;
-		bool operator!= (const Color &other) const;
+		bool operator==(const Color &other) const;
+		bool operator!=(const Color &other) const;
 
-		Color operator- () const;
+		Color operator-() const;
 
-		Color &operator+= (const Color &other);
-		Color &operator-= (const Color &other);
-		Color &operator*= (const Color &other);
-		Color &operator/= (const Color &other);
+		Color &operator+=(const Color &other);
+		Color &operator-=(const Color &other);
+		Color &operator*=(const Color &other);
+		Color &operator/=(const Color &other);
 
-		Color operator+ (const Color &other) const;
-		Color operator- (const Color &other) const;
-		Color operator* (const Color &other) const;
-		Color operator/ (const Color &other) const;
+		Color operator+(const Color &other) const;
+		Color operator-(const Color &other) const;
+		Color operator*(const Color &other) const;
+		Color operator/(const Color &other) const;
 
-		Color &operator+= (float other);
-		Color &operator-= (float other);
-		Color &operator*= (float other);
-		Color &operator/= (float other);
+		Color &operator+=(float other);
+		Color &operator-=(float other);
+		Color &operator*=(float other);
+		Color &operator/=(float other);
 
-		Color operator+ (float other) const;
-		Color operator- (float other) const;
-		Color operator* (float other) const;
-		Color operator/ (float other) const;
-		
+		Color operator+(float other) const;
+		Color operator-(float other) const;
+		Color operator*(float other) const;
+		Color operator/(float other) const;
+
 		Color GetLerp(const Color &other, float factor) const;
-		
+
 		Vector4 GetHSV() const;
 		Color GammaToLinear();
 		Color LinearToGamma();
-		
+
 		static Color Red() { return Color(1.0f, 0.0f, 0.0f); }
 		static Color Green() { return Color(0.0f, 1.0f, 0.0f); }
 		static Color Blue() { return Color(0.0f, 0.0f, 1.0f); }
@@ -59,11 +59,11 @@ namespace RN
 		static Color White() { return Color(1.0f, 1.0f, 1.0f); }
 		static Color Gray() { return Color(0.5f, 0.5f, 0.5f); }
 		static Color ClearColor() { return Color(0.0f, 0.0f, 0.0f, 0.0f); }
-		static Color WithRGBA(float r, float g, float b, float alpha=1.0f) { return Color(r, g, b, alpha); }
-		static Color WithHSV(float h, float s, float v, float alpha=1.0f);
+		static Color WithRGBA(float r, float g, float b, float alpha = 1.0f) { return Color(r, g, b, alpha); }
+		static Color WithHSV(float h, float s, float v, float alpha = 1.0f);
 		static Color WithHSV(const Vector4 &hsva);
 		static Color WithHex(uint32 colorCode);
-		
+
 		struct
 		{
 			float r;
@@ -85,7 +85,7 @@ namespace RN
 		b = _b;
 		a = _a;
 	}
-	
+
 	RN_INLINE Color::Color(int _r, int _g, int _b, int _a)
 	{
 		r = _r / 255.0f;
@@ -95,7 +95,7 @@ namespace RN
 	}
 
 
-	RN_INLINE bool Color::operator== (const Color &other) const
+	RN_INLINE bool Color::operator==(const Color &other) const
 	{
 		float absR = Math::FastAbs(r - other.r);
 		float absG = Math::FastAbs(g - other.g);
@@ -105,7 +105,7 @@ namespace RN
 		return (absR <= k::EpsilonFloat && absG <= k::EpsilonFloat && absB <= k::EpsilonFloat && absA <= k::EpsilonFloat);
 	}
 
-	RN_INLINE bool Color::operator!= (const Color &other) const
+	RN_INLINE bool Color::operator!=(const Color &other) const
 	{
 		float absR = Math::FastAbs(r - other.r);
 		float absG = Math::FastAbs(g - other.g);
@@ -115,7 +115,7 @@ namespace RN
 		return (absR > k::EpsilonFloat || absG > k::EpsilonFloat || absB > k::EpsilonFloat || absA > k::EpsilonFloat);
 	}
 
-	RN_INLINE Color Color::operator- () const
+	RN_INLINE Color Color::operator-() const
 	{
 		Color result(*this);
 
@@ -127,7 +127,7 @@ namespace RN
 		return result;
 	}
 
-	RN_INLINE Color &Color::operator+= (const Color &other)
+	RN_INLINE Color &Color::operator+=(const Color &other)
 	{
 		r += other.r;
 		g += other.g;
@@ -137,7 +137,7 @@ namespace RN
 		return *this;
 	}
 
-	RN_INLINE Color &Color::operator-= (const Color &other)
+	RN_INLINE Color &Color::operator-=(const Color &other)
 	{
 		r -= other.r;
 		g -= other.g;
@@ -147,7 +147,7 @@ namespace RN
 		return *this;
 	}
 
-	RN_INLINE Color &Color::operator*= (const Color &other)
+	RN_INLINE Color &Color::operator*=(const Color &other)
 	{
 		r *= other.r;
 		g *= other.g;
@@ -157,7 +157,7 @@ namespace RN
 		return *this;
 	}
 
-	RN_INLINE Color &Color::operator/= (const Color &other)
+	RN_INLINE Color &Color::operator/=(const Color &other)
 	{
 		r /= other.r;
 		g /= other.g;
@@ -168,8 +168,7 @@ namespace RN
 	}
 
 
-
-	RN_INLINE Color Color::operator+ (const Color &other) const
+	RN_INLINE Color Color::operator+(const Color &other) const
 	{
 		Color result(*this);
 
@@ -181,7 +180,7 @@ namespace RN
 		return result;
 	}
 
-	RN_INLINE  Color Color::operator- (const Color &other) const
+	RN_INLINE Color Color::operator-(const Color &other) const
 	{
 		Color result(*this);
 
@@ -193,7 +192,7 @@ namespace RN
 		return result;
 	}
 
-	RN_INLINE Color Color::operator* (const Color &other) const
+	RN_INLINE Color Color::operator*(const Color &other) const
 	{
 		Color result(*this);
 
@@ -205,7 +204,7 @@ namespace RN
 		return result;
 	}
 
-	RN_INLINE Color Color::operator/ (const Color &other) const
+	RN_INLINE Color Color::operator/(const Color &other) const
 	{
 		Color result(*this);
 
@@ -218,8 +217,7 @@ namespace RN
 	}
 
 
-
-	RN_INLINE Color &Color::operator+= (float other)
+	RN_INLINE Color &Color::operator+=(float other)
 	{
 		r += other;
 		g += other;
@@ -229,7 +227,7 @@ namespace RN
 		return *this;
 	}
 
-	RN_INLINE Color &Color::operator-= (float other)
+	RN_INLINE Color &Color::operator-=(float other)
 	{
 		r -= other;
 		g -= other;
@@ -239,7 +237,7 @@ namespace RN
 		return *this;
 	}
 
-	RN_INLINE Color &Color::operator*= (float other)
+	RN_INLINE Color &Color::operator*=(float other)
 	{
 		r *= other;
 		g *= other;
@@ -249,7 +247,7 @@ namespace RN
 		return *this;
 	}
 
-	RN_INLINE Color &Color::operator/= (float other)
+	RN_INLINE Color &Color::operator/=(float other)
 	{
 		r /= other;
 		g /= other;
@@ -260,7 +258,7 @@ namespace RN
 	}
 
 
-	RN_INLINE Color Color::operator+ (float other) const
+	RN_INLINE Color Color::operator+(float other) const
 	{
 		Color result(*this);
 
@@ -272,7 +270,7 @@ namespace RN
 		return result;
 	}
 
-	RN_INLINE Color Color::operator- (float other) const
+	RN_INLINE Color Color::operator-(float other) const
 	{
 		Color result(*this);
 
@@ -284,7 +282,7 @@ namespace RN
 		return result;
 	}
 
-	RN_INLINE Color Color::operator* (float other) const
+	RN_INLINE Color Color::operator*(float other) const
 	{
 		Color result(*this);
 
@@ -296,7 +294,7 @@ namespace RN
 		return result;
 	}
 
-	RN_INLINE Color Color::operator/ (float other) const
+	RN_INLINE Color Color::operator/(float other) const
 	{
 		Color result(*this);
 
@@ -307,17 +305,17 @@ namespace RN
 
 		return result;
 	}
-	
+
 	RN_INLINE Color Color::WithHSV(float h, float s, float v, float alpha)
 	{
 		float hi = h * 3.0f / k::Pi;
-		float f  = hi - floorf(hi);
-		
+		float f = hi - floorf(hi);
+
 		if(hi >= 3.0f)
 			hi -= 6.0f;
 		if(hi < -3.0f)
 			hi += 6.0f;
-		
+
 		Color components(0.0f, s, s * f, s * (1.0f - f));
 		components = Color::White() - components;
 		components *= v;
@@ -325,7 +323,7 @@ namespace RN
 		components.g = fmaxf(components.g, 0.0f);
 		components.b = fmaxf(components.b, 0.0f);
 		components.a = fmaxf(components.a, 0.0f);
-		
+
 		if(hi < -2.0f)
 		{
 			return Color(components.r, components.a, components.g, alpha);
@@ -351,7 +349,7 @@ namespace RN
 			return Color(components.r, components.g, components.b, alpha);
 		}
 	}
-	
+
 	RN_INLINE Color Color::WithHSV(const Vector4 &hsva)
 	{
 		return WithHSV(hsva.x, hsva.y, hsva.z, hsva.w);
@@ -364,7 +362,7 @@ namespace RN
 		g = ((colorCode >> 16) & 0xFF);
 		b = ((colorCode >> 8) & 0xFF);
 		a = ((colorCode >> 0) & 0xFF);
-		return Color(r/255.0f, g/255.0f, b/255.0f, a/255.0f);
+		return Color(r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f);
 	}
 
 	RN_INLINE Color Color::GammaToLinear()
@@ -377,7 +375,7 @@ namespace RN
 		{
 			r = pow((r + 0.055) / 1.055, 2.4);
 		}
-		
+
 		if(g <= 0.04045)
 		{
 			g = g / 12.92;
@@ -386,7 +384,7 @@ namespace RN
 		{
 			g = pow((g + 0.055) / 1.055, 2.4);
 		}
-		
+
 		if(b <= 0.04045)
 		{
 			b = b / 12.92;
@@ -395,7 +393,7 @@ namespace RN
 		{
 			b = pow((b + 0.055) / 1.055, 2.4);
 		}
-		
+
 		return *this;
 	}
 
@@ -407,77 +405,77 @@ namespace RN
 		}
 		else
 		{
-			r = 1.055 * pow(r, 1.0/2.4) - 0.055;
+			r = 1.055 * pow(r, 1.0 / 2.4) - 0.055;
 		}
-		
+
 		if(g <= 0.0031308)
 		{
 			g = g * 12.92;
 		}
 		else
 		{
-			g = 1.055 * pow(g, 1.0/2.4) - 0.055;
+			g = 1.055 * pow(g, 1.0 / 2.4) - 0.055;
 		}
-		
+
 		if(b <= 0.0031308)
 		{
 			b = b * 12.92;
 		}
 		else
 		{
-			b = 1.055 * pow(b, 1.0/2.4) - 0.055;
+			b = 1.055 * pow(b, 1.0 / 2.4) - 0.055;
 		}
-		
+
 		return *this;
 	}
 
 	RN_INLINE Color Color::GetLerp(const Color &other, float factor) const
 	{
-		return *this*(1.0f-factor)+other*factor;
+		return *this * (1.0f - factor) + other * factor;
 	}
-	
+
 	RN_INLINE Vector4 Color::GetHSV() const
 	{
 		float max = std::max(r, std::max(g, b));
 		float min = std::min(r, std::min(g, b));
 		float diff = max - min;
-		
+
 		float h = 0.0f;
 		float s = 0.0f;
 		float v = max;
-		
+
 		if(!Math::Compare(max, min))
 		{
 			if(Math::Compare(max, r))
 			{
-				h = k::Pi/3.0f * (g - b) / diff;
+				h = k::Pi / 3.0f * (g - b) / diff;
 			}
 			else if(Math::Compare(max, g))
 			{
-				h = k::Pi/3.0f * (2.0f + (b - r) / diff);
+				h = k::Pi / 3.0f * (2.0f + (b - r) / diff);
 			}
 			else if(Math::Compare(max, b))
 			{
-				h = k::Pi/3.0f * (4.0f + (r - g) / diff);
+				h = k::Pi / 3.0f * (4.0f + (r - g) / diff);
 			}
-			
+
 			if(h < 0.0f)
 			{
 				h += 2.0f * k::Pi;
 			}
 		}
-		
+
 		if(!Math::Compare(max, 0.0f))
 		{
-			s = diff/max;
+			s = diff / max;
 		}
-		
+
 		return Vector4(h - k::Pi, s, v, a);
 	}
 
 #if RN_SUPPORTS_TRIVIALLY_COPYABLE
 	static_assert(std::is_trivially_copyable<Color>::value, "Color must be trivially copyable");
 #endif
-}
+} // namespace RN
 
 #endif /* __RAYNE_COLOR_H__ */

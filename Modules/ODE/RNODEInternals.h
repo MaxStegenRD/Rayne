@@ -13,7 +13,7 @@
 
 namespace RN
 {
-/*	class BulletRigidBodyMotionState : public btMotionState
+	/*	class BulletRigidBodyMotionState : public btMotionState
 	{
 	public:
 		void SetSceneNode(SceneNodeAttachment *attachment);

@@ -28,38 +28,38 @@ namespace RN
 		JTAPI ~JoltKinematicController() override;
 
 		JTAPI void UpdatePosition() override;
-			
+
 		JTAPI void Move(const Vector3 &direction, float delta);
 		JTAPI void Gravity(float gforce, float delta);
 		JTAPI std::vector<JoltContactInfo> SweepTestAll(const Vector3 &direction, const Vector3 &offset = Vector3()) const;
 		JTAPI JoltContactInfo SweepTest(const Vector3 &direction, const Vector3 &offset = Vector3()) const;
 		JTAPI JoltContactInfo OverlapTest() const;
 		JTAPI std::vector<JoltContactInfo> OverlapTestAll() const;
-		
+
 		JTAPI bool Resize(float height, bool checkIfBlocked = true);
 
 		JTAPI void SetCollisionFilter(uint32 group, uint32 mask) override;
 		JTAPI Vector3 GetFeetOffset() const;
-		
+
 		SceneNode *GetObjectBelow() const { return _objectBelow; }
 		bool GetIsFalling() const { return _isFalling; }
 
 		JTAPI void Jump(float force);
 
-	/*	JTAPI void SetFallSpeed(float speed);
+		/*	JTAPI void SetFallSpeed(float speed);
 		JTAPI void SetJumpSpeed(float speed);
 		JTAPI void SetMaxJumpHeight(float maxHeight);
 		JTAPI void SetMaxSlope(float maxSlope);
 		JTAPI void SetGravity(float gravity);*/
-			
-/*		JTAPI bool IsOnGround();
+
+		/*		JTAPI bool IsOnGround();
 		JTAPI void Jump();*/
-			
+
 	protected:
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
-			
+
 		//JoltMaterial *_material;
-		
+
 		JoltShape *_shape;
 		JPH::CharacterVirtual *_controller;
 
@@ -68,9 +68,9 @@ namespace RN
 		float _fallSpeed;
 		SceneNode *_objectBelow;
 		bool _isFalling;
-			
+
 		RNDeclareMetaAPI(JoltKinematicController, JTAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_JOLTKINEMATICCONTROLLER_H_) */

@@ -10,8 +10,8 @@
 #define __RAYNE_HIDDEVICE_H_
 
 #include "../Base/RNBase.h"
-#include "../Objects/RNObject.h"
 #include "../Objects/RNData.h"
+#include "../Objects/RNObject.h"
 #include "RNHID.h"
 #include "RNInputDevice.h"
 
@@ -71,7 +71,7 @@ namespace RN
 	RNExceptionType(HIDRead)
 	RNExceptionType(HIDWrite)
 	RNExceptionType(HIDOpen)
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_HIDDEVICE_H_ */

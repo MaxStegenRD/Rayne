@@ -7,8 +7,8 @@
 //
 
 #include "RNShader.h"
-#include "RNShaderLibrary.h"
 #include "RNMesh.h"
+#include "RNShaderLibrary.h"
 
 namespace RN
 {
@@ -35,7 +35,8 @@ namespace RN
 		return options->Autorelease();
 	}
 
-	Shader::Options::Options(const Options *options) : _defines(options->_defines)
+	Shader::Options::Options(const Options *options) :
+		_defines(options->_defines)
 	{
 	}
 
@@ -55,16 +56,15 @@ namespace RN
 			AddDefine("RN_UV0", "1");
 		if(mesh->GetAttribute(Mesh::VertexAttribute::Feature::UVCoords1))
 			AddDefine("RN_UV1", "1");
-		
+
 		//TODO: This should be based on the model having a skeleton...
 		if(mesh->GetAttribute(Mesh::VertexAttribute::Feature::BoneWeights))
 			AddDefine("RN_ANIMATIONS", "1");
 	}
 
-    Shader::Options::~Options()
-    {
-	    
-    }
+	Shader::Options::~Options()
+	{
+	}
 
 	Shader::Options *Shader::Options::EnableAlpha()
 	{
@@ -107,7 +107,7 @@ namespace RN
 		const Shader::Options *options = other->Downcast<Shader::Options>();
 		if(RN_EXPECT_FALSE(!options))
 			return false;
-		
+
 		return _defines.size() == options->_defines.size() && std::equal(_defines.begin(), _defines.end(), options->_defines.begin());
 	}
 
@@ -123,10 +123,10 @@ namespace RN
 		return RNSTR(_defines.at(key));
 	}
 
-	void Shader::Options::Enumerate(const std::function<void (const std::string &value, const std::string &key, bool &stop)>& callback) const
+	void Shader::Options::Enumerate(const std::function<void(const std::string &value, const std::string &key, bool &stop)> &callback) const
 	{
 		bool stop = false;
-		for(auto pair : _defines)
+		for(auto pair: _defines)
 		{
 			callback(pair.first, pair.second, stop);
 			if(stop) return;
@@ -141,7 +141,7 @@ namespace RN
 	size_t Shader::Options::GetHash() const
 	{
 		size_t hash = 0;
-		for(auto pair : _defines)
+		for(auto pair: _defines)
 		{
 			RN::HashCombine(hash, pair.first);
 			RN::HashCombine(hash, pair.second);
@@ -278,22 +278,22 @@ namespace RN
 			_identifier = InverseProjectionMatrixMultiview;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if (name->IsEqual(RNCSTR("camera_position_multiview")) || name->IsEqual(RNCSTR("cameraPosition_multiview")))
+		else if(name->IsEqual(RNCSTR("camera_position_multiview")) || name->IsEqual(RNCSTR("cameraPosition_multiview")))
 		{
 			_identifier = CameraPositionMultiview;
 			_type = PrimitiveType::Vector4;
 		}
-		else if (name->IsEqual(RNCSTR("camera_position")) || name->IsEqual(RNCSTR("cameraPosition")))
+		else if(name->IsEqual(RNCSTR("camera_position")) || name->IsEqual(RNCSTR("cameraPosition")))
 		{
 			_identifier = CameraPosition;
 			_type = PrimitiveType::Vector4;
 		}
-		else if (name->IsEqual(RNCSTR("camera_clipdistance")) || name->IsEqual(RNCSTR("cameraClipDistance")))
+		else if(name->IsEqual(RNCSTR("camera_clipdistance")) || name->IsEqual(RNCSTR("cameraClipDistance")))
 		{
 			_identifier = CameraClipDistance;
 			_type = PrimitiveType::Vector2;
 		}
-		else if (name->IsEqual(RNCSTR("camera_fogdistance")) || name->IsEqual(RNCSTR("cameraFogDistance")))
+		else if(name->IsEqual(RNCSTR("camera_fogdistance")) || name->IsEqual(RNCSTR("cameraFogDistance")))
 		{
 			_identifier = CameraFogDistance;
 			_type = PrimitiveType::Vector2;
@@ -348,62 +348,62 @@ namespace RN
 			_identifier = TextureTileFactor;
 			_type = PrimitiveType::Float;
 		}
-		else if (name->IsEqual(RNCSTR("material_alphatocoverageclamp")) || name->IsEqual(RNCSTR("alphaToCoverageClamp")) || name->IsEqual(RNCSTR("in_var_INSTANCE_ALPHATOCOVERAGECLAMP")))
+		else if(name->IsEqual(RNCSTR("material_alphatocoverageclamp")) || name->IsEqual(RNCSTR("alphaToCoverageClamp")) || name->IsEqual(RNCSTR("in_var_INSTANCE_ALPHATOCOVERAGECLAMP")))
 		{
 			_identifier = AlphaToCoverageClamp;
 			_type = PrimitiveType::Vector2;
 		}
-		else if (name->IsEqual(RNCSTR("camera_ambientcolor")) || name->IsEqual(RNCSTR("cameraAmbientColor")))
+		else if(name->IsEqual(RNCSTR("camera_ambientcolor")) || name->IsEqual(RNCSTR("cameraAmbientColor")))
 		{
 			_identifier = CameraAmbientColor;
 			_type = PrimitiveType::Color;
 		}
-		else if (name->IsEqual(RNCSTR("camera_fogcolor")) || name->IsEqual(RNCSTR("cameraFogColor")) || name->IsEqual(RNCSTR("camera_fogcolor0")) || name->IsEqual(RNCSTR("cameraFogColor0")))
+		else if(name->IsEqual(RNCSTR("camera_fogcolor")) || name->IsEqual(RNCSTR("cameraFogColor")) || name->IsEqual(RNCSTR("camera_fogcolor0")) || name->IsEqual(RNCSTR("cameraFogColor0")))
 		{
 			_identifier = CameraFogColor0;
 			_type = PrimitiveType::Color;
 		}
-		else if (name->IsEqual(RNCSTR("camera_fogcolor1")) || name->IsEqual(RNCSTR("cameraFogColor1")))
+		else if(name->IsEqual(RNCSTR("camera_fogcolor1")) || name->IsEqual(RNCSTR("cameraFogColor1")))
 		{
 			_identifier = CameraFogColor1;
 			_type = PrimitiveType::Color;
 		}
-		else if (name->IsEqual(RNCSTR("lights_directionalcount")) || name->IsEqual(RNCSTR("directionalLightsCount")))
+		else if(name->IsEqual(RNCSTR("lights_directionalcount")) || name->IsEqual(RNCSTR("directionalLightsCount")))
 		{
 			_identifier = DirectionalLightsCount;
 			_type = PrimitiveType::Uint32;
 		}
-		else if (name->IsEqual(RNCSTR("lights_directional")) || name->IsEqual(RNCSTR("directionalLights")))
+		else if(name->IsEqual(RNCSTR("lights_directional")) || name->IsEqual(RNCSTR("directionalLights")))
 		{
 			_identifier = DirectionalLights;
 			_type = PrimitiveType::Vector4;
 		}
-		else if (name->IsEqual(RNCSTR("shadows_directional_matrices")) || name->IsEqual(RNCSTR("directionalShadowMatrices")))
+		else if(name->IsEqual(RNCSTR("shadows_directional_matrices")) || name->IsEqual(RNCSTR("directionalShadowMatrices")))
 		{
 			_identifier = DirectionalShadowMatrices;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if (name->IsEqual(RNCSTR("shadows_directional_matrices_count")) || name->IsEqual(RNCSTR("directionalShadowMatricesCount")))
+		else if(name->IsEqual(RNCSTR("shadows_directional_matrices_count")) || name->IsEqual(RNCSTR("directionalShadowMatricesCount")))
 		{
 			_identifier = DirectionalShadowMatricesCount;
 			_type = PrimitiveType::Uint32;
 		}
-		else if (name->IsEqual(RNCSTR("shadows_directional_info")) || name->IsEqual(RNCSTR("directionalShadowInfo")))
+		else if(name->IsEqual(RNCSTR("shadows_directional_info")) || name->IsEqual(RNCSTR("directionalShadowInfo")))
 		{
 			_identifier = DirectionalShadowInfo;
 			_type = PrimitiveType::Vector2;
 		}
-		else if (name->IsEqual(RNCSTR("lights_point")) || name->IsEqual(RNCSTR("pointLights")))
+		else if(name->IsEqual(RNCSTR("lights_point")) || name->IsEqual(RNCSTR("pointLights")))
 		{
 			_identifier = PointLights;
 			_type = PrimitiveType::Vector4;
 		}
-		else if (name->IsEqual(RNCSTR("lights_spot")) || name->IsEqual(RNCSTR("spotLights")))
+		else if(name->IsEqual(RNCSTR("lights_spot")) || name->IsEqual(RNCSTR("spotLights")))
 		{
 			_identifier = SpotLights;
 			_type = PrimitiveType::Vector4;
 		}
-		else if (name->IsEqual(RNCSTR("bone_matrices")) || name->IsEqual(RNCSTR("boneMatrices")))
+		else if(name->IsEqual(RNCSTR("bone_matrices")) || name->IsEqual(RNCSTR("boneMatrices")))
 		{
 			_identifier = BoneMatrices;
 			_type = PrimitiveType::Matrix4x4;
@@ -412,7 +412,7 @@ namespace RN
 
 	bool Shader::UniformDescriptor::IsKnownStructName(RN::String *structName)
 	{
-		if (structName->IsEqual(RNCSTR("lights_directional")) || structName->IsEqual(RNCSTR("directionalLights")))
+		if(structName->IsEqual(RNCSTR("lights_directional")) || structName->IsEqual(RNCSTR("directionalLights")))
 		{
 			return true;
 		}
@@ -420,15 +420,15 @@ namespace RN
 		{
 			return true;
 		}
-		else if (structName->IsEqual(RNCSTR("lights_point")) || structName->IsEqual(RNCSTR("pointLights")))
+		else if(structName->IsEqual(RNCSTR("lights_point")) || structName->IsEqual(RNCSTR("pointLights")))
 		{
 			return true;
 		}
-		else if (structName->IsEqual(RNCSTR("lights_spot")) || structName->IsEqual(RNCSTR("spotLights")))
+		else if(structName->IsEqual(RNCSTR("lights_spot")) || structName->IsEqual(RNCSTR("spotLights")))
 		{
 			return true;
 		}
-		
+
 		return false;
 	}
 
@@ -447,13 +447,13 @@ namespace RN
 
 			case DirectionalShadowMatrices:
 				return 64 * _elementCount;
-				
+
 			case PointLights:
 				return (16 + 16) * _elementCount;
-				
+
 			case SpotLights:
 				return (16 + 16 + 16) * _elementCount;
-				
+
 			case BoneMatrices:
 				return 64 * _elementCount;
 
@@ -496,57 +496,59 @@ namespace RN
 
 		switch(_type)
 		{
-		case PrimitiveType::Uint8:
-			return 1 * _elementCount;
-		case PrimitiveType::Uint16:
-			return 2 * _elementCount;
-		case PrimitiveType::Uint32:
-			return 4 * _elementCount;
-		case PrimitiveType::Int8:
-			return 1 * _elementCount;
-		case PrimitiveType::Int16:
-			return 2 * _elementCount;
-		case PrimitiveType::Int32:
-			return 4 * _elementCount;
-		case PrimitiveType::Half:
-			return 2 * _elementCount;
-		case PrimitiveType::Float:
-			return 4 * _elementCount;
-		case PrimitiveType::HalfVector2:
-			return 4 * _elementCount;
-		case PrimitiveType::HalfVector3:
-			return 6 * _elementCount;
-		case PrimitiveType::HalfVector4:
-			return 8 * _elementCount;
-		case PrimitiveType::Vector2:
-			return 8 * _elementCount;
-		case PrimitiveType::Vector3:
-			return 12 * _elementCount;
-		case PrimitiveType::Vector4:
-			return 16 * _elementCount;
-		case PrimitiveType::Matrix2x2:
-			return 16 * _elementCount;
-		case PrimitiveType::Matrix3x3:
-			return 48 * _elementCount;
-		case PrimitiveType::Matrix4x4:
-			return 64 * _elementCount;
-		case PrimitiveType::Quaternion:
-			return 16 * _elementCount;
-		case PrimitiveType::Color:
-			return 16 * _elementCount;
-		case PrimitiveType::Invalid:
-			return 0;
+			case PrimitiveType::Uint8:
+				return 1 * _elementCount;
+			case PrimitiveType::Uint16:
+				return 2 * _elementCount;
+			case PrimitiveType::Uint32:
+				return 4 * _elementCount;
+			case PrimitiveType::Int8:
+				return 1 * _elementCount;
+			case PrimitiveType::Int16:
+				return 2 * _elementCount;
+			case PrimitiveType::Int32:
+				return 4 * _elementCount;
+			case PrimitiveType::Half:
+				return 2 * _elementCount;
+			case PrimitiveType::Float:
+				return 4 * _elementCount;
+			case PrimitiveType::HalfVector2:
+				return 4 * _elementCount;
+			case PrimitiveType::HalfVector3:
+				return 6 * _elementCount;
+			case PrimitiveType::HalfVector4:
+				return 8 * _elementCount;
+			case PrimitiveType::Vector2:
+				return 8 * _elementCount;
+			case PrimitiveType::Vector3:
+				return 12 * _elementCount;
+			case PrimitiveType::Vector4:
+				return 16 * _elementCount;
+			case PrimitiveType::Matrix2x2:
+				return 16 * _elementCount;
+			case PrimitiveType::Matrix3x3:
+				return 48 * _elementCount;
+			case PrimitiveType::Matrix4x4:
+				return 64 * _elementCount;
+			case PrimitiveType::Quaternion:
+				return 16 * _elementCount;
+			case PrimitiveType::Color:
+				return 16 * _elementCount;
+			case PrimitiveType::Invalid:
+				return 0;
 		}
 
 		return 0;
 	}
 
-	Shader::Argument::Argument(String *name, uint32 index) : _index(index)
+	Shader::Argument::Argument(String *name, uint32 index) :
+		_index(index)
 	{
 		_name = SafeRetain(name);
 	}
 
-	Shader::Argument::Argument(const Argument *other) : _index(other->_index)
+	Shader::Argument::Argument(const Argument *other) :
+		_index(other->_index)
 	{
 		_name = SafeRetain(other->_name);
 	}
@@ -560,7 +562,7 @@ namespace RN
 		Argument(name, index), _totalUniformSize(0), _type(type), _maxInstanceCount(maxInstanceCount)
 	{
 		_uniformDescriptors = SafeRetain(uniformDescriptors);
-		
+
 		if(_uniformDescriptors && _uniformDescriptors->GetCount() > 0)
 		{
 			Shader::UniformDescriptor *lastDescriptor = _uniformDescriptors->GetLastObject<Shader::UniformDescriptor>();
@@ -568,7 +570,8 @@ namespace RN
 		}
 	}
 
-	Shader::ArgumentBuffer::ArgumentBuffer(const ArgumentBuffer *other) : Argument(other), _totalUniformSize(other->_totalUniformSize), _type(other->_type)
+	Shader::ArgumentBuffer::ArgumentBuffer(const ArgumentBuffer *other) :
+		Argument(other), _totalUniformSize(other->_totalUniformSize), _type(other->_type)
 	{
 		_uniformDescriptors = SafeRetain(other->_uniformDescriptors);
 	}
@@ -586,7 +589,8 @@ namespace RN
 		_anisotropy(anisotropy)
 	{}
 
-	Shader::ArgumentSampler::ArgumentSampler(const ArgumentSampler *other) : Argument(other), _wrapMode(other->_wrapMode), _filter(other->_filter), _comparisonFunction(other->_comparisonFunction), _anisotropy(other->_anisotropy)
+	Shader::ArgumentSampler::ArgumentSampler(const ArgumentSampler *other) :
+		Argument(other), _wrapMode(other->_wrapMode), _filter(other->_filter), _comparisonFunction(other->_comparisonFunction), _anisotropy(other->_anisotropy)
 	{}
 
 	Shader::ArgumentSampler::~ArgumentSampler()
@@ -606,15 +610,14 @@ namespace RN
 	Shader::ArgumentTexture::ArgumentTexture(String *name, uint32 index, uint8 materialTextureIndex) :
 		Argument(name, index), _materialTextureIndex(materialTextureIndex)
 	{
-		
 	}
 
-	Shader::ArgumentTexture::ArgumentTexture(const ArgumentTexture *other) : Argument(other), _materialTextureIndex(other->_materialTextureIndex)
+	Shader::ArgumentTexture::ArgumentTexture(const ArgumentTexture *other) :
+		Argument(other), _materialTextureIndex(other->_materialTextureIndex)
 	{}
 
 	Shader::ArgumentTexture::~ArgumentTexture()
 	{
-		
 	}
 
 
@@ -668,7 +671,7 @@ namespace RN
 		if(_hasInstancing)
 		{
 			_maxInstanceCount = -1;
-			signature->GetBuffers()->Enumerate<ArgumentBuffer>([&](ArgumentBuffer *buffer, size_t index, bool &stop){
+			signature->GetBuffers()->Enumerate<ArgumentBuffer>([&](ArgumentBuffer *buffer, size_t index, bool &stop) {
 				if(buffer->GetMaxInstanceCount() > 1) //TODO: This check feels bad... Need to somehow know if a buffer contains per instance data or not, but I guess right now this does exactly that.
 				{
 					_maxInstanceCount = std::min(_maxInstanceCount, buffer->GetMaxInstanceCount());
@@ -687,4 +690,4 @@ namespace RN
 	{
 		return _library;
 	}
-}
+} // namespace RN

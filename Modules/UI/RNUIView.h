@@ -49,9 +49,9 @@ namespace RN
 
 			UIAPI virtual void SetFrame(const Rect &frame);
 			UIAPI virtual void SetBounds(const Rect &bounds);
-			
+
 			const Rect &GetScissorRect() const { return _scissorRect; }
-			
+
 			UIAPI virtual void SetHidden(bool hidden);
 			bool GetIsHidden() const { return _isHidden || _isHiddenByParent; }
 
@@ -68,17 +68,17 @@ namespace RN
 			UIAPI void SetOutline(Color color, float thickness);
 
 			UIAPI virtual void Draw(bool isParentHidden);
-			
+
 			UIAPI virtual bool UpdateCursorPosition(const Vector2 &cursorPosition);
-			
+
 			UIAPI void SetClipToBounds(bool enabled);
 			UIAPI void SetRenderPriorityOverride(int32 renderPriority);
 			UIAPI void SetRenderPriorityOffset(int32 offset);
 			int32 GetRenderPriorityOffset() const { return _renderPriorityOffset; }
 			UIAPI int32 GetMaxRenderPriorityOffset() const;
-			
+
 			UIAPI void SetRenderGroupForAll(uint8 renderGroup);
-			
+
 			UIAPI virtual void HandleButtonClick();
 			UIAPI virtual void HandleButtonClickLate();
 
@@ -89,15 +89,15 @@ namespace RN
 			UIAPI virtual void DidSendSubviewToBack(View *subview);
 			UIAPI virtual void WillMoveToSuperview(View *superview);
 			UIAPI virtual void DidMoveToSuperview(View *superview);
-			
+
 			UIAPI virtual void SetOpacityFromParent(float parentCombinedOpacity);
-			
+
 			UIAPI virtual void UpdateModel();
-			
+
 			UIAPI void WillUpdate(ChangeSet changeSet) override;
-			
+
 			bool _needsMeshUpdate;
-			
+
 			bool _inheritRenderSettings; //If this is set, the values below will be overwritten when adding to the parent
 			int32 _renderPriorityOverride;
 			int32 _renderPriorityOffset;
@@ -108,10 +108,10 @@ namespace RN
 			bool _isAlphaWriteEnabled;
 			float _depthOffset;
 			float _depthFactor;
-			
+
 			float _opacityFactor;
 			float _combinedOpacityFactor;
-			
+
 			BlendFactor _blendSourceFactorRGB;
 			BlendFactor _blendDestinationFactorRGB;
 			BlendOperation _blendOperationRGB;
@@ -127,7 +127,7 @@ namespace RN
 
 			Rect _bounds;
 			Rect _frame;
-			
+
 			Vector2 _oldFrameSize; //Used to check if the frame size changed since the last frame, in which case the mesh needs updating. This is delayed to catch multiple changes to the size that end up the same as before
 
 			bool _clipToBounds;
@@ -148,8 +148,8 @@ namespace RN
 
 			RNDeclareMetaAPI(View, UIAPI)
 		};
-	}
-}
+	} // namespace UI
+} // namespace RN
 
 
 #endif /* __RAYNE_UILAYER_H_ */

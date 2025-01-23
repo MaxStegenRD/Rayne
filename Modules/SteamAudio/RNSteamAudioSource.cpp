@@ -7,9 +7,9 @@
 //
 
 #include "RNSteamAudioSource.h"
-#include "RNSteamAudioWorld.h"
-#include "RNSteamAudioSampler.h"
 #include "RNSteamAudioInternals.h"
+#include "RNSteamAudioSampler.h"
+#include "RNSteamAudioWorld.h"
 
 namespace RN
 {
@@ -19,7 +19,7 @@ namespace RN
 		_channel(0),
 		_isPlaying(false),
 		_isRepeating(false),
-//		_isSelfdestructing(false),
+		//		_isSelfdestructing(false),
 		_hasTimeOfFlight(true),
 		_pitch(1.0f),
 		_gain(1.0f),
@@ -47,11 +47,11 @@ namespace RN
 
 		SteamAudioWorld::_instance->AddAudioSource(this);
 	}
-	
+
 	SteamAudioSource::~SteamAudioSource()
 	{
 		//World retains the source because of this, so if constructor is called, the world doesn't have this source anymore...
-/*		if(SteamAudioWorld::_instance)
+		/*		if(SteamAudioWorld::_instance)
 			SteamAudioWorld::_instance->RemoveAudioSource(this);*/
 
 		_sampler->Release();
@@ -90,7 +90,7 @@ namespace RN
 			iplCreateConvolutionEffect(SteamAudioWorld::_instance->GetEnvironmentalRenderer(), IPLBakedDataIdentifier(), IPL_SIMTYPE_REALTIME, _internals->inputBuffer.format, _internals->outputBuffer.format, &_internals->convolutionEffect); //TODO: Allow baking for static sources instead of doing everything in realtime.
 		}
 	}
-		
+
 	void SteamAudioSource::SetRepeat(bool repeat)
 	{
 		_sampler->SetRepeat(repeat);
@@ -101,23 +101,23 @@ namespace RN
 	{
 		_radius = radius;
 	}
-	
+
 	void SteamAudioSource::SetPitch(float pitch)
 	{
 		_pitch = pitch;
 	}
-		
+
 	void SteamAudioSource::SetGain(float gain)
 	{
 		_gain = gain;
 	}
-		
-/*	void SteamAudioSource::SetRange(float min, float max)
+
+	/*	void SteamAudioSource::SetRange(float min, float max)
 	{
 
 	}*/
-		
-/*	void SteamAudioSource::SetSelfdestruct(bool selfdestruct)
+
+	/*	void SteamAudioSource::SetSelfdestruct(bool selfdestruct)
 	{
 		_isSelfdestructing = selfdestruct;
 	}*/
@@ -132,7 +132,7 @@ namespace RN
 		_hasTimeOfFlight = tof;
 	}
 
-		
+
 	void SteamAudioSource::Play()
 	{
 		_isPlaying = true;
@@ -142,12 +142,12 @@ namespace RN
 	{
 		_isPlaying = false;
 	}
-	
+
 	void SteamAudioSource::Seek(double time)
 	{
 		_currentTime = time;
 	}
-	
+
 	bool SteamAudioSource::HasEnded() const
 	{
 		return (_currentTime >= _sampler->GetTotalTime());
@@ -202,11 +202,11 @@ namespace RN
 
 		//Calculate direct sound
 		IPLDirectSoundPath directSoundPath = iplGetDirectSoundPath(SteamAudioWorld::_instance->GetEnvironment(),
-			IPLVector3{ listenerPosition.x, listenerPosition.y, listenerPosition.z },
-			IPLVector3{ listenerForward.x, listenerForward.y, listenerForward.z },
-			IPLVector3{ listenerUp.x, listenerUp.y, listenerUp.z },
-			IPLVector3{ sourcePosition.x, sourcePosition.y, sourcePosition.z },
-			_radius, /*IPL_DIRECTOCCLUSION_NOTRANSMISSION*/ IPL_DIRECTOCCLUSION_NONE, (_radius > 0.001f)?IPL_DIRECTOCCLUSION_VOLUMETRIC : IPL_DIRECTOCCLUSION_RAYCAST);
+																   IPLVector3 {listenerPosition.x, listenerPosition.y, listenerPosition.z},
+																   IPLVector3 {listenerForward.x, listenerForward.y, listenerForward.z},
+																   IPLVector3 {listenerUp.x, listenerUp.y, listenerUp.z},
+																   IPLVector3 {sourcePosition.x, sourcePosition.y, sourcePosition.z},
+																   _radius, /*IPL_DIRECTOCCLUSION_NOTRANSMISSION*/ IPL_DIRECTOCCLUSION_NONE, (_radius > 0.001f) ? IPL_DIRECTOCCLUSION_VOLUMETRIC : IPL_DIRECTOCCLUSION_RAYCAST);
 
 		//TODO: implement direct sound effect with optional transmission
 
@@ -220,13 +220,13 @@ namespace RN
 			_speed = 0.0f;
 			_delay = 0.0f;
 		}
-		
+
 
 		double sampleLength = frameLength / static_cast<double>(sampleCount);
 		double localTime = _currentTime;
 		for(int i = 0; i < sampleCount; i++)
 		{
-			SteamAudioWorld::_instance->_sharedSourceInputFrameData[i] = _sampler->GetSample(localTime -_delay, _channel) * directSoundPath.distanceAttenuation * directSoundPath.occlusionFactor * _gain;
+			SteamAudioWorld::_instance->_sharedSourceInputFrameData[i] = _sampler->GetSample(localTime - _delay, _channel) * directSoundPath.distanceAttenuation * directSoundPath.occlusionFactor * _gain;
 			localTime += sampleLength * _pitch;
 			_delay += _speed;
 		}
@@ -244,14 +244,14 @@ namespace RN
 		if(_internals->convolutionEffect && _hasTimeOfFlight)
 		{
 			localTime = _currentTime;
-			for (int i = 0; i < sampleCount; i++)
+			for(int i = 0; i < sampleCount; i++)
 			{
 				SteamAudioWorld::_instance->_sharedSourceInputFrameData[i] = _sampler->GetSample(localTime, _channel) * _gain;
 				localTime += sampleLength * _pitch;
 			}
-			iplSetDryAudioForConvolutionEffect(_internals->convolutionEffect, IPLVector3{ sourcePosition.x, sourcePosition.y, sourcePosition.z }, _internals->inputBuffer);
+			iplSetDryAudioForConvolutionEffect(_internals->convolutionEffect, IPLVector3 {sourcePosition.x, sourcePosition.y, sourcePosition.z}, _internals->inputBuffer);
 		}
 
 		_currentTime = localTime;
 	}
-}
+} // namespace RN

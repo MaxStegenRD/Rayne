@@ -12,13 +12,13 @@ namespace RN
 {
 	void NewtonSerialization::SerializeCallback(void *serializeHandle, const void *buffer, int size)
 	{
-		File *file = static_cast<File*>(serializeHandle);
+		File *file = static_cast<File *>(serializeHandle);
 		file->Write(buffer, size);
 	}
 
 	void NewtonSerialization::DeserializeCallback(void *serializeHandle, void *buffer, int size)
 	{
-		File *file = static_cast<File*>(serializeHandle);
+		File *file = static_cast<File *>(serializeHandle);
 		file->Read(buffer, size);
 	}
-}
+} // namespace RN

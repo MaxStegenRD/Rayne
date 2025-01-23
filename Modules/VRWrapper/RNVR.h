@@ -12,9 +12,9 @@
 #include <Rayne.h>
 
 #if defined(RN_BUILD_VR)
-#define RNVRAPI RN_EXPORT
+	#define RNVRAPI RN_EXPORT
 #else
-#define RNVRAPI RN_IMPORT
+	#define RNVRAPI RN_IMPORT
 #endif
 
 #endif /* __RAYNE_VR_H_ */

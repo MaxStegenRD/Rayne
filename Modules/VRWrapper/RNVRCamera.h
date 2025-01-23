@@ -21,7 +21,7 @@ namespace RN
 	public:
 		RNVRAPI VRCamera(VRWindow *window, RenderPass *previewRenderPass = nullptr, uint8 msaaSampleCount = 4, Window *debugWindow = nullptr);
 		RNVRAPI ~VRCamera();
-		
+
 		RNVRAPI void SetupCameras();
 
 		RNVRAPI void Update(float delta) override;
@@ -38,10 +38,10 @@ namespace RN
 
 		RNVRAPI const VRWindow::Origin GetOrigin() const;
 		RNVRAPI void SetOriginOffset(const Vector3 &positionOffset, const Quaternion &orientationOffset);
-		
+
 		RNVRAPI RN::Vector3 GetOriginPositionOffset() const { return _originPositionOffset; }
 		RNVRAPI RN::Quaternion GetOriginRotationOffset() const { return _originalOrientationOffset; }
-		
+
 		RNVRAPI void SetClipFar(float clipFar);
 		RNVRAPI void SetClipNear(float clipNear);
 
@@ -56,13 +56,13 @@ namespace RN
 		RenderPass *_previewRenderPass;
 		uint8 _msaaSampleCount;
 		bool _didUpdateVRWindow;
-		
+
 		Vector3 _originPositionOffset;
 		Quaternion _originalOrientationOffset;
 
 		RNDeclareMetaAPI(VRCamera, RNVRAPI)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_VRCAMERA_H_ */

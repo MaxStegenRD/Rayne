@@ -22,7 +22,6 @@ namespace RN
 		Asset *Load(File *file, const LoadOptions &options) override;
 
 	private:
-		
 		enum DDS_PIXELFORMAT_FLAGS
 		{
 			DDS_PIXELFORMAT_FLAGS_ALPHAPIXELS = 0x1,
@@ -32,7 +31,7 @@ namespace RN
 			DDS_PIXELFORMAT_FLAGS_YUV = 0x200,
 			DDS_PIXELFORMAT_FLAGS_LUMINANCE = 0x20000
 		};
-		
+
 		struct DDS_PIXELFORMAT
 		{
 			uint32 dwSize;
@@ -44,7 +43,7 @@ namespace RN
 			uint32 dwBBitMask;
 			uint32 dwABitMask;
 		};
-		
+
 		struct DDS_HEADER
 		{
 			uint32 dwSize;
@@ -62,7 +61,7 @@ namespace RN
 			uint32 dwCaps4;
 			uint32 dwReserved2;
 		};
-		
+
 		typedef enum
 		{
 			DDS_FORMAT_UNKNOWN,
@@ -186,7 +185,7 @@ namespace RN
 			DDS_FORMAT_V408,
 			DDS_FORMAT_FORCE_UINT
 		} DDS_FORMAT;
-		
+
 		typedef enum
 		{
 			DDS_RESOURCE_DIMENSION_UNKNOWN,
@@ -195,7 +194,7 @@ namespace RN
 			DDS_RESOURCE_DIMENSION_TEXTURE2D,
 			DDS_RESOURCE_DIMENSION_TEXTURE3D
 		} DDS_RESOURCE_DIMENSION;
-		
+
 		struct DDS_HEADER_DXT10
 		{
 			DDS_FORMAT DDSFormat;
@@ -204,12 +203,12 @@ namespace RN
 			uint32 arraySize;
 			uint32 miscFlags2;
 		};
-		
+
 		DDSAssetLoader(const Config &config);
 
 		__RNDeclareMetaInternal(DDSAssetLoader)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_DDSASSETLOADER_H_ */

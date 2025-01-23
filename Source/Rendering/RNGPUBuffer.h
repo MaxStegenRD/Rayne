@@ -32,7 +32,7 @@ namespace RN
 
 		__RNDeclareMetaInternal(GPUBuffer)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_GPUBUFFER_H_ */

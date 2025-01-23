@@ -25,8 +25,9 @@ namespace RN
 
 	struct BulletContactInfo
 	{
-        BulletContactInfo() : node(nullptr), distance(-1.0f) {}
-        
+		BulletContactInfo() :
+			node(nullptr), distance(-1.0f) {}
+
 		SceneNode *node;
 		Vector3 position;
 		Vector3 normal;
@@ -39,7 +40,7 @@ namespace RN
 		BTAPI BulletWorld(const Vector3 &gravity = Vector3(0.0f, -9.81f, 0.0f));
 		BTAPI ~BulletWorld();
 
-        static BulletWorld* GetSharedInstance();
+		static BulletWorld *GetSharedInstance();
 
 		BTAPI void SetGravity(const Vector3 &gravity);
 
@@ -60,10 +61,10 @@ namespace RN
 
 	private:
 		static void SimulationStepTickCallback(btDynamicsWorld *world, float timeStep);
-        
-        static BulletWorld *_instance;
-        Lockable _lock;
-        
+
+		static BulletWorld *_instance;
+		Lockable _lock;
+
 		btDynamicsWorld *_dynamicsWorld;
 		btBroadphaseInterface *_broadphase;
 		btCollisionConfiguration *_collisionConfiguration;
@@ -79,7 +80,7 @@ namespace RN
 
 		RNDeclareMetaAPI(BulletWorld, BTAPI)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_BULLETWORLD_H_ */

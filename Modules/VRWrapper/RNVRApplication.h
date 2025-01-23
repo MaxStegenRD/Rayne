@@ -9,12 +9,12 @@
 #ifndef __RAYNE_VRAPPLICATION_H_
 #define __RAYNE_VRAPPLICATION_H_
 
-#include <Rayne.h>
 #include "RNVRWindow.h"
+#include <Rayne.h>
 
 //TODO: These should be defines somehow set by the corresponding vr module....
 #if !RN_PLATFORM_MAC_OS && !RN_PLATFORM_IOS && !RN_PLATFORM_VISIONOS
-    #include "RNOpenXRWindow.h"
+	#include "RNOpenXRWindow.h"
 #endif
 #if RN_PLATFORM_VISIONOS
 	#include "RNAppleXRWindow.h"
@@ -27,26 +27,26 @@ namespace RN
 	public:
 		VRApplication();
 		~VRApplication() override;
-		
+
 		virtual RendererDescriptor *GetPreferredRenderer() const override;
 		virtual RenderingDevice *GetPreferredRenderingDevice(RendererDescriptor *descriptor, const Array *devices) const override;
 
 		virtual void WillFinishLaunching(Kernel *kernel) override;
 		virtual void DidFinishLaunching(Kernel *kernel) override;
-		
+
 		virtual void WillStep(float delta) override;
-		
-		VRWindow *GetVRWindow() const  { return _vrWindow; }
-		
+
+		VRWindow *GetVRWindow() const { return _vrWindow; }
+
 	protected:
 		void SetupVR();
 
-    private:
-        VRWindow *_vrWindow;
-		
+	private:
+		VRWindow *_vrWindow;
+
 		//RNDeclareMeta(VRApplication)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_VRAPPLICATION_H_ */

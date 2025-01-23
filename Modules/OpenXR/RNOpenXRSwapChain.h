@@ -35,7 +35,7 @@ namespace RN
 		OXRAPI virtual Vector2 GetSwapChainSize() const = 0;
 		OXRAPI virtual const Window::SwapChainDescriptor &GetSwapChainDescriptor() const = 0;
 		OXRAPI virtual Framebuffer *GetSwapChainFramebuffer() const = 0;
-		OXRAPI virtual void SetFixedFoveatedRenderingLevel(uint8 level, bool dynamic){}
+		OXRAPI virtual void SetFixedFoveatedRenderingLevel(uint8 level, bool dynamic) {}
 
 		OXRAPI virtual void SetActive(bool active) { _isActive = active; }
 
@@ -52,7 +52,7 @@ namespace RN
 
 		std::function<void()> _presentEvent;
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_OPENXRSWAPCHAIN_H_ */

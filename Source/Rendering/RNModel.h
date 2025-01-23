@@ -9,12 +9,12 @@
 #define RN_MODEL_LOD_DISABLED 1
 
 #ifndef __RAYNE_MODEL_H_
-#define __RAYNE_MODEL_H_
+	#define __RAYNE_MODEL_H_
 
-#include "../Base/RNBase.h"
-#include "../Assets/RNAsset.h"
-#include "RNMesh.h"
-#include "RNMaterial.h"
+	#include "../Assets/RNAsset.h"
+	#include "../Base/RNBase.h"
+	#include "RNMaterial.h"
+	#include "RNMesh.h"
 
 namespace RN
 {
@@ -86,7 +86,7 @@ namespace RN
 					_mesh(other._mesh->Retain())
 				{}
 
-				Group &operator =(const Group &other)
+				Group &operator=(const Group &other)
 				{
 					_material->Autorelease();
 					_mesh->Autorelease();
@@ -120,7 +120,7 @@ namespace RN
 		RNAPI Model(Mesh *mesh, Material *material);
 		RNAPI Model(const Model *other);
 		RNAPI ~Model();
-		
+
 		RNAPI void Warmup(Camera *camera); //Depending on the renderer and setup, this may initialize some things to speed up the first rendering of the model with the specified camera
 
 		RNAPI static Model *WithName(const String *name, const Dictionary *settings = nullptr);
@@ -136,16 +136,16 @@ namespace RN
 
 		size_t GetLODStageCount() const
 		{
-#if RN_MODEL_LOD_DISABLED
-			return _lodStage? 1 : 0;
-#else
+	#if RN_MODEL_LOD_DISABLED
+			return _lodStage ? 1 : 0;
+	#else
 			return _lodStages->GetCount();
-#endif
+	#endif
 		}
-		
+
 		RNAPI void SetSkeleton(Skeleton *skeleton);
 		RNAPI Skeleton *GetSkeleton() const;
-		
+
 		RNAPI void SetShadowVolume(ShadowVolume *shadowVolume);
 		RNAPI ShadowVolume *GetShadowVolume() const;
 
@@ -158,11 +158,11 @@ namespace RN
 		RNAPI static void SetDefaultLODFactors(const std::vector<float> &factors);
 
 	private:
-#if RN_MODEL_LOD_DISABLED
+	#if RN_MODEL_LOD_DISABLED
 		LODStage *_lodStage;
-#else
+	#else
 		Array *_lodStages;
-#endif
+	#endif
 		Skeleton *_skeleton;
 		ShadowVolume *_shadowVolume;
 
@@ -171,7 +171,7 @@ namespace RN
 
 		__RNDeclareMetaInternal(Model)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_MODEL_H_ */

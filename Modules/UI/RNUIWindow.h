@@ -41,8 +41,8 @@ namespace RN
 
 			RNDeclareMetaAPI(Window, UIAPI)
 		};
-	}
-}
+	} // namespace UI
+} // namespace RN
 
 
 #endif /* __RAYNE_UIWINDOW_H_ */

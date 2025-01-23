@@ -39,26 +39,26 @@ namespace RN
 		void GatherInfo();
 
 		std::string _reason;
-		
+
 		Thread *_thread;
 		std::vector<std::pair<uintptr_t, std::string>> _callStack;
 	};
 
-	#define RNExceptionType(name) \
-		class name##Exception : public RN::Exception \
-		{ \
-		public: \
-			RNAPI name##Exception(const std::string &reason); \
-			RNAPI name##Exception(const String *reason); \
-		};
+#define RNExceptionType(name)                             \
+	class name##Exception : public RN::Exception          \
+	{                                                     \
+	public:                                               \
+		RNAPI name##Exception(const std::string &reason); \
+		RNAPI name##Exception(const String *reason);      \
+	};
 
-	#define RNExceptionImp(name) \
-		name##Exception::name##Exception(const std::string &reason) : \
-			RN::Exception(reason) \
-		{} \
-		name##Exception::name##Exception(const String *reason) : \
-			RN::Exception(reason) \
-		{}
+#define RNExceptionImp(name)                                      \
+	name##Exception::name##Exception(const std::string &reason) : \
+		RN::Exception(reason)                                     \
+	{}                                                            \
+	name##Exception::name##Exception(const String *reason) :      \
+		RN::Exception(reason)                                     \
+	{}
 
 	RNExceptionType(InvalidArgument)
 	RNExceptionType(Range)
@@ -66,6 +66,6 @@ namespace RN
 	RNExceptionType(Inconsistency)
 	RNExceptionType(InvalidCall)
 	RNExceptionType(NotImplemented)
-}
+} // namespace RN
 
 #endif /* __RAYNE_EXCEPTION_H__ */

@@ -18,17 +18,17 @@ namespace RN
 	{
 	public:
 		friend OpenALWorld;
-		
+
 		enum AttenuationFunction
 		{
 			AttenuationFunctionNone,
 			AttenuationFunctionLinear,
 			AttenuationFunctionInverseDistanceClamped
 		};
-			
+
 		OALAPI OpenALSource(AudioAsset *asset);
 		OALAPI ~OpenALSource() override;
-			
+
 		OALAPI void Update(float delta) override;
 
 		OALAPI void SetAudioAsset(AudioAsset *asset);
@@ -41,33 +41,33 @@ namespace RN
 		OALAPI void SetGain(float gain);
 		OALAPI void SetRange(float min, float max, float rolloff = 1.0f);
 		OALAPI void SetSelfdestruct(bool selfdestruct);
-			
+
 		OALAPI bool IsPlaying();
 		OALAPI bool HasEnded();
 		OALAPI bool IsRepeating();
-			
+
 	private:
 		void UpdatePosition(float delta);
-		
+
 		OpenALWorld *_owner;
 		AudioAsset *_asset;
-			
+
 		uint32 _source;
 		Vector3 _oldPosition;
 		Vector3 _velocity;
-			
+
 		bool _isPlaying;
 		bool _isRepeating;
 		bool _isSelfdestructing;
 		bool _hasEnded;
-		
+
 		uint32 _ringBuffersID[3];
 		int16 *_ringBufferTemp;
-		
+
 		Lockable _lock;
-			
+
 		RNDeclareMetaAPI(OpenALSource, OALAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_OPENALSOURCE_H_) */

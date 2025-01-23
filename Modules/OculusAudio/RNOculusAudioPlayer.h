@@ -22,7 +22,7 @@ namespace RN
 
 		OAAPI OculusAudioPlayer(AudioAsset *asset = nullptr);
 		OAAPI ~OculusAudioPlayer() override;
-			
+
 		OAAPI void Play();
 		OAAPI void Stop();
 
@@ -33,10 +33,10 @@ namespace RN
 		OAAPI void SetGain(float gain);
 
 		OAAPI void Update(double frameLength, uint32 sampleCount, float **outputBuffer);
-			
+
 		bool IsPlaying() const { return _isPlaying; }
 		bool IsRepeating() const { return _isRepeating; }
-			
+
 	private:
 		OculusAudioSampler *_sampler;
 
@@ -49,9 +49,9 @@ namespace RN
 		float _pitch;
 
 		double _currentTime;
-			
+
 		RNDeclareMetaAPI(OculusAudioPlayer, OAAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_OculusAudioPLAYER_H_) */

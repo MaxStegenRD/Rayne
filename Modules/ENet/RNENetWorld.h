@@ -22,22 +22,22 @@ namespace RN
 
 		ENAPI ENetWorld();
 		ENAPI ~ENetWorld() override;
-		
+
 		ENAPI void AddHost(ENetHost *host);
 		ENAPI void RemoveHost(ENetHost *host);
-		
+
 		ENAPI double Ping(String *address, size_t repetitions);
 
 	protected:
 		void Update(float delta) override;
-			
+
 	private:
 		static ENetWorld *_instance;
 
 		Array *_hosts;
-			
+
 		RNDeclareMetaAPI(ENetWorld, ENAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_ENETWORLD_H_) */

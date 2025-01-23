@@ -13,12 +13,12 @@
 namespace RN
 {
 #if RN_COMPILER_MSVC
-#pragma pack(push)
-#pragma pack(1)
+	#pragma pack(push)
+	#pragma pack(1)
 #endif
 	struct __ScopeAllocatorFinalizer
 	{
-		void(*destructor)(void *ptr);
+		void (*destructor)(void *ptr);
 		__ScopeAllocatorFinalizer *next;
 		uint16 size;
 		uint16 offset;
@@ -26,7 +26,7 @@ namespace RN
 	} __attribute__((packed));
 #else
 	};
-#pragma pack(pop)
+	#pragma pack(pop)
 #endif
 
 	static ThreadLocalStorage<ScopeAllocator *> __topAllocator;
@@ -117,4 +117,4 @@ namespace RN
 
 		return reinterpret_cast<void *>(aligned);
 	}
-}
+} // namespace RN

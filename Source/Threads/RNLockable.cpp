@@ -6,8 +6,8 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
-#include "../Base/RNBase.h"
 #include "RNLockable.h"
+#include "../Base/RNBase.h"
 #include "RNFutex.h"
 
 namespace RN
@@ -26,7 +26,7 @@ namespace RN
 
 			if(!(value & kLockFlagParked) && spinCount < spinLimit)
 			{
-				spinCount ++;
+				spinCount++;
 				std::this_thread::yield();
 
 				continue;
@@ -58,17 +58,15 @@ namespace RN
 			RN_DEBUG_ASSERT(value == (kLockFlagLocked | kLockFlagParked), "UnlockSlowPath found flag in inconsistent state");
 
 			__Private::Futex::WakeOne(&_flag, [this](__Private::Futex::WakeResult result) {
-
 				RN_DEBUG_ASSERT(_flag.load() == (kLockFlagLocked | kLockFlagParked), "UnlockSlowPath found flag in inconsistent state");
 
 				if(result & __Private::Futex::WakeResult::HasMoreThreads)
 					_flag.store(kLockFlagParked, std::memory_order_release);
 				else
 					_flag.store(0, std::memory_order_release);
-
 			});
 
 			return;
 		}
 	}
-}
+} // namespace RN

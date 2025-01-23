@@ -6,15 +6,15 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
-#include "../Debug/RNLogger.h"
 #include "RNAssetManager.h"
+#include "../Debug/RNLogger.h"
 #include "RNAssetManagerInternals.h"
 
-#include "RNPNGAssetLoader.h"
 #include "RNASTCAssetLoader.h"
 #include "RNDDSAssetLoader.h"
-#include "RNSGMAssetLoader.h"
+#include "RNPNGAssetLoader.h"
 #include "RNSGAAssetLoader.h"
+#include "RNSGMAssetLoader.h"
 
 namespace RN
 {
@@ -29,7 +29,7 @@ namespace RN
 		SetDefaultQueue(WorkQueue::GetGlobalQueue(WorkQueue::Priority::High));
 
 		__sharedInstance = this;
-		
+
 #if RN_PLATFORM_MAC_OS || RN_PLATFORM_WINDOWS || RN_PLATFORM_LINUX
 		_preferredTextureFileExtension = RNSTR("dds")->Retain();
 #elif RN_PLATFORM_ANDROID || RN_PLATFORM_IOS || RN_PLATFORM_VISIONOS
@@ -49,7 +49,7 @@ namespace RN
 		SafeRelease(_loaders);
 		SafeRelease(_requests);
 		SafeRelease(_resources);
-		
+
 		SafeRelease(_preferredTextureFileExtension);
 
 		SafeRelease(_defaultQueue);
@@ -79,8 +79,7 @@ namespace RN
 		LockGuard<Lockable> lock(_lock);
 
 		_loaders->AddObject(loader);
-		_loaders->Sort<AssetLoader>([] (const AssetLoader *loader1, const AssetLoader *loader2) -> bool {
-
+		_loaders->Sort<AssetLoader>([](const AssetLoader *loader1, const AssetLoader *loader2) -> bool {
 			uint32 priority1 = loader1->GetPriority();
 			uint32 priority2 = loader2->GetPriority();
 
@@ -97,12 +96,12 @@ namespace RN
 
 		UpdateMagicSize();
 	}
-	
+
 	void AssetManager::SetPreferredTextureFileExtension(const String *preferredFileExtension)
 	{
 		_preferredTextureFileExtension = RNSTR(preferredFileExtension)->Retain();
 	}
-	
+
 	const String *AssetManager::GetPreferredTextureFileExtension() const
 	{
 		return _preferredTextureFileExtension;
@@ -112,13 +111,10 @@ namespace RN
 	{
 		_maxMagicSize = 0;
 		_loaders->Enumerate<AssetLoader>([&](AssetLoader *loader, size_t index, bool &stop) {
-
 			if(loader->_magicBytes)
 				_maxMagicSize = std::max(loader->_magicBytes->GetLength(), _maxMagicSize);
-
 		});
 	}
-
 
 
 	Asset *AssetManager::ValidateAsset(MetaClass *base, Asset *asset)
@@ -155,7 +151,7 @@ namespace RN
 			Array *resources = _resources->GetObjectForKey<Array>(name);
 			size_t count = resources->GetCount();
 
-			for(size_t i = 0; i < count; i ++)
+			for(size_t i = 0; i < count; i++)
 			{
 				LoadedAsset *wrapper = static_cast<LoadedAsset *>(resources->GetObjectAtIndex(i));
 
@@ -184,7 +180,7 @@ namespace RN
 			{
 				size_t count = resources->GetCount();
 
-				for(size_t i = 0; i < count; i ++)
+				for(size_t i = 0; i < count; i++)
 				{
 					LoadedAsset *wrapper = static_cast<LoadedAsset *>(resources->GetObjectAtIndex(i));
 
@@ -211,7 +207,7 @@ namespace RN
 		{
 			size_t count = requests->GetCount();
 
-			for(size_t i = 0; i < count; i ++)
+			for(size_t i = 0; i < count; i++)
 			{
 				PendingAsset *wrapper = static_cast<PendingAsset *>(requests->GetObjectAtIndex(i));
 
@@ -460,7 +456,6 @@ namespace RN
 			wrapper->SetException(asset.GetException());
 
 		wrapper->Release();
-
 	}
 
 	AssetLoader *AssetManager::PickAssetLoader(MetaClass *base, File *file, const String *name, bool requiresBackgroundSupport)
@@ -483,7 +478,6 @@ namespace RN
 			}
 
 			_loaders->Enumerate<AssetLoader>([&](AssetLoader *loader, size_t index, bool &stop) {
-
 				try
 				{
 					if(!loader->SupportsResourceClass(base))
@@ -499,7 +493,7 @@ namespace RN
 					{
 						size_t offset = loader->_magicBytesOffset;
 						size_t size = loader->_magicBytes->GetLength();
-						
+
 						if(size > magicSize)
 							return;
 
@@ -533,7 +527,6 @@ namespace RN
 				{
 					file->Seek(0, true);
 				}
-
 			});
 
 			if(buffer) delete[] buffer;
@@ -544,7 +537,6 @@ namespace RN
 			String *extension = name->GetPathExtension();
 
 			_loaders->Enumerate<AssetLoader>([&](AssetLoader *loader, size_t index, bool &stop) {
-
 				try
 				{
 					if(!loader->SupportsResourceClass(base))
@@ -569,7 +561,6 @@ namespace RN
 				}
 				catch(Exception &)
 				{}
-
 			});
 		}
 
@@ -583,4 +574,4 @@ namespace RN
 
 		return assetLoader;
 	}
-}
+} // namespace RN

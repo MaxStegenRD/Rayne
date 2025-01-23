@@ -6,10 +6,10 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
-#include "../System/RNFileManager.h"
-#include "../Objects/RNJSONSerialization.h"
-#include "../Debug/RNLogger.h"
 #include "RNSettings.h"
+#include "../Debug/RNLogger.h"
+#include "../Objects/RNJSONSerialization.h"
+#include "../System/RNFileManager.h"
 
 namespace RN
 {
@@ -41,13 +41,11 @@ namespace RN
 							Dictionary *orgSettings = JSONSerialization::ObjectFromData<Dictionary>(orgData, 0);
 
 							orgSettings->Enumerate<Object, String>([&](Object *object, const String *key, bool &stop) {
-
 								if(!_settings->GetObjectForKey(key))
 								{
 									_settings->SetObjectForKey(object, key);
 									_isDirty = true;
 								}
-
 							});
 						}
 						catch(Exception &)
@@ -168,4 +166,4 @@ namespace RN
 
 		return _settings->GetObjectForKey(key);
 	}
-}
+} // namespace RN

@@ -11,10 +11,10 @@
 
 #include "../Base/RNBase.h"
 #include "../Base/RNUnicode.h"
-#include "RNObject.h"
+#include "../Math/RNVector.h"
 #include "RNArray.h"
 #include "RNCharacterSet.h"
-#include "../Math/RNVector.h"
+#include "RNObject.h"
 
 namespace RN
 {
@@ -25,32 +25,32 @@ namespace RN
 	{
 	public:
 		RN_OPTIONS(ComparisonMode, uint32,
-		           CaseInsensitive = (1 << 0),
-		           Numerically = (1 << 1),
+				   CaseInsensitive = (1 << 0),
+				   Numerically = (1 << 1),
 				   Reverse = (1 << 2));
 
 		RNAPI static void InitialWakeUp(MetaClass *cls);
 
 		RNAPI String();
 		RNAPI String(const char *string, va_list args);
-		RNAPI String(const char *string, bool constant=false);
-		RNAPI String(const char *string, size_t length, bool constant=false);
-		RNAPI String(const void *bytes, Encoding encoding, bool constant=false);
-		RNAPI String(const void *bytes, size_t length, Encoding encoding, bool constant=false);
+		RNAPI String(const char *string, bool constant = false);
+		RNAPI String(const char *string, size_t length, bool constant = false);
+		RNAPI String(const void *bytes, Encoding encoding, bool constant = false);
+		RNAPI String(const void *bytes, size_t length, Encoding encoding, bool constant = false);
 		RNAPI String(const Data *data, Encoding encoding);
 		RNAPI String(const String *string);
 		RNAPI String(Deserializer *deserializer);
 		RNAPI ~String() override;
-		
+
 		RNAPI void Serialize(Serializer *serializer) const override;
-		
+
 		RNAPI static String *WithFormat(const char *string, ...);
 		RNAPI static String *WithString(const char *string, bool constant = false);
 		RNAPI static String *WithString(const char *string, size_t length, bool constant = false);
 		RNAPI static String *WithBytes(const void *bytes, Encoding encoding, bool constant = false);
 		RNAPI static String *WithBytes(const void *bytes, size_t length, Encoding encoding, bool constant = false);
 		RNAPI static Expected<String *> WithContentsOfFile(const String *file, Encoding encoding);
-		
+
 		RNAPI size_t GetHash() const override;
 		RNAPI bool IsEqual(const Object *other) const override;
 		RNAPI const String *GetDescription() const override;
@@ -64,9 +64,9 @@ namespace RN
 		RNAPI void Capitalize();
 		RNAPI void MakeUppercase();
 		RNAPI void MakeLowercase();
-		
+
 		RNAPI void DeleteCharacters(const Range &range);
-		
+
 		RNAPI void ReplaceCharacters(const String *replacement, const Range &range);
 		RNAPI void ReplaceOccurrencesOfString(const String *string, const String *replacement);
 
@@ -86,11 +86,11 @@ namespace RN
 
 		RNAPI bool HasPrefix(const String *other) const;
 		RNAPI bool HasSuffix(const String *other) const;
-		
+
 		RNAPI String *GetSubstring(const Range &range) const;
 		RNAPI UniChar GetCharacterAtIndex(size_t index) const;
 		RNAPI Array *GetComponentsSeparatedByString(const String *other) const;
-		
+
 		RNAPI size_t GetLength() const;
 
 		/**
@@ -119,14 +119,14 @@ namespace RN
 
 
 		RNAPI void WriteToFile(const String *file, Encoding encoding);
-		
+
 	private:
 		size_t __GetTrailingPathLocation() const;
 		void __DeleteTrailingPath();
 
 		String(UTF8String *string);
 		UTF8String *_string;
-		
+
 		__RNDeclareMetaInternal(String)
 	};
 
@@ -144,31 +144,132 @@ namespace RN
 			return String::WithString(string.c_str(), false);
 		}
 
-		StringBuilder &operator << (const Object *object) { if(object) { _stream << object->GetDescription()->GetUTF8String(); } else { _stream << "<null>"; } return *this; }
-		StringBuilder &operator << (const std::exception &e) { _stream << e.what(); return *this; }
-		StringBuilder &operator << (const std::string &val) { _stream << val; return *this; }
-		StringBuilder &operator << (const char *val) { _stream << val; return *this; }
-		StringBuilder &operator << (bool val) { _stream << val; return *this; }
-		StringBuilder &operator << (short val) { _stream << val; return *this; }
-		StringBuilder &operator << (unsigned short val) { _stream << val; return *this; }
-		StringBuilder &operator << (int val) { _stream << val; return *this; }
-		StringBuilder &operator << (unsigned int val) { _stream << val; return *this; }
-		StringBuilder &operator << (long val) { _stream << val; return *this; }
-		StringBuilder &operator << (unsigned long val) { _stream << val; return *this; }
-		StringBuilder &operator << (long long val) { _stream << val; return *this; }
-		StringBuilder &operator << (unsigned long long val) { _stream << val; return *this; }
-		StringBuilder &operator << (float val) { _stream << val; return *this; }
-		StringBuilder &operator << (double val) { _stream << val; return *this; }
-		StringBuilder &operator << (long double val) { _stream << val; return *this; }
-		StringBuilder &operator << (const void *val) { _stream << val; return *this; }
-		StringBuilder &operator << (std::ostream &(*pf)(std::ostream &)) { _stream << pf; return *this; }
-		StringBuilder &operator << (std::ios &(*pf)(std::ios &)) { _stream << pf; return *this; };
-		StringBuilder &operator << (std::ios_base &(*pf)(std::ios_base &)) { _stream << pf; return *this; }
-		StringBuilder &operator << (const RN::Vector2 &val) { _stream << "(" << val.x << ", " << val.y << ")"; return *this; }
-		StringBuilder &operator << (const RN::Vector3 &val) { _stream << "(" << val.x << ", " << val.y << ", " << val.z << ")"; return *this; }
-		StringBuilder &operator << (const RN::Vector4 &val) { _stream << "(" << val.x << ", " << val.y << ", " << val.z << ", " << val.w << ")"; return *this; }
-		StringBuilder &operator << (const RN::Quaternion &val) { _stream << "(" << val.x << ", " << val.y << ", " << val.z << ", " << val.w << ")"; return *this; }
-		StringBuilder &operator << (const RN::Color &val) { _stream << "(" << val.r << ", " << val.g << ", " << val.b << ", " << val.a << ")"; return *this; }
+		StringBuilder &operator<<(const Object *object)
+		{
+			if(object) { _stream << object->GetDescription()->GetUTF8String(); }
+			else { _stream << "<null>"; }
+			return *this;
+		}
+		StringBuilder &operator<<(const std::exception &e)
+		{
+			_stream << e.what();
+			return *this;
+		}
+		StringBuilder &operator<<(const std::string &val)
+		{
+			_stream << val;
+			return *this;
+		}
+		StringBuilder &operator<<(const char *val)
+		{
+			_stream << val;
+			return *this;
+		}
+		StringBuilder &operator<<(bool val)
+		{
+			_stream << val;
+			return *this;
+		}
+		StringBuilder &operator<<(short val)
+		{
+			_stream << val;
+			return *this;
+		}
+		StringBuilder &operator<<(unsigned short val)
+		{
+			_stream << val;
+			return *this;
+		}
+		StringBuilder &operator<<(int val)
+		{
+			_stream << val;
+			return *this;
+		}
+		StringBuilder &operator<<(unsigned int val)
+		{
+			_stream << val;
+			return *this;
+		}
+		StringBuilder &operator<<(long val)
+		{
+			_stream << val;
+			return *this;
+		}
+		StringBuilder &operator<<(unsigned long val)
+		{
+			_stream << val;
+			return *this;
+		}
+		StringBuilder &operator<<(long long val)
+		{
+			_stream << val;
+			return *this;
+		}
+		StringBuilder &operator<<(unsigned long long val)
+		{
+			_stream << val;
+			return *this;
+		}
+		StringBuilder &operator<<(float val)
+		{
+			_stream << val;
+			return *this;
+		}
+		StringBuilder &operator<<(double val)
+		{
+			_stream << val;
+			return *this;
+		}
+		StringBuilder &operator<<(long double val)
+		{
+			_stream << val;
+			return *this;
+		}
+		StringBuilder &operator<<(const void *val)
+		{
+			_stream << val;
+			return *this;
+		}
+		StringBuilder &operator<<(std::ostream &(*pf)(std::ostream &))
+		{
+			_stream << pf;
+			return *this;
+		}
+		StringBuilder &operator<<(std::ios &(*pf)(std::ios &))
+		{
+			_stream << pf;
+			return *this;
+		};
+		StringBuilder &operator<<(std::ios_base &(*pf)(std::ios_base &))
+		{
+			_stream << pf;
+			return *this;
+		}
+		StringBuilder &operator<<(const RN::Vector2 &val)
+		{
+			_stream << "(" << val.x << ", " << val.y << ")";
+			return *this;
+		}
+		StringBuilder &operator<<(const RN::Vector3 &val)
+		{
+			_stream << "(" << val.x << ", " << val.y << ", " << val.z << ")";
+			return *this;
+		}
+		StringBuilder &operator<<(const RN::Vector4 &val)
+		{
+			_stream << "(" << val.x << ", " << val.y << ", " << val.z << ", " << val.w << ")";
+			return *this;
+		}
+		StringBuilder &operator<<(const RN::Quaternion &val)
+		{
+			_stream << "(" << val.x << ", " << val.y << ", " << val.z << ", " << val.w << ")";
+			return *this;
+		}
+		StringBuilder &operator<<(const RN::Color &val)
+		{
+			_stream << "(" << val.r << ", " << val.g << ", " << val.b << ", " << val.a << ")";
+			return *this;
+		}
 
 	private:
 		std::stringstream _stream;
@@ -179,13 +280,13 @@ namespace RN
 	{
 		return String::WithString(cstr, N, true);
 	}
-}
+} // namespace RN
 
-#define RNSTR(...) (RN::StringBuilder{} << __VA_ARGS__).Build()
-#define RNSTRF(...)  RN::String::WithFormat(__VA_ARGS__)
+#define RNSTR(...) (RN::StringBuilder {} << __VA_ARGS__).Build()
+#define RNSTRF(...) RN::String::WithFormat(__VA_ARGS__)
 #define RNCSTR(cstr) RN::__MakeConstantString(cstr)
 
-#define RNUTF8STR(str)  RN::String::WithBytes(str, RN::Encoding::UTF8)
+#define RNUTF8STR(str) RN::String::WithBytes(str, RN::Encoding::UTF8)
 #define RNCUTF8STR(str) RN::String::WithBytes(str, RN::Encoding::UTF8, true)
 
 #endif /* __RAYNE_STRING_H__ */

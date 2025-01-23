@@ -24,24 +24,24 @@ namespace RN
 	public:
 		PXAPI PhysXStaticBody(PhysXShape *shape);
 		PXAPI ~PhysXStaticBody() override;
-			
+
 		PXAPI static PhysXStaticBody *WithShape(PhysXShape *shape);
 
 		PXAPI void UpdatePosition() override;
 
 		PXAPI void SetCollisionFilter(uint32 group, uint32 mask) override;
-			
+
 		PXAPI physx::PxRigidStatic *GetPhysXActor() const { return _actor; }
-			
+
 	protected:
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
-			
+
 	private:
 		PhysXShape *_shape;
 		physx::PxRigidStatic *_actor;
 
 		RNDeclareMetaAPI(PhysXStaticBody, PXAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_PHYSXSTATICBODY_H_) */

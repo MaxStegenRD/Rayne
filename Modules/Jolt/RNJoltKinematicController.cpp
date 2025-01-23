@@ -7,21 +7,22 @@
 //
 
 #include "RNJoltKinematicController.h"
-#include "RNJoltWorld.h"
 #include "RNJoltInternals.h"
+#include "RNJoltWorld.h"
 
 #include <Jolt/Physics/Character/CharacterVirtual.h>
 
 namespace RN
 {
 	RNDefineMeta(JoltKinematicController, JoltCollisionObject)
-		
-	JoltKinematicController::JoltKinematicController(float radius, float height, JoltMaterial *material, float stepOffset) : _fallSpeed(0.0f), _objectBelow(nullptr), _isFalling(false)
+
+	JoltKinematicController::JoltKinematicController(float radius, float height, JoltMaterial *material, float stepOffset) :
+		_fallSpeed(0.0f), _objectBelow(nullptr), _isFalling(false)
 	{
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		
+
 		_shape = JoltCapsuleShape::WithRadius(radius, height, material)->Retain();
-		
+
 		JPH::CharacterVirtualSettings settings;
 		settings.mMaxSlopeAngle = 70.0f;
 		settings.mMaxStrength = 10.0f;
@@ -35,14 +36,14 @@ namespace RN
 		_internals->contactListener.controller = this;
 		_controller->SetListener(&_internals->contactListener);
 	}
-	
+
 	JoltKinematicController::~JoltKinematicController()
 	{
 		SafeRelease(_shape);
 		delete _controller;
 		//if(_callback) delete _callback;
 	}
-		
+
 	void JoltKinematicController::Move(const Vector3 &direction, float delta)
 	{
 		if(delta < k::EpsilonFloat || direction.GetLength() < k::EpsilonFloat)
@@ -51,12 +52,12 @@ namespace RN
 		}
 
 		uint16 objectLayer = JoltWorld::GetSharedInstance()->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1);
-		
+
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		
+
 		_controller->SetLinearVelocity(JPH::Vec3Arg(direction.x, direction.y, direction.z));
 		_controller->Update(delta, physics->GetGravity(), physics->GetDefaultBroadPhaseLayerFilter(objectLayer), physics->GetDefaultLayerFilter(objectLayer), {}, {}, *JoltWorld::GetSharedInstance()->_internals->tempAllocator);
-		
+
 		UpdatePosition();
 	}
 
@@ -77,7 +78,7 @@ namespace RN
 			fallDistance = _fallSpeed * delta;
 			_isFalling = true;
 		}
-		
+
 		_objectBelow = contact.node;
 		if(std::abs(fallDistance) > k::EpsilonFloat)
 		{
@@ -88,29 +89,29 @@ namespace RN
 	std::vector<JoltContactInfo> JoltKinematicController::SweepTestAll(const Vector3 &direction, const Vector3 &offset) const
 	{
 		std::vector<JoltContactInfo> hits;
-		
+
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		
+
 		Vector3 pos = GetWorldPosition() + offset;
 		Quaternion rot = GetWorldRotation();
-		
+
 		JPH::Mat44 worldTransform = JPH::Mat44::sRotationTranslation(JPH::QuatArg(rot.x, rot.y, rot.z, rot.w), JPH::Vec3Arg(pos.x, pos.y, pos.z));
-		
+
 		//TODO: Limit max distance of raycast or the result
-		
+
 		JPH::RShapeCast castInfo = JPH::RShapeCast::sFromWorldTransform(_shape->GetJoltShape(), JPH::Vec3Arg(1, 1, 1), worldTransform, JPH::Vec3Arg(direction.x, direction.y, direction.z));
-		
+
 		JPH::ShapeCastSettings castSettings; //Defaults seem ok for now!?
-		
+
 		uint16 objectLayer = JoltWorld::GetSharedInstance()->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1);
 		JPH::AllHitCollisionCollector<JPH::CastShapeCollector> results;
 		physics->GetNarrowPhaseQuery().CastShape(castInfo, castSettings, JPH::RVec3Arg(0, 0, 0), results, physics->GetDefaultBroadPhaseLayerFilter(objectLayer), physics->GetDefaultLayerFilter(objectLayer));
-		
-		for(auto result : results.mHits)
+
+		for(auto result: results.mHits)
 		{
 			JoltContactInfo hit;
-			
-			JPH::Vec3 position = result.mContactPointOn2;//castInfo.GetPointOnRay(result.mFraction);
+
+			JPH::Vec3 position = result.mContactPointOn2; //castInfo.GetPointOnRay(result.mFraction);
 			JPH::Vec3 normal;
 
 			// Scoped lock
@@ -120,30 +121,30 @@ namespace RN
 				{
 					const JPH::Body &body = lock.GetBody();
 					normal = body.GetWorldSpaceSurfaceNormal(result.mSubShapeID2, position);
-					hit.collisionObject = reinterpret_cast<JoltCollisionObject*>(body.GetUserData());
+					hit.collisionObject = reinterpret_cast<JoltCollisionObject *>(body.GetUserData());
 				}
 				else
 				{
 					continue;
 				}
 			}
-			
+
 			hit.position.x = position.GetX();
 			hit.position.y = position.GetY();
 			hit.position.z = position.GetZ();
-			
+
 			hit.normal.x = normal.GetX();
 			hit.normal.y = normal.GetY();
 			hit.normal.z = normal.GetZ();
 
 			hit.distance = pos.GetDistance(hit.position);
-			
+
 			if(hit.collisionObject) hit.node = hit.collisionObject->GetParent();
 			if(hit.node) hit.node->Retain()->Autorelease();
 
 			hits.push_back(hit);
 		}
-		
+
 		return hits;
 	}
 
@@ -153,20 +154,20 @@ namespace RN
 		hit.distance = -1.0f;
 		hit.node = nullptr;
 		hit.collisionObject = nullptr;
-		
+
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		
+
 		Vector3 pos = GetWorldPosition() + offset;
 		Quaternion rot = GetWorldRotation();
-		
+
 		JPH::Mat44 worldTransform = JPH::Mat44::sRotationTranslation(JPH::QuatArg(rot.x, rot.y, rot.z, rot.w), JPH::Vec3Arg(pos.x, pos.y, pos.z));
-		
+
 		//TODO: Limit max distance of raycast or the result
-		
+
 		JPH::RShapeCast castInfo = JPH::RShapeCast::sFromWorldTransform(_shape->GetJoltShape(), JPH::Vec3Arg(1, 1, 1), worldTransform, JPH::Vec3Arg(direction.x, direction.y, direction.z));
-		
+
 		JPH::ShapeCastSettings castSettings; //Defaults seem ok for now!?
-		
+
 		uint16 objectLayer = JoltWorld::GetSharedInstance()->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1);
 		JPH::ClosestHitCollisionCollector<JPH::CastShapeCollector> result;
 		physics->GetNarrowPhaseQuery().CastShape(castInfo, castSettings, JPH::RVec3Arg(0, 0, 0), result, physics->GetDefaultBroadPhaseLayerFilter(objectLayer), physics->GetDefaultLayerFilter(objectLayer));
@@ -174,8 +175,8 @@ namespace RN
 		{
 			return hit;
 		}
-		
-		JPH::Vec3 position = result.mHit.mContactPointOn2;//castInfo.GetPointOnRay(result.mHit.mFraction);
+
+		JPH::Vec3 position = result.mHit.mContactPointOn2; //castInfo.GetPointOnRay(result.mHit.mFraction);
 		JPH::Vec3 normal;
 
 		// Scoped lock
@@ -185,27 +186,27 @@ namespace RN
 			{
 				const JPH::Body &body = lock.GetBody();
 				normal = body.GetWorldSpaceSurfaceNormal(result.mHit.mSubShapeID2, position);
-				hit.collisionObject = reinterpret_cast<JoltCollisionObject*>(body.GetUserData());
+				hit.collisionObject = reinterpret_cast<JoltCollisionObject *>(body.GetUserData());
 			}
 			else
 			{
 				return hit;
 			}
 		}
-		
+
 		hit.position.x = position.GetX();
 		hit.position.y = position.GetY();
 		hit.position.z = position.GetZ();
-		
+
 		hit.normal.x = normal.GetX();
 		hit.normal.y = normal.GetY();
 		hit.normal.z = normal.GetZ();
 
 		hit.distance = pos.GetDistance(hit.position);
-		
+
 		if(hit.collisionObject) hit.node = hit.collisionObject->GetParent();
 		if(hit.node) hit.node->Retain()->Autorelease();
-		
+
 		return hit;
 	}
 
@@ -215,67 +216,67 @@ namespace RN
 		contact.distance = -1.0f;
 		contact.node = nullptr;
 		contact.collisionObject = nullptr;
-		
+
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		
+
 		Vector3 position = GetWorldPosition();
 		Quaternion rotation = GetWorldRotation();
 
 		JPH::Mat44 worldTransform = JPH::Mat44::sRotationTranslation(JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), JPH::Vec3Arg(position.x, position.y, position.z));
 		JPH::CollideShapeSettings collideSettings; //Defaults seem ok for now!?
-		
+
 		JPH::ClosestHitCollisionCollector<JPH::CollideShapeCollector> results;
 		uint16 objectLayer = JoltWorld::GetSharedInstance()->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1);
 		physics->GetNarrowPhaseQuery().CollideShape(_shape->GetJoltShape(), JPH::Vec3Arg(1, 1, 1), worldTransform.PreTranslated(_shape->GetJoltShape()->GetCenterOfMass()), collideSettings, JPH::RVec3Arg(0, 0, 0), results, physics->GetDefaultBroadPhaseLayerFilter(objectLayer), physics->GetDefaultLayerFilter(objectLayer));
-		
+
 		if(!results.HadHit())
 		{
 			return contact;
 		}
-		
+
 		contact.distance = 0.0f;
 		contact.position = position;
 		contact.node = nullptr;
 		contact.collisionObject = nullptr;
-		
-		contact.collisionObject = reinterpret_cast<JoltCollisionObject*>(physics->GetBodyInterface().GetUserData(results.mHit.mBodyID2));
+
+		contact.collisionObject = reinterpret_cast<JoltCollisionObject *>(physics->GetBodyInterface().GetUserData(results.mHit.mBodyID2));
 		if(contact.collisionObject) contact.node = contact.collisionObject->GetParent();
 		if(contact.node) contact.node->Retain()->Autorelease();
-		
+
 		return contact;
 	}
 
 	std::vector<JoltContactInfo> JoltKinematicController::OverlapTestAll() const
 	{
 		std::vector<JoltContactInfo> hits;
-		
+
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		
+
 		Vector3 position = GetWorldPosition();
 		Quaternion rotation = GetWorldRotation();
 
 		JPH::Mat44 worldTransform = JPH::Mat44::sRotationTranslation(JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), JPH::Vec3Arg(position.x, position.y, position.z));
 		JPH::CollideShapeSettings collideSettings; //Defaults seem ok for now!?
-		
+
 		JPH::AllHitCollisionCollector<JPH::CollideShapeCollector> results;
 		uint16 objectLayer = JoltWorld::GetSharedInstance()->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1);
 		physics->GetNarrowPhaseQuery().CollideShape(_shape->GetJoltShape(), JPH::Vec3Arg(1, 1, 1), worldTransform.PreTranslated(_shape->GetJoltShape()->GetCenterOfMass()), collideSettings, JPH::RVec3Arg(0, 0, 0), results, physics->GetDefaultBroadPhaseLayerFilter(objectLayer), physics->GetDefaultLayerFilter(objectLayer));
-		
-		for(auto result : results.mHits)
+
+		for(auto result: results.mHits)
 		{
 			JoltContactInfo hit;
 			hit.distance = 0.0f;
 			hit.position = position;
 			hit.node = nullptr;
 			hit.collisionObject = nullptr;
-			
-			hit.collisionObject = reinterpret_cast<JoltCollisionObject*>(physics->GetBodyInterface().GetUserData(result.mBodyID2));
+
+			hit.collisionObject = reinterpret_cast<JoltCollisionObject *>(physics->GetBodyInterface().GetUserData(result.mBodyID2));
 			if(hit.collisionObject) hit.node = hit.collisionObject->GetParent();
 			if(hit.node) hit.node->Retain()->Autorelease();
 
 			hits.push_back(hit);
 		}
-		
+
 		return hits;
 	}
 
@@ -312,23 +313,23 @@ namespace RN
 		}
 		
 		return !isBlocked;*/
-		
+
 		return false;
 	}
 
 	void JoltKinematicController::SetCollisionFilter(uint32 group, uint32 mask)
 	{
 		JoltCollisionObject::SetCollisionFilter(group, mask);
-		
+
 		//No need to do anything here, values will just be used by the actual methods that do the work.
 	}
 
 	Vector3 JoltKinematicController::GetFeetOffset() const
 	{
-/*		Jolt::PxVec3 footPosition = Jolt::toVec3(_controller->getFootPosition());
+		/*		Jolt::PxVec3 footPosition = Jolt::toVec3(_controller->getFootPosition());
 		Jolt::PxVec3 position = Jolt::toVec3(_controller->getPosition());
 		Jolt::PxVec3 offset = footPosition - position;*/
-		return Vector3();//Vector3(offset.x, offset.y, offset.z);
+		return Vector3(); //Vector3(offset.x, offset.y, offset.z);
 	}
 
 	void JoltKinematicController::Jump(float force)
@@ -340,7 +341,7 @@ namespace RN
 	void JoltKinematicController::DidUpdate(SceneNode::ChangeSet changeSet)
 	{
 		JoltCollisionObject::DidUpdate(changeSet);
-		
+
 		if(changeSet & SceneNode::ChangeSet::Position)
 		{
 			Vector3 position = GetWorldPosition() - _positionOffset;
@@ -365,8 +366,8 @@ namespace RN
 		{
 			return;
 		}
-		
+
 		JPH::RVec3 position = _controller->GetPosition();
 		SetWorldPosition(Vector3(position.GetX(), position.GetY(), position.GetZ()) + _positionOffset);
 	}
-}
+} // namespace RN

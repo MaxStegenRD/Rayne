@@ -36,10 +36,7 @@ namespace RN
 
 			bool result = __Private::Futex::Wait(&_hasWaiters, [this]() -> bool {
 				_hasWaiters.store(true, std::memory_order_release);
-				return true;
-			}, [&lock]() {
-				lock.Unlock();
-			}, timeout);
+				return true; }, [&lock]() { lock.Unlock(); }, timeout);
 
 			lock.Lock();
 			return result;
@@ -84,10 +81,8 @@ namespace RN
 				return;
 
 			__Private::Futex::WakeOne(&_hasWaiters, [this](__Private::Futex::WakeResult result) {
-
 				if(!(result & __Private::Futex::WakeResult::HasMoreThreads))
 					_hasWaiters.store(false, std::memory_order_release);
-
 			});
 		}
 		void NotifyAll()
@@ -102,7 +97,7 @@ namespace RN
 	private:
 		std::atomic<bool> _hasWaiters;
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_CONDITION_H_ */

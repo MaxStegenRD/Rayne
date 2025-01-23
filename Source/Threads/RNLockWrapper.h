@@ -68,7 +68,7 @@ namespace RN
 	private:
 		T *_lock;
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_LOCKWRAPPER_H_ */

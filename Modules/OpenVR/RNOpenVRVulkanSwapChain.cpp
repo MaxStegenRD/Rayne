@@ -8,16 +8,17 @@
 
 #include "RNOpenVRVulkanSwapChain.h"
 
+#include "RNVulkanFramebuffer.h"
 #include "RNVulkanInternals.h"
 #include "RNVulkanRenderer.h"
-#include "RNVulkanFramebuffer.h"
 #include "RNVulkanTexture.h"
 
 namespace RN
 {
 	RNDefineMeta(OpenVRVulkanSwapChain, VulkanSwapChain)
 
-	OpenVRVulkanSwapChain::OpenVRVulkanSwapChain(const Window::SwapChainDescriptor &descriptor, vr::IVRSystem *system) : OpenVRSwapChain(system), _isFirstRender(true)
+	OpenVRVulkanSwapChain::OpenVRVulkanSwapChain(const Window::SwapChainDescriptor &descriptor, vr::IVRSystem *system) :
+		OpenVRSwapChain(system), _isFirstRender(true)
 	{
 		vr::VRCompositor()->SetExplicitTimingMode(vr::VRCompositorTimingMode_Explicit_ApplicationPerformsPostPresentHandoff);
 
@@ -51,7 +52,7 @@ namespace RN
 		_hmdToEyeViewOffset[1].y = rightEyeMatrix.m[1][3];
 		_hmdToEyeViewOffset[1].z = rightEyeMatrix.m[2][3];
 
-		for (size_t i = _presentSemaphores.size(); i < _descriptor.bufferCount; i++)
+		for(size_t i = _presentSemaphores.size(); i < _descriptor.bufferCount; i++)
 		{
 			_presentSemaphores.push_back(VK_NULL_HANDLE);
 			_renderSemaphores.push_back(VK_NULL_HANDLE);
@@ -63,7 +64,7 @@ namespace RN
 		SafeRelease(_targetTexture);
 	}
 
-	void OpenVRVulkanSwapChain::ResizeOpenVRSwapChain(const Vector2& size)
+	void OpenVRVulkanSwapChain::ResizeOpenVRSwapChain(const Vector2 &size)
 	{
 		_size = size;
 		//_framebuffer->WillUpdateSwapChain(); //As all it does is free the swap chain d3d buffer resources, it would free the targetTexture resource and should't be called in this case...
@@ -78,12 +79,11 @@ namespace RN
 
 	void OpenVRVulkanSwapChain::AcquireBackBuffer()
 	{
-		
 	}
 
 	void OpenVRVulkanSwapChain::Prepare(VkCommandBuffer commandBuffer)
 	{
-		if (_isFirstRender)
+		if(_isFirstRender)
 			return;
 
 		VulkanTexture *texture = _targetTexture->Downcast<VulkanTexture>();
@@ -121,7 +121,7 @@ namespace RN
 		vulkanEyeTexture.m_unArrayIndex = 0;
 		vulkanEyeTexture.m_unArraySize = 2;
 
-		vr::Texture_t eyeTexture = { (void *)&vulkanEyeTexture, vr::TextureType_Vulkan, vr::ColorSpace_Gamma };
+		vr::Texture_t eyeTexture = {(void *)&vulkanEyeTexture, vr::TextureType_Vulkan, vr::ColorSpace_Gamma};
 
 		vr::VRCompositor()->Submit(vr::Eye_Left, &eyeTexture, nullptr, vr::Submit_VulkanTextureWithArrayData);
 
@@ -138,4 +138,4 @@ namespace RN
 	{
 		return GetFramebuffer()->Downcast<Framebuffer>();
 	}
-}
+} // namespace RN

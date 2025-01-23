@@ -17,4 +17,4 @@ namespace RN
 
 	GPUResource::~GPUResource()
 	{}
-}
+} // namespace RN

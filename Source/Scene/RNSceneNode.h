@@ -11,16 +11,16 @@
 #define __RAYNE_SCENENODE_H__
 
 #include "../Base/RNBase.h"
+#include "../Base/RNSignal.h"
 #include "../Data/RNIntrusiveList.h"
-#include "../Objects/RNObject.h"
+#include "../Math/RNAABB.h"
 #include "../Math/RNMatrix.h"
 #include "../Math/RNQuaternion.h"
-#include "../Math/RNVector.h"
-#include "../Math/RNAABB.h"
 #include "../Math/RNSphere.h"
-#include "../Base/RNSignal.h"
+#include "../Math/RNVector.h"
 #include "../Objects/RNArray.h"
 #include "../Objects/RNKVOImplementation.h"
+#include "../Objects/RNObject.h"
 
 namespace RN
 {
@@ -42,7 +42,7 @@ namespace RN
 			UpdateNormal,
 			UpdateLate
 		};
-		
+
 		enum RenderPriority : int32
 		{
 			RenderEarly = -100000,
@@ -54,17 +54,17 @@ namespace RN
 		};
 
 		RN_OPTIONS(Flags, uint32,
-				   Static       = (1 << 0),
-				   Hidden       = (1 << 1),
-				   NoCulling	= (1 << 2),
-				   
-				   Occluder		= (1 << 3),
+				   Static = (1 << 0),
+				   Hidden = (1 << 1),
+				   NoCulling = (1 << 2),
 
-				   HideInEditor        = (1 << 10),
+				   Occluder = (1 << 3),
+
+				   HideInEditor = (1 << 10),
 				   UndeletableInEditor = (1 << 11),
-				   LockedInEditor      = (1 << 12),
+				   LockedInEditor = (1 << 12),
 
-				   NoSave  = (1 << 4),
+				   NoSave = (1 << 4),
 				   Mutated = (1 << 5));
 
 		RN_OPTIONS(ChangeSet, uint32,
@@ -108,7 +108,7 @@ namespace RN
 		virtual void SetWorldScale(const Vector3 &scal);
 		virtual void SetWorldRotation(const Quaternion &rot);
 
-		RNAPI void SetBoundingBox(const AABB &boundingBox, bool calculateBoundingSphere=true);
+		RNAPI void SetBoundingBox(const AABB &boundingBox, bool calculateBoundingSphere = true);
 		RNAPI void SetBoundingSphere(const Sphere &boundingSphere);
 
 		RNAPI void SetUpdatePriority(UpdatePriority priority);
@@ -140,7 +140,7 @@ namespace RN
 		const Vector3 &GetEulerAngle() const { return _euler; }
 		const Quaternion &GetRotation() const { return _rotation; }
 
-		RNAPI void LookAt(const RN::Vector3 &target, bool keepUpAxis=false);
+		RNAPI void LookAt(const RN::Vector3 &target, bool keepUpAxis = false);
 
 		RNAPI void AddChild(SceneNode *child);
 		RNAPI void RemoveChild(SceneNode *child);
@@ -170,11 +170,11 @@ namespace RN
 		RNAPI virtual void Render(Renderer *renderer, Camera *camera) const;
 
 		RNAPI virtual void Update(float delta);
-		
+
 		IntrusiveList<SceneNode>::Member _sceneUpdateEntry; //TODO: Make private but keep accessible to user made scene implementations
 		IntrusiveList<SceneNode>::Member _sceneRenderEntry; //TODO: Make private but keep accessible to user made scene implementations
 		RNAPI void UpdateSceneInfo(SceneInfo *sceneInfo); //TODO: Make private but keep accessible to user made scene implementations
-		
+
 		bool _scheduledForRemovalFromScene; //TODO: Make private but keep accessible to user made scene
 
 	protected:
@@ -184,10 +184,10 @@ namespace RN
 		virtual void ChildDidUpdate(SceneNode *child, ChangeSet changes) {}
 		virtual void ChildWillUpdate(SceneNode *child, ChangeSet changes) {}
 		virtual void WillAddChild(SceneNode *child) {}
-		virtual void DidAddChild(SceneNode *child)  {}
+		virtual void DidAddChild(SceneNode *child) {}
 		virtual void WillRemoveChild(SceneNode *child) {}
 		virtual void DidRemoveChild(SceneNode *child) {}
-		
+
 		//Can be used by other classes for basic checks, like the being in the camera frustum and not hidden
 		RNAPI virtual bool CanRenderUtil(Renderer *renderer, Camera *camera) const;
 
@@ -313,7 +313,7 @@ namespace RN
 	{
 		WillUpdate(ChangeSet::Position);
 
-		_euler    = rot.GetEulerAngle();
+		_euler = rot.GetEulerAngle();
 		_rotation = rot;
 
 		DidUpdate(ChangeSet::Position);
@@ -330,7 +330,7 @@ namespace RN
 
 		WillUpdate(ChangeSet::Position);
 		Vector3 tempPosition = pos - _parent->GetWorldPosition();
-		Quaternion tempRotation = Quaternion()/_parent->GetWorldRotation();
+		Quaternion tempRotation = Quaternion() / _parent->GetWorldRotation();
 		_position = tempRotation.GetRotatedVector(tempPosition) / _parent->GetWorldScale();
 		DidUpdate(ChangeSet::Position);
 	}
@@ -448,7 +448,7 @@ namespace RN
 		UpdateInternalBoundsData();
 		return Sphere(_transformedBoundingSphere);
 	}
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_SCENENODE_H__ */

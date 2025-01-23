@@ -8,13 +8,13 @@
 
 #include <png.h>
 
-#include "../Rendering/RNRenderer.h"
-#include "../Objects/RNData.h"
 #include "../Assets/RNBitmap.h"
 #include "../Debug/RNLogger.h"
-#include "../Threads/RNWorkQueue.h"
-#include "../Threads/RNWorkGroup.h"
 #include "../Objects/RNAutoreleasePool.h"
+#include "../Objects/RNData.h"
+#include "../Rendering/RNRenderer.h"
+#include "../Threads/RNWorkGroup.h"
+#include "../Threads/RNWorkQueue.h"
 
 #include "RNPNGAssetWriter.h"
 
@@ -25,7 +25,7 @@ namespace RN
 		if(png_ptr == NULL)
 			return;
 
-		RN::Data *rndata = static_cast<RN::Data*>(png_get_io_ptr(png_ptr));
+		RN::Data *rndata = static_cast<RN::Data *>(png_get_io_ptr(png_ptr));
 		rndata->Append(data, length);
 	}
 
@@ -58,14 +58,12 @@ namespace RN
 		Data *textureData = Data::WithBytes(nullptr, texture->GetDescriptor().width * texture->GetDescriptor().height * channelCount);
 		textureData->Retain();
 		texture->Retain();
-		texture->GetData(textureData->GetBytes(), 0, texture->GetDescriptor().width * channelCount, [textureData, colorType, bitDepth, channelCount, interlace, texture, callback](){
-
+		texture->GetData(textureData->GetBytes(), 0, texture->GetDescriptor().width * channelCount, [textureData, colorType, bitDepth, channelCount, interlace, texture, callback]() {
 			WorkQueue *queue = WorkQueue::GetGlobalQueue(WorkQueue::Priority::Background);
 			WorkGroup *group = new WorkGroup();
 			group->Perform(queue, [textureData, colorType, bitDepth, channelCount, interlace, texture, callback] {
-
 				AutoreleasePool pool;
-				
+
 				png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
 				if(!png_ptr)
 				{
@@ -84,7 +82,7 @@ namespace RN
 					callback(nullptr);
 					return;
 				}
-				
+
 				if(setjmp(png_jmpbuf(png_ptr)))
 				{
 					png_destroy_write_struct(&png_ptr, &info_ptr);
@@ -93,36 +91,36 @@ namespace RN
 					callback(nullptr);
 					return;
 				}
-				
+
 				RN::Data *resultData = new RN::Data();
 				png_set_write_fn(png_ptr, resultData, png_write_to_rndata, nullptr);
 
-				png_set_IHDR(png_ptr, info_ptr, texture->GetDescriptor().width, texture->GetDescriptor().height, bitDepth, colorType, interlace? PNG_INTERLACE_ADAM7 : PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+				png_set_IHDR(png_ptr, info_ptr, texture->GetDescriptor().width, texture->GetDescriptor().height, bitDepth, colorType, interlace ? PNG_INTERLACE_ADAM7 : PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 
 				//png_set_gAMA(png_ptr, info_ptr, mainprog_ptr->gamma);
 
 				png_write_info(png_ptr, info_ptr);
 				png_set_packing(png_ptr); //Not really needed apparently, as it only does stuff for greyscale and palettised images
 
-				RN::uint8 **rowPointers = new RN::uint8*[texture->GetDescriptor().height];
+				RN::uint8 **rowPointers = new RN::uint8 *[texture->GetDescriptor().height];
 				for(size_t index = 0; index < texture->GetDescriptor().height; index++)
 				{
 					rowPointers[index] = &textureData->GetBytes<RN::uint8>()[index * texture->GetDescriptor().width * channelCount];
 				}
-				
+
 				png_write_image(png_ptr, rowPointers);
 
 				png_write_end(png_ptr, NULL);
-				
+
 				callback(resultData);
-				
+
 				delete[] rowPointers;
 				textureData->Release();
 				texture->Release();
 				resultData->Release();
 			});
 		});
-		
+
 		return;
 	}
 
@@ -150,7 +148,7 @@ namespace RN
 				return nullptr;
 			}
 		}
-		
+
 		png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
 		if(!png_ptr)
 		{
@@ -163,35 +161,35 @@ namespace RN
 			png_destroy_write_struct(&png_ptr, NULL);
 			return nullptr;
 		}
-		
+
 		if(setjmp(png_jmpbuf(png_ptr)))
 		{
 			png_destroy_write_struct(&png_ptr, &info_ptr);
 			return nullptr;
 		}
-		
+
 		RN::Data *resultData = new RN::Data();
 		png_set_write_fn(png_ptr, resultData, png_write_to_rndata, nullptr);
 
-		png_set_IHDR(png_ptr, info_ptr, bitmap->GetInfo().width, bitmap->GetInfo().height, bitDepth, colorType, interlace? PNG_INTERLACE_ADAM7 : PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+		png_set_IHDR(png_ptr, info_ptr, bitmap->GetInfo().width, bitmap->GetInfo().height, bitDepth, colorType, interlace ? PNG_INTERLACE_ADAM7 : PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 
 		//png_set_gAMA(png_ptr, info_ptr, mainprog_ptr->gamma);
 
 		png_write_info(png_ptr, info_ptr);
 		png_set_packing(png_ptr); //Not really needed apparently, as it only does stuff for greyscale and palettised images
 
-		RN::uint8 **rowPointers = new RN::uint8*[bitmap->GetInfo().height];
+		RN::uint8 **rowPointers = new RN::uint8 *[bitmap->GetInfo().height];
 		for(size_t index = 0; index < bitmap->GetInfo().height; index++)
 		{
 			rowPointers[index] = &bitmap->GetData()->GetBytes<RN::uint8>()[index * bitmap->GetInfo().width * channelCount];
 		}
-		
+
 		png_write_image(png_ptr, rowPointers);
 
 		png_write_end(png_ptr, NULL);
-		
+
 		delete[] rowPointers;
-		
+
 		return resultData->Autorelease();
 	}
 
@@ -223,14 +221,12 @@ namespace RN
 		textureData->Retain();
 		texture->Retain();
 		filename->Retain();
-		texture->GetData(textureData->GetBytes(), 0, texture->GetDescriptor().width * channelCount, [textureData, colorType, bitDepth, channelCount, texture, filename, interlace](){
-
+		texture->GetData(textureData->GetBytes(), 0, texture->GetDescriptor().width * channelCount, [textureData, colorType, bitDepth, channelCount, texture, filename, interlace]() {
 			WorkQueue *queue = WorkQueue::GetGlobalQueue(WorkQueue::Priority::Background);
 			WorkGroup *group = new WorkGroup();
 			group->Perform(queue, [textureData, colorType, bitDepth, channelCount, texture, filename, interlace] {
-
 				AutoreleasePool pool;
-				
+
 				png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
 				if(!png_ptr)
 				{
@@ -259,7 +255,7 @@ namespace RN
 					texture->Release();
 					return;
 				}
-				
+
 				if(setjmp(png_jmpbuf(png_ptr)))
 				{
 					//If we get here, we had a problem writing the file
@@ -270,35 +266,35 @@ namespace RN
 					texture->Release();
 					return;
 				}
-				
+
 				png_init_io(png_ptr, fp);
 
-				png_set_IHDR(png_ptr, info_ptr, texture->GetDescriptor().width, texture->GetDescriptor().height, bitDepth, colorType, interlace? PNG_INTERLACE_ADAM7 : PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+				png_set_IHDR(png_ptr, info_ptr, texture->GetDescriptor().width, texture->GetDescriptor().height, bitDepth, colorType, interlace ? PNG_INTERLACE_ADAM7 : PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 
 				//png_set_gAMA(png_ptr, info_ptr, mainprog_ptr->gamma);
 
 				png_write_info(png_ptr, info_ptr);
 				png_set_packing(png_ptr); //Not really needed apparently, as it only does stuff for greyscale and palettised images
 
-				RN::uint8 **rowPointers = new RN::uint8*[texture->GetDescriptor().height];
+				RN::uint8 **rowPointers = new RN::uint8 *[texture->GetDescriptor().height];
 				for(size_t index = 0; index < texture->GetDescriptor().height; index++)
 				{
 					rowPointers[index] = &textureData->GetBytes<RN::uint8>()[index * texture->GetDescriptor().width * channelCount];
 				}
-				
+
 				png_write_image(png_ptr, rowPointers);
 
 				png_write_end(png_ptr, NULL);
-				
+
 				fclose(fp);
-				
+
 				delete[] rowPointers;
 				textureData->Release();
 				filename->Release();
 				texture->Release();
 			});
 		});
-		
+
 		return true;
 	}
-}
+} // namespace RN

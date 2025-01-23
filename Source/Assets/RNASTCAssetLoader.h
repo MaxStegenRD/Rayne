@@ -27,17 +27,17 @@ namespace RN
 			uint8_t magic[4];
 			uint8_t blockdim_x;
 			uint8_t blockdim_y;
-			uint8_t blockdim_z ;
+			uint8_t blockdim_z;
 			uint8_t xsize[3];
 			uint8_t ysize[3];
 			uint8_t zsize[3];
 		};
-		
+
 		ASTCAssetLoader(const Config &config);
 
 		__RNDeclareMetaInternal(ASTCAssetLoader)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_ASTCASSETLOADER_H_ */

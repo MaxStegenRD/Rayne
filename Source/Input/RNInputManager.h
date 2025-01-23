@@ -12,8 +12,8 @@
 #include "../Base/RNBase.h"
 #include "../Objects/RNArray.h"
 #include "../Objects/RNDictionary.h"
-#include "RNInputDevice.h"
 #include "RNHIDDevice.h"
+#include "RNInputDevice.h"
 
 #define kRNInputManagerHIDDeviceAdded RNCSTR("kRNInputManagerHIDDeviceAdded")
 #define kRNInputManagerHIDDeviceRemoved RNCSTR("kRNInputManagerHIDDeviceRemoved")
@@ -57,7 +57,7 @@ namespace RN
 			Event event;
 		};
 
-		using Callback = std::function<void (const Action &action)>;
+		using Callback = std::function<void(const Action &action)>;
 
 
 		RNAPI static InputManager *GetSharedInstance();
@@ -83,7 +83,7 @@ namespace RN
 
 		const Vector3 &GetMouseDelta() const { return _mouseDelta; }
 		bool IsMouseButtonPressed(uint8 index) const { return _mouseButton[index]; }
-		
+
 #if RN_PLATFORM_MAC_OS
 		void ProcessKeyEvent(uint16 keyCode, bool state);
 #endif
@@ -102,7 +102,7 @@ namespace RN
 		void __HandleRawInput(HRAWINPUT lParam);
 		Vector3 _mouseMovement;
 #endif
-		
+
 #if RN_PLATFORM_WINDOWS || RN_PLATFORM_MAC_OS || RN_PLATFORM_LINUX
 		bool _keyPressed[256];
 #endif
@@ -114,7 +114,7 @@ namespace RN
 		Vector3 _previousMousePosition;
 		Vector3 _mouseMovement;
 #endif
-		
+
 #if RN_PLATFORM_IOS
 		OIS::InputManager *_inputManager;
 		OISInputHandler *_oisInputHandler;
@@ -133,7 +133,7 @@ namespace RN
 			{}
 
 			Target(Target &&other) = default;
-			Target &operator =(Target &&other) = default;
+			Target &operator=(Target &&other) = default;
 
 			Callback callback;
 			InputDevice *device;
@@ -159,7 +159,7 @@ namespace RN
 
 		Array *_hidDevices;
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_INPUTMANAGER_H_ */

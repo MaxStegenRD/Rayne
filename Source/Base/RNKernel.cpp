@@ -7,12 +7,12 @@
 //
 
 #include "RNKernel.h"
-#include "RNBaseInternal.h"
-#include "RNScopeAllocator.h"
+#include "../Debug/RNLoggingEngine.h"
 #include "../Objects/RNAutoreleasePool.h"
 #include "../Objects/RNJSONSerialization.h"
 #include "../Rendering/RNRendererDescriptor.h"
-#include "../Debug/RNLoggingEngine.h"
+#include "RNBaseInternal.h"
+#include "RNScopeAllocator.h"
 
 namespace RN
 {
@@ -24,9 +24,9 @@ namespace RN
 	static __itt_string_handle *__renderingTask;
 
 	#define START_TASK(task) \
-			__itt_task_begin(VTuneDomain, __itt_null, __itt_null, (task))
+		__itt_task_begin(VTuneDomain, __itt_null, __itt_null, (task))
 	#define END_TASK() \
-			__itt_task_end(VTuneDomain)
+		__itt_task_end(VTuneDomain)
 #else
 
 	#define START_TASK(task) (void)(0)
@@ -68,7 +68,7 @@ namespace RN
 											std::bind(&Kernel::HandleObserver, this, std::placeholders::_1,
 													  std::placeholders::_2));
 			_mainThread = new Thread();
-			
+
 			RN_UNUSED ScopeAllocator rootAllocator(BumpAllocator::GetThreadAllocator());
 
 
@@ -78,10 +78,10 @@ namespace RN
 #if RN_PLATFORM_LINUX
 			_connection = xcb_connect(nullptr, nullptr);
 			if(xcb_connection_has_error(_connection))
-            {
-			    xcb_disconnect(_connection);
-			    _connection = nullptr;
-            }
+			{
+				xcb_disconnect(_connection);
+				_connection = nullptr;
+			}
 #endif
 
 			AutoreleasePool pool; // Wrap everyting into an autorelease pool from now on
@@ -118,7 +118,7 @@ namespace RN
 			_sceneManager = new SceneManager();
 			_inputManager = new InputManager();
 			_moduleManager = new ModuleManager();
-			
+
 			if(_manifest)
 			{
 				String *preferredTextureFileExtension = GetManifestEntryForKey<String>(kRNManifestPreferredTextureFileExtensionKey);
@@ -171,7 +171,6 @@ namespace RN
 			{
 				RNDebug("Running with headless renderer");
 			}
-
 		}
 		catch(std::exception &e)
 		{
@@ -311,7 +310,7 @@ namespace RN
 		_layerRenderer = layerRenderer;
 	}
 #endif
-	
+
 	void Kernel::SetMaxFPS(uint32 maxFPS)
 	{
 		_maxFPS = maxFPS;
@@ -352,7 +351,7 @@ namespace RN
 
 #if RN_PLATFORM_ANDROID
 		//Wait for android app window to be available before finishing the boostrap which is usually followed by RN::Window creation
-		if(RN_EXPECT_FALSE(_firstFrame))// && _androidApp->window)
+		if(RN_EXPECT_FALSE(_firstFrame)) // && _androidApp->window)
 #else
 		if(RN_EXPECT_FALSE(_firstFrame))
 #endif
@@ -363,7 +362,7 @@ namespace RN
 
 			HandleSystemEvents();
 			FinishBootstrap();
-			
+
 			_firstFrame = false;
 		}
 
@@ -374,7 +373,7 @@ namespace RN
 		// Perform work submitted to the main queue
 		{
 			volatile bool finishWork;
-			_mainQueue->Perform([&]{
+			_mainQueue->Perform([&] {
 				finishWork = true;
 				_settings->Sync();
 			});
@@ -401,25 +400,23 @@ namespace RN
 		if(_renderer)
 		{
 			_renderer->Render([&] {
-
 				START_TASK(__renderingTask);
 				_sceneManager->Render(_renderer);
 				END_TASK();
-
 			});
 		}
 
 		_application->DidStep(static_cast<float>(_delta));
 		_lastFrame = now;
-		
+
 		// FPS cap
 		if(_maxFPS > 0)
 		{
 			now = Clock::now();
-			
+
 			milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(now - _lastFrame).count();
 			double delta = milliseconds / 1000.0;
-			
+
 			if(_minDelta > delta)
 			{
 				uint32 sleepTime = static_cast<uint32>((_minDelta - delta) * 1000000);
@@ -444,8 +441,8 @@ namespace RN
 	{
 		ZoneScoped;
 #if RN_PLATFORM_MAC_OS
-		@autoreleasepool {
-
+		@autoreleasepool
+		{
 			NSDate *date = [NSDate date];
 			NSEvent *event;
 
@@ -502,7 +499,7 @@ namespace RN
 			// Process each polled events
 			if(source != NULL) source->process(_androidApp, source);
 		}
-		
+
 		if(_androidApp && _androidApp->destroyRequested) _wantsToExit = true;
 #endif
 	}
@@ -522,4 +519,4 @@ namespace RN
 		ZoneScoped;
 		_exit = true;
 	}
-}
+} // namespace RN

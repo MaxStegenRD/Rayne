@@ -24,16 +24,16 @@ namespace RN
 			{
 				RenderPass *renderPass = new RenderPass();
 				renderPass->SetFlags(RenderPass::Flags::LoadColor | RenderPass::Flags::StoreColor);
-				
+
 				_camera = new Camera(renderPass);
 				_camera->SetFlags(Camera::Flags::Orthogonal | Camera::Flags::NoDepthWrite | Camera::Flags::RenderLate);
 				_camera->SetClipNear(-500.0f);
 				_camera->SetRenderGroup(1 << 7);
-				
+
 				Rect frame = _camera->GetRenderPass()->GetFrame();
 				_camera->SetOrthogonalFrustum(frame.GetBottom(), frame.GetTop(), frame.GetLeft(), frame.GetRight());
 			}
-			
+
 			if(!_windowContainer)
 			{
 				Rect frame = _camera->GetRenderPass()->GetFrame();
@@ -46,7 +46,7 @@ namespace RN
 		Server::~Server()
 		{
 			_windowContainer->RemoveFromParent();
-			
+
 			if(_camera)
 			{
 				if(_camera->GetSceneInfo())
@@ -56,7 +56,7 @@ namespace RN
 				SafeRelease(_camera);
 			}
 		}
-	
+
 		void Server::AddToScene(Scene *scene)
 		{
 			scene->AddNode(_camera);
@@ -85,7 +85,7 @@ namespace RN
 			window->_server = this;
 			_windowContainer->AddChild(window);
 		}
-	
+
 		void Server::RemoveWindow(UI::Window *window)
 		{
 			RN_ASSERT(window->_server == this, "Window must be part of this server");
@@ -93,5 +93,5 @@ namespace RN
 			window->_server = nullptr;
 			_windowContainer->RemoveChild(window);
 		}
-	}
-}
+	} // namespace UI
+} // namespace RN

@@ -14,7 +14,7 @@ namespace RN
 	bool BHapticsAndroidWrapper::_isBhapticsAvailableChecked = false;
 
 #if RN_PLATFORM_ANDROID
-    jmethodID PlayMethodId;
+	jmethodID PlayMethodId;
 	jmethodID PlayDotMethodId;
 	jmethodID PlayGloveMethodId;
 	jmethodID PlayLoopMethodId;
@@ -51,10 +51,10 @@ namespace RN
 
 	void BHapticsAndroidWrapper::Initialize(const String *applicationID, const String *apiKey, const String *defaultConfig, bool requestPermission)
 	{
-	#if RN_PLATFORM_ANDROID
+#if RN_PLATFORM_ANDROID
 		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
 		JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
-		
+
 		if(env)
 		{
 			jclass activityClass = env->GetObjectClass(app->activity->clazz);
@@ -95,13 +95,12 @@ namespace RN
 
 			IsBhapticsAvailable();
 
-			NotificationManager::GetSharedInstance()->AddSubscriber(kRNAndroidOnResume, [](Notification *notification){
+			NotificationManager::GetSharedInstance()->AddSubscriber(kRNAndroidOnResume, [](Notification *notification) {
 				BHapticsAndroidWrapper::_isBhapticsAvailableChecked = false;
 				BHapticsAndroidWrapper::_isBhapticsAvailable = false;
-				BHapticsAndroidWrapper::IsBhapticsAvailable();
-			}, RNCSTR("BHapticsAndroidWrapper"));
+				BHapticsAndroidWrapper::IsBhapticsAvailable(); }, RNCSTR("BHapticsAndroidWrapper"));
 		}
-	#endif
+#endif
 	}
 
 	bool BHapticsAndroidWrapper::IsBhapticsAvailable()
@@ -113,9 +112,9 @@ namespace RN
 		}
 
 		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
-        JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
-        if(env)
-        {
+		JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
+		if(env)
+		{
 			_isBhapticsAvailable = env->CallBooleanMethod(app->activity->clazz, IsBhapticsAvailableMethodId);
 			_isBhapticsAvailableChecked = true;
 		}
@@ -127,56 +126,56 @@ namespace RN
 	}
 
 	const Array *BHapticsAndroidWrapper::GetCurrentDevices()
-    {
-        Array *devices = nullptr;
+	{
+		Array *devices = nullptr;
 
-        if(!_isBhapticsAvailable)
+		if(!_isBhapticsAvailable)
 		{
 			return devices;
 		}
 
 #if RN_PLATFORM_ANDROID
-        android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
-        JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
-        if(env)
-        {
-            jstring jstr = (jstring)env->CallObjectMethod(app->activity->clazz, GetDevicesMethodId);
+		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
+		JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
+		if(env)
+		{
+			jstring jstr = (jstring)env->CallObjectMethod(app->activity->clazz, GetDevicesMethodId);
 			if(jstr == nullptr) return devices;
 
-            jsize stringLength = env->GetStringUTFLength(jstr);
-            if(stringLength == 0) return devices;
+			jsize stringLength = env->GetStringUTFLength(jstr);
+			if(stringLength == 0) return devices;
 
-            const char* nativeDeviceListString = env->GetStringUTFChars(jstr, 0);
-            const String *deviceListString = RN::String::WithBytes(nativeDeviceListString, stringLength, RN::Encoding::UTF8);
-            env->ReleaseStringUTFChars(jstr, nativeDeviceListString);
+			const char *nativeDeviceListString = env->GetStringUTFChars(jstr, 0);
+			const String *deviceListString = RN::String::WithBytes(nativeDeviceListString, stringLength, RN::Encoding::UTF8);
+			env->ReleaseStringUTFChars(jstr, nativeDeviceListString);
 			env->DeleteLocalRef(jstr);
 
-            const Array *jsonDevices = JSONSerialization::ObjectFromString<RN::Array>(deviceListString);
-            if(jsonDevices && jsonDevices->GetCount() > 0)
-            {
-                devices = new RN::Array(jsonDevices->GetCount());
-                jsonDevices->Enumerate<Dictionary>([&](Dictionary *dict, size_t index, bool &stop){
-                    BHapticsDevice *device = new BHapticsDevice();
+			const Array *jsonDevices = JSONSerialization::ObjectFromString<RN::Array>(deviceListString);
+			if(jsonDevices && jsonDevices->GetCount() > 0)
+			{
+				devices = new RN::Array(jsonDevices->GetCount());
+				jsonDevices->Enumerate<Dictionary>([&](Dictionary *dict, size_t index, bool &stop) {
+					BHapticsDevice *device = new BHapticsDevice();
 
 					device->deviceName = SafeRetain(dict->GetObjectForKey<String>(RNCSTR("DeviceName")));
 					device->address = SafeRetain(dict->GetObjectForKey<String>(RNCSTR("Address")));
 
-                    device->position = BHapticsDevice::StringToDevicePosition(dict->GetObjectForKey<String>(RNCSTR("Position")));
+					device->position = BHapticsDevice::StringToDevicePosition(dict->GetObjectForKey<String>(RNCSTR("Position")));
 
-                    const Number *isConnectedNumber = dict->GetObjectForKey<Number>(RNCSTR("IsConnected"));
-                    device->isConnected = isConnectedNumber->GetBoolValue();
+					const Number *isConnectedNumber = dict->GetObjectForKey<Number>(RNCSTR("IsConnected"));
+					device->isConnected = isConnectedNumber->GetBoolValue();
 
-                    const Number *isPairedNumber = dict->GetObjectForKey<Number>(RNCSTR("IsPaired"));
-                    device->isPaired = isPairedNumber->GetBoolValue();
+					const Number *isPairedNumber = dict->GetObjectForKey<Number>(RNCSTR("IsPaired"));
+					device->isPaired = isPairedNumber->GetBoolValue();
 
-                    devices->AddObject(device);
-                });
-            }
-        }
+					devices->AddObject(device);
+				});
+			}
+		}
 #endif
 
-        return devices;
-    }
+		return devices;
+	}
 
 
 	bool BHapticsAndroidWrapper::PlayHaptic(const String *eventName)
@@ -191,22 +190,22 @@ namespace RN
 		{
 			return false;
 		}
-	
+
 		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
-        JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
-        if(env)
-        {
+		JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
+		if(env)
+		{
 			jstring eventIdJava = env->NewStringUTF(eventName->GetUTF8String());
 			int res = env->CallIntMethod(app->activity->clazz, PlayMethodId, eventIdJava, intensity, duration, angleX, offsetY);
 			env->DeleteLocalRef(eventIdJava);
 			return res;
 		}
-	#endif
+#endif
 
 		return false;
 	}
 
-/*	int BhapticsRequest::PlayDot(int position, float duration, TArray<int> motorValues)
+	/*	int BhapticsRequest::PlayDot(int position, float duration, TArray<int> motorValues)
 	{
 		if (!_isBhapticsAvailable)
 		{
@@ -333,19 +332,19 @@ namespace RN
 		}
 
 
-	#if RN_PLATFORM_ANDROID
+#if RN_PLATFORM_ANDROID
 		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
-        JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
-        if(env)
-        {
+		JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
+		if(env)
+		{
 			bool res = env->CallBooleanMethod(app->activity->clazz, IsPlayingMethodId);
 			return res;
 		}
-	#endif
+#endif
 
 		return false;
 	}
-/*
+	/*
 	bool BHapticsAndroidWrapper::IsPlayingByRequestId(int requestId)
 	{
 		if (!_isBhapticsAvailable)
@@ -367,43 +366,43 @@ namespace RN
 
 	bool BHapticsAndroidWrapper::IsPlayingByEventName(const String *eventName)
 	{
-		if (!_isBhapticsAvailable)
+		if(!_isBhapticsAvailable)
 		{
 			return false;
 		}
 
-	#if RN_PLATFORM_ANDROID
+#if RN_PLATFORM_ANDROID
 		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
-        JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
-        if(env)
-        {
+		JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
+		if(env)
+		{
 			jstring eventIdJava = env->NewStringUTF(eventName->GetUTF8String());
 			bool res = env->CallBooleanMethod(app->activity->clazz, IsPlayingByEventIdMethodId, eventIdJava);
 			env->DeleteLocalRef(eventIdJava);
 			return res;
 		}
-	#endif
+#endif
 
 		return false;
 	}
 
 	void BHapticsAndroidWrapper::Ping(const String *deviceAddress)
 	{
-		if (!_isBhapticsAvailable)
+		if(!_isBhapticsAvailable)
 		{
 			return;
 		}
 
-	#if RN_PLATFORM_ANDROID
+#if RN_PLATFORM_ANDROID
 		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
-        JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
-        if(env)
-        {
+		JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
+		if(env)
+		{
 			jstring deviceIdJava = env->NewStringUTF(deviceAddress->GetUTF8String());
 			env->CallVoidMethod(app->activity->clazz, PingMethodId, deviceIdJava);
 			env->DeleteLocalRef(deviceIdJava);
 		}
-	#endif
+#endif
 	}
 
 	void BHapticsAndroidWrapper::PingAll()
@@ -413,17 +412,17 @@ namespace RN
 			return;
 		}
 
-	#if RN_PLATFORM_ANDROID
+#if RN_PLATFORM_ANDROID
 		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
-        JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
-        if(env)
-        {
+		JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
+		if(env)
+		{
 			env->CallVoidMethod(app->activity->clazz, PingAllMethodId);
 		}
-	#endif
+#endif
 	}
 
-/*	void BHapticsAndroidWrapper::SwapPosition(FBhapticsDevice device)
+	/*	void BHapticsAndroidWrapper::SwapPosition(FBhapticsDevice device)
 	{
 		if (!_isBhapticsAvailable)
 		{
@@ -451,23 +450,23 @@ namespace RN
 			return false;
 		}
 
-	    //UE_LOG(BhapticsPlugin, Log, TEXT("BhapticsRequest::StopByEventId"));
-	#if RN_PLATFORM_ANDROID
+		//UE_LOG(BhapticsPlugin, Log, TEXT("BhapticsRequest::StopByEventId"));
+#if RN_PLATFORM_ANDROID
 		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
-        JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
-        if(env)
-        {
+		JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
+		if(env)
+		{
 			jstring eventIdJava = env->NewStringUTF(eventName->GetUTF8String());
 			bool res = env->CallBooleanMethod(app->activity->clazz, StopByEventIdMethodId, eventIdJava);
 			env->DeleteLocalRef(eventIdJava);
 			return res;
 		}
-	#endif
+#endif
 
 		return false;
 	}
 
-/*	bool BHapticsAndroidWrapper::StopByRequestId(int requestId)
+	/*	bool BHapticsAndroidWrapper::StopByRequestId(int requestId)
 	{
 		if (!_isBhapticsAvailable)
 		{
@@ -497,29 +496,28 @@ namespace RN
 		}
 
 		//UE_LOG(BhapticsPlugin, Log, TEXT("BhapticsRequest::Stop"));
-	#if RN_PLATFORM_ANDROID
+#if RN_PLATFORM_ANDROID
 		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
-        JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
-        if(env)
-        {
+		JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
+		if(env)
+		{
 			bool res = env->CallBooleanMethod(app->activity->clazz, StopAllMethodId);
 			return res;
 		}
-	#endif
+#endif
 
 		return false;
 	}
 
 	void BHapticsAndroidWrapper::Destroy()
 	{
-	#if RN_PLATFORM_ANDROID
+#if RN_PLATFORM_ANDROID
 		//Nothing to do
-	#endif
+#endif
 	}
 
 
-
-/*	FBhapticsRotationOption BHapticsAndroidWrapper::ProjectToVest(FVector Location, UPrimitiveComponent* HitComponent, float HalfHeight) 
+	/*	FBhapticsRotationOption BHapticsAndroidWrapper::ProjectToVest(FVector Location, UPrimitiveComponent* HitComponent, float HalfHeight) 
 	{
 		//UE_LOG(BhapticsPlugin, Log, TEXT("BhapticsRequest::ProjectToVest"));
 
@@ -647,4 +645,4 @@ namespace RN
 
 		return FBhapticsRotationOption(Angle, Y_Offset);
 	}*/
-}
+} // namespace RN

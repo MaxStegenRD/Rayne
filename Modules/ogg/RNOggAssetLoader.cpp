@@ -12,10 +12,10 @@ namespace RN
 {
 	namespace vorbis
 	{
-		//#define STB_VORBIS_NO_STDIO
-		#include "stb_vorbis.h"
-	}
-	
+//#define STB_VORBIS_NO_STDIO
+#include "stb_vorbis.h"
+	} // namespace vorbis
+
 	RNDefineMeta(OggAssetLoader, AssetLoader)
 	RNDefineMeta(OggAudioDecoder, AudioDecoder)
 
@@ -25,8 +25,8 @@ namespace RN
 	{
 		if(meta == OggAssetLoader::GetMetaClass())
 		{
-			Config config({ AudioAsset::GetMetaClass() });
-			config.SetExtensions(Set::WithObjects({ RNCSTR("ogg") }));
+			Config config({AudioAsset::GetMetaClass()});
+			config.SetExtensions(Set::WithObjects({RNCSTR("ogg")}));
 			config.supportsBackgroundLoading = true;
 
 			__assetLoader = new OggAssetLoader(config);
@@ -43,7 +43,7 @@ namespace RN
 	Asset *OggAssetLoader::Load(File *file, const LoadOptions &options)
 	{
 		AudioAsset *audio = nullptr;
-		
+
 		Number *wantsStreaming = options.settings->GetValueForKey<Number>("wantsStreaming");
 		if(wantsStreaming && wantsStreaming->GetBoolValue())
 		{
@@ -55,12 +55,12 @@ namespace RN
 			short *audioData = nullptr;
 			int channels = 0;
 			int sample_rate = 0;
-			
+
 			Data *fileData = file->ReadData(file->GetSize());
-			int samples = vorbis::stb_vorbis_decode_memory(static_cast<uint8*>(fileData->GetBytes()), static_cast<unsigned int>(fileData->GetLength()), &channels, &sample_rate, &audioData);
+			int samples = vorbis::stb_vorbis_decode_memory(static_cast<uint8 *>(fileData->GetBytes()), static_cast<unsigned int>(fileData->GetLength()), &channels, &sample_rate, &audioData);
 
 			audio = new RN::AudioAsset();
-			Data *data = new Data(reinterpret_cast<uint8*>(audioData), samples * channels * 2);
+			Data *data = new Data(reinterpret_cast<uint8 *>(audioData), samples * channels * 2);
 			audio->SetRawAudioData(data->Autorelease(), channels * 2, sample_rate, channels);
 			free(audioData);
 		}
@@ -68,8 +68,9 @@ namespace RN
 		return audio;
 	}
 
-	
-	OggAudioDecoder::OggAudioDecoder(File *file) : AudioDecoder(4096), _file(file->Retain())
+
+	OggAudioDecoder::OggAudioDecoder(File *file) :
+		AudioDecoder(4096), _file(file->Retain())
 	{
 		int error = 0;
 		_vorbis = vorbis::stb_vorbis_open_file(file->CreateFilePtr(), 0, &error, nullptr);
@@ -78,7 +79,7 @@ namespace RN
 		_channelCount = vorbisInfo.channels;
 		_bytesPerSample = 2 * _channelCount;
 		_sampleRate = vorbisInfo.sample_rate;
-		
+
 		uint32 frameSize = _frameSize / 2 * _channelCount;
 		_buffer = new short[frameSize];
 	}
@@ -88,12 +89,12 @@ namespace RN
 		uint32 frameSize = _frameSize / 2 * _channelCount;
 		uint32 actualSamples = vorbis::stb_vorbis_get_frame_short_interleaved(_vorbis, _channelCount, _buffer, frameSize);
 		audioAsset->PushData(_buffer, actualSamples * _channelCount * 2);
-		
+
 		return actualSamples * _channelCount * 2;
 	}
 
 	void OggAudioDecoder::Seek(float time)
 	{
-		vorbis::stb_vorbis_seek(_vorbis, time/_sampleRate);
+		vorbis::stb_vorbis_seek(_vorbis, time / _sampleRate);
 	}
-}
+} // namespace RN

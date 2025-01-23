@@ -7,9 +7,9 @@
 //
 
 #include "RNCamera.h"
-#include "RNLight.h"
 #include "../Rendering/RNRenderer.h"
 #include "../Rendering/RNWindow.h"
+#include "RNLight.h"
 
 namespace RN
 {
@@ -46,10 +46,10 @@ namespace RN
 	{
 		SafeRelease(_renderPass);
 		SafeRelease(_material);
-		
+
 		SafeRelease(_multiviewCameras);
 
-/*		if(_lightManager)
+		/*		if(_lightManager)
 		{
 			_lightManager->camera = nullptr;
 			_lightManager->Unlock();
@@ -59,20 +59,20 @@ namespace RN
 
 	void Camera::Initialize()
 	{
-		_fov      = 70.0f;
-		_aspect   = 0.0f;
+		_fov = 70.0f;
+		_aspect = 0.0f;
 
 		_clipNear = 0.1f;
-		_clipFar  = 500.0f;
+		_clipFar = 500.0f;
 
-		_orthoLeft   = -100.0f;
-		_orthoRight  = 100.0f;
+		_orthoLeft = -100.0f;
+		_orthoRight = 100.0f;
 		_orthoBottom = -100.0f;
-		_orthoTop    = 100.0f;
+		_orthoTop = 100.0f;
 
-		_fogNear   = 100.0f;
-		_fogFar    = 500.0f;
-		_ambient   = Color::White();
+		_fogNear = 100.0f;
+		_fogFar = 500.0f;
+		_ambient = Color::White();
 		_clipPlane = Plane();
 
 		_dirtyProjection = true;
@@ -82,21 +82,21 @@ namespace RN
 		_shaderHint = Shader::UsageHint::Default;
 		_prefersLightManager = false;
 
-		_material   = nullptr;
+		_material = nullptr;
 
-		_priority  = 0;
+		_priority = 0;
 		_lodCamera = nullptr;
-		
+
 		_multiviewCameras = nullptr;
 		_isMultiviewCamera = false;
 
 		_prefersLightManager = true;
-		
+
 		_frustumPlaneOffsets[0] = 0.0f;
 		_frustumPlaneOffsets[1] = 0.0f;
 		_frustumPlaneOffsets[2] = 0.0f;
 		_frustumPlaneOffsets[3] = 0.0f;
-		
+
 		_firstNodeMember = nullptr;
 	}
 
@@ -181,7 +181,7 @@ namespace RN
 		_clipPlane = clipPlane;
 	}
 
-/*	void Camera::SetLightManager(LightManager *lightManager)
+	/*	void Camera::SetLightManager(LightManager *lightManager)
 	{
 		RN_ASSERT(!lightManager || !lightManager->camera, "The LightManager can't be attached to another camera!");
 
@@ -203,9 +203,9 @@ namespace RN
 	{
 		RN_ASSERT((_flags & Flags::Orthogonal), "SetOrthogonalFrustum() called, but the camera is not an orthogonal camera");
 
-		_orthoLeft   = left;
-		_orthoRight  = right;
-		_orthoTop    = top;
+		_orthoLeft = left;
+		_orthoRight = right;
+		_orthoTop = top;
 		_orthoBottom = bottom;
 
 		_dirtyProjection = true;
@@ -248,19 +248,19 @@ namespace RN
 		Vector3 nearcenter = camera->ToWorld(Vector3(0.0f, 0.0f, near));
 		Vector3 farcorner1 = camera->ToWorld(Vector3(1.0f, 1.0f, far));
 		Vector3 farcorner2 = camera->ToWorld(Vector3(-1.0f, -1.0f, far));
-		Vector3 farcenter = (farcorner1+farcorner2)*0.5f;
-		Vector3 center = (nearcenter+farcenter)*0.5f;
+		Vector3 farcenter = (farcorner1 + farcorner2) * 0.5f;
+		Vector3 center = (nearcenter + farcenter) * 0.5f;
 
 		//Calculate the size of a pixel in world units
 		float dist = center.GetDistance(farcorner1);
-		Vector3 pixelsize = Vector3(Vector2(dist*2.0f), 1.0f)/Vector3(frame.width, frame.height, 1.0f);
+		Vector3 pixelsize = Vector3(Vector2(dist * 2.0f), 1.0f) / Vector3(frame.width, frame.height, 1.0f);
 
 		//Place the light camera above the splits center
-		Vector3 pos = center-light->GetForward()*cameraDistanceToCenter;
+		Vector3 pos = center - light->GetForward() * cameraDistanceToCenter;
 
 		//Transform the position to light space
 		Matrix rot = light->GetWorldRotation().GetRotationMatrix();
-		pos = rot.GetInverse()*pos;
+		pos = rot.GetInverse() * pos;
 
 		//Snap to the pixel grid
 		pos /= pixelsize;
@@ -270,7 +270,7 @@ namespace RN
 		pos *= pixelsize;
 
 		//Transform back and place the camera there
-		pos = rot*pos;
+		pos = rot * pos;
 		SetWorldPosition(pos);
 
 		//Set the light camera frustum
@@ -348,11 +348,11 @@ namespace RN
 
 		if(_flags & Flags::UseSimpleCulling)
 		{
-			_frustumCenter = Vector3(0.0f, 0.0f, _clipFar*0.5f);
-            _frustumRadius = _clipFar * 1.5;
+			_frustumCenter = Vector3(0.0f, 0.0f, _clipFar * 0.5f);
+			_frustumRadius = _clipFar * 1.5;
 			return;
 		}
-		
+
 		//far plane is at z=0, near plane z=1 for reverse-z!
 		Vector3 pos1 = __ToWorld(Vector3(-1.0f, 1.0f, 1.0f));
 		Vector3 pos2 = __ToWorld(Vector3(-1.0f, 1.0f, 0.0));
@@ -379,7 +379,7 @@ namespace RN
 
 		frustums._frustumLeft = Plane::WithTriangle(pos1, pos2, pos3, 1.0f, -_frustumPlaneOffsets[2]);
 		frustums._frustumRight = Plane::WithTriangle(pos4, pos5, pos6, -1.0f, _frustumPlaneOffsets[3]);
-		frustums._frustumTop =  Plane::WithTriangle(pos1, pos2, pos5, -1.0f, _frustumPlaneOffsets[0]);
+		frustums._frustumTop = Plane::WithTriangle(pos1, pos2, pos5, -1.0f, _frustumPlaneOffsets[0]);
 		frustums._frustumBottom = Plane::WithTriangle(pos4, pos3, pos6, 1.0f, -_frustumPlaneOffsets[1]);
 		frustums._frustumNear = Plane::WithPositionNormal(position + direction * std::min(_clipNear, _clipFar), -direction);
 		frustums._frustumFar = Plane::WithPositionNormal(position + direction * std::max(_clipNear, _clipFar), direction);
@@ -390,10 +390,10 @@ namespace RN
 		PostUpdate();
 
 		Vector4 ndcPos(dir.x, dir.y, dir.z, 1.0f);
-		
+
 		Vector4 vec = _inverseViewMatrix * _inverseProjectionMatrix * ndcPos;
 		vec /= vec.w;
-		
+
 		return Vector3(vec);
 	}
 
@@ -402,21 +402,21 @@ namespace RN
 	{
 		PostUpdate();
 		Vector4 ndcPos(dir.x, dir.y, 0.0f, 1.0f);
-		
+
 		Vector4 vec = _inverseProjectionMatrix * ndcPos;
 		vec /= vec.w;
-		
-		float sign = vec.z < 0.0f? -1.0f : 1.0f; //Otherwise the division would lose the sign
+
+		float sign = vec.z < 0.0f ? -1.0f : 1.0f; //Otherwise the division would lose the sign
 		vec /= vec.z * sign;
 		vec *= dir.z;
 		vec.w = 1.0;
-		
+
 		vec = _inverseViewMatrix * vec;
-		
+
 		return Vector3(vec);
 	}
 
-/*	LightManager *Camera::GetLightManager()
+	/*	LightManager *Camera::GetLightManager()
 	{
 		if(!_lightManager && _prefersLightManager)
 		{
@@ -471,7 +471,7 @@ namespace RN
 	bool Camera::InFrustum(const Sphere &sphere)
 	{
 		UpdateFrustum();
-		return InFrustum(sphere.position+sphere.offset, sphere.radius);
+		return InFrustum(sphere.position + sphere.offset, sphere.radius);
 	}
 
 	bool Camera::InFrustum(const AABB &aabb)
@@ -503,12 +503,12 @@ namespace RN
 	void Camera::AddMultiviewCamera(RN::Camera *camera)
 	{
 		RN_ASSERT(camera, "Camera cannot be empty");
-		
+
 		if(!_multiviewCameras)
 		{
 			_multiviewCameras = new RN::Array();
 		}
-		
+
 		_multiviewCameras->AddObject(camera);
 		camera->_isMultiviewCamera = true;
 	}
@@ -523,4 +523,4 @@ namespace RN
 	{
 		_firstNodeMember = member;
 	}
-}
+} // namespace RN

@@ -14,18 +14,17 @@ namespace RN
 	RNDefineMeta(Bitmap, Asset)
 
 	size_t kBytesPerPixel[] = {
-		0,
+	0,
 
-		4,
-		3,
+	4,
+	3,
 
-		2,
-		2,
-		2,
+	2,
+	2,
+	2,
 
-		12, // RGB32F
-		16
-	};
+	12, // RGB32F
+	16};
 
 	Bitmap::Bitmap(const Bitmap *other) :
 		_data(other->_data->Retain()),
@@ -80,9 +79,9 @@ namespace RN
 			y = _info.width - x - 1;
 			x = temp;
 		}
-		
+
 		Color pixel;
-		size_t index = (y * _info.bytesPerRow) + (x *_bytesPerPixel);
+		size_t index = (y * _info.bytesPerRow) + (x * _bytesPerPixel);
 
 		switch(_info.format)
 		{
@@ -133,9 +132,9 @@ namespace RN
 				const uint16_t *data = _data->GetBytes<uint16_t>(index);
 
 				pixel.r = (((*data >> 0) & 0xF) << 4) / 255.0f;
-				pixel.g = (((*data >> 4)  & 0xF) << 4) / 255.0f;
-				pixel.b = (((*data >> 8)  & 0xF) << 4) / 255.0f;
-				pixel.a = (((*data >> 12)  & 0xF) << 4) / 255.0f;
+				pixel.g = (((*data >> 4) & 0xF) << 4) / 255.0f;
+				pixel.b = (((*data >> 8) & 0xF) << 4) / 255.0f;
+				pixel.a = (((*data >> 12) & 0xF) << 4) / 255.0f;
 
 				break;
 			}
@@ -144,9 +143,9 @@ namespace RN
 				const uint16_t *data = _data->GetBytes<uint16_t>(index);
 
 				pixel.r = (((*data >> 0) & 0xF) << 3) / 255.0f;
-				pixel.g = (((*data >> 1)  & 0xF) << 3) / 255.0f;
-				pixel.b = (((*data >> 6)  & 0xF) << 3) / 255.0f;
-				pixel.a = (((*data >> 11)  & 0xF) << 7) / 255.0f;
+				pixel.g = (((*data >> 1) & 0xF) << 3) / 255.0f;
+				pixel.b = (((*data >> 6) & 0xF) << 3) / 255.0f;
+				pixel.a = (((*data >> 11) & 0xF) << 7) / 255.0f;
 
 				break;
 			}
@@ -155,13 +154,13 @@ namespace RN
 				const uint16_t *data = _data->GetBytes<uint16_t>(index);
 
 				pixel.r = (((*data >> 0) & 0xF) << 3) / 255.0f;
-				pixel.g = (((*data >> 5)  & 0xF) << 2) / 255.0f;
-				pixel.b = (((*data >> 11)  & 0xF) << 3) / 255.0f;
+				pixel.g = (((*data >> 5) & 0xF) << 2) / 255.0f;
+				pixel.b = (((*data >> 11) & 0xF) << 3) / 255.0f;
 				pixel.a = 1.0f;
 
 				break;
 			}
-				
+
 			case BitmapInfo::Format::Invalid:
 			{
 				pixel.r = 0.0f;
@@ -181,8 +180,8 @@ namespace RN
 			y = _info.width - x - 1;
 			x = temp;
 		}
-		
-		size_t index = (y * _info.bytesPerRow) + (x *_bytesPerPixel);
+
+		size_t index = (y * _info.bytesPerRow) + (x * _bytesPerPixel);
 
 		switch(_info.format)
 		{
@@ -270,31 +269,31 @@ namespace RN
 	Bitmap *Bitmap::GetScaledBitmap(size_t newWidth, size_t newHeight) const
 	{
 		RN_ASSERT(newWidth <= _info.width && newHeight <= _info.height, "Bitmap scaling only supports downscaling at the moment");
-		
+
 		const Bitmap *source = this->Retain();
 		size_t tempWidth = source->_info.width;
 		size_t tempHeight = source->_info.height;
-		
+
 		Bitmap *scaled = nullptr;
-		
+
 		while(tempWidth != newWidth || tempHeight != newHeight)
 		{
 			tempWidth = std::max(tempWidth / 2, newWidth);
 			tempHeight = std::max(tempHeight / 2, newHeight);
-			
+
 			BitmapInfo scaledInfo;
 			scaledInfo.width = tempWidth;
 			scaledInfo.height = tempHeight;
 			scaledInfo.format = _info.format;
 			scaledInfo.bytesPerRow = tempWidth * kBytesPerPixel[static_cast<size_t>(_info.format)];
 			scaledInfo.isTransposed = false;
-			
+
 			Data *scaledData = new Data(scaledInfo.bytesPerRow * scaledInfo.height);
 			scaled = new Bitmap(scaledData, scaledInfo);
 			scaledData->Release();
-			
+
 			Color newColor;
-			
+
 			int l;
 			int c;
 			float t;
@@ -302,41 +301,41 @@ namespace RN
 			float tmp;
 			float d1, d2, d3, d4;
 			Color p1, p2, p3, p4; /* nearby pixels */
-			
+
 			for(int y = 0; y < tempHeight; y++)
 			{
 				for(int x = 0; x < tempWidth; x++)
 				{
-					tmp = (float) (x + 0.25f) / (float) (tempWidth - 1) * (source->_info.width - 1);
+					tmp = (float)(x + 0.25f) / (float)(tempWidth - 1) * (source->_info.width - 1);
 					c = std::min(std::max(static_cast<int>(floor(tmp)), 0), static_cast<int>(source->_info.width - 2));
 					t = tmp - c;
-					
-					tmp = (float) (y + 0.25f) / (float)(tempHeight - 1) * (source->_info.height - 1);
+
+					tmp = (float)(y + 0.25f) / (float)(tempHeight - 1) * (source->_info.height - 1);
 					l = std::min(std::max(static_cast<int>(floor(tmp)), 0), static_cast<int>(source->_info.height - 2));
 					u = tmp - l;
-					
+
 					//coefficients
 					d1 = (1 - t) * (1 - u);
 					d2 = (1 - t) * u;
 					d3 = t * u;
 					d4 = t * (1 - u);
-					
+
 					//nearby pixels
 					p1 = source->GetPixel(c, l);
 					p2 = source->GetPixel(c, l + 1);
 					p3 = source->GetPixel(c + 1, l + 1);
 					p4 = source->GetPixel(c + 1, l);
-					
+
 					newColor = p1 * d1 + p2 * d2 + p3 * d3 + p4 * d4;
-					
+
 					scaled->SetPixel(x, y, newColor);
 				}
 			}
-			
+
 			source->Release();
 			source = scaled;
 		}
-		
+
 		return scaled->Autorelease();
 	}
 
@@ -359,7 +358,7 @@ namespace RN
 		Data *data = new Data(nullptr, info.bytesPerRow * info.height);
 		Bitmap *other = new Bitmap(data, info);
 
-		for(size_t y = 0; y < _info.height; y ++)
+		for(size_t y = 0; y < _info.height; y++)
 		{
 			for(size_t x = 0; x < _info.width; x++)
 			{
@@ -372,4 +371,4 @@ namespace RN
 
 		return other->Autorelease();
 	}
-}
+} // namespace RN

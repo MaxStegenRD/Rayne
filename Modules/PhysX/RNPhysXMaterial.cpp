@@ -14,7 +14,7 @@
 namespace RN
 {
 	RNDefineMeta(PhysXMaterial, Object)
-		
+
 	PhysXMaterial::PhysXMaterial(float staticFriction, float dynamicFriction, float restitution)
 	{
 		physx::PxPhysics *physics = PhysXWorld::GetSharedInstance()->GetPhysXInstance();
@@ -23,14 +23,13 @@ namespace RN
 		//_material->setRestitutionCombineMode(PxCombineMode::Enum combMode);
 		_material->setFlag(physx::PxMaterialFlag::eIMPROVED_PATCH_FRICTION, true);
 	}
-		
-		
-		
+
+
 	void PhysXMaterial::SetStaticFriction(float friction)
 	{
 		_material->setStaticFriction(friction);
 	}
-		
+
 	void PhysXMaterial::SetDynamicFriction(float friction)
 	{
 		_material->setDynamicFriction(friction);
@@ -40,7 +39,6 @@ namespace RN
 	{
 		_material->setRestitution(restitution);
 	}
-
 
 
 	float PhysXMaterial::GetStaticFriction() const
@@ -57,4 +55,4 @@ namespace RN
 	{
 		return _material->getRestitution();
 	}
-}
+} // namespace RN

@@ -15,9 +15,9 @@
 	#include "../RayneConfig.h"
 #endif
 
+#include "../Base/RNOptions.h"
 #include <atomic>
 #include <functional>
-#include "../Base/RNOptions.h"
 
 namespace RN
 {
@@ -27,8 +27,8 @@ namespace RN
 		{
 		public:
 			RN_OPTIONS(WakeResult, uint32,
-				WokeUpThread = (1 << 0),
-				HasMoreThreads = (1 << 1));
+					   WokeUpThread = (1 << 0),
+					   HasMoreThreads = (1 << 1));
 
 			Futex() = delete;
 			Futex(const Futex &) = delete;
@@ -47,19 +47,15 @@ namespace RN
 
 			static bool Wait(const void *address)
 			{
-				return __WaitConditionally(address, []() -> bool {
-					return true;
-				}, []() {}, Clock::time_point::max());
+				return __WaitConditionally(address, []() -> bool { return true; }, []() {}, Clock::time_point::max());
 			}
 
 			template<class T, class U>
 			static bool CompareAndWait(const std::atomic<T> *address, U expected)
 			{
 				return Wait(address, [address, expected]() -> bool {
-
 					U value = address->load();
 					return (value == expected);
-
 				});
 			}
 
@@ -70,8 +66,8 @@ namespace RN
 		private:
 			RNAPI static bool __WaitConditionally(const void *address, std::function<bool()> validation, std::function<void()> beforeSleep, Clock::time_point timeout);
 		};
-	}
-}
+	} // namespace __Private
+} // namespace RN
 
 
 #endif /* __RAYNE_THREADPARK_H_ */

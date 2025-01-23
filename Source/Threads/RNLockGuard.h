@@ -28,6 +28,6 @@ namespace RN
 	private:
 		T &_lock;
 	};
-}
+} // namespace RN
 
 #endif

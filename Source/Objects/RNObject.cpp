@@ -7,21 +7,21 @@
 //
 
 #include "RNObject.h"
+#include "../Debug/RNLogger.h"
 #include "RNAutoreleasePool.h"
 #include "RNData.h"
 #include "RNObjectInternals.h"
 #include "RNString.h"
-#include "../Debug/RNLogger.h"
 #include <string>
 
 #if RN_ZOMBIE_ALLOCATION
-	#define AssertZombieInteraction() \
-		do { \
-			if(_isZombie) \
-			{ \
-				MetaClass *meta = GetClass(); \
+	#define AssertZombieInteraction()                                                                                                                                                                 \
+		do {                                                                                                                                                                                          \
+			if(_isZombie)                                                                                                                                                                             \
+			{                                                                                                                                                                                         \
+				MetaClass *meta = GetClass();                                                                                                                                                         \
 				RNError(RN_FUNCTION_SIGNATURE << " called on zombie object <" << meta->GetFullname() << ":" << reinterpret_cast<const void *>(this) << ">, this will result in memory corruptions!"); \
-			} \
+			}                                                                                                                                                                                         \
 		} while(0)
 #else
 	#define AssertZombieInteraction() \
@@ -31,27 +31,28 @@
 namespace RN
 {
 	void *__kRNObjectMetaClass = nullptr;
-	
+
 	Object::Object() :
 #if RN_ZOMBIE_ALLOCATION
 		_isZombie(false),
 #endif
 		_refCount(1)
 #if RN_BUILD_DEBUG
-		, _autoreleaseCounter(0)
-		, _isTracked(false)
+		,
+		_autoreleaseCounter(0),
+		_isTracked(false)
 #endif
 	{}
-	
+
 	Object::~Object()
 	{
 		if(!std::uncaught_exception())
 			RN_ASSERT(_refCount.load(std::memory_order_relaxed) <= 1, "refCount must be <= 1 upon destructor call. Use object->Unlock(); instead of delete object;");
-	
-		for(auto &pair : _associatedObjects)
+
+		for(auto &pair: _associatedObjects)
 		{
 			MemoryPolicy policy = std::get<1>(pair.second);
-			
+
 			switch(policy)
 			{
 				case MemoryPolicy::Retain:
@@ -61,18 +62,18 @@ namespace RN
 					object->Release();
 					break;
 				}
-					
+
 				default:
 					break;
 			}
 		}
-		
+
 		__DestroyWeakReferences(this);
 	}
-	
+
 	void Object::InitialWakeUp(MetaClass *meta)
 	{}
-	
+
 	void Object::Dealloc()
 	{}
 
@@ -80,7 +81,7 @@ namespace RN
 	{
 		return RNSTR("<" << GetClass()->GetFullname() << ":" << (void *)this << ">");
 	}
-	
+
 	MetaClass *Object::GetClass() const
 	{
 		return Object::GetMetaClass();
@@ -92,14 +93,14 @@ namespace RN
 			__InitWeakTables();
 			__kRNObjectMetaClass = new MetaType();
 		}
-		
+
 		return reinterpret_cast<Object::MetaType *>(__kRNObjectMetaClass);
 	}
-	
+
 	Object *Object::Retain()
 	{
 		AssertZombieInteraction();
-		
+
 #if RN_BUILD_DEBUG
 		if(_isTracked) WillChangeReferenceCount(_refCount + 1);
 #endif
@@ -110,7 +111,7 @@ namespace RN
 	const Object *Object::Retain() const
 	{
 		AssertZombieInteraction();
-		
+
 #if RN_BUILD_DEBUG
 		if(_isTracked) WillChangeReferenceCount(_refCount + 1);
 #endif
@@ -118,7 +119,7 @@ namespace RN
 		_refCount.fetch_add(1, std::memory_order_relaxed); // RMW pairs with relaxed memory ordering
 		return this;
 	}
-	
+
 
 	void Object::Release() const
 	{
@@ -131,10 +132,10 @@ namespace RN
 			return;
 		}
 #endif
-		
+
 #if RN_BUILD_DEBUG
 		RN_ASSERT(_refCount > _autoreleaseCounter, "Object is in too many autorelease pools and will be over released!");
-		
+
 		if(_isTracked) WillChangeReferenceCount(_refCount - 1);
 #endif
 
@@ -156,11 +157,11 @@ namespace RN
 #endif
 		}
 	}
-	
+
 	Object *Object::Autorelease()
 	{
 		AssertZombieInteraction();
-		
+
 #if RN_BUILD_DEBUG
 		if(_isTracked) WillChangeAutoreleaseCount(_autoreleaseCounter + 1);
 #endif
@@ -169,10 +170,8 @@ namespace RN
 		if(!pool)
 		{
 			AutoreleasePool::PerformBlock([this]() {
-
 				MetaClass *meta = GetClass();
 				RNError("Autorelease() with no pool in place, <" << meta->GetFullname() << ":" << reinterpret_cast<void *>(this) << "> will leak!");
-
 			});
 
 			return this;
@@ -184,7 +183,7 @@ namespace RN
 	const Object *Object::Autorelease() const
 	{
 		AssertZombieInteraction();
-		
+
 #if RN_BUILD_DEBUG
 		if(_isTracked) WillChangeAutoreleaseCount(_autoreleaseCounter + 1);
 #endif
@@ -193,10 +192,8 @@ namespace RN
 		if(!pool)
 		{
 			AutoreleasePool::PerformBlock([this]() {
-
 				MetaClass *meta = GetClass();
 				RNError("Autorelease() with no pool in place, <" << meta->GetFullname() << ":" << reinterpret_cast<const void *>(this) << "> will leak!");
-
 			});
 
 			return this;
@@ -205,8 +202,8 @@ namespace RN
 		pool->AddObject(this);
 		return this;
 	}
-	
-	
+
+
 	Object *Object::Copy() const
 	{
 		AssertZombieInteraction();
@@ -228,48 +225,45 @@ namespace RN
 
 	void Object::WillChangeReferenceCount(size_t refCount) const
 	{
-		
 	}
 
 	void Object::WillChangeAutoreleaseCount(size_t autoreleaseCount) const
 	{
-		
 	}
 #endif
-	
+
 	void Object::Serialize(Serializer *serializer) const
 	{
 		throw InconsistencyException("Serialization not supported (or a subclass called Object::Serialize)");
 	}
-	
-	
+
+
 	bool Object::IsEqual(const Object *other) const
 	{
 		return (this == other);
 	}
-	
+
 	size_t Object::GetHash() const
 	{
 		size_t hash = reinterpret_cast<size_t>(this);
-		
+
 		hash = ~hash + (hash << 15);
 		hash = hash ^ (hash >> 12);
 		hash = hash + (hash << 2);
 		hash = hash ^ (hash >> 4);
 		hash = hash * 2057;
 		hash = hash ^ (hash >> 16);
-		
+
 		return hash;
 	}
-	
-	
+
+
 	bool Object::IsKindOfClass(const MetaClass *other) const
 	{
 		return GetClass()->InheritsFromClass(other);
 	}
-	
-	
-	
+
+
 	void Object::__RemoveAssociatedObject(const void *key)
 	{
 		auto iterator = _associatedObjects.find((void *)key);
@@ -277,28 +271,28 @@ namespace RN
 		{
 			Object *object = std::get<0>(iterator->second);
 			MemoryPolicy policy = std::get<1>(iterator->second);
-			
+
 			switch(policy)
 			{
 				case MemoryPolicy::Retain:
 				case MemoryPolicy::Copy:
 					object->Release();
 					break;
-					
+
 				default:
 					break;
 			}
-			
+
 			_associatedObjects.erase(iterator);
 		}
 	}
-	
-	
+
+
 	void Object::SetAssociatedObject(const void *key, Object *value, MemoryPolicy policy)
 	{
 		RN_ASSERT(value, "Value mustn't be NULL!");
 		RN_ASSERT(key, "Key mustn't be NULL!");
-		
+
 		Object *object = nullptr;
 
 		if(value)
@@ -318,7 +312,7 @@ namespace RN
 					break;
 			}
 		}
-		
+
 		Lock();
 		__RemoveAssociatedObject(key);
 
@@ -330,102 +324,102 @@ namespace RN
 
 		Unlock();
 	}
-	
+
 	Object *Object::GetAssociatedObject(const void *key)
 	{
 		Object *object = 0;
-		
+
 		Lock();
-		
+
 		auto iterator = _associatedObjects.find((void *)key);
-		
+
 		if(iterator != _associatedObjects.end())
 			object = std::get<0>(iterator->second);
-		
+
 		Unlock();
-		
-		return object;			
+
+		return object;
 	}
-	
-	
+
+
 	void Object::Lock()
 	{
 		_lock.Lock();
 	}
-	
+
 	void Object::Unlock()
 	{
 		_lock.Unlock();
 	}
-	
+
 	// ---------------------
 	// MARK: -
 	// MARK: KVO / KVC
 	// ---------------------
-	
+
 	std::vector<ObservableProperty *> Object::GetPropertiesForClass(MetaClass *meta)
 	{
 		if(!meta)
 			return _properties;
-		
+
 		std::vector<ObservableProperty *> result;
-		
-		for(ObservableProperty *property : _properties)
+
+		for(ObservableProperty *property: _properties)
 		{
 			if(property->_opaque == meta)
 				result.push_back(property);
 		}
-		
+
 		return result;
 	}
-	
+
 	void Object::AddObservable(ObservableProperty *property)
 	{
 		RN_ASSERT(property->_owner == nullptr, "ObservableProperty can only be added once to a receiver!");
-		
+
 		property->_owner = this;
 		property->_opaque = GetClass();
-		
+
 		_properties.push_back(property);
 	}
-	
+
 	void Object::AddObservables(const std::initializer_list<ObservableProperty *> properties)
 	{
 		_properties.reserve(_properties.size() + properties.size());
-		
-		for(ObservableProperty *property : properties)
+
+		for(ObservableProperty *property: properties)
 			AddObservable(property);
 	}
-	
+
 	void Object::MapCookie(void *cookie, ObservableProperty *property, Connection *connection) const
 	{
 		LockGuard<RecursiveLockable> lock(const_cast<RecursiveLockable &>(_lock));
 		_cookies.emplace_back(std::make_tuple(cookie, property, connection));
 	}
-	
+
 	void Object::UnmapCookie(void *cookie, ObservableProperty *property) const
 	{
 		LockGuard<RecursiveLockable> lock(const_cast<RecursiveLockable &>(_lock));
-		
+
 		for(auto iterator = _cookies.begin(); iterator != _cookies.end();)
 		{
 			auto &tuple = *iterator;
-			
+
 			if(cookie == std::get<0>(tuple) && property == std::get<1>(tuple))
 			{
 				std::get<2>(tuple)->Disconnect();
-				
+
 				if(property->_signal && property->_signal->GetCount() == 0)
 				{
 					delete property->_signal;
 					property->_signal = nullptr;
 				}
-				
+
 				iterator = _cookies.erase(iterator);
 				continue;
 			}
-			
-			iterator ++;
+
+			iterator++;
 		}
 	}
 
@@ -433,7 +427,7 @@ namespace RN
 	{
 		LockGuard<RecursiveLockable> lock(const_cast<RecursiveLockable &>(_lock));
 
-		for(ObservableProperty *property : _properties)
+		for(ObservableProperty *property: _properties)
 		{
 			if(strcmp(property->_name, key) == 0)
 				return property;
@@ -442,15 +436,15 @@ namespace RN
 		return nullptr;
 	}
 
-	
+
 	Object *Object::GetPrimitiveValueForKey(const char *key) const
 	{
-		for(ObservableProperty *property : _properties)
+		for(ObservableProperty *property: _properties)
 		{
 			if(strcmp(key, property->_name) == 0)
 				return property->GetValue();
 		}
-		
+
 		return GetValueForUndefinedKey(key);
 	}
 
@@ -462,7 +456,7 @@ namespace RN
 		if(!temp)
 			return GetPrimitiveValueForKey(keyPath);
 
-		temp ++;
+		temp++;
 
 #if RN_PLATFORM_MAC_OS || RN_PLATFORM_IOS || RN_PLATFORM_VISIONOS
 		strlcpy(storage, keyPath, temp - keyPath);
@@ -488,11 +482,11 @@ namespace RN
 			return;
 		}
 	}
-	
+
 	void Object::DidChangeValueForKey(const char *key)
 	{
 		ObservableProperty *property = GetPropertyForKey(key);
-		
+
 		if(property)
 		{
 			property->DidChangeValue();
@@ -512,7 +506,7 @@ namespace RN
 			return;
 		}
 
-		temp ++;
+		temp++;
 
 #if RN_PLATFORM_MAC_OS || RN_PLATFORM_IOS || RN_PLATFORM_VISIONOS
 		strlcpy(storage, keyPath, temp - keyPath);
@@ -536,7 +530,7 @@ namespace RN
 
 	void Object::SetPrimitiveValueForKey(Object *value, const char *key)
 	{
-		for(ObservableProperty *property : _properties)
+		for(ObservableProperty *property: _properties)
 		{
 			if(strcmp(key, property->_name) == 0)
 				property->SetValue(value);
@@ -550,9 +544,9 @@ namespace RN
 	{
 		throw InconsistencyException(RNSTR("SetValueForKey() with undefined key '" << key << "'"));
 	}
-	
+
 	Object *Object::GetValueForUndefinedKey(const char *key) const
 	{
 		throw InconsistencyException(RNSTR("GetValueForKey() with undefined key '" << key << "'"));
 	}
-}
+} // namespace RN

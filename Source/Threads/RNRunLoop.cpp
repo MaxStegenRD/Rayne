@@ -18,7 +18,7 @@ namespace RN
 	// RunLoopObserver
 	// ---------------------------
 
-	RunLoopObserver::RunLoopObserver(Activity activites, bool repeats, std::function<void (RunLoopObserver *, Activity)> &&callback) :
+	RunLoopObserver::RunLoopObserver(Activity activites, bool repeats, std::function<void(RunLoopObserver *, Activity)> &&callback) :
 		_activites(activites),
 		_callback(std::move(callback)),
 		_repeats(repeats),
@@ -208,13 +208,11 @@ namespace RN
 		size_t collectedCount = 0;
 
 		_observers->Enumerate<RunLoopObserver>([&](RunLoopObserver *observer, size_t index, bool &stop) {
-
 			if(observer->IsValid() && observer->GetActivities() & activity)
-				collected[collectedCount ++] = observer->Retain();
-
+				collected[collectedCount++] = observer->Retain();
 		});
 
-		for(size_t i = 0; i < collectedCount; i ++)
+		for(size_t i = 0; i < collectedCount; i++)
 		{
 			RunLoopObserver *observer = collected[i];
 
@@ -234,19 +232,15 @@ namespace RN
 		Array *pending = new Array();
 
 		_sources->Enumerate<RunLoopSource>([&](RunLoopSource *source, bool &stop) {
-
 			if(source->IsValid() && source->IsSignaled())
 				pending->AddObject(source);
-
 		});
 
 		if(pending->GetCount() > 0)
 		{
 			pending->Enumerate<RunLoopSource>([&](RunLoopSource *source, size_t index, bool &stop) {
-
 				source->_signaled = false;
 				source->Perform();
-
 			});
 
 			pending->Release();
@@ -267,13 +261,11 @@ namespace RN
 		size_t collectedCount = 0;
 
 		_observers->Enumerate<RunLoopObserver>([&](RunLoopObserver *observer, size_t index, bool &stop) {
-
 			if(!observer->IsValid())
-				collected[collectedCount ++] = observer;
-
+				collected[collectedCount++] = observer;
 		});
 
-		for(size_t i = 0; i < collectedCount; i ++)
+		for(size_t i = 0; i < collectedCount; i++)
 		{
 			RunLoopObserver *observer = collected[i];
 			_observers->RemoveObject(observer);
@@ -288,10 +280,8 @@ namespace RN
 		Array *dead = new Array();
 
 		_sources->Enumerate<RunLoopSource>([&](RunLoopSource *source, bool &stop) {
-
 			if(!source->IsValid())
 				dead->AddObject(source);
-
 		});
 
 		dead->Enumerate<RunLoopSource>([&](RunLoopSource *source, size_t index, bool &stop) {
@@ -305,4 +295,4 @@ namespace RN
 	{
 		return Clock::time_point::max();
 	}
-}
+} // namespace RN

@@ -18,11 +18,11 @@
 */
 
 #if RN_PLATFORM_ANDROID
-#include <unistd.h>
-#include <android/window.h> // for AWINDOW_FLAG_KEEP_SCREEN_ON
-#include <android_native_app_glue.h>
+	#include <android/window.h> // for AWINDOW_FLAG_KEEP_SCREEN_ON
+	#include <android_native_app_glue.h>
+	#include <unistd.h>
 
-#include <dlfcn.h>
+	#include <dlfcn.h>
 #endif
 
 namespace RN
@@ -84,7 +84,8 @@ namespace RN
 		return VRControllerTrackingState::Type::None;
 	}
 
-	OpenXRWindow::OpenXRWindow() : _internals(new OpenXRWindowInternals()), _runtimeName(nullptr), _actualFrameIndex(0), _currentHapticsIndex{0, 0}, _hapticsStopped{true, true}, _preferredFrameRate(0.0f), _minCPULevel(XR_PERF_SETTINGS_LEVEL_SUSTAINED_HIGH_EXT), _minGPULevel(XR_PERF_SETTINGS_LEVEL_SUSTAINED_HIGH_EXT), _fixedFoveatedRenderingLevel(2), _fixedFoveatedRenderingDynamic(false), _isLocalDimmingEnabled(false), _isSessionRunning(false), _hasSynchronization(false), _hasVisibility(false), _hasInputFocus(false), _mainLayer(nullptr), _layersUnderlay(new Array()), _layersOverlay(new Array())
+	OpenXRWindow::OpenXRWindow() :
+		_internals(new OpenXRWindowInternals()), _runtimeName(nullptr), _actualFrameIndex(0), _currentHapticsIndex {0, 0}, _hapticsStopped {true, true}, _preferredFrameRate(0.0f), _minCPULevel(XR_PERF_SETTINGS_LEVEL_SUSTAINED_HIGH_EXT), _minGPULevel(XR_PERF_SETTINGS_LEVEL_SUSTAINED_HIGH_EXT), _fixedFoveatedRenderingLevel(2), _fixedFoveatedRenderingDynamic(false), _isLocalDimmingEnabled(false), _isSessionRunning(false), _hasSynchronization(false), _hasVisibility(false), _hasInputFocus(false), _mainLayer(nullptr), _layersUnderlay(new Array()), _layersOverlay(new Array())
 	{
 		_supportsVulkan = false;
 		_supportsMetal = false;
@@ -109,11 +110,11 @@ namespace RN
 		_internals->GetVulkanGraphicsDeviceKHR = nullptr;
 		_internals->GetVulkanGraphicsRequirementsKHR = nullptr;
 #endif
-		
+
 #if XR_USE_GRAPHICS_API_D3D12
 		_internals->GetD3D12GraphicsRequirementsKHR = nullptr;
 #endif
-		
+
 #if XR_USE_GRAPHICS_API_METAL
 		_internals->GetMetalGraphicsRequirementsKHR = nullptr;
 #endif
@@ -144,7 +145,7 @@ namespace RN
 		_internals->SetAndroidApplicationThreadKHR = nullptr;
 #endif
 
-		std::vector<const char*> extensions;
+		std::vector<const char *> extensions;
 		XrBaseInStructure *platformSpecificInstanceCreateInfo = nullptr;
 
 #if RN_PLATFORM_ANDROID
@@ -152,7 +153,7 @@ namespace RN
 		ANativeActivity_setWindowFlags(app->activity, AWINDOW_FLAG_KEEP_SCREEN_ON, 0);
 
 		PFN_xrInitializeLoaderKHR initializeLoader = nullptr;
-		if(XR_SUCCEEDED(xrGetInstanceProcAddr(XR_NULL_HANDLE, "xrInitializeLoaderKHR", (PFN_xrVoidFunction*)(&initializeLoader))))
+		if(XR_SUCCEEDED(xrGetInstanceProcAddr(XR_NULL_HANDLE, "xrInitializeLoaderKHR", (PFN_xrVoidFunction *)(&initializeLoader))))
 		{
 			XrLoaderInitInfoAndroidKHR loaderInitInfoAndroid;
 			memset(&loaderInitInfoAndroid, 0, sizeof(loaderInitInfoAndroid));
@@ -160,7 +161,7 @@ namespace RN
 			loaderInitInfoAndroid.next = nullptr;
 			loaderInitInfoAndroid.applicationVM = app->activity->vm;
 			loaderInitInfoAndroid.applicationContext = app->activity->clazz;
-			initializeLoader((const XrLoaderInitInfoBaseHeaderKHR*)&loaderInitInfoAndroid);
+			initializeLoader((const XrLoaderInitInfoBaseHeaderKHR *)&loaderInitInfoAndroid);
 		}
 
 		extensions.push_back(XR_KHR_ANDROID_CREATE_INSTANCE_EXTENSION_NAME);
@@ -169,7 +170,7 @@ namespace RN
 		instanceCreateInfo.applicationVM = app->activity->vm;
 		instanceCreateInfo.applicationActivity = app->activity->clazz;
 
-		platformSpecificInstanceCreateInfo = reinterpret_cast<XrBaseInStructure*>(&instanceCreateInfo);
+		platformSpecificInstanceCreateInfo = reinterpret_cast<XrBaseInStructure *>(&instanceCreateInfo);
 		_mainThreadID = gettid();
 #endif
 
@@ -182,7 +183,7 @@ namespace RN
 		extensions.push_back(XR_KHR_VULKAN_ENABLE_EXTENSION_NAME);
 		_supportsVulkan = true; //TODO: Only set to true if actually available!?
 #endif
-		
+
 #ifdef XR_USE_GRAPHICS_API_METAL
 		extensions.push_back(XR_KHR_METAL_ENABLE_EXTENSION_NAME);
 		_supportsMetal = true;
@@ -191,7 +192,7 @@ namespace RN
 		uint32_t instanceExtensionCount;
 		xrEnumerateInstanceExtensionProperties(nullptr, 0, &instanceExtensionCount, nullptr);
 		std::vector<XrExtensionProperties> allExtensions(instanceExtensionCount);
-		for(XrExtensionProperties& extension : allExtensions)
+		for(XrExtensionProperties &extension: allExtensions)
 		{
 			extension.type = XR_TYPE_EXTENSION_PROPERTIES;
 		}
@@ -199,7 +200,7 @@ namespace RN
 
 		int numberOfSupportedFoveationExtensions = 0;
 		RNDebug("Available Extensions (" << instanceExtensionCount << "):");
-		for(const XrExtensionProperties& extension : allExtensions)
+		for(const XrExtensionProperties &extension: allExtensions)
 		{
 			if(std::strcmp(extension.extensionName, XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME) == 0)
 			{
@@ -270,7 +271,7 @@ namespace RN
 				numberOfSupportedFoveationExtensions += 1;
 			}
 #endif
-				//Needed to apply foveation profiles to the swapchain
+			//Needed to apply foveation profiles to the swapchain
 			else if(std::strcmp(extension.extensionName, XR_FB_SWAPCHAIN_UPDATE_STATE_EXTENSION_NAME) == 0)
 			{
 				extensions.push_back(extension.extensionName);
@@ -285,14 +286,16 @@ namespace RN
 			_supportsFoveatedRendering = true;
 		}
 
-		XrInstanceCreateInfo createInfo{XR_TYPE_INSTANCE_CREATE_INFO};
+		XrInstanceCreateInfo createInfo {XR_TYPE_INSTANCE_CREATE_INFO};
 		createInfo.next = platformSpecificInstanceCreateInfo;
 		createInfo.enabledExtensionCount = (uint32_t)extensions.size();
 		createInfo.enabledExtensionNames = extensions.data();
 
 		const RN::String *applicationTitle = Kernel::GetSharedInstance()->GetApplication()->GetTitle();
-		if(applicationTitle) strcpy(createInfo.applicationInfo.applicationName, applicationTitle->GetUTF8String());
-		else strcpy(createInfo.applicationInfo.applicationName, "NO TITLE");
+		if(applicationTitle)
+			strcpy(createInfo.applicationInfo.applicationName, applicationTitle->GetUTF8String());
+		else
+			strcpy(createInfo.applicationInfo.applicationName, "NO TITLE");
 		createInfo.applicationInfo.apiVersion = XR_API_VERSION_1_0;
 
 		_internals->instance = XR_NULL_HANDLE;
@@ -318,7 +321,7 @@ namespace RN
 			RN_ASSERT(false, "Failed fetching HMD info!");
 		}
 
-		_hmdTrackingState.type = (_internals->systemProperties.trackingProperties.orientationTracking && _internals->systemProperties.trackingProperties.positionTracking)? VRHMDTrackingState::Type::SixDegreesOfFreedom : VRHMDTrackingState::Type::ThreeDegreesOfFreedom;
+		_hmdTrackingState.type = (_internals->systemProperties.trackingProperties.orientationTracking && _internals->systemProperties.trackingProperties.positionTracking) ? VRHMDTrackingState::Type::SixDegreesOfFreedom : VRHMDTrackingState::Type::ThreeDegreesOfFreedom;
 		RNInfo("Using HMD: " << GetHMDInfoDescription());
 
 		if(std::strcmp(_internals->systemProperties.systemName, "Oculus Quest") == 0)
@@ -363,24 +366,20 @@ namespace RN
 		{
 			//vulkan_enable2
 			//TODO: (there is also a vulkan_enable2 extension, not supported by quest)
-			if(!XR_SUCCEEDED(xrGetInstanceProcAddr(_internals->instance, "xrGetVulkanInstanceExtensionsKHR", (PFN_xrVoidFunction*)(&_internals->GetVulkanInstanceExtensionsKHR))))
+			if(!XR_SUCCEEDED(xrGetInstanceProcAddr(_internals->instance, "xrGetVulkanInstanceExtensionsKHR", (PFN_xrVoidFunction *)(&_internals->GetVulkanInstanceExtensionsKHR))))
 			{
-
 			}
 
-			if(!XR_SUCCEEDED(xrGetInstanceProcAddr(_internals->instance, "xrGetVulkanDeviceExtensionsKHR", (PFN_xrVoidFunction*)(&_internals->GetVulkanDeviceExtensionsKHR))))
+			if(!XR_SUCCEEDED(xrGetInstanceProcAddr(_internals->instance, "xrGetVulkanDeviceExtensionsKHR", (PFN_xrVoidFunction *)(&_internals->GetVulkanDeviceExtensionsKHR))))
 			{
-
 			}
 
-			if(!XR_SUCCEEDED(xrGetInstanceProcAddr(_internals->instance, "xrGetVulkanGraphicsDeviceKHR", (PFN_xrVoidFunction*)(&_internals->GetVulkanGraphicsDeviceKHR))))
+			if(!XR_SUCCEEDED(xrGetInstanceProcAddr(_internals->instance, "xrGetVulkanGraphicsDeviceKHR", (PFN_xrVoidFunction *)(&_internals->GetVulkanGraphicsDeviceKHR))))
 			{
-
 			}
 
-			if(!XR_SUCCEEDED(xrGetInstanceProcAddr(_internals->instance, "xrGetVulkanGraphicsRequirementsKHR", (PFN_xrVoidFunction*)(&_internals->GetVulkanGraphicsRequirementsKHR))))
+			if(!XR_SUCCEEDED(xrGetInstanceProcAddr(_internals->instance, "xrGetVulkanGraphicsRequirementsKHR", (PFN_xrVoidFunction *)(&_internals->GetVulkanGraphicsRequirementsKHR))))
 			{
-
 			}
 		}
 #endif
@@ -388,19 +387,17 @@ namespace RN
 #if XR_USE_GRAPHICS_API_D3D12
 		if(_supportsD3D12)
 		{
-			if(!XR_SUCCEEDED(xrGetInstanceProcAddr(_internals->instance, "xrGetD3D12GraphicsRequirementsKHR", (PFN_xrVoidFunction*)(&_internals->GetD3D12GraphicsRequirementsKHR))))
+			if(!XR_SUCCEEDED(xrGetInstanceProcAddr(_internals->instance, "xrGetD3D12GraphicsRequirementsKHR", (PFN_xrVoidFunction *)(&_internals->GetD3D12GraphicsRequirementsKHR))))
 			{
-
 			}
 		}
 #endif
-		
+
 #if XR_USE_GRAPHICS_API_METAL
 		if(_supportsMetal)
 		{
-			if(!XR_SUCCEEDED(xrGetInstanceProcAddr(_internals->instance, "xrGetMetalGraphicsRequirementsKHR", (PFN_xrVoidFunction*)(&_internals->GetMetalGraphicsRequirementsKHR))))
+			if(!XR_SUCCEEDED(xrGetInstanceProcAddr(_internals->instance, "xrGetMetalGraphicsRequirementsKHR", (PFN_xrVoidFunction *)(&_internals->GetMetalGraphicsRequirementsKHR))))
 			{
-
 			}
 		}
 #endif
@@ -408,95 +405,84 @@ namespace RN
 		if(_supportsPreferredFramerate)
 		{
 			//XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME
-			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrEnumerateDisplayRefreshRatesFB", (PFN_xrVoidFunction*)(&_internals->EnumerateDisplayRefreshRatesFB))))
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrEnumerateDisplayRefreshRatesFB", (PFN_xrVoidFunction *)(&_internals->EnumerateDisplayRefreshRatesFB))))
 			{
-
 			}
 
-			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrGetDisplayRefreshRateFB", (PFN_xrVoidFunction*)(&_internals->GetDisplayRefreshRateFB))))
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrGetDisplayRefreshRateFB", (PFN_xrVoidFunction *)(&_internals->GetDisplayRefreshRateFB))))
 			{
-
 			}
 
-			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrRequestDisplayRefreshRateFB", (PFN_xrVoidFunction*)(&_internals->RequestDisplayRefreshRateFB))))
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrRequestDisplayRefreshRateFB", (PFN_xrVoidFunction *)(&_internals->RequestDisplayRefreshRateFB))))
 			{
-
 			}
 		}
 
 		if(_supportsPerformanceLevels)
 		{
 			//XR_EXT_PERFORMANCE_SETTINGS_EXTENSION_NAME
-			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrPerfSettingsSetPerformanceLevelEXT", (PFN_xrVoidFunction*)(&_internals->PerfSettingsSetPerformanceLevelEXT))))
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrPerfSettingsSetPerformanceLevelEXT", (PFN_xrVoidFunction *)(&_internals->PerfSettingsSetPerformanceLevelEXT))))
 			{
-
 			}
 		}
 
 		if(_supportsFoveatedRendering)
 		{
 			//XR_FB_FOVEATION_EXTENSION_NAME
-			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrCreateFoveationProfileFB", (PFN_xrVoidFunction*)(&_internals->CreateFoveationProfileFB))))
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrCreateFoveationProfileFB", (PFN_xrVoidFunction *)(&_internals->CreateFoveationProfileFB))))
 			{
-
 			}
 
-			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrDestroyFoveationProfileFB", (PFN_xrVoidFunction*)(&_internals->DestroyFoveationProfileFB))))
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrDestroyFoveationProfileFB", (PFN_xrVoidFunction *)(&_internals->DestroyFoveationProfileFB))))
 			{
-
 			}
 
 			//XR_FB_SWAPCHAIN_UPDATE_STATE_EXTENSION_NAME
-			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrUpdateSwapchainFB", (PFN_xrVoidFunction*)(&_internals->UpdateSwapchainFB))))
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrUpdateSwapchainFB", (PFN_xrVoidFunction *)(&_internals->UpdateSwapchainFB))))
 			{
-
 			}
 
-			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrGetSwapchainStateFB", (PFN_xrVoidFunction*)(&_internals->GetSwapchainStateFB))))
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrGetSwapchainStateFB", (PFN_xrVoidFunction *)(&_internals->GetSwapchainStateFB))))
 			{
-
 			}
 		}
 
 		if(_supportsVisibilityMask)
 		{
 			//XR_KHR_VISIBILITY_MASK_EXTENSION_NAME
-			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrGetVisibilityMaskKHR", (PFN_xrVoidFunction*)(&_internals->GetVisibilityMaskKHR))))
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrGetVisibilityMaskKHR", (PFN_xrVoidFunction *)(&_internals->GetVisibilityMaskKHR))))
 			{
-
 			}
 		}
 
 		if(_supportsDynamicResolution)
 		{
 			//XR_META_RECOMMENDED_LAYER_RESOLUTION_EXTENSION_NAME
-			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrGetRecommendedLayerResolutionMETA", (PFN_xrVoidFunction*)(&_internals->GetRecommendedLayerResolutionMETA))))
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrGetRecommendedLayerResolutionMETA", (PFN_xrVoidFunction *)(&_internals->GetRecommendedLayerResolutionMETA))))
 			{
-
 			}
 		}
 
 		if(_supportsPassthrough)
 		{
 			//XR_FB_PASSTHROUGH_EXTENSION_NAME
-			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrCreatePassthroughFB", (PFN_xrVoidFunction*)(&_internals->CreatePassthroughFB)))){}
-			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrDestroyPassthroughFB", (PFN_xrVoidFunction*)(&_internals->DestroyPassthroughFB)))){}
-			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrPassthroughStartFB", (PFN_xrVoidFunction*)(&_internals->PassthroughStartFB)))){}
-			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrPassthroughPauseFB", (PFN_xrVoidFunction*)(&_internals->PassthroughPauseFB)))){}
-			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrCreatePassthroughLayerFB", (PFN_xrVoidFunction*)(&_internals->CreatePassthroughLayerFB)))){}
-			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrDestroyPassthroughLayerFB", (PFN_xrVoidFunction*)(&_internals->DestroyPassthroughLayerFB)))){}
-			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrPassthroughLayerPauseFB", (PFN_xrVoidFunction*)(&_internals->PassthroughLayerPauseFB)))){}
-			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrPassthroughLayerResumeFB", (PFN_xrVoidFunction*)(&_internals->PassthroughLayerResumeFB)))){}
-			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrPassthroughLayerSetStyleFB", (PFN_xrVoidFunction*)(&_internals->PassthroughLayerSetStyleFB)))){}
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrCreatePassthroughFB", (PFN_xrVoidFunction *)(&_internals->CreatePassthroughFB)))) {}
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrDestroyPassthroughFB", (PFN_xrVoidFunction *)(&_internals->DestroyPassthroughFB)))) {}
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrPassthroughStartFB", (PFN_xrVoidFunction *)(&_internals->PassthroughStartFB)))) {}
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrPassthroughPauseFB", (PFN_xrVoidFunction *)(&_internals->PassthroughPauseFB)))) {}
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrCreatePassthroughLayerFB", (PFN_xrVoidFunction *)(&_internals->CreatePassthroughLayerFB)))) {}
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrDestroyPassthroughLayerFB", (PFN_xrVoidFunction *)(&_internals->DestroyPassthroughLayerFB)))) {}
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrPassthroughLayerPauseFB", (PFN_xrVoidFunction *)(&_internals->PassthroughLayerPauseFB)))) {}
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrPassthroughLayerResumeFB", (PFN_xrVoidFunction *)(&_internals->PassthroughLayerResumeFB)))) {}
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrPassthroughLayerSetStyleFB", (PFN_xrVoidFunction *)(&_internals->PassthroughLayerSetStyleFB)))) {}
 		}
 
 #if XR_USE_PLATFORM_ANDROID
 		if(_supportsAndroidThreadType)
 		{
 			//XR_KHR_ANDROID_THREAD_SETTINGS_EXTENSION_NAME
-			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrSetAndroidApplicationThreadKHR", (PFN_xrVoidFunction*)(&_internals->SetAndroidApplicationThreadKHR))))
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrSetAndroidApplicationThreadKHR", (PFN_xrVoidFunction *)(&_internals->SetAndroidApplicationThreadKHR))))
 			{
-
 			}
 		}
 #endif
@@ -506,13 +492,13 @@ namespace RN
 	{
 		SafeRelease(_layersUnderlay);
 		SafeRelease(_layersOverlay);
-		
+
 		if(_internals->passthroughSessionFB != XR_NULL_HANDLE)
 		{
 			_internals->DestroyPassthroughFB(_internals->passthroughSessionFB);
 			_internals->passthroughSessionFB = XR_NULL_HANDLE;
 		}
-		
+
 		StopRendering();
 		SafeRelease(_runtimeName);
 		xrDestroyInstance(_internals->instance);
@@ -828,7 +814,7 @@ namespace RN
 		strcpy(handRightTrackpadXActionInfo.localizedActionName, "Hand Right Trackpad X");
 		handRightTrackpadXActionInfo.countSubactionPaths = 0;
 		handRightTrackpadXActionInfo.subactionPaths = nullptr;
-		if (!XR_SUCCEEDED(xrCreateAction(_internals->gameActionSet, &handRightTrackpadXActionInfo, &_internals->handRightTrackpadXAction)))
+		if(!XR_SUCCEEDED(xrCreateAction(_internals->gameActionSet, &handRightTrackpadXActionInfo, &_internals->handRightTrackpadXAction)))
 		{
 			RN_ASSERT(false, "failed creating right hand trackpad x action");
 		}
@@ -841,7 +827,7 @@ namespace RN
 		strcpy(handRightTrackpadYActionInfo.localizedActionName, "Hand Right Trackpad Y");
 		handRightTrackpadYActionInfo.countSubactionPaths = 0;
 		handRightTrackpadYActionInfo.subactionPaths = nullptr;
-		if (!XR_SUCCEEDED(xrCreateAction(_internals->gameActionSet, &handRightTrackpadYActionInfo, &_internals->handRightTrackpadYAction)))
+		if(!XR_SUCCEEDED(xrCreateAction(_internals->gameActionSet, &handRightTrackpadYActionInfo, &_internals->handRightTrackpadYAction)))
 		{
 			RN_ASSERT(false, "failed creating right hand trackpad y action");
 		}
@@ -854,7 +840,7 @@ namespace RN
 		strcpy(handRightTrackpadTouchActionInfo.localizedActionName, "Hand Right Trackpad Touch");
 		handRightTrackpadTouchActionInfo.countSubactionPaths = 0;
 		handRightTrackpadTouchActionInfo.subactionPaths = nullptr;
-		if (!XR_SUCCEEDED(xrCreateAction(_internals->gameActionSet, &handRightTrackpadTouchActionInfo, &_internals->handRightTrackpadTouchAction)))
+		if(!XR_SUCCEEDED(xrCreateAction(_internals->gameActionSet, &handRightTrackpadTouchActionInfo, &_internals->handRightTrackpadTouchAction)))
 		{
 			RN_ASSERT(false, "failed creating right hand trackpad touch action");
 		}
@@ -867,7 +853,7 @@ namespace RN
 		strcpy(handRightTrackpadPressActionInfo.localizedActionName, "Hand Right Trackpad Press");
 		handRightTrackpadPressActionInfo.countSubactionPaths = 0;
 		handRightTrackpadPressActionInfo.subactionPaths = nullptr;
-		if (!XR_SUCCEEDED(xrCreateAction(_internals->gameActionSet, &handRightTrackpadPressActionInfo, &_internals->handRightTrackpadPressAction)))
+		if(!XR_SUCCEEDED(xrCreateAction(_internals->gameActionSet, &handRightTrackpadPressActionInfo, &_internals->handRightTrackpadPressAction)))
 		{
 			RN_ASSERT(false, "failed creating right hand trackpad press action");
 		}
@@ -976,25 +962,25 @@ namespace RN
 		xrStringToPath(_internals->instance, "/user/hand/right/output/haptic", &handRightHapticsPath);
 
 		std::vector<XrActionSuggestedBinding> simpleControllerBindings;
-		simpleControllerBindings.push_back({ _internals->handLeftAimPoseAction, handLeftAimPosePath });
-		simpleControllerBindings.push_back({ _internals->handLeftGripPoseAction, handLeftGripPosePath });
-		simpleControllerBindings.push_back({ _internals->handLeftTriggerAction, handLeftTriggerPath });
-		simpleControllerBindings.push_back({ _internals->handLeftButtonSystemPressAction, handLeftButtonSystemPressPath });
-		simpleControllerBindings.push_back({ _internals->handLeftHapticsAction, handLeftHapticsPath });
+		simpleControllerBindings.push_back({_internals->handLeftAimPoseAction, handLeftAimPosePath});
+		simpleControllerBindings.push_back({_internals->handLeftGripPoseAction, handLeftGripPosePath});
+		simpleControllerBindings.push_back({_internals->handLeftTriggerAction, handLeftTriggerPath});
+		simpleControllerBindings.push_back({_internals->handLeftButtonSystemPressAction, handLeftButtonSystemPressPath});
+		simpleControllerBindings.push_back({_internals->handLeftHapticsAction, handLeftHapticsPath});
 
-		simpleControllerBindings.push_back({ _internals->handRightAimPoseAction, handRightAimPosePath });
-		simpleControllerBindings.push_back({ _internals->handRightGripPoseAction, handRightGripPosePath });
-		simpleControllerBindings.push_back({ _internals->handRightTriggerAction, handRightTriggerPath });
-		simpleControllerBindings.push_back({ _internals->handRightButtonSystemPressAction, handRightButtonSystemPressPath });
-		simpleControllerBindings.push_back({ _internals->handRightHapticsAction, handRightHapticsPath });
+		simpleControllerBindings.push_back({_internals->handRightAimPoseAction, handRightAimPosePath});
+		simpleControllerBindings.push_back({_internals->handRightGripPoseAction, handRightGripPosePath});
+		simpleControllerBindings.push_back({_internals->handRightTriggerAction, handRightTriggerPath});
+		simpleControllerBindings.push_back({_internals->handRightButtonSystemPressAction, handRightButtonSystemPressPath});
+		simpleControllerBindings.push_back({_internals->handRightHapticsAction, handRightHapticsPath});
 
 		xrStringToPath(_internals->instance, "/interaction_profiles/khr/simple_controller", &interactionProfilePath);
 
-		XrInteractionProfileSuggestedBinding suggestedSimpleBindings{ XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING };
+		XrInteractionProfileSuggestedBinding suggestedSimpleBindings {XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
 		suggestedSimpleBindings.interactionProfile = interactionProfilePath;
 		suggestedSimpleBindings.suggestedBindings = simpleControllerBindings.data();
 		suggestedSimpleBindings.countSuggestedBindings = simpleControllerBindings.size();
-		if (!XR_SUCCEEDED(xrSuggestInteractionProfileBindings(_internals->instance, &suggestedSimpleBindings)))
+		if(!XR_SUCCEEDED(xrSuggestInteractionProfileBindings(_internals->instance, &suggestedSimpleBindings)))
 		{
 			RNDebug("failed action profile suggested simple controller binding");
 		}
@@ -1054,7 +1040,7 @@ namespace RN
 
 		xrStringToPath(_internals->instance, "/interaction_profiles/oculus/touch_controller", &interactionProfilePath);
 
-		XrInteractionProfileSuggestedBinding suggestedBindings{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
+		XrInteractionProfileSuggestedBinding suggestedBindings {XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
 		suggestedBindings.interactionProfile = interactionProfilePath;
 		suggestedBindings.suggestedBindings = oculusTouchBindings.data();
 		suggestedBindings.countSuggestedBindings = oculusTouchBindings.size();
@@ -1117,7 +1103,7 @@ namespace RN
 
 		xrStringToPath(_internals->instance, "/interaction_profiles/bytedance/pico_neo3_controller", &interactionProfilePath);
 
-		XrInteractionProfileSuggestedBinding suggestedPicoNeoBindings{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
+		XrInteractionProfileSuggestedBinding suggestedPicoNeoBindings {XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
 		suggestedPicoNeoBindings.interactionProfile = interactionProfilePath;
 		suggestedPicoNeoBindings.suggestedBindings = picoNeoBindings.data();
 		suggestedPicoNeoBindings.countSuggestedBindings = picoNeoBindings.size();
@@ -1182,7 +1168,7 @@ namespace RN
 
 		xrStringToPath(_internals->instance, "/interaction_profiles/bytedance/pico4_controller", &interactionProfilePath);
 
-		XrInteractionProfileSuggestedBinding suggestedPico4Bindings{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
+		XrInteractionProfileSuggestedBinding suggestedPico4Bindings {XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
 		suggestedPico4Bindings.interactionProfile = interactionProfilePath;
 		suggestedPico4Bindings.suggestedBindings = pico4Bindings.data();
 		suggestedPico4Bindings.countSuggestedBindings = pico4Bindings.size();
@@ -1219,31 +1205,31 @@ namespace RN
 		xrStringToPath(_internals->instance, "/user/hand/right/output/haptic", &handRightHapticsPath);
 
 		std::vector<XrActionSuggestedBinding> viveWandBindings;
-		viveWandBindings.push_back({ _internals->handLeftAimPoseAction, handLeftAimPosePath });
-		viveWandBindings.push_back({ _internals->handLeftGripPoseAction, handLeftGripPosePath });
-		viveWandBindings.push_back({ _internals->handLeftTriggerAction, handLeftTriggerPath });
-		viveWandBindings.push_back({ _internals->handLeftGrabAction, handLeftGrabPath });
-		viveWandBindings.push_back({ _internals->handLeftTrackpadXAction, handLeftTrackpadXPath });
-		viveWandBindings.push_back({ _internals->handLeftTrackpadYAction, handLeftTrackpadYPath });
-		viveWandBindings.push_back({ _internals->handLeftTrackpadTouchAction, handLeftTrackpadTouchPath });
-		viveWandBindings.push_back({ _internals->handLeftTrackpadPressAction, handLeftTrackpadPressPath });
-		viveWandBindings.push_back({ _internals->handLeftButtonSystemPressAction, handLeftButtonSystemPressPath });
-		viveWandBindings.push_back({ _internals->handLeftHapticsAction, handLeftHapticsPath });
+		viveWandBindings.push_back({_internals->handLeftAimPoseAction, handLeftAimPosePath});
+		viveWandBindings.push_back({_internals->handLeftGripPoseAction, handLeftGripPosePath});
+		viveWandBindings.push_back({_internals->handLeftTriggerAction, handLeftTriggerPath});
+		viveWandBindings.push_back({_internals->handLeftGrabAction, handLeftGrabPath});
+		viveWandBindings.push_back({_internals->handLeftTrackpadXAction, handLeftTrackpadXPath});
+		viveWandBindings.push_back({_internals->handLeftTrackpadYAction, handLeftTrackpadYPath});
+		viveWandBindings.push_back({_internals->handLeftTrackpadTouchAction, handLeftTrackpadTouchPath});
+		viveWandBindings.push_back({_internals->handLeftTrackpadPressAction, handLeftTrackpadPressPath});
+		viveWandBindings.push_back({_internals->handLeftButtonSystemPressAction, handLeftButtonSystemPressPath});
+		viveWandBindings.push_back({_internals->handLeftHapticsAction, handLeftHapticsPath});
 
-		viveWandBindings.push_back({ _internals->handRightAimPoseAction, handRightAimPosePath });
-		viveWandBindings.push_back({ _internals->handRightGripPoseAction, handRightGripPosePath });
-		viveWandBindings.push_back({ _internals->handRightTriggerAction, handRightTriggerPath });
-		viveWandBindings.push_back({ _internals->handRightGrabAction, handRightGrabPath });
-		viveWandBindings.push_back({ _internals->handRightTrackpadXAction, handRightTrackpadXPath });
-		viveWandBindings.push_back({ _internals->handRightTrackpadYAction, handRightTrackpadYPath });
-		viveWandBindings.push_back({ _internals->handRightTrackpadTouchAction, handRightTrackpadTouchPath });
-		viveWandBindings.push_back({ _internals->handRightTrackpadPressAction, handRightTrackpadPressPath });
-		viveWandBindings.push_back({ _internals->handRightButtonSystemPressAction, handRightButtonSystemPressPath });
-		viveWandBindings.push_back({ _internals->handRightHapticsAction, handRightHapticsPath });
+		viveWandBindings.push_back({_internals->handRightAimPoseAction, handRightAimPosePath});
+		viveWandBindings.push_back({_internals->handRightGripPoseAction, handRightGripPosePath});
+		viveWandBindings.push_back({_internals->handRightTriggerAction, handRightTriggerPath});
+		viveWandBindings.push_back({_internals->handRightGrabAction, handRightGrabPath});
+		viveWandBindings.push_back({_internals->handRightTrackpadXAction, handRightTrackpadXPath});
+		viveWandBindings.push_back({_internals->handRightTrackpadYAction, handRightTrackpadYPath});
+		viveWandBindings.push_back({_internals->handRightTrackpadTouchAction, handRightTrackpadTouchPath});
+		viveWandBindings.push_back({_internals->handRightTrackpadPressAction, handRightTrackpadPressPath});
+		viveWandBindings.push_back({_internals->handRightButtonSystemPressAction, handRightButtonSystemPressPath});
+		viveWandBindings.push_back({_internals->handRightHapticsAction, handRightHapticsPath});
 
 		xrStringToPath(_internals->instance, "/interaction_profiles/htc/vive_controller", &interactionProfilePath);
 
-		XrInteractionProfileSuggestedBinding suggestedViveWandBindings{ XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING };
+		XrInteractionProfileSuggestedBinding suggestedViveWandBindings {XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
 		suggestedViveWandBindings.interactionProfile = interactionProfilePath;
 		suggestedViveWandBindings.suggestedBindings = viveWandBindings.data();
 		suggestedViveWandBindings.countSuggestedBindings = viveWandBindings.size();
@@ -1285,41 +1271,41 @@ namespace RN
 		xrStringToPath(_internals->instance, "/user/hand/right/output/haptic", &handRightHapticsPath);
 
 		std::vector<XrActionSuggestedBinding> microsoftMixedRealityBindings;
-		microsoftMixedRealityBindings.push_back({ _internals->handLeftAimPoseAction, handLeftAimPosePath });
-		microsoftMixedRealityBindings.push_back({ _internals->handLeftGripPoseAction, handLeftGripPosePath });
-		microsoftMixedRealityBindings.push_back({ _internals->handLeftTriggerAction, handLeftTriggerPath });
-		microsoftMixedRealityBindings.push_back({ _internals->handLeftGrabAction, handLeftGrabPath });
-		microsoftMixedRealityBindings.push_back({ _internals->handLeftThumbstickXAction, handLeftThumbstickXPath });
-		microsoftMixedRealityBindings.push_back({ _internals->handLeftThumbstickYAction, handLeftThumbstickYPath });
-		microsoftMixedRealityBindings.push_back({ _internals->handLeftThumbstickPressAction, handLeftThumbstickPressPath });
-		microsoftMixedRealityBindings.push_back({ _internals->handLeftTrackpadXAction, handLeftTrackpadXPath });
-		microsoftMixedRealityBindings.push_back({ _internals->handLeftTrackpadYAction, handLeftTrackpadYPath });
-		microsoftMixedRealityBindings.push_back({ _internals->handLeftTrackpadTouchAction, handLeftTrackpadTouchPath });
-		microsoftMixedRealityBindings.push_back({ _internals->handLeftTrackpadPressAction, handLeftTrackpadPressPath });
-		microsoftMixedRealityBindings.push_back({ _internals->handLeftButtonSystemPressAction, handLeftButtonSystemPressPath });
-		microsoftMixedRealityBindings.push_back({ _internals->handLeftHapticsAction, handLeftHapticsPath });
+		microsoftMixedRealityBindings.push_back({_internals->handLeftAimPoseAction, handLeftAimPosePath});
+		microsoftMixedRealityBindings.push_back({_internals->handLeftGripPoseAction, handLeftGripPosePath});
+		microsoftMixedRealityBindings.push_back({_internals->handLeftTriggerAction, handLeftTriggerPath});
+		microsoftMixedRealityBindings.push_back({_internals->handLeftGrabAction, handLeftGrabPath});
+		microsoftMixedRealityBindings.push_back({_internals->handLeftThumbstickXAction, handLeftThumbstickXPath});
+		microsoftMixedRealityBindings.push_back({_internals->handLeftThumbstickYAction, handLeftThumbstickYPath});
+		microsoftMixedRealityBindings.push_back({_internals->handLeftThumbstickPressAction, handLeftThumbstickPressPath});
+		microsoftMixedRealityBindings.push_back({_internals->handLeftTrackpadXAction, handLeftTrackpadXPath});
+		microsoftMixedRealityBindings.push_back({_internals->handLeftTrackpadYAction, handLeftTrackpadYPath});
+		microsoftMixedRealityBindings.push_back({_internals->handLeftTrackpadTouchAction, handLeftTrackpadTouchPath});
+		microsoftMixedRealityBindings.push_back({_internals->handLeftTrackpadPressAction, handLeftTrackpadPressPath});
+		microsoftMixedRealityBindings.push_back({_internals->handLeftButtonSystemPressAction, handLeftButtonSystemPressPath});
+		microsoftMixedRealityBindings.push_back({_internals->handLeftHapticsAction, handLeftHapticsPath});
 
-		microsoftMixedRealityBindings.push_back({ _internals->handRightAimPoseAction, handRightAimPosePath });
-		microsoftMixedRealityBindings.push_back({ _internals->handRightGripPoseAction, handRightGripPosePath });
-		microsoftMixedRealityBindings.push_back({ _internals->handRightTriggerAction, handRightTriggerPath });
-		microsoftMixedRealityBindings.push_back({ _internals->handRightGrabAction, handRightGrabPath });
-		microsoftMixedRealityBindings.push_back({ _internals->handRightThumbstickXAction, handRightThumbstickXPath });
-		microsoftMixedRealityBindings.push_back({ _internals->handRightThumbstickYAction, handRightThumbstickYPath });
-		microsoftMixedRealityBindings.push_back({ _internals->handRightThumbstickPressAction, handRightThumbstickPressPath });
-		microsoftMixedRealityBindings.push_back({ _internals->handRightTrackpadXAction, handRightTrackpadXPath });
-		microsoftMixedRealityBindings.push_back({ _internals->handRightTrackpadYAction, handRightTrackpadYPath });
-		microsoftMixedRealityBindings.push_back({ _internals->handRightTrackpadTouchAction, handRightTrackpadTouchPath });
-		microsoftMixedRealityBindings.push_back({ _internals->handRightTrackpadPressAction, handRightTrackpadPressPath });
-		microsoftMixedRealityBindings.push_back({ _internals->handRightButtonSystemPressAction, handRightButtonSystemPressPath });
-		microsoftMixedRealityBindings.push_back({ _internals->handRightHapticsAction, handRightHapticsPath });
+		microsoftMixedRealityBindings.push_back({_internals->handRightAimPoseAction, handRightAimPosePath});
+		microsoftMixedRealityBindings.push_back({_internals->handRightGripPoseAction, handRightGripPosePath});
+		microsoftMixedRealityBindings.push_back({_internals->handRightTriggerAction, handRightTriggerPath});
+		microsoftMixedRealityBindings.push_back({_internals->handRightGrabAction, handRightGrabPath});
+		microsoftMixedRealityBindings.push_back({_internals->handRightThumbstickXAction, handRightThumbstickXPath});
+		microsoftMixedRealityBindings.push_back({_internals->handRightThumbstickYAction, handRightThumbstickYPath});
+		microsoftMixedRealityBindings.push_back({_internals->handRightThumbstickPressAction, handRightThumbstickPressPath});
+		microsoftMixedRealityBindings.push_back({_internals->handRightTrackpadXAction, handRightTrackpadXPath});
+		microsoftMixedRealityBindings.push_back({_internals->handRightTrackpadYAction, handRightTrackpadYPath});
+		microsoftMixedRealityBindings.push_back({_internals->handRightTrackpadTouchAction, handRightTrackpadTouchPath});
+		microsoftMixedRealityBindings.push_back({_internals->handRightTrackpadPressAction, handRightTrackpadPressPath});
+		microsoftMixedRealityBindings.push_back({_internals->handRightButtonSystemPressAction, handRightButtonSystemPressPath});
+		microsoftMixedRealityBindings.push_back({_internals->handRightHapticsAction, handRightHapticsPath});
 
 		xrStringToPath(_internals->instance, "/interaction_profiles/microsoft/motion_controller", &interactionProfilePath);
 
-		XrInteractionProfileSuggestedBinding suggestedMicrosoftMixedRealityBindings{ XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING };
+		XrInteractionProfileSuggestedBinding suggestedMicrosoftMixedRealityBindings {XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
 		suggestedMicrosoftMixedRealityBindings.interactionProfile = interactionProfilePath;
 		suggestedMicrosoftMixedRealityBindings.suggestedBindings = microsoftMixedRealityBindings.data();
 		suggestedMicrosoftMixedRealityBindings.countSuggestedBindings = microsoftMixedRealityBindings.size();
-		if (!XR_SUCCEEDED(xrSuggestInteractionProfileBindings(_internals->instance, &suggestedMicrosoftMixedRealityBindings)))
+		if(!XR_SUCCEEDED(xrSuggestInteractionProfileBindings(_internals->instance, &suggestedMicrosoftMixedRealityBindings)))
 		{
 			RNDebug("failed action profile suggested microsoft mixed reality controller binding");
 		}
@@ -1361,45 +1347,45 @@ namespace RN
 		xrStringToPath(_internals->instance, "/user/hand/right/output/haptic", &handRightHapticsPath);
 
 		std::vector<XrActionSuggestedBinding> valveIndexBindings;
-		valveIndexBindings.push_back({ _internals->handLeftAimPoseAction, handLeftAimPosePath });
-		valveIndexBindings.push_back({ _internals->handLeftGripPoseAction, handLeftGripPosePath });
-		valveIndexBindings.push_back({ _internals->handLeftTriggerAction, handLeftTriggerPath });
-		valveIndexBindings.push_back({ _internals->handLeftGrabAction, handLeftGrabPath });
-		valveIndexBindings.push_back({ _internals->handLeftThumbstickXAction, handLeftThumbstickXPath });
-		valveIndexBindings.push_back({ _internals->handLeftThumbstickYAction, handLeftThumbstickYPath });
-		valveIndexBindings.push_back({ _internals->handLeftThumbstickPressAction, handLeftThumbstickPressPath });
-		valveIndexBindings.push_back({ _internals->handLeftTrackpadXAction, handLeftTrackpadXPath });
-		valveIndexBindings.push_back({ _internals->handLeftTrackpadYAction, handLeftTrackpadYPath });
-		valveIndexBindings.push_back({ _internals->handLeftTrackpadTouchAction, handLeftTrackpadTouchPath });
-		valveIndexBindings.push_back({ _internals->handLeftTrackpadPressAction, handLeftTrackpadPressPath });
-		valveIndexBindings.push_back({ _internals->handLeftButtonSystemPressAction, handLeftButtonSystemPressPath });
-		valveIndexBindings.push_back({ _internals->handLeftButtonUpperPressAction, handLeftButtonUpperPressPath });
-		valveIndexBindings.push_back({ _internals->handLeftButtonLowerPressAction, handLeftButtonLowerPressPath });
-		valveIndexBindings.push_back({ _internals->handLeftHapticsAction, handLeftHapticsPath });
+		valveIndexBindings.push_back({_internals->handLeftAimPoseAction, handLeftAimPosePath});
+		valveIndexBindings.push_back({_internals->handLeftGripPoseAction, handLeftGripPosePath});
+		valveIndexBindings.push_back({_internals->handLeftTriggerAction, handLeftTriggerPath});
+		valveIndexBindings.push_back({_internals->handLeftGrabAction, handLeftGrabPath});
+		valveIndexBindings.push_back({_internals->handLeftThumbstickXAction, handLeftThumbstickXPath});
+		valveIndexBindings.push_back({_internals->handLeftThumbstickYAction, handLeftThumbstickYPath});
+		valveIndexBindings.push_back({_internals->handLeftThumbstickPressAction, handLeftThumbstickPressPath});
+		valveIndexBindings.push_back({_internals->handLeftTrackpadXAction, handLeftTrackpadXPath});
+		valveIndexBindings.push_back({_internals->handLeftTrackpadYAction, handLeftTrackpadYPath});
+		valveIndexBindings.push_back({_internals->handLeftTrackpadTouchAction, handLeftTrackpadTouchPath});
+		valveIndexBindings.push_back({_internals->handLeftTrackpadPressAction, handLeftTrackpadPressPath});
+		valveIndexBindings.push_back({_internals->handLeftButtonSystemPressAction, handLeftButtonSystemPressPath});
+		valveIndexBindings.push_back({_internals->handLeftButtonUpperPressAction, handLeftButtonUpperPressPath});
+		valveIndexBindings.push_back({_internals->handLeftButtonLowerPressAction, handLeftButtonLowerPressPath});
+		valveIndexBindings.push_back({_internals->handLeftHapticsAction, handLeftHapticsPath});
 
-		valveIndexBindings.push_back({ _internals->handRightAimPoseAction, handRightAimPosePath });
-		valveIndexBindings.push_back({ _internals->handRightGripPoseAction, handRightGripPosePath });
-		valveIndexBindings.push_back({ _internals->handRightTriggerAction, handRightTriggerPath });
-		valveIndexBindings.push_back({ _internals->handRightGrabAction, handRightGrabPath });
-		valveIndexBindings.push_back({ _internals->handRightThumbstickXAction, handRightThumbstickXPath });
-		valveIndexBindings.push_back({ _internals->handRightThumbstickYAction, handRightThumbstickYPath });
-		valveIndexBindings.push_back({ _internals->handRightThumbstickPressAction, handRightThumbstickPressPath });
-		valveIndexBindings.push_back({ _internals->handRightTrackpadXAction, handRightTrackpadXPath });
-		valveIndexBindings.push_back({ _internals->handRightTrackpadYAction, handRightTrackpadYPath });
-		valveIndexBindings.push_back({ _internals->handRightTrackpadTouchAction, handRightTrackpadTouchPath });
-		valveIndexBindings.push_back({ _internals->handRightTrackpadPressAction, handRightTrackpadPressPath });
-		valveIndexBindings.push_back({ _internals->handRightButtonSystemPressAction, handRightButtonSystemPressPath });
-		valveIndexBindings.push_back({ _internals->handRightButtonUpperPressAction, handRightButtonUpperPressPath });
-		valveIndexBindings.push_back({ _internals->handRightButtonLowerPressAction, handRightButtonLowerPressPath });
-		valveIndexBindings.push_back({ _internals->handRightHapticsAction, handRightHapticsPath });
+		valveIndexBindings.push_back({_internals->handRightAimPoseAction, handRightAimPosePath});
+		valveIndexBindings.push_back({_internals->handRightGripPoseAction, handRightGripPosePath});
+		valveIndexBindings.push_back({_internals->handRightTriggerAction, handRightTriggerPath});
+		valveIndexBindings.push_back({_internals->handRightGrabAction, handRightGrabPath});
+		valveIndexBindings.push_back({_internals->handRightThumbstickXAction, handRightThumbstickXPath});
+		valveIndexBindings.push_back({_internals->handRightThumbstickYAction, handRightThumbstickYPath});
+		valveIndexBindings.push_back({_internals->handRightThumbstickPressAction, handRightThumbstickPressPath});
+		valveIndexBindings.push_back({_internals->handRightTrackpadXAction, handRightTrackpadXPath});
+		valveIndexBindings.push_back({_internals->handRightTrackpadYAction, handRightTrackpadYPath});
+		valveIndexBindings.push_back({_internals->handRightTrackpadTouchAction, handRightTrackpadTouchPath});
+		valveIndexBindings.push_back({_internals->handRightTrackpadPressAction, handRightTrackpadPressPath});
+		valveIndexBindings.push_back({_internals->handRightButtonSystemPressAction, handRightButtonSystemPressPath});
+		valveIndexBindings.push_back({_internals->handRightButtonUpperPressAction, handRightButtonUpperPressPath});
+		valveIndexBindings.push_back({_internals->handRightButtonLowerPressAction, handRightButtonLowerPressPath});
+		valveIndexBindings.push_back({_internals->handRightHapticsAction, handRightHapticsPath});
 
 		xrStringToPath(_internals->instance, "/interaction_profiles/valve/index_controller", &interactionProfilePath);
 
-		XrInteractionProfileSuggestedBinding suggestedValveIndexBindings{ XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING };
+		XrInteractionProfileSuggestedBinding suggestedValveIndexBindings {XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
 		suggestedValveIndexBindings.interactionProfile = interactionProfilePath;
 		suggestedValveIndexBindings.suggestedBindings = valveIndexBindings.data();
 		suggestedValveIndexBindings.countSuggestedBindings = valveIndexBindings.size();
-		if (!XR_SUCCEEDED(xrSuggestInteractionProfileBindings(_internals->instance, &suggestedValveIndexBindings)))
+		if(!XR_SUCCEEDED(xrSuggestInteractionProfileBindings(_internals->instance, &suggestedValveIndexBindings)))
 		{
 			RNDebug("failed action profile suggested valve index binding");
 		}
@@ -1472,7 +1458,7 @@ namespace RN
 		d3d12GraphicsBinding.type = XR_TYPE_GRAPHICS_BINDING_D3D12_KHR;
 		d3d12GraphicsBinding.next = nullptr;
 
-		if (Renderer::GetActiveRenderer()->GetDescriptor()->GetAPI()->IsEqual(RNCSTR("D3D12")))
+		if(Renderer::GetActiveRenderer()->GetDescriptor()->GetAPI()->IsEqual(RNCSTR("D3D12")))
 		{
 			D3D12Renderer *renderer = Renderer::GetActiveRenderer()->Downcast<D3D12Renderer>();
 
@@ -1490,7 +1476,7 @@ namespace RN
 			sessionCreateInfo.next = &d3d12GraphicsBinding;
 		}
 #endif
-		
+
 #ifdef XR_USE_GRAPHICS_API_METAL
 		XrGraphicsBindingMetalKHR metalGraphicsBinding;
 		metalGraphicsBinding.type = XR_TYPE_GRAPHICS_BINDING_METAL_KHR;
@@ -1501,7 +1487,7 @@ namespace RN
 			MetalRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<MetalRenderer>();
 
 			//Needs to be created somehow from the previously passed metalDevice
-			metalGraphicsBinding.commandQueue = (__bridge void*)renderer->GetCommandQueue();
+			metalGraphicsBinding.commandQueue = (__bridge void *)renderer->GetCommandQueue();
 
 			sessionCreateInfo.next = &metalGraphicsBinding;
 		}
@@ -1510,7 +1496,6 @@ namespace RN
 		uint32 numberOfConfigurationViews = 0;
 		if(!XR_SUCCEEDED(xrEnumerateViewConfigurationViews(_internals->instance, _internals->systemID, XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, 0, &numberOfConfigurationViews, nullptr)))
 		{
-
 		}
 
 		XrViewConfigurationView *configurationViews = new XrViewConfigurationView[numberOfConfigurationViews];
@@ -1522,7 +1507,6 @@ namespace RN
 
 		if(!XR_SUCCEEDED(xrEnumerateViewConfigurationViews(_internals->instance, _internals->systemID, XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, numberOfConfigurationViews, &numberOfConfigurationViews, configurationViews)))
 		{
-
 		}
 
 		for(uint32 i = 0; i < numberOfConfigurationViews; i++)
@@ -1577,10 +1561,10 @@ namespace RN
 		_internals->views[1].next = nullptr;
 
 		_mainLayer = new OpenXRCompositorLayer(VRCompositorLayer::Type::TypeProjectionView, descriptor, eyeRenderSize, true, this);
-		_mainLayer->_swapChain->_presentEvent = [this](){
+		_mainLayer->_swapChain->_presentEvent = [this]() {
 			if(_internals->session != XR_NULL_HANDLE && _isSessionRunning)
 			{
-				std::vector<XrCompositionLayerBaseHeader*> layers;
+				std::vector<XrCompositionLayerBaseHeader *> layers;
 
 				auto insertLayer = [&](OpenXRCompositorLayer *layer) {
 					if(!layer->_isActive) return;
@@ -1589,11 +1573,11 @@ namespace RN
 					layers.push_back(layer->_internals->layerBaseHeader);
 				};
 
-				_layersUnderlay->Enumerate<OpenXRCompositorLayer>([&](OpenXRCompositorLayer *layer, size_t index, bool &stop){
+				_layersUnderlay->Enumerate<OpenXRCompositorLayer>([&](OpenXRCompositorLayer *layer, size_t index, bool &stop) {
 					insertLayer(layer);
 				});
 				insertLayer(_mainLayer);
-				_layersOverlay->Enumerate<OpenXRCompositorLayer>([&](OpenXRCompositorLayer *layer, size_t index, bool &stop){
+				_layersOverlay->Enumerate<OpenXRCompositorLayer>([&](OpenXRCompositorLayer *layer, size_t index, bool &stop) {
 					insertLayer(layer);
 				});
 
@@ -1609,9 +1593,9 @@ namespace RN
 				if(_supportsLocalDimming)
 				{
 					xrLocalDimmingFrameEndInfoMETA.type = XR_TYPE_LOCAL_DIMMING_FRAME_END_INFO_META;
-					xrLocalDimmingFrameEndInfoMETA.localDimmingMode = _isLocalDimmingEnabled? XR_LOCAL_DIMMING_MODE_ON_META : XR_LOCAL_DIMMING_MODE_OFF_META;
+					xrLocalDimmingFrameEndInfoMETA.localDimmingMode = _isLocalDimmingEnabled ? XR_LOCAL_DIMMING_MODE_ON_META : XR_LOCAL_DIMMING_MODE_OFF_META;
 					xrLocalDimmingFrameEndInfoMETA.next = nullptr;
-					frameEndInfo.next = (void *) &xrLocalDimmingFrameEndInfoMETA;
+					frameEndInfo.next = (void *)&xrLocalDimmingFrameEndInfoMETA;
 				}
 
 				if(XR_FAILED(xrEndFrame(_internals->session, &frameEndInfo)))
@@ -1657,7 +1641,7 @@ namespace RN
 
 		_mainLayer->SetFixedFoveatedRenderingLevel(_fixedFoveatedRenderingLevel, _fixedFoveatedRenderingDynamic);
 
-		XrSessionActionSetsAttachInfo attachInfo{XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
+		XrSessionActionSetsAttachInfo attachInfo {XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
 		attachInfo.countActionSets = 1;
 		attachInfo.actionSets = &_internals->gameActionSet;
 		if(!XR_SUCCEEDED(xrAttachSessionActionSets(_internals->session, &attachInfo)))
@@ -1744,7 +1728,7 @@ namespace RN
 		if(!_internals->CreatePassthroughFB) return false; //Passthrough is not supported
 
 		XrPassthroughCreateInfoFB passthroughCreateInfo = {XR_TYPE_PASSTHROUGH_CREATE_INFO_FB};
-		passthroughCreateInfo.flags = startRunning? XR_PASSTHROUGH_IS_RUNNING_AT_CREATION_BIT_FB : 0;
+		passthroughCreateInfo.flags = startRunning ? XR_PASSTHROUGH_IS_RUNNING_AT_CREATION_BIT_FB : 0;
 
 		XrResult result = _internals->CreatePassthroughFB(_internals->session, &passthroughCreateInfo, &_internals->passthroughSessionFB);
 		if(XR_FAILED(result))
@@ -1759,11 +1743,13 @@ namespace RN
 	void OpenXRWindow::SetPassthroughActive(bool active)
 	{
 		if(!_internals->CreatePassthroughFB) return; //Passthrough is not supported
-		
+
 		if(_internals->passthroughSessionFB == XR_NULL_HANDLE) return;
-		
-		if(active) _internals->PassthroughStartFB(_internals->passthroughSessionFB);
-		else _internals->PassthroughPauseFB(_internals->passthroughSessionFB);
+
+		if(active)
+			_internals->PassthroughStartFB(_internals->passthroughSessionFB);
+		else
+			_internals->PassthroughPauseFB(_internals->passthroughSessionFB);
 	}
 
 	void OpenXRWindow::SetFixedFoveatedRenderingLevel(uint8 level, bool dynamic)
@@ -1871,12 +1857,12 @@ namespace RN
 			XrResult result = xrPollEvent(_internals->instance, &event);
 			if(result == XR_SUCCESS)
 			{
-				switch (event.type)
+				switch(event.type)
 				{
 					case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED:
 					{
 						const XrEventDataSessionStateChanged &sessionStateChangedEvent =
-								*reinterpret_cast<XrEventDataSessionStateChanged *>(&event);
+						*reinterpret_cast<XrEventDataSessionStateChanged *>(&event);
 						if(sessionStateChangedEvent.state == XR_SESSION_STATE_READY)
 						{
 							RNInfo("Session State: Ready");
@@ -1887,11 +1873,11 @@ namespace RN
 							xrBeginSession(_internals->session, &beginInfo);
 
 							_isSessionRunning = true;
-							_layersUnderlay->Enumerate<OpenXRCompositorLayer>([](OpenXRCompositorLayer *layer, size_t index, bool &stop){
+							_layersUnderlay->Enumerate<OpenXRCompositorLayer>([](OpenXRCompositorLayer *layer, size_t index, bool &stop) {
 								layer->SetSessionActive(true);
 							});
 							_mainLayer->SetSessionActive(true);
-							_layersOverlay->Enumerate<OpenXRCompositorLayer>([](OpenXRCompositorLayer *layer, size_t index, bool &stop){
+							_layersOverlay->Enumerate<OpenXRCompositorLayer>([](OpenXRCompositorLayer *layer, size_t index, bool &stop) {
 								layer->SetSessionActive(true);
 							});
 						}
@@ -1900,11 +1886,11 @@ namespace RN
 							RNInfo("Session State: Stopping");
 							_hasSynchronization = false;
 							_isSessionRunning = false;
-							_layersUnderlay->Enumerate<OpenXRCompositorLayer>([](OpenXRCompositorLayer *layer, size_t index, bool &stop){
+							_layersUnderlay->Enumerate<OpenXRCompositorLayer>([](OpenXRCompositorLayer *layer, size_t index, bool &stop) {
 								layer->SetSessionActive(false);
 							});
 							_mainLayer->SetSessionActive(false);
-							_layersOverlay->Enumerate<OpenXRCompositorLayer>([](OpenXRCompositorLayer *layer, size_t index, bool &stop){
+							_layersOverlay->Enumerate<OpenXRCompositorLayer>([](OpenXRCompositorLayer *layer, size_t index, bool &stop) {
 								layer->SetSessionActive(false);
 							});
 							xrEndSession(_internals->session);
@@ -1939,14 +1925,14 @@ namespace RN
 					case XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING:
 					{
 						const XrEventDataInstanceLossPending &instance_loss_pending_event =
-								*reinterpret_cast<XrEventDataInstanceLossPending *>(&event);
+						*reinterpret_cast<XrEventDataInstanceLossPending *>(&event);
 						// ...
 						break;
 					}
 					case XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING:
 					{
 						const XrEventDataReferenceSpaceChangePending &referenceSpaceChangePendingEvent =
-								*reinterpret_cast<XrEventDataReferenceSpaceChangePending *>(&event);
+						*reinterpret_cast<XrEventDataReferenceSpaceChangePending *>(&event);
 
 						//if(referenceSpaceChangePendingEvent.poseValid)
 						{
@@ -1955,7 +1941,7 @@ namespace RN
 
 #if RN_PLATFORM_ANDROID
 						_internals->_trackingSpaceCounterRotation = RN::Vector3(_hmdTrackingState.rotation.GetEulerAngle().x, 0.0f, 0.0f);
-                        RNInfo("Recenter: " << _internals->_trackingSpaceCounterRotation.GetEulerAngle().x);
+						RNInfo("Recenter: " << _internals->_trackingSpaceCounterRotation.GetEulerAngle().x);
 #endif
 
 						NotificationManager::GetSharedInstance()->PostNotification(kRNVRDidRecenter, nullptr);
@@ -2035,12 +2021,12 @@ namespace RN
 #if !RN_PLATFORM_ANDROID
 		XrPath leftHandUserPath;
 		xrStringToPath(_internals->instance, "/user/hand/left", &leftHandUserPath);
-		XrInteractionProfileState leftHandInteractionProfileState{XR_TYPE_INTERACTION_PROFILE_STATE};
+		XrInteractionProfileState leftHandInteractionProfileState {XR_TYPE_INTERACTION_PROFILE_STATE};
 		xrGetCurrentInteractionProfile(_internals->session, leftHandUserPath, &leftHandInteractionProfileState);
 
 		XrPath rightHandUserPath;
 		xrStringToPath(_internals->instance, "/user/hand/right", &rightHandUserPath);
-		XrInteractionProfileState rightHandInteractionProfileState{ XR_TYPE_INTERACTION_PROFILE_STATE };
+		XrInteractionProfileState rightHandInteractionProfileState {XR_TYPE_INTERACTION_PROFILE_STATE};
 		xrGetCurrentInteractionProfile(_internals->session, rightHandUserPath, &rightHandInteractionProfileState);
 
 		_controllerTrackingState[0].type = GetControllerTypeForInteractionProfile(_internals->instance, leftHandInteractionProfileState.interactionProfile);
@@ -2084,15 +2070,15 @@ namespace RN
 
 		if(!_hasInputFocus) return;
 
-		XrActiveActionSet activeActionSet{_internals->gameActionSet, XR_NULL_PATH};
-		XrActionsSyncInfo syncInfo{XR_TYPE_ACTIONS_SYNC_INFO};
+		XrActiveActionSet activeActionSet {_internals->gameActionSet, XR_NULL_PATH};
+		XrActionsSyncInfo syncInfo {XR_TYPE_ACTIONS_SYNC_INFO};
 		syncInfo.countActiveActionSets = 1;
 		syncInfo.activeActionSets = &activeActionSet;
 		xrSyncActions(_internals->session, &syncInfo);
 
 		//Left hand
-		XrActionStatePose handLeftState{XR_TYPE_ACTION_STATE_POSE};
-		XrActionStateGetInfo getHandLeftInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+		XrActionStatePose handLeftState {XR_TYPE_ACTION_STATE_POSE};
+		XrActionStateGetInfo getHandLeftInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 
 		getHandLeftInfo.action = _internals->handLeftAimPoseAction;
 		xrGetActionStatePose(_internals->session, &getHandLeftInfo, &handLeftState);
@@ -2159,75 +2145,75 @@ namespace RN
 				_controllerTrackingState[0].rotationGrip = Quaternion(gripLocation.pose.orientation.x, gripLocation.pose.orientation.y, gripLocation.pose.orientation.z, gripLocation.pose.orientation.w);
 			}
 
-			XrActionStateFloat handTriggerState{XR_TYPE_ACTION_STATE_FLOAT};
-			XrActionStateGetInfo handTriggerGetInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+			XrActionStateFloat handTriggerState {XR_TYPE_ACTION_STATE_FLOAT};
+			XrActionStateGetInfo handTriggerGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handTriggerGetInfo.action = _internals->handLeftTriggerAction;
 			xrGetActionStateFloat(_internals->session, &handTriggerGetInfo, &handTriggerState);
 			_controllerTrackingState[0].indexTrigger = handTriggerState.currentState;
 
-			XrActionStateFloat handGrabState{XR_TYPE_ACTION_STATE_FLOAT};
-			XrActionStateGetInfo handGrabGetInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+			XrActionStateFloat handGrabState {XR_TYPE_ACTION_STATE_FLOAT};
+			XrActionStateGetInfo handGrabGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handGrabGetInfo.action = _internals->handLeftGrabAction;
 			xrGetActionStateFloat(_internals->session, &handGrabGetInfo, &handGrabState);
 			_controllerTrackingState[0].handTrigger = handGrabState.currentState;
 
-			XrActionStateFloat handThumbstickXState{XR_TYPE_ACTION_STATE_FLOAT};
-			XrActionStateGetInfo handThumbstickXGetInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+			XrActionStateFloat handThumbstickXState {XR_TYPE_ACTION_STATE_FLOAT};
+			XrActionStateGetInfo handThumbstickXGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handThumbstickXGetInfo.action = _internals->handLeftThumbstickXAction;
 			xrGetActionStateFloat(_internals->session, &handThumbstickXGetInfo, &handThumbstickXState);
 			_controllerTrackingState[0].thumbstick.x = handThumbstickXState.currentState;
 
-			XrActionStateFloat handThumbstickYState{XR_TYPE_ACTION_STATE_FLOAT};
-			XrActionStateGetInfo handThumbstickYGetInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+			XrActionStateFloat handThumbstickYState {XR_TYPE_ACTION_STATE_FLOAT};
+			XrActionStateGetInfo handThumbstickYGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handThumbstickYGetInfo.action = _internals->handLeftThumbstickYAction;
 			xrGetActionStateFloat(_internals->session, &handThumbstickYGetInfo, &handThumbstickYState);
 			_controllerTrackingState[0].thumbstick.y = handThumbstickYState.currentState;
 
-			XrActionStateBoolean handThumbstickPressState{XR_TYPE_ACTION_STATE_BOOLEAN};
-			XrActionStateGetInfo handThumbstickPressGetInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+			XrActionStateBoolean handThumbstickPressState {XR_TYPE_ACTION_STATE_BOOLEAN};
+			XrActionStateGetInfo handThumbstickPressGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handThumbstickPressGetInfo.action = _internals->handLeftThumbstickPressAction;
 			xrGetActionStateBoolean(_internals->session, &handThumbstickPressGetInfo, &handThumbstickPressState);
 			_controllerTrackingState[0].button[VRControllerTrackingState::Button::Stick] = handThumbstickPressState.currentState;
 
-			XrActionStateFloat handTrackpadXState{ XR_TYPE_ACTION_STATE_FLOAT };
-			XrActionStateGetInfo handTrackpadXGetInfo{ XR_TYPE_ACTION_STATE_GET_INFO };
+			XrActionStateFloat handTrackpadXState {XR_TYPE_ACTION_STATE_FLOAT};
+			XrActionStateGetInfo handTrackpadXGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handTrackpadXGetInfo.action = _internals->handLeftTrackpadXAction;
 			xrGetActionStateFloat(_internals->session, &handTrackpadXGetInfo, &handTrackpadXState);
 			_controllerTrackingState[0].trackpad.x = handTrackpadXState.currentState;
 
-			XrActionStateFloat handTrackpadYState{ XR_TYPE_ACTION_STATE_FLOAT };
-			XrActionStateGetInfo handTrackpadYGetInfo{ XR_TYPE_ACTION_STATE_GET_INFO };
+			XrActionStateFloat handTrackpadYState {XR_TYPE_ACTION_STATE_FLOAT};
+			XrActionStateGetInfo handTrackpadYGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handTrackpadYGetInfo.action = _internals->handLeftTrackpadYAction;
 			xrGetActionStateFloat(_internals->session, &handTrackpadYGetInfo, &handTrackpadYState);
 			_controllerTrackingState[0].trackpad.y = handTrackpadYState.currentState;
 
-			XrActionStateBoolean handTrackpadTouchState{ XR_TYPE_ACTION_STATE_BOOLEAN };
-			XrActionStateGetInfo handTrackpadTouchGetInfo{ XR_TYPE_ACTION_STATE_GET_INFO };
+			XrActionStateBoolean handTrackpadTouchState {XR_TYPE_ACTION_STATE_BOOLEAN};
+			XrActionStateGetInfo handTrackpadTouchGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handTrackpadTouchGetInfo.action = _internals->handLeftTrackpadTouchAction;
 			xrGetActionStateBoolean(_internals->session, &handTrackpadTouchGetInfo, &handTrackpadTouchState);
 			_controllerTrackingState[0].button[VRControllerTrackingState::Button::PadTouched] = handTrackpadTouchState.currentState;
 
-			XrActionStateBoolean handTrackpadPressState{ XR_TYPE_ACTION_STATE_BOOLEAN };
-			XrActionStateGetInfo handTrackpadPressGetInfo{ XR_TYPE_ACTION_STATE_GET_INFO };
+			XrActionStateBoolean handTrackpadPressState {XR_TYPE_ACTION_STATE_BOOLEAN};
+			XrActionStateGetInfo handTrackpadPressGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handTrackpadPressGetInfo.action = _internals->handLeftTrackpadPressAction;
 			xrGetActionStateBoolean(_internals->session, &handTrackpadPressGetInfo, &handTrackpadPressState);
 			_controllerTrackingState[0].button[VRControllerTrackingState::Button::Pad] = handTrackpadPressState.currentState;
 
-			XrActionStateBoolean handButtonUpperPressState{XR_TYPE_ACTION_STATE_BOOLEAN};
-			XrActionStateGetInfo handButtonUpperPressGetInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+			XrActionStateBoolean handButtonUpperPressState {XR_TYPE_ACTION_STATE_BOOLEAN};
+			XrActionStateGetInfo handButtonUpperPressGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handButtonUpperPressGetInfo.action = _internals->handLeftButtonUpperPressAction;
 			xrGetActionStateBoolean(_internals->session, &handButtonUpperPressGetInfo, &handButtonUpperPressState);
 			_controllerTrackingState[0].button[VRControllerTrackingState::Button::BY] = handButtonUpperPressState.currentState;
 
-			XrActionStateBoolean handButtonSystemPressState{XR_TYPE_ACTION_STATE_BOOLEAN};
-			XrActionStateGetInfo handButtonSystemPressGetInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+			XrActionStateBoolean handButtonSystemPressState {XR_TYPE_ACTION_STATE_BOOLEAN};
+			XrActionStateGetInfo handButtonSystemPressGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handButtonSystemPressGetInfo.action = _internals->handLeftButtonSystemPressAction;
 			xrGetActionStateBoolean(_internals->session, &handButtonSystemPressGetInfo, &handButtonSystemPressState);
 			//This is needed because the pressing the Y button will trigger both, the upper button action and the system button action on quest
 			_controllerTrackingState[0].button[VRControllerTrackingState::Button::Start] = !_controllerTrackingState[0].button[VRControllerTrackingState::Button::BY] && handButtonSystemPressState.currentState;
 
-			XrActionStateBoolean handButtonLowerPressState{XR_TYPE_ACTION_STATE_BOOLEAN};
-			XrActionStateGetInfo handButtonLowerPressGetInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+			XrActionStateBoolean handButtonLowerPressState {XR_TYPE_ACTION_STATE_BOOLEAN};
+			XrActionStateGetInfo handButtonLowerPressGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handButtonLowerPressGetInfo.action = _internals->handLeftButtonLowerPressAction;
 			xrGetActionStateBoolean(_internals->session, &handButtonLowerPressGetInfo, &handButtonLowerPressState);
 			_controllerTrackingState[0].button[VRControllerTrackingState::Button::AX] = handButtonLowerPressState.currentState;
@@ -2236,21 +2222,21 @@ namespace RN
 			{
 				float strength = _haptics[0].samples[_currentHapticsIndex[0]++];
 
-				XrHapticActionInfo hapticActionInfo{XR_TYPE_HAPTIC_ACTION_INFO};
+				XrHapticActionInfo hapticActionInfo {XR_TYPE_HAPTIC_ACTION_INFO};
 				hapticActionInfo.action = _internals->handLeftHapticsAction;
 				hapticActionInfo.subactionPath = XR_NULL_PATH;
-				XrHapticVibration hapticVibration{XR_TYPE_HAPTIC_VIBRATION};
+				XrHapticVibration hapticVibration {XR_TYPE_HAPTIC_VIBRATION};
 				hapticVibration.duration = delta * 1000000000.0; //nanoseconds
 				hapticVibration.frequency = XR_FREQUENCY_UNSPECIFIED;
 				hapticVibration.amplitude = strength;
-				xrApplyHapticFeedback(_internals->session, &hapticActionInfo, (XrHapticBaseHeader *) &hapticVibration);
+				xrApplyHapticFeedback(_internals->session, &hapticActionInfo, (XrHapticBaseHeader *)&hapticVibration);
 				_hapticsStopped[0] = false;
 			}
 		}
 
 		//Right hand
-		XrActionStatePose handRightState{XR_TYPE_ACTION_STATE_POSE};
-		XrActionStateGetInfo getHandRightInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+		XrActionStatePose handRightState {XR_TYPE_ACTION_STATE_POSE};
+		XrActionStateGetInfo getHandRightInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 
 		getHandRightInfo.action = _internals->handRightAimPoseAction;
 		xrGetActionStatePose(_internals->session, &getHandRightInfo, &handRightState);
@@ -2318,74 +2304,74 @@ namespace RN
 				_controllerTrackingState[1].rotationGrip = Quaternion(gripLocation.pose.orientation.x, gripLocation.pose.orientation.y, gripLocation.pose.orientation.z, gripLocation.pose.orientation.w);
 			}
 
-			XrActionStateFloat handTriggerState{XR_TYPE_ACTION_STATE_FLOAT};
-			XrActionStateGetInfo handTriggerGetInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+			XrActionStateFloat handTriggerState {XR_TYPE_ACTION_STATE_FLOAT};
+			XrActionStateGetInfo handTriggerGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handTriggerGetInfo.action = _internals->handRightTriggerAction;
 			xrGetActionStateFloat(_internals->session, &handTriggerGetInfo, &handTriggerState);
 			_controllerTrackingState[1].indexTrigger = handTriggerState.currentState;
 
-			XrActionStateFloat handGrabState{XR_TYPE_ACTION_STATE_FLOAT};
-			XrActionStateGetInfo handGrabGetInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+			XrActionStateFloat handGrabState {XR_TYPE_ACTION_STATE_FLOAT};
+			XrActionStateGetInfo handGrabGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handGrabGetInfo.action = _internals->handRightGrabAction;
 			xrGetActionStateFloat(_internals->session, &handGrabGetInfo, &handGrabState);
 			_controllerTrackingState[1].handTrigger = handGrabState.currentState;
 
-			XrActionStateFloat handThumbstickXState{XR_TYPE_ACTION_STATE_FLOAT};
-			XrActionStateGetInfo handThumbstickXGetInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+			XrActionStateFloat handThumbstickXState {XR_TYPE_ACTION_STATE_FLOAT};
+			XrActionStateGetInfo handThumbstickXGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handThumbstickXGetInfo.action = _internals->handRightThumbstickXAction;
 			xrGetActionStateFloat(_internals->session, &handThumbstickXGetInfo, &handThumbstickXState);
 			_controllerTrackingState[1].thumbstick.x = handThumbstickXState.currentState;
 
-			XrActionStateFloat handThumbstickYState{XR_TYPE_ACTION_STATE_FLOAT};
-			XrActionStateGetInfo handThumbstickYGetInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+			XrActionStateFloat handThumbstickYState {XR_TYPE_ACTION_STATE_FLOAT};
+			XrActionStateGetInfo handThumbstickYGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handThumbstickYGetInfo.action = _internals->handRightThumbstickYAction;
 			xrGetActionStateFloat(_internals->session, &handThumbstickYGetInfo, &handThumbstickYState);
 			_controllerTrackingState[1].thumbstick.y = handThumbstickYState.currentState;
 
-			XrActionStateBoolean handThumbstickPressState{XR_TYPE_ACTION_STATE_BOOLEAN};
-			XrActionStateGetInfo handThumbstickPressGetInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+			XrActionStateBoolean handThumbstickPressState {XR_TYPE_ACTION_STATE_BOOLEAN};
+			XrActionStateGetInfo handThumbstickPressGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handThumbstickPressGetInfo.action = _internals->handRightThumbstickPressAction;
 			xrGetActionStateBoolean(_internals->session, &handThumbstickPressGetInfo, &handThumbstickPressState);
 			_controllerTrackingState[1].button[VRControllerTrackingState::Button::Stick] = handThumbstickPressState.currentState;
 
-			XrActionStateFloat handTrackpadXState{ XR_TYPE_ACTION_STATE_FLOAT };
-			XrActionStateGetInfo handTrackpadXGetInfo{ XR_TYPE_ACTION_STATE_GET_INFO };
+			XrActionStateFloat handTrackpadXState {XR_TYPE_ACTION_STATE_FLOAT};
+			XrActionStateGetInfo handTrackpadXGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handTrackpadXGetInfo.action = _internals->handRightTrackpadXAction;
 			xrGetActionStateFloat(_internals->session, &handTrackpadXGetInfo, &handTrackpadXState);
 			_controllerTrackingState[1].trackpad.x = handTrackpadXState.currentState;
 
-			XrActionStateFloat handTrackpadYState{ XR_TYPE_ACTION_STATE_FLOAT };
-			XrActionStateGetInfo handTrackpadYGetInfo{ XR_TYPE_ACTION_STATE_GET_INFO };
+			XrActionStateFloat handTrackpadYState {XR_TYPE_ACTION_STATE_FLOAT};
+			XrActionStateGetInfo handTrackpadYGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handTrackpadYGetInfo.action = _internals->handRightTrackpadYAction;
 			xrGetActionStateFloat(_internals->session, &handTrackpadYGetInfo, &handTrackpadYState);
 			_controllerTrackingState[1].trackpad.y = handTrackpadYState.currentState;
 
-			XrActionStateBoolean handTrackpadTouchState{ XR_TYPE_ACTION_STATE_BOOLEAN };
-			XrActionStateGetInfo handTrackpadTouchGetInfo{ XR_TYPE_ACTION_STATE_GET_INFO };
+			XrActionStateBoolean handTrackpadTouchState {XR_TYPE_ACTION_STATE_BOOLEAN};
+			XrActionStateGetInfo handTrackpadTouchGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handTrackpadTouchGetInfo.action = _internals->handRightTrackpadTouchAction;
 			xrGetActionStateBoolean(_internals->session, &handTrackpadTouchGetInfo, &handTrackpadTouchState);
 			_controllerTrackingState[1].button[VRControllerTrackingState::Button::PadTouched] = handTrackpadTouchState.currentState;
 
-			XrActionStateBoolean handTrackpadPressState{ XR_TYPE_ACTION_STATE_BOOLEAN };
-			XrActionStateGetInfo handTrackpadPressGetInfo{ XR_TYPE_ACTION_STATE_GET_INFO };
+			XrActionStateBoolean handTrackpadPressState {XR_TYPE_ACTION_STATE_BOOLEAN};
+			XrActionStateGetInfo handTrackpadPressGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handTrackpadPressGetInfo.action = _internals->handRightTrackpadPressAction;
 			xrGetActionStateBoolean(_internals->session, &handTrackpadPressGetInfo, &handTrackpadPressState);
 			_controllerTrackingState[1].button[VRControllerTrackingState::Button::Pad] = handTrackpadPressState.currentState;
 
-			XrActionStateBoolean handButtonSystemPressState{XR_TYPE_ACTION_STATE_BOOLEAN};
-			XrActionStateGetInfo handButtonSystemPressGetInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+			XrActionStateBoolean handButtonSystemPressState {XR_TYPE_ACTION_STATE_BOOLEAN};
+			XrActionStateGetInfo handButtonSystemPressGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handButtonSystemPressGetInfo.action = _internals->handRightButtonSystemPressAction;
 			xrGetActionStateBoolean(_internals->session, &handButtonSystemPressGetInfo, &handButtonSystemPressState);
 			_controllerTrackingState[1].button[VRControllerTrackingState::Button::Start] = handButtonSystemPressState.currentState;
 
-			XrActionStateBoolean handButtonUpperPressState{XR_TYPE_ACTION_STATE_BOOLEAN};
-			XrActionStateGetInfo handButtonUpperPressGetInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+			XrActionStateBoolean handButtonUpperPressState {XR_TYPE_ACTION_STATE_BOOLEAN};
+			XrActionStateGetInfo handButtonUpperPressGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handButtonUpperPressGetInfo.action = _internals->handRightButtonUpperPressAction;
 			xrGetActionStateBoolean(_internals->session, &handButtonUpperPressGetInfo, &handButtonUpperPressState);
 			_controllerTrackingState[1].button[VRControllerTrackingState::Button::BY] = handButtonUpperPressState.currentState;
 
-			XrActionStateBoolean handButtonLowerPressState{XR_TYPE_ACTION_STATE_BOOLEAN};
-			XrActionStateGetInfo handButtonLowerPressGetInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+			XrActionStateBoolean handButtonLowerPressState {XR_TYPE_ACTION_STATE_BOOLEAN};
+			XrActionStateGetInfo handButtonLowerPressGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handButtonLowerPressGetInfo.action = _internals->handRightButtonLowerPressAction;
 			xrGetActionStateBoolean(_internals->session, &handButtonLowerPressGetInfo, &handButtonLowerPressState);
 			_controllerTrackingState[1].button[VRControllerTrackingState::Button::AX] = handButtonLowerPressState.currentState;
@@ -2394,19 +2380,19 @@ namespace RN
 			{
 				float strength = _haptics[1].samples[_currentHapticsIndex[1]++];
 
-				XrHapticActionInfo hapticActionInfo{XR_TYPE_HAPTIC_ACTION_INFO};
+				XrHapticActionInfo hapticActionInfo {XR_TYPE_HAPTIC_ACTION_INFO};
 				hapticActionInfo.action = _internals->handRightHapticsAction;
 				hapticActionInfo.subactionPath = XR_NULL_PATH;
-				XrHapticVibration hapticVibration{XR_TYPE_HAPTIC_VIBRATION};
+				XrHapticVibration hapticVibration {XR_TYPE_HAPTIC_VIBRATION};
 				hapticVibration.duration = delta * 1000000000.0; //nanoseconds
 				hapticVibration.frequency = XR_FREQUENCY_UNSPECIFIED;
 				hapticVibration.amplitude = strength;
-				xrApplyHapticFeedback(_internals->session, &hapticActionInfo,  (XrHapticBaseHeader *) &hapticVibration);
+				xrApplyHapticFeedback(_internals->session, &hapticActionInfo, (XrHapticBaseHeader *)&hapticVibration);
 				_hapticsStopped[1] = false;
 			}
 		}
 
-/*		ovrInputCapabilityHeader capsHeader;
+		/*		ovrInputCapabilityHeader capsHeader;
 		int i = 0;
 		while(vrapi_EnumerateInputDevices(static_cast<ovrMobile*>(_session), i, &capsHeader) >= 0)
 		{
@@ -2542,12 +2528,12 @@ namespace RN
 			{
 				RN_ASSERT(false, "Failed fetching metal graphics requirements");
 			}
-			
+
 			//Needs to be passed into the renderer somehow
 			//graphicsRequirements.metalDevice
 		}
 #endif
-		
+
 		return nullptr;
 	}
 
@@ -2597,7 +2583,7 @@ namespace RN
 				stop = true;
 			}
 		});
-		if (removeIndex != -1) result->RemoveObjectAtIndex(removeIndex);
+		if(removeIndex != -1) result->RemoveObjectAtIndex(removeIndex);
 		return result;
 #else
 		return nullptr;
@@ -2621,13 +2607,17 @@ namespace RN
 		RN_ASSERT(!_layersUnderlay->ContainsObject(layer) && !_layersOverlay->ContainsObject(layer), "VRCompositorLayer can only be added once!");
 		if(isUnderlay)
 		{
-			if(lowest) _layersUnderlay->InsertObjectAtIndex(layer, 0);
-			else _layersUnderlay->AddObject(layer);
+			if(lowest)
+				_layersUnderlay->InsertObjectAtIndex(layer, 0);
+			else
+				_layersUnderlay->AddObject(layer);
 		}
 		else
 		{
-			if(lowest) _layersOverlay->InsertObjectAtIndex(layer, 0);
-			else _layersOverlay->AddObject(layer);
+			if(lowest)
+				_layersOverlay->InsertObjectAtIndex(layer, 0);
+			else
+				_layersOverlay->AddObject(layer);
 		}
 	}
 
@@ -2636,5 +2626,4 @@ namespace RN
 		_layersUnderlay->RemoveObject(layer);
 		_layersOverlay->RemoveObject(layer);
 	}
-}
-
+} // namespace RN

@@ -7,34 +7,36 @@
 //
 
 #include "RNAudioAsset.h"
-#include "RNAssetManager.h"
 #include "../Debug/RNLogger.h"
+#include "RNAssetManager.h"
 
 namespace RN
 {
 	RNDefineMeta(AudioDecoder, Object)
 	RNDefineMeta(AudioAsset, Asset)
-	
-	AudioAsset::AudioAsset() : _type(Type::Static), _readPosition(0), _writePosition(0)
-	{
 
+	AudioAsset::AudioAsset() :
+		_type(Type::Static), _readPosition(0), _writePosition(0)
+	{
 	}
 
-	AudioAsset::AudioAsset(Type type, size_t size, int bytesPerSample, int sampleRate, int channels) : _type(type), _bytesPerSample(bytesPerSample), _sampleRate(sampleRate), _channels(channels), _readPosition(0), _writePosition(0), _bufferedSize(0)
+	AudioAsset::AudioAsset(Type type, size_t size, int bytesPerSample, int sampleRate, int channels) :
+		_type(type), _bytesPerSample(bytesPerSample), _sampleRate(sampleRate), _channels(channels), _readPosition(0), _writePosition(0), _bufferedSize(0)
+	{
+		_data = Data::WithBytes(nullptr, size)->Retain();
+	}
+
+	AudioAsset::AudioAsset(AudioDecoder *decoder, size_t size, int bytesPerSample, int sampleRate, int channels) :
+		_type(Type::Decoder), _bytesPerSample(bytesPerSample), _sampleRate(sampleRate), _channels(channels), _readPosition(0), _writePosition(0), _bufferedSize(0), _decoder(decoder)
 	{
 		_data = Data::WithBytes(nullptr, size)->Retain();
 	}
 
-	AudioAsset::AudioAsset(AudioDecoder *decoder, size_t size, int bytesPerSample, int sampleRate, int channels) : _type(Type::Decoder), _bytesPerSample(bytesPerSample), _sampleRate(sampleRate), _channels(channels), _readPosition(0), _writePosition(0), _bufferedSize(0), _decoder(decoder)
-	{
-		_data = Data::WithBytes(nullptr, size)->Retain();
-	}
-	
 	AudioAsset::~AudioAsset()
 	{
 		SafeRelease(_data);
 	}
-	
+
 	void AudioAsset::SetRawAudioData(Data *data, int bytesPerSample, int sampleRate, int channels)
 	{
 		_data = data->Retain();
@@ -56,7 +58,7 @@ namespace RN
 			_data->ReplaceBytes(static_cast<const uint8 *>(bytes) + offset, Range(_writePosition, fittingLength));
 			offset += fittingLength;
 			_writePosition.fetch_add(fittingLength);
-			
+
 			//Do the modulo atomically by trying it until the values match
 			uint32 oldValue = _writePosition;
 			uint32 newValue = _writePosition % _data->GetLength();
@@ -78,7 +80,7 @@ namespace RN
 		{
 			_readPosition.fetch_add(size);
 			_bufferedSize.fetch_sub(size);
-			
+
 			//Do the modulo atomically by trying it until the values match
 			uint32 oldValue = _readPosition;
 			uint32 newValue = _readPosition % _data->GetLength();
@@ -98,7 +100,7 @@ namespace RN
 			_data->GetBytesInRange(data, Range(_readPosition, fittingLength));
 			_readPosition.fetch_add(fittingLength);
 			data += fittingLength;
-			
+
 			//Do the modulo atomically by trying it until the values match
 			uint32 oldValue = _readPosition;
 			uint32 newValue = _readPosition % _data->GetLength();
@@ -115,7 +117,7 @@ namespace RN
 	bool AudioAsset::Decode()
 	{
 		RN_ASSERT(_type == Type::Decoder, "Decode can only be called on an AudioAsset initialized as Decoder.");
-		
+
 		int32 remainingLength = _data->GetLength() - GetBufferedSize();
 		while(remainingLength > _decoder->_frameSize)
 		{
@@ -124,17 +126,17 @@ namespace RN
 			{
 				return false;
 			}
-			
+
 			remainingLength = _data->GetLength() - GetBufferedSize();
 		}
-		
+
 		return true;
 	}
 
 	void AudioAsset::Seek(float time)
 	{
 		RN_ASSERT(_type == Type::Decoder, "Seek can only be called on an AudioAsset initialized as Decoder.");
-		
+
 		_decoder->Seek(time);
 	}
 
@@ -150,15 +152,15 @@ namespace RN
 		return coordinator->GetFutureAssetWithName<AudioAsset>(name, settings);
 	}
 
-	AudioAsset* AudioAsset::WithRingbuffer(size_t size, int bytesPerSample, int sampleRate, int channels)
+	AudioAsset *AudioAsset::WithRingbuffer(size_t size, int bytesPerSample, int sampleRate, int channels)
 	{
 		AudioAsset *asset = new AudioAsset(Type::Ringbuffer, size, bytesPerSample, sampleRate, channels);
 		return asset->Autorelease();
 	}
 
-	AudioAsset* AudioAsset::WithDecoder(AudioDecoder *decoder, size_t bufferSize, int bytesPerSample, int sampleRate, int channels)
+	AudioAsset *AudioAsset::WithDecoder(AudioDecoder *decoder, size_t bufferSize, int bytesPerSample, int sampleRate, int channels)
 	{
 		AudioAsset *asset = new AudioAsset(decoder, bufferSize, bytesPerSample, sampleRate, channels);
 		return asset->Autorelease();
 	}
-}
+} // namespace RN

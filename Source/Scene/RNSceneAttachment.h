@@ -36,7 +36,7 @@ namespace RN
 
 		__RNDeclareMetaInternal(SceneAttachment)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_SCENEATTACHMENT_H__ */

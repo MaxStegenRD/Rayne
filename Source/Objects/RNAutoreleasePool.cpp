@@ -16,7 +16,7 @@ namespace RN
 {
 	static ThreadLocalStorage<AutoreleasePool *> _localPools;
 
-	
+
 	AutoreleasePool::AutoreleasePool() :
 		_parent(AutoreleasePool::GetCurrentPool()),
 		_owner(std::this_thread::get_id())
@@ -24,11 +24,11 @@ namespace RN
 		_objects.reserve(kRNAutoreleasePoolInitialGrowth);
 		_localPools.SetValue(this);
 	}
-	
+
 	AutoreleasePool::~AutoreleasePool()
 	{
 		RN_ASSERT(this == GetCurrentPool(), "Popping pool other than the topmost pool is forbidden!");
-		
+
 		Drain();
 		_localPools.SetValue(_parent);
 	}
@@ -49,11 +49,11 @@ namespace RN
 #endif
 
 		_objects.push_back(object);
-		
+
 		if(_objects.size() == _objects.capacity())
 			_objects.reserve(static_cast<size_t>(_objects.size() + (_objects.size() * kRNAutoreleasePoolGrowthFactor)));
 	}
-	
+
 	void AutoreleasePool::Drain()
 	{
 		for(size_t i = 0; i < _objects.size(); i++)
@@ -68,9 +68,9 @@ namespace RN
 		_objects = std::vector<const Object *>();
 		_objects.reserve(kRNAutoreleasePoolInitialGrowth);
 	}
-	
+
 	AutoreleasePool *AutoreleasePool::GetCurrentPool()
 	{
 		return _localPools.GetValue();
 	}
-}
+} // namespace RN

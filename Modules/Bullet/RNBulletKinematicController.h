@@ -21,44 +21,44 @@ namespace RN
 	class BulletKinematicController : public BulletCollisionObject
 	{
 	public:
-		BTAPI BulletKinematicController(BulletShape *shape, float stepHeight, BulletShape *ghostShape=nullptr);
+		BTAPI BulletKinematicController(BulletShape *shape, float stepHeight, BulletShape *ghostShape = nullptr);
 		BTAPI ~BulletKinematicController() override;
-			
+
 		BTAPI void SetWalkDirection(const Vector3 &direction);
 		BTAPI void SetFallSpeed(float speed);
 		BTAPI void SetJumpSpeed(float speed);
 		BTAPI void SetMaxJumpHeight(float maxHeight);
 		BTAPI void SetMaxSlope(float maxSlope);
 		BTAPI void SetGravity(float gravity);
-			
+
 		BTAPI void Update(float delta) override;
-			
+
 		BTAPI bool IsOnGround();
 		BTAPI void Jump();
-        BTAPI bool IsBlocked();
-			
+		BTAPI bool IsBlocked();
+
 		BTAPI btCollisionObject *GetBulletCollisionObject() const override;
-			
+
 	protected:
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
 		void UpdateFromMaterial(BulletMaterial *material) override;
-			
+
 		void InsertIntoWorld(BulletWorld *world) override;
 		void RemoveFromWorld(BulletWorld *world) override;
-			
+
 		BulletShape *_shape;
 		BulletShape *_ghostShape;
-			
+
 		btPairCachingGhostObject *_ghost;
 		btKinematicCharacterController *_controller;
-        
-        RN::Vector3 _intendedMovement;
-        bool _isMoving;
-        bool _isBlocked;
-        bool _isFirstUpdate;
-			
+
+		RN::Vector3 _intendedMovement;
+		bool _isMoving;
+		bool _isBlocked;
+		bool _isFirstUpdate;
+
 		RNDeclareMetaAPI(BulletKinematicController, BTAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_BULLETKINEMATICCONTROLLER_H_) */

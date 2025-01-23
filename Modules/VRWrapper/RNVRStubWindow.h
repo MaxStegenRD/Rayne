@@ -17,11 +17,11 @@ namespace RN
 	class VRStubWindow : public VRWindow
 	{
 	public:
-		RNVRAPI VRStubWindow() { }
-		RNVRAPI ~VRStubWindow() { }
-		
-		RNVRAPI void StartRendering(const SwapChainDescriptor &descriptor = SwapChainDescriptor(), float eyeResolutionFactor = 1.0f) final { }
-		RNVRAPI void StopRendering() final { }
+		RNVRAPI VRStubWindow() {}
+		RNVRAPI ~VRStubWindow() {}
+
+		RNVRAPI void StartRendering(const SwapChainDescriptor &descriptor = SwapChainDescriptor(), float eyeResolutionFactor = 1.0f) final {}
+		RNVRAPI void StopRendering() final {}
 		RNVRAPI bool IsRendering() const final { return true; }
 
 		RNVRAPI Vector2 GetSize() const final { return Vector2(); }
@@ -37,14 +37,14 @@ namespace RN
 		RNVRAPI const VRControllerTrackingState &GetControllerTrackingState(uint8 index) const final { return VRControllerTrackingState(); }
 		RNVRAPI const VRControllerTrackingState &GetTrackerTrackingState(uint8 index) const final { return VRControllerTrackingState(); }
 		RNVRAPI void SubmitControllerHaptics(uint8 index, VRControllerHaptics &haptics) final {}
-		
+
 		RNVRAPI RenderingDevice *GetOutputDevice(RendererDescriptor *descriptor) const final { return nullptr; }
 
 		RNDeclareMetaAPI(VRStubWindow, RNVRAPI)
 	};
 
 	RNDefineMeta(VRStubWindow, VRWindow)
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_VRSTUBWINDOW_H_ */

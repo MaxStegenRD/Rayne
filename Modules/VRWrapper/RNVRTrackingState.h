@@ -28,7 +28,8 @@ namespace RN
 			Disconnected
 		};
 
-		VRHMDTrackingState() : type(Type::SixDegreesOfFreedom), mode(Paused) {}
+		VRHMDTrackingState() :
+			type(Type::SixDegreesOfFreedom), mode(Paused) {}
 
 		Type type;
 
@@ -43,7 +44,8 @@ namespace RN
 
 	struct VRHandTrackingState
 	{
-		VRHandTrackingState() : pinchStrength{0.0f, 0.0f, 0.0f, 0.0f}, active(false), tracking(false), confidence(0), menuButton(false) {}
+		VRHandTrackingState() :
+			pinchStrength {0.0f, 0.0f, 0.0f, 0.0f}, active(false), tracking(false), confidence(0), menuButton(false) {}
 
 		enum PinchFinger
 		{
@@ -89,7 +91,8 @@ namespace RN
 			BUTTON_COUNT
 		};
 
-		VRControllerTrackingState() : type(Type::None), hasHaptics(true), hapticsSampleLength(0.0), hapticsMaxSamples(0), active(false), tracking(false), controllerID(-1), indexTrigger(0.0f), handTrigger(0.0f), button{false, false, false, false, false, false} {}
+		VRControllerTrackingState() :
+			type(Type::None), hasHaptics(true), hapticsSampleLength(0.0), hapticsMaxSamples(0), active(false), tracking(false), controllerID(-1), indexTrigger(0.0f), handTrigger(0.0f), button {false, false, false, false, false, false} {}
 
 		Type type;
 		bool hasHaptics;
@@ -119,7 +122,8 @@ namespace RN
 
 	struct VRControllerHaptics
 	{
-		VRControllerHaptics() : sampleCount(0) {}
+		VRControllerHaptics() :
+			sampleCount(0) {}
 		void Push(float sample)
 		{
 			samples[sampleCount++] = sample;
@@ -128,7 +132,7 @@ namespace RN
 		float samples[256];
 		uint8 sampleCount;
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_VRTRACKINGSTATE_H_ */

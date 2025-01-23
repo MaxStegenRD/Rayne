@@ -11,8 +11,8 @@
 
 #include "../Base/RNBase.h"
 #include "../Objects/RNObject.h"
-#include "RNWorkSource.h"
 #include "RNThread.h"
+#include "RNWorkSource.h"
 
 namespace RN
 {
@@ -56,7 +56,6 @@ namespace RN
 			std::future<resultType> result(promise.get_future());
 
 			Perform([promise = std::move(promise), f = std::move(f)]() mutable {
-
 				try
 				{
 					promise.set_value(f());
@@ -65,7 +64,6 @@ namespace RN
 				{
 					promise.set_exception(std::current_exception());
 				}
-
 			});
 
 			return result;
@@ -80,7 +78,6 @@ namespace RN
 			std::future<resultType> result(promise.get_future());
 
 			Perform([promise = std::move(promise), f = std::move(f)]() mutable {
-
 				try
 				{
 					promise.set_value(f());
@@ -89,7 +86,6 @@ namespace RN
 				{
 					promise.set_exception(std::current_exception());
 				}
-
 			});
 
 			return result;
@@ -196,6 +192,6 @@ namespace RN
 	};
 
 	RNObjectClass(WorkQueue)
-}
+} // namespace RN
 
 #endif /* __RAYNE_WORKQUEUE_H__ */

@@ -11,9 +11,9 @@
 #define __RAYNE_SHADER_H_
 
 #include "../Base/RNBase.h"
+#include "../Objects/RNArray.h"
 #include "../Objects/RNObject.h"
 #include "../Objects/RNString.h"
-#include "../Objects/RNArray.h"
 #include "RNRendererTypes.h"
 
 namespace RN
@@ -48,7 +48,7 @@ namespace RN
 			RNAPI bool HasValue(const char *key, const char *value);
 			RNAPI const String *GetValue(const char *key) const;
 			RNAPI size_t GetCount() const;
-			RNAPI void Enumerate(const std::function<void (const std::string &value, const std::string &key, bool &stop)>& callback) const;
+			RNAPI void Enumerate(const std::function<void(const std::string &value, const std::string &key, bool &stop)> &callback) const;
 
 		private:
 			RNAPI Options();
@@ -115,12 +115,12 @@ namespace RN
 				PointLights,
 				SpotLights,
 				BoneMatrices,
-				
+
 				//TODO: Hide these behind a define...
 				//Used as an optimization for GRAB, will usually be a waste of memory though...
 				CustomMatrix1,
 				CustomMatrix2,
-				
+
 				//Used as an optimization for UI rendering
 				UIClippingRect,
 				UIOffset,
@@ -171,7 +171,7 @@ namespace RN
 
 			uint32 _index;
 			String *_name;
-			
+
 			__RNDeclareMetaInternal(Argument)
 		};
 
@@ -200,7 +200,7 @@ namespace RN
 			Type _type;
 
 			size_t _maxInstanceCount; //If this buffer contains per instance uniform data, it just contains an array of a struct, this is the number of elements of that array. 1 otherwise. 0 if this a storage buffer as they don't have any tight size limits and can be indexed more freely.
-			
+
 			__RNDeclareMetaInternal(ArgumentBuffer)
 		};
 
@@ -236,7 +236,7 @@ namespace RN
 			RNAPI ArgumentSampler(const ArgumentSampler *other);
 			RNAPI ~ArgumentSampler();
 
-			bool operator== (const ArgumentSampler &other) const
+			bool operator==(const ArgumentSampler &other) const
 			{
 				return (_filter == other._filter && _wrapMode == other._wrapMode && _anisotropy == other._anisotropy && _comparisonFunction == other._comparisonFunction);
 			}
@@ -275,7 +275,7 @@ namespace RN
 
 		private:
 			uint8 _materialTextureIndex;
-			
+
 			__RNDeclareMetaInternal(ArgumentTexture)
 		};
 
@@ -342,7 +342,7 @@ namespace RN
 
 		__RNDeclareMetaInternal(Shader)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_SHADER_H_ */

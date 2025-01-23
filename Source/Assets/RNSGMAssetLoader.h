@@ -30,7 +30,7 @@ namespace RN
 
 		__RNDeclareMetaInternal(SGMAssetLoader)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_SGMASSETLOADER_H_ */

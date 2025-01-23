@@ -19,7 +19,7 @@ namespace RN
 	NotificationManager::~NotificationManager()
 	{
 		_sharedInstance = nullptr;
-		
+
 		//TODO: Should enumerate _subscribers here and release "name"
 	}
 
@@ -37,7 +37,7 @@ namespace RN
 	}
 	void NotificationManager::PostNotification(Notification *notification)
 	{
-		UniqueLock<Lockable>  lock(_lock);
+		UniqueLock<Lockable> lock(_lock);
 
 		auto iterator = _subscribers.find(const_cast<String *>(notification->GetName()));
 		if(iterator == _subscribers.end())
@@ -46,12 +46,12 @@ namespace RN
 		std::vector<Subscriber> copy = iterator->second;
 		lock.Unlock();
 
-		for(auto &subscriber : copy)
+		for(auto &subscriber: copy)
 			subscriber.callback(notification);
 	}
 
 
-	void NotificationManager::AddSubscriber(const String *name, const std::function<void (Notification *)> &callback, void *token)
+	void NotificationManager::AddSubscriber(const String *name, const std::function<void(Notification *)> &callback, void *token)
 	{
 		LockGuard<Lockable> lock(_lock);
 
@@ -83,9 +83,9 @@ namespace RN
 				continue;
 			}
 
-			it ++;
+			it++;
 		}
-		
+
 		iterator->first->Release(); //Release the "name"
 	}
-}
+} // namespace RN

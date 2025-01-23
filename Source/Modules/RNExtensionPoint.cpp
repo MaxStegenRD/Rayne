@@ -20,7 +20,6 @@ namespace RN
 	}
 
 
-
 	void __ExtensionPointBase::InitializeExtensionPoints()
 	{
 		InstallStorage();
@@ -65,4 +64,4 @@ namespace RN
 
 		return result;
 	}
-}
+} // namespace RN

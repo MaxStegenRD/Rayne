@@ -10,13 +10,13 @@
 #define __RAYNE_PARTICLEEMITTER_H__
 
 #include "../Base/RNBase.h"
-#include "RNSceneNode.h"
-#include "RNParticle.h"
-#include "../Rendering/RNRenderer.h"
+#include "../Math/RNRandom.h"
 #include "../Rendering/RNMaterial.h"
 #include "../Rendering/RNMesh.h"
+#include "../Rendering/RNRenderer.h"
 #include "../Rendering/RNTexture.h"
-#include "../Math/RNRandom.h"
+#include "RNParticle.h"
+#include "RNSceneNode.h"
 
 namespace RN
 {
@@ -26,54 +26,54 @@ namespace RN
 		RNAPI ParticleEmitter();
 		RNAPI ParticleEmitter(const ParticleEmitter *emitter);
 		RNAPI ~ParticleEmitter() override;
-		
+
 		RNAPI void Cook(float time, int steps);
 		RNAPI void SetMaterial(Material *material);
 		RNAPI Material *GetMaterial() const { return _material; }
 		RNAPI void SetGenerator(RandomNumberGenerator *generator);
-		
+
 		RNAPI void SetSpawnRate(float spawnRate);
 		RNAPI void SetParticlesPerSecond(size_t particles);
 		RNAPI void SetMaxParticles(uint32 maxParticles);
 		RNAPI void SetMaxParticlesSoft(uint32 maxParticles);
-		
+
 		RNAPI float GetSpawnRate() const { return _spawnRate; }
 		RNAPI uint32 GetMaxParticles() const { return _maxParticles; }
-		
+
 		RNAPI bool GetIsLocal() const { return _isLocal; }
 		RNAPI void SetIsLocal(bool local) { _isLocal = local; }
-		
+
 		RNAPI void SetCanRollParticles(bool canRoll) { _canRollParticles = canRoll; }
-		
+
 		RNAPI bool GetIsSorted() const { return _isSorted; }
 		RNAPI void SetIsSorted(bool sorted) { _isSorted = sorted; }
-		
+
 		RNAPI bool GetIsRenderedInversed() const { return _isRenderedInversed; }
 		RNAPI void SetIsRenderedInversed(bool renderedInversed) { _isRenderedInversed = renderedInversed; }
-		
+
 		RNAPI RandomNumberGenerator *GetGenerator() const { return _rng; }
-		
+
 		RNAPI void SpawnParticles(size_t particles);
 		RNAPI Particle *SpawnParticle();
-		
+
 		RNAPI void Update(float delta) override;
 		RNAPI bool CanRender(Renderer *renderer, Camera *camera) const override;
 		RNAPI void Render(Renderer *renderer, Camera *camera) const override;
-		
+
 	protected:
 		RNAPI virtual Particle *CreateParticle();
 		RandomNumberGenerator *_rng;
-		
+
 	private:
 		void UpdateParticles(float delta);
 		void UpdateMesh() const;
-		
+
 		std::vector<Particle *> _particles;
-		
+
 		Drawable *_drawable;
 		Material *_material;
 		Mesh *_mesh;
-		
+
 		bool _isLocal;
 		bool _isSorted;
 		bool _isRenderedInversed;
@@ -81,19 +81,19 @@ namespace RN
 		uint32 _maxParticles;
 		uint32 _maxParticlesSoft;
 		float _spawnRate;
-		
+
 		float _time;
-		
+
 		__RNDeclareMetaInternal(ParticleEmitter)
 	};
-	
-	
+
+
 	class GenericParticleEmitter : public ParticleEmitter
 	{
 	public:
 		RNAPI GenericParticleEmitter();
 		RNAPI GenericParticleEmitter(const GenericParticleEmitter *emitter);
-		
+
 		Vector2 GetLifeSpan() const { return _lifeSpan; }
 		void SetLifeSpan(const Vector2 &lifeSpan) { _lifeSpan = lifeSpan; }
 		Color GetStartColor() const { return _startColor; }
@@ -120,10 +120,10 @@ namespace RN
 		void SetPositionRandomizeMin(const Vector3 &positionRandomizeMin) { _positionRandomizeMin = positionRandomizeMin; }
 		Vector3 GetPositionRandomizeMax() const { return _positionRandomizeMax; }
 		void SetPositionRandomizeMax(const Vector3 &positionRandomizeMax) { _positionRandomizeMax = positionRandomizeMax; }
-		
+
 	private:
 		Particle *CreateParticle() override;
-		
+
 		Vector2 _lifeSpan;
 		Color _startColor;
 		Color _endColor;
@@ -137,9 +137,9 @@ namespace RN
 		Vector3 _velocityRandomizeMax;
 		Vector3 _positionRandomizeMin;
 		Vector3 _positionRandomizeMax;
-		
+
 		__RNDeclareMetaInternal(GenericParticleEmitter)
 	};
-}
+} // namespace RN
 
 #endif /* __RAYNE_PARTICLEEMITTER_H__ */

@@ -27,4 +27,4 @@ namespace RN
 	{
 		FlushRange(Range(0, GetLength()));
 	}
-}
+} // namespace RN

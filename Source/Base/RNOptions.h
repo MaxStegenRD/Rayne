@@ -23,7 +23,7 @@ namespace RN
 
 		__Options() = default;
 
-		T operator =(T value)
+		T operator=(T value)
 		{
 			_value = value;
 			return value;
@@ -34,25 +34,25 @@ namespace RN
 		}
 
 
-		T operator ~() const
+		T operator~() const
 		{
 			return ~_value;
 		}
 
 
-		T operator &(T value) const
+		T operator&(T value) const
 		{
 			return _value & value;
 		}
-		T operator |(T value) const
+		T operator|(T value) const
 		{
 			return _value | value;
 		}
-		T &operator &=(T value)
+		T &operator&=(T value)
 		{
 			return _value &= value;
 		}
-		T &operator |=(T value)
+		T &operator|=(T value)
 		{
 			return _value |= value;
 		}
@@ -68,7 +68,7 @@ namespace RN
 
 		__Options() = default;
 
-		T operator =(T value)
+		T operator=(T value)
 		{
 			_value = value;
 			return value;
@@ -79,44 +79,44 @@ namespace RN
 		}
 
 
-		T operator ~() const
+		T operator~() const
 		{
 			return ~_value;
 		}
 
 
-		T operator &(T value) const
+		T operator&(T value) const
 		{
 			return _value & value;
 		}
-		T operator |(T value) const
+		T operator|(T value) const
 		{
 			return _value | value;
 		}
-		T &operator &=(T value)
+		T &operator&=(T value)
 		{
 			return _value &= value;
 		}
-		T &operator |=(T value)
+		T &operator|=(T value)
 		{
 			return _value |= value;
 		}
 
 
-		T operator &(int value) const
+		T operator&(int value) const
 		{
 			return _value & value;
 		}
-		T operator |(int value) const
+		T operator|(int value) const
 		{
 			return _value | value;
 		}
 
-		T &operator &=(int value)
+		T &operator&=(int value)
 		{
 			return _value &= value;
 		}
-		T &operator |=(int value)
+		T &operator|=(int value)
 		{
 			return _value |= value;
 		}
@@ -129,15 +129,19 @@ namespace RN
 	using Options = __Options<T, std::is_same<T, int>::value>;
 
 
-#define RN_OPTIONS(name, type, ...) \
+#define RN_OPTIONS(name, type, ...)        \
 	struct name : public RN::Options<type> \
-    { \
-        name() = default; \
-        name(int value) { _value = value; } \
-        enum { \
-            __VA_ARGS__ \
-        }; \
+	{                                      \
+		name() = default;                  \
+		name(int value)                    \
+		{                                  \
+			_value = value;                \
+		}                                  \
+		enum                               \
+		{                                  \
+			__VA_ARGS__                    \
+		};                                 \
 	}
-}
+} // namespace RN
 
 #endif /* __RAYNE_OPTIONS_H__ */

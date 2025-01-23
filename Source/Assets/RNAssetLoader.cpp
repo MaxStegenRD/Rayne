@@ -6,10 +6,10 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
+#include "RNAssetLoader.h"
+#include "../Debug/RNLogger.h"
 #include "../Objects/RNAutoreleasePool.h"
 #include "../Threads/RNWorkQueue.h"
-#include "../Debug/RNLogger.h"
-#include "RNAssetLoader.h"
 #include "RNAssetManager.h"
 
 namespace RN
@@ -29,7 +29,7 @@ namespace RN
 		_magicBytesOffset = config._magicBytesOffset;
 		_fileExtensions = SafeRetain(config._extensions);
 
-		for(MetaClass *meta : _resourceClasses)
+		for(MetaClass *meta: _resourceClasses)
 		{
 			RN_ASSERT(meta->InheritsFromClass(Asset::GetMetaClass()), "AssetLoader must support loading Asset subclasses only");
 		}
@@ -78,13 +78,11 @@ namespace RN
 		fileOrName->Retain();
 
 		options.queue->Perform([=]() {
-
 			Asset *result;
 
 			try
 			{
 				AutoreleasePool::PerformBlock([&] {
-
 					if(fileOrName->IsKindOfClass(File::GetMetaClass()))
 					{
 						File *file = static_cast<File *>(fileOrName);
@@ -111,7 +109,6 @@ namespace RN
 			manager->__FinishLoadingAsset(token, result);
 
 			fileOrName->Release();
-
 		});
 	}
 
@@ -127,7 +124,7 @@ namespace RN
 
 	bool AssetLoader::SupportsResourceClass(MetaClass *meta) const
 	{
-		for(auto tmeta : _resourceClasses)
+		for(auto tmeta: _resourceClasses)
 		{
 			if(meta->InheritsFromClass(tmeta))
 				return true;
@@ -135,4 +132,4 @@ namespace RN
 
 		return false;
 	}
-}
+} // namespace RN

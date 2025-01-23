@@ -55,10 +55,7 @@ namespace RN
 
 		categories->Autorelease();
 
-		return RNSTR("<" << GetClass()->GetFullname() << ":" << (void *)this << "> (Category: " << categories <<
-						", Vendor: " << std::hex << (_vendorID ? _vendorID->GetUint32Value() : 0) <<
-						", Product: " << (_productID ? _productID->GetUint32Value() : 0) <<
-						", Name: " << GetName() << ")");
+		return RNSTR("<" << GetClass()->GetFullname() << ":" << (void *)this << "> (Category: " << categories << ", Vendor: " << std::hex << (_vendorID ? _vendorID->GetUint32Value() : 0) << ", Product: " << (_productID ? _productID->GetUint32Value() : 0) << ", Name: " << GetName() << ")");
 	}
 
 	void InputDevice::AddControl(InputControl *control)
@@ -132,7 +129,7 @@ namespace RN
 	{
 		Array *result = new Array();
 
-		for(const ExecutionPort &port : _executionPorts)
+		for(const ExecutionPort &port: _executionPorts)
 			result->AddObject(port.command);
 
 		return result->Autorelease();
@@ -172,7 +169,7 @@ namespace RN
 
 	const InputDevice::ExecutionPort *InputDevice::GetExecutionPortMatching(const String *command, MetaClass *meta) const
 	{
-		for(const ExecutionPort &port : _executionPorts)
+		for(const ExecutionPort &port: _executionPorts)
 		{
 			if(command->IsEqual(port.command))
 			{
@@ -188,7 +185,7 @@ namespace RN
 		return nullptr;
 	}
 
-	void InputDevice::BindCommand(const String *command, std::function<Object * (Object *)> &&action, std::vector<MetaClass *> &&arguments)
+	void InputDevice::BindCommand(const String *command, std::function<Object *(Object *)> &&action, std::vector<MetaClass *> &&arguments)
 	{
 		auto iterator = _executionPorts.emplace(_executionPorts.end(), command->Copy()->Autorelease());
 		iterator->action = std::move(action);
@@ -217,4 +214,4 @@ namespace RN
 
 		_manager->PerformEvent(InputManager::Event::DidUpdate, this, control, value);
 	}
-}
+} // namespace RN

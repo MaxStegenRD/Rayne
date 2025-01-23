@@ -18,7 +18,7 @@ namespace physx
 	class PxBatchQuery;
 	class PxVehicleDrive4W;
 	class PxRigidDynamic;
-}
+} // namespace physx
 
 namespace RN
 {
@@ -31,36 +31,36 @@ namespace RN
 
 		PXAPI void UpdatePosition() override;
 		PXAPI void SetCollisionFilter(uint32 group, uint32 mask) override;
-		
+
 		PXAPI void SetWheelEntities(Array *wheelEntities);
-		
+
 		PXAPI void Update(float delta) override;
-		
+
 		PXAPI void SetAcceleration(float acceleration);
 		PXAPI void SetBreak(float strength);
 		PXAPI void SetSteering(float steer);
 		PXAPI void SetGear(uint32 gear);
-		
+
 		PXAPI float GetCurrentSpeed();
 		PXAPI float GetCurrentRPM();
 		PXAPI uint32 GetCurrentGear();
-			
+
 	private:
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
-		
+
 		PhysXCompoundShape *_shape;
-		
+
 		Array *_wheelEntities;
 		int8 _wheelCount;
-		
+
 		physx::PxVehicleDrive4W *_vehicleDrive4W;
 		physx::PxBatchQuery *_batchQuery;
 		physx::PxRigidDynamic *_actor;
 		void *_raycastQueryResults;
 		void *_raycastHitBuffer;
-			
+
 		RNDeclareMetaAPI(PhysXVehicle4WheelDrive, PXAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_PHYSXVEHICLE4WHEELDRIVE_H_) */

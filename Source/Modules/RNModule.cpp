@@ -6,12 +6,12 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
-#include "../System/RNFileManager.h"
 #include "RNModule.h"
 #include "../Debug/RNLogger.h"
+#include "../System/RNFileManager.h"
 
 #if RN_PLATFORM_POSIX
-#include <dlfcn.h>
+	#include <dlfcn.h>
 #endif
 
 namespace RN
@@ -30,7 +30,7 @@ namespace RN
 		// Figure out if name points to a folder
 		bool isDirectory = false;
 		FileManager *coordinator = FileManager::GetSharedInstance();
-		
+
 #if RN_PLATFORM_IOS || RN_PLATFORM_VISIONOS
 		RN::String *frameworkName = _name->GetPathComponents()->GetLastObject<RN::String>();
 		RN::String *libraryNameIOS = frameworkName;
@@ -96,11 +96,9 @@ namespace RN
 		paths->AddObject(coordinator->GetPathForLocation(FileManager::Location::ApplicationDirectory)->StringByAppendingPathComponent(base));
 
 		paths->Enumerate<String>([&](String *path, size_t index, bool &stop) {
-
 			_path = coordinator->ResolveFullPath(path, 0);
 			if(_path)
 				stop = true;
-
 		});
 		paths->Release();
 
@@ -170,11 +168,11 @@ namespace RN
 
 					int flags = RTLD_GLOBAL;
 
-#if RN_PLATFORM_MAC_OS || RN_PLATFORM_IOS || RN_PLATFORM_VISIONOS
+	#if RN_PLATFORM_MAC_OS || RN_PLATFORM_IOS || RN_PLATFORM_VISIONOS
 					flags |= RTLD_NOLOAD;
-#else
+	#else
 					flags |= RTLD_NOW;
-#endif
+	#endif
 
 					_handle = dlopen(info.dli_fname, flags);
 					_ownsHandle = true;
@@ -347,4 +345,4 @@ namespace RN
 		String *path = _lookupPrefix->StringByAppendingPathComponent(resource);
 		return FileManager::GetSharedInstance()->ResolveFullPath(path, 0);
 	}
-}
+} // namespace RN

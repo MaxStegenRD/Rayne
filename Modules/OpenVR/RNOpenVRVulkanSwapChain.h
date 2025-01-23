@@ -41,7 +41,7 @@ namespace RN
 
 		RNDeclareMetaAPI(OpenVRVulkanSwapChain, OVRAPI)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_OPENVRVULKANSWAPCHAIN_H_ */

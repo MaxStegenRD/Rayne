@@ -30,11 +30,10 @@ namespace RN
 	}
 
 	const char *kLogLevelStrings[] = {
-		"(dbg)",
-		"(info)",
-		"(warn)",
-		"(error)"
-	};
+	"(dbg)",
+	"(info)",
+	"(warn)",
+	"(error)"};
 
 	StreamLoggingEngine::StreamLoggingEngine() :
 		StreamLoggingEngine(std::cout, true)
@@ -140,4 +139,4 @@ namespace RN
 		}
 	}
 #endif
-}
+} // namespace RN

@@ -33,7 +33,7 @@ namespace RN
 
 		__RNDeclareMetaInternal(DebugLogFormatter)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_LOGFORMATTER_H__ */

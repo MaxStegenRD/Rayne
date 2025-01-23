@@ -75,7 +75,7 @@ namespace RN
 
 		std::atomic<uint8> _flag;
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_LOCKABLE_H_ */

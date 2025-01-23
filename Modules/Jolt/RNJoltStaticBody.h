@@ -24,24 +24,24 @@ namespace RN
 	public:
 		JTAPI JoltStaticBody(JoltShape *shape);
 		JTAPI ~JoltStaticBody() override;
-			
+
 		JTAPI static JoltStaticBody *WithShape(JoltShape *shape);
 
 		JTAPI void UpdatePosition() override;
 
 		JTAPI void SetCollisionFilter(uint32 group, uint32 mask) override;
-			
+
 		JTAPI JPH::BodyID *GetJoltActor() const { return _actor; }
-			
+
 	protected:
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
-			
+
 	private:
 		JoltShape *_shape;
 		JPH::BodyID *_actor;
 
 		RNDeclareMetaAPI(JoltStaticBody, JTAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_JOLTSTATICBODY_H_) */

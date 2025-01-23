@@ -23,10 +23,10 @@ namespace RN
 			Vector3 position;
 			float distance;
 		};
-		
+
 		Plane();
 		static Plane WithPositionNormal(const Vector3 &position, const Vector3 &normal);
-		static Plane WithTriangle(const Vector3 &position1, const Vector3 &position2, const Vector3 &position3, float dirfac=1.0f, float offset=0.0f);
+		static Plane WithTriangle(const Vector3 &position1, const Vector3 &position2, const Vector3 &position3, float dirfac = 1.0f, float offset = 0.0f);
 
 		void SetPosition(const Vector3 &position);
 		void SetNormal(const Vector3 &normal);
@@ -74,9 +74,9 @@ namespace RN
 
 		plane._position = position1;
 
-		plane._normal = diff1.GetCrossProduct(diff2)*dirfac;
+		plane._normal = diff1.GetCrossProduct(diff2) * dirfac;
 		plane._normal.Normalize();
-		
+
 		plane._offset = offset;
 
 		plane.CalculateD();
@@ -115,15 +115,15 @@ namespace RN
 		if(angleCos >= -k::EpsilonFloat && angleCos <= k::EpsilonFloat)
 			return contact;
 
-		if(((GetDistance(position) > 0)?1:-1) == ((angleCos > 0)?1:-1))
+		if(((GetDistance(position) > 0) ? 1 : -1) == ((angleCos > 0) ? 1 : -1))
 			return contact;
 
-		float fac = (_position-position).GetDotProduct(_normal)/angleCos;
+		float fac = (_position - position).GetDotProduct(_normal) / angleCos;
 		contact.position = position + normalizedDirection * fac;
 		contact.distance = fac;
 
 		return contact;
 	}
-}
+} // namespace RN
 
 #endif //__RAYNE_PLANE_H__

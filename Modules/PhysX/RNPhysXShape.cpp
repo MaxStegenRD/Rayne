@@ -20,15 +20,15 @@ namespace RN
 	RNDefineMeta(PhysXTriangleMeshShape, PhysXShape)
 	RNDefineMeta(PhysXConvexHullShape, PhysXShape)
 	RNDefineMeta(PhysXCompoundShape, PhysXShape)
-		
+
 	PhysXShape::PhysXShape() :
 		_shape(nullptr), _material(nullptr)
 	{}
-		
+
 	PhysXShape::PhysXShape(physx::PxShape *shape) :
 		_shape(shape), _material(nullptr)
 	{}
-		
+
 	PhysXShape::~PhysXShape()
 	{
 		if(_shape) _shape->release();
@@ -39,65 +39,63 @@ namespace RN
 	{
 		_shape->setLocalPose(physx::PxTransform(physx::PxVec3(positionOffset.x, positionOffset.y, positionOffset.z), physx::PxQuat(rotationOffset.x, rotationOffset.y, rotationOffset.z, rotationOffset.w)));
 	}
-		
-		
-		
+
+
 	PhysXSphereShape::PhysXSphereShape(float radius, PhysXMaterial *material)
 	{
 		_material = material->Retain();
 		physx::PxPhysics *physics = PhysXWorld::GetSharedInstance()->GetPhysXInstance();
 		_shape = physics->createShape(physx::PxSphereGeometry(radius), *material->GetPhysXMaterial(), true);
 	}
-		
+
 	PhysXSphereShape *PhysXSphereShape::WithRadius(float radius, PhysXMaterial *material)
 	{
 		PhysXSphereShape *shape = new PhysXSphereShape(radius, material);
 		return shape->Autorelease();
 	}
-		
 
-		
+
 	PhysXBoxShape::PhysXBoxShape(const Vector3 &halfExtents, PhysXMaterial *material)
 	{
 		_material = material->Retain();
 		physx::PxPhysics *physics = PhysXWorld::GetSharedInstance()->GetPhysXInstance();
 		_shape = physics->createShape(physx::PxBoxGeometry(halfExtents.x, halfExtents.y, halfExtents.z), *material->GetPhysXMaterial(), true);
 	}
-		
+
 	PhysXBoxShape *PhysXBoxShape::WithHalfExtents(const Vector3 &halfExtents, PhysXMaterial *material)
 	{
 		PhysXBoxShape *shape = new PhysXBoxShape(halfExtents, material);
 		return shape->Autorelease();
 	}
-		
-		
+
+
 	PhysXCapsuleShape::PhysXCapsuleShape(float radius, float height, PhysXMaterial *material)
 	{
 		_material = material->Retain();
 		physx::PxPhysics *physics = PhysXWorld::GetSharedInstance()->GetPhysXInstance();
 		_shape = physics->createShape(physx::PxCapsuleGeometry(radius, height * 0.5f), *material->GetPhysXMaterial(), true);
 	}
-		
+
 	PhysXCapsuleShape *PhysXCapsuleShape::WithRadius(float radius, float height, PhysXMaterial *material)
 	{
 		PhysXCapsuleShape *shape = new PhysXCapsuleShape(radius, height, material);
 		return shape->Autorelease();
 	}
-		
-		
+
+
 	PhysXStaticPlaneShape::PhysXStaticPlaneShape(PhysXMaterial *material)
 	{
 		_material = material->Retain();
 		physx::PxPhysics *physics = PhysXWorld::GetSharedInstance()->GetPhysXInstance();
 		_shape = physics->createShape(physx::PxPlaneGeometry(), *material->GetPhysXMaterial(), true);
 	}
-		
+
 	PhysXStaticPlaneShape *PhysXStaticPlaneShape::WithMaterial(PhysXMaterial *material)
 	{
 		PhysXStaticPlaneShape *shape = new PhysXStaticPlaneShape(material);
 		return shape->Autorelease();
 	}
-		
+
 	PhysXTriangleMeshShape::PhysXTriangleMeshShape(Mesh *mesh, PhysXMaterial *material, Vector3 scale, bool wantsDoubleSided)
 	{
 		//TODO: Use btTriangleIndexVertexArray which reuses existing indexed vertex data and should be a lot faster to create
@@ -120,7 +118,7 @@ namespace RN
 		}
 
 		meshDesc.triangles.count = mesh->GetIndicesCount() / 3;
-		meshDesc.triangles.stride = indexAttribute->GetSize()*3;
+		meshDesc.triangles.stride = indexAttribute->GetSize() * 3;
 		meshDesc.triangles.data = mesh->GetCPUIndicesBuffer();
 		if(indexAttribute->GetSize() == 2)
 			meshDesc.flags = physx::PxMeshFlag::e16_BIT_INDICES;
@@ -138,12 +136,12 @@ namespace RN
 
 		physx::PxMeshGeometryFlags flags;
 		if(wantsDoubleSided) flags |= physx::PxMeshGeometryFlag::eDOUBLE_SIDED;
-		physx::PxShape* shape = physics->createShape(physx::PxTriangleMeshGeometry(triangleMesh, physx::PxMeshScale(physx::PxVec3(scale.x, scale.y, scale.z)), flags), *material->GetPhysXMaterial(), true);
+		physx::PxShape *shape = physics->createShape(physx::PxTriangleMeshGeometry(triangleMesh, physx::PxMeshScale(physx::PxVec3(scale.x, scale.y, scale.z)), flags), *material->GetPhysXMaterial(), true);
 
 		_material = material->Retain();
 		_shape = shape;
 	}
-		
+
 	PhysXTriangleMeshShape *PhysXTriangleMeshShape::WithMesh(Mesh *mesh, PhysXMaterial *material, Vector3 scale, bool wantsDoubleSided)
 	{
 		PhysXTriangleMeshShape *shape = new PhysXTriangleMeshShape(mesh, material, scale, wantsDoubleSided);
@@ -176,9 +174,9 @@ namespace RN
 		physx::PxDefaultMemoryInputData input(buf.getData(), buf.getSize());
 
 		physx::PxPhysics *physics = PhysXWorld::GetSharedInstance()->GetPhysXInstance();
-		physx::PxConvexMesh* convexMesh = physics->createConvexMesh(input);
+		physx::PxConvexMesh *convexMesh = physics->createConvexMesh(input);
 
-		physx::PxShape* shape = physics->createShape(physx::PxConvexMeshGeometry(convexMesh, physx::PxMeshScale(physx::PxVec3(scale.x, scale.y, scale.z))), *material->GetPhysXMaterial(), true);
+		physx::PxShape *shape = physics->createShape(physx::PxConvexMeshGeometry(convexMesh, physx::PxMeshScale(physx::PxVec3(scale.x, scale.y, scale.z))), *material->GetPhysXMaterial(), true);
 
 		_material = material->Retain();
 		_shape = shape;
@@ -191,10 +189,8 @@ namespace RN
 	}
 
 
-	
 	PhysXCompoundShape::PhysXCompoundShape()
 	{
-
 	}
 
 	PhysXCompoundShape::PhysXCompoundShape(Model *model, PhysXMaterial *material, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided)
@@ -214,15 +210,15 @@ namespace RN
 			AddChild(mesh, material, Vector3(), Quaternion(), scale, useTriangleMesh, wantsDoubleSided);
 		});
 	}
-		
+
 	PhysXCompoundShape::~PhysXCompoundShape()
 	{
-		for(auto shape : _shapes)
+		for(auto shape: _shapes)
 		{
 			shape->Release();
 		}
 	}
-		
+
 	void PhysXCompoundShape::AddChild(Mesh *mesh, PhysXMaterial *material, const RN::Vector3 &position, const RN::Quaternion &rotation, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided)
 	{
 		PhysXShape *shape = nullptr;
@@ -234,7 +230,7 @@ namespace RN
 		{
 			shape = PhysXConvexHullShape::WithMesh(mesh, material, scale);
 		}
-		
+
 		_shapes.push_back(shape->Retain());
 		_positions.push_back(position * scale);
 		_rotations.push_back(rotation);
@@ -252,4 +248,4 @@ namespace RN
 		PhysXCompoundShape *shape = new PhysXCompoundShape(model, material, scale, useTriangleMesh, wantsDoubleSided);
 		return shape->Autorelease();
 	}
-}
+} // namespace RN

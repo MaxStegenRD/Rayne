@@ -54,10 +54,9 @@ namespace RN
 		Vector2 _size;
 
 	private:
-
 		__RNDeclareMetaInternal(Framebuffer)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_FRAMEBUFFER_H_ */

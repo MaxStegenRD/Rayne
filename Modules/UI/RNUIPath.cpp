@@ -70,7 +70,7 @@ namespace RN
 		Rect Path::GetBounds() const
 		{
 			//const SkRect &rect = _internals->path.getBounds();
-			return Rect();//Rect(rect.fLeft, rect.fTop, rect.fRight - rect.fLeft, rect.fBottom - rect.fTop);
+			return Rect(); //Rect(rect.fLeft, rect.fTop, rect.fRight - rect.fLeft, rect.fBottom - rect.fTop);
 		}
-	}
-}
+	} // namespace UI
+} // namespace RN

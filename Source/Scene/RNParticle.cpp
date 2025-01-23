@@ -15,7 +15,7 @@ namespace RN
 	// MARK: -
 	// MARK: Particle
 	// ---------------------
-	
+
 	Particle::Particle()
 	{
 		rotation = 0.0f;
@@ -23,32 +23,32 @@ namespace RN
 		time = 0.0f;
 		size = Vector2(1.0f);
 	}
-	
+
 	Particle::~Particle()
 	{
 	}
-			 
+
 	void Particle::Update(float delta)
 	{
 		time += delta;
 		lifespan -= delta;
 	}
-	
-	
+
+
 	// ---------------------
 	// MARK: -
 	// MARK: Generic Particle
 	// ---------------------
-	
+
 	void GenericParticle::Update(float delta)
 	{
 		Particle::Update(delta);
-		
+
 		rotation = rotationInterpolator.GetValue(time);
 		color = colorInterpolator.GetValue(time);
 		size = sizeInterpolator.GetValue(time);
-		
-		velocity += gravity*delta;
-		position += velocity*delta;
+
+		velocity += gravity * delta;
+		position += velocity * delta;
 	}
-}
+} // namespace RN

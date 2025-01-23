@@ -18,8 +18,8 @@ namespace RN
 	{
 		if(meta == GlTFAssetLoader::GetMetaClass())
 		{
-			Config config({ Mesh::GetMetaClass(), Model::GetMetaClass() });
-			config.SetExtensions(Set::WithObjects({ RNCSTR("glb") })); //TODO: Also support non binary gltf files
+			Config config({Mesh::GetMetaClass(), Model::GetMetaClass()});
+			config.SetExtensions(Set::WithObjects({RNCSTR("glb")})); //TODO: Also support non binary gltf files
 			config.supportsBackgroundLoading = true;
 
 			__assetLoader = new GlTFAssetLoader(config);
@@ -38,12 +38,12 @@ namespace RN
 		Dictionary *settings = options.settings;
 		MetaClass *meta = options.meta;
 
-/*		if(settings->GetObjectForKey(RNCSTR("recalculateNormals")))
+		/*		if(settings->GetObjectForKey(RNCSTR("recalculateNormals")))
 		{
 			Number *number = settings->GetObjectForKey<Number>(RNCSTR("recalculateNormals"));
 			recalculateNormals = number->GetBoolValue();
 		}*/
-		
+
 		tinygltf::TinyGLTF gltfLoader;
 		tinygltf::Model gltfModel;
 		std::string err;
@@ -76,26 +76,26 @@ namespace RN
 
 		std::vector<float> lodFactors = Model::GetDefaultLODFactors();
 		LoadGLTFLODStage(gltfModel, model->AddLODStage(lodFactors[0]), options);
-		
+
 		if(gltfModel.skins.size() > 0)
 		{
 			Skeleton *skeleton = new Skeleton();
 			tinygltf::Skin &gltfSkin = gltfModel.skins[0];
-			
+
 			tinygltf::Accessor &invBaseMatrixAccessor = gltfModel.accessors[gltfSkin.inverseBindMatrices];
 			tinygltf::BufferView &matrixBufferView = gltfModel.bufferViews[invBaseMatrixAccessor.bufferView];
 			tinygltf::Buffer &matrixBuffer = gltfModel.buffers[matrixBufferView.buffer];
 			int matrixBufferByteStride = invBaseMatrixAccessor.ByteStride(matrixBufferView);
-			
+
 			std::map<int, int> jointIndexMapping;
 			for(int i = 0; i < gltfSkin.joints.size(); i++)
 			{
 				jointIndexMapping[gltfSkin.joints[i]] = i;
 			}
-			
+
 			for(int i = 0; i < gltfSkin.joints.size(); i++)
 			{
-				bool isRoot = gltfSkin.skeleton != -1? (gltfSkin.joints[i] == gltfSkin.skeleton) : (i == 0);
+				bool isRoot = gltfSkin.skeleton != -1 ? (gltfSkin.joints[i] == gltfSkin.skeleton) : (i == 0);
 				tinygltf::Node &gltfNode = gltfModel.nodes[gltfSkin.joints[i]];
 				Vector3 bonepos;
 				/*if(gltfNode.translation.size() == 3)
@@ -111,19 +111,19 @@ namespace RN
 				{
 					bone.scale = Vector3(gltfNode.scale[0], gltfNode.scale[1], gltfNode.scale[2]);
 				}*/
-				
+
 				for(int n = 0; n < gltfNode.children.size(); n++)
 				{
 					bone.tempChildren.push_back(jointIndexMapping[gltfNode.children[n]]);
 				}
-				
+
 				//std::memcpy(bone.invBaseMatrix.m, &matrixBuffer.data[matrixBufferByteStride * i + matrixBufferView.byteOffset + invBaseMatrixAccessor.byteOffset], 64);
-				
+
 				//bone.absolute = true;
-				
+
 				skeleton->bones.push_back(bone);
 			}
-			
+
 			skeleton->Init();
 			model->SetSkeleton(skeleton);
 		}
@@ -147,7 +147,7 @@ namespace RN
 
 		Renderer *renderer = Renderer::GetActiveRenderer();
 		Material *material = RN::Material::WithShaders(nullptr, nullptr);
-		
+
 		if(gltfModel.materials.size() > 0)
 		{
 			// fixme: Use material's baseColor
@@ -183,7 +183,7 @@ namespace RN
 						//TODO: Show error
 					}
 				}
-/*				else if(image.bits == 16)
+				/*				else if(image.bits == 16)
 				{
 					if(image.component == 1)
 					{
@@ -212,7 +212,7 @@ namespace RN
 					//Not supported
 					//TODO: Show error
 				}
-				
+
 				Texture::Descriptor descriptor = Texture::Descriptor::With2DTextureAndFormat(textureFormat, image.width, image.height, true);
 				Texture *texture = Renderer::GetActiveRenderer()->CreateTextureWithDescriptor(descriptor);
 				texture->SetData(0, &image.image.at(0), image.width * image.component * image.bits / 8, image.height);
@@ -227,7 +227,7 @@ namespace RN
 			shaderOptions->EnableAlpha();
 			material->SetAlphaToCoverage(true);
 		}*/
-		
+
 		if(options.settings->GetObjectForKey(RNCSTR("enablePointLights")))
 		{
 			Number *number = options.settings->GetObjectForKey<Number>(RNCSTR("enablePointLights"));
@@ -236,14 +236,14 @@ namespace RN
 				shaderOptions->EnablePointLights();
 			}
 		}
-		
+
 		if(options.settings->GetObjectForKey(RNCSTR("enableDirectionalLights")))
 		{
 			Number *number = options.settings->GetObjectForKey<Number>(RNCSTR("enableDirectionalLights"));
 			if(number->GetBoolValue())
 			{
 				shaderOptions->EnableDirectionalLights();
-				
+
 				if(options.settings->GetObjectForKey(RNCSTR("enableDirectionalShadows")))
 				{
 					Number *number = options.settings->GetObjectForKey<Number>(RNCSTR("enableDirectionalShadows"));
@@ -254,7 +254,7 @@ namespace RN
 				}
 			}
 		}
-		
+
 		material->SetVertexShader(renderer->GetDefaultShader(Shader::Type::Vertex, shaderOptions, Shader::UsageHint::Default), Shader::UsageHint::Default);
 		material->SetFragmentShader(renderer->GetDefaultShader(Shader::Type::Fragment, shaderOptions, Shader::UsageHint::Default), Shader::UsageHint::Default);
 		material->SetVertexShader(renderer->GetDefaultShader(Shader::Type::Vertex, shaderOptions, Shader::UsageHint::Depth), Shader::UsageHint::Depth);
@@ -272,18 +272,18 @@ namespace RN
 		std::vector<int> attributeAccessors;
 		size_t indexCount = 0;
 		size_t vertexCount = 0;
-		
+
 		for(size_t i = 0; i < gltfMesh.primitives.size(); ++i)
 		{
 			if(i > 0) continue; //TODO: Not sure what it means to have multiple primitives, so just sticking to the first for now
-			
+
 			tinygltf::Primitive primitive = gltfMesh.primitives[i];
 
-			for(auto &attrib : primitive.attributes)
+			for(auto &attrib: primitive.attributes)
 			{
 				tinygltf::Accessor accessor = gltfModel.accessors[attrib.second];
 				vertexCount = accessor.count;
-				
+
 				//TODO: Support other component types
 				if(accessor.componentType != TINYGLTF_COMPONENT_TYPE_FLOAT && accessor.componentType != TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE) continue;
 
@@ -341,12 +341,12 @@ namespace RN
 					attributes.emplace_back(Mesh::VertexAttribute::Feature::BoneWeights, type);
 					attributeAccessors.emplace_back(attrib.second);
 				}
-				
+
 				//TODO: Support other attributes
 			}
-			
+
 			tinygltf::Accessor indexAccessor = gltfModel.accessors[primitive.indices];
-			
+
 			indexCount = indexAccessor.count;
 			PrimitiveType indicesType = PrimitiveType::Uint16;
 			if(indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT)
@@ -367,9 +367,9 @@ namespace RN
 			const tinygltf::Accessor &accessor = gltfModel.accessors[attributeAccessors[i]];
 			const tinygltf::BufferView &bufferView = gltfModel.bufferViews[accessor.bufferView];
 			const tinygltf::Buffer &buffer = gltfModel.buffers[bufferView.buffer];
-			
+
 			int byteStride = accessor.ByteStride(bufferView);
-			
+
 			size_t elementSize = 4;
 			size_t elementCount = 4;
 			switch(attributes[i].GetType())
@@ -402,11 +402,11 @@ namespace RN
 					elementSize = 4;
 					elementCount = 1;
 					break;
-					
+
 				default:
 					break;
 			}
-			
+
 			if(attributes[i].GetFeature() == Mesh::VertexAttribute::Feature::Indices)
 			{
 				for(int n = 0; n < indexCount; n++)
@@ -432,11 +432,11 @@ namespace RN
 						float floatData = byteData;
 						floatDataArray.push_back(floatData);
 					}
-					
+
 					std::memcpy(data->GetBytes<uint8>() + n * elementSize, floatDataArray.data(), elementSize);
 				}
 			}
-			
+
 			mesh->SetElementData(attributes[i].GetFeature(), data->GetBytes());
 		}
 
@@ -444,4 +444,4 @@ namespace RN
 
 		return mesh->Autorelease();
 	}
-}
+} // namespace RN

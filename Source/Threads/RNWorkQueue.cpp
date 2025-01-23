@@ -7,33 +7,33 @@
 //
 
 #include "RNWorkQueue.h"
-#include "RNThreadLocalStorage.h"
 #include "../Objects/RNAutoreleasePool.h"
+#include "RNThreadLocalStorage.h"
 #include <concurrentqueue.h>
 
 #if RN_PLATFORM_INTEL
-#if RN_PLATFORM_WINDOWS
-#define RNHardwarePause() YieldProcessor()
-#else
-#define RNHardwarePause() __asm__ volatile("pause")
-#endif
+	#if RN_PLATFORM_WINDOWS
+		#define RNHardwarePause() YieldProcessor()
+	#else
+		#define RNHardwarePause() __asm__ volatile("pause")
+	#endif
 #endif
 #if RN_PLATFORM_ARM
-#define RNHardwarePause() __asm__ volatile("yield")
+	#define RNHardwarePause() __asm__ volatile("yield")
 #endif
 
 #define RNConditionalSpin(e, count, result) \
-	do { \
-		result = false; \
-		for(size_t i = 0; i < count; i ++) \
-		{ \
-			if((e)) \
-			{ \
-				result = true; \
-				break; \
-			} \
-			RNHardwarePause(); \
-		} \
+	do {                                    \
+		result = false;                     \
+		for(size_t i = 0; i < count; i++)   \
+		{                                   \
+			if((e))                         \
+			{                               \
+				result = true;              \
+				break;                      \
+			}                               \
+			RNHardwarePause();              \
+		}                                   \
 	} while(0)
 
 
@@ -56,8 +56,8 @@ namespace RN
 		moodycamel::ConcurrentQueue<WorkSource *> workQueue;
 	};
 
-	// Private queue flags
-	#define kRNWorkQueueFlagMainThread (1 << 18)
+// Private queue flags
+#define kRNWorkQueueFlagMainThread (1 << 18)
 
 	static WorkQueue *__WorkQueues[4];
 	static ThreadLocalStorage<WorkQueue *> __LocalWorkQueues;
@@ -72,7 +72,7 @@ namespace RN
 
 	void WorkQueue::TearDownQueues()
 	{
-		for(size_t i = 0; i < 4; i ++)
+		for(size_t i = 0; i < 4; i++)
 		{
 			__WorkQueues[i]->Release();
 			__WorkQueues[i] = nullptr;
@@ -125,12 +125,12 @@ namespace RN
 
 
 		// Cancel all threads, wake them up and then wait for their exit
-		for(Thread *thread : threads)
+		for(Thread *thread: threads)
 			thread->Cancel();
 
 		_internals->workSignal.NotifyAll();
 
-		for(Thread *thread : threads)
+		for(Thread *thread: threads)
 			thread->WaitForExit();
 
 		_identifier->Release();
@@ -180,7 +180,7 @@ namespace RN
 			return;
 		}
 
-		_syncSignal.Wait(lock, [&]{ return (source->IsComplete()); });
+		_syncSignal.Wait(lock, [&] { return (source->IsComplete()); });
 		source->Relinquish();
 	}
 	void WorkQueue::PerformSynchronousBarrier(Function &&function)
@@ -194,7 +194,7 @@ namespace RN
 			return;
 		}
 
-		_syncSignal.Wait(lock, [&]{ return (source->IsComplete()); });
+		_syncSignal.Wait(lock, [&] { return (source->IsComplete()); });
 		source->Relinquish();
 	}
 
@@ -212,9 +212,9 @@ namespace RN
 			// will consume the block and wait until the barrier completes.
 			// Also we only guarantee that barriers work with single producer submission
 
-			for(size_t i = 0; i < _concurrency; i ++)
+			for(size_t i = 0; i < _concurrency; i++)
 			{
-				WorkSource *source = WorkSource::DequeueWorkSource([]{}, WorkSource::Flags::Barrier | WorkSource::Flags::BarrierBlock);
+				WorkSource *source = WorkSource::DequeueWorkSource([] {}, WorkSource::Flags::Barrier | WorkSource::Flags::BarrierBlock);
 				_internals->workQueue.enqueue(source);
 				_open.fetch_add(1, std::memory_order_relaxed);
 			}
@@ -427,10 +427,10 @@ namespace RN
 
 		if(width > _width)
 		{
-			for(size_t i = 0; i < width - _width; i ++)
+			for(size_t i = 0; i < width - _width; i++)
 			{
-				Thread *thread = new Thread([this]{ ThreadEntry(); }, false);
-				thread->SetName(_identifier->StringByAppendingString(RNSTR("." << _threadCount ++)));
+				Thread *thread = new Thread([this] { ThreadEntry(); }, false);
+				thread->SetName(_identifier->StringByAppendingString(RNSTR("." << _threadCount++)));
 				thread->Start();
 
 				_threads.push_back(thread);
@@ -451,4 +451,4 @@ namespace RN
 		if(_suspended.fetch_sub(1, std::memory_order_acquire) == 1)
 			_internals->workSignal.NotifyAll();
 	}
-}
+} // namespace RN

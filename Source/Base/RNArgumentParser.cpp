@@ -16,7 +16,7 @@ namespace RN
 	{
 		_arguments = new Array();
 
-		for(int i = 0; i < argc; i ++)
+		for(int i = 0; i < argc; i++)
 		{
 			String *string = new String(argv[i], Encoding::ASCII, false);
 			_arguments->AddObject(string);
@@ -40,14 +40,14 @@ namespace RN
 			String *prefix = new String("--", Encoding::ASCII, true);
 			String *suffix = new String(full, Encoding::ASCII, false);
 
-			ScopeGuard guard([=]{
+			ScopeGuard guard([=] {
 				prefix->Release();
 				suffix->Release();
 			});
 
 			size_t count = _arguments->GetCount();
 
-			for(size_t i = 0; i < count; i ++)
+			for(size_t i = 0; i < count; i++)
 			{
 				String *value = _arguments->GetObjectAtIndex<String>(i);
 				if(value->GetRangeOfString(prefix).origin == 0 && value->GetLength() == suffix->GetLength() + 2)
@@ -66,14 +66,14 @@ namespace RN
 
 		if(shorthand != '\0')
 		{
-			char string[2] = { 0 };
+			char string[2] = {0};
 			string[0] = shorthand;
 
 			String *truePrefix = new String("-", Encoding::ASCII, true);
 			String *falsePrefix = new String("--", Encoding::ASCII, true);
 			CharacterSet *set = new CharacterSet(string);
 
-			ScopeGuard guard([=]{
+			ScopeGuard guard([=] {
 				truePrefix->Release();
 				falsePrefix->Release();
 				set->Release();
@@ -81,7 +81,7 @@ namespace RN
 
 			size_t count = _arguments->GetCount();
 
-			for(size_t i = 0; i < count; i ++)
+			for(size_t i = 0; i < count; i++)
 			{
 				String *value = _arguments->GetObjectAtIndex<String>(i);
 				if(value->GetRangeOfString(truePrefix).origin == 0 && value->GetRangeOfString(falsePrefix).origin != 0)
@@ -111,14 +111,14 @@ namespace RN
 			String *prefix = new String("--", Encoding::ASCII, true);
 			String *suffix = new String(full, Encoding::ASCII, false);
 
-			ScopeGuard guard([=]{
+			ScopeGuard guard([=] {
 				prefix->Release();
 				suffix->Release();
 			});
 
 			size_t count = _arguments->GetCount();
 
-			for(size_t i = 0; i < count; i ++)
+			for(size_t i = 0; i < count; i++)
 			{
 				String *value = _arguments->GetObjectAtIndex<String>(i);
 				if(value->GetRangeOfString(prefix).origin == 0 && value->GetLength() == suffix->GetLength() + 2)
@@ -133,14 +133,14 @@ namespace RN
 
 		if(shorthand != '\0')
 		{
-			char string[2] = { 0 };
+			char string[2] = {0};
 			string[0] = shorthand;
 
 			String *truePrefix = new String("-", Encoding::ASCII, true);
 			String *falsePrefix = new String("--", Encoding::ASCII, true);
 			CharacterSet *set = new CharacterSet(string);
 
-			ScopeGuard guard([=]{
+			ScopeGuard guard([=] {
 				truePrefix->Release();
 				falsePrefix->Release();
 				set->Release();
@@ -148,7 +148,7 @@ namespace RN
 
 			size_t count = _arguments->GetCount();
 
-			for(size_t i = 0; i < count; i ++)
+			for(size_t i = 0; i < count; i++)
 			{
 				String *value = _arguments->GetObjectAtIndex<String>(i);
 				if(value->GetRangeOfString(truePrefix).origin == 0 && value->GetRangeOfString(falsePrefix).origin != 0)
@@ -173,14 +173,14 @@ namespace RN
 			String *prefix = new String("--", Encoding::ASCII, true);
 			String *suffix = new String(full, Encoding::ASCII, false);
 
-			ScopeGuard guard([=]{
+			ScopeGuard guard([=] {
 				prefix->Release();
 				suffix->Release();
 			});
 
 			size_t count = _arguments->GetCount();
 
-			for(size_t i = 0; i < count; i ++)
+			for(size_t i = 0; i < count; i++)
 			{
 				String *value = _arguments->GetObjectAtIndex<String>(i);
 				if(value->GetRangeOfString(prefix).origin == 0 && value->GetLength() == suffix->GetLength() + 2)
@@ -195,14 +195,14 @@ namespace RN
 
 		if(shorthand != '\0')
 		{
-			char string[2] = { 0 };
+			char string[2] = {0};
 			string[0] = shorthand;
 
 			String *truePrefix = new String("-", Encoding::ASCII, true);
 			String *falsePrefix = new String("--", Encoding::ASCII, true);
 			CharacterSet *set = new CharacterSet(string);
 
-			ScopeGuard guard([=]{
+			ScopeGuard guard([=] {
 				truePrefix->Release();
 				falsePrefix->Release();
 				set->Release();
@@ -210,7 +210,7 @@ namespace RN
 
 			size_t count = _arguments->GetCount();
 
-			for(size_t i = 0; i < count; i ++)
+			for(size_t i = 0; i < count; i++)
 			{
 				String *value = _arguments->GetObjectAtIndex<String>(i);
 				if(value->GetRangeOfString(truePrefix).origin == 0 && value->GetRangeOfString(falsePrefix).origin != 0)
@@ -224,4 +224,4 @@ namespace RN
 
 		return false;
 	}
-}
+} // namespace RN

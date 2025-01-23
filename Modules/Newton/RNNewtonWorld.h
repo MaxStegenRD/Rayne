@@ -12,10 +12,10 @@
 #include "RNNewton.h"
 
 //#include "RNPhysXMaterial.h"
-#include "RNNewtonShape.h"
-#include "RNNewtonRigidBody.h"
-#include "RNNewtonConstraint.h"
 #include "RNNewtonCharacterController.h"
+#include "RNNewtonConstraint.h"
+#include "RNNewtonRigidBody.h"
+#include "RNNewtonShape.h"
 #include <unordered_set>
 
 class NewtonWorld;
@@ -38,7 +38,7 @@ namespace RN
 		NDAPI void Update(float delta) override;
 		NDAPI void SetPaused(bool paused);
 
-//		PXAPI PhysXContactInfo CastRay(const Vector3 &from, const Vector3 &to);
+		//		PXAPI PhysXContactInfo CastRay(const Vector3 &from, const Vector3 &to);
 
 		::NewtonWorld *GetNewtonInstance() const { return _newtonInstance; }
 
@@ -46,17 +46,17 @@ namespace RN
 
 	private:
 		static NewtonWorld *_sharedInstance;
-		static int AABBOverlapCallback(const NewtonMaterial* const material, const NewtonBody* const body0, const NewtonBody* const body1, int threadIndex);
-		static void ProcessCallback(const NewtonJoint* const contact, float timestep, int threadIndex);
+		static int AABBOverlapCallback(const NewtonMaterial *const material, const NewtonBody *const body0, const NewtonBody *const body1, int threadIndex);
+		static void ProcessCallback(const NewtonJoint *const contact, float timestep, int threadIndex);
 
-		::NewtonWorld* _newtonInstance;
+		::NewtonWorld *_newtonInstance;
 
 		bool _paused;
 		Vector3 _gravity;
 
 		RNDeclareMetaAPI(NewtonWorld, NDAPI)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_PHYSXWORLD_H_ */

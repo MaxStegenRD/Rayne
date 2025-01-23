@@ -7,8 +7,8 @@
 //
 
 #include "RNHIDDevice.h"
-#include "RNInputManager.h"
 #include "../Objects/RNString.h"
+#include "RNInputManager.h"
 
 namespace RN
 {
@@ -68,4 +68,4 @@ namespace RN
 	{
 		InputManager::GetSharedInstance()->__RemoveRawHIDDevice(this);
 	}
-}
+} // namespace RN

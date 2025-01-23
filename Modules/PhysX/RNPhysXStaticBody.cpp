@@ -7,13 +7,13 @@
 //
 
 #include "RNPhysXStaticBody.h"
-#include "RNPhysXWorld.h"
 #include "PxPhysicsAPI.h"
+#include "RNPhysXWorld.h"
 
 namespace RN
 {
 	RNDefineMeta(PhysXStaticBody, PhysXCollisionObject)
-		
+
 	PhysXStaticBody::PhysXStaticBody(PhysXShape *shape) :
 		_shape(shape->Retain()),
 		_actor(nullptr)
@@ -24,7 +24,7 @@ namespace RN
 		if(shape->IsKindOfClass(PhysXCompoundShape::GetMetaClass()))
 		{
 			PhysXCompoundShape *compound = shape->Downcast<PhysXCompoundShape>();
-			for(PhysXShape *tempShape : compound->_shapes)
+			for(PhysXShape *tempShape: compound->_shapes)
 			{
 				_actor->attachShape(*tempShape->GetPhysXShape());
 			}
@@ -41,7 +41,7 @@ namespace RN
 		scene->addActor(*_actor);
 		PhysXWorld::GetSharedInstance()->Unlock();
 	}
-		
+
 	PhysXStaticBody::~PhysXStaticBody()
 	{
 		PhysXWorld::GetSharedInstance()->Lock();
@@ -52,8 +52,8 @@ namespace RN
 		_actor->release();
 		_shape->Release();
 	}
-	
-		
+
+
 	PhysXStaticBody *PhysXStaticBody::WithShape(PhysXShape *shape)
 	{
 		PhysXStaticBody *body = new PhysXStaticBody(shape);
@@ -68,10 +68,10 @@ namespace RN
 		filterData.word0 = _collisionFilterGroup;
 		filterData.word1 = _collisionFilterMask;
 
-		if (_shape->IsKindOfClass(PhysXCompoundShape::GetMetaClass()))
+		if(_shape->IsKindOfClass(PhysXCompoundShape::GetMetaClass()))
 		{
 			PhysXCompoundShape *compound = _shape->Downcast<PhysXCompoundShape>();
-			for (PhysXShape *tempShape : compound->_shapes)
+			for(PhysXShape *tempShape: compound->_shapes)
 			{
 				PhysXWorld::GetSharedInstance()->Lock();
 				tempShape->GetPhysXShape()->setSimulationFilterData(filterData);
@@ -87,7 +87,7 @@ namespace RN
 			PhysXWorld::GetSharedInstance()->Unlock();
 		}
 	}
-	
+
 	void PhysXStaticBody::DidUpdate(SceneNode::ChangeSet changeSet)
 	{
 		PhysXCollisionObject::DidUpdate(changeSet);
@@ -113,7 +113,7 @@ namespace RN
 				_actor->setGlobalPose(physx::PxTransform(physx::PxVec3(position.x, position.y, position.z), physx::PxQuat(rotation.x, rotation.y, rotation.z, rotation.w)));
 				PhysXWorld::GetSharedInstance()->Unlock();
 			}
-			
+
 			_owner = GetParent();
 		}
 	}
@@ -131,4 +131,4 @@ namespace RN
 		SetWorldPosition(Vector3(transform.p.x, transform.p.y, transform.p.z) + positionOffset);
 		SetWorldRotation(rotation);
 	}
-}
+} // namespace RN

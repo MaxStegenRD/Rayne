@@ -6,8 +6,8 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
-#include "RNOculusSwapChain.h"
 #include "RNOculusWindow.h"
+#include "RNOculusSwapChain.h"
 
 #include "OVR_CAPI_Audio.h"
 #include <initguid.h>
@@ -17,9 +17,9 @@ namespace RN
 {
 	RNDefineMeta(OculusWindow, VRWindow)
 
-	OculusWindow::OculusWindow() : _swapChain(nullptr)
+	OculusWindow::OculusWindow() :
+		_swapChain(nullptr)
 	{
-		
 	}
 
 	OculusWindow::~OculusWindow()
@@ -203,11 +203,11 @@ namespace RN
 			if(_currentHapticsIndex[i] < _haptics[i].sampleCount)
 			{
 				float strength = _haptics[i].samples[_currentHapticsIndex[i]++];
-				ovr_SetControllerVibration(_swapChain->_session, i==0?ovrControllerType_LTouch:ovrControllerType_RTouch, 1.0f, strength);
+				ovr_SetControllerVibration(_swapChain->_session, i == 0 ? ovrControllerType_LTouch : ovrControllerType_RTouch, 1.0f, strength);
 			}
 			else
 			{
-				ovr_SetControllerVibration(_swapChain->_session, i==0?ovrControllerType_LTouch:ovrControllerType_RTouch, 1.0f, 0.0f);
+				ovr_SetControllerVibration(_swapChain->_session, i == 0 ? ovrControllerType_LTouch : ovrControllerType_RTouch, 1.0f, 0.0f);
 			}
 		}
 	}
@@ -241,7 +241,7 @@ namespace RN
 	static String *StringForLPWSTR(LPWSTR lpwstr)
 	{
 		int length = WideCharToMultiByte(CP_UTF8, 0, lpwstr, -1, nullptr, 0, nullptr, nullptr);
-		char *chars = new char[length+1];
+		char *chars = new char[length + 1];
 		WideCharToMultiByte(CP_UTF8, 0, lpwstr, -1, chars, length, nullptr, nullptr);
 		chars[length] = '\0';
 
@@ -304,5 +304,4 @@ namespace RN
 
 		return availability;
 	}
-}
-
+} // namespace RN

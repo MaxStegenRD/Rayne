@@ -14,29 +14,28 @@ namespace RN
 	{
 		_codePoint = character;
 	}
-	
+
 	CodePoint::CodePoint(char character)
 	{
 		_codePoint = static_cast<UniChar>(character);
 	}
-	
-	
-	
+
+
 	UniChar CodePoint::ConvertCharacter(char character)
 	{
 		return static_cast<UniChar>(character);
 	}
-	
+
 	char CodePoint::ConverToCharacter(UniChar character)
 	{
 		if(character >= 0x7f)
 			return '?';
-		
+
 		char c = static_cast<char>(character);
 		return c;
 	}
-	
-	
+
+
 	bool CodePoint::IsNewline() const
 	{
 		switch(_codePoint)
@@ -49,12 +48,12 @@ namespace RN
 			case 0x2028:
 			case 0x2029:
 				return true;
-				
+
 			default:
 				return false;
 		}
 	}
-	
+
 	bool CodePoint::IsWhitespace() const
 	{
 		switch(_codePoint)
@@ -78,12 +77,12 @@ namespace RN
 			case 0x205F:
 			case 0x3000:
 				return true;
-				
+
 			default:
 				return false;
 		}
 	}
-	
+
 	bool CodePoint::IsPrintable() const
 	{
 		switch(_codePoint)
@@ -95,17 +94,17 @@ namespace RN
 			case 246:
 			case 214:
 				return true;
-			
+
 			default:
 				break;
 		}
-		
+
 		if(_codePoint >= 0x20 && _codePoint <= 0x7e)
 			return true;
-		
+
 		return false;
 	}
-	
+
 	UniChar CodePoint::GetLowerCase() const
 	{
 		if(_codePoint <= 0x7f)
@@ -117,10 +116,10 @@ namespace RN
 				return CodePoint(character);
 			}
 		}
-		
+
 		return *this;
 	}
-	
+
 	UniChar CodePoint::GetUpperCase() const
 	{
 		if(_codePoint <= 0x7f)
@@ -132,7 +131,7 @@ namespace RN
 				return CodePoint(character);
 			}
 		}
-		
+
 		return *this;
 	}
-}
+} // namespace RN

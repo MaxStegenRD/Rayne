@@ -37,8 +37,8 @@ namespace RN
 		RtAudio inputContext;
 	};
 #elif RN_PLATFORM_ANDROID
-	
+
 #endif
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_OculusAudioINTERNALS_H_) */

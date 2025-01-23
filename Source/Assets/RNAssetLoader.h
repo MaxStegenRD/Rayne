@@ -10,8 +10,8 @@
 #define __RAYNE_ASSETLOADER_H_
 
 #include "../Base/RNBase.h"
-#include "../Objects/RNObject.h"
 #include "../Objects/RNData.h"
+#include "../Objects/RNObject.h"
 #include "../Objects/RNSet.h"
 #include "../System/RNFile.h"
 #include "../Threads/RNWorkQueue.h"
@@ -28,7 +28,7 @@ namespace RN
 			friend class AssetLoader;
 
 			Config(MetaClass *resourceClass) :
-				resourceClasses({ resourceClass }),
+				resourceClasses({resourceClass}),
 				supportsBackgroundLoading(false),
 				supportsVirtualFiles(false),
 				priority(10),
@@ -110,7 +110,7 @@ namespace RN
 		RNAPI AssetLoader(const Config &config);
 
 	private:
-		using Callback = std::function<void (Asset *)>;
+		using Callback = std::function<void(Asset *)>;
 
 		void __LoadInBackground(Object *fileOrName, const LoadOptions &options, void *token);
 		Expected<Asset *> __Load(Object *fileOrName, const LoadOptions &options) RN_NOEXCEPT;
@@ -126,7 +126,7 @@ namespace RN
 		std::vector<MetaClass *> _resourceClasses;
 		__RNDeclareMetaInternal(AssetLoader)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_ASSETLOADER_H_ */

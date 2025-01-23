@@ -9,11 +9,11 @@
 #include <RayneConfig.h>
 
 #ifdef RN_APPLEXR_SUPPORTS_METAL
-#include "RNAppleXRMetalSwapChain.h"
+	#include "RNAppleXRMetalSwapChain.h"
 #endif
 
-#include "RNAppleXRWindow.h"
 #include "../../Source/Math/RNMatrix.h"
+#include "RNAppleXRWindow.h"
 
 namespace RN
 {
@@ -32,11 +32,12 @@ namespace RN
 		return result;
 	}
 
-	AppleXRWindow::AppleXRWindow() : _layerRenderer(nullptr), _swapChain(nullptr), _currentHapticsIndex{ 0, 0 }, _isSessionRunning(false)
+	AppleXRWindow::AppleXRWindow() :
+		_layerRenderer(nullptr), _swapChain(nullptr), _currentHapticsIndex {0, 0}, _isSessionRunning(false)
 	{
 		_hmdTrackingState.position = Vector3(0.0f, 1.0f, 0.0f);
 		_layerRenderer = static_cast<cp_layer_renderer_t>(Kernel::GetSharedInstance()->GetLayerRenderer());
-		
+
 		ar_world_tracking_configuration_t worldTrackingConfiguration = ar_world_tracking_configuration_create();
 		_worldTrackingProvider = ar_world_tracking_provider_create(worldTrackingConfiguration);
 
@@ -44,7 +45,7 @@ namespace RN
 
 		_arSession = ar_session_create();
 		ar_session_run(_arSession, dataProviders);
-		
+
 		RNInfo(GetHMDInfoDescription());
 	}
 
@@ -54,12 +55,12 @@ namespace RN
 		StopRendering();
 		_layerRenderer = nullptr;
 	}
-	
+
 	void AppleXRWindow::StartRendering(const SwapChainDescriptor &descriptor, float eyeResolutionFactor)
 	{
 		if(!_layerRenderer)
 			return;
-		
+
 #ifdef RN_APPLEXR_SUPPORTS_METAL
 		if(Renderer::GetActiveRenderer()->GetDescriptor()->GetAPI()->IsEqual(RNCSTR("Metal")))
 		{
@@ -69,7 +70,7 @@ namespace RN
 		}
 #endif
 	}
-	
+
 	void AppleXRWindow::StopRendering()
 	{
 		if(_swapChain)
@@ -77,7 +78,7 @@ namespace RN
 #ifdef RN_APPLEXR_SUPPORTS_METAL
 			if(_swapChainType == SwapChainType::Metal)
 			{
-				AppleXRMetalSwapChain *swapChain = static_cast<AppleXRMetalSwapChain*>(_swapChain);
+				AppleXRMetalSwapChain *swapChain = static_cast<AppleXRMetalSwapChain *>(_swapChain);
 				swapChain->Release();
 				_swapChain = nullptr;
 				return;
@@ -87,19 +88,19 @@ namespace RN
 
 		RN_ASSERT(0, "The active renderer is not supported by the AppleXR module!");
 	}
-	
+
 	bool AppleXRWindow::IsRendering() const
 	{
 		return (_swapChain != nullptr);
 	}
-	
+
 	const String *AppleXRWindow::GetHMDInfoDescription() const
 	{
 		if(!_layerRenderer)
 			return RNCSTR("No HMD found.");
 
 		String *description = new String("Using HMD: Apple Vision Pro");
-		
+
 		return description;
 	}
 
@@ -107,7 +108,7 @@ namespace RN
 	{
 		if(!_swapChain)
 			return Vector2();
-		
+
 		return _swapChain->GetAppleXRSwapChainSize();
 	}
 
@@ -115,14 +116,14 @@ namespace RN
 	{
 		if(!_swapChain)
 			return nullptr;
-		
+
 		return _swapChain->GetAppleXRSwapChainFramebuffer();
 	}
 
 	void AppleXRWindow::BeginFrame(float delta)
 	{
 		if(!_swapChain) return;
-		
+
 		switch(cp_layer_renderer_get_state(_layerRenderer))
 		{
 			case cp_layer_renderer_state_paused:
@@ -139,24 +140,24 @@ namespace RN
 				_swapChain->isActive = false;
 				break;
 		}
-		
+
 		if(!_isSessionRunning) return;
-		
+
 		_swapChain->_frame = cp_layer_renderer_query_next_frame(_layerRenderer);
 		if(_swapChain->_frame == nullptr) return;
-		
+
 		_swapChain->_predictedTime = cp_frame_predict_timing(_swapChain->_frame);
 		if(_swapChain->_predictedTime == nullptr) return;
 
 		cp_frame_start_update(_swapChain->_frame);
-		
+
 		_swapChain->_worldAnchor = ar_device_anchor_create();
 
 		// Fetch the device anchor from ARKit.
 		CFTimeInterval p_time = cp_time_to_cf_time_interval(cp_frame_timing_get_presentation_time(_swapChain->_predictedTime));
 		ar_device_anchor_query_status_t anchor_status = ar_world_tracking_provider_query_device_anchor_at_timestamp(_worldTrackingProvider, p_time, _swapChain->_worldAnchor);
 		if(anchor_status != ar_device_anchor_query_status_success) return;
-		
+
 		simd_float4x4 head_position = ar_anchor_get_origin_from_anchor_transform(_swapChain->_worldAnchor);
 
 		Matrix rotationPose = GetRotationMatrixForAppleMatrix(head_position);
@@ -172,7 +173,7 @@ namespace RN
 			return;
 
 		_swapChain->UpdatePredictedPose();
-		
+
 		for(size_t i = 0; i < GetEyeCount(); i++)
 		{
 			//TODO: These should ideally be directly pushed to the VRCamera when available
@@ -210,7 +211,7 @@ namespace RN
 		_currentHapticsIndex[index] = 0;
 		_haptics[index] = haptics;
 	}
-	
+
 	RenderingDevice *AppleXRWindow::GetOutputDevice(RendererDescriptor *descriptor) const
 	{
 		if(!_layerRenderer)
@@ -231,7 +232,7 @@ namespace RN
 
 		return nullptr;
 	}
-	
+
 	const Window::SwapChainDescriptor &AppleXRWindow::GetSwapChainDescriptor() const
 	{
 		return _swapChain->GetAppleXRSwapChainDescriptor();
@@ -245,4 +246,4 @@ namespace RN
 		return 2;
 #endif
 	}
-}
+} // namespace RN

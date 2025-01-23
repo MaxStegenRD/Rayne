@@ -19,4 +19,4 @@ namespace RN
 		SafeRelease(_name);
 		SafeRelease(_info);
 	}
-}
+} // namespace RN

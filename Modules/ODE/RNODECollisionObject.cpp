@@ -11,26 +11,26 @@
 namespace RN
 {
 	RNDefineMeta(ODECollisionObject, SceneNodeAttachment)
-		
+
 	ODECollisionObject::ODECollisionObject() :
-//		_collisionFilter(btBroadphaseProxy::DefaultFilter),
-//		_collisionFilterMask(btBroadphaseProxy::AllFilter),
+		//		_collisionFilter(btBroadphaseProxy::DefaultFilter),
+		//		_collisionFilterMask(btBroadphaseProxy::AllFilter),
 		_owner(nullptr),
-//		_material(nullptr),
+		//		_material(nullptr),
 		_contactCallback(nullptr),
 		_simulationStepCallback(nullptr)
 	{}
-		
+
 	ODECollisionObject::~ODECollisionObject()
 	{
-/*		if(_material)
+		/*		if(_material)
 		{
 			_connection->Disconnect();
 			_material->Release();
 		}*/
 	}
-		
-		
+
+
 	void ODECollisionObject::SetCollisionFilter(short int filter)
 	{
 		_collisionFilter = filter;
@@ -41,7 +41,7 @@ namespace RN
 		_collisionFilterMask = mask;
 		ReInsertIntoWorld();
 	}
-/*	void ODECollisionObject::SetMaterial(BulletMaterial *tmaterial)
+	/*	void ODECollisionObject::SetMaterial(BulletMaterial *tmaterial)
 	{
 		if(_material)
 		{
@@ -55,8 +55,8 @@ namespace RN
 			UpdateFromMaterial(_material);
 		}
 	}*/
-		
-	void ODECollisionObject::SetContactCallback(std::function<void (ODECollisionObject *, const ODEContactInfo&)> &&callback)
+
+	void ODECollisionObject::SetContactCallback(std::function<void(ODECollisionObject *, const ODEContactInfo &)> &&callback)
 	{
 		_contactCallback = std::move(callback);
 	}
@@ -65,25 +65,25 @@ namespace RN
 	{
 		_simulationStepCallback = std::move(callback);
 	}
-		
+
 	void ODECollisionObject::SetPositionOffset(RN::Vector3 offset)
 	{
 		this->offset = offset;
 	}
-		
+
 	void ODECollisionObject::ReInsertIntoWorld()
 	{
 		if(_owner)
 		{
 			auto world = _owner;
-				
+
 			world->Lock();
 			world->RemoveCollisionObject(this);
 			world->InsertCollisionObject(this);
 			world->Unlock();
 		}
 	}
-		
+
 	void ODECollisionObject::InsertIntoWorld(ODEWorld *world)
 	{
 		_owner = world;
@@ -92,11 +92,11 @@ namespace RN
 	{
 		_owner = nullptr;
 	}
-		
-		
+
+
 	void ODECollisionObject::DidUpdate(SceneNode::ChangeSet changeSet)
 	{
-/*		if(changeSet & SceneNode::ChangeSet::World)
+		/*		if(changeSet & SceneNode::ChangeSet::World)
 		{
 			World *world = GetParent()->GetWorld();
 				
@@ -113,8 +113,8 @@ namespace RN
 			}
 		}*/
 	}
-		
-/*	void BulletCollisionObject::DidAddToParent()
+
+	/*	void BulletCollisionObject::DidAddToParent()
 	{
 		if(!_owner)
 			BulletWorld::GetSharedInstance()->InsertCollisionObject(this);
@@ -125,4 +125,4 @@ namespace RN
 		if(_owner)
 			_owner->RemoveCollisionObject(this);
 	}*/
-}
+} // namespace RN

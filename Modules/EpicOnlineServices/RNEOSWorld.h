@@ -10,21 +10,21 @@
 #define __RAYNE_EOSWORLD_H_
 
 #include "RNEOS.h"
-#include "RNEOSLobbyManager.h"
 #include "RNEOSClient.h"
+#include "RNEOSLobbyManager.h"
 #include "RNEOSServer.h"
 
 struct EOS_PlatformHandle;
-typedef struct EOS_PlatformHandle* EOS_HPlatform;
+typedef struct EOS_PlatformHandle *EOS_HPlatform;
 
 struct EOS_ConnectHandle;
-typedef struct EOS_ConnectHandle* EOS_HConnect;
+typedef struct EOS_ConnectHandle *EOS_HConnect;
 
 struct EOS_P2PHandle;
-typedef struct EOS_P2PHandle* EOS_HP2P;
+typedef struct EOS_P2PHandle *EOS_HP2P;
 
 struct EOS_ProductUserIdDetails;
-typedef struct EOS_ProductUserIdDetails* EOS_ProductUserId;
+typedef struct EOS_ProductUserIdDetails *EOS_ProductUserId;
 
 typedef struct _tagEOS_LogMessage EOS_LogMessage;
 
@@ -55,15 +55,15 @@ namespace RN
 			LoginStateLoginExpired,
 			LoginStateLoginFailed
 		};
-		
+
 		EOSAPI static EOSWorld *GetInstance();
 
 		EOSAPI EOSWorld(String *productName, String *productVersion, String *productID, String *sandboxID, String *deploymentID, String *clientID, String *clientSecret, std::function<void(std::function<void(String *, const String *, EOSAuthServiceType)>)> externalLoginCallback, bool allowFallbackToDeviceID);
 		EOSAPI ~EOSWorld() override;
-		
+
 		EOSAPI void AddHost(EOSHost *host);
 		EOSAPI void RemoveHost(EOSHost *host);
-		
+
 		EOSAPI EOSLobbyManager *GetLobbyManager();
 		EOSAPI EOS_HPlatform GetPlatformHandle() const { return _platformHandle; }
 		EOSAPI EOS_HP2P GetP2PHandle() const { return _p2pInterfaceHandle; }
@@ -71,15 +71,15 @@ namespace RN
 		EOSAPI LoginState GetLoginState() const { return _loginState; }
 		EOSAPI bool GetHasNetworkConnection() const;
 		EOSAPI void LoginUser();
-		
+
 		EOSAPI String *GetUserIDString() const;
 		EOSAPI EOS_ProductUserId GetUserIDFromString(const String *userIDString) const;
-		
+
 		EOSAPI double Ping(String *address, size_t repetitions);
 
 	protected:
 		void Update(float delta) override;
-			
+
 	private:
 		static void LoggingCallback(const EOS_LogMessage *Message);
 		static void ConnectOnCreateDeviceIDCallback(const EOS_Connect_CreateDeviceIdCallbackInfo *Data);
@@ -87,26 +87,26 @@ namespace RN
 		static void ConnectOnLoginCallback(const EOS_Connect_LoginCallbackInfo *Data);
 		static void ConnectOnAuthExpirationCallback(const EOS_Connect_AuthExpirationCallbackInfo *Data);
 		static void ConnectOnLoginStatusChangedCallback(const EOS_Connect_LoginStatusChangedCallbackInfo *Data);
-		
+
 		void CreateDeviceID();
-		
+
 		static EOSWorld *_instance;
 		Array *_hosts;
-		
+
 		std::function<void(std::function<void(String *, const String *, EOSAuthServiceType)>)> _externalLoginCallback;
 
 		bool _allowFallbackToDeviceID;
 		LoginState _loginState;
 		EOS_ProductUserId _loggedInUserID;
-		
+
 		EOS_HPlatform _platformHandle;
 		EOS_HConnect _connectInterfaceHandle;
 		EOS_HP2P _p2pInterfaceHandle;
-		
+
 		EOSLobbyManager *_lobbyManager;
-			
+
 		RNDeclareMetaAPI(EOSWorld, EOSAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_EOSWORLD_H_) */

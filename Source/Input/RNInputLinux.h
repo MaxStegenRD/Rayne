@@ -17,7 +17,7 @@ struct libevdev;*/
 
 namespace RN
 {
- /*   struct HIDElement
+	/*   struct HIDElement
     {
         HIDElement(IOHIDElementRef element, InputControl *control);
         ~HIDElement();
@@ -45,47 +45,47 @@ namespace RN
         void HandleValue(IOHIDValueRef value);
     };*/
 
-    class LinuxPlatformDevice : public InputDevice
-    {
-    public:
-        LinuxPlatformDevice(const Descriptor &descriptor);//, udev_device *device);
+	class LinuxPlatformDevice : public InputDevice
+	{
+	public:
+		LinuxPlatformDevice(const Descriptor &descriptor); //, udev_device *device);
 
-        ~LinuxPlatformDevice();
+		~LinuxPlatformDevice();
 
-        void Update() override;
-        bool __Activate() override;
-        bool __Deactivate() override;
+		void Update() override;
+		bool __Activate() override;
+		bool __Deactivate() override;
 
-//        udev_device *GetRawDevice() const { return _udevDevice; }
+		//        udev_device *GetRawDevice() const { return _udevDevice; }
 
-    protected:
+	protected:
 		void AddControl(InputControl *control) override;
 
-    private:
-        void BuildControlTree();
+	private:
+		void BuildControlTree();
 
-/*        static void DataAvailableCallback(void *context, IOReturn result, void *sender);*/
+		/*        static void DataAvailableCallback(void *context, IOReturn result, void *sender);*/
 
- /*       std::vector<HIDElement *> _allElements;
+		/*       std::vector<HIDElement *> _allElements;
         std::unordered_map<IOHIDElementCookie, HIDElement *> _elements;*/
 
- /*       udev_device *_udevDevice;
+		/*       udev_device *_udevDevice;
 	 	libevdev *_device;*/
-	 	int _fileHandle;
+		int _fileHandle;
 
-        bool _hasDataAvailable;
+		bool _hasDataAvailable;
 
-        size_t _buttonCount;
-        size_t _sliderCount;
+		size_t _buttonCount;
+		size_t _sliderCount;
 
-        size_t _deltaAxisCount;
-        size_t _linearAxisCount;
-        size_t _rotationAxisCount;
+		size_t _deltaAxisCount;
+		size_t _linearAxisCount;
+		size_t _rotationAxisCount;
 
-    RNDeclareMeta(LinuxPlatformDevice);
-    };
+		RNDeclareMeta(LinuxPlatformDevice);
+	};
 
- /*   class LinuxMouseDevice : public LinuxPlatformDevice
+	/*   class LinuxMouseDevice : public LinuxPlatformDevice
     {
     public:
         RNAPI LinuxMouseDevice(const Descriptor &descriptor, IOHIDDeviceRef device);
@@ -121,54 +121,52 @@ namespace RN
     };*/
 
 
+	class LinuxHIDDevice : public HIDDevice
+	{
+	public:
+		//       RNAPI LinuxHIDDevice(IOHIDDeviceRef device);
+		RNAPI ~LinuxHIDDevice();
 
+		RNAPI void Open() final;
+		RNAPI void Close() final;
 
-    class LinuxHIDDevice : public HIDDevice
-    {
-    public:
- //       RNAPI LinuxHIDDevice(IOHIDDeviceRef device);
-        RNAPI ~LinuxHIDDevice();
+		RNAPI virtual Data *ReadReport(uint32 reportID) const final;
+		RNAPI virtual Data *ReadFeatureReport(uint32 reportID) const final;
 
-        RNAPI void Open() final;
-        RNAPI void Close() final;
+		RNAPI virtual size_t WriteReport(uint32 reportID, const Data *data) final;
 
-        RNAPI virtual Data *ReadReport(uint32 reportID) const final;
-        RNAPI virtual Data *ReadFeatureReport(uint32 reportID) const final;
+		RNAPI const String *GetManufacturerString() const final;
+		RNAPI const String *GetProductString() const final;
+		RNAPI const String *GetSerialString() const final;
 
-        RNAPI virtual size_t WriteReport(uint32 reportID, const Data *data) final;
+		size_t GetInputReportLength() const { return _inputReportLength; }
+		size_t GetOutputReportLength() const { return _outputReportLength; }
+		size_t GetFeatureReportLength() const { return _featureReportLength; }
 
-        RNAPI const String *GetManufacturerString() const final;
-        RNAPI const String *GetProductString() const final;
-        RNAPI const String *GetSerialString() const final;
+		RNAPI uint32 GetVendorID() const final;
+		RNAPI uint32 GetProductID() const final;
 
-        size_t GetInputReportLength() const { return _inputReportLength; }
-        size_t GetOutputReportLength() const { return _outputReportLength; }
-        size_t GetFeatureReportLength() const { return _featureReportLength; }
-
-        RNAPI uint32 GetVendorID() const final;
-        RNAPI uint32 GetProductID() const final;
-
-    private:
- /*       void HandleInputReport(uint32_t reportID, uint8_t *report, CFIndex length);
+	private:
+		/*       void HandleInputReport(uint32_t reportID, uint8_t *report, CFIndex length);
         static void InputReportCallback(void *context, IOReturn result, void *deviceRef, IOHIDReportType type, uint32_t reportID, uint8_t *report, CFIndex length);
 
         const String *GetStringWithKey(CFStringRef key) const;
         uint32 GetSizeWithKey(CFStringRef key) const;
 
         IOHIDDeviceRef _device;*/
-        uint32 _openCount;
+		uint32 _openCount;
 
-        uint32 _featureReportLength;
-        uint8 *_featureReportBuffer;
+		uint32 _featureReportLength;
+		uint8 *_featureReportBuffer;
 
-        uint32 _inputReportLength;
-        uint8 *_inputReportBuffer;
+		uint32 _inputReportLength;
+		uint8 *_inputReportBuffer;
 
-        uint32 _outputReportLength;
-        uint8 *_outputReportBuffer;
+		uint32 _outputReportLength;
+		uint8 *_outputReportBuffer;
 
-        mutable std::map<uint32, Data *> _inputReports;
-    };
-}
+		mutable std::map<uint32, Data *> _inputReports;
+	};
+} // namespace RN
 
 #endif /* __RAYNE_INPUTLINUX_H_ */

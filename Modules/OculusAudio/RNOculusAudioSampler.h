@@ -32,15 +32,15 @@ namespace RN
 		}
 
 		//TODO: Implement an optional effects pipeline
-			
+
 	private:
 		AudioAsset *_asset;
 		double _totalTime;
 		bool _isRepeating;
 		Lockable _lock;
-			
+
 		RNDeclareMetaAPI(OculusAudioSampler, OAAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_OculusAudioSAMPLER_H_) */

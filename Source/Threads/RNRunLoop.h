@@ -11,8 +11,8 @@
 
 #include "../Base/RNBase.h"
 #include "../Base/RNFunction.h"
-#include "../Objects/RNObject.h"
 #include "../Objects/RNArray.h"
+#include "../Objects/RNObject.h"
 #include "../Objects/RNSet.h"
 
 namespace RN
@@ -30,18 +30,18 @@ namespace RN
 				   AfterWaiting = (1 << 5),
 				   Exit = (1 << 6));
 
-		RNAPI RunLoopObserver(Activity activites, bool repeats, std::function<void (RunLoopObserver *, Activity)> &&callback);
+		RNAPI RunLoopObserver(Activity activites, bool repeats, std::function<void(RunLoopObserver *, Activity)> &&callback);
 
 		RNAPI void Invalidate();
 
 		Activity GetActivities() const { return _activites; }
-		const std::function<void (RunLoopObserver *, Activity)> &GetCallback() const { return _callback; }
+		const std::function<void(RunLoopObserver *, Activity)> &GetCallback() const { return _callback; }
 		bool IsRepeating() const { return _repeats; }
 		bool IsValid() const { return _valid; }
 
 	private:
 		Activity _activites;
-		std::function<void (RunLoopObserver *, Activity)> _callback;
+		std::function<void(RunLoopObserver *, Activity)> _callback;
 		bool _repeats;
 		bool _valid;
 
@@ -124,6 +124,6 @@ namespace RN
 		Lockable _lock;
 		Condition _signal;
 	};
-}
+} // namespace RN
 
 #endif /* __RAYNE_RUNLOOP_H__ */

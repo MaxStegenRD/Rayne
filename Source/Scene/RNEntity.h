@@ -30,7 +30,7 @@ namespace RN
 
 		RNAPI bool CanRender(Renderer *renderer, Camera *camera) const override;
 		RNAPI void Render(Renderer *renderer, Camera *camera) const override;
-		
+
 		RNAPI void MakeDirty(); //Can be used to force update the drawable. Some changes, such as replacing shaders within the same material won't have an effect otherwise
 
 	private:
@@ -45,7 +45,7 @@ namespace RN
 
 		__RNDeclareMetaInternal(Entity)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_ENTITY_H_ */

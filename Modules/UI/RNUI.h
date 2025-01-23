@@ -12,20 +12,20 @@
 #include <Rayne.h>
 
 #include "RNUIConfig.h"
-#include "RNUIPath.h"
 #include "RNUIEdgeInsets.h"
 #include "RNUIFontManager.h"
+#include "RNUIPath.h"
 
 #include "RNUIServer.h"
 
-#include "RNUIWindow.h"
-#include "RNUIView.h"
-#include "RNUIScrollView.h"
+#include "RNUIButton.h"
 #include "RNUIGridView.h"
-#include "RNUIStackView.h"
-#include "RNUISlider.h"
 #include "RNUIImageView.h"
 #include "RNUILabel.h"
-#include "RNUIButton.h"
+#include "RNUIScrollView.h"
+#include "RNUISlider.h"
+#include "RNUIStackView.h"
+#include "RNUIView.h"
+#include "RNUIWindow.h"
 
 #endif /* __RAYNE_UI_H_ */

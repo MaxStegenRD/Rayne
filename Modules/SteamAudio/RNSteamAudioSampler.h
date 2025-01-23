@@ -32,15 +32,15 @@ namespace RN
 		}
 
 		//TODO: Implement an optional effects pipeline
-			
+
 	private:
 		AudioAsset *_asset;
 		double _totalTime;
 		bool _isRepeating;
 		Lockable _lock;
-			
+
 		RNDeclareMetaAPI(SteamAudioSampler, SAAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_STEAMAUDIOSAMPLER_H_) */

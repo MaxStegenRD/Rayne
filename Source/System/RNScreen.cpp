@@ -6,9 +6,9 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
+#include "RNScreen.h"
 #include "../Base/RNBaseInternal.h"
 #include "../Base/RNKernel.h"
-#include "RNScreen.h"
 
 namespace RN
 {
@@ -42,15 +42,15 @@ namespace RN
 		_screens = new Array();
 
 #if RN_PLATFORM_MAC_OS
-		@autoreleasepool {
-
+		@autoreleasepool
+		{
 			CGDisplayCount count;
 
 			CGGetActiveDisplayList(0, 0, &count);
 			CGDirectDisplayID *table = new CGDirectDisplayID[count];
 
 			CGGetActiveDisplayList(count, table, &count);
-			for(size_t i = 0; i < count; i ++)
+			for(size_t i = 0; i < count; i++)
 			{
 				try
 				{
@@ -60,17 +60,18 @@ namespace RN
 					if(screen->IsMainScreen())
 						_mainScreen = screen;
 				}
-				catch(Exception &e) { }
+				catch(Exception &e)
+				{}
 			}
 
-			delete [] table;
+			delete[] table;
 		}
 #endif
 #if RN_PLATFORM_WINDOWS
 
 		::EnumDisplayMonitors(nullptr, nullptr, (MONITORENUMPROC)&__MonitorEnumProc, 0);
 
-		for(HMONITOR monitor : __MonitorHandles)
+		for(HMONITOR monitor: __MonitorHandles)
 		{
 			try
 			{
@@ -96,7 +97,7 @@ namespace RN
 		xcb_screen_iterator_t iterator = xcb_setup_roots_iterator(setup);
 		int count = xcb_setup_roots_length(setup);
 
-		for(int i = 0; i < count; i ++)
+		for(int i = 0; i < count; i++)
 		{
 			xcb_screen_t *screen = iterator.data;
 
@@ -129,7 +130,7 @@ namespace RN
 		// Find the NSScreen that corresponds to this screen
 		NSArray *screens = [NSScreen screens];
 
-		for(NSInteger i = 0; i < [screens count]; i ++)
+		for(NSInteger i = 0; i < [screens count]; i++)
 		{
 			NSScreen *screen = [screens objectAtIndex:i];
 			NSRect frame = [screen frame];
@@ -140,7 +141,7 @@ namespace RN
 			CGError error = CGGetDisplaysWithRect(NSRectToCGRect(frame), 5, displayIDs, &displayCount);
 			if(error == kCGErrorSuccess)
 			{
-				for(uint32 i = 0; i < displayCount; i ++)
+				for(uint32 i = 0; i < displayCount; i++)
 				{
 					if(displayIDs[i] == display)
 					{
@@ -163,28 +164,28 @@ namespace RN
 
 		// Enumerate through all supported modes
 		CFArrayRef array = CGDisplayCopyAllDisplayModes(display, 0);
-		CFIndex count    = CFArrayGetCount(array);
+		CFIndex count = CFArrayGetCount(array);
 
-		for(size_t i = 0; i < count; i ++)
+		for(size_t i = 0; i < count; i++)
 		{
 			CGDisplayModeRef mode = (CGDisplayModeRef)CFArrayGetValueAtIndex(array, i);
 			if(CFGetTypeID(mode) == CGDisplayModeGetTypeID())
 			{
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+	#pragma clang diagnostic push
+	#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 				CFStringRef encoding = CGDisplayModeCopyPixelEncoding(mode);
-#pragma clang diagnostic pop
+	#pragma clang diagnostic pop
 
 				if(CFStringCompare(encoding, CFSTR(IO32BitDirectPixels), 0) == kCFCompareEqualTo)
 				{
-					uint32 width  = static_cast<uint32>(CGDisplayModeGetPixelWidth(mode));
+					uint32 width = static_cast<uint32>(CGDisplayModeGetPixelWidth(mode));
 					uint32 height = static_cast<uint32>(CGDisplayModeGetPixelHeight(mode));
 
 					if(width >= 320 && height >= 240)
 					{
 						if(_scaleFactor >= 1.5f)
 						{
-							width  >>= 1;
+							width >>= 1;
 							height >>= 1;
 						}
 
@@ -201,11 +202,11 @@ namespace RN
 
 		NSString *screenName = nil;
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+	#pragma clang diagnostic push
+	#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 		NSDictionary *deviceInfo = (NSDictionary *)IODisplayCreateInfoDictionary(CGDisplayIOServicePort(display), kIODisplayOnlyPreferredName);
-#pragma clang diagnostic pop
-		
+	#pragma clang diagnostic pop
+
 		NSDictionary *localizedNames = [deviceInfo objectForKey:[NSString stringWithUTF8String:kDisplayProductName]];
 
 		if([localizedNames count] > 0)
@@ -240,7 +241,7 @@ namespace RN
 		_frame.width = info.rcMonitor.right - info.rcMonitor.left;
 		_frame.height = info.rcMonitor.bottom - info.rcMonitor.top;
 
-		for(DWORD modeNum = 0; ; modeNum++)
+		for(DWORD modeNum = 0;; modeNum++)
 		{
 			DEVMODE mode;
 
@@ -295,4 +296,4 @@ namespace RN
 
 		_resolutions->Release();
 	}
-}
+} // namespace RN

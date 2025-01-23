@@ -7,8 +7,8 @@
 //
 
 #include "RNENetServer.h"
-#include "RNENetWorld.h"
 #include "RNENetInternals.h"
+#include "RNENetWorld.h"
 
 #include "enet/enet.h"
 
@@ -16,7 +16,8 @@ namespace RN
 {
 	RNDefineMeta(ENetServer, ENetHost)
 
-	ENetServer::ENetServer(uint32 port, uint16 maxConnections, uint32 channelCount) : _maxConnections(maxConnections), _encryptorSharedInternals(nullptr)
+	ENetServer::ENetServer(uint32 port, uint16 maxConnections, uint32 channelCount) :
+		_maxConnections(maxConnections), _encryptorSharedInternals(nullptr)
 	{
 		_status = Status::Server;
 		_ip = nullptr;
@@ -28,10 +29,10 @@ namespace RN
 		address.port = _port;
 
 		_enetHost = enet_host_create(&address,
-			_maxConnections,
-			_channelCount,
-			0      /* assume any amount of incoming bandwidth */,
-			0      /* assume any amount of outgoing bandwidth */);
+									 _maxConnections,
+									 _channelCount,
+									 0 /* assume any amount of incoming bandwidth */,
+									 0 /* assume any amount of outgoing bandwidth */);
 
 		if(!_enetHost)
 		{
@@ -39,7 +40,7 @@ namespace RN
 			return;
 		}
 	}
-		
+
 	ENetServer::~ENetServer()
 	{
 		enet_host_destroy(_enetHost);
@@ -50,31 +51,31 @@ namespace RN
 	{
 #if RN_ENET_USE_BOTAN_DTLS_ENCRYPTION
 		_encryptorSharedInternals = new ENetServerEncryptorSharedInternals(privateKeyPath, certificatePath);
-		
+
 		ENetServerEncryptorContext *context = new ENetServerEncryptorContext;
 		context->server = this;
-		context->encryptors = new ENetServerEncryptor*[_maxConnections];
+		context->encryptors = new ENetServerEncryptor *[_maxConnections];
 		for(int i = 0; i < _maxConnections; i++)
 		{
 			context->encryptors[i] = nullptr;
 		}
-		
+
 		ENetEncryptor encryptor;
 		encryptor.context = context;
-		
-		encryptor.connected = [](void *context, size_t inPeerIndex){
-			ENetServerEncryptorContext *realContext = static_cast<ENetServerEncryptorContext*>(context);
+
+		encryptor.connected = [](void *context, size_t inPeerIndex) {
+			ENetServerEncryptorContext *realContext = static_cast<ENetServerEncryptorContext *>(context);
 			realContext->encryptors[inPeerIndex] = new ENetServerEncryptor(realContext->server, inPeerIndex);
 		};
-		
-		encryptor.disconnected = [](void *context, size_t inPeerIndex){
-			ENetServerEncryptorContext *realContext = static_cast<ENetServerEncryptorContext*>(context);
+
+		encryptor.disconnected = [](void *context, size_t inPeerIndex) {
+			ENetServerEncryptorContext *realContext = static_cast<ENetServerEncryptorContext *>(context);
 			delete realContext->encryptors[inPeerIndex];
 			realContext->encryptors[inPeerIndex] = nullptr;
 		};
-		
-		encryptor.destroy = [](void *context){
-			ENetServerEncryptorContext *realContext = static_cast<ENetServerEncryptorContext*>(context);
+
+		encryptor.destroy = [](void *context) {
+			ENetServerEncryptorContext *realContext = static_cast<ENetServerEncryptorContext *>(context);
 			for(int i = 0; i < realContext->server->_maxConnections; i++)
 			{
 				if(realContext->encryptors[i])
@@ -85,15 +86,15 @@ namespace RN
 			delete[] realContext->encryptors;
 			delete realContext;
 		};
-		
-		encryptor.send = [](void * context, size_t inPeerIndex, const ENetBuffer * inBuffers, size_t inBufferCount, size_t inLimit, enet_uint8 * outData, size_t outLimit) -> size_t {
+
+		encryptor.send = [](void *context, size_t inPeerIndex, const ENetBuffer *inBuffers, size_t inBufferCount, size_t inLimit, enet_uint8 *outData, size_t outLimit) -> size_t {
 			return 0;
 		};
-		
-		encryptor.receive = [](void * context, size_t inPeerIndex, const enet_uint8 * inData, size_t inLimit, enet_uint8 * outData, size_t outLimit) -> size_t {
+
+		encryptor.receive = [](void *context, size_t inPeerIndex, const enet_uint8 *inData, size_t inLimit, enet_uint8 *outData, size_t outLimit) -> size_t {
 			return 0;
 		};
-		
+
 		enet_host_encrypt(_enetHost, &encryptor);
 #endif
 	}
@@ -108,7 +109,7 @@ namespace RN
 				return freeID;
 			}
 		}
-		
+
 		return -1;
 	}
 
@@ -134,7 +135,7 @@ namespace RN
 					enet_peer_timeout(peer.peer, 0, 0, 0);
 					_peers.insert(std::pair<uint16, Peer>(peer.id, peer));
 					event.peer->data = malloc(sizeof(uint16));
-					*static_cast<uint16*>(event.peer->data) = peer.id;
+					*static_cast<uint16 *>(event.peer->data) = peer.id;
 
 					HandleDidConnect(peer.id);
 					break;
@@ -145,7 +146,7 @@ namespace RN
 					Data *data = Data::WithBytes(event.packet->data, event.packet->dataLength);
 					enet_packet_destroy(event.packet);
 
-					uint16 id = *static_cast<uint16*>(event.peer->data);
+					uint16 id = *static_cast<uint16 *>(event.peer->data);
 					ReceivedPacket(data, id, event.channelID);
 					break;
 				}
@@ -153,7 +154,7 @@ namespace RN
 				case ENET_EVENT_TYPE_DISCONNECT:
 				{
 					RNDebug("Client disconnected: " << event.peer->data);
-					uint16 id = *static_cast<uint16*>(event.peer->data);
+					uint16 id = *static_cast<uint16 *>(event.peer->data);
 					_peers.erase(id);
 					ReleaseUserID(id);
 					free(event.peer->data);
@@ -162,7 +163,7 @@ namespace RN
 					HandleDidDisconnect(id, event.data);
 					break;
 				}
-					
+
 				case ENET_EVENT_TYPE_NONE:
 				{
 					break;
@@ -180,4 +181,4 @@ namespace RN
 	{
 		enet_peer_disconnect_later(_peers[userID].peer, data);
 	}
-}
+} // namespace RN

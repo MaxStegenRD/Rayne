@@ -10,9 +10,9 @@
 #define __RAYNE_MEMORYPOOL_H_
 
 #include "../Threads/RNLockable.h"
-#include <vector>
-#include <list>
 #include <bitset>
+#include <list>
+#include <vector>
 
 namespace RN
 {
@@ -62,7 +62,7 @@ namespace RN
 				_nodes(std::move(other._nodes))
 			{}
 
-			SizePool &operator =(SizePool &&other)
+			SizePool &operator=(SizePool &&other)
 			{
 				_size = other._size;
 				_nodes = std::move(other._nodes);
@@ -82,7 +82,7 @@ namespace RN
 
 		std::vector<SizePool> _pools;
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_MEMORYPOOL_H_ */

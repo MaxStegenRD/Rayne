@@ -13,7 +13,6 @@
 #include "RNVRWindow.h"
 
 
-
 namespace RN
 {
 	class OculusMobileVulkanSwapChain;
@@ -54,7 +53,7 @@ namespace RN
 		OVRAPI VRWindow::Origin GetOrigin() const final { return VRWindow::Origin::Floor; }
 
 		OVRAPI Array *GetRequiredVulkanInstanceExtensions() const final;
-        OVRAPI Array *GetRequiredVulkanDeviceExtensions(RN::RendererDescriptor *descriptor, RenderingDevice *device) const final;
+		OVRAPI Array *GetRequiredVulkanDeviceExtensions(RN::RendererDescriptor *descriptor, RenderingDevice *device) const final;
 
 	private:
 		const String *GetHMDInfoDescription() const;
@@ -67,7 +66,7 @@ namespace RN
 
 		OculusMobileVulkanSwapChain *_swapChain;
 		uint32 _actualFrameIndex;
-        double _predictedDisplayTime;
+		double _predictedDisplayTime;
 
 		VRHMDTrackingState _hmdTrackingState;
 		VRControllerTrackingState _controllerTrackingState[2];
@@ -88,7 +87,7 @@ namespace RN
 
 		RNDeclareMetaAPI(OculusMobileWindow, OVRAPI)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_OCULUSMOBILEWINDOW_H_ */

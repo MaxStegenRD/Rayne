@@ -11,35 +11,35 @@
 
 #include "RNRecast.h"
 
-#include "RNRecastMesh.h"
 #include "RNRecastAgent.h"
+#include "RNRecastMesh.h"
 
 class rcContext;
 class dtCrowd;
 
 namespace RN
 {
-    class RecastPath : public Object
-    {
-    public:
-        std::vector<Vector3> corners;
-        
-    private:
-        RNDeclareMetaAPI(RecastPath, RCAPI)
-    };
+	class RecastPath : public Object
+	{
+	public:
+		std::vector<Vector3> corners;
+
+	private:
+		RNDeclareMetaAPI(RecastPath, RCAPI)
+	};
 
 	class RecastWorld : public SceneAttachment
 	{
 	public:
 		RCAPI static RecastWorld *GetInstance();
-		
+
 		RCAPI rcContext *GetRecastContext() const { return _recastContext; }
 		RCAPI dtCrowd *GetCrowdManager() const { return _crowdManager; }
-		
+
 		RCAPI void SetRecastMesh(RecastMesh *navMesh, uint8 maxAgents);
 		RCAPI RN::Vector3 GetClosestPosition(Vector3 postion);
-        
-        RCAPI RecastPath *FindPath(const RN::Vector3 &from, const RN::Vector3 &to);
+
+		RCAPI RecastPath *FindPath(const RN::Vector3 &from, const RN::Vector3 &to);
 
 		RCAPI void SetPaused(bool paused);
 
@@ -48,18 +48,18 @@ namespace RN
 
 	protected:
 		void Update(float delta) override;
-			
+
 	private:
 		static RecastWorld *_instance;
-		
+
 		RecastMesh *_navMesh;
 		rcContext *_recastContext;
 		dtCrowd *_crowdManager;
 
 		bool _paused;
-			
+
 		RNDeclareMetaAPI(RecastWorld, RCAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_RECASTWORLD_H_) */

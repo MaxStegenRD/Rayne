@@ -7,15 +7,15 @@
 //
 
 #include "RNPhysXDynamicBody.h"
-#include "RNPhysXWorld.h"
 #include "PxPhysicsAPI.h"
 #include "RNPhysXInternals.h"
+#include "RNPhysXWorld.h"
 
 namespace RN
 {
 	RNDefineMeta(PhysXDynamicBody, PhysXCollisionObject)
-		
-		PhysXDynamicBody::PhysXDynamicBody(PhysXShape *shape, float mass) :
+
+	PhysXDynamicBody::PhysXDynamicBody(PhysXShape *shape, float mass) :
 		_shape(shape->Retain()),
 		_actor(nullptr)
 	{
@@ -25,7 +25,7 @@ namespace RN
 		if(shape->IsKindOfClass(PhysXCompoundShape::GetMetaClass()))
 		{
 			PhysXCompoundShape *compound = shape->Downcast<PhysXCompoundShape>();
-			for(PhysXShape *tempShape : compound->_shapes)
+			for(PhysXShape *tempShape: compound->_shapes)
 			{
 				_actor->attachShape(*tempShape->GetPhysXShape());
 			}
@@ -34,7 +34,7 @@ namespace RN
 		{
 			_actor->attachShape(*shape->GetPhysXShape());
 		}
-		
+
 		physx::PxRigidBodyExt::setMassAndUpdateInertia(*_actor, mass);
 
 		_actor->userData = this;
@@ -45,7 +45,7 @@ namespace RN
 		scene->addActor(*_actor);
 		PhysXWorld::GetSharedInstance()->Unlock();
 	}
-		
+
 	PhysXDynamicBody::~PhysXDynamicBody()
 	{
 		PhysXWorld::GetSharedInstance()->Lock();
@@ -69,7 +69,7 @@ namespace RN
 		if(_shape->IsKindOfClass(PhysXCompoundShape::GetMetaClass()))
 		{
 			PhysXCompoundShape *compound = _shape->Downcast<PhysXCompoundShape>();
-			for(PhysXShape *tempShape : compound->_shapes)
+			for(PhysXShape *tempShape: compound->_shapes)
 			{
 				tempShape->GetPhysXShape()->setSimulationFilterData(filterData);
 				tempShape->GetPhysXShape()->setQueryFilterData(filterData);
@@ -95,7 +95,7 @@ namespace RN
 		if(_shape->IsKindOfClass(PhysXCompoundShape::GetMetaClass()))
 		{
 			PhysXCompoundShape *compound = _shape->Downcast<PhysXCompoundShape>();
-			for(PhysXShape *tempShape : compound->_shapes)
+			for(PhysXShape *tempShape: compound->_shapes)
 			{
 				tempShape->GetPhysXShape()->setSimulationFilterData(filterData);
 				tempShape->GetPhysXShape()->setQueryFilterData(filterData);
@@ -107,14 +107,14 @@ namespace RN
 			_shape->GetPhysXShape()->setQueryFilterData(filterData);
 		}
 	}
-	
-		
+
+
 	PhysXDynamicBody *PhysXDynamicBody::WithShape(PhysXShape *shape, float mass)
 	{
 		PhysXDynamicBody *body = new PhysXDynamicBody(shape, mass);
 		return body->Autorelease();
 	}
-		
+
 	void PhysXDynamicBody::SetMass(float mass)
 	{
 		physx::PxRigidBodyExt::setMassAndUpdateInertia(*_actor, mass);
@@ -133,7 +133,7 @@ namespace RN
 	{
 		_actor->setAngularVelocity(physx::PxVec3(velocity.x, velocity.y, velocity.z));
 	}
-		
+
 	void PhysXDynamicBody::SetDamping(float linear, float angular)
 	{
 		_actor->setLinearDamping(linear);
@@ -150,22 +150,24 @@ namespace RN
 	{
 		_actor->setMaxDepenetrationVelocity(max);
 	}
-		
+
 	Vector3 PhysXDynamicBody::GetLinearVelocity() const
 	{
-		const physx::PxVec3& velocity = _actor->getLinearVelocity();
+		const physx::PxVec3 &velocity = _actor->getLinearVelocity();
 		return Vector3(velocity.x, velocity.y, velocity.z);
 	}
 	Vector3 PhysXDynamicBody::GetAngularVelocity() const
 	{
-		const physx::PxVec3& velocity = _actor->getAngularVelocity();
+		const physx::PxVec3 &velocity = _actor->getAngularVelocity();
 		return Vector3(velocity.x, velocity.y, velocity.z);
 	}
 
 	void PhysXDynamicBody::SetEnableSleeping(bool sleeping)
 	{
-		if(!sleeping) _actor->wakeUp();
-		else _actor->putToSleep();
+		if(!sleeping)
+			_actor->wakeUp();
+		else
+			_actor->putToSleep();
 	}
 
 	bool PhysXDynamicBody::GetIsSleeping() const
@@ -187,7 +189,7 @@ namespace RN
 	{
 		_actor->setActorFlag(physx::PxActorFlag::eDISABLE_GRAVITY, !enable);
 	}
-	
+
 	void PhysXDynamicBody::SetSolverIterationCount(uint32 positionIterations, uint32 velocityIterations)
 	{
 		_actor->setSolverIterationCounts(positionIterations, velocityIterations);
@@ -197,16 +199,16 @@ namespace RN
 	{
 		_actor->addForce(physx::PxVec3(force.x, force.y, force.z));
 	}
-/*	void PhysXDynamicBody::ApplyForce(const Vector3 &force, const Vector3 &origin)
+	/*	void PhysXDynamicBody::ApplyForce(const Vector3 &force, const Vector3 &origin)
 	{
 		_rigidBody->applyForce(btVector3(force.x, force.y, force.z), btVector3(origin.x, origin.y, origin.z));
 	}*/
 	void PhysXDynamicBody::ClearForces()
 	{
 		_actor->clearForce();
-//		_actor->clearTorque();
+		//		_actor->clearTorque();
 	}
-		
+
 	void PhysXDynamicBody::ApplyTorque(const Vector3 &torque)
 	{
 		_actor->addTorque(physx::PxVec3(torque.x, torque.y, torque.z));
@@ -219,7 +221,7 @@ namespace RN
 	{
 		_actor->addForce(physx::PxVec3(impulse.x, impulse.y, impulse.z), physx::PxForceMode::eIMPULSE);
 	}
-/*	void PhysXDynamicBody::ApplyImpulse(const Vector3 &impulse, const Vector3 &origin)
+	/*	void PhysXDynamicBody::ApplyImpulse(const Vector3 &impulse, const Vector3 &origin)
 	{
 		_rigidBody->applyImpulse(btVector3(impulse.x, impulse.y, impulse.z), btVector3(origin.x, origin.y, origin.z));
 	}*/
@@ -251,22 +253,22 @@ namespace RN
 		RN::Quaternion startRotation = GetWorldRotation();
 		if(rotation.GetDotProduct(startRotation) > 0.0f)
 			startRotation = startRotation.GetConjugated();
-		RN::Quaternion rotationSpeed = rotation*startRotation;
+		RN::Quaternion rotationSpeed = rotation * startRotation;
 		RN::Vector4 axisAngleSpeed = rotationSpeed.GetAxisAngle();
 		if(axisAngleSpeed.w > 180.0f)
 			axisAngleSpeed.w -= 360.0f;
 		RN::Vector3 angularVelocity(axisAngleSpeed.x, axisAngleSpeed.y, axisAngleSpeed.z);
-		angularVelocity *= axisAngleSpeed.w*M_PI;
+		angularVelocity *= axisAngleSpeed.w * M_PI;
 		angularVelocity /= 180.0f;
 		angularVelocity /= delta;
 
 		RN::Vector3 linearForce = speed - GetLinearVelocity();
 		linearForce /= delta;
-//		linearForce *= _actor->getMass();
+		//		linearForce *= _actor->getMass();
 		linearForce *= 10.0f;
 		RN::Vector3 angularForce = angularVelocity - GetAngularVelocity();
 		angularForce /= delta;
-//		angularForce *= _mass;
+		//		angularForce *= _mass;
 		angularForce *= 10.0f;
 
 		if(linearForce.GetLength() > 5000.0f)
@@ -274,11 +276,11 @@ namespace RN
 
 		if(angularForce.GetLength() > 15000.0f)
 			angularForce.Normalize(15000.0f);
-		
+
 		_actor->addForce(physx::PxVec3(linearForce.x, linearForce.y, linearForce.z), physx::PxForceMode::eACCELERATION);
 		_actor->addTorque(physx::PxVec3(angularForce.x, angularForce.y, angularForce.z), physx::PxForceMode::eACCELERATION);
 	}
-	
+
 	bool PhysXDynamicBody::SweepTest(std::vector<PhysXContactInfo> &contactInfo, const Vector3 &direction, const Vector3 &offsetPosition, const Quaternion &offsetRotation, float inflation) const
 	{
 		physx::PxTransform pose = _actor->getGlobalPose();
@@ -303,15 +305,15 @@ namespace RN
 		if(_shape->IsKindOfClass(PhysXCompoundShape::GetMetaClass()))
 		{
 			PhysXCompoundShape *compound = _shape->Downcast<PhysXCompoundShape>();
-			for(PhysXShape *tempShape : compound->_shapes)
+			for(PhysXShape *tempShape: compound->_shapes)
 			{
 				physx::PxShape *shape = tempShape->GetPhysXShape();
 				shape->setFlag(physx::PxShapeFlag::eSCENE_QUERY_SHAPE, false);
 			}
-			for(PhysXShape *tempShape : compound->_shapes)
+			for(PhysXShape *tempShape: compound->_shapes)
 			{
 				physx::PxShape *shape = tempShape->GetPhysXShape();
-				scene->sweep(shape->getGeometry().any(), pose, normalizedDirection, length, hit, physx::PxHitFlags(physx::PxHitFlag::eDEFAULT), physx::PxQueryFilterData(filterData, physx::PxQueryFlag::eDYNAMIC | physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::ePREFILTER|physx::PxQueryFlag::eNO_BLOCK), &filterCallback, nullptr, inflation);
+				scene->sweep(shape->getGeometry().any(), pose, normalizedDirection, length, hit, physx::PxHitFlags(physx::PxHitFlag::eDEFAULT), physx::PxQueryFilterData(filterData, physx::PxQueryFlag::eDYNAMIC | physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::ePREFILTER | physx::PxQueryFlag::eNO_BLOCK), &filterCallback, nullptr, inflation);
 
 				for(int i = 0; i < hit.getNbAnyHits(); i++)
 				{
@@ -320,7 +322,7 @@ namespace RN
 					contact.normal = Vector3(hit.getAnyHit(i).normal.x, hit.getAnyHit(i).normal.y, hit.getAnyHit(i).normal.z);
 					contact.position = Vector3(hit.getAnyHit(i).position.x, hit.getAnyHit(i).position.y, hit.getAnyHit(i).position.z);
 					contact.node = nullptr;
-					PhysXCollisionObject *attachment = static_cast<PhysXCollisionObject*>(hit.getAnyHit(i).actor->userData);
+					PhysXCollisionObject *attachment = static_cast<PhysXCollisionObject *>(hit.getAnyHit(i).actor->userData);
 					contact.collisionObject = attachment;
 					if(attachment)
 					{
@@ -330,7 +332,7 @@ namespace RN
 					contactInfo.push_back(contact);
 				}
 			}
-			for(PhysXShape *tempShape : compound->_shapes)
+			for(PhysXShape *tempShape: compound->_shapes)
 			{
 				physx::PxShape *shape = tempShape->GetPhysXShape();
 				shape->setFlag(physx::PxShapeFlag::eSCENE_QUERY_SHAPE, true);
@@ -340,7 +342,7 @@ namespace RN
 		{
 			physx::PxShape *shape = _shape->GetPhysXShape();
 			shape->setFlag(physx::PxShapeFlag::eSCENE_QUERY_SHAPE, false);
-			scene->sweep(shape->getGeometry().any(), pose, normalizedDirection, length, hit, physx::PxHitFlags(physx::PxHitFlag::eDEFAULT), physx::PxQueryFilterData(filterData, physx::PxQueryFlag::eDYNAMIC | physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::ePREFILTER|physx::PxQueryFlag::eNO_BLOCK), &filterCallback, nullptr, inflation);
+			scene->sweep(shape->getGeometry().any(), pose, normalizedDirection, length, hit, physx::PxHitFlags(physx::PxHitFlag::eDEFAULT), physx::PxQueryFilterData(filterData, physx::PxQueryFlag::eDYNAMIC | physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::ePREFILTER | physx::PxQueryFlag::eNO_BLOCK), &filterCallback, nullptr, inflation);
 			shape->setFlag(physx::PxShapeFlag::eSCENE_QUERY_SHAPE, true);
 
 			for(int i = 0; i < hit.getNbAnyHits(); i++)
@@ -350,7 +352,7 @@ namespace RN
 				contact.normal = Vector3(hit.getAnyHit(i).normal.x, hit.getAnyHit(i).normal.y, hit.getAnyHit(i).normal.z);
 				contact.position = Vector3(hit.getAnyHit(i).position.x, hit.getAnyHit(i).position.y, hit.getAnyHit(i).position.z);
 				contact.node = nullptr;
-				PhysXCollisionObject *attachment = static_cast<PhysXCollisionObject*>(hit.getAnyHit(i).actor->userData);
+				PhysXCollisionObject *attachment = static_cast<PhysXCollisionObject *>(hit.getAnyHit(i).actor->userData);
 				contact.collisionObject = attachment;
 				if(attachment)
 				{
@@ -366,7 +368,7 @@ namespace RN
 
 	Quaternion PhysXDynamicBody::RotationSweepTest(std::vector<PhysXContactInfo> &contactInfo, const Quaternion &targetRoation, float stepSize, float sweepSize, const Vector3 &offsetPosition, const Quaternion &offsetRotation) const
 	{
-		Quaternion startRotation = offsetRotation*GetWorldRotation();
+		Quaternion startRotation = offsetRotation * GetWorldRotation();
 		Quaternion rotationDiff = targetRoation / startRotation;
 		rotationDiff.Normalize();
 		Vector4 axisAngleDiff = rotationDiff.GetAxisAngle();
@@ -404,11 +406,11 @@ namespace RN
 
 		return newRotation;
 	}
-		
+
 	void PhysXDynamicBody::DidUpdate(SceneNode::ChangeSet changeSet)
 	{
 		PhysXCollisionObject::DidUpdate(changeSet);
-		
+
 		if(changeSet & SceneNode::ChangeSet::Position)
 		{
 			RN::Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
@@ -431,7 +433,7 @@ namespace RN
 		}
 	}
 
-/*	void PhysXDynamicBody::UpdateFromMaterial(BulletMaterial *material)
+	/*	void PhysXDynamicBody::UpdateFromMaterial(BulletMaterial *material)
 	{
 		_rigidBody->setFriction(material->GetFriction());
 		_rigidBody->setRollingFriction(material->GetRollingFriction());
@@ -453,4 +455,4 @@ namespace RN
 		SetWorldPosition(Vector3(transform.p.x, transform.p.y, transform.p.z) + positionOffset);
 		SetWorldRotation(rotation);
 	}
-}
+} // namespace RN

@@ -25,13 +25,13 @@ namespace RN
 		Rect(const Vector2 &origin, const Vector2 &size);
 		Rect(const Rect &other);
 
-		bool operator== (const Rect &other) const;
-		bool operator!= (const Rect &other) const;
+		bool operator==(const Rect &other) const;
+		bool operator!=(const Rect &other) const;
 
 		bool ContainsPoint(const Vector2 &point) const;
 		bool IntersectsRect(const Rect &other) const;
 		bool ContainsRect(const Rect &other) const;
-		
+
 		float GetDistanceToPoint(const Vector2 &point) const;
 
 		Rect &Inset(float dx, float dy);
@@ -46,7 +46,7 @@ namespace RN
 
 		float GetArea() const
 		{
-			return width*height;
+			return width * height;
 		}
 
 		Vector2 GetOrigin() const
@@ -79,7 +79,7 @@ namespace RN
 		x = tx;
 		y = ty;
 
-		width  = twidth;
+		width = twidth;
 		height = theight;
 	}
 
@@ -88,7 +88,7 @@ namespace RN
 		x = origin.x;
 		y = origin.y;
 
-		width  = twidth;
+		width = twidth;
 		height = theight;
 	}
 
@@ -97,7 +97,7 @@ namespace RN
 		x = origin.x;
 		y = origin.y;
 
-		width  = size.x;
+		width = size.x;
 		height = size.y;
 	}
 
@@ -106,23 +106,23 @@ namespace RN
 		x = other.x;
 		y = other.y;
 
-		width  = other.width;
+		width = other.width;
 		height = other.height;
 	}
 
-	RN_INLINE bool Rect::operator== (const Rect &other) const
+	RN_INLINE bool Rect::operator==(const Rect &other) const
 	{
 		if(Math::FastAbs(x - other.x) > k::EpsilonFloat || Math::FastAbs(y - other.y) > k::EpsilonFloat ||
-			Math::FastAbs(width - other.width) > k::EpsilonFloat || Math::FastAbs(height - other.height) > k::EpsilonFloat)
+		   Math::FastAbs(width - other.width) > k::EpsilonFloat || Math::FastAbs(height - other.height) > k::EpsilonFloat)
 			return false;
 
 		return true;
 	}
 
-	RN_INLINE bool Rect::operator!= (const Rect &other) const
+	RN_INLINE bool Rect::operator!=(const Rect &other) const
 	{
 		if(Math::FastAbs(x - other.x) > k::EpsilonFloat || Math::FastAbs(y - other.y) > k::EpsilonFloat ||
-			Math::FastAbs(width - other.width) > k::EpsilonFloat || Math::FastAbs(height - other.height) > k::EpsilonFloat)
+		   Math::FastAbs(width - other.width) > k::EpsilonFloat || Math::FastAbs(height - other.height) > k::EpsilonFloat)
 			return true;
 
 		return false;
@@ -149,7 +149,7 @@ namespace RN
 	{
 		float dx = std::max(std::max(x - point.x, point.x - x - width), 0.0f);
 		float dy = std::max(std::max(y - point.y, point.y - y - height), 0.0f);
-		return Math::Sqrt(dx*dx + dy*dy);
+		return Math::Sqrt(dx * dx + dy * dy);
 	}
 
 
@@ -158,7 +158,7 @@ namespace RN
 		x += dx;
 		y += dy;
 
-		width  -= dx * 2;
+		width -= dx * 2;
 		height -= dy * 2;
 
 		return *this;
@@ -169,7 +169,7 @@ namespace RN
 		x = floorf(x);
 		y = floorf(y);
 
-		width  = floorf(width);
+		width = floorf(width);
 		height = floorf(height);
 
 		return *this;
@@ -179,7 +179,6 @@ namespace RN
 	{
 		return Rect(*this).Integral();
 	}
-
 
 
 	RN_INLINE float Rect::GetTop() const
@@ -201,7 +200,7 @@ namespace RN
 	{
 		return x + width;
 	}
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_RECT_H_ */

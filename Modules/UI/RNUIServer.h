@@ -29,22 +29,22 @@ namespace RN
 
 			UIAPI void AddWindow(UI::Window *window);
 			UIAPI void RemoveWindow(UI::Window *window);
-			
+
 			UIAPI void AddToScene(Scene *scene);
 
 			float GetHeight() const { return _camera->GetRenderPass()->GetFrame().height; }
 			float GetWidth() const { return _camera->GetRenderPass()->GetFrame().width; }
 
 			Camera *GetCamera() const { return _camera; }
-		private:
 
+		private:
 			Camera *_camera;
 			SceneNode *_windowContainer;
 
 			RNDeclareMetaAPI(Server, UIAPI)
 		};
-	}
-}
+	} // namespace UI
+} // namespace RN
 
 
 #endif /* __RAYNE_UISERVER_H_ */

@@ -9,47 +9,48 @@
 #include <RayneConfig.h>
 
 #ifdef RN_OPENVR_SUPPORTS_METAL
-#include "RNOpenVRMetalSwapChain.h"
+	#include "RNOpenVRMetalSwapChain.h"
 #endif
 
 #ifdef RN_OPENVR_SUPPORTS_D3D12
-#include "RNOpenVRD3D12SwapChain.h"
-#include "RND3D12Device.h"
+	#include "RND3D12Device.h"
+	#include "RNOpenVRD3D12SwapChain.h"
 #endif
 
 #ifdef RN_OPENVR_SUPPORTS_VULKAN
-#include "RNOpenVRVulkanSwapChain.h"
-#include "RNVulkanRendererDescriptor.h"
-#include "RNVulkanDevice.h"
+	#include "RNOpenVRVulkanSwapChain.h"
+	#include "RNVulkanDevice.h"
+	#include "RNVulkanRendererDescriptor.h"
 #endif
 
-#include "RNOpenVRWindow.h"
 #include "../../Source/Math/RNMatrix.h"
+#include "RNOpenVRWindow.h"
 
 namespace RN
 {
 	RNDefineMeta(OpenVRWindow, VRWindow)
 
-	OpenVRWindow::OpenVRWindow() : _vrSystem(nullptr), _swapChain(nullptr), _currentHapticsIndex{ 0, 0 }, _lastSizeChangeTimer(0.0f)
+	OpenVRWindow::OpenVRWindow() :
+		_vrSystem(nullptr), _swapChain(nullptr), _currentHapticsIndex {0, 0}, _lastSizeChangeTimer(0.0f)
 	{
 		_hmdTrackingState.position = Vector3(0.0f, 1.0f, 0.0f);
-		
+
 		if(!vr::VR_IsHmdPresent())
 		{
 			RNDebug("OpenVR: No headset connected.");
 			return;
 		}
-			
+
 		vr::EVRInitError eError = vr::VRInitError_None;
 		_vrSystem = vr::VR_Init(&eError, vr::VRApplication_Scene);
-		
+
 		if(eError != vr::VRInitError_None)
 		{
 			_vrSystem = nullptr;
 			RNDebug("OpenVR: Unable to init VR runtime: " << vr::VR_GetVRInitErrorAsEnglishDescription(eError));
 			return;
 		}
-		
+
 		RNInfo(GetHMDInfoDescription());
 
 		FileManager *fileManager = FileManager::GetSharedInstance();
@@ -58,7 +59,7 @@ namespace RN
 		vr::VRInput()->SetActionManifestPath(inputManifest->GetUTF8String());
 
 		vr::VRInput()->GetActionSetHandle("/actions/main", &_inputActionSetHandle);
-		
+
 		vr::VRInput()->GetActionHandle("/actions/main/in/LeftLower", &_inputActionHandle[InputAction::ButtonLeftLower]);
 		vr::VRInput()->GetActionHandle("/actions/main/in/LeftUpper", &_inputActionHandle[InputAction::ButtonLeftUpper]);
 		vr::VRInput()->GetActionHandle("/actions/main/in/LeftStick", &_inputActionHandle[InputAction::ButtonLeftStick]);
@@ -89,12 +90,12 @@ namespace RN
 		if(_vrSystem) vr::VR_Shutdown();
 		_vrSystem = nullptr;
 	}
-	
+
 	void OpenVRWindow::StartRendering(const SwapChainDescriptor &descriptor, float eyeResolutionFactor)
 	{
 		if(!_vrSystem)
 			return;
-		
+
 #ifdef RN_OPENVR_SUPPORTS_METAL
 		if(Renderer::GetActiveRenderer()->GetDescriptor()->GetAPI()->IsEqual(RNCSTR("Metal")))
 		{
@@ -122,7 +123,7 @@ namespace RN
 		}
 #endif
 	}
-	
+
 	void OpenVRWindow::StopRendering()
 	{
 		if(_swapChain)
@@ -130,7 +131,7 @@ namespace RN
 #ifdef RN_OPENVR_SUPPORTS_METAL
 			if(_swapChainType == SwapChainType::Metal)
 			{
-				OpenVRMetalSwapChain *swapChain = static_cast<OpenVRMetalSwapChain*>(_swapChain);
+				OpenVRMetalSwapChain *swapChain = static_cast<OpenVRMetalSwapChain *>(_swapChain);
 				swapChain->Release();
 				_swapChain = nullptr;
 				return;
@@ -140,7 +141,7 @@ namespace RN
 #ifdef RN_OPENVR_SUPPORTS_D3D12
 			if(_swapChainType == SwapChainType::D3D12)
 			{
-				OpenVRD3D12SwapChain *swapChain = static_cast<OpenVRD3D12SwapChain*>(_swapChain);
+				OpenVRD3D12SwapChain *swapChain = static_cast<OpenVRD3D12SwapChain *>(_swapChain);
 				swapChain->Release();
 				_swapChain = nullptr;
 				return;
@@ -150,7 +151,7 @@ namespace RN
 #ifdef RN_OPENVR_SUPPORTS_VULKAN
 			if(_swapChainType == SwapChainType::Vulkan)
 			{
-				OpenVRVulkanSwapChain *swapChain = static_cast<OpenVRVulkanSwapChain*>(_swapChain);
+				OpenVRVulkanSwapChain *swapChain = static_cast<OpenVRVulkanSwapChain *>(_swapChain);
 				swapChain->Release();
 				_swapChain = nullptr;
 				return;
@@ -160,18 +161,18 @@ namespace RN
 
 		RN_ASSERT(0, "The active renderer is not supported by the OpenVR module!");
 	}
-	
+
 	bool OpenVRWindow::IsRendering() const
 	{
 		return (_swapChain != nullptr);
 	}
-	
+
 	const String *OpenVRWindow::GetHMDInfoDescription() const
 	{
-		if (!_vrSystem)
+		if(!_vrSystem)
 			return RNCSTR("No HMD found.");
-		
-		
+
+
 		int firstHMDDeviceIndex = 0;
 		for(int nDevice = 0; nDevice < vr::k_unMaxTrackedDeviceCount; ++nDevice)
 		{
@@ -181,23 +182,23 @@ namespace RN
 				break;
 			}
 		}
-		
+
 		char *propertyString = new char[vr::k_unMaxPropertyStringSize];
-		
+
 		_vrSystem->GetStringTrackedDeviceProperty(firstHMDDeviceIndex, vr::Prop_RenderModelName_String, propertyString, vr::k_unMaxPropertyStringSize);
 		String *description = new String("Using HMD: ");
 		description->Append(propertyString);
-		
+
 		_vrSystem->GetStringTrackedDeviceProperty(firstHMDDeviceIndex, vr::Prop_ManufacturerName_String, propertyString, vr::k_unMaxPropertyStringSize);
 		description->Append(", Vendor: ");
 		description->Append(propertyString);
-		
+
 		_vrSystem->GetStringTrackedDeviceProperty(firstHMDDeviceIndex, vr::Prop_TrackingFirmwareVersion_String, propertyString, vr::k_unMaxPropertyStringSize);
 		description->Append(", Firmware: ");
 		description->Append(propertyString);
-		
+
 		delete[] propertyString;
-		
+
 		return description;
 	}
 
@@ -205,7 +206,7 @@ namespace RN
 	{
 		if(!_swapChain)
 			return Vector2();
-		
+
 		return _swapChain->GetOpenVRSwapChainSize();
 	}
 
@@ -213,7 +214,7 @@ namespace RN
 	{
 		if(!_swapChain)
 			return nullptr;
-		
+
 		return _swapChain->GetOpenVRSwapChainFramebuffer();
 	}
 
@@ -247,7 +248,7 @@ namespace RN
 	{
 		if(!_swapChain)
 			return;
-		
+
 		uint32 recommendedWidth;
 		uint32 recommendedHeight;
 		_vrSystem->GetRecommendedRenderTargetSize(&recommendedWidth, &recommendedHeight);
@@ -266,7 +267,7 @@ namespace RN
 
 		_lastSizeChangeTimer += delta;
 
-		uint16 trackedDevices[3] = { vr::k_unMaxTrackedDeviceCount, vr::k_unMaxTrackedDeviceCount, vr::k_unMaxTrackedDeviceCount };
+		uint16 trackedDevices[3] = {vr::k_unMaxTrackedDeviceCount, vr::k_unMaxTrackedDeviceCount, vr::k_unMaxTrackedDeviceCount};
 		_swapChain->UpdatePredictedPose();
 
 		vr::HmdMatrix44_t leftProjection = _vrSystem->GetProjectionMatrix(vr::Eye_Left, near, far);
@@ -294,9 +295,9 @@ namespace RN
 			//TODO: Handle more OpenVR events
 			switch(event.eventType)
 			{
-			case vr::VREvent_Quit:
-				_hmdTrackingState.mode = VRHMDTrackingState::Mode::Disconnected;
-				break;
+				case vr::VREvent_Quit:
+					_hmdTrackingState.mode = VRHMDTrackingState::Mode::Disconnected;
+					break;
 			}
 		}
 
@@ -342,7 +343,8 @@ namespace RN
 
 		for(int i = 0; i < 2; i++)
 		{
-			_controllerTrackingState[i].active = false;;
+			_controllerTrackingState[i].active = false;
+			;
 			_controllerTrackingState[i].tracking = false;
 			if(handPose[i].bActive && handPose[i].pose.bDeviceIsConnected)
 			{
@@ -407,7 +409,7 @@ namespace RN
 				float strength = _haptics[i].samples[_currentHapticsIndex[i]++];
 				vr::VRInput()->TriggerHapticVibrationAction(_inputActionHandle[i == 0 ? InputAction::HapticsLeftHand : InputAction::HapticsRightHand], 0.0f, delta, 320.0f, strength, vr::k_ulInvalidActionHandle);
 			}
-/*			else if(_currentHapticsIndex[i] > 0)
+			/*			else if(_currentHapticsIndex[i] > 0)
 			{
 				vr::VRInput()->TriggerHapticVibrationAction(_inputActionHandle[i == 0 ? InputAction::HapticsLeftHand : InputAction::HapticsRightHand], 0.0f, delta, 320.0f, 0.0f, vr::k_ulInvalidActionHandle);
 				_currentHapticsIndex[i] = 0;
@@ -423,7 +425,7 @@ namespace RN
 	{
 		if(!_swapChain)
 			return;
-		
+
 		_swapChain->ResizeOpenVRSwapChain(size);
 		NotificationManager::GetSharedInstance()->PostNotification(kRNWindowDidChangeSize, this);
 	}
@@ -453,7 +455,7 @@ namespace RN
 		_currentHapticsIndex[index] = 0;
 		_haptics[index] = haptics;
 	}
-	
+
 	void OpenVRWindow::PreparePreviewWindow(Window *window) const
 	{
 #if RN_PLATFORM_MAC_OS
@@ -464,7 +466,7 @@ namespace RN
 
 #endif
 	}
-	
+
 	RenderingDevice *OpenVRWindow::GetOutputDevice(RendererDescriptor *descriptor) const
 	{
 		if(!_vrSystem)
@@ -474,7 +476,7 @@ namespace RN
 		if(descriptor->GetAPI()->IsEqual(RNCSTR("Metal")))
 		{
 			id<MTLDevice> mtlDevice = nil;
-			_vrSystem->GetOutputDevice((uint64_t*)&mtlDevice, vr::TextureType_IOSurface);
+			_vrSystem->GetOutputDevice((uint64_t *)&mtlDevice, vr::TextureType_IOSurface);
 			MetalDevice *device = nullptr;
 			if(mtlDevice)
 			{
@@ -488,10 +490,10 @@ namespace RN
 		if(descriptor->GetAPI()->IsEqual(RNCSTR("D3D12")))
 		{
 			LUID adapterLUID;
-			_vrSystem->GetOutputDevice(reinterpret_cast<uint64_t*>(&adapterLUID), vr::TextureType_DirectX12);
+			_vrSystem->GetOutputDevice(reinterpret_cast<uint64_t *>(&adapterLUID), vr::TextureType_DirectX12);
 
 			D3D12Device *outputDevice = nullptr;
-			descriptor->GetDevices()->Enumerate<D3D12Device>([&](D3D12Device *device, size_t index, bool &stop){
+			descriptor->GetDevices()->Enumerate<D3D12Device>([&](D3D12Device *device, size_t index, bool &stop) {
 				DXGI_ADAPTER_DESC adapterDescription;
 				device->GetAdapter()->GetDesc(&adapterDescription);
 				if(adapterDescription.AdapterLuid.LowPart == adapterLUID.LowPart && adapterDescription.AdapterLuid.HighPart == adapterLUID.HighPart)
@@ -500,7 +502,7 @@ namespace RN
 					stop = true;
 				}
 			});
-			
+
 			return outputDevice;
 		}
 #endif
@@ -509,10 +511,10 @@ namespace RN
 		if(descriptor->GetAPI()->IsEqual(RNCSTR("Vulkan")))
 		{
 			VulkanRendererDescriptor *vulkanDescriptor = descriptor->Downcast<VulkanRendererDescriptor>();
-			
+
 			VkInstance instance = vulkanDescriptor->GetInstance()->GetInstance();
 			VkPhysicalDevice physicalDevice;
-			_vrSystem->GetOutputDevice(reinterpret_cast<uint64_t*>(&physicalDevice), vr::TextureType_Vulkan, instance);
+			_vrSystem->GetOutputDevice(reinterpret_cast<uint64_t *>(&physicalDevice), vr::TextureType_Vulkan, instance);
 
 			VulkanDevice *outputDevice = nullptr;
 			descriptor->GetDevices()->Enumerate<VulkanDevice>([&](VulkanDevice *device, size_t index, bool &stop) {
@@ -529,26 +531,26 @@ namespace RN
 
 		return nullptr;
 	}
-	
+
 	Mesh *OpenVRWindow::GetHiddenAreaMesh(uint8 eye) const
 	{
 		if(!_vrSystem)
 			return nullptr;
-		
+
 		vr::HiddenAreaMesh_t hiddenAreaMesh = _vrSystem->GetHiddenAreaMesh(static_cast<vr::Hmd_Eye>(eye));
-		
+
 		if(hiddenAreaMesh.unTriangleCount <= 0)
 			return nullptr;
-		
+
 		Mesh *mesh = new Mesh({Mesh::VertexAttribute(Mesh::VertexAttribute::Feature::Vertices, PrimitiveType::Vector2)}, hiddenAreaMesh.unTriangleCount * 3, 0);
-		
+
 		mesh->BeginChanges();
 		mesh->SetElementData(Mesh::VertexAttribute::Feature::Vertices, hiddenAreaMesh.pVertexData);
 		mesh->EndChanges();
-		
+
 		return mesh->Autorelease();
 	}
-	
+
 	const Window::SwapChainDescriptor &OpenVRWindow::GetSwapChainDescriptor() const
 	{
 		return _swapChain->GetOpenVRSwapChainDescriptor();
@@ -627,7 +629,7 @@ namespace RN
 	{
 		uint32_t buffersize;
 		buffersize = vr::VRCompositor()->GetVulkanInstanceExtensionsRequired(nullptr, 0);
-		char *extensions = (char*)malloc(buffersize);
+		char *extensions = (char *)malloc(buffersize);
 		vr::VRCompositor()->GetVulkanInstanceExtensionsRequired(extensions, buffersize);
 
 		String *result = RNSTR(extensions);
@@ -648,7 +650,7 @@ namespace RN
 
 		uint32_t buffersize;
 		buffersize = vr::VRCompositor()->GetVulkanDeviceExtensionsRequired(vulkanDevice->GetPhysicalDevice(), nullptr, 0);
-		char *extensions = (char*)malloc(buffersize);
+		char *extensions = (char *)malloc(buffersize);
 		vr::VRCompositor()->GetVulkanDeviceExtensionsRequired(vulkanDevice->GetPhysicalDevice(), extensions, buffersize);
 
 		String *result = RNSTR(extensions);
@@ -658,4 +660,4 @@ namespace RN
 		return extensionArray;
 	}
 #endif
-}
+} // namespace RN

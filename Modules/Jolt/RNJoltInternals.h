@@ -12,21 +12,21 @@
 #include "RNJolt.h"
 #include "RNJoltKinematicController.h"
 
-#include <Jolt/Jolt.h>
-#include <Jolt/RegisterTypes.h>
 #include <Jolt/Core/Factory.h>
-#include <Jolt/Core/TempAllocator.h>
 #include <Jolt/Core/JobSystemThreadPool.h>
-#include <Jolt/Physics/PhysicsSettings.h>
-#include <Jolt/Physics/PhysicsSystem.h>
-#include <Jolt/Physics/Body/BodyCreationSettings.h>
+#include <Jolt/Core/TempAllocator.h>
+#include <Jolt/Jolt.h>
 #include <Jolt/Physics/Body/BodyActivationListener.h>
+#include <Jolt/Physics/Body/BodyCreationSettings.h>
+#include <Jolt/Physics/Character/CharacterVirtual.h>
+#include <Jolt/Physics/Collision/CastResult.h>
+#include <Jolt/Physics/Collision/CollideShape.h>
+#include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <Jolt/Physics/Collision/RayCast.h>
 #include <Jolt/Physics/Collision/ShapeCast.h>
-#include <Jolt/Physics/Collision/CollideShape.h>
-#include <Jolt/Physics/Collision/CastResult.h>
-#include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
-#include <Jolt/Physics/Character/CharacterVirtual.h>
+#include <Jolt/Physics/PhysicsSettings.h>
+#include <Jolt/Physics/PhysicsSystem.h>
+#include <Jolt/RegisterTypes.h>
 
 namespace RN
 {
@@ -38,9 +38,9 @@ namespace RN
 			uint64 upperBits = (uint64)collisionMask << 32U;
 			uint64 lowerBits = (uint64)collisionGroup;
 			uint64 collision = upperBits | lowerBits;
-			
+
 			size_t counter = 0;
-			for(uint64 value : _objectLayerMapping)
+			for(uint64 value: _objectLayerMapping)
 			{
 				if(value == collision)
 				{
@@ -50,42 +50,42 @@ namespace RN
 				}
 				counter += 1;
 			}
-			
+
 			_objectLayerMapping.push_back(collision);
-			
+
 			uint16 objectLayerBits = static_cast<uint16>(counter);
 			uint16 broadPhaseBits = (static_cast<uint16>(broadPhaseLayer) << 14U);
 			return static_cast<JPH::ObjectLayer>(broadPhaseBits | objectLayerBits);
 		}
-		
+
 		uint32 GetCollisionGroup(JPH::ObjectLayer objectLayer) const
 		{
 			uint16 objectLayerIndex = static_cast<uint16>(objectLayer & 0b0011111111111111U);
 			uint64 collision = _objectLayerMapping[static_cast<size_t>(objectLayerIndex)];
 			return static_cast<uint32>(collision & 0xFFFFFFFFU);
 		}
-		
+
 		uint32 GetCollisionMask(JPH::ObjectLayer objectLayer) const
 		{
 			uint16 objectLayerIndex = static_cast<uint16>(objectLayer & 0b0011111111111111U);
 			uint64 collision = _objectLayerMapping[static_cast<size_t>(objectLayerIndex)];
 			return static_cast<uint32>(collision >> 32U);
 		}
-		
+
 		//From JPH::ObjectLayerPairFilter
 		bool ShouldCollide(JPH::ObjectLayer inObject1, JPH::ObjectLayer inObject2) const final
 		{
 			uint32 collisionGroup1 = GetCollisionGroup(inObject1);
 			uint32 collisionMask1 = GetCollisionMask(inObject1);
-			
+
 			uint32 collisionGroup2 = GetCollisionGroup(inObject2);
 			uint32 collisionMask2 = GetCollisionMask(inObject2);
-			
+
 			bool filterMask = (collisionGroup1 & collisionMask2) && (collisionGroup2 & collisionMask1);
 			//bool filterID = (filterData0.word3 == 0 && filterData1.word3 == 0) || (filterData0.word2 != filterData1.word3 && filterData0.word3 != filterData1.word2);
-			return (filterMask);// && filterID)
+			return (filterMask); // && filterID)
 		}
-		
+
 		//From JPH::ObjectVsBroadPhaseLayerFilter
 		bool ShouldCollide(JPH::ObjectLayer inLayer1, JPH::BroadPhaseLayer inLayer2) const final
 		{
@@ -95,10 +95,10 @@ namespace RN
 			{
 				return inLayer2 != JoltBroadPhaseLayers::LAYER_STATIC; //Only collide with none-static
 			}*/
-			
+
 			return true; //Everything else collides with everything
 		}
-		
+
 		//From JPH::BroadPhaseLayerInterface
 		uint GetNumBroadPhaseLayers() const final
 		{
@@ -112,7 +112,7 @@ namespace RN
 			return JPH::BroadPhaseLayer(broadPhaseLayer);
 		}
 
-	#if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
+#if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
 		//From JPH::BroadPhaseLayerInterface
 		virtual const char *GetBroadPhaseLayerName(JPH::BroadPhaseLayer inLayer) const override
 		{
@@ -120,23 +120,23 @@ namespace RN
 			{
 				case 0:
 					return "LAYER_0";
-						
+
 				case 1:
 					return "LAYER_1";
-					
+
 				case 2:
 					return "LAYER_2";
-					
+
 				case 3:
 					return "LAYER_3";
-					
+
 				default:
 					JPH_ASSERT(false);
 					return "INVALID";
 			}
 		}
-	#endif // JPH_EXTERNAL_PROFILE || JPH_PROFILE_ENABLED
-		
+#endif // JPH_EXTERNAL_PROFILE || JPH_PROFILE_ENABLED
+
 	private:
 		std::vector<uint64> _objectLayerMapping;
 	};
@@ -221,7 +221,7 @@ namespace RN
 		/// @param inCharacterVelocity World space velocity of the character prior to hitting this contact
 		/// @param ioNewCharacterVelocity Contains the calculated world space velocity of the character after hitting this contact, this velocity slides along the surface of the contact. Can be modified by the listener to provide an alternative velocity.
 		void OnContactSolve(const JPH::CharacterVirtual *inCharacter, const JPH::BodyID &inBodyID2, const JPH::SubShapeID &inSubShapeID2, JPH::RVec3Arg inContactPosition, JPH::Vec3Arg inContactNormal, JPH::Vec3Arg inContactVelocity, const JPH::PhysicsMaterial *inContactMaterial, JPH::Vec3Arg inCharacterVelocity, JPH::Vec3 &ioNewCharacterVelocity) override;
-		
+
 		JoltKinematicController *controller;
 	};
 
@@ -229,11 +229,11 @@ namespace RN
 	{
 		JPH::TempAllocatorImpl *tempAllocator;
 		JPH::JobSystemThreadPool *jobSystem;
-		
+
 		JoltObjectLayerMapper objectLayerMapper;
-		
+
 		JoltContactListener contactListener;
-		
+
 		std::vector<JPH::BodyID> bodiesToAddLoadingLevel;
 	};
 
@@ -241,6 +241,6 @@ namespace RN
 	{
 		JoltCharacterContactListener contactListener;
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_JOLTINTERNALS_H_) */

@@ -14,16 +14,16 @@ namespace RN
 	{
 		RNDefineMeta(ScrollView, View)
 
-		ScrollView::ScrollView(bool vertical, bool horizontal) : _isScrollEnabled(true), _isScrolling(false), _wasTouched(false), _tapTimer(0.0f), _pixelPerInch(200), _scrollsVertical(vertical), _scrollsHorizontal(horizontal), _isScrollInteraction(false)
+		ScrollView::ScrollView(bool vertical, bool horizontal) :
+			_isScrollEnabled(true), _isScrolling(false), _wasTouched(false), _tapTimer(0.0f), _pixelPerInch(200), _scrollsVertical(vertical), _scrollsHorizontal(horizontal), _isScrollInteraction(false)
 		{
 			SetClipToBounds(true);
 		}
 
 		ScrollView::~ScrollView()
 		{
-			
 		}
-		
+
 		void ScrollView::SetPixelPerInch(float pixelPerInch)
 		{
 			_pixelPerInch = pixelPerInch;
@@ -38,93 +38,93 @@ namespace RN
 			innerFrame.x = 0.0f;
 			innerFrame.y = 0.0f;
 			bool isCursorInside = innerFrame.ContainsPoint(transformedPosition);
-			
+
 			_isScrollInteraction = (_isScrollInteraction && _wasTouched);
-			
+
 			if(!_scrollsHorizontal) alternativeScrollSpeed.x = 0.0f;
 			if(!_scrollsVertical) alternativeScrollSpeed.y = 0.0f;
-			
+
 			if(!isCursorInside)
 			{
 				touched = false;
 				alternativeScrollSpeed = 0.0f;
 			}
-			
+
 			if(!_isScrollEnabled)
 			{
 				_scrollSpeed = 0.0f;
 				return;
 			}
-			
+
 			if(!_wasTouched && touched)
 			{
 				_tapTimer = 0.2f;
 			}
 			_tapTimer -= delta;
-			
+
 			if(_wasTouched && touched)
 			{
 				Vector2 scrollDistance;
 				if(_scrollsHorizontal) scrollDistance.x = transformedPosition.x - _previousCursorPosition.x;
 				if(_scrollsVertical) scrollDistance.y = transformedPosition.y - _previousCursorPosition.y;
-				
-				if(scrollDistance.GetLength() > _pixelPerInch/25.4f*5.0f || (_tapTimer <= 0.0f && scrollDistance.GetLength() > _pixelPerInch/25.4f))
+
+				if(scrollDistance.GetLength() > _pixelPerInch / 25.4f * 5.0f || (_tapTimer <= 0.0f && scrollDistance.GetLength() > _pixelPerInch / 25.4f))
 				{
 					_isScrollInteraction = true;
 					_isScrolling = true;
 				}
-				
+
 				if(_isScrolling)
 				{
 					RN::Rect scrollBounds = GetBounds();
 					RN::Rect scrollFrame = GetFrame();
-					
+
 					if(_scrollSpeed.GetLength() > 3.0f) _isScrollInteraction = true; //If scrolling fast, the tap likely either tried to make it scroll faster or to stop it, should be handled as an intentional scroll interaction
-					
+
 					if(scrollBounds.x + scrollDistance.x > 0.0f)
 					{
 						float distanceReduction = 0.0f - scrollBounds.x - scrollDistance.x;
 						float reductionFactor = 1.0f + distanceReduction / scrollFrame.width;
-						scrollDistance.x *= reductionFactor*0.5f;
+						scrollDistance.x *= reductionFactor * 0.5f;
 					}
-					
+
 					if(scrollBounds.x + scrollDistance.x < -scrollBounds.width + scrollFrame.width)
 					{
 						float distanceReduction = (-scrollBounds.width + scrollFrame.width - scrollBounds.x - scrollDistance.x);
 						float reductionFactor = 1.0f - distanceReduction / scrollFrame.width;
-						scrollDistance.x *= reductionFactor*0.5f;
+						scrollDistance.x *= reductionFactor * 0.5f;
 					}
-					
+
 					if(scrollBounds.y + scrollDistance.y > 0.0f)
 					{
 						float distanceReduction = 0.0f - scrollBounds.y - scrollDistance.y;
 						float reductionFactor = 1.0f + distanceReduction / scrollFrame.height;
-						scrollDistance.y *= reductionFactor*0.5f;
+						scrollDistance.y *= reductionFactor * 0.5f;
 					}
-					
+
 					if(scrollBounds.y + scrollDistance.y < -scrollBounds.height + scrollFrame.height)
 					{
 						float distanceReduction = (-scrollBounds.height + scrollFrame.height - scrollBounds.y - scrollDistance.y);
 						float reductionFactor = 1.0f - distanceReduction / scrollFrame.height;
-						scrollDistance.y *= reductionFactor*0.5f;
+						scrollDistance.y *= reductionFactor * 0.5f;
 					}
-					
+
 					scrollBounds.x += scrollDistance.x;
 					scrollBounds.y += scrollDistance.y;
 					SetBounds(scrollBounds);
-					
-					_scrollSpeed = scrollDistance/delta;
+
+					_scrollSpeed = scrollDistance / delta;
 					_scrollSpeed.x = std::min(std::max(_scrollSpeed.x, -20000.0f), 20000.0f);
 					_scrollSpeed.y = std::min(std::max(_scrollSpeed.y, -20000.0f), 20000.0f);
 				}
 			}
-			
+
 			if(!touched && alternativeScrollSpeed.GetLength() > k::EpsilonFloat)
 			{
 				_scrollSpeed = alternativeScrollSpeed;
 				_isScrolling = true;
 			}
-			
+
 			bool isOutOfBounds[2];
 			isOutOfBounds[0] = false;
 			isOutOfBounds[1] = false;
@@ -134,54 +134,54 @@ namespace RN
 				RN::Rect scrollFrame = GetFrame();
 				scrollBounds.x += _scrollSpeed.x * delta;
 				scrollBounds.y += _scrollSpeed.y * delta;
-				
+
 				if(scrollBounds.x > RN::k::EpsilonFloat)
 				{
 					scrollBounds.x += std::max(std::min(-scrollBounds.x, -5.0f) * delta * 10.0f, -scrollBounds.x);
 					isOutOfBounds[0] = true;
 				}
-				
+
 				if(scrollBounds.x < -scrollBounds.width + scrollFrame.width - RN::k::EpsilonFloat)
 				{
 					float offset = -scrollBounds.width + scrollFrame.width - scrollBounds.x;
 					scrollBounds.x += std::min(std::max(offset, 5.0f) * delta * 10.0f, offset);
 					isOutOfBounds[0] = true;
 				}
-				
+
 				if(scrollBounds.y > RN::k::EpsilonFloat)
 				{
 					scrollBounds.y += std::max(std::min(-scrollBounds.y, -5.0f) * delta * 10.0f, -scrollBounds.y);
 					isOutOfBounds[1] = true;
 				}
-				
+
 				if(scrollBounds.y < -scrollBounds.height + scrollFrame.height - RN::k::EpsilonFloat)
 				{
 					float offset = -scrollBounds.height + scrollFrame.height - scrollBounds.y;
 					scrollBounds.y += std::min(std::max(offset, 5.0f) * delta * 10.0f, offset);
 					isOutOfBounds[1] = true;
 				}
-				
+
 				SetBounds(scrollBounds);
 			}
-			
+
 			if(_isScrolling)
 			{
-				Vector2 deceleration = delta*10000.0f;
+				Vector2 deceleration = delta * 10000.0f;
 				if(isOutOfBounds[0]) deceleration.x *= 5.0f;
 				if(isOutOfBounds[1]) deceleration.y *= 5.0f;
 
 				deceleration.x = std::min(deceleration.x, std::abs(_scrollSpeed.x));
 				deceleration.y = std::min(deceleration.y, std::abs(_scrollSpeed.y));
-				_scrollSpeed.x -= (_scrollSpeed.x > 0.0f)? deceleration.x:-deceleration.x;
-				_scrollSpeed.y -= (_scrollSpeed.y > 0.0f)? deceleration.y:-deceleration.y;
-				
+				_scrollSpeed.x -= (_scrollSpeed.x > 0.0f) ? deceleration.x : -deceleration.x;
+				_scrollSpeed.y -= (_scrollSpeed.y > 0.0f) ? deceleration.y : -deceleration.y;
+
 				if(_scrollSpeed.GetLength() < 0.1f)
 				{
 					if(!touched && !isOutOfBounds[0] && !isOutOfBounds[1])
 					{
 						RN::Rect scrollBounds = GetBounds();
 						RN::Rect scrollFrame = GetFrame();
-						
+
 						_isScrolling = false;
 						scrollBounds.x = std::min(scrollBounds.x, 0.0f);
 						scrollBounds.x = std::max(scrollBounds.x, -scrollBounds.width + scrollFrame.width);
@@ -189,13 +189,13 @@ namespace RN
 						scrollBounds.y = std::max(scrollBounds.y, -scrollBounds.height + scrollFrame.height);
 						SetBounds(scrollBounds);
 					}
-					
+
 					_scrollSpeed = 0.0f;
 				}
 			}
-			
+
 			_wasTouched = touched;
 			_previousCursorPosition = transformedPosition;
 		}
-	}
-}
+	} // namespace UI
+} // namespace RN

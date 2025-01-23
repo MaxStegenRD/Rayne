@@ -19,15 +19,15 @@ namespace RN
 	{
 	public:
 		static void Register();
-		
+
 		Asset *Load(File *file, const LoadOptions &options) override;
 		bool SupportsLoadingFile(File *file) const override;
-		
+
 	private:
 		SGAAssetLoader(const Config &config);
-		
+
 		__RNDeclareMetaInternal(SGAAssetLoader)
 	};
-}
+} // namespace RN
 
 #endif /* __RAYNE_SGAASSETLOADER_H__ */

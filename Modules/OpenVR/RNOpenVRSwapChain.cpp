@@ -12,9 +12,9 @@ namespace RN
 {
 	const uint32 OpenVRSwapChain::kEyePadding = 16; //Use a padding of 16 pixels (oculus docs recommend 8, but it isn't enough)
 
-	OpenVRSwapChain::OpenVRSwapChain(vr::IVRSystem *system) : _vrSystem(system)
+	OpenVRSwapChain::OpenVRSwapChain(vr::IVRSystem *system) :
+		_vrSystem(system)
 	{
-
 	}
 
 	OpenVRSwapChain::~OpenVRSwapChain()
@@ -26,4 +26,4 @@ namespace RN
 	{
 		vr::VRCompositor()->WaitGetPoses(_frameDevicePose, vr::k_unMaxTrackedDeviceCount, _predictedDevicePose, vr::k_unMaxTrackedDeviceCount);
 	}
-}
+} // namespace RN

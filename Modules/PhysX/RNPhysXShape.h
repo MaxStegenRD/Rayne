@@ -28,67 +28,67 @@ namespace RN
 	{
 	public:
 		PhysXShape(physx::PxShape *shape);
-			
+
 		PXAPI physx::PxShape *GetPhysXShape() const { return _shape; }
 		PXAPI void SetPose(RN::Vector3 positionOffset, RN::Quaternion rotationOffset);
-			
+
 	protected:
 		PhysXShape();
 		~PhysXShape() override;
-			
+
 		physx::PxShape *_shape;
 		PhysXMaterial *_material;
-			
+
 		RNDeclareMetaAPI(PhysXShape, PXAPI)
 	};
-		
+
 	class PhysXSphereShape : public PhysXShape
 	{
 	public:
 		PXAPI PhysXSphereShape(float radius, PhysXMaterial *material);
-			
+
 		PXAPI static PhysXSphereShape *WithRadius(float radius, PhysXMaterial *material);
-			
+
 		RNDeclareMetaAPI(PhysXSphereShape, PXAPI)
 	};
-		
+
 	class PhysXBoxShape : public PhysXShape
 	{
 	public:
 		PXAPI PhysXBoxShape(const Vector3 &halfExtents, PhysXMaterial *material);
-			
-		PXAPI static PhysXBoxShape *WithHalfExtents(const Vector3& halfExtents, PhysXMaterial *material);
-			
+
+		PXAPI static PhysXBoxShape *WithHalfExtents(const Vector3 &halfExtents, PhysXMaterial *material);
+
 		RNDeclareMetaAPI(PhysXBoxShape, PXAPI)
 	};
-		
+
 	class PhysXCapsuleShape : public PhysXShape
 	{
 	public:
 		PXAPI PhysXCapsuleShape(float radius, float height, PhysXMaterial *material);
-			
+
 		PXAPI static PhysXCapsuleShape *WithRadius(float radius, float height, PhysXMaterial *material);
-			
+
 		RNDeclareMetaAPI(PhysXCapsuleShape, PXAPI)
 	};
-		
+
 	class PhysXStaticPlaneShape : public PhysXShape
 	{
 	public:
 		PXAPI PhysXStaticPlaneShape(PhysXMaterial *material);
-			
+
 		PXAPI static PhysXStaticPlaneShape *WithMaterial(PhysXMaterial *material);
-			
+
 		RNDeclareMetaAPI(PhysXStaticPlaneShape, PXAPI)
 	};
-		
+
 	class PhysXTriangleMeshShape : public PhysXShape
 	{
 	public:
 		PXAPI PhysXTriangleMeshShape(Mesh *mesh, PhysXMaterial *material, Vector3 scale = Vector3(1.0f, 1.0f, 1.0f), bool wantsDoubleSided = false);
-			
+
 		PXAPI static PhysXTriangleMeshShape *WithMesh(Mesh *mesh, PhysXMaterial *material, Vector3 scale = Vector3(1.0f, 1.0f, 1.0f), bool wantsDoubleSided = false);
-			
+
 	private:
 		RNDeclareMetaAPI(PhysXTriangleMeshShape, PXAPI)
 	};
@@ -101,10 +101,9 @@ namespace RN
 		PXAPI static PhysXConvexHullShape *WithMesh(Mesh *mesh, PhysXMaterial *material, Vector3 scale = Vector3(1.0f, 1.0f, 1.0f));
 
 	private:
-
 		RNDeclareMetaAPI(PhysXConvexHullShape, PXAPI)
 	};
-		
+
 	class PhysXCompoundShape : public PhysXShape
 	{
 	public:
@@ -118,21 +117,21 @@ namespace RN
 
 		PXAPI void AddChild(Mesh *mesh, PhysXMaterial *material, const RN::Vector3 &position, const RN::Quaternion &rotation, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided = false);
 		PXAPI void AddChild(PhysXShape *shape, const RN::Vector3 &position, const RN::Quaternion &rotation);
-		
+
 		PhysXShape *GetShape(size_t index) const { return _shapes[index]; }
 		RN::Vector3 GetPosition(size_t index) const { return _positions[index]; }
 		RN::Quaternion GetRotation(size_t index) const { return _rotations[index]; }
 		size_t GetNumberOfShapes() const { return _shapes.size(); }
 
 		PXAPI static PhysXCompoundShape *WithModel(Model *model, PhysXMaterial *material, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided = false);
-			
+
 	private:
 		std::vector<PhysXShape *> _shapes;
 		std::vector<RN::Vector3> _positions;
 		std::vector<RN::Quaternion> _rotations;
-			
+
 		RNDeclareMetaAPI(PhysXCompoundShape, PXAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_PHYSXSHAPE_H_) */

@@ -11,22 +11,22 @@
 #define __RAYNE_RENDERER_H_
 
 #include "../Base/RNBase.h"
-#include "../Objects/RNWeakStorage.h"
-#include "../System/RNScreen.h"
-#include "../Scene/RNCamera.h"
-#include "../Math/RNVector.h"
+#include "../Math/RNColor.h"
 #include "../Math/RNMatrix.h"
 #include "../Math/RNQuaternion.h"
-#include "../Math/RNColor.h"
-#include "RNWindow.h"
-#include "RNGPUBuffer.h"
-#include "RNShaderLibrary.h"
-#include "RNTexture.h"
+#include "../Math/RNVector.h"
+#include "../Objects/RNWeakStorage.h"
+#include "../Scene/RNCamera.h"
+#include "../System/RNScreen.h"
 #include "RNFramebuffer.h"
-#include "RNRendererTypes.h"
-#include "RNMesh.h"
+#include "RNGPUBuffer.h"
 #include "RNMaterial.h"
+#include "RNMesh.h"
+#include "RNRendererTypes.h"
+#include "RNShaderLibrary.h"
 #include "RNSkeleton.h"
+#include "RNTexture.h"
+#include "RNWindow.h"
 
 namespace RN
 {
@@ -64,18 +64,18 @@ namespace RN
 		}
 		virtual void Update(const SceneNode *node)
 		{
-            if(!node)
-            {
-                modelMatrix = Matrix();
-                inverseModelMatrix = Matrix();
-            }
-            else
-            {
-                modelMatrix = node->GetWorldTransform();
-                inverseModelMatrix = node->GetInverseWorldTransform();
-            }
+			if(!node)
+			{
+				modelMatrix = Matrix();
+				inverseModelMatrix = Matrix();
+			}
+			else
+			{
+				modelMatrix = node->GetWorldTransform();
+				inverseModelMatrix = node->GetInverseWorldTransform();
+			}
 		}
-		virtual void MakeDirty(){}
+		virtual void MakeDirty() {}
 
 		Mesh *mesh;
 		Material *material;
@@ -146,7 +146,7 @@ namespace RN
 	};
 
 	RNExceptionType(ShaderCompilation)
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_RENDERER_H_ */

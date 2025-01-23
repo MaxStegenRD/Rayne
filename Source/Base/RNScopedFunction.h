@@ -17,7 +17,7 @@ namespace RN
 	class ScopedFunction;
 
 	template<class R, class... Args>
-	class ScopedFunction<R (Args...)>
+	class ScopedFunction<R(Args...)>
 	{
 	public:
 		ScopedFunction(R (*imp)(void *arg, Args...) = nullptr, void *arg = nullptr) :
@@ -26,7 +26,7 @@ namespace RN
 		{}
 
 		template<class... PassedArgs>
-		R operator()(PassedArgs &&... args) const
+		R operator()(PassedArgs &&...args) const
 		{
 			return _implementation(_arg, std::forward<PassedArgs>(args)...);
 		}
@@ -40,31 +40,31 @@ namespace RN
 	class __ScopedFunctionImplementation;
 
 	template<class R, class... Args, class F>
-	class __ScopedFunctionImplementation<R (Args...), F>  : public ScopedFunction<R (Args...)>
+	class __ScopedFunctionImplementation<R(Args...), F> : public ScopedFunction<R(Args...)>
 	{
 	public:
 		template<class PassedFunctor>
 		__ScopedFunctionImplementation(PassedFunctor &&functor) :
-			ScopedFunction<R (Args...)>(ForwardCall, this),
+			ScopedFunction<R(Args...)>(ForwardCall, this),
 			_functor(functor)
 		{}
 
 		__ScopedFunctionImplementation(const __ScopedFunctionImplementation &other) :
-			ScopedFunction<R (Args...)>(ForwardCall, this),
+			ScopedFunction<R(Args...)>(ForwardCall, this),
 			_functor(other._functor)
 		{}
 
 		__ScopedFunctionImplementation(__ScopedFunctionImplementation &&other) :
-			ScopedFunction<R (Args...)>(ForwardCall, this),
+			ScopedFunction<R(Args...)>(ForwardCall, this),
 			_functor(other._functor)
 		{}
 
 
-		__ScopedFunctionImplementation &operator =(const __ScopedFunctionImplementation &other)
+		__ScopedFunctionImplementation &operator=(const __ScopedFunctionImplementation &other)
 		{
 			_functor = other._functor;
 		}
-		__ScopedFunctionImplementation &operator =(__ScopedFunctionImplementation &&other)
+		__ScopedFunctionImplementation &operator=(__ScopedFunctionImplementation &&other)
 		{
 			_functor = other._functor;
 		}
@@ -89,6 +89,6 @@ namespace RN
 	{
 		return __ScopedFunctionImplementation<FunctionType, Functor>(std::move<Functor>(functor));
 	}
-}
+} // namespace RN
 
 #endif /* __RAYNE_SCOPEDFUNCTION_H_ */

@@ -10,8 +10,8 @@
 #define __RAYNE_JSONSERIALIZATION_H__
 
 #include "../Base/RNBase.h"
-#include "RNObject.h"
 #include "RNData.h"
+#include "RNObject.h"
 #include "RNString.h"
 
 namespace RN
@@ -20,8 +20,8 @@ namespace RN
 	{
 	public:
 		RN_OPTIONS(Options, uint32,
-					PrettyPrint = (1 <<1),
-					AllowFragments = (1 << 1));
+				   PrettyPrint = (1 << 1),
+				   AllowFragments = (1 << 1));
 
 
 		RNAPI static String *JSONStringFromObject(const Object *root, Options options = 0);
@@ -51,6 +51,6 @@ namespace RN
 		RNAPI static Object *__ObjectFromString(const String *string, Options options);
 		RNAPI static Object *__ObjectFromData(const Data *data, Options options);
 	};
-}
+} // namespace RN
 
 #endif /* __RAYNE_JSONSERIALIZATION_H__ */

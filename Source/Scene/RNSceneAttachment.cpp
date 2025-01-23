@@ -12,23 +12,21 @@ namespace RN
 {
 	RNDefineMeta(SceneAttachment, Object)
 
-	SceneAttachment::SceneAttachment() : _scene(nullptr)
+	SceneAttachment::SceneAttachment() :
+		_scene(nullptr)
 	{}
 	SceneAttachment::~SceneAttachment()
 	{}
 
 	void SceneAttachment::Update(float delta)
 	{
-		
 	}
 
 	void SceneAttachment::WillUpdate(float delta)
 	{
-		
 	}
 
 	void SceneAttachment::DidUpdate(float delta)
 	{
-		
 	}
-}
+} // namespace RN

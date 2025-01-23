@@ -10,8 +10,8 @@
 #define __RAYNE_MODULE_H_
 
 #include "../Base/RNBase.h"
-#include "../Objects/RNObject.h"
 #include "../Objects/RNArray.h"
+#include "../Objects/RNObject.h"
 #include "../Objects/RNString.h"
 
 namespace RN
@@ -65,25 +65,27 @@ namespace RN
 
 		__RNDeclareMetaInternal(Module)
 	};
-}
+} // namespace RN
 
 #if RN_PLATFORM_POSIX
-#define RNModule(name, _identifier) \
-	extern "C" bool __RN##name##Init(RN::Module::Descriptor *descriptor); \
-	bool __RN##name##Init(RN::Module::Descriptor *descriptor) { \
-		strcpy(descriptor->identifier, _identifier); \
-		descriptor->abiVersion = kRNABIVersion; \
-		return true; \
-	}
+	#define RNModule(name, _identifier)                                       \
+		extern "C" bool __RN##name##Init(RN::Module::Descriptor *descriptor); \
+		bool __RN##name##Init(RN::Module::Descriptor *descriptor)             \
+		{                                                                     \
+			strcpy(descriptor->identifier, _identifier);                      \
+			descriptor->abiVersion = kRNABIVersion;                           \
+			return true;                                                      \
+		}
 #endif
 #if RN_PLATFORM_WINDOWS
-#define RNModule(name, _identifier) \
-	extern "C" __declspec(dllexport) bool __RN##name##Init(RN::Module::Descriptor *descriptor); \
-	bool __RN##name##Init(RN::Module::Descriptor *descriptor) { \
-		strcpy(descriptor->identifier, _identifier); \
-		descriptor->abiVersion = kRNABIVersion; \
-		return true; \
-	}
+	#define RNModule(name, _identifier)                                                             \
+		extern "C" __declspec(dllexport) bool __RN##name##Init(RN::Module::Descriptor *descriptor); \
+		bool __RN##name##Init(RN::Module::Descriptor *descriptor)                                   \
+		{                                                                                           \
+			strcpy(descriptor->identifier, _identifier);                                            \
+			descriptor->abiVersion = kRNABIVersion;                                                 \
+			return true;                                                                            \
+		}
 #endif
 
 #endif /* __RAYNE_MODULE_H_ */

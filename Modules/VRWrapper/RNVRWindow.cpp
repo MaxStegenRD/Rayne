@@ -14,16 +14,14 @@ namespace RN
 
 	VRWindow::VRWindow()
 	{
-		
 	}
 
 	VRWindow::~VRWindow()
 	{
-		
 	}
 
 	uint64 VRWindow::GetWindowHandle() const
 	{
 		return -1;
 	}
-}
+} // namespace RN

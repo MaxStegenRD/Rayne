@@ -45,7 +45,7 @@ namespace RN
 		Array *_modules;
 		Dictionary *_moduleMap;
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_MODULEMANAGER_H_ */

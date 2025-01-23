@@ -22,10 +22,10 @@ namespace RN
 
 		virtual SplashShape *GetTransformedCopy(const Matrix &transformation) const;
 		virtual const Vector3 &GetClosestDistanceVector(SplashShape *other);
-			
+
 	protected:
 		~SplashShape() override;
-			
+
 		RNDeclareMetaAPI(SplashShape, SPAPI)
 	};
 
@@ -58,7 +58,7 @@ namespace RN
 
 		RNDeclareMetaAPI(SplashConvexHullShape, SPAPI)
 	};
-		
+
 	class SplashCompoundShape : public SplashShape
 	{
 	public:
@@ -69,16 +69,16 @@ namespace RN
 
 		SPAPI void AddChild(SplashShape *shape, const RN::Vector3 &position, const RN::Quaternion &rotation);
 
-//		SplashShape *GetTransformedCopy(const Matrix &transformation) const final;
-//		const Vector3 &GetClosestDistanceVector(SplashShape *other) const final;
+		//		SplashShape *GetTransformedCopy(const Matrix &transformation) const final;
+		//		const Vector3 &GetClosestDistanceVector(SplashShape *other) const final;
 
 		SPAPI static SplashCompoundShape *WithModel(Model *model);
-			
+
 	private:
 		std::vector<SplashShape *> _shapes;
-			
+
 		RNDeclareMetaAPI(SplashCompoundShape, SPAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_SPLASHSHAPE_H_) */

@@ -8,15 +8,16 @@
 
 #include "RNOpenVRD3D12SwapChain.h"
 
+#include "RND3D12Framebuffer.h"
 #include "RND3D12Internals.h"
 #include "RND3D12Renderer.h"
-#include "RND3D12Framebuffer.h"
 
 namespace RN
 {
 	RNDefineMeta(OpenVRD3D12SwapChain, D3D12SwapChain)
 
-	OpenVRD3D12SwapChain::OpenVRD3D12SwapChain(const Window::SwapChainDescriptor &descriptor, vr::IVRSystem *system) : OpenVRSwapChain(system), _isFirstRender(true)
+	OpenVRD3D12SwapChain::OpenVRD3D12SwapChain(const Window::SwapChainDescriptor &descriptor, vr::IVRSystem *system) :
+		OpenVRSwapChain(system), _isFirstRender(true)
 	{
 		_renderer = Renderer::GetActiveRenderer()->Downcast<D3D12Renderer>();
 		_descriptor = descriptor;
@@ -57,7 +58,7 @@ namespace RN
 		SafeRelease(_targetTexture);
 	}
 
-	void OpenVRD3D12SwapChain::ResizeOpenVRSwapChain(const Vector2& size)
+	void OpenVRD3D12SwapChain::ResizeOpenVRSwapChain(const Vector2 &size)
 	{
 		_size = size;
 		//_framebuffer->WillUpdateSwapChain(); //As all it does is free the swap chain d3d buffer resources, it would free the targetTexture resource and should't be called in this case...
@@ -70,7 +71,7 @@ namespace RN
 		textureDescriptor.depth = 1;
 		_outputTexture[0] = _renderer->CreateTextureWithDescriptor(textureDescriptor);
 		_outputTexture[1] = _renderer->CreateTextureWithDescriptor(textureDescriptor);
-		
+
 		_framebuffer->DidUpdateSwapChain(_size, _descriptor.layerCount, _descriptor.colorFormat, _descriptor.depthStencilFormat);
 		_isFirstRender = true;
 	}
@@ -78,12 +79,11 @@ namespace RN
 
 	void OpenVRD3D12SwapChain::AcquireBackBuffer()
 	{
-		
 	}
 
 	void OpenVRD3D12SwapChain::Prepare(D3D12CommandList *commandList)
 	{
-		if (_isFirstRender)
+		if(_isFirstRender)
 			return;
 	}
 
@@ -117,7 +117,7 @@ namespace RN
 		d3d12EyeTexture.m_pResource = _outputTexture[0]->Downcast<D3D12Texture>()->GetD3D12Resource();
 		d3d12EyeTexture.m_pCommandQueue = _renderer->GetCommandQueue();
 		d3d12EyeTexture.m_nNodeMask = 0;
-		vr::Texture_t eyeTexture1 = { (void *)&d3d12EyeTexture, vr::TextureType_DirectX12, vr::ColorSpace_Gamma };
+		vr::Texture_t eyeTexture1 = {(void *)&d3d12EyeTexture, vr::TextureType_DirectX12, vr::ColorSpace_Gamma};
 
 		vr::VRTextureBounds_t bounds;
 		bounds.vMin = 0.0f;
@@ -129,7 +129,7 @@ namespace RN
 		vr::VRCompositor()->Submit(vr::Eye_Left, &eyeTexture1, &bounds, vr::Submit_Default);
 
 		d3d12EyeTexture.m_pResource = _outputTexture[1]->Downcast<D3D12Texture>()->GetD3D12Resource();
-		vr::Texture_t eyeTexture2 = { (void *)&d3d12EyeTexture, vr::TextureType_DirectX12, vr::ColorSpace_Gamma };
+		vr::Texture_t eyeTexture2 = {(void *)&d3d12EyeTexture, vr::TextureType_DirectX12, vr::ColorSpace_Gamma};
 
 		vr::VRCompositor()->Submit(vr::Eye_Right, &eyeTexture2, &bounds, vr::Submit_Default);
 	}
@@ -143,4 +143,4 @@ namespace RN
 	{
 		return GetFramebuffer()->Downcast<Framebuffer>();
 	}
-}
+} // namespace RN

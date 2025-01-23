@@ -12,15 +12,15 @@ namespace RN
 {
 	RNDefineMeta(VRCamera, SceneNode)
 
-		VRCamera::VRCamera(VRWindow* window, RenderPass* previewRenderPass, uint8 msaaSampleCount, Window* debugWindow) :
+	VRCamera::VRCamera(VRWindow *window, RenderPass *previewRenderPass, uint8 msaaSampleCount, Window *debugWindow) :
 		_window(window ? window->Retain() : nullptr),
 		_debugWindow(debugWindow ? debugWindow->Retain() : nullptr),
 		_head(new Camera()),
 		_previewRenderPass(previewRenderPass ? previewRenderPass->Retain() : nullptr),
 		_msaaSampleCount(msaaSampleCount),
-		_eye{ nullptr, nullptr },
+		_eye {nullptr, nullptr},
 		_didUpdateVRWindow(false),
-		_hiddenAreaEntity{nullptr, nullptr}
+		_hiddenAreaEntity {nullptr, nullptr}
 	{
 		SetUpdatePriority(SceneNode::UpdatePriority::UpdateEarly);
 		AddChild(_head);
@@ -38,7 +38,7 @@ namespace RN
 		SafeRelease(_eye[0]);
 		SafeRelease(_eye[1]);
 	}
-	
+
 	void VRCamera::SetupCameras()
 	{
 		if(!_window && !_debugWindow) return;
@@ -50,11 +50,11 @@ namespace RN
 			_debugWindow->SetTitle(RNCSTR("VR Debug Window"));
 			_debugWindow->Show();
 		}
-		
+
 		_head->AddFlags(Camera::Flags::UseSimpleCulling);
 		_head->SetShaderHint(Shader::UsageHint::Multiview);
 		_head->SetFOV(110.0f);
-		
+
 		for(int i = 0; i < _window->GetEyeCount(); i++)
 		{
 			_eye[i] = new Camera();
@@ -62,7 +62,7 @@ namespace RN
 			_head->AddChild(_eye[i]);
 			_head->AddMultiviewCamera(_eye[i]);
 			_hiddenAreaEntity[i] = nullptr;
-			
+
 #if !RN_PLATFORM_WINDOWS
 			if(_window)
 			{
@@ -93,15 +93,14 @@ namespace RN
 #else
 		_eye[0]->GetRenderPass()->SetFlags(0);
 #endif
-		
+
 		CreatePostprocessingPipeline();
-		
+
 		NotificationManager::GetSharedInstance()->AddSubscriber(kRNWindowDidChangeSize, [this](Notification *notification) {
 			if(notification->GetName()->IsEqual(kRNWindowDidChangeSize) && notification->GetInfo<RN::VRWindow>() == _window)
 			{
 				CreatePostprocessingPipeline();
-			}
-		}, this);
+			} }, this);
 	}
 
 	void VRCamera::CreatePostprocessingPipeline()
@@ -151,12 +150,12 @@ namespace RN
 		{
 			Texture::Descriptor msaaColorTextureDescriptor = Texture::Descriptor::With2DRenderTargetFormatAndMSAA(colorFormat, windowSize.x, windowSize.y, _msaaSampleCount, 0, true);
 			msaaColorTextureDescriptor.depth = layerCount;
-			msaaColorTextureDescriptor.type = layerCount > 1? Texture::Type::Type2DArray : Texture::Type::Type2D;
+			msaaColorTextureDescriptor.type = layerCount > 1 ? Texture::Type::Type2DArray : Texture::Type::Type2D;
 			Texture *msaaTexture = Texture::WithDescriptor(msaaColorTextureDescriptor);
 
 			Texture::Descriptor msaaDepthTextureDescriptor = Texture::Descriptor::With2DRenderTargetFormatAndMSAA(depthFormat, windowSize.x, windowSize.y, _msaaSampleCount, 0, true);
 			msaaDepthTextureDescriptor.depth = layerCount;
-			msaaDepthTextureDescriptor.type = layerCount > 1? Texture::Type::Type2DArray : Texture::Type::Type2D;
+			msaaDepthTextureDescriptor.type = layerCount > 1 ? Texture::Type::Type2DArray : Texture::Type::Type2D;
 			Texture *msaaDepthTexture = Texture::WithDescriptor(msaaDepthTextureDescriptor);
 
 			msaaFramebuffer = Renderer::GetActiveRenderer()->CreateFramebuffer(windowSize);
@@ -170,7 +169,7 @@ namespace RN
 			Texture::Descriptor depthTextureDescriptor = Texture::Descriptor::With2DRenderTargetFormat(depthFormat, windowSize.x, windowSize.y, true);
 			depthTextureDescriptor.depth = layerCount;
 			depthTextureDescriptor.type = layerCount > 1 ? Texture::Type::Type2DArray : Texture::Type::Type2D;
-			
+
 			Texture *resolvedDepthTexture = Texture::WithDescriptor(depthTextureDescriptor);
 			resolvedFramebuffer->SetDepthStencilTarget(Framebuffer::TargetView::WithTexture(resolvedDepthTexture));
 		}
@@ -225,11 +224,11 @@ namespace RN
 		SceneNode::Update(delta);
 
 		if(!_window) return;
-		
+
 		UpdateVRWindow(delta);
 		const VRHMDTrackingState &hmdState = GetHMDTrackingState();
 
-		for(size_t i= 0; i < _window->GetEyeCount(); i++)
+		for(size_t i = 0; i < _window->GetEyeCount(); i++)
 		{
 			_eye[i]->SetPosition(hmdState.eyeOffset[i]);
 			_eye[i]->SetProjectionMatrix(hmdState.eyeProjection[i]);
@@ -237,10 +236,10 @@ namespace RN
 
 		_head->SetRotation(hmdState.rotation);
 		_head->SetPosition(hmdState.position);
-		
+
 		//This assumes that the eyes are equal and only shifted horizontally
-		_head->SetFrustumPlaneOffset(0.0f, 0.0f, _eye[0]? _eye[0]->GetPosition().x : 0.0f, _eye[1]? _eye[1]->GetPosition().x : 0.0f);
-		
+		_head->SetFrustumPlaneOffset(0.0f, 0.0f, _eye[0] ? _eye[0]->GetPosition().x : 0.0f, _eye[1] ? _eye[1]->GetPosition().x : 0.0f);
+
 		_didUpdateVRWindow = false;
 	}
 
@@ -250,7 +249,7 @@ namespace RN
 		trackingState.position += _originPositionOffset;
 		trackingState.position = _originalOrientationOffset.GetRotatedVector(trackingState.position);
 		trackingState.rotation = _originalOrientationOffset * trackingState.rotation;
-		
+
 		return trackingState;
 	}
 
@@ -263,9 +262,9 @@ namespace RN
 		trackingState.positionGrip += _originPositionOffset;
 		trackingState.positionGrip = _originalOrientationOffset.GetRotatedVector(trackingState.positionGrip);
 		trackingState.rotationGrip = _originalOrientationOffset * trackingState.rotationGrip;
-		
+
 		trackingState.velocityLinear = _originalOrientationOffset.GetRotatedVector(trackingState.velocityLinear);
-		
+
 		return trackingState;
 	}
 
@@ -278,9 +277,9 @@ namespace RN
 		trackingState.positionGrip += _originPositionOffset;
 		trackingState.positionGrip = _originalOrientationOffset.GetRotatedVector(trackingState.positionGrip);
 		trackingState.rotationGrip = _originalOrientationOffset * trackingState.rotationGrip;
-		
+
 		trackingState.velocityLinear = _originalOrientationOffset.GetRotatedVector(trackingState.velocityLinear);
-		
+
 		return trackingState;
 	}
 
@@ -290,7 +289,7 @@ namespace RN
 		trackingState.position += _originPositionOffset;
 		trackingState.position = _originalOrientationOffset.GetRotatedVector(trackingState.position);
 		trackingState.rotation = _originalOrientationOffset * trackingState.rotation;
-		
+
 		return trackingState;
 	}
 
@@ -303,26 +302,26 @@ namespace RN
 	{
 		return _window->GetOrigin();
 	}
-	
+
 	void VRCamera::SetClipFar(float clipFar)
 	{
 		_head->SetClipFar(clipFar);
-		
+
 		if(_eye[0]) _eye[0]->SetClipFar(clipFar);
 		if(_eye[1]) _eye[1]->SetClipFar(clipFar);
 	}
-	
+
 	void VRCamera::SetClipNear(float clipNear)
 	{
 		_head->SetClipNear(clipNear);
-		
+
 		if(_eye[0]) _eye[0]->SetClipNear(clipNear);
 		if(_eye[1]) _eye[1]->SetClipNear(clipNear);
 	}
-	
+
 	void VRCamera::SetOriginOffset(const Vector3 &positionOffset, const Quaternion &orientationOffset)
 	{
 		_originPositionOffset = positionOffset;
 		_originalOrientationOffset = orientationOffset;
 	}
-}
+} // namespace RN

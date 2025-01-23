@@ -10,9 +10,9 @@
 #define __RAYNE_AABB_H__
 
 #include "../Base/RNBase.h"
-#include "RNVector.h"
 #include "RNMatrix.h"
 #include "RNQuaternion.h"
+#include "RNVector.h"
 
 namespace RN
 {
@@ -23,11 +23,11 @@ namespace RN
 		AABB(const Vector3 &min, const Vector3 &max);
 		AABB(const Vector3 &pos, const float radius);
 
-		AABB operator+ (const AABB &other) const;
-		AABB &operator+= (const AABB &other);
+		AABB operator+(const AABB &other) const;
+		AABB &operator+=(const AABB &other);
 
-		AABB operator* (const Vector3 &other) const;
-		AABB &operator*= (const Vector3 &other);
+		AABB operator*(const Vector3 &other) const;
+		AABB &operator*=(const Vector3 &other);
 
 		bool Intersects(const AABB &other) const;
 		bool Contains(const Vector3 &position) const;
@@ -60,7 +60,7 @@ namespace RN
 		position = pos;
 	}
 
-	RN_INLINE AABB AABB::operator+ (const AABB &other) const
+	RN_INLINE AABB AABB::operator+(const AABB &other) const
 	{
 		Vector3 min;
 		Vector3 max;
@@ -76,7 +76,7 @@ namespace RN
 		return AABB(min, max);
 	}
 
-	RN_INLINE AABB &AABB::operator+= (const AABB &other)
+	RN_INLINE AABB &AABB::operator+=(const AABB &other)
 	{
 		Vector3 min;
 		Vector3 max;
@@ -95,7 +95,7 @@ namespace RN
 		return *this;
 	}
 
-	RN_INLINE AABB AABB::operator* (const Vector3 &other) const
+	RN_INLINE AABB AABB::operator*(const Vector3 &other) const
 	{
 		AABB result = *this;
 
@@ -105,7 +105,7 @@ namespace RN
 		return result;
 	}
 
-	RN_INLINE AABB &AABB::operator*= (const Vector3 &other)
+	RN_INLINE AABB &AABB::operator*=(const Vector3 &other)
 	{
 		minExtend *= other;
 		maxExtend *= other;
@@ -162,7 +162,7 @@ namespace RN
 		minExtend = matrix * minExtend;
 		maxExtend = matrix * maxExtend;
 
-		for(size_t i=0; i<4; i++)
+		for(size_t i = 0; i < 4; i++)
 		{
 			//This used to use std::min, but could trigger an exception in visual studio debug builds
 			//if both values are equal, even though the standard explicitly allows it...
@@ -175,6 +175,6 @@ namespace RN
 			maxExtend.z = (corners[i].z > maxExtend.z) ? corners[i].z : maxExtend.z;
 		}
 	}
-}
+} // namespace RN
 
 #endif /* __RAYNE_AABB_H__ */

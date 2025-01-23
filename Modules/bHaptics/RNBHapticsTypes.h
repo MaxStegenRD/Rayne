@@ -160,22 +160,22 @@ namespace RN
 	public:
 		BHapticsDevice();
 		~BHapticsDevice();
-		
+
 		const String *deviceName;
 		const String *address;
 		BHapticsDevicePosition position;
-		
+
 		bool isConnected;
 		bool isPaired;
 
 		static BHapticsDevicePosition StringToDevicePosition(const String *positionString);
 		static const String *DevicePositionToString(BHapticsDevicePosition position);
-		
+
 	private:
 		RNDeclareMetaAPI(BHapticsDevice, BHAPI)
 	};
 
-/*
+	/*
 	struct FRegisterRequest {
 		const String *Key;
 
@@ -268,6 +268,6 @@ namespace RN
 			TArray<FSubmitRequest> Submit;
 	};
 */
-}
+} // namespace RN
 
 #endif //__RAYNE_BHAPTICS_TYPES_H_

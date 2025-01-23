@@ -36,7 +36,7 @@ namespace RN
 
 		Array *_scenes;
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_SCENEMANAGER_H_ */

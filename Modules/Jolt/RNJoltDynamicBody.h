@@ -31,16 +31,16 @@ namespace RN
 			LockAxisAngularY = (1 << 4),
 			LockAxisAngularZ = (1 << 5)
 		};
-		
+
 		JTAPI JoltDynamicBody(JoltShape *shape, float mass);
 		JTAPI ~JoltDynamicBody() override;
-			
+
 		JTAPI static JoltDynamicBody *WithShape(JoltShape *shape, float mass);
 
 		JTAPI void UpdatePosition() override;
 
 		JTAPI void SetCollisionFilter(uint32 group, uint32 mask) override;
-			
+
 		JTAPI void SetMass(float mass);
 		JTAPI void SetLinearVelocity(const Vector3 &velocity);
 		JTAPI void SetAngularVelocity(const Vector3 &velocity);
@@ -58,21 +58,21 @@ namespace RN
 
 		JTAPI void AddForce(const Vector3 &force);
 		JTAPI void AddForce(const Vector3 &force, const Vector3 &origin);
-//		JTAPI void ClearForces();
-			
+		//		JTAPI void ClearForces();
+
 		JTAPI void AddTorque(const Vector3 &torque);
 		JTAPI void AddTorqueImpulse(const Vector3 &torque);
 		JTAPI void AddImpulse(const Vector3 &impulse);
 		JTAPI void AddImpulse(const Vector3 &impulse, const Vector3 &origin);
-			
+
 		JTAPI float GetMass() const;
-		
+
 		JTAPI Vector3 GetLinearVelocity() const;
 		JTAPI Vector3 GetAngularVelocity() const;
-		
+
 		JTAPI void SetEnableSleeping(bool enable);
 		JTAPI bool GetIsSleeping() const;
-		
+
 		JTAPI bool GetIsKinematic() const;
 
 		/*JTAPI bool SweepTest(std::vector<JoltContactInfo> &contactInfo, const Vector3 &direction, const Vector3 &offsetPosition = Vector3(), const Quaternion &offsetRotation = Quaternion(), float inflation = 0.0f) const;
@@ -80,17 +80,17 @@ namespace RN
 
 		JTAPI JPH::BodyID *GetJoltActor() const { return _actor; }
 		JTAPI JoltShape *GetShape() const { return _shape; }
-			
+
 	protected:
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
-//		void UpdateFromMaterial(BulletMaterial *material) override;
-			
+		//		void UpdateFromMaterial(BulletMaterial *material) override;
+
 	private:
 		JoltShape *_shape;
 		JPH::BodyID *_actor;
-			
+
 		RNDeclareMetaAPI(JoltDynamicBody, JTAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_JOLTDYNAMICBODY_H_) */

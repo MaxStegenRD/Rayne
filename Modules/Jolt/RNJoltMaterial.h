@@ -23,22 +23,22 @@ namespace RN
 	public:
 		JTAPI JoltMaterial(float staticFriction = 0.5f, float dynamicFriction = 0.5f, float restitution = 0.1f);
 		JTAPI ~JoltMaterial();
-			
+
 		JTAPI void SetStaticFriction(float friction);
 		JTAPI void SetDynamicFriction(float friction);
 		JTAPI void SetRestitution(float restitution);
-			
+
 		JTAPI float GetStaticFriction() const;
 		JTAPI float GetDynamicFriction() const;
 		JTAPI float GetRestitution() const;
 
 		JTAPI JPH::PhysicsMaterial *GetJoltMaterial() const { return _material; }
-			
+
 	private:
 		JPH::PhysicsMaterial *_material;
-			
+
 		RNDeclareMetaAPI(JoltMaterial, JTAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_JOLTMATERIAL_H_) */

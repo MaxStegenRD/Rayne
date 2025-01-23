@@ -8,8 +8,8 @@
 
 #include "RNNewtonShape.h"
 #include "Newton.h"
-#include "RNNewtonWorld.h"
 #include "RNNewtonInternals.h"
+#include "RNNewtonWorld.h"
 
 namespace RN
 {
@@ -20,62 +20,60 @@ namespace RN
 	RNDefineMeta(NewtonTriangleMeshShape, NewtonShape)
 	RNDefineMeta(NewtonConvexHullShape, NewtonShape)
 	RNDefineMeta(NewtonCompoundShape, NewtonShape)
-		
+
 	NewtonShape::NewtonShape() :
 		_shape(nullptr)
 	{}
-		
+
 	NewtonShape::NewtonShape(NewtonCollision *shape) :
 		_shape(shape)
 	{}
-		
+
 	NewtonShape::~NewtonShape()
 	{
 		NewtonDestroyCollision(_shape);
 	}
-		
-		
-		
+
+
 	NewtonSphereShape::NewtonSphereShape(float radius)
 	{
 		::NewtonWorld *newtonInstance = NewtonWorld::GetSharedInstance()->GetNewtonInstance();
 		_shape = NewtonCreateSphere(newtonInstance, radius, 0, NULL);
 	}
-		
+
 	NewtonSphereShape *NewtonSphereShape::WithRadius(float radius)
 	{
 		NewtonSphereShape *shape = new NewtonSphereShape(radius);
 		return shape->Autorelease();
 	}
-		
 
-		
+
 	NewtonBoxShape::NewtonBoxShape(const Vector3 &halfExtents)
 	{
 		::NewtonWorld *newtonInstance = NewtonWorld::GetSharedInstance()->GetNewtonInstance();
-		_shape = NewtonCreateBox(newtonInstance, halfExtents.x*2.0f, halfExtents.y*2.0f, halfExtents.z*2.0f, 0, NULL);
+		_shape = NewtonCreateBox(newtonInstance, halfExtents.x * 2.0f, halfExtents.y * 2.0f, halfExtents.z * 2.0f, 0, NULL);
 	}
-		
+
 	NewtonBoxShape *NewtonBoxShape::WithHalfExtents(const Vector3 &halfExtents)
 	{
 		NewtonBoxShape *shape = new NewtonBoxShape(halfExtents);
 		return shape->Autorelease();
 	}
-		
-		
+
+
 	NewtonCapsuleShape::NewtonCapsuleShape(float radius, float height)
 	{
 		::NewtonWorld *newtonInstance = NewtonWorld::GetSharedInstance()->GetNewtonInstance();
 		_shape = NewtonCreateCapsule(newtonInstance, radius, radius, height, 0, NULL);
 	}
-		
+
 	NewtonCapsuleShape *NewtonCapsuleShape::WithRadius(float radius, float height)
 	{
 		NewtonCapsuleShape *shape = new NewtonCapsuleShape(radius, height);
 		return shape->Autorelease();
 	}
 
-		
+
 	NewtonTriangleMeshShape::NewtonTriangleMeshShape(Model *model, Vector3 scale)
 	{
 		::NewtonWorld *newtonInstance = NewtonWorld::GetSharedInstance()->GetNewtonInstance();
@@ -111,9 +109,7 @@ namespace RN
 		NewtonTreeCollisionBeginBuild(_shape);
 
 		meshes->Enumerate<Mesh>([&](Mesh *mesh, size_t index, bool &stop) {
-
 			AddMesh(mesh, scale);
-
 		});
 
 		NewtonTreeCollisionEndBuild(_shape, 1);
@@ -165,9 +161,9 @@ namespace RN
 			if(i > 0) vertexIterator++;
 			const Vector3 &vertex1 = *(vertexIterator++) * scale;
 			const Vector3 &vertex2 = *(vertexIterator++) * scale;
-			const Vector3 &vertex3 = *(vertexIterator)* scale;
+			const Vector3 &vertex3 = *(vertexIterator)*scale;
 
-			float face[9] = { vertex1.x, vertex1.y, vertex1.z, vertex2.x, vertex2.y, vertex2.z, vertex3.x, vertex3.y, vertex3.z };
+			float face[9] = {vertex1.x, vertex1.y, vertex1.z, vertex2.x, vertex2.y, vertex2.z, vertex3.x, vertex3.y, vertex3.z};
 			NewtonTreeCollisionAddFace(_shape, 3, face, 3 * sizeof(float), 0);
 		}
 	}
@@ -179,7 +175,7 @@ namespace RN
 		RN_ASSERT(vertexAttribute && vertexAttribute->GetType() == PrimitiveType::Vector3, "Mesh needs to have vertices of Vector3!");
 
 		::NewtonWorld *newtonInstance = NewtonWorld::GetSharedInstance()->GetNewtonInstance();
-		_shape = NewtonCreateConvexHull(newtonInstance, mesh->GetVerticesCount(), static_cast<float*>(mesh->GetCPUVertexBuffer()), mesh->GetStride(), 0.0f, 0, nullptr);
+		_shape = NewtonCreateConvexHull(newtonInstance, mesh->GetVerticesCount(), static_cast<float *>(mesh->GetCPUVertexBuffer()), mesh->GetStride(), 0.0f, 0, nullptr);
 	}
 
 	NewtonConvexHullShape *NewtonConvexHullShape::WithMesh(Mesh *mesh)
@@ -188,12 +184,13 @@ namespace RN
 		return shape->Autorelease();
 	}
 
-	NewtonCompoundShape::NewtonCompoundShape() : _isEditMode(false)
+	NewtonCompoundShape::NewtonCompoundShape() :
+		_isEditMode(false)
 	{
-		
 	}
 
-	NewtonCompoundShape::NewtonCompoundShape(Model *model) : _isEditMode(true)
+	NewtonCompoundShape::NewtonCompoundShape(Model *model) :
+		_isEditMode(true)
 	{
 		::NewtonWorld *newtonInstance = NewtonWorld::GetSharedInstance()->GetNewtonInstance();
 		_shape = NewtonCreateCompoundCollision(newtonInstance, 0);
@@ -201,7 +198,7 @@ namespace RN
 
 		Model::LODStage *lodStage = model->GetLODStage(0);
 		size_t meshes = lodStage->GetCount();
-		for (size_t i = 0; i < meshes; i++)
+		for(size_t i = 0; i < meshes; i++)
 		{
 			Mesh *mesh = lodStage->GetMeshAtIndex(i);
 
@@ -213,7 +210,8 @@ namespace RN
 		_isEditMode = false;
 	}
 
-	NewtonCompoundShape::NewtonCompoundShape(const Array *meshes) : _isEditMode(true)
+	NewtonCompoundShape::NewtonCompoundShape(const Array *meshes) :
+		_isEditMode(true)
 	{
 		::NewtonWorld *newtonInstance = NewtonWorld::GetSharedInstance()->GetNewtonInstance();
 		_shape = NewtonCreateCompoundCollision(newtonInstance, 0);
@@ -227,15 +225,15 @@ namespace RN
 		NewtonCompoundCollisionEndAddRemove(_shape);
 		_isEditMode = false;
 	}
-		
+
 	NewtonCompoundShape::~NewtonCompoundShape()
 	{
-		for(auto shape : _shapes)
+		for(auto shape: _shapes)
 		{
 			shape->Release();
 		}
 	}
-		
+
 	void NewtonCompoundShape::AddChild(NewtonShape *shape, const RN::Vector3 &position, const RN::Quaternion &rotation)
 	{
 		if(!_isEditMode)
@@ -256,4 +254,4 @@ namespace RN
 		NewtonCompoundShape *shape = new NewtonCompoundShape(model);
 		return shape->Autorelease();
 	}
-}
+} // namespace RN

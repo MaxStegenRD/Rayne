@@ -26,7 +26,7 @@ namespace RN
 	enum class PrimitiveType
 	{
 		Invalid,
-		
+
 		Uint8,
 		Uint16,
 		Uint32,
@@ -39,7 +39,7 @@ namespace RN
 		HalfVector2,
 		HalfVector3,
 		HalfVector4,
-		
+
 		Float,
 		Vector2,
 		Vector3,
@@ -48,10 +48,10 @@ namespace RN
 		Matrix2x2,
 		Matrix3x3,
 		Matrix4x4,
-		
+
 		Quaternion,
 		Color
 	};
-}
+} // namespace RN
 
 #endif /* __RAYNE_RENDERERTYPES_H_ */

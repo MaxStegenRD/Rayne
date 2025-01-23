@@ -11,12 +11,12 @@
 
 #include "RNPhysX.h"
 
+#include "RNPhysXConstraint.h"
+#include "RNPhysXDynamicBody.h"
+#include "RNPhysXKinematicController.h"
 #include "RNPhysXMaterial.h"
 #include "RNPhysXShape.h"
-#include "RNPhysXDynamicBody.h"
 #include "RNPhysXStaticBody.h"
-#include "RNPhysXConstraint.h"
-#include "RNPhysXKinematicController.h"
 #include "RNPhysXVehicle4WheelDrive.h"
 
 namespace physx
@@ -28,7 +28,7 @@ namespace physx
 	class PxScene;
 	class PxDefaultCpuDispatcher;
 	class PxControllerManager;
-}
+} // namespace physx
 
 namespace RN
 {
@@ -43,7 +43,7 @@ namespace RN
 
 		PXAPI void SetGravity(const Vector3 &gravity);
 		PXAPI Vector3 GetGravity();
-		
+
 		PXAPI void InitializeVehicles();
 
 		PXAPI void Update(float delta) final;
@@ -72,7 +72,7 @@ namespace RN
 		physx::PxScene *_scene;
 		physx::PxDefaultCpuDispatcher *_dispatcher;
 		physx::PxControllerManager *_controllerManager;
-		
+
 		bool _hasVehicles;
 		bool _isSimulating;
 
@@ -84,7 +84,7 @@ namespace RN
 
 		RNDeclareMetaAPI(PhysXWorld, PXAPI)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_PHYSXWORLD_H_ */

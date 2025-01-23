@@ -6,9 +6,9 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
-#include <random>
 #include "RNRandom.h"
 #include "RNMath.h"
+#include <random>
 
 namespace RN
 {
@@ -49,7 +49,6 @@ namespace RN
 		{
 			static std::once_flag token;
 			std::call_once(token, [&] {
-
 				{
 					std::vector<std::pair<float, float>> pair = {std::make_pair(20.0f, 100.0f), std::make_pair(30.0f, 92.0f),
 																 std::make_pair(40.0f, 89.0f), std::make_pair(50.0f, 85.0f),
@@ -112,7 +111,7 @@ namespace RN
 			if(hue >= 334.0f && hue <= 360.0f)
 				hue -= 360.0f;
 
-			for(const ColorInfo &info : __ColorDefinitions)
+			for(const ColorInfo &info: __ColorDefinitions)
 			{
 				if(hue >= info.hueRange.first && hue <= info.hueRange.second)
 					return info;
@@ -180,7 +179,7 @@ namespace RN
 
 		uint32 Generator::GetSeedValue()
 		{
-			uint32 seed = static_cast<uint32>(std::random_device{}());
+			uint32 seed = static_cast<uint32>(std::random_device {}());
 			return seed;
 		}
 
@@ -351,12 +350,12 @@ namespace RN
 			y ^= (y >> 18);
 
 #if RN_PLATFORM_WINDOWS
-#pragma warning(disable: 4307)
+	#pragma warning(disable : 4307)
 #endif
 
 			return static_cast<int32>(y & ((1UL << 31) - 1));
 		}
-	}
+	} // namespace Random
 
 	// ---------------------
 	// MARK: -
@@ -527,4 +526,4 @@ namespace RN
 		RN::RandomNumberGenerator *generator = RN::RandomNumberGenerator::GetSharedGenerator();
 		return generator->GetRandomVector4Range(min, max);
 	}
-}
+} // namespace RN

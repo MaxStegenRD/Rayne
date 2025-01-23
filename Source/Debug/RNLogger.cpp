@@ -7,10 +7,10 @@
 //
 
 #include "RNLogger.h"
-#include "RNLoggingEngine.h"
 #include "../Base/RNSettings.h"
-#include "../Threads/RNWorkGroup.h"
 #include "../Base/RNUnistd.h"
+#include "../Threads/RNWorkGroup.h"
+#include "RNLoggingEngine.h"
 
 namespace RN
 {
@@ -93,14 +93,13 @@ namespace RN
 			return;
 		}
 #endif
-			
+
 		{
 			LockGuard<Lockable> lock(_engineLock);
 
 			if(_threadEngines->GetCount() > 0)
 			{
 				_threadEngines->Enumerate<LoggingEngine>([&](LoggingEngine *engine, size_t index, bool &stop) {
-
 					const LogFormatter *formatter = engine->GetFormatter();
 					String *formatted = message.message;
 
@@ -108,7 +107,6 @@ namespace RN
 						formatted = formatter->FormatLogMessage(message);
 
 					engine->Log(formatted);
-
 				});
 			}
 
@@ -116,8 +114,7 @@ namespace RN
 				return;
 		}
 
-		_queue->Perform([message{std::move(message)}, this]() mutable {
-
+		_queue->Perform([message {std::move(message)}, this]() mutable {
 			{
 				UniqueLock<Lockable> lock(_lock);
 
@@ -130,8 +127,7 @@ namespace RN
 			}
 
 			if(!_flag.test_and_set(std::memory_order_acq_rel))
-				_queue->Perform([=]{ __FlushQueue(); });
-
+				_queue->Perform([=] { __FlushQueue(); });
 		});
 	}
 
@@ -150,7 +146,7 @@ namespace RN
 
 		LogMessage message(line, file, function, RNSTR(buffer));
 		Log(level, std::move(message));
-		
+
 		delete[] buffer;
 	}
 
@@ -170,13 +166,11 @@ namespace RN
 		}
 
 		Function work([=]() {
-
 			engines->Enumerate<LoggingEngine>([&](LoggingEngine *engine, size_t index, bool &stop) {
 				engine->Flush();
 			});
 
 			engines->Release();
-
 		});
 
 		synchronous ? _queue->PerformSynchronousBarrier(std::move(work)) : _queue->PerformBarrier(std::move(work));
@@ -205,12 +199,10 @@ namespace RN
 		WorkGroup *group = new WorkGroup();
 
 		engines->Enumerate<LoggingEngine>([&](LoggingEngine *engine, size_t index, bool &stop) {
-
 			group->Perform(_queue, [engine, messages]() {
-
 				const LogFormatter *formatter = engine->GetFormatter();
 
-				for(auto iterator = messages->begin(); iterator != messages->end(); iterator ++)
+				for(auto iterator = messages->begin(); iterator != messages->end(); iterator++)
 				{
 					String *formatted = iterator->message;
 
@@ -219,14 +211,11 @@ namespace RN
 
 					engine->Log(formatted);
 				}
-
 			});
-
 		});
 
 
 		group->Notify(_queue, [=]() {
-
 			delete messages;
 			engines->Release();
 
@@ -234,9 +223,8 @@ namespace RN
 
 			if(!_messages.WasEmpty())
 				__FlushQueue();
-
 		});
 
 		group->Release();
 	}
-}
+} // namespace RN

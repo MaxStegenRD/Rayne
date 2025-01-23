@@ -6,8 +6,8 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
-#include "../Objects/RNString.h"
 #include "RNRenderingDevice.h"
+#include "../Objects/RNString.h"
 
 namespace RN
 {
@@ -26,7 +26,7 @@ namespace RN
 	{
 		SafeRelease(_name);
 	}
-	
+
 	bool RenderingDevice::IsEqual(const Object *other) const
 	{
 		const RenderingDevice *device = other->Downcast<RenderingDevice>();
@@ -40,4 +40,4 @@ namespace RN
 
 		return RNSTR("<" << GetClass()->GetFullname() << ":" << (void *)this << "> (" << _name << " (Vendor: " << std::hex << _vendorID << "), " << "API: " << apiString << ", Driver: " << driverString << ")");
 	}
-}
+} // namespace RN

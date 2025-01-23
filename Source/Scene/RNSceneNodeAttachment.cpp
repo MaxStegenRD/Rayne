@@ -12,19 +12,17 @@ namespace RN
 {
 	RNDefineMeta(SceneNodeAttachment, Object)
 
-	SceneNodeAttachment::SceneNodeAttachment() : _node(nullptr), _consumeChangeSets(0)
+	SceneNodeAttachment::SceneNodeAttachment() :
+		_node(nullptr), _consumeChangeSets(0)
 	{
-
 	}
 
 	SceneNodeAttachment::~SceneNodeAttachment()
 	{
-
 	}
 
 	void SceneNodeAttachment::Update(float delta)
 	{
-
 	}
 
 	SceneNode *SceneNodeAttachment::GetParent() const
@@ -102,4 +100,4 @@ namespace RN
 	{
 		return _node->GetRight();
 	}
-}
+} // namespace RN

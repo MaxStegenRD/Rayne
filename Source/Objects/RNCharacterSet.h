@@ -24,16 +24,16 @@ namespace RN
 		RNAPI CharacterSet(const char *string);
 
 		RNAPI bool CharacterIsMember(UniChar character) const;
-		
+
 		RNAPI static CharacterSet *WithWhitespaces();
 
 	private:
 		void AddCharacter(UniChar character);
 
 		uint8 _bitmap[8192];
-		
+
 		__RNDeclareMetaInternal(CharacterSet)
 	};
-}
+} // namespace RN
 
 #endif /* __RAYNE_CHARACTERSET_H__ */

@@ -6,8 +6,8 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
-#include "../Objects/RNValue.h"
 #include "RNInputControl.h"
+#include "../Objects/RNValue.h"
 #include "RNInputDevice.h"
 
 namespace RN
@@ -110,7 +110,7 @@ namespace RN
 			return control;
 
 		size_t count = _controlGroups->GetCount();
-		for(size_t i = 0; i < count; i ++)
+		for(size_t i = 0; i < count; i++)
 		{
 			control = static_cast<InputControl *>(_controlGroups->GetObjectAtIndex(i));
 
@@ -449,4 +449,4 @@ namespace RN
 	{
 		return true;
 	}
-}
+} // namespace RN

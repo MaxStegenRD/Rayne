@@ -26,7 +26,8 @@ namespace RN
 
 			Thread::GetCurrentThread()->ExecuteOnExit([allocator](void *unused) {
 				delete allocator;
-			}, allocator);
+			},
+													  allocator);
 		}
 
 		return allocator;
@@ -43,7 +44,7 @@ namespace RN
 	{
 		RN_ASSERT(_activeSlice == 0, "BumpAllocator deleted with non-rolled back allocations");
 
-		for(auto &alloc : _allocationStack)
+		for(auto &alloc: _allocationStack)
 		{
 			RN_ASSERT(alloc.offset == 0, "BumpAllocator deleted with non-rolled back allocations");
 			delete[] alloc.memory;
@@ -59,7 +60,7 @@ namespace RN
 			if(_activeSlice == _allocationStack.size() - 1)
 				AddAllocation(std::max(size, static_cast<size_t>(_maxSize * 1.5)));
 			else
-				_activeSlice ++;
+				_activeSlice++;
 
 			return this->Alloc(size); // Recursively walk through the allocation stack... It can't be that deep, can it?
 		}
@@ -86,7 +87,6 @@ namespace RN
 		}
 
 		do {
-
 			// put_back() doesn't say how much/little can be put back,
 			// so in the worst case we need to walk a little bit through the allocation stack
 
@@ -97,7 +97,7 @@ namespace RN
 			size -= slice;
 
 			if(alloc.offset == 0 && size > 0)
-				_activeSlice --;
+				_activeSlice--;
 
 		} while(size > 0);
 	}
@@ -115,7 +115,7 @@ namespace RN
 
 			_allocationStack.erase(iterator);
 
-			for(auto &alloc : _allocationStack)
+			for(auto &alloc: _allocationStack)
 				delete[] alloc.memory;
 
 			_allocationStack.clear();
@@ -144,8 +144,8 @@ namespace RN
 		size = AlignUp(std::min(size, kBumpAllocatorMultiplier), kBumpAllocatorMultiplier);
 
 		uint8 *buffer = new uint8[size];
-		Allocation alloc = { buffer, size, 0 };
+		Allocation alloc = {buffer, size, 0};
 
 		_allocationStack.push_back(alloc);
 	}
-}
+} // namespace RN

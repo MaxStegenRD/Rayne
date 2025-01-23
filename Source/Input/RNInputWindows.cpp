@@ -6,8 +6,8 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
-#include "../Debug/RNLogger.h"
 #include "RNInputWindows.h"
+#include "../Debug/RNLogger.h"
 
 namespace RN
 {
@@ -173,7 +173,7 @@ namespace RN
 		return 0;
 	}
 
-/*
+	/*
 	size_t WindowsHIDDevice::ReadReport(uint8 *data, size_t length, std::chrono::milliseconds timeout)
 	{
 		return __ReadReport(data, length, static_cast<int32>(timeout.count()));
@@ -351,7 +351,7 @@ namespace RN
 
 	void EnumerateDevices()
 	{
-		GUID interfaceClassGUID = {0x4d1e55b2, 0xf16f, 0x11cf, {0x88, 0xcb, 0x00, 0x11, 0x11, 0x00, 0x00, 0x30} };
+		GUID interfaceClassGUID = {0x4d1e55b2, 0xf16f, 0x11cf, {0x88, 0xcb, 0x00, 0x11, 0x11, 0x00, 0x00, 0x30}};
 		HDEVINFO deviceInfo = ::SetupDiGetClassDevsA(&interfaceClassGUID, nullptr, nullptr, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
 
 		DWORD index = 0;
@@ -375,10 +375,8 @@ namespace RN
 			deviceInterfaceDetailData->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA_A);
 
 			ScopeGuard dataGuard([&] {
-
-				index ++;
+				index++;
 				free(deviceInterfaceDetailData);
-
 			});
 
 			result = ::SetupDiGetDeviceInterfaceDetailA(deviceInfo, &deviceInterfaceData, deviceInterfaceDetailData, requiredSize, nullptr, nullptr);
@@ -389,9 +387,9 @@ namespace RN
 			// Make sure its a HID device
 			bool isHIDDevice = false;
 
-			for(DWORD i = 0; ; i ++)
+			for(DWORD i = 0;; i++)
 			{
-				SP_DEVINFO_DATA devinfoData = { 0 };
+				SP_DEVINFO_DATA devinfoData = {0};
 				devinfoData.cbSize = sizeof(devinfoData);
 
 				result = ::SetupDiEnumDeviceInfo(deviceInfo, i, &devinfoData);
@@ -424,9 +422,7 @@ namespace RN
 				continue;
 
 			ScopeGuard handleGuard([&] {
-
 				::CloseHandle(writeHandle);
-
 			});
 
 
@@ -465,7 +461,11 @@ namespace RN
 		_hidModule = ::LoadLibraryA("hid.dll");
 		RN_ASSERT(_hidModule, "hid.dll needs to be loadable");
 
-#define RESOLVE_HID(x) do { x = (x##_)GetProcAddress(_hidModule, #x); RN_ASSERT(x, "Could not find %s", #x); } while(0)
+#define RESOLVE_HID(x)                            \
+	do {                                          \
+		x = (x##_)GetProcAddress(_hidModule, #x); \
+		RN_ASSERT(x, "Could not find %s", #x);    \
+	} while(0)
 
 		RESOLVE_HID(HidD_GetAttributes);
 		RESOLVE_HID(HidD_GetSerialNumberString);
@@ -488,4 +488,4 @@ namespace RN
 	{
 		::FreeLibrary(_hidModule);
 	}
-}
+} // namespace RN

@@ -7,8 +7,8 @@
 //
 
 #include "RNResonanceAudioSource.h"
-#include "RNResonanceAudioWorld.h"
 #include "RNResonanceAudioSampler.h"
+#include "RNResonanceAudioWorld.h"
 
 #include <api/resonance_audio_api.h>
 
@@ -23,7 +23,7 @@ namespace RN
 		_wantsIndirectSound(wantsIndirectSound),
 		_isPlaying(false),
 		_isRepeating(false),
-//		_isSelfdestructing(false),
+		//		_isSelfdestructing(false),
 		_hasTimeOfFlight(true),
 		_hasReverb(true),
 		_gain(1.0f),
@@ -39,7 +39,7 @@ namespace RN
 		_sourceID = ResonanceAudioWorld::_instance->_audioAPI->CreateSoundObjectSource(vraudio::RenderingMode::kBinauralHighQuality);
 		ResonanceAudioWorld::_instance->_audioAPI->SetSourceDistanceModel(_sourceID, vraudio::DistanceRolloffModel::kLinear, 1.0f, 20.0f);
 	}
-	
+
 	ResonanceAudioSource::~ResonanceAudioSource()
 	{
 		ResonanceAudioWorld::_instance->RemoveAudioSource(this);
@@ -51,7 +51,7 @@ namespace RN
 	{
 		_sampler->SetAudioAsset(asset);
 	}
-		
+
 	void ResonanceAudioSource::SetRepeat(bool repeat)
 	{
 		_sampler->SetRepeat(repeat);
@@ -62,18 +62,18 @@ namespace RN
 	{
 		ResonanceAudioWorld::_instance->_audioAPI->SetSourceDistanceAttenuation(_sourceID, attentuation);
 	}
-	
+
 	void ResonanceAudioSource::SetPitch(float pitch)
 	{
 		_pitch = pitch;
 	}
-		
+
 	void ResonanceAudioSource::SetVolume(float volume)
 	{
 		ResonanceAudioWorld::_instance->_audioAPI->SetSourceVolume(_sourceID, volume);
 	}
-		
-/*	void ResonanceAudioSource::SetSelfdestruct(bool selfdestruct)
+
+	/*	void ResonanceAudioSource::SetSelfdestruct(bool selfdestruct)
 	{
 		_isSelfdestructing = selfdestruct;
 	}*/
@@ -83,7 +83,7 @@ namespace RN
 		_hasTimeOfFlight = tof;
 	}
 
-		
+
 	void ResonanceAudioSource::Play()
 	{
 		_isPlaying = true;
@@ -93,12 +93,12 @@ namespace RN
 	{
 		_isPlaying = false;
 	}
-	
+
 	void ResonanceAudioSource::Seek(double time)
 	{
 		_currentTime = time;
 	}
-	
+
 	bool ResonanceAudioSource::HasEnded() const
 	{
 		return (_currentTime >= _sampler->GetTotalTime());
@@ -153,7 +153,7 @@ namespace RN
 	void ResonanceAudioSource::Update()
 	{
 		float *newBuffer;
-		Update(960.0f/48000.0f, 960, &newBuffer);
+		Update(960.0f / 48000.0f, 960, &newBuffer);
 		ResonanceAudioWorld::_instance->_audioAPI->SetInterleavedBuffer(_sourceID, newBuffer, 1, 960);
 	}
 
@@ -170,4 +170,4 @@ namespace RN
 		}
 	}
 
-}
+} // namespace RN

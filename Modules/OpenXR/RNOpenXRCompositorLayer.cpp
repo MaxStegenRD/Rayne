@@ -14,15 +14,18 @@ namespace RN
 {
 	RNDefineMeta(OpenXRCompositorLayer, VRCompositorLayer)
 
-	OpenXRCompositorLayer::OpenXRCompositorLayer(Type type, const Window::SwapChainDescriptor &descriptor, Vector2 resolution, bool supportFoveation, OpenXRWindow *window) : VRCompositorLayer(type), _internals(new OpenXRCompositorLayerInternals()), _window(window), _swapChain(nullptr), _isActive(true), _isSessionActive(false), _shouldDisplay(true)
+	OpenXRCompositorLayer::OpenXRCompositorLayer(Type type, const Window::SwapChainDescriptor &descriptor, Vector2 resolution, bool supportFoveation, OpenXRWindow *window) :
+		VRCompositorLayer(type), _internals(new OpenXRCompositorLayerInternals()), _window(window), _swapChain(nullptr), _isActive(true), _isSessionActive(false), _shouldDisplay(true)
 	{
 		Window::SwapChainDescriptor tempDescriptor = descriptor;
 
-		if(type == TypeProjectionView) tempDescriptor.layerCount = 2; //Force two layers here, one for each view
-		else if(type == TypeQuad) tempDescriptor.layerCount = 1; //Force one layer here
+		if(type == TypeProjectionView)
+			tempDescriptor.layerCount = 2; //Force two layers here, one for each view
+		else if(type == TypeQuad)
+			tempDescriptor.layerCount = 1; //Force one layer here
 
 		_internals->layerPassthroughFb = XR_NULL_HANDLE;
-		
+
 		if(type != TypePassthrough)
 		{
 #ifdef XR_USE_GRAPHICS_API_VULKAN
@@ -102,13 +105,13 @@ namespace RN
 			_internals->layerProjection.viewCount = 2;
 			_internals->layerProjection.views = _internals->layerProjectionViews;
 
-			_internals->layerBaseHeader = reinterpret_cast<XrCompositionLayerBaseHeader*>(&_internals->layerProjection);
+			_internals->layerBaseHeader = reinterpret_cast<XrCompositionLayerBaseHeader *>(&_internals->layerProjection);
 		}
 		else if(type == TypeQuad)
 		{
 			_internals->layerQuad.type = XR_TYPE_COMPOSITION_LAYER_QUAD;
-			_internals->layerQuad.next = nullptr;//_supportsCompositionLayerSettings? &layerSettings : nullptr;
-			_internals->layerQuad.layerFlags = 0;//XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT;
+			_internals->layerQuad.next = nullptr; //_supportsCompositionLayerSettings? &layerSettings : nullptr;
+			_internals->layerQuad.layerFlags = 0; //XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT;
 			_internals->layerQuad.space = window->_internals->trackingSpace;
 			_internals->layerQuad.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
 			_internals->layerQuad.subImage.swapchain = _swapChain->_internals->swapchain;
@@ -127,7 +130,7 @@ namespace RN
 			_internals->layerQuad.size.width = _rotation.x;
 			_internals->layerQuad.size.height = _rotation.y;
 
-			_internals->layerBaseHeader = reinterpret_cast<XrCompositionLayerBaseHeader*>(&_internals->layerQuad);
+			_internals->layerBaseHeader = reinterpret_cast<XrCompositionLayerBaseHeader *>(&_internals->layerQuad);
 		}
 		else if(type == TypePassthrough)
 		{
@@ -137,7 +140,7 @@ namespace RN
 			_internals->layerPassthroughCompFb.flags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
 			_internals->layerPassthroughCompFb.space = XR_NULL_HANDLE;
 
-			_internals->layerBaseHeader = reinterpret_cast<XrCompositionLayerBaseHeader*>(&_internals->layerPassthroughCompFb);
+			_internals->layerBaseHeader = reinterpret_cast<XrCompositionLayerBaseHeader *>(&_internals->layerPassthroughCompFb);
 		}
 	}
 
@@ -148,13 +151,13 @@ namespace RN
 			_window->_internals->DestroyPassthroughLayerFB(_internals->layerPassthroughFb);
 			_internals->layerPassthroughFb = XR_NULL_HANDLE;
 		}
-		
+
 		if(_swapChain)
 		{
 #ifdef XR_USE_GRAPHICS_API_D3D12
 			if(_swapChain->_swapChainType == OpenXRSwapChain::SwapChainType::D3D12)
 			{
-				OpenXRD3D12SwapChain *swapChain = static_cast<OpenXRD3D12SwapChain*>(_swapChain);
+				OpenXRD3D12SwapChain *swapChain = static_cast<OpenXRD3D12SwapChain *>(_swapChain);
 				swapChain->Release();
 				_swapChain = nullptr;
 			}
@@ -163,7 +166,7 @@ namespace RN
 #ifdef XR_USE_GRAPHICS_API_VULKAN
 			if(_swapChain->_swapChainType == OpenXRSwapChain::SwapChainType::Vulkan)
 			{
-				OpenXRVulkanSwapChain *swapChain = static_cast<OpenXRVulkanSwapChain*>(_swapChain);
+				OpenXRVulkanSwapChain *swapChain = static_cast<OpenXRVulkanSwapChain *>(_swapChain);
 				swapChain->Release();
 				_swapChain = nullptr;
 				return;
@@ -173,7 +176,7 @@ namespace RN
 #ifdef XR_USE_GRAPHICS_API_METAL
 			if(_swapChain->_swapChainType == OpenXRSwapChain::SwapChainType::Metal)
 			{
-				OpenXRMetalSwapChain *swapChain = static_cast<OpenXRMetalSwapChain*>(_swapChain);
+				OpenXRMetalSwapChain *swapChain = static_cast<OpenXRMetalSwapChain *>(_swapChain);
 				swapChain->Release();
 				_swapChain = nullptr;
 				return;
@@ -268,8 +271,10 @@ namespace RN
 		if(_swapChain) _swapChain->SetActive(_isSessionActive && _isActive);
 		if(_internals->layerPassthroughFb)
 		{
-			if(_isActive && _isSessionActive) _window->_internals->PassthroughLayerResumeFB(_internals->layerPassthroughFb);
-			else _window->_internals->PassthroughLayerPauseFB(_internals->layerPassthroughFb);
+			if(_isActive && _isSessionActive)
+				_window->_internals->PassthroughLayerResumeFB(_internals->layerPassthroughFb);
+			else
+				_window->_internals->PassthroughLayerPauseFB(_internals->layerPassthroughFb);
 		}
 	}
 
@@ -280,15 +285,17 @@ namespace RN
 
 	Vector2 OpenXRCompositorLayer::GetSize() const
 	{
-		return _swapChain? _swapChain->GetSwapChainSize() : RN::Vector2();
+		return _swapChain ? _swapChain->GetSwapChainSize() : RN::Vector2();
 	}
 
 	size_t OpenXRCompositorLayer::GetImageCount() const
 	{
 		if(!_swapChain) return 0;
 
-		if(_type == TypeProjectionView) return 2;
-		else return 1;
+		if(_type == TypeProjectionView)
+			return 2;
+		else
+			return 1;
 	}
 
 	Framebuffer *OpenXRCompositorLayer::GetFramebuffer() const
@@ -312,8 +319,10 @@ namespace RN
 		if(_swapChain) _swapChain->SetActive(_isSessionActive && _isActive);
 		if(_internals->layerPassthroughFb)
 		{
-			if(_isActive && _isSessionActive) _window->_internals->PassthroughLayerResumeFB(_internals->layerPassthroughFb);
-			else _window->_internals->PassthroughLayerPauseFB(_internals->layerPassthroughFb);
+			if(_isActive && _isSessionActive)
+				_window->_internals->PassthroughLayerResumeFB(_internals->layerPassthroughFb);
+			else
+				_window->_internals->PassthroughLayerPauseFB(_internals->layerPassthroughFb);
 		}
 	}
-}
+} // namespace RN

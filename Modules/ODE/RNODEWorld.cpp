@@ -17,7 +17,8 @@ namespace RN
 
 	ODEWorld *ODEWorld::_sharedInstance = nullptr;
 
-	ODEWorld::ODEWorld(const Vector3 &gravity) : _maxSteps(50), _stepSize(1.0 / 120.0), _paused(false)
+	ODEWorld::ODEWorld(const Vector3 &gravity) :
+		_maxSteps(50), _stepSize(1.0 / 120.0), _paused(false)
 	{
 		dInitODE();
 		_world = dWorldCreate();
@@ -41,7 +42,7 @@ namespace RN
 
 	void ODEWorld::SimulationStepTickCallback(void *data, dxGeom *object1, dxGeom *object2)
 	{
-		ODEWorld *world = static_cast<ODEWorld*>(data);
+		ODEWorld *world = static_cast<ODEWorld *>(data);
 		dxBody *body1 = dGeomGetBody(object1);
 		dxBody *body2 = dGeomGetBody(object2);
 
@@ -76,7 +77,7 @@ namespace RN
 
 	void ODEWorld::SetSolverIterations(int iterations)
 	{
-//		_dynamicsWorld->getSolverInfo().m_numIterations = iterations;
+		//		_dynamicsWorld->getSolverInfo().m_numIterations = iterations;
 	}
 
 	void ODEWorld::Update(float delta)
@@ -87,16 +88,15 @@ namespace RN
 		for(int i = 0; i < 10; i++)
 		{
 			dSpaceCollide(_space, this, &ODEWorld::SimulationStepTickCallback);
-			dWorldQuickStep(_world, delta*0.1f);
+			dWorldQuickStep(_world, delta * 0.1f);
 			dJointGroupEmpty(_contactGroup);
 		}
 	}
 
 
-
 	ODEContactInfo ODEWorld::CastRay(const Vector3 &from, const Vector3 &to)
 	{
-/*		btVector3 btRayFrom = btVector3(from.x, from.y, from.z);
+		/*		btVector3 btRayFrom = btVector3(from.x, from.y, from.z);
 		btVector3 btRayTo = btVector3(to.x, to.y, to.z);
 
 		btCollisionWorld::ClosestRayResultCallback rayCallback(btRayFrom, btRayTo);
@@ -144,8 +144,8 @@ namespace RN
 		}
 	}
 
-/*	void BulletWorld::InsertConstraint(BulletConstraint *constraint)
+	/*	void BulletWorld::InsertConstraint(BulletConstraint *constraint)
 	{
 		_dynamicsWorld->addConstraint(constraint->GetBulletConstraint());
 	}*/
-}
+} // namespace RN

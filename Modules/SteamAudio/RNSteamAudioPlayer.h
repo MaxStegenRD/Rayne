@@ -22,7 +22,7 @@ namespace RN
 
 		SAAPI SteamAudioPlayer(AudioAsset *asset = nullptr);
 		SAAPI ~SteamAudioPlayer() override;
-			
+
 		SAAPI void Play();
 		SAAPI void Stop();
 
@@ -33,10 +33,10 @@ namespace RN
 		SAAPI void SetGain(float gain);
 
 		SAAPI void Update(double frameLength, uint32 sampleCount, float **outputBuffer);
-			
+
 		bool IsPlaying() const { return _isPlaying; }
 		bool IsRepeating() const { return _isRepeating; }
-			
+
 	private:
 		SteamAudioSampler *_sampler;
 
@@ -49,9 +49,9 @@ namespace RN
 		float _pitch;
 
 		double _currentTime;
-			
+
 		RNDeclareMetaAPI(SteamAudioPlayer, SAAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_STEAMAUDIOPLAYER_H_) */

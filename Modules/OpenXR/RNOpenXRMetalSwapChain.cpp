@@ -7,14 +7,15 @@
 //
 
 #include "RNOpenXRMetalSwapChain.h"
-#include "RNOpenXRWindow.h"
 #include "RNOpenXRInternals.h"
+#include "RNOpenXRWindow.h"
 
 namespace RN
 {
 	RNDefineMeta(OpenXRMetalSwapChain, MetalSwapChain)
 
-	OpenXRMetalSwapChain::OpenXRMetalSwapChain(const OpenXRWindow *window, OpenXRCompositorLayer *layer, const Window::SwapChainDescriptor &descriptor, const Vector2 &size) : OpenXRSwapChain(window, layer, SwapChainType::Metal), _swapchainImages(nullptr)
+	OpenXRMetalSwapChain::OpenXRMetalSwapChain(const OpenXRWindow *window, OpenXRCompositorLayer *layer, const Window::SwapChainDescriptor &descriptor, const Vector2 &size) :
+		OpenXRSwapChain(window, layer, SwapChainType::Metal), _swapchainImages(nullptr)
 	{
 		_descriptor = descriptor;
 		_descriptor.depthStencilFormat = Texture::Format::Invalid;
@@ -37,21 +38,21 @@ namespace RN
 
 		if(!XR_SUCCEEDED(xrCreateSwapchain(_xrWindow->_internals->session, &swapchainCreateInfo, &_internals->swapchain)))
 		{
-		   RN_ASSERT(false, "failed creating swapchain");
+			RN_ASSERT(false, "failed creating swapchain");
 		}
 
 		uint32 numberOfSwapChainImages = 0;
 		xrEnumerateSwapchainImages(_internals->swapchain, 0, &numberOfSwapChainImages, nullptr);
 
 		XrSwapchainImageMetalKHR *swapchainImages = new XrSwapchainImageMetalKHR[numberOfSwapChainImages];
-		_swapchainImages = new void*[numberOfSwapChainImages];
+		_swapchainImages = new void *[numberOfSwapChainImages];
 
 		for(int i = 0; i < numberOfSwapChainImages; i++)
 		{
 			swapchainImages[i].type = XR_TYPE_SWAPCHAIN_IMAGE_METAL_KHR;
 			swapchainImages[i].next = nullptr;
 		}
-		xrEnumerateSwapchainImages(_internals->swapchain, numberOfSwapChainImages, &numberOfSwapChainImages, (XrSwapchainImageBaseHeader*)swapchainImages);
+		xrEnumerateSwapchainImages(_internals->swapchain, numberOfSwapChainImages, &numberOfSwapChainImages, (XrSwapchainImageBaseHeader *)swapchainImages);
 		_descriptor.bufferCount = numberOfSwapChainImages;
 
 		for(int i = 0; i < numberOfSwapChainImages; i++)
@@ -85,13 +86,13 @@ namespace RN
 
 		_layer->UpdateForCurrentFrame();
 
-        XrSwapchainImageAcquireInfo swapchainImageAcquireInfo;
-        swapchainImageAcquireInfo.type = XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO;
-        swapchainImageAcquireInfo.next = nullptr;
+		XrSwapchainImageAcquireInfo swapchainImageAcquireInfo;
+		swapchainImageAcquireInfo.type = XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO;
+		swapchainImageAcquireInfo.next = nullptr;
 
-        uint32_t imageIndex = 0;
-        xrAcquireSwapchainImage(_internals->swapchain, &swapchainImageAcquireInfo, &imageIndex);
-        //_semaphoreIndex = _frameIndex = imageIndex;
+		uint32_t imageIndex = 0;
+		xrAcquireSwapchainImage(_internals->swapchain, &swapchainImageAcquireInfo, &imageIndex);
+		//_semaphoreIndex = _frameIndex = imageIndex;
 
 		XrSwapchainImageWaitInfo swapchainImageWaitInfo;
 		swapchainImageWaitInfo.type = XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO;
@@ -100,24 +101,22 @@ namespace RN
 		xrWaitSwapchainImage(_internals->swapchain, &swapchainImageWaitInfo);
 	}
 
-    void OpenXRMetalSwapChain::Prepare()
+	void OpenXRMetalSwapChain::Prepare()
 	{
-
 	}
 
-    void OpenXRMetalSwapChain::Finalize()
+	void OpenXRMetalSwapChain::Finalize()
 	{
-
 	}
 
-    void OpenXRMetalSwapChain::PresentBackBuffer(id<MTLCommandBuffer> commandBuffer)
+	void OpenXRMetalSwapChain::PresentBackBuffer(id<MTLCommandBuffer> commandBuffer)
 	{
 		if(!_isActive) return;
 
-        XrSwapchainImageReleaseInfo swapchainImageReleaseInfo;
-        swapchainImageReleaseInfo.type = XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO;
-        swapchainImageReleaseInfo.next = nullptr;
-        xrReleaseSwapchainImage(_internals->swapchain, &swapchainImageReleaseInfo);
+		XrSwapchainImageReleaseInfo swapchainImageReleaseInfo;
+		swapchainImageReleaseInfo.type = XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO;
+		swapchainImageReleaseInfo.next = nullptr;
+		xrReleaseSwapchainImage(_internals->swapchain, &swapchainImageReleaseInfo);
 
 		_hasContent = true;
 
@@ -127,7 +126,7 @@ namespace RN
 		}
 	}
 
-    id OpenXRMetalSwapChain::GetMetalColorTexture() const
+	id OpenXRMetalSwapChain::GetMetalColorTexture() const
 	{
 		return (id<MTLTexture>)_swapchainImages[0];
 	}
@@ -139,14 +138,13 @@ namespace RN
 
 	void OpenXRMetalSwapChain::SetFixedFoveatedRenderingLevel(uint8 level, bool dynamic)
 	{
-		
 	}
 
-	void OpenXRMetalSwapChain::ResizeSwapChain(const Vector2& size)
+	void OpenXRMetalSwapChain::ResizeSwapChain(const Vector2 &size)
 	{
 		_size = size;
 		//_framebuffer->WillUpdateSwapChain(); //As all it does is free the swap chain d3d buffer resources, it would free the targetTexture resource and should't be called in this case...
-/*		SafeRelease(_targetTexture);
+		/*		SafeRelease(_targetTexture);
 		Texture::Descriptor textureDescriptor = Texture::Descriptor::With2DTextureAndFormat(_descriptor.colorFormat, _size.x, _size.y, false);
 		textureDescriptor.usageHint = Texture::UsageHint::RenderTarget;
 		textureDescriptor.depth = _descriptor.layerCount;
@@ -163,4 +161,4 @@ namespace RN
 	{
 		return GetFramebuffer();
 	}
-}
+} // namespace RN

@@ -10,9 +10,9 @@
 #ifndef __RAYNE_SETTINGS_H_
 #define __RAYNE_SETTINGS_H_
 
-#include "RNBase.h"
-#include "../Objects/RNString.h"
 #include "../Objects/RNDictionary.h"
+#include "../Objects/RNString.h"
+#include "RNBase.h"
 
 #include "../Objects/RNNumber.h"
 
@@ -27,7 +27,7 @@ namespace RN
 		RNAPI static Settings *GetSharedInstance();
 		RNAPI static String *GetSettingsLocation();
 
-		template<class T=Object>
+		template<class T = Object>
 		T *GetEntryForKey(const String *key) const
 		{
 			UniqueLock<Lockable> lock(_lock);
@@ -97,7 +97,7 @@ namespace RN
 		bool _isDirty;
 		Dictionary *_settings;
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_SETTINGS_H_ */

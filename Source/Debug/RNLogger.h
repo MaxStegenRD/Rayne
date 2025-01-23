@@ -48,7 +48,7 @@ namespace RN
 			message(SafeRetain(other.message))
 		{}
 
-		LogMessage &operator= (LogMessage &&other)
+		LogMessage &operator=(LogMessage &&other)
 		{
 			line = other.line;
 			file = other.file;
@@ -71,7 +71,7 @@ namespace RN
 				if(file[length] == '/')
 					return file + length + 1;
 #endif
-				length --;
+				length--;
 			}
 
 			return file;
@@ -129,7 +129,7 @@ namespace RN
 
 		std::atomic_flag _flag;
 	};
-}
+} // namespace RN
 
 #define RNDebugf(...) RN::Logger::GetSharedInstance()->Log(RN::Logger::Level::Debug, __LINE__, __FILE__, RN_FUNCTION_SIGNATURE, __VA_ARGS__)
 #define RNInfof(...) RN::Logger::GetSharedInstance()->Log(RN::Logger::Level::Info, __LINE__, __FILE__, RN_FUNCTION_SIGNATURE, __VA_ARGS__)

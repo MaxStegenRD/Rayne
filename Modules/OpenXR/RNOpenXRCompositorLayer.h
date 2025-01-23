@@ -53,7 +53,7 @@ namespace RN
 
 		RNDeclareMetaAPI(OpenXRCompositorLayer, OXRAPI)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_OPENXRCOMPOSITORLAYER_H_ */

@@ -24,9 +24,9 @@ namespace RN
 
 			UIAPI void SetImage(Texture *image);
 			Texture *GetImage() const { return _image; }
-			
+
 			UIAPI void SetColor(Color color); //Multiplicative, including alpha!
-			
+
 		protected:
 			UIAPI void UpdateModel() override;
 			UIAPI void SetOpacityFromParent(float parentCombinedOpacity) override;
@@ -37,8 +37,8 @@ namespace RN
 
 			RNDeclareMetaAPI(ImageView, UIAPI)
 		};
-	}
-}
+	} // namespace UI
+} // namespace RN
 
 
 #endif /* __RAYNE_UIIMAGEVIEW_H_ */

@@ -7,8 +7,8 @@
 //
 
 #include "RNWorkSource.h"
-#include "RNThreadLocalStorage.h"
 #include "../Debug/RNLogger.h"
+#include "RNThreadLocalStorage.h"
 
 namespace RN
 {
@@ -76,4 +76,4 @@ namespace RN
 		_pool->head = this;
 		_pool->lock.Unlock();
 	}
-}
+} // namespace RN

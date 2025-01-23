@@ -6,28 +6,29 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
-#include "RNOculusMobileVulkanSwapChain.h"
 #include "RNOculusMobileWindow.h"
+#include "RNOculusMobileVulkanSwapChain.h"
 
-#include <unistd.h>
 #include <android/log.h>
+#include <unistd.h>
 
-#include <sys/prctl.h> // for prctl( PR_SET_NAME )
-#include <android/window.h> // for AWINDOW_FLAG_KEEP_SCREEN_ON
 #include <android/native_window_jni.h> // for native window JNI
+#include <android/window.h> // for AWINDOW_FLAG_KEEP_SCREEN_ON
 #include <android_native_app_glue.h>
+#include <sys/prctl.h> // for prctl( PR_SET_NAME )
 
 #include "VrApi.h"
-#include "VrApi_Vulkan.h"
 #include "VrApi_Helpers.h"
 #include "VrApi_Input.h"
 #include "VrApi_SystemUtils.h"
+#include "VrApi_Vulkan.h"
 
 namespace RN
 {
 	RNDefineMeta(OculusMobileWindow, VRWindow)
 
-	OculusMobileWindow::OculusMobileWindow() : _nativeWindow(nullptr), _session(nullptr), _swapChain(nullptr), _actualFrameIndex(0), _predictedDisplayTime(0.0), _currentHapticsIndex{0, 0}, _preferredFrameRate(0), _minCPULevel(0), _minGPULevel(0), _fixedFoveatedRenderingLevel(2), _fixedFoveatedRenderingDynamic(false), _hasInputFocus(true), _hasVisibility(true)
+	OculusMobileWindow::OculusMobileWindow() :
+		_nativeWindow(nullptr), _session(nullptr), _swapChain(nullptr), _actualFrameIndex(0), _predictedDisplayTime(0.0), _currentHapticsIndex {0, 0}, _preferredFrameRate(0), _minCPULevel(0), _minGPULevel(0), _fixedFoveatedRenderingLevel(2), _fixedFoveatedRenderingDynamic(false), _hasInputFocus(true), _hasVisibility(true)
 	{
 		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
 		ANativeActivity_setWindowFlags(app->activity, AWINDOW_FLAG_KEEP_SCREEN_ON, 0);
@@ -37,7 +38,7 @@ namespace RN
 		java->Env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
 		java->ActivityObject = app->activity->clazz;
 
-		_java = static_cast<ovrJava*>(java);
+		_java = static_cast<ovrJava *>(java);
 
 		ovrInitParms initParams = vrapi_DefaultInitParms(java);
 		initParams.GraphicsAPI = VRAPI_GRAPHICS_API_VULKAN_1;
@@ -60,13 +61,13 @@ namespace RN
 
 		vrapi_Shutdown();
 
-		ovrJava *java = static_cast<ovrJava*>(_java);
-        delete java;
+		ovrJava *java = static_cast<ovrJava *>(_java);
+		delete java;
 	}
 
 	void OculusMobileWindow::StartRendering(const SwapChainDescriptor &descriptor, float eyeResolutionFactor)
 	{
-		ovrJava *java = static_cast<ovrJava*>(_java);
+		ovrJava *java = static_cast<ovrJava *>(_java);
 
 		VulkanRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<VulkanRenderer>();
 
@@ -82,12 +83,12 @@ namespace RN
 
 		//1:1 mapping for center according to docs would be 1536x1536, returned is 1024*1024 for GO, higher on quest
 		Vector2 eyeRenderSize;
-        eyeRenderSize.x = vrapi_GetSystemPropertyInt(java, VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_WIDTH) * eyeResolutionFactor;
-        eyeRenderSize.y = vrapi_GetSystemPropertyInt(java, VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_HEIGHT) * eyeResolutionFactor;
+		eyeRenderSize.x = vrapi_GetSystemPropertyInt(java, VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_WIDTH) * eyeResolutionFactor;
+		eyeRenderSize.y = vrapi_GetSystemPropertyInt(java, VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_HEIGHT) * eyeResolutionFactor;
 
 		_swapChain = new OculusMobileVulkanSwapChain(descriptor, eyeRenderSize);
 
-		_swapChain->_presentEvent = [this](){
+		_swapChain->_presentEvent = [this]() {
 			if(_session)
 			{
 				ovrLayerProjection2 gameLayer = vrapi_DefaultLayerProjection2();
@@ -105,7 +106,7 @@ namespace RN
 				}
 				gameLayer.Header.Flags |= VRAPI_FRAME_LAYER_FLAG_CHROMATIC_ABERRATION_CORRECTION;
 
-				const ovrLayerHeader2 * layers[] = { &gameLayer.Header };
+				const ovrLayerHeader2 *layers[] = {&gameLayer.Header};
 
 				ovrSubmitFrameDescription2 frameDescription = {};
 				frameDescription.Flags = 0;
@@ -115,7 +116,7 @@ namespace RN
 				frameDescription.LayerCount = 1;
 				frameDescription.Layers = layers;
 
-				vrapi_SubmitFrame2(static_cast<ovrMobile*>(_session), &frameDescription);
+				vrapi_SubmitFrame2(static_cast<ovrMobile *>(_session), &frameDescription);
 			}
 		};
 
@@ -123,8 +124,7 @@ namespace RN
 				if(notification->GetName()->IsEqual(kRNAndroidWindowDidChange))
 				{
 					UpdateVRMode();
-				}
-			}, this);
+				} }, this);
 
 		UpdateVRMode();
 	}
@@ -135,7 +135,7 @@ namespace RN
 
 		if(_session)
 		{
-			vrapi_LeaveVrMode(static_cast<ovrMobile*>(_session));
+			vrapi_LeaveVrMode(static_cast<ovrMobile *>(_session));
 		}
 
 		SafeRelease(_swapChain);
@@ -153,8 +153,8 @@ namespace RN
 		_fixedFoveatedRenderingLevel = level;
 		_fixedFoveatedRenderingDynamic = dynamic;
 
-		vrapi_SetPropertyInt(static_cast<ovrJava*>(_java), VRAPI_FOVEATION_LEVEL, level);
-		vrapi_SetPropertyInt(static_cast<ovrJava*>(_java), VRAPI_DYNAMIC_FOVEATION_ENABLED, dynamic);
+		vrapi_SetPropertyInt(static_cast<ovrJava *>(_java), VRAPI_FOVEATION_LEVEL, level);
+		vrapi_SetPropertyInt(static_cast<ovrJava *>(_java), VRAPI_DYNAMIC_FOVEATION_ENABLED, dynamic);
 	}
 
 	void OculusMobileWindow::SetPreferredFramerate(uint32 framerate)
@@ -163,7 +163,7 @@ namespace RN
 
 		if(_session)
 		{
-			vrapi_SetDisplayRefreshRate(static_cast<ovrMobile*>(_session), framerate);
+			vrapi_SetDisplayRefreshRate(static_cast<ovrMobile *>(_session), framerate);
 		}
 	}
 
@@ -174,7 +174,7 @@ namespace RN
 
 		if(_session)
 		{
-			vrapi_SetClockLevels(static_cast<ovrMobile*>(_session), cpuLevel, gpuLevel);
+			vrapi_SetClockLevels(static_cast<ovrMobile *>(_session), cpuLevel, gpuLevel);
 		}
 	}
 
@@ -240,8 +240,8 @@ namespace RN
 
 		_actualFrameIndex++;
 
-		vrapi_WaitFrame(static_cast<ovrMobile*>(_session), _actualFrameIndex);
-		vrapi_BeginFrame(static_cast<ovrMobile*>(_session), _actualFrameIndex);
+		vrapi_WaitFrame(static_cast<ovrMobile *>(_session), _actualFrameIndex);
+		vrapi_BeginFrame(static_cast<ovrMobile *>(_session), _actualFrameIndex);
 	}
 
 	void OculusMobileWindow::Update(float delta, float near, float far)
@@ -252,7 +252,7 @@ namespace RN
 
 		while(1)
 		{
-			ovrEventHeader* eventHeader = (ovrEventHeader*)(&eventDataBuffer);
+			ovrEventHeader *eventHeader = (ovrEventHeader *)(&eventDataBuffer);
 			ovrResult res = vrapi_PollEvent(eventHeader);
 			if(res != ovrSuccess || eventHeader->EventType == VRAPI_EVENT_NONE)
 			{
@@ -284,16 +284,16 @@ namespace RN
 
 		if(!_session) return;
 
-		vrapi_SetTrackingSpace(static_cast<ovrMobile*>(_session), VRAPI_TRACKING_SPACE_LOCAL_FLOOR);
+		vrapi_SetTrackingSpace(static_cast<ovrMobile *>(_session), VRAPI_TRACKING_SPACE_LOCAL_FLOOR);
 
-        _predictedDisplayTime = vrapi_GetPredictedDisplayTime(static_cast<ovrMobile*>(_session), _actualFrameIndex);
+		_predictedDisplayTime = vrapi_GetPredictedDisplayTime(static_cast<ovrMobile *>(_session), _actualFrameIndex);
 
-		ovrTracking2 hmdState = vrapi_GetPredictedTracking2(static_cast<ovrMobile*>(_session), _predictedDisplayTime);
+		ovrTracking2 hmdState = vrapi_GetPredictedTracking2(static_cast<ovrMobile *>(_session), _predictedDisplayTime);
 		_swapChain->_hmdState = hmdState;
 
 		float eyeDistance = vrapi_GetInterpupillaryDistance(&hmdState);
-		_hmdTrackingState.eyeOffset[0] = Vector3(-eyeDistance/2.0f, 0.0f, 0.0f);
-		_hmdTrackingState.eyeOffset[1] = Vector3(eyeDistance/2.0f, 0.0f, 0.0f);
+		_hmdTrackingState.eyeOffset[0] = Vector3(-eyeDistance / 2.0f, 0.0f, 0.0f);
+		_hmdTrackingState.eyeOffset[1] = Vector3(eyeDistance / 2.0f, 0.0f, 0.0f);
 		_hmdTrackingState.eyeProjection[0] = GetMatrixForOVRMatrix(hmdState.Eye[0].ProjectionMatrix);
 		_hmdTrackingState.eyeProjection[1] = GetMatrixForOVRMatrix(hmdState.Eye[1].ProjectionMatrix);
 
@@ -333,19 +333,19 @@ namespace RN
 
 		ovrInputCapabilityHeader capsHeader;
 		int i = 0;
-		while(vrapi_EnumerateInputDevices(static_cast<ovrMobile*>(_session), i, &capsHeader) >= 0)
+		while(vrapi_EnumerateInputDevices(static_cast<ovrMobile *>(_session), i, &capsHeader) >= 0)
 		{
 			i += 1;
 			if(capsHeader.Type == ovrControllerType_TrackedRemote)
 			{
 				ovrInputTrackedRemoteCapabilities remoteCaps;
 				remoteCaps.Header = capsHeader;
-				if(vrapi_GetInputDeviceCapabilities(static_cast<ovrMobile*>(_session), &remoteCaps.Header) >= 0)
+				if(vrapi_GetInputDeviceCapabilities(static_cast<ovrMobile *>(_session), &remoteCaps.Header) >= 0)
 				{
-					int handIndex = (remoteCaps.ControllerCapabilities & ovrControllerCaps_RightHand)?1:0;
+					int handIndex = (remoteCaps.ControllerCapabilities & ovrControllerCaps_RightHand) ? 1 : 0;
 
 					_controllerTrackingState[handIndex].hasHaptics = (remoteCaps.ControllerCapabilities & ovrControllerCaps_HasBufferedHapticVibration);
-					_controllerTrackingState[handIndex].hapticsSampleLength = static_cast<double>(remoteCaps.HapticSampleDurationMS)/1000.0;
+					_controllerTrackingState[handIndex].hapticsSampleLength = static_cast<double>(remoteCaps.HapticSampleDurationMS) / 1000.0;
 					_controllerTrackingState[handIndex].hapticsMaxSamples = remoteCaps.HapticSamplesMax;
 
 					_controllerTrackingState[handIndex].active = true;
@@ -366,7 +366,7 @@ namespace RN
 
 					ovrInputStateTrackedRemote remoteState;
 					remoteState.Header.ControllerType = ovrControllerType_TrackedRemote;
-					if(vrapi_GetCurrentInputState(static_cast<ovrMobile*>(_session), remoteCaps.Header.DeviceID, &remoteState.Header) >= 0)
+					if(vrapi_GetCurrentInputState(static_cast<ovrMobile *>(_session), remoteCaps.Header.DeviceID, &remoteState.Header) >= 0)
 					{
 						if((remoteCaps.ControllerCapabilities & ovrControllerCaps_HasTrackpad))
 						{
@@ -411,7 +411,7 @@ namespace RN
 					}
 
 					ovrTracking trackingState;
-					if(vrapi_GetInputTrackingState(static_cast<ovrMobile*>(_session), remoteCaps.Header.DeviceID, _predictedDisplayTime, &trackingState) >= 0)
+					if(vrapi_GetInputTrackingState(static_cast<ovrMobile *>(_session), remoteCaps.Header.DeviceID, _predictedDisplayTime, &trackingState) >= 0)
 					{
 						_controllerTrackingState[handIndex].position = GetVectorForOVRVector(trackingState.HeadPose.Pose.Position);
 						_controllerTrackingState[handIndex].rotation = GetQuaternionForOVRQuaternion(trackingState.HeadPose.Pose.Orientation);
@@ -426,11 +426,11 @@ namespace RN
 					if(_currentHapticsIndex[handIndex] < _haptics[handIndex].sampleCount)
 					{
 						float strength = _haptics[handIndex].samples[_currentHapticsIndex[handIndex]++];
-						vrapi_SetHapticVibrationSimple(static_cast<ovrMobile*>(_session), _controllerTrackingState[handIndex].controllerID, strength);
+						vrapi_SetHapticVibrationSimple(static_cast<ovrMobile *>(_session), _controllerTrackingState[handIndex].controllerID, strength);
 					}
 					else
 					{
-						vrapi_SetHapticVibrationSimple(static_cast<ovrMobile*>(_session), _controllerTrackingState[handIndex].controllerID, 0.0f);
+						vrapi_SetHapticVibrationSimple(static_cast<ovrMobile *>(_session), _controllerTrackingState[handIndex].controllerID, 0.0f);
 					}
 				}
 			}
@@ -438,25 +438,25 @@ namespace RN
 			{
 				ovrInputHandCapabilities handCaps;
 				handCaps.Header = capsHeader;
-				if(vrapi_GetInputDeviceCapabilities(static_cast<ovrMobile*>(_session), &handCaps.Header) >= 0)
+				if(vrapi_GetInputDeviceCapabilities(static_cast<ovrMobile *>(_session), &handCaps.Header) >= 0)
 				{
-					int handIndex = (handCaps.HandCapabilities & ovrHandCaps_RightHand)?1:0;
+					int handIndex = (handCaps.HandCapabilities & ovrHandCaps_RightHand) ? 1 : 0;
 
 					_handTrackingState[handIndex].active = true;
 
 					ovrHandPose handPose;
 					handPose.Header.Version = ovrHandVersion_1;
-					if(vrapi_GetHandPose(static_cast<ovrMobile*>(_session), handCaps.Header.DeviceID, _predictedDisplayTime, &handPose.Header) >= 0)
+					if(vrapi_GetHandPose(static_cast<ovrMobile *>(_session), handCaps.Header.DeviceID, _predictedDisplayTime, &handPose.Header) >= 0)
 					{
 						_handTrackingState[handIndex].position = GetVectorForOVRVector(handPose.RootPose.Position);
 						_handTrackingState[handIndex].rotation = GetQuaternionForOVRQuaternion(handPose.RootPose.Orientation);
 						_handTrackingState[handIndex].tracking = (handPose.Status == ovrHandTrackingStatus_Tracked);
-						_handTrackingState[handIndex].confidence = handPose.HandConfidence == ovrConfidence_HIGH? 255 : 127;
+						_handTrackingState[handIndex].confidence = handPose.HandConfidence == ovrConfidence_HIGH ? 255 : 127;
 					}
 
 					ovrInputStateHand trackingState;
 					trackingState.Header.ControllerType = ovrControllerType_Hand;
-					if(vrapi_GetCurrentInputState(static_cast<ovrMobile*>(_session), handCaps.Header.DeviceID, &trackingState.Header) >= 0)
+					if(vrapi_GetCurrentInputState(static_cast<ovrMobile *>(_session), handCaps.Header.DeviceID, &trackingState.Header) >= 0)
 					{
 						_handTrackingState[handIndex].pinchStrength[0] = trackingState.PinchStrength[0];
 						_handTrackingState[handIndex].pinchStrength[1] = trackingState.PinchStrength[1];
@@ -482,7 +482,7 @@ namespace RN
 				_nativeWindow = app->window;
 
 				VulkanRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<VulkanRenderer>();
-				ovrModeParmsVulkan params = vrapi_DefaultModeParmsVulkan(static_cast<ovrJava*>(_java), (unsigned long long)renderer->GetWorkQueue());
+				ovrModeParmsVulkan params = vrapi_DefaultModeParmsVulkan(static_cast<ovrJava *>(_java), (unsigned long long)renderer->GetWorkQueue());
 				params.ModeParms.Flags |= VRAPI_MODE_FLAG_NATIVE_WINDOW | VRAPI_MODE_FLAG_FRONT_BUFFER_SRGB | VRAPI_MODE_FLAG_PHASE_SYNC;
 				params.ModeParms.WindowSurface = (size_t)_nativeWindow;
 				_session = vrapi_EnterVrMode((ovrModeParms *)&params);
@@ -498,11 +498,11 @@ namespace RN
 				if(_session)
 				{
 					RNDebug(RNCSTR("UpdateVRMode new session"));
-					ovrMobile *session = static_cast<ovrMobile*>(_session);
+					ovrMobile *session = static_cast<ovrMobile *>(_session);
 
-					int refreshRateCount = vrapi_GetSystemPropertyInt(static_cast<ovrJava*>(_java), VRAPI_SYS_PROP_NUM_SUPPORTED_DISPLAY_REFRESH_RATES);
+					int refreshRateCount = vrapi_GetSystemPropertyInt(static_cast<ovrJava *>(_java), VRAPI_SYS_PROP_NUM_SUPPORTED_DISPLAY_REFRESH_RATES);
 					float *availableRefreshRates = new float[refreshRateCount];
-					vrapi_GetSystemPropertyFloatArray(static_cast<ovrJava*>(_java), VRAPI_SYS_PROP_SUPPORTED_DISPLAY_REFRESH_RATES, availableRefreshRates, refreshRateCount);
+					vrapi_GetSystemPropertyFloatArray(static_cast<ovrJava *>(_java), VRAPI_SYS_PROP_SUPPORTED_DISPLAY_REFRESH_RATES, availableRefreshRates, refreshRateCount);
 					float highestRefreshRate = _preferredFrameRate;
 					if(_preferredFrameRate == 0)
 					{
@@ -520,12 +520,12 @@ namespace RN
 					vrapi_SetDisplayRefreshRate(session, highestRefreshRate);
 					vrapi_SetClockLevels(session, _minCPULevel, _minGPULevel); //TODO: Set to 0, 0 for automatic clock levels, current setting keeps optimizations more comparable
 					vrapi_SetPerfThread(session, VRAPI_PERF_THREAD_TYPE_MAIN, _mainThreadID);
-    				vrapi_SetPerfThread(session, VRAPI_PERF_THREAD_TYPE_RENDERER, _mainThreadID);
+					vrapi_SetPerfThread(session, VRAPI_PERF_THREAD_TYPE_RENDERER, _mainThreadID);
 
 					vrapi_SetExtraLatencyMode(session, VRAPI_EXTRA_LATENCY_MODE_ON);
 
-					vrapi_SetPropertyInt(static_cast<ovrJava*>(_java), VRAPI_DYNAMIC_FOVEATION_ENABLED, _fixedFoveatedRenderingDynamic);
-					vrapi_SetPropertyInt(static_cast<ovrJava*>(_java), VRAPI_FOVEATION_LEVEL, _fixedFoveatedRenderingLevel);
+					vrapi_SetPropertyInt(static_cast<ovrJava *>(_java), VRAPI_DYNAMIC_FOVEATION_ENABLED, _fixedFoveatedRenderingDynamic);
+					vrapi_SetPropertyInt(static_cast<ovrJava *>(_java), VRAPI_FOVEATION_LEVEL, _fixedFoveatedRenderingLevel);
 				}
 			}
 		}
@@ -534,7 +534,7 @@ namespace RN
 			_nativeWindow = nullptr;
 			if(_session)
 			{
-				vrapi_LeaveVrMode(static_cast<ovrMobile*>(_session));
+				vrapi_LeaveVrMode(static_cast<ovrMobile *>(_session));
 				_session = nullptr;
 
 				RNDebug(RNCSTR("UpdateVRMode session lost"));
@@ -544,7 +544,7 @@ namespace RN
 
 	const String *OculusMobileWindow::GetHMDInfoDescription() const
 	{
-		ovrJava *java = static_cast<ovrJava*>(_java);
+		ovrJava *java = static_cast<ovrJava *>(_java);
 		String *description = new String("Using HMD: ");
 		int deviceType = vrapi_GetSystemPropertyInt(java, VRAPI_SYS_PROP_DEVICE_TYPE);
 		if(deviceType > VRAPI_DEVICE_TYPE_OCULUSQUEST_END)
@@ -556,7 +556,7 @@ namespace RN
 			description->Append(RNCSTR("Oculus Quest"));
 		}
 
-	/*	switch(vrapi_GetSystemPropertyInt(java, VRAPI_SYS_PROP_HEADSET_TYPE))
+		/*	switch(vrapi_GetSystemPropertyInt(java, VRAPI_SYS_PROP_HEADSET_TYPE))
 		{
 			case VRAPI_HEADSET_TYPE_OCULUSGO:
 			case VRAPI_HEADSET_TYPE_MIVR_STANDALONE:
@@ -624,25 +624,25 @@ namespace RN
 	{
 		char names[4096];
 		uint32_t size = sizeof(names);
-        vrapi_GetInstanceExtensionsVulkan(names, &size);
+		vrapi_GetInstanceExtensionsVulkan(names, &size);
 
-        String *extensionString = RNSTR(names);
-        return extensionString->GetComponentsSeparatedByString(RNCSTR(" "));
+		String *extensionString = RNSTR(names);
+		return extensionString->GetComponentsSeparatedByString(RNCSTR(" "));
 	}
 
-    Array *OculusMobileWindow::GetRequiredVulkanDeviceExtensions(RN::RendererDescriptor *descriptor, RenderingDevice *device) const
-    {
-    	char names[4096];
+	Array *OculusMobileWindow::GetRequiredVulkanDeviceExtensions(RN::RendererDescriptor *descriptor, RenderingDevice *device) const
+	{
+		char names[4096];
 		uint32_t size = sizeof(names);
 		vrapi_GetDeviceExtensionsVulkan(names, &size);
 
 		String *extensionString = RNSTR(names);
 		return extensionString->GetComponentsSeparatedByString(RNCSTR(" "));
-    }
+	}
 
 	VRWindow::DeviceType OculusMobileWindow::GetDeviceType() const
 	{
-		ovrJava *java = static_cast<ovrJava*>(_java);
+		ovrJava *java = static_cast<ovrJava *>(_java);
 		int deviceType = vrapi_GetSystemPropertyInt(java, VRAPI_SYS_PROP_DEVICE_TYPE);
 		if(deviceType > VRAPI_DEVICE_TYPE_OCULUSQUEST_END)
 		{
@@ -653,5 +653,4 @@ namespace RN
 			return VRWindow::DeviceType::OculusQuest;
 		}
 	}
-}
-
+} // namespace RN

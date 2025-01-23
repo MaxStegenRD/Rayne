@@ -7,10 +7,10 @@
 //
 
 #include "RNString.h"
-#include "RNStringInternal.h"
-#include "RNSerialization.h"
 #include "RNAutoreleasePool.h"
 #include "RNData.h"
+#include "RNSerialization.h"
+#include "RNStringInternal.h"
 
 #if RN_PLATFORM_POSIX
 	#define kRNIsPathDelimiter(c) (c == '/')
@@ -46,31 +46,31 @@ namespace RN
 
 		Object::InitialWakeUp(cls);
 	}
-	
+
 	String::String() :
 		_string(new UTF8String())
 	{}
-	
+
 	String::String(UTF8String *string) :
 		_string(string->Retain())
 	{}
-	
+
 	String::String(const char *string, va_list args)
 	{
 		va_list temp;
 		va_copy(temp, args);
-		
+
 		size_t size = vsnprintf(nullptr, 0, string, temp) + 1;
 		char *formatted = new char[size + 1];
-		
+
 		vsnprintf(formatted, size, string, args);
 		va_end(temp);
-		
+
 		_string = new UTF8String(reinterpret_cast<uint8 *>(formatted), strlen(formatted), true);
-		
-		delete [] formatted;
+
+		delete[] formatted;
 	}
-	
+
 	String::String(const char *string, bool constant)
 	{
 		if(constant)
@@ -81,7 +81,7 @@ namespace RN
 
 		_string = new UTF8String(reinterpret_cast<const uint8 *>(string), kRNNotFound, !constant);
 	}
-	
+
 	String::String(const char *string, size_t length, bool constant)
 	{
 		if(constant)
@@ -92,13 +92,13 @@ namespace RN
 
 		_string = new UTF8String(reinterpret_cast<const uint8 *>(string), length, !constant);
 	}
-	
-	
+
+
 	String::String(const void *bytes, Encoding encoding, bool constant)
 	{
 		_string = new UTF8String(bytes, kRNNotFound, encoding, !constant);
 	}
-	
+
 	String::String(const void *bytes, size_t length, Encoding encoding, bool constant)
 	{
 		_string = new UTF8String(bytes, length, encoding, !constant);
@@ -107,72 +107,70 @@ namespace RN
 	String::String(const Data *data, Encoding encoding) :
 		String(data->GetBytes(), data->GetLength(), encoding, false)
 	{}
-	
+
 	String::String(const String *string)
 	{
 		_string = string->_string->Copy();
 	}
-	
+
 	String::~String()
 	{
 		_string->Release();
 	}
-	
-	
-	
+
+
 	String::String(Deserializer *deserializer)
 	{
 		size_t length;
 		uint8 *bytes = static_cast<uint8 *>(deserializer->DecodeBytes(&length));
-		
+
 		_string = new UTF8String(bytes, length, true);
 	}
-	
+
 	void String::Serialize(Serializer *serializer) const
 	{
 		size_t length;
 		uint8 *bytes = GetBytesWithEncoding(Encoding::UTF8, false, length);
-		
+
 		serializer->EncodeBytes(bytes, length);
 	}
-	
-	
-	
+
+
 	String *String::WithFormat(const char *string, ...)
 	{
 		va_list args;
 		va_start(args, string);
-		
+
 		String *temp = new String(string, args);
 		va_end(args);
-		
+
 		return temp->Autorelease();
 	}
-	
+
 	String *String::WithString(const char *string, bool constant)
 	{
 		String *temp = new String(string, constant);
 		return temp->Autorelease();
 	}
-	
+
 	String *String::WithString(const char *string, size_t length, bool constant)
 	{
 		String *temp = new String(string, length, constant);
 		return temp->Autorelease();
 	}
-	
+
 	String *String::WithBytes(const void *bytes, Encoding encoding, bool constant)
 	{
 		String *string = new String(bytes, encoding, constant);
 		return string->Autorelease();
 	}
-	
+
 	String *String::WithBytes(const void *bytes, size_t length, Encoding encoding, bool constant)
 	{
 		String *string = new String(bytes, length, encoding, false);
 		return string->Autorelease();
 	}
-	
+
 	Expected<String *> String::WithContentsOfFile(const String *file, Encoding encoding)
 	{
 		Expected<Data *> data = Data::WithContentsOfFile(file);
@@ -182,7 +180,7 @@ namespace RN
 		String *string = new String(data, encoding);
 		return string->Autorelease();
 	}
-	
+
 	// ---------------------
 	// MARK: -
 	// MARK: Object system
@@ -192,12 +190,12 @@ namespace RN
 	{
 		return this;
 	}
-	
+
 	size_t String::GetHash() const
 	{
 		return _string->GetHash();
 	}
-	
+
 	bool String::IsEqual(const Object *other) const
 	{
 		const String *string = other->Downcast<String>();
@@ -206,32 +204,32 @@ namespace RN
 
 		if(string->GetLength() != GetLength())
 			return false;
-		
+
 		return (Compare(string) == ComparisonResult::EqualTo);
 	}
-	
+
 	// ---------------------
 	// MARK: -
 	// MARK: Mutation
 	// ---------------------
-	
+
 	void String::Append(const char *string, ...)
 	{
 		va_list args;
 		va_start(args, string);
-		
+
 		String *temp = new String(string, args);
 		Append(temp);
 		temp->Release();
-		
+
 		va_end(args);
 	}
-	
+
 	void String::Append(const String *string)
 	{
 		_string->ReplaceCharactersInRange(Range(GetLength(), 0), string->_string);
 	}
-	
+
 	void String::Insert(const String *string, size_t index)
 	{
 		ReplaceCharacters(string, Range(index, 0));
@@ -240,75 +238,75 @@ namespace RN
 	void String::Capitalize()
 	{
 		UniChar buffer[128];
-		
+
 		size_t read = 0;
 		size_t length = _string->GetLength();
-		
+
 		bool needsUppercase = true;
-		
+
 		while(read < length)
 		{
 			size_t left = std::min(length - read, static_cast<size_t>(128));
 			_string->GetCharactersInRange(buffer, Range(read, left));
-			
-			for(size_t i = 0; i < left; i ++)
+
+			for(size_t i = 0; i < left; i++)
 			{
 				CodePoint point(buffer[i]);
 				CodePoint uppercase = point.GetUpperCase();
-				
+
 				if(point.IsWhitespace())
 				{
 					needsUppercase = true;
 					continue;
 				}
-				
+
 				if(needsUppercase && point != uppercase)
 				{
 					UniChar temp[2];
 					temp[0] = uppercase;
 					temp[1] = 0;
-					
+
 					UTF8String *string = new UTF8String(temp, 4, Encoding::UTF32, true);
 					_string->ReplaceCharactersInRange(Range(read + i, 1), string);
 					string->Release();
 				}
-				
+
 				needsUppercase = false;
 			}
-			
+
 			read += left;
 		}
 	}
-	
+
 	void String::MakeUppercase()
 	{
 		UniChar buffer[128];
-		
+
 		size_t read = 0;
 		size_t length = _string->GetLength();
-		
+
 		while(read < length)
 		{
 			size_t left = std::min(length - read, static_cast<size_t>(128));
 			_string->GetCharactersInRange(buffer, Range(read, left));
-			
-			for(size_t i = 0; i < left; i ++)
+
+			for(size_t i = 0; i < left; i++)
 			{
 				CodePoint point(buffer[i]);
 				CodePoint uppercase = point.GetUpperCase();
-				
+
 				if(point != uppercase)
 				{
 					UniChar temp[2];
 					temp[0] = uppercase;
 					temp[1] = 0;
-					
+
 					UTF8String *string = new UTF8String(temp, 4, Encoding::UTF32, true);
 					_string->ReplaceCharactersInRange(Range(read + i, 1), string);
 					string->Release();
 				}
 			}
-			
+
 			read += left;
 		}
 	}
@@ -316,46 +314,46 @@ namespace RN
 	void String::MakeLowercase()
 	{
 		UniChar buffer[128];
-		
+
 		size_t read = 0;
 		size_t length = _string->GetLength();
-		
+
 		while(read < length)
 		{
 			size_t left = std::min(length - read, static_cast<size_t>(128));
 			_string->GetCharactersInRange(buffer, Range(read, left));
-			
-			for(size_t i = 0; i < left; i ++)
+
+			for(size_t i = 0; i < left; i++)
 			{
 				CodePoint point(buffer[i]);
 				CodePoint lowercase = point.GetLowerCase();
-				
+
 				if(point != lowercase)
 				{
 					UniChar temp[2];
 					temp[0] = lowercase;
 					temp[1] = 0;
-					
+
 					UTF8String *string = new UTF8String(temp, 4, Encoding::UTF32, true);
 					_string->ReplaceCharactersInRange(Range(read + i, 1), string);
 					string->Release();
 				}
 			}
-			
+
 			read += left;
 		}
 	}
-	
+
 	void String::DeleteCharacters(const Range &range)
 	{
 		_string->ReplaceCharactersInRange(range, nullptr);
 	}
-	
+
 	void String::ReplaceCharacters(const String *replacement, const Range &range)
 	{
 		_string->ReplaceCharactersInRange(range, replacement ? replacement->_string : nullptr);
 	}
-	
+
 	void String::ReplaceOccurrencesOfString(const String *string, const String *replacement)
 	{
 		while(1)
@@ -363,7 +361,7 @@ namespace RN
 			Range range = GetRangeOfString(string);
 			if(range.origin == kRNNotFound)
 				break;
-			
+
 			ReplaceCharacters(replacement, range);
 		}
 	}
@@ -375,37 +373,37 @@ namespace RN
 
 		return result->Autorelease();
 	}
-	
+
 	// ---------------------
 	// MARK: -
 	// MARK: Comparison
 	// ---------------------
-	
+
 #define kStringUniCharFetch 128
-	
+
 	Range String::GetRangeOfString(const String *string, ComparisonMode mode) const
-	{		
+	{
 		return GetRangeOfString(string, mode, Range(0, GetLength()));
 	}
-	
+
 	Range String::GetRangeOfString(const String *string, ComparisonMode mode, const Range &range) const
 	{
 		size_t length = string->GetLength();
-		
+
 		if(range.length < length || range.length == 0)
 			return Range(kRNNotFound, 0);
-		
+
 		UniChar characters[kStringUniCharFetch];
 		UniChar *compare = (length < 256) ? ((UniChar *)alloca(length * sizeof(UniChar))) : new UniChar[length];
-		
+
 		string->_string->GetCharactersInRange(compare, Range(0, length));
-		
+
 		bool found = false;
 		Range result = Range(kRNNotFound, 0);
 
 		if(mode & ComparisonMode::Reverse)
 		{
-			size_t left   = range.length;
+			size_t left = range.length;
 			size_t offset = range.origin + left;
 			size_t j = length - 2;
 
@@ -416,7 +414,7 @@ namespace RN
 				size_t read = std::min(left, static_cast<size_t>(kStringUniCharFetch));
 				_string->GetCharactersInRange(characters, Range(offset - read, read));
 
-				for(size_t i = 0; i < read; i ++)
+				for(size_t i = 0; i < read; i++)
 				{
 					CodePoint point = characters[read - (i + 1)];
 
@@ -446,7 +444,7 @@ namespace RN
 
 						if(mode & ComparisonMode::CaseInsensitive)
 						{
-							point  = point.GetLowerCase();
+							point = point.GetLowerCase();
 							tpoint = tpoint.GetLowerCase();
 						}
 
@@ -457,8 +455,8 @@ namespace RN
 						}
 						else
 						{
-							result.length ++;
-							j --;
+							result.length++;
+							j--;
 
 							if(result.length >= length)
 							{
@@ -470,7 +468,7 @@ namespace RN
 				}
 
 				offset += read;
-				left   -= read;
+				left -= read;
 			}
 		}
 		else
@@ -481,12 +479,12 @@ namespace RN
 
 			CodePoint first = CodePoint(compare[0]);
 
-			while(left > 0 && ! found)
+			while(left > 0 && !found)
 			{
 				size_t read = std::min(left, static_cast<size_t>(kStringUniCharFetch));
 				_string->GetCharactersInRange(characters, Range(offset, read));
 
-				for(size_t i = 0; i < read; i ++)
+				for(size_t i = 0; i < read; i++)
 				{
 					CodePoint point = characters[i];
 
@@ -527,8 +525,8 @@ namespace RN
 						}
 						else
 						{
-							result.length ++;
-							j ++;
+							result.length++;
+							j++;
 
 							if(result.length >= length)
 							{
@@ -545,7 +543,7 @@ namespace RN
 		}
 
 		if(length >= 256)
-			delete [] compare;
+			delete[] compare;
 
 		return found ? result : Range(kRNNotFound, 0);
 	}
@@ -569,7 +567,7 @@ namespace RN
 				size_t read = std::min(left, static_cast<size_t>(kStringUniCharFetch));
 				_string->GetCharactersInRange(characters, Range(offset - read, read));
 
-				for(size_t i = 0; i < read; i ++)
+				for(size_t i = 0; i < read; i++)
 				{
 					if(set->CharacterIsMember(characters[read - (i + 1)]))
 						return Range(offset - (i + 1), 1);
@@ -588,7 +586,7 @@ namespace RN
 				size_t read = std::min(left, static_cast<size_t>(kStringUniCharFetch));
 				_string->GetCharactersInRange(characters, Range(offset, read));
 
-				for(size_t i = 0; i < read; i ++)
+				for(size_t i = 0; i < read; i++)
 				{
 					if(set->CharacterIsMember(characters[i]))
 						return Range(offset + i, 1);
@@ -606,77 +604,81 @@ namespace RN
 	{
 		return Compare(other, mode, Range(0, GetLength()));
 	}
-	
+
 	ComparisonResult String::Compare(const String *other, ComparisonMode mode, const Range &range) const
 	{
 		UniChar charactersA[kStringUniCharFetch];
 		UniChar charactersB[kStringUniCharFetch];
-		
+
 		UTF8String *internalA = _string;
 		UTF8String *internalB = other->_string;
-		
+
 		size_t iA = 0;
 		size_t iB = 0;
-		
+
 		size_t offsetA = range.origin;
 		size_t offsetB = 0;
-		
+
 		size_t readA = 0;
 		size_t readB = 0;
-		
+
 		size_t leftA = range.length;
 		size_t leftB = other->GetLength();
-		
-#define ReadCharacter(Side) \
-		do { \
-			if(i##Side >= read##Side) \
-			{ \
-				if(left##Side == 0) \
-					goto endComparison; \
-					\
-				read##Side = std::min(left##Side, static_cast<size_t>(kStringUniCharFetch)); \
-				offset##Side += i##Side; \
-				internal##Side->GetCharactersInRange(characters##Side, Range(offset##Side, read##Side)); \
-				\
-				left##Side -= read##Side; \
-				i##Side = 0; \
-			} \
-		} while(0)
 
-#define CharactersLeft(Side, result) \
-		do { \
-			if(i##Side >= read##Side && left##Side == 0) \
-			{ result = 0; } \
-			else \
-			{ result = read##Side - i##Side; } \
-		} while(0)
-		
+#define ReadCharacter(Side)                                                                          \
+	do {                                                                                             \
+		if(i##Side >= read##Side)                                                                    \
+		{                                                                                            \
+			if(left##Side == 0)                                                                      \
+				goto endComparison;                                                                  \
+                                                                                                     \
+			read##Side = std::min(left##Side, static_cast<size_t>(kStringUniCharFetch));             \
+			offset##Side += i##Side;                                                                 \
+			internal##Side->GetCharactersInRange(characters##Side, Range(offset##Side, read##Side)); \
+                                                                                                     \
+			left##Side -= read##Side;                                                                \
+			i##Side = 0;                                                                             \
+		}                                                                                            \
+	} while(0)
+
+#define CharactersLeft(Side, result)                 \
+	do {                                             \
+		if(i##Side >= read##Side && left##Side == 0) \
+		{                                            \
+			result = 0;                              \
+		}                                            \
+		else                                         \
+		{                                            \
+			result = read##Side - i##Side;           \
+		}                                            \
+	} while(0)
+
 		while(1)
 		{
 			ReadCharacter(A);
 			ReadCharacter(B);
-			
-			CodePoint a = charactersA[iA ++];
-			CodePoint b = charactersB[iB ++];
-			
+
+			CodePoint a = charactersA[iA++];
+			CodePoint b = charactersB[iB++];
+
 			if(mode & ComparisonMode::CaseInsensitive)
 			{
 				a = a.GetLowerCase();
 				b = b.GetLowerCase();
 			}
-			
+
 			if(mode & ComparisonMode::Numerically)
 			{
 				if(a <= CodePoint::ASCIITerminator() && b <= CodePoint::ASCIITerminator())
 				{
 					char ca = static_cast<char>(a);
 					char cb = static_cast<char>(b);
-					
+
 					if(isdigit(ca) && isdigit(cb))
 					{
 						uint32 numA = 0;
 						uint32 numB = 0;
-						
+
 						do {
 							numA = numA * 10 + (ca - '0');
 
@@ -688,12 +690,12 @@ namespace RN
 
 							ReadCharacter(A);
 
-							if((a = charactersA[iA ++]) > CodePoint::ASCIITerminator())
+							if((a = charactersA[iA++]) > CodePoint::ASCIITerminator())
 								break;
-							
+
 							ca = static_cast<char>(a);
 						} while(isdigit(ca));
-						
+
 						do {
 							numB = numB * 10 + (cb - '0');
 
@@ -704,23 +706,23 @@ namespace RN
 								break;
 
 							ReadCharacter(B);
-							if((b = charactersB[iB ++]) > CodePoint::ASCIITerminator())
+							if((b = charactersB[iB++]) > CodePoint::ASCIITerminator())
 								break;
 
 							cb = static_cast<char>(b);
 						} while(isdigit(cb));
-						
+
 						if(numA > numB)
 							return ComparisonResult::GreaterThan;
-						
+
 						if(numA < numB)
 							return ComparisonResult::LessThan;
-						
+
 						continue;
 					}
 				}
 			}
-			
+
 			if(a != b)
 			{
 				if(a > b)
@@ -729,9 +731,9 @@ namespace RN
 					return ComparisonResult::LessThan;
 			}
 		}
-		
+
 #undef ReadCharacter
-		
+
 	endComparison:
 
 		size_t _leftA;
@@ -743,7 +745,7 @@ namespace RN
 			return ComparisonResult::GreaterThan;
 		if(_leftB && !_leftA)
 			return ComparisonResult::LessThan;
-	
+
 		return ComparisonResult::EqualTo;
 	}
 
@@ -765,38 +767,38 @@ namespace RN
 		Range range = GetRangeOfString(other, 0, Range(offset, other->GetLength()));
 		return (range.origin == offset);
 	}
-	
+
 	// ---------------------
 	// MARK: -
 	// MARK: Conversion / Access
 	// ---------------------
-	
+
 	size_t String::GetLength() const
 	{
 		return _string->GetLength();
 	}
-	
+
 	char *String::GetUTF8String() const
 	{
 		size_t length;
 		return static_cast<char *>(_string->GetBytesWithEncoding(Encoding::UTF8, false, length)->GetBytes());
 	}
-	
+
 	String *String::GetSubstring(const Range &range) const
 	{
 		UTF8String *string = _string->GetSubstring(range);
 		String *substring = new String(string);
-		
+
 		return substring->Autorelease();
 	}
-	
+
 	UniChar String::GetCharacterAtIndex(size_t index) const
 	{
 		return _string->GetCharacterAtIndex(index);
 	}
-	
+
 	uint8 *String::GetBytesWithEncoding(Encoding encoding, bool lossy, size_t &outLength) const
-	{		
+	{
 		return static_cast<uint8 *>(_string->GetBytesWithEncoding(encoding, lossy, outLength)->GetBytes());
 	}
 
@@ -805,43 +807,43 @@ namespace RN
 		size_t length;
 		return _string->GetBytesWithEncoding(encoding, true, length);
 	}
-	
+
 	Array *String::GetComponentsSeparatedByString(const String *other) const
 	{
 		Array *array = new Array();
-		
+
 		Range range = Range(0, GetLength());
 		Range found;
-		
+
 		while(1)
 		{
 			found = GetRangeOfString(other, 0, range);
-			
+
 			if(found.origin == kRNNotFound)
 			{
 				array->AddObject(GetSubstring(range));
 				break;
 			}
-			
+
 			size_t length = found.origin - range.origin;
 			array->AddObject(GetSubstring(Range(range.origin, length)));
-			
+
 			length += found.length;
-			
+
 			if(range.length <= length)
 				break;
-			
+
 			range.origin += length;
 			range.length -= length;
 		}
-		
+
 		return array->Autorelease();
 	}
 
 	size_t String::__GetTrailingPathLocation() const
 	{
 		size_t length = GetLength();
-		size_t location = length > 0? length - 1 : 0;
+		size_t location = length > 0 ? length - 1 : 0;
 		size_t result = kRNNotFound;
 
 		while(length > 0)
@@ -856,7 +858,7 @@ namespace RN
 				if(RN_EXPECT_FALSE(location == 0))
 					break;
 
-				location --;
+				location--;
 				continue;
 			}
 
@@ -930,8 +932,8 @@ namespace RN
 
 		while(kRNIsPathDelimiter(GetCharacterAtIndex(range.origin)))
 		{
-			range.origin ++;
-			range.length --;
+			range.origin++;
+			range.length--;
 		}
 
 		while(1)
@@ -943,8 +945,8 @@ namespace RN
 
 			if(end == range.origin)
 			{
-				range.origin ++;
-				range.length --;
+				range.origin++;
+				range.length--;
 
 				continue;
 			}
@@ -1046,10 +1048,10 @@ namespace RN
 		return path;
 	}
 
-	
+
 	void String::WriteToFile(const String *file, Encoding encoding)
 	{
 		Data *data = GetDataWithEncoding(encoding);
 		data->WriteToFile(file);
 	}
-}
+} // namespace RN

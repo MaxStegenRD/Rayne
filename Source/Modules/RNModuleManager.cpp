@@ -6,13 +6,13 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
+#include "RNModuleManager.h"
 #include "../Base/RNKernel.h"
 #include "../Objects/RNAutoreleasePool.h"
-#include "RNModuleManager.h"
 
 #if RN_PLATFORM_POSIX
 
-#include <dlfcn.h>
+	#include <dlfcn.h>
 
 #endif
 
@@ -90,13 +90,11 @@ namespace RN
 
 	void ModuleManager::LoadModules()
 	{
-		AutoreleasePool::PerformBlock([&]{
-
+		AutoreleasePool::PerformBlock([&] {
 			Array *modules = Kernel::GetSharedInstance()->GetManifestEntryForKey<Array>(RNCSTR("RNModules"));
 			if(modules)
 			{
 				modules->Enumerate<Object>([&](Object *value, size_t index, bool &stop) {
-
 					bool optional = true;
 					String *nameCopy = nullptr;
 
@@ -156,10 +154,8 @@ namespace RN
 					}
 
 					RNInfo("Loaded module " << module);
-
 				});
 			}
-
 		});
 	}
 
@@ -179,13 +175,11 @@ namespace RN
 		Module *outModule = nullptr;
 
 		_modules->Enumerate<Module>([&](Module *module, size_t index, bool &stop) {
-
 			if(dlsym(module->_handle, info.dli_sname))
 			{
 				outModule = module;
 				stop = true;
 			}
-
 		});
 
 		return outModule;
@@ -194,4 +188,4 @@ namespace RN
 		return nullptr;
 #endif
 	}
-}
+} // namespace RN

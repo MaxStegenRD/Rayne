@@ -12,26 +12,25 @@
 namespace RN
 {
 	RNDefineMeta(SplashBody, SceneNodeAttachment)
-		
+
 	SplashBody::SplashBody(SplashShape *shape, float mass) :
 		_shape(shape->Retain()), _mass(mass)
 	{
-		
 	}
-		
+
 	SplashBody::~SplashBody()
 	{
 		SplashWorld::GetSharedInstance()->RemoveBody(this);
 		_shape->Release();
 	}
-	
-		
+
+
 	SplashBody *SplashBody::WithShape(SplashShape *shape, float mass)
 	{
 		SplashBody *body = new SplashBody(shape, mass);
 		return body->Autorelease();
 	}
-	
+
 	void SplashBody::SetLinearVelocity(const Vector3 &velocity)
 	{
 		_linearVelocity = velocity;
@@ -47,12 +46,12 @@ namespace RN
 		_linearVelocity = targetPosition - GetWorldPosition();
 		_linearVelocity /= delta;
 	}
-		
+
 	void SplashBody::DidUpdate(SceneNode::ChangeSet changeSet)
 	{
 		SceneNodeAttachment::DidUpdate(changeSet);
 
-/*		if(changeSet & SceneNode::ChangeSet::Position)
+		/*		if(changeSet & SceneNode::ChangeSet::Position)
 		{
 			Vector3 position = GetWorldPosition() - _offset;
 			Quaternion rotation = GetWorldRotation();
@@ -72,7 +71,6 @@ namespace RN
 
 	void SplashBody::Update(float delta)
 	{
-		
 	}
 
 	void SplashBody::AddForce(const RN::Vector3 force)
@@ -104,7 +102,6 @@ namespace RN
 
 		if(closestDistance.GetDotProduct(_linearVelocity) > 0.0f)
 		{
-			
 		}
 	}
 
@@ -112,4 +109,4 @@ namespace RN
 	{
 		SetWorldPosition(GetWorldPosition() + _linearVelocity * delta);
 	}
-}
+} // namespace RN

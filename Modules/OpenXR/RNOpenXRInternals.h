@@ -12,24 +12,24 @@
 #include "RNOpenXR.h"
 
 #if XR_USE_GRAPHICS_API_VULKAN
-#include "RNOpenXRVulkanSwapChain.h"
+	#include "RNOpenXRVulkanSwapChain.h"
 #endif
 
 #if XR_USE_GRAPHICS_API_D3D12
-#include <initguid.h>
-#include "RNOpenXRD3D12SwapChain.h"
-#include <RND3D12Renderer.h>
+	#include "RNOpenXRD3D12SwapChain.h"
+	#include <RND3D12Renderer.h>
+	#include <initguid.h>
 #endif
 
 #if XR_USE_GRAPHICS_API_METAL
-#include "RNOpenXRMetalSwapChain.h"
+	#include "RNOpenXRMetalSwapChain.h"
 #endif
 
 #include "RNOpenXRCompositorLayer.h"
 
-#include "openxr/openxr_platform_defines.h"
-#include "openxr/openxr_platform.h"
 #include "openxr/openxr.h"
+#include "openxr/openxr_platform.h"
+#include "openxr/openxr_platform_defines.h"
 
 namespace RN
 {
@@ -95,7 +95,7 @@ namespace RN
 #if XR_USE_GRAPHICS_API_D3D12
 		PFN_xrGetD3D12GraphicsRequirementsKHR GetD3D12GraphicsRequirementsKHR;
 #endif
-		
+
 #if XR_USE_GRAPHICS_API_METAL
 		PFN_xrGetMetalGraphicsRequirementsKHR GetMetalGraphicsRequirementsKHR;
 #endif
@@ -131,11 +131,11 @@ namespace RN
 #endif
 	};
 
-    struct OpenXRSwapchainInternals
-    {
-        XrSwapchain swapchain;
-        XrFoveationProfileFB currentFoveationProfile;
-    };
+	struct OpenXRSwapchainInternals
+	{
+		XrSwapchain swapchain;
+		XrFoveationProfileFB currentFoveationProfile;
+	};
 
 	struct OpenXRCompositorLayerInternals
 	{
@@ -153,7 +153,7 @@ namespace RN
 		//Will point at the layer above that is in use by this class
 		XrCompositionLayerBaseHeader *layerBaseHeader;
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_OpenXRINTERNALS_H_ */

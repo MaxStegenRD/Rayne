@@ -9,9 +9,9 @@
 #ifndef __RAYNE_APPLICATION_H__
 #define __RAYNE_APPLICATION_H__
 
-#include "RNBase.h"
 #include "../Objects/RNString.h"
 #include "../Rendering/RNRenderer.h"
+#include "RNBase.h"
 
 namespace RN
 {
@@ -55,6 +55,6 @@ namespace RN
 
 		String *_title;
 	};
-}
+} // namespace RN
 
 #endif /* __RAYNE_APPLICATION_H__ */

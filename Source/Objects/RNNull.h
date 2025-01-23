@@ -20,15 +20,15 @@ namespace RN
 		RNAPI Null();
 		RNAPI Null(Deserializer *deserializer);
 		RNAPI ~Null() override;
-		
+
 		RNAPI void Serialize(Serializer *serializer) const override;
-		
+
 		RNAPI static Null *GetNull();
-		
+
 		__RNDeclareMetaInternal(Null)
 	};
-	
+
 	RNObjectClass(Null)
-}
+} // namespace RN
 
 #endif /* __RAYNE_NULL_H__ */

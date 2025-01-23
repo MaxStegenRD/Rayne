@@ -42,7 +42,7 @@ namespace RN
 
 		static const uint32 kEyePadding;
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_OPENVRSWAPCHAIN_H_ */

@@ -21,7 +21,7 @@ namespace RN
 		RNAPI static RN::Data *Encode(Bitmap *bitmap, bool interlace = true);
 		RNAPI static bool Write(Texture *texture, const String *filename, bool interlace = true);
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_PNGASSETWRITER_H_ */

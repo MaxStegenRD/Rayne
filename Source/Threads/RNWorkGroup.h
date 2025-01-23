@@ -41,6 +41,6 @@ namespace RN
 	};
 
 	RNObjectClass(WorkGroup)
-}
+} // namespace RN
 
 #endif /* __RAYNE_WORKGROUP_H__ */

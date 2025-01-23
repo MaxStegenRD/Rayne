@@ -23,23 +23,23 @@ namespace RN
 	public:
 		NDAPI NewtonConstraint(NewtonJoint *constraint);
 		NDAPI NewtonJoint *GetNewtonConstraint() const { return _constraint; }
-			
+
 	protected:
 		NewtonConstraint();
 		~NewtonConstraint() override;
 
 		NewtonJoint *_constraint;
-			
+
 		RNDeclareMetaAPI(NewtonConstraint, NDAPI)
 	};
-		
+
 	class NewtonFixedConstraint : public NewtonConstraint
 	{
 	public:
 		NDAPI NewtonFixedConstraint(NewtonRigidBody *body1, const RN::Vector3 &offset1, const RN::Quaternion &rotation1, NewtonRigidBody *body2, const RN::Vector3 &offset2, const RN::Quaternion &rotation2);
-			
+
 		NDAPI static NewtonFixedConstraint *WithBodiesAndOffsets(NewtonRigidBody *body1, const RN::Vector3 &offset1, const RN::Quaternion &rotation1, NewtonRigidBody *body2, const RN::Vector3 &offset2, const RN::Quaternion &rotation2);
-			
+
 		RNDeclareMetaAPI(NewtonFixedConstraint, NDAPI)
 	};
 
@@ -75,6 +75,6 @@ namespace RN
 
 		RNDeclareMetaAPI(NewtonKinematicConstraint2, NDAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_NEWTONCONSTRAINT_H_) */

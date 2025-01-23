@@ -24,7 +24,7 @@ namespace RN
 		Vector3 normal;
 		float distance;
 	};
-		
+
 	class JoltCollisionObject : public SceneNodeAttachment
 	{
 	public:
@@ -38,23 +38,23 @@ namespace RN
 			Continue,
 			End
 		};
-			
+
 		JTAPI JoltCollisionObject();
 		JTAPI ~JoltCollisionObject() override;
 
 		JTAPI virtual void UpdatePosition() = 0;
-			
+
 		JTAPI virtual void SetCollisionFilter(uint32 group, uint32 mask);
-		JTAPI void SetContactCallback(std::function<void(JoltCollisionObject *, const JoltContactInfo&)> &&callback);
+		JTAPI void SetContactCallback(std::function<void(JoltCollisionObject *, const JoltContactInfo &)> &&callback);
 		JTAPI virtual void SetPositionOffset(RN::Vector3 offset);
 		JTAPI virtual void SetRotationOffset(RN::Quaternion offset);
-		
+
 		uint32 GetCollisionFilterGroup() const { return _collisionFilterGroup; }
 		uint32 GetCollisionFilterMask() const { return _collisionFilterMask; }
-			
+
 	protected:
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
-		
+
 		Vector3 _positionOffset;
 		Quaternion _rotationOffset;
 
@@ -62,12 +62,12 @@ namespace RN
 		uint32 _collisionFilterMask;
 
 		SceneNode *_owner;
-			
+
 	private:
-		std::function<void(JoltCollisionObject *, const JoltContactInfo&)> _contactCallback;
-			
+		std::function<void(JoltCollisionObject *, const JoltContactInfo &)> _contactCallback;
+
 		RNDeclareMetaAPI(JoltCollisionObject, JTAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_JOLTCOLLISIONOBJECT_H_) */

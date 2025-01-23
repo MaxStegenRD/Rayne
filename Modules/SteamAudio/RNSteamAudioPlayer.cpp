@@ -7,15 +7,15 @@
 //
 
 #include "RNSteamAudioPlayer.h"
-#include "RNSteamAudioWorld.h"
-#include "RNSteamAudioSampler.h"
 #include "RNSteamAudioInternals.h"
+#include "RNSteamAudioSampler.h"
+#include "RNSteamAudioWorld.h"
 
 namespace RN
 {
 	RNDefineMeta(SteamAudioPlayer, Object)
 
-		SteamAudioPlayer::SteamAudioPlayer(AudioAsset *asset) :
+	SteamAudioPlayer::SteamAudioPlayer(AudioAsset *asset) :
 		_sampler(new SteamAudioSampler(nullptr)),
 		_isPlaying(false),
 		_isRepeating(false),
@@ -24,11 +24,11 @@ namespace RN
 		_currentTime(0.0f)
 	{
 		RN_ASSERT(SteamAudioWorld::_instance, "You need to create a SteamAudioWorld before creating audio players!");
-		
+
 		SetAudioAsset(asset);
 		SteamAudioWorld::_instance->AddAudioPlayer(this);
 	}
-	
+
 	SteamAudioPlayer::~SteamAudioPlayer()
 	{
 		if(SteamAudioWorld::_instance)
@@ -47,18 +47,18 @@ namespace RN
 			_inputChannels = asset->GetChannels();
 		}
 	}
-		
+
 	void SteamAudioPlayer::SetRepeat(bool repeat)
 	{
 		_sampler->SetRepeat(repeat);
 		_isRepeating = repeat;
 	}
-	
+
 	void SteamAudioPlayer::SetPitch(float pitch)
 	{
 		_pitch = pitch;
 	}
-		
+
 	void SteamAudioPlayer::SetGain(float gain)
 	{
 		_gain = gain;
@@ -104,7 +104,7 @@ namespace RN
 					_currentTime += skipTime;
 					_sampler->GetAsset()->PopData(nullptr, skipBytes);
 				}
-				
+
 				_sampler->GetAsset()->PopData(nullptr, assetFrameSamples);
 			}
 		}
@@ -112,10 +112,10 @@ namespace RN
 		//handle mono input
 		if(_inputChannels == 1)
 		{
-			for (int n = 0; n < sampleCount; n++)
+			for(int n = 0; n < sampleCount; n++)
 			{
 				//TODO: support more output layouts
-				for (int i = 0; i < 2; i++)
+				for(int i = 0; i < 2; i++)
 				{
 					SteamAudioWorld::_instance->_sharedSourceOutputFrameData[n * 2 + i] = _sampler->GetSample(_currentTime, 0) * _gain;
 				}
@@ -139,4 +139,4 @@ namespace RN
 
 		*outputBuffer = SteamAudioWorld::_instance->_sharedSourceOutputFrameData;
 	}
-}
+} // namespace RN

@@ -25,19 +25,19 @@ namespace RN
 			};
 			UIAPI GridView(Direction direction = DirectionVertical);
 			UIAPI ~GridView();
-			
+
 			UIAPI void SetMargins(float left, float top, float right, float bottom);
 			UIAPI void SetSpacing(float horizontal, float vertical);
 			UIAPI void SetReloadAll() { _reloadAll = true; }
 			UIAPI void SetToStart();
 
 			UIAPI void Update(float delta, Vector2 cursorPosition, bool touched, Vector2 alternativeScrollSpeed = Vector2()) override;
-			
+
 		protected:
 			UIAPI virtual void RecycleCell(View *cell);
 			UIAPI virtual View *ReuseCell(size_t column, size_t row);
 			UIAPI virtual View *CreateCell() = 0;
-			
+
 			UIAPI virtual size_t GetNumberOfRows() = 0;
 			UIAPI virtual size_t GetNumberOfColumns() = 0;
 			UIAPI virtual Vector2 GetCellSize() = 0;
@@ -45,17 +45,17 @@ namespace RN
 		private:
 			Array *_unusedCells;
 			Array *_usedCells;
-			
+
 			Vector4 _margins;
 			Vector2 _spacing;
-			
+
 			Direction _direction;
 			bool _reloadAll;
 
 			RNDeclareMetaAPI(GridView, UIAPI)
 		};
-	}
-}
+	} // namespace UI
+} // namespace RN
 
 
 #endif /* __RAYNE_UIGRIDVIEW_H_ */

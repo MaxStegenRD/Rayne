@@ -10,8 +10,8 @@
 #define __RAYNE_VRWINDOW_H_
 
 #include "RNVR.h"
-#include "RNVRTrackingState.h"
 #include "RNVRCompositorLayer.h"
+#include "RNVRTrackingState.h"
 
 #define kRNVRDidRecenter RNCSTR("kRNVRDidRecenter")
 
@@ -20,7 +20,7 @@ namespace RN
 	class VRWindow : public Window
 	{
 	public:
-/*		enum Eye
+		/*		enum Eye
 		{
 			Left,
 			Right
@@ -61,17 +61,17 @@ namespace RN
 		RNVRAPI virtual void StopRendering() = 0;
 		RNVRAPI virtual bool IsRendering() const = 0;
 
-		RNVRAPI virtual void SetTitle(const String *title) override { }
+		RNVRAPI virtual void SetTitle(const String *title) override {}
 		RNVRAPI virtual Screen *GetScreen() override { return nullptr; }
 
-		RNVRAPI virtual void Show() override { }
-		RNVRAPI virtual void Hide() override { }
+		RNVRAPI virtual void Show() override {}
+		RNVRAPI virtual void Hide() override {}
 		RNVRAPI virtual void SetFullscreen(bool fullscreen) override {}
 
-		RNVRAPI virtual void SetFixedFoveatedRenderingLevel(uint8 level, bool dynamic) { }
-		RNVRAPI virtual void SetPreferredFramerate(float framerate) { }
-		RNVRAPI virtual void SetPerformanceLevel(uint8 cpuLevel, uint8 gpuLevel) { }
-		RNVRAPI virtual void SetLocalDimming(bool enabled) { }
+		RNVRAPI virtual void SetFixedFoveatedRenderingLevel(uint8 level, bool dynamic) {}
+		RNVRAPI virtual void SetPreferredFramerate(float framerate) {}
+		RNVRAPI virtual void SetPerformanceLevel(uint8 cpuLevel, uint8 gpuLevel) {}
+		RNVRAPI virtual void SetLocalDimming(bool enabled) {}
 
 		RNVRAPI virtual Vector2 GetSize() const override = 0;
 		RNVRAPI virtual size_t GetEyeCount() const { return 2; }
@@ -94,11 +94,11 @@ namespace RN
 		RNVRAPI virtual const VRControllerTrackingState &GetTrackerTrackingState(uint8 index) const = 0;
 		RNVRAPI virtual const VRHandTrackingState &GetHandTrackingState(uint8 index) const = 0;
 		RNVRAPI virtual void SubmitControllerHaptics(uint8 index, VRControllerHaptics &haptics) = 0;
-		
+
 		RNVRAPI virtual void PreparePreviewWindow(Window *window) const {}
 		RNVRAPI virtual RenderingDevice *GetOutputDevice(RendererDescriptor *descriptor) const = 0;
-		
-		RNVRAPI virtual Mesh *GetHiddenAreaMesh(uint8 eye) const {return nullptr;}
+
+		RNVRAPI virtual Mesh *GetHiddenAreaMesh(uint8 eye) const { return nullptr; }
 
 		RNVRAPI virtual DeviceType GetDeviceType() const = 0;
 		RNVRAPI virtual String *GetRuntimeName() const = 0;
@@ -111,7 +111,7 @@ namespace RN
 
 		RNDeclareMetaAPI(VRWindow, RNVRAPI)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_VRWINDOW_H_ */

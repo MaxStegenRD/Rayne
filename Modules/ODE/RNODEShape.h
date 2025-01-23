@@ -18,14 +18,13 @@ namespace RN
 	class ODEShape : public Object
 	{
 	public:
-			
 	protected:
 		ODEShape();
 		~ODEShape() override;
-			
+
 		RNDeclareMetaAPI(ODEShape, ODEAPI)
 	};
-		
+
 	class ODESphereShape : public ODEShape
 	{
 	public:
@@ -36,47 +35,47 @@ namespace RN
 
 	private:
 		float _radius;
-			
+
 		RNDeclareMetaAPI(ODESphereShape, ODEAPI)
 	};
-		
+
 	class ODEBoxShape : public ODEShape
 	{
 	public:
 		ODEAPI ODEBoxShape(const Vector3 &halfExtents);
 		const Vector3 &GetHalfExtends() const { return _halfExtents; }
-			
-		ODEAPI static ODEBoxShape *WithHalfExtents(const Vector3& halfExtents);
+
+		ODEAPI static ODEBoxShape *WithHalfExtents(const Vector3 &halfExtents);
 
 	private:
 		Vector3 _halfExtents;
-			
+
 		RNDeclareMetaAPI(ODEBoxShape, ODEAPI)
 	};
-		
+
 	class ODEStaticPlaneShape : public ODEShape
 	{
 	public:
 		ODEAPI ODEStaticPlaneShape(const Vector3 &normal, float constant);
 		const Vector4 &GetPlane() const { return _plane; }
-			
+
 		ODEAPI static ODEStaticPlaneShape *WithNormal(const Vector3 &normal, float constant);
 
 	private:
 		RN::Vector4 _plane;
-			
+
 		RNDeclareMetaAPI(ODEStaticPlaneShape, ODEAPI)
 	};
-		
+
 	class ODETriangleMeshShape : public ODEShape
 	{
 	public:
 		ODEAPI ODETriangleMeshShape(Model *model, Vector3 scale = Vector3(1.0f, 1.0f, 1.0f));
 		ODEAPI ODETriangleMeshShape(Mesh *mesh, Vector3 scale = Vector3(1.0f, 1.0f, 1.0f));
 		ODEAPI ODETriangleMeshShape(const Array *meshes, Vector3 scale = Vector3(1.0f, 1.0f, 1.0f));
-			
+
 		ODEAPI ~ODETriangleMeshShape() override;
-			
+
 		ODEAPI static ODETriangleMeshShape *WithModel(Model *model, Vector3 scale = Vector3(1.0f, 1.0f, 1.0f));
 
 		uint32 GetVertexCount() const { return _vertices.size(); }
@@ -84,13 +83,13 @@ namespace RN
 		const float *GetVertices() const { return &_vertices[0].x; }
 		const float *GetNormals() const { return &_normals[0].x; }
 		const uint32 *GetIndices() const { return &_indices[0]; }
-			
+
 	private:
 		void AddMesh(Mesh *mesh, Vector3 scale = Vector3(1.0f, 1.0f, 1.0f));
 		std::vector<Vector3> _vertices;
 		std::vector<Vector3> _normals;
 		std::vector<uint32> _indices;
-			
+
 		RNDeclareMetaAPI(ODETriangleMeshShape, ODEAPI)
 	};
 	/*
@@ -106,7 +105,7 @@ namespace RN
 
 		RNDeclareMetaAPI(ODEConvexHullShape, ODEAPI)
 	};*/
-		
+
 	class ODECompoundShape : public ODEShape
 	{
 	public:
@@ -114,12 +113,12 @@ namespace RN
 		ODEAPI ~ODECompoundShape();
 
 		ODEAPI void AddChild(ODEShape *shape, const RN::Vector3 &position, const RN::Quaternion &rotation);
-			
+
 	private:
 		std::vector<ODEShape *> _shapes;
-			
+
 		RNDeclareMetaAPI(ODECompoundShape, ODEAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_ODESHAPE_H_) */

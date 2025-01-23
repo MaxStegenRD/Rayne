@@ -6,8 +6,8 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
-#include "../Objects/RNString.h"
 #include "RNAsset.h"
+#include "../Objects/RNString.h"
 #include "RNAssetManager.h"
 
 namespace RN
@@ -46,7 +46,7 @@ namespace RN
 	{
 		return RNSTR("<" << GetClass()->GetFullname() << ":" << (void *)this << ", " << _name << ">");
 	}
-	
+
 	const String *Asset::GetName() const
 	{
 		return _name;
@@ -56,8 +56,10 @@ namespace RN
 	{
 		if(_keepAlive == keepAlive) return;
 		_keepAlive = keepAlive;
-		
-		if(keepAlive) Retain();
-		else Release();
+
+		if(keepAlive)
+			Retain();
+		else
+			Release();
 	}
-}
+} // namespace RN

@@ -44,6 +44,6 @@ namespace RN
 		std::atomic<bool> _completed;
 		WorkSource *_next;
 	};
-}
+} // namespace RN
 
 #endif /* __RANYE_WORKSOURCE_H__ */

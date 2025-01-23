@@ -14,13 +14,13 @@ namespace RN
 {
 	RNDefineMeta(ResonanceAudioSampler, Object)
 
-		ResonanceAudioSampler::ResonanceAudioSampler(AudioAsset *asset) :
+	ResonanceAudioSampler::ResonanceAudioSampler(AudioAsset *asset) :
 		_asset(nullptr),
 		_isRepeating(false)
 	{
 		SetAudioAsset(asset);
 	}
-		
+
 	ResonanceAudioSampler::~ResonanceAudioSampler()
 	{
 		_asset->Release();
@@ -41,12 +41,12 @@ namespace RN
 		_asset = asset->Retain();
 		_totalTime = static_cast<double>(_asset->GetData()->GetLength()) / static_cast<double>(_asset->GetBytesPerSample()) / static_cast<double>(_asset->GetChannels()) / static_cast<double>(_asset->GetSampleRate());
 	}
-	
+
 	void ResonanceAudioSampler::SetRepeat(bool repeat)
 	{
 		_isRepeating = repeat;
 	}
-	
+
 	double ResonanceAudioSampler::GetTotalTime() const
 	{
 		return _totalTime;
@@ -54,17 +54,17 @@ namespace RN
 
 	float ResonanceAudioSampler::GetSample(double time, uint8 channel)
 	{
-        LockGuard<Lockable> lock(_lock);
+		LockGuard<Lockable> lock(_lock);
 		if(!_asset)
 		{
 			return 0.0f;
 		}
-		
+
 		if(_isRepeating || _asset->GetType() == AudioAsset::Type::Ringbuffer)
 		{
 			if(time < 0.0f)
 			{
-				time = _totalTime-fmod(-time, _totalTime);
+				time = _totalTime - fmod(-time, _totalTime);
 			}
 			else
 			{
@@ -92,7 +92,7 @@ namespace RN
 		for(int i = 0; i < 4; i++)
 		{
 			samplePositions[i] = samplePositions[i] * channelCount + channel;
-			
+
 			if(samplePositions[i] >= maxSamplePosition)
 			{
 				if(_isRepeating || _asset->GetType() == AudioAsset::Type::Ringbuffer)
@@ -101,7 +101,7 @@ namespace RN
 				}
 				else
 				{
-					samplePositions[i] = maxSamplePosition - (channelCount-channel-1);
+					samplePositions[i] = maxSamplePosition - (channelCount - channel - 1);
 				}
 			}
 			else if(samplePositions[i] < 0)
@@ -123,7 +123,7 @@ namespace RN
 		{
 			case 1:
 			{
-				int8 *values = static_cast<int8*>(_asset->GetData()->GetBytes());
+				int8 *values = static_cast<int8 *>(_asset->GetData()->GetBytes());
 				for(int i = 0; i < 4; i++)
 				{
 					valuesToInterpolate[i] = values[samplePositions[i]] / 128.0f;
@@ -132,7 +132,7 @@ namespace RN
 			}
 			case 2:
 			{
-				int16 *values = static_cast<int16*>(_asset->GetData()->GetBytes());
+				int16 *values = static_cast<int16 *>(_asset->GetData()->GetBytes());
 				for(int i = 0; i < 4; i++)
 				{
 					valuesToInterpolate[i] = values[samplePositions[i]] / 32768.0f;
@@ -141,7 +141,7 @@ namespace RN
 			}
 			case 4:
 			{
-				float *values = static_cast<float*>(_asset->GetData()->GetBytes());
+				float *values = static_cast<float *>(_asset->GetData()->GetBytes());
 				for(int i = 0; i < 4; i++)
 				{
 					valuesToInterpolate[i] = values[samplePositions[i]];
@@ -149,9 +149,9 @@ namespace RN
 				break;
 			}
 
-			//TODO: Maybe add 24 and 32 bit support
+				//TODO: Maybe add 24 and 32 bit support
 		}
-		
+
 		float c0 = valuesToInterpolate[1];
 		float c1 = 0.5f * (valuesToInterpolate[2] - valuesToInterpolate[0]);
 		float c2 = valuesToInterpolate[0] - (2.5f * valuesToInterpolate[1]) + (2.0f * valuesToInterpolate[2]) - (0.5f * valuesToInterpolate[3]);
@@ -160,4 +160,4 @@ namespace RN
 
 		return value;
 	}
-}
+} // namespace RN

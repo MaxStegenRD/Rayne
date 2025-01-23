@@ -14,13 +14,13 @@ namespace RN
 {
 	RNDefineMeta(SteamAudioSampler, Object)
 
-		SteamAudioSampler::SteamAudioSampler(AudioAsset *asset) :
+	SteamAudioSampler::SteamAudioSampler(AudioAsset *asset) :
 		_asset(nullptr),
 		_isRepeating(false)
 	{
 		SetAudioAsset(asset);
 	}
-		
+
 	SteamAudioSampler::~SteamAudioSampler()
 	{
 		_asset->Release();
@@ -41,12 +41,12 @@ namespace RN
 		_asset = asset->Retain();
 		_totalTime = static_cast<double>(_asset->GetData()->GetLength()) / static_cast<double>(_asset->GetBytesPerSample()) / static_cast<double>(_asset->GetChannels()) / static_cast<double>(_asset->GetSampleRate());
 	}
-	
+
 	void SteamAudioSampler::SetRepeat(bool repeat)
 	{
 		_isRepeating = repeat;
 	}
-	
+
 	double SteamAudioSampler::GetTotalTime() const
 	{
 		return _totalTime;
@@ -64,12 +64,12 @@ namespace RN
 
 		AudioAsset *tempAsset = _asset->Retain();
 		_lock.Unlock();
-		
+
 		if(_isRepeating || tempAsset->GetType() == AudioAsset::Type::Ringbuffer)
 		{
 			if(time < 0.0f)
 			{
-				time = _totalTime-fmod(-time, _totalTime);
+				time = _totalTime - fmod(-time, _totalTime);
 			}
 			else
 			{
@@ -106,15 +106,15 @@ namespace RN
 		{
 			case 1:
 			{
-				int8 *values = static_cast<int8*>(tempAsset->GetData()->GetBytes());
+				int8 *values = static_cast<int8 *>(tempAsset->GetData()->GetBytes());
 				value = values[lowerSamplePosition] * interpolationFactor;
-				value += values[upperSamplePosition] * (1.0f-interpolationFactor);
+				value += values[upperSamplePosition] * (1.0f - interpolationFactor);
 				value /= 128.0f;
 				break;
 			}
 			case 2:
 			{
-				int16 *values = static_cast<int16*>(tempAsset->GetData()->GetBytes());
+				int16 *values = static_cast<int16 *>(tempAsset->GetData()->GetBytes());
 				value = values[lowerSamplePosition] * interpolationFactor;
 				value += values[upperSamplePosition] * (1.0f - interpolationFactor);
 				value /= 32768.0f;
@@ -122,16 +122,16 @@ namespace RN
 			}
 			case 4:
 			{
-				float *values = static_cast<float*>(tempAsset->GetData()->GetBytes());
+				float *values = static_cast<float *>(tempAsset->GetData()->GetBytes());
 				value = values[lowerSamplePosition] * interpolationFactor;
 				value += values[upperSamplePosition] * (1.0f - interpolationFactor);
 				break;
 			}
 
-			//TODO: Maybe add 24 and 32 bit support
+				//TODO: Maybe add 24 and 32 bit support
 		}
 
 		tempAsset->Release();
 		return value;
 	}
-}
+} // namespace RN

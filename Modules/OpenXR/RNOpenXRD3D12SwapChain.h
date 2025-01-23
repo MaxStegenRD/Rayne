@@ -43,7 +43,7 @@ namespace RN
 
 		RNDeclareMetaAPI(OpenXRD3D12SwapChain, OXRAPI)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_OPENXRD3D12SWAPCHAIN_H_ */

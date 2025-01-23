@@ -6,8 +6,8 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
-#include "../Base/RNBase.h"
 #include "RNRecursiveLockable.h"
+#include "../Base/RNBase.h"
 #include "RNFutex.h"
 
 namespace RN
@@ -31,7 +31,7 @@ namespace RN
 
 			if(!(value & kLockFlagParked) && spinCount < spinLimit)
 			{
-				spinCount ++;
+				spinCount++;
 				std::this_thread::yield();
 
 				continue;
@@ -59,15 +59,13 @@ namespace RN
 			}
 
 			__Private::Futex::WakeOne(&_flag, [this](__Private::Futex::WakeResult result) {
-
 				if(result & __Private::Futex::WakeResult::HasMoreThreads)
 					_flag.store(kLockFlagParked, std::memory_order_release);
 				else
 					_flag.store(0, std::memory_order_release);
-
 			});
 
 			return;
 		}
 	}
-}
+} // namespace RN

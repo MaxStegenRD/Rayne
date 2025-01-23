@@ -18,4 +18,4 @@ namespace RN
 	{}
 	Framebuffer::~Framebuffer()
 	{}
-}
+} // namespace RN

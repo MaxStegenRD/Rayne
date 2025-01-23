@@ -10,9 +10,9 @@
 #define __RAYNE_NOTIFICATIONMANAGER_H_
 
 #include "../Base/RNBase.h"
-#include "../Threads/RNLockable.h"
 #include "../Objects/RNObject.h"
 #include "../Objects/RNString.h"
+#include "../Threads/RNLockable.h"
 #include "RNNotification.h"
 
 namespace RN
@@ -27,18 +27,18 @@ namespace RN
 		RNAPI void PostNotification(const String *name, Object *object);
 		RNAPI void PostNotification(Notification *notification);
 
-		RNAPI void AddSubscriber(const String *name, const std::function<void (Notification *)> &callback, void *token);
+		RNAPI void AddSubscriber(const String *name, const std::function<void(Notification *)> &callback, void *token);
 		RNAPI void RemoveSubscriber(const String *name, void *token);
 
 	private:
 		struct Subscriber
 		{
-			Subscriber(std::function<void (Notification *)> tcallback, void *ttoken) :
+			Subscriber(std::function<void(Notification *)> tcallback, void *ttoken) :
 				callback(tcallback),
 				token(ttoken)
 			{}
 
-			std::function<void (Notification *)> callback;
+			std::function<void(Notification *)> callback;
 			void *token;
 		};
 
@@ -48,7 +48,7 @@ namespace RN
 		Lockable _lock;
 		std::unordered_map<String *, std::vector<Subscriber>, std::hash<Object>, std::equal_to<Object>> _subscribers;
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_NOTIFICATIONMANAGER_H_ */

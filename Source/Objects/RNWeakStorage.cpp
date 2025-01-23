@@ -28,10 +28,8 @@ namespace RN
 		CleanZombies();
 
 		std::remove_if(_storage.begin(), _storage.end(), [&](Entry &entry) -> bool {
-
 			Object *temp = entry.object.Load();
 			return (temp && temp->IsEqual(object));
-
 		});
 	}
 	void WeakStorage::RemoveObjectIdenticalTo(Object *object)
@@ -39,10 +37,8 @@ namespace RN
 		CleanZombies();
 
 		std::remove_if(_storage.begin(), _storage.end(), [&](Entry &entry) -> bool {
-
 			Object *temp = entry.object.Load();
 			return (temp == object);
-
 		});
 	}
 	void WeakStorage::RemoveAllObjects()
@@ -56,7 +52,7 @@ namespace RN
 
 		Array *objects = new Array();
 
-		for(Entry &entry : _storage)
+		for(Entry &entry: _storage)
 		{
 			Object *object = entry.object.Load();
 			if(!object)
@@ -69,16 +65,11 @@ namespace RN
 	}
 
 
-
-
-
 	void WeakStorage::CleanZombies() const
 	{
 		std::remove_if(_storage.begin(), _storage.end(), [](Entry &entry) -> bool {
-
 			Object *object = entry.object.Load();
 			return (object != nullptr);
-
 		});
 	}
-}
+} // namespace RN

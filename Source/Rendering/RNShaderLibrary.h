@@ -11,9 +11,9 @@
 #define __RAYNE_SHADERLIBRARY_H_
 
 #include "../Base/RNBase.h"
+#include "../Objects/RNDictionary.h"
 #include "../Objects/RNObject.h"
 #include "../Objects/RNString.h"
-#include "../Objects/RNDictionary.h"
 #include "RNShader.h"
 
 namespace RN
@@ -25,7 +25,7 @@ namespace RN
 	public:
 		RNAPI virtual Shader *GetShaderWithName(const String *name, const Shader::Options *options = nullptr) = 0;
 		RNAPI virtual Shader *GetInstancedShaderForShader(Shader *shader) = 0;
-		
+
 		RNAPI static Array *GetSamplers(const Array *samplers);
 
 	protected:
@@ -34,7 +34,7 @@ namespace RN
 
 		__RNDeclareMetaInternal(ShaderLibrary)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_SHADERLIBRARY_H_ */

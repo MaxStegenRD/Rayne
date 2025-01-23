@@ -10,11 +10,11 @@
 
 namespace RN
 {
-//	RNDefineMeta(VRApplication, Application)
+	//	RNDefineMeta(VRApplication, Application)
 
-	VRApplication::VRApplication() : _vrWindow(nullptr)
+	VRApplication::VRApplication() :
+		_vrWindow(nullptr)
 	{
-		
 	}
 
 	VRApplication::~VRApplication()
@@ -47,11 +47,11 @@ namespace RN
 			parameters->SetObjectForKey(instanceExtensions, RNCSTR("instanceextensions"));
 		}
 
-	#if RN_PLATFORM_ANDROID
+#if RN_PLATFORM_ANDROID
 		RN::RendererDescriptor *descriptor = RN::RendererDescriptor::GetRendererWithIdentifier(RNCSTR("net.uberpixel.rendering.vulkan"), parameters);
-	#else
+#else
 		RN::RendererDescriptor *descriptor = RN::RendererDescriptor::GetPreferredRenderer(parameters);
-	#endif
+#endif
 		return descriptor;
 	}
 
@@ -85,24 +85,24 @@ namespace RN
 	void VRApplication::WillFinishLaunching(RN::Kernel *kernel)
 	{
 		RN::Application::WillFinishLaunching(kernel);
-		
+
 		if(!RN::Kernel::GetSharedInstance()->GetArguments().HasArgument("pancake", '2d'))
 		{
 			SetupVR();
 		}
 	}
-	
+
 	void VRApplication::DidFinishLaunching(RN::Kernel *kernel)
 	{
 		RN::Application::DidFinishLaunching(kernel);
-		
+
 		if(_vrWindow)
 		{
 			RN::Renderer *renderer = RN::Renderer::GetActiveRenderer();
 			renderer->SetMainWindow(_vrWindow);
 
 			RN::Window::SwapChainDescriptor swapChainDescriptor;
-/*#if RN_PLATFORM_WINDOWS
+			/*#if RN_PLATFORM_WINDOWS
 			if(_vrWindow->IsKindOfClass(RN::OculusWindow::GetMetaClass()))
 			{
 				swapChainDescriptor.depthStencilFormat = RN::Texture::Format::Depth_32F;
@@ -111,7 +111,7 @@ namespace RN
 #endif*/
 			_vrWindow->StartRendering(swapChainDescriptor, 1.0f);
 		}
-/*		else
+		/*		else
 		{
 			RN::Window::SwapChainDescriptor swapchainDescriptor(RN::Texture::Format::RGBA_16F, RN::Texture::Format::Depth_32F);
 			swapchainDescriptor.vsync = false;
@@ -138,4 +138,4 @@ namespace RN
 			_vrWindow->BeginFrame(delta);
 		}
 	}
-}
+} // namespace RN

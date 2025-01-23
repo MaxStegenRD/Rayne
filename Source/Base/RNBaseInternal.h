@@ -5,8 +5,8 @@
 #ifndef __RAYNE_BASEINTERNAL_H__
 #define __RAYNE_BASEINTERNAL_H__
 
-#include "RNBase.h"
 #include "../Debug/RNLogger.h"
+#include "RNBase.h"
 
 #if RN_PLATFORM_MAC_OS
 	#import <Cocoa/Cocoa.h>
@@ -20,7 +20,7 @@
 
 #if RN_ENABLE_VTUNE
 
-#include <ittnotify.h>
+	#include <ittnotify.h>
 
 namespace RN
 {

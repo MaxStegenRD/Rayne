@@ -9,24 +9,24 @@
 #ifndef __RAYNE_TYPETRANSLATOR_H__
 #define __RAYNE_TYPETRANSLATOR_H__
 
-#include "RNBase.h"
-#include "../Math/RNVector.h"
+#include "../Math/RNColor.h"
 #include "../Math/RNMatrixQuaternion.h"
 #include "../Math/RNQuaternion.h"
-#include "../Math/RNColor.h"
+#include "../Math/RNVector.h"
+#include "RNBase.h"
 
 namespace RN
 {
 	class Object;
-	
+
 	template<class T>
-	struct TypeTranslator  : public std::integral_constant<char, '?'>
+	struct TypeTranslator : public std::integral_constant<char, '?'>
 	{};
-	
+
 	template<>
 	struct TypeTranslator<bool> : public std::integral_constant<char, 'B'>
 	{};
-	
+
 	template<>
 	struct TypeTranslator<int8> : public std::integral_constant<char, 'b'>
 	{};
@@ -39,7 +39,7 @@ namespace RN
 	template<>
 	struct TypeTranslator<int64> : public std::integral_constant<char, 'l'>
 	{};
-	
+
 	template<>
 	struct TypeTranslator<uint8> : public std::integral_constant<char, '_'>
 	{};
@@ -52,14 +52,14 @@ namespace RN
 	template<>
 	struct TypeTranslator<uint64> : public std::integral_constant<char, 'L'>
 	{};
-	
+
 	template<>
 	struct TypeTranslator<float> : public std::integral_constant<char, 'f'>
 	{};
 	template<>
 	struct TypeTranslator<double> : public std::integral_constant<char, 'd'>
 	{};
-	
+
 	template<>
 	struct TypeTranslator<Vector2> : public std::integral_constant<char, '2'>
 	{};
@@ -78,10 +78,10 @@ namespace RN
 	template<>
 	struct TypeTranslator<Quaternion> : public std::integral_constant<char, 'q'>
 	{};
-	
+
 	template<>
 	struct TypeTranslator<Object *> : public std::integral_constant<char, '@'>
 	{};
-}
+} // namespace RN
 
 #endif /* __RAYNE_TYPETRANSLATOR_H__ */

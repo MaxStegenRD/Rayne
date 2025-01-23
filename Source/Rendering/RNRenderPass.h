@@ -11,8 +11,8 @@
 #define __RAYNE_RENDERPASS_H__
 
 #include "../Base/RNBase.h"
-#include "../Objects/RNArray.h"
 #include "../Math/RNRect.h"
+#include "../Objects/RNArray.h"
 #include "RNFramebuffer.h"
 
 namespace RN
@@ -21,13 +21,13 @@ namespace RN
 	{
 	public:
 		RN_OPTIONS(Flags, uint32,
-			ClearColor = (1 << 0),
-			LoadColor = (1 << 1),
-			StoreColor = (1 << 2),
-			ClearDepthStencil = (1 << 3),
-			LoadDepthStencil = (1 << 4),
-			StoreDepthStencil = (1 << 5),
-			Defaults = ClearDepthStencil|StoreColor);
+				   ClearColor = (1 << 0),
+				   LoadColor = (1 << 1),
+				   StoreColor = (1 << 2),
+				   ClearDepthStencil = (1 << 3),
+				   LoadDepthStencil = (1 << 4),
+				   StoreDepthStencil = (1 << 5),
+				   Defaults = ClearDepthStencil | StoreColor);
 
 		RNAPI RenderPass();
 		RNAPI ~RenderPass();
@@ -62,7 +62,7 @@ namespace RN
 
 		__RNDeclareMetaInternal(RenderPass)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_RENDERPASS_H__ */

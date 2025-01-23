@@ -30,6 +30,6 @@ namespace RN
 		ma_device outputDevice;
 		ma_device inputDevice;
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_ResonanceAudioINTERNALS_H_) */

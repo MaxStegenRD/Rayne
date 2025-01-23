@@ -16,7 +16,6 @@ namespace RN
 	class VRCompositorLayer : public Object
 	{
 	public:
-
 		enum Type
 		{
 			TypeProjectionView,
@@ -33,10 +32,10 @@ namespace RN
 		RNVRAPI const Vector3 &GetPosition() { return _position; }
 		RNVRAPI const Quaternion &GetRotation() { return _rotation; }
 		RNVRAPI const Vector2 &GetScale() { return _scale; }
-		
-		RNVRAPI virtual void SetActive(bool active) { }
-		RNVRAPI virtual void SetFixedFoveatedRenderingLevel(uint8 level, bool dynamic) { }
-		
+
+		RNVRAPI virtual void SetActive(bool active) {}
+		RNVRAPI virtual void SetFixedFoveatedRenderingLevel(uint8 level, bool dynamic) {}
+
 		RNVRAPI virtual Vector2 GetSize() const = 0;
 		RNVRAPI virtual size_t GetImageCount() const = 0;
 
@@ -56,7 +55,7 @@ namespace RN
 	private:
 		RNDeclareMetaAPI(VRCompositorLayer, RNVRAPI)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_VRCOMPOSITORLAYER_H_ */

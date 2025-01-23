@@ -13,11 +13,11 @@ namespace RN
 	RNDefineMeta(Scene, Object)
 	RNDefineMeta(SceneInfo, Object)
 
-	Scene::Scene() : _attachments(nullptr)
+	Scene::Scene() :
+		_attachments(nullptr)
 	{
-		
 	}
-	
+
 	Scene::~Scene()
 	{
 		if(_attachments)
@@ -34,7 +34,7 @@ namespace RN
 			});
 		}
 	}
-	
+
 	void Scene::UpdateNode(SceneNode *node, float delta)
 	{
 		if(!node->HasFlags(RN::SceneNode::Flags::Static))
@@ -58,7 +58,7 @@ namespace RN
 	{
 		RN_ASSERT(attachment->_scene == this, "RemoveAttachment() must be called on an Attachment owned by the scene");
 
-        attachment->_scene = nullptr;
+		attachment->_scene = nullptr;
 		_attachments->RemoveObject(attachment);
 	}
 
@@ -96,20 +96,19 @@ namespace RN
 	{}
 	void Scene::DidRender(Renderer *renderer)
 	{}
-	
-	
-	SceneInfo::SceneInfo(Scene *scene) : _scene(scene)
+
+
+	SceneInfo::SceneInfo(Scene *scene) :
+		_scene(scene)
 	{
-		
 	}
-	
+
 	SceneInfo::~SceneInfo()
 	{
-		
 	}
-	
+
 	Scene *SceneInfo::GetScene() const
 	{
 		return _scene;
 	}
-}
+} // namespace RN

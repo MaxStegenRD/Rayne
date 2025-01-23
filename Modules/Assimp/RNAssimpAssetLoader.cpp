@@ -19,14 +19,14 @@ namespace RN
 		if(meta == AssimpAssetLoader::GetMetaClass())
 		{
 			aiString extensionsString;
-			Assimp::Importer{}.GetExtensionList(extensionsString);
+			Assimp::Importer {}.GetExtensionList(extensionsString);
 
 			String *string = RNSTR(extensionsString.C_Str());
 			string->ReplaceOccurrencesOfString(RNCSTR("*."), RNCSTR(""));
 			Array *extensions = string->GetComponentsSeparatedByString(RNCSTR(";"));
 
 
-			Config config({ Mesh::GetMetaClass(), Model::GetMetaClass() });
+			Config config({Mesh::GetMetaClass(), Model::GetMetaClass()});
 			config.SetExtensions(Set::WithArray(extensions));
 			config.supportsBackgroundLoading = true;
 
@@ -69,7 +69,6 @@ namespace RN
 		}
 
 
-
 		Assimp::Importer importer;
 		importer.SetPropertyFloat(AI_CONFIG_PP_GSN_MAX_SMOOTHING_ANGLE, smoothNormalAngle);
 
@@ -104,7 +103,7 @@ namespace RN
 			String *extension = path->GetPathExtension();
 			String *name = path->GetLastPathComponent()->StringByDeletingLastPathComponent();
 
-			stageIndex ++;
+			stageIndex++;
 
 			while(stageIndex < lodFactors.size())
 			{
@@ -131,7 +130,7 @@ namespace RN
 					break;
 				}
 
-				stageIndex ++;
+				stageIndex++;
 			}
 		}
 
@@ -197,7 +196,7 @@ namespace RN
 			shaderOptions->EnableAlpha();
 			material->SetAlphaToCoverage(true);
 		}
-		
+
 		material->SetVertexShader(renderer->GetDefaultShader(Shader::Type::Vertex, shaderOptions, Shader::UsageHint::Default), Shader::UsageHint::Default);
 		material->SetFragmentShader(renderer->GetDefaultShader(Shader::Type::Fragment, shaderOptions, Shader::UsageHint::Default), Shader::UsageHint::Default);
 		material->SetVertexShader(renderer->GetDefaultShader(Shader::Type::Vertex, shaderOptions, Shader::UsageHint::Depth), Shader::UsageHint::Depth);
@@ -245,12 +244,12 @@ namespace RN
 
 			indices = new uint8[size];
 
-			for(uint32 face = 0; face < aimesh->mNumFaces; face ++)
+			for(uint32 face = 0; face < aimesh->mNumFaces; face++)
 			{
 				if(aimesh->mFaces[face].mNumIndices != 3)
 					continue;
 
-				for(uint32 ind = 0; ind < aimesh->mFaces[face].mNumIndices; ind ++)
+				for(uint32 ind = 0; ind < aimesh->mFaces[face].mNumIndices; ind++)
 				{
 					switch(indicesType)
 					{
@@ -264,7 +263,7 @@ namespace RN
 							break;
 					}
 
-					indexCount ++;
+					indexCount++;
 				}
 			}
 
@@ -321,7 +320,7 @@ namespace RN
 				}
 
 				*it = tangent;
-				it ++;
+				it++;
 			}
 		}
 
@@ -368,4 +367,4 @@ namespace RN
 
 		return AssetManager::GetSharedInstance()->GetAssetWithName<Texture>(normalized, nullptr);
 	}
-}
+} // namespace RN

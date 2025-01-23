@@ -28,36 +28,36 @@ namespace RN
 		PXAPI ~PhysXKinematicController() override;
 
 		PXAPI void UpdatePosition() override;
-			
+
 		PXAPI void Move(const Vector3 &direction, float delta);
 		PXAPI void Gravity(float gforce, float delta);
 		PXAPI std::vector<PhysXContactInfo> SweepTestAll(const Vector3 &direction, const Vector3 &offset = Vector3()) const;
 		PXAPI PhysXContactInfo SweepTest(const Vector3 &direction, const Vector3 &offset = Vector3()) const;
 		PXAPI PhysXContactInfo OverlapTest() const;
 		PXAPI std::vector<PhysXContactInfo> OverlapTestAll() const;
-		
+
 		PXAPI bool Resize(float height, bool checkIfBlocked = true);
 
 		PXAPI void SetCollisionFilter(uint32 group, uint32 mask) override;
 		PXAPI Vector3 GetFeetOffset() const;
-		
+
 		SceneNode *GetObjectBelow() const { return _objectBelow; }
 		bool GetIsFalling() const { return _isFalling; }
 
 		PXAPI void Jump(float force);
 
-	/*	PXAPI void SetFallSpeed(float speed);
+		/*	PXAPI void SetFallSpeed(float speed);
 		PXAPI void SetJumpSpeed(float speed);
 		PXAPI void SetMaxJumpHeight(float maxHeight);
 		PXAPI void SetMaxSlope(float maxSlope);
 		PXAPI void SetGravity(float gravity);*/
-			
-/*		PXAPI bool IsOnGround();
+
+		/*		PXAPI bool IsOnGround();
 		PXAPI void Jump();*/
-			
+
 	protected:
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
-			
+
 		physx::PxCapsuleController *_controller;
 		PhysXMaterial *_material;
 
@@ -66,9 +66,9 @@ namespace RN
 		float _fallSpeed;
 		SceneNode *_objectBelow;
 		bool _isFalling;
-			
+
 		RNDeclareMetaAPI(PhysXKinematicController, PXAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_PHYSXKINEMATICCONTROLLER_H_) */

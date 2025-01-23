@@ -7,8 +7,8 @@
 //
 
 #include "RNFutex.h"
-#include "RNThreadLocalStorage.h"
 #include "RNLockable.h"
+#include "RNThreadLocalStorage.h"
 
 namespace RN
 {
@@ -85,7 +85,7 @@ namespace RN
 		void CleanThreadData()
 		{
 			if(!_threadData) return;
-			
+
 			ThreadData *data = _threadData->GetValue();
 			if(data)
 			{
@@ -186,7 +186,7 @@ namespace RN
 					std::unique_lock<std::mutex> lock(data->lock);
 					data->address = nullptr;
 				}
-				
+
 				beforeSleep();
 				return false;
 			}
@@ -322,7 +322,7 @@ namespace RN
 				_threadQueue.erase(iterator);
 			}
 
-			for(ThreadData *data : threads)
+			for(ThreadData *data: threads)
 			{
 				{
 					std::unique_lock<std::mutex> lock(data->lock);
@@ -332,5 +332,5 @@ namespace RN
 				data->condition.notify_one();
 			}
 		}
-	}
-}
+	} // namespace __Private
+} // namespace RN

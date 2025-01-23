@@ -17,34 +17,34 @@ namespace RN
 	{
 	public:
 		BTAPI BulletMaterial();
-			
+
 		BTAPI void SetLinearDamping(float damping);
 		BTAPI void SetAngularDamping(float damping);
 		BTAPI void SetFriction(float friction);
 		BTAPI void SetRollingFriction(float friction);
 		BTAPI void SetSpinningFriction(float friction);
 		BTAPI void SetRestitution(float restitution);
-			
+
 		BTAPI float GetLinearDamping() const { return _linearDamping; }
 		BTAPI float GetAngularDamping() const { return _angularDamping; }
 		BTAPI float GetFriction() const { return _friction; }
 		BTAPI float GetRollingFriction() const { return _rollingFriction; }
 		BTAPI float GetSpinningFriction() const { return _spinningFriction; }
 		BTAPI float GetRestitution() const { return _restitution; }
-			
-		Signal<void (BulletMaterial *)> signal;
-			
+
+		Signal<void(BulletMaterial *)> signal;
+
 	private:
 		float _linearDamping;
 		float _angularDamping;
-			
+
 		float _friction;
 		float _rollingFriction;
 		float _spinningFriction;
 		float _restitution;
-			
+
 		RNDeclareMetaAPI(BulletMaterial, BTAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_BULLETMATERIAL_H_) */

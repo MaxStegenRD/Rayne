@@ -14,20 +14,19 @@
 namespace RN
 {
 	RNDefineMeta(PhysXMaterial, Object)
-		
+
 	PhysXMaterial::PhysXMaterial()
 	{
 		physx::PxPhysics *physics = PhysXWorld::GetSharedInstance()->GetPhysXInstance();
 		_material = physics->createMaterial(0.5f, 0.5f, 0.1f);
 	}
-		
-		
-		
+
+
 	void PhysXMaterial::SetStaticFriction(float friction)
 	{
 		_material->setStaticFriction(friction);
 	}
-		
+
 	void PhysXMaterial::SetDynamicFriction(float friction)
 	{
 		_material->setDynamicFriction(friction);
@@ -37,7 +36,6 @@ namespace RN
 	{
 		_material->setRestitution(restitution);
 	}
-
 
 
 	float PhysXMaterial::GetStaticFriction() const
@@ -54,4 +52,4 @@ namespace RN
 	{
 		return _material->getRestitution();
 	}
-}
+} // namespace RN

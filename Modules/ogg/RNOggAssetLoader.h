@@ -38,7 +38,7 @@ namespace RN
 		OGGAPI OggAudioDecoder(File *file);
 		OGGAPI uint32 DecodeFrameToAudioAsset(AudioAsset *audioAsset) final;
 		OGGAPI void Seek(float time) final;
-		
+
 	private:
 		File *_file;
 		vorbis::stb_vorbis *_vorbis;
@@ -46,10 +46,10 @@ namespace RN
 		uint8 _channelCount;
 		uint8 _bytesPerSample; //datatype size * channel count
 		uint32 _sampleRate;
-		
+
 		RNDeclareMetaAPI(OggAudioDecoder, OGGAPI)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_ASSIMPASSETLOADER_H_ */

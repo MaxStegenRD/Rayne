@@ -10,24 +10,25 @@
 #include "RNBulletCollisionObject.h"
 #include "RNBulletConstraint.h"
 
-#include "btBulletDynamicsCommon.h"
 #include "BulletCollision/CollisionDispatch/btGhostObject.h"
+#include "btBulletDynamicsCommon.h"
 
 namespace RN
 {
 	RNDefineMeta(BulletWorld, SceneAttachment)
 
-    BulletWorld *BulletWorld::_instance = nullptr;
+	BulletWorld *BulletWorld::_instance = nullptr;
 
-    BulletWorld* BulletWorld::GetSharedInstance()
-    {
-        return _instance;
-    }
-
-	BulletWorld::BulletWorld(const Vector3 &gravity) : _maxSteps(50), _stepSize(1.0 / 120.0), _paused(false)
+	BulletWorld *BulletWorld::GetSharedInstance()
 	{
-        RN_ASSERT(!_instance, "There already is a BulletWorld!");
-        
+		return _instance;
+	}
+
+	BulletWorld::BulletWorld(const Vector3 &gravity) :
+		_maxSteps(50), _stepSize(1.0 / 120.0), _paused(false)
+	{
+		RN_ASSERT(!_instance, "There already is a BulletWorld!");
+
 		_pairCallback = new btGhostPairCallback();
 
 		_broadphase = new btDbvtBroadphase();
@@ -42,8 +43,8 @@ namespace RN
 		_dynamicsWorld->setGravity(btVector3(gravity.x, gravity.y, gravity.z));
 
 		_dynamicsWorld->setInternalTickCallback(&BulletWorld::SimulationStepTickCallback, this);
-        
-        _instance = this;
+
+		_instance = this;
 	}
 
 	BulletWorld::~BulletWorld()
@@ -59,7 +60,7 @@ namespace RN
 	void BulletWorld::SimulationStepTickCallback(btDynamicsWorld *world, float timeStep)
 	{
 		int numManifolds = world->getDispatcher()->getNumManifolds();
-		for(int i = 0; i<numManifolds; i++)
+		for(int i = 0; i < numManifolds; i++)
 		{
 			btPersistentManifold *contactManifold = world->getDispatcher()->getManifoldByIndexInternal(i);
 			BulletCollisionObject *objectA = static_cast<BulletCollisionObject *>(contactManifold->getBody0()->getUserPointer());
@@ -133,11 +134,10 @@ namespace RN
 		if(_paused)
 			return;
 
-        Lock();
+		Lock();
 		_dynamicsWorld->stepSimulation(delta, _maxSteps, _stepSize);
-        Unlock();
+		Unlock();
 	}
-
 
 
 	BulletContactInfo BulletWorld::CastRay(const Vector3 &from, const Vector3 &to)
@@ -169,32 +169,32 @@ namespace RN
 
 	void BulletWorld::InsertCollisionObject(BulletCollisionObject *attachment)
 	{
-        Lock();
+		Lock();
 		auto iterator = _collisionObjects.find(attachment);
 		if(iterator == _collisionObjects.end())
 		{
 			attachment->InsertIntoWorld(this);
 			_collisionObjects.insert(attachment);
 		}
-        Unlock();
+		Unlock();
 	}
 
 	void BulletWorld::RemoveCollisionObject(BulletCollisionObject *attachment)
 	{
-        Lock();
+		Lock();
 		auto iterator = _collisionObjects.find(attachment);
 		if(iterator != _collisionObjects.end())
 		{
 			attachment->RemoveFromWorld(this);
 			_collisionObjects.erase(attachment);
 		}
-        Unlock();
+		Unlock();
 	}
 
 	void BulletWorld::InsertConstraint(BulletConstraint *constraint)
 	{
-        Lock();
+		Lock();
 		_dynamicsWorld->addConstraint(constraint->GetBulletConstraint());
-        Unlock();
+		Unlock();
 	}
-}
+} // namespace RN

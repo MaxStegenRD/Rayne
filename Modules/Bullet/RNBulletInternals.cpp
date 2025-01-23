@@ -43,4 +43,4 @@ namespace RN
 		_attachment->SetWorldRotation(Quaternion(rotation.x(), rotation.y(), rotation.z(), rotation.w()));
 		_attachment->SetWorldPosition(Vector3(position.x(), position.y(), position.z()) + _attachment->GetWorldRotation().GetRotatedVector(_offset));
 	}
-}
+} // namespace RN

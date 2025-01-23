@@ -52,18 +52,17 @@ namespace RN
 
 	void Renderer::WarmupDrawable(Mesh *mesh, Material *material, Camera *camera)
 	{
-
 	}
 
 	Shader *Renderer::GetDefaultShader(Shader::Type type, Shader::Options *options, Shader::UsageHint hint)
 	{
-		Shader::Options *realOptions = options? options->Copy() : Shader::Options::WithNone()->Retain();
-		
+		Shader::Options *realOptions = options ? options->Copy() : Shader::Options::WithNone()->Retain();
+
 		if(hint == Shader::UsageHint::Multiview || hint == Shader::UsageHint::DepthMultiview)
 		{
 			realOptions->EnableMultiview();
 		}
-		
+
 		ShaderLibrary *shaderLibrary = GetDefaultShaderLibrary();
 		Shader *shader = nullptr;
 		if(type == Shader::Type::Vertex)
@@ -74,7 +73,7 @@ namespace RN
 			}
 			else
 			{
-				if(realOptions && realOptions->HasValue("RN_SKY", "1"))	//Use a different shader for the sky
+				if(realOptions && realOptions->HasValue("RN_SKY", "1")) //Use a different shader for the sky
 				{
 					shader = shaderLibrary->GetShaderWithName(RNCSTR("sky_vertex"), realOptions);
 				}
@@ -100,7 +99,7 @@ namespace RN
 			}
 			else
 			{
-				if(realOptions && realOptions->HasValue("RN_SKY", "1"))	//Use a different shader for the sky
+				if(realOptions && realOptions->HasValue("RN_SKY", "1")) //Use a different shader for the sky
 				{
 					shader = shaderLibrary->GetShaderWithName(RNCSTR("sky_fragment"), realOptions);
 				}
@@ -118,9 +117,9 @@ namespace RN
 				}
 			}
 		}
-		
+
 		realOptions->Release();
 
 		return shader;
 	}
-}
+} // namespace RN

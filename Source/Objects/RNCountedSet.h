@@ -16,7 +16,7 @@ namespace RN
 {
 	class Array;
 	class CountedSetInternal;
-	
+
 	class CountedSet : public Object
 	{
 	public:
@@ -26,7 +26,7 @@ namespace RN
 		RNAPI CountedSet(const CountedSet *other);
 		RNAPI CountedSet(Deserializer *deserializer);
 		RNAPI ~CountedSet() override;
-		
+
 		RNAPI void Serialize(Serializer *serializer) const override;
 		RNAPI const String *GetDescription() const override;
 
@@ -38,30 +38,30 @@ namespace RN
 		RNAPI void RemoveObject(const Object *object);
 		RNAPI void RemoveAllObjects();
 		RNAPI bool ContainsObject(const Object *object) const;
-		
-		RNAPI void Enumerate(const std::function<void (Object *object, size_t count, bool &stop)>& callback) const;
-		
+
+		RNAPI void Enumerate(const std::function<void(Object *object, size_t count, bool &stop)> &callback) const;
+
 		template<class T>
-		void Enumerate(const std::function<void (T *object, size_t count, bool &stop)>& callback) const
+		void Enumerate(const std::function<void(T *object, size_t count, bool &stop)> &callback) const
 		{
 			Enumerate([&](Object *object, size_t count, bool &stop) {
 				callback(static_cast<T *>(object), count, stop);
 			});
 		}
-		
+
 		RNAPI Array *GetAllObjects() const;
-		
+
 		RNAPI size_t GetCount() const;
 		RNAPI size_t GetCountForObject(const Object *object) const;
-		
+
 	private:
 		PIMPL<CountedSetInternal> _internals;
-		
+
 		__RNDeclareMetaInternal(CountedSet)
 	};
-	
+
 	RNObjectClass(CountedSet)
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_COUNTEDSET_H__ */

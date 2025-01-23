@@ -14,7 +14,8 @@ namespace RN
 {
 	RNDefineMeta(OpenVRMetalSwapChain, MetalSwapChain)
 
-	OpenVRMetalSwapChain::OpenVRMetalSwapChain(const Window::SwapChainDescriptor &descriptor, vr::IVRSystem *system) : OpenVRSwapChain(system)
+	OpenVRMetalSwapChain::OpenVRMetalSwapChain(const Window::SwapChainDescriptor &descriptor, vr::IVRSystem *system) :
+		OpenVRSwapChain(system)
 	{
 		MetalRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<MetalRenderer>();
 		_descriptor = descriptor;
@@ -23,7 +24,7 @@ namespace RN
 		uint32 recommendedHeight;
 		_vrSystem->GetRecommendedRenderTargetSize(&recommendedWidth, &recommendedHeight);
 		_size = Vector2(recommendedWidth * 2 + kEyePadding, recommendedHeight);
-		
+
 		NSDictionary *surfaceDefinition = @{
 			(id)kIOSurfaceWidth: @((int)_size.x),
 			(id)kIOSurfaceHeight: @((int)_size.y),
@@ -31,7 +32,7 @@ namespace RN
 			(id)kIOSurfaceIsGlobal: @YES
 		};
 		_targetSurface = IOSurfaceCreate((CFDictionaryRef)surfaceDefinition);
-		
+
 		Texture::Descriptor textureDescriptor = Texture::Descriptor::With2DTextureAndFormat(Texture::Format::BGRA_8_SRGB, _size.x, _size.y, false);
 		textureDescriptor.usageHint |= Texture::UsageHint::RenderTarget;
 		_targetTexture = renderer->CreateTextureWithDescriptorAndIOSurface(textureDescriptor, _targetSurface)->Downcast<MetalTexture>();
@@ -57,7 +58,7 @@ namespace RN
 		CFRelease(_targetSurface);
 	}
 
-	void OpenVRMetalSwapChain::ResizeOpenVRSwapChain(const Vector2& size)
+	void OpenVRMetalSwapChain::ResizeOpenVRSwapChain(const Vector2 &size)
 	{
 		_size = size;
 		//_framebuffer->WillUpdateSwapChain(); //As all it does is free the swap chain d3d buffer resources, it would free the targetTexture resource and should't be called in this case...
@@ -85,17 +86,15 @@ namespace RN
 
 	void OpenVRMetalSwapChain::Prepare()
 	{
-		
 	}
 
 	void OpenVRMetalSwapChain::Finalize()
 	{
-		
 	}
 
 	void OpenVRMetalSwapChain::PresentBackBuffer(id<MTLCommandBuffer> commandBuffer)
 	{
-		vr::Texture_t eyeTexture = { _targetSurface, vr::TextureType_IOSurface, vr::ColorSpace_Gamma };
+		vr::Texture_t eyeTexture = {_targetSurface, vr::TextureType_IOSurface, vr::ColorSpace_Gamma};
 
 		vr::VRTextureBounds_t bounds;
 		bounds.vMin = 0.0f;
@@ -110,20 +109,20 @@ namespace RN
 		bounds.uMax = 1.0f;
 		vr::VRCompositor()->Submit(vr::Eye_Right, &eyeTexture, &bounds, vr::Submit_Default);
 	}
-	
+
 	void OpenVRMetalSwapChain::PostPresent(id<MTLCommandBuffer> commandBuffer)
 	{
 		[commandBuffer waitUntilScheduled];
 		vr::VRCompositor()->PostPresentHandoff();
 	}
-	
+
 	id OpenVRMetalSwapChain::GetMTLTexture() const
 	{
 		return static_cast<id>(_targetTexture->__GetUnderlyingTexture());
 	}
-	
+
 	Framebuffer *OpenVRMetalSwapChain::GetOpenVRSwapChainFramebuffer() const
 	{
 		return GetFramebuffer()->Downcast<Framebuffer>();
 	}
-}
+} // namespace RN

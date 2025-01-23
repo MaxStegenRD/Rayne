@@ -11,9 +11,9 @@
 #define __RAYNE_WINDOW_H_
 
 #include "../Base/RNBase.h"
-#include "../System/RNScreen.h"
 #include "../Objects/RNObject.h"
 #include "../Rendering/RNFramebuffer.h"
+#include "../System/RNScreen.h"
 
 #define kRNWindowDidChangeSize RNCSTR("kRNWindowDidChangeSize")
 #define kRNWindowWillDestroy RNCSTR("kRNWindowWillDestroy")
@@ -26,7 +26,8 @@ namespace RN
 		//TODO: Maybe make a RNSwapChain and move this there?
 		struct SwapChainDescriptor
 		{
-			SwapChainDescriptor(Texture::Format colorFormat = Texture::Format::BGRA_8_SRGB, Texture::Format depthStencilFormat = Texture::Format::Invalid) : colorFormat(colorFormat), depthStencilFormat(depthStencilFormat), bufferCount(4), layerCount(1), vsync(true), wantsFullscreen(false){}
+			SwapChainDescriptor(Texture::Format colorFormat = Texture::Format::BGRA_8_SRGB, Texture::Format depthStencilFormat = Texture::Format::Invalid) :
+				colorFormat(colorFormat), depthStencilFormat(depthStencilFormat), bufferCount(4), layerCount(1), vsync(true), wantsFullscreen(false) {}
 			Texture::Format colorFormat;
 			Texture::Format depthStencilFormat;
 			uint8 bufferCount;
@@ -38,7 +39,7 @@ namespace RN
 		RNAPI ~Window();
 
 		RNAPI virtual void SetTitle(const String *title) = 0;
-		RNAPI virtual Screen *GetScreen() = 0; 
+		RNAPI virtual Screen *GetScreen() = 0;
 
 		RNAPI virtual void Show() = 0;
 		RNAPI virtual void Hide() = 0;
@@ -68,7 +69,7 @@ namespace RN
 
 		__RNDeclareMetaInternal(Window)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_WINDOW_H_ */

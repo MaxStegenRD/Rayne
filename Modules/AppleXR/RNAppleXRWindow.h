@@ -9,12 +9,12 @@
 #ifndef __RAYNE_APPLEXRWINDOW_H_
 #define __RAYNE_APPLEXRWINDOW_H_
 
-#include "RNVRWindow.h"
 #include "RNAppleXR.h"
 #include "RNVRTrackingState.h"
+#include "RNVRWindow.h"
 
-#include <CompositorServices/CompositorServices.h>
 #include <ARKit/ARKit.h>
+#include <CompositorServices/CompositorServices.h>
 
 namespace RN
 {
@@ -52,9 +52,9 @@ namespace RN
 		AXRAPI RenderingDevice *GetOutputDevice(RendererDescriptor *descriptor) const final;
 
 		AXRAPI const Window::SwapChainDescriptor &GetSwapChainDescriptor() const final;
-		
+
 		VRWindow::DeviceType GetDeviceType() const final { return VRWindow::DeviceType::AppleXR; }
-		String *GetRuntimeName() const final { return RNCSTR("visionOS");  }
+		String *GetRuntimeName() const final { return RNCSTR("visionOS"); }
 
 	private:
 		const String *GetHMDInfoDescription() const;
@@ -64,9 +64,9 @@ namespace RN
 		cp_layer_renderer_t _layerRenderer;
 		ar_session_t _arSession;
 		ar_world_tracking_provider_t _worldTrackingProvider;
-		
+
 		bool _isSessionRunning;
-		
+
 		VRHMDTrackingState _hmdTrackingState;
 		VRControllerTrackingState _controllerTrackingState[2];
 		VRControllerTrackingState _trackerTrackingState;
@@ -80,7 +80,7 @@ namespace RN
 
 		RNDeclareMetaAPI(AppleXRWindow, AXRAPI)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_APPLEXRWINDOW_H_ */

@@ -33,7 +33,7 @@ namespace RN
 		const String *_name;
 		Object *_info;
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_NOTIFICATION_H_ */

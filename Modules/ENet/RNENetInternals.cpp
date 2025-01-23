@@ -11,14 +11,13 @@
 namespace RN
 {
 #if RN_ENET_USE_BOTAN_DTLS_ENCRYPTION
-	ENetClientEncryptor::ENetClientEncryptor(ENetClient *client) : _botanClient(*this, client->_encryptorSharedInternals->botanSessionManager, *this, client->_encryptorSharedInternals->botanPolicy, client->_encryptorSharedInternals->botanRNG, Botan::TLS::Server_Information("", 0), Botan::TLS::Protocol_Version::DTLS_V12), _client(client)
+	ENetClientEncryptor::ENetClientEncryptor(ENetClient *client) :
+		_botanClient(*this, client->_encryptorSharedInternals->botanSessionManager, *this, client->_encryptorSharedInternals->botanPolicy, client->_encryptorSharedInternals->botanRNG, Botan::TLS::Server_Information("", 0), Botan::TLS::Protocol_Version::DTLS_V12), _client(client)
 	{
-
 	}
 
 	ENetClientEncryptor::~ENetClientEncryptor()
 	{
-		
 	}
 
 	void ENetClientEncryptor::SendData(RN::Data *data)
@@ -51,24 +50,24 @@ namespace RN
 		RNDebug("tls_alert");
 	}
 
-	bool ENetClientEncryptor::tls_session_established(const Botan::TLS::Session& session)
+	bool ENetClientEncryptor::tls_session_established(const Botan::TLS::Session &session)
 	{
 		RNDebug("tls_session_established");
 		return false;
 	}
 
 
-	std::vector<Botan::Certificate_Store*> ENetClientEncryptor::trusted_certificate_authorities(const std::string& type, const std::string& context)
+	std::vector<Botan::Certificate_Store *> ENetClientEncryptor::trusted_certificate_authorities(const std::string &type, const std::string &context)
 	{
 		return _client->_encryptorSharedInternals->certificateStore;
 	}
 
-	std::vector<Botan::X509_Certificate> ENetClientEncryptor::cert_chain(const std::vector<std::string>& cert_key_types, const std::string& type, const std::string& context)
+	std::vector<Botan::X509_Certificate> ENetClientEncryptor::cert_chain(const std::vector<std::string> &cert_key_types, const std::string &type, const std::string &context)
 	{
 		return std::vector<Botan::X509_Certificate>();
 	}
 
-	Botan::Private_Key* ENetClientEncryptor::private_key_for(const Botan::X509_Certificate& cert, const std::string& type, const std::string& context)
+	Botan::Private_Key *ENetClientEncryptor::private_key_for(const Botan::X509_Certificate &cert, const std::string &type, const std::string &context)
 	{
 		return nullptr;
 	}
@@ -76,17 +75,18 @@ namespace RN
 
 	ENetClientEncryptorSharedInternals::ENetClientEncryptorSharedInternals(RN::String *trustedCertStorePath)
 #if RN_ENET_USE_BOTAN_DTLS_ENCRYPTION
-		: botanSessionManager(botanRNG)
+		:
+		botanSessionManager(botanRNG)
 #endif
 	{
 #if RN_ENET_USE_BOTAN_DTLS_ENCRYPTION
-//		_certificateStore.push_back(new Botan::System_Certificate_Store);
-		
-//#if RN_PLATFORM_ANDROID
-/*		RN::String *directory = RN::FileManager::GetSharedInstance()->GetPathForLocation(RN::FileManager::Location::SaveDirectory);
+		//		_certificateStore.push_back(new Botan::System_Certificate_Store);
+
+		//#if RN_PLATFORM_ANDROID
+		/*		RN::String *directory = RN::FileManager::GetSharedInstance()->GetPathForLocation(RN::FileManager::Location::SaveDirectory);
 		RN::String *caFilePath = directory->Copy();
 		caFilePath->AppendPathComponent(RNCSTR("aws_cacert.pem"));*/
-		
+
 		RN::Data *data = RN::Data::WithContentsOfFile(trustedCertStorePath);
 		certificate = Botan::X509_Certificate(data->GetBytes<uint8_t>(), data->GetLength());
 		certificateStore.push_back(new Botan::Certificate_Store_In_Memory(certificate));
@@ -97,21 +97,19 @@ namespace RN
 
 	ENetClientEncryptorSharedInternals::~ENetClientEncryptorSharedInternals()
 	{
-		
 	}
 
 
 #if RN_ENET_USE_BOTAN_DTLS_ENCRYPTION
-	ENetServerEncryptor::ENetServerEncryptor(ENetServer *server, RN::uint16 clientID) : _botanServer(*this, server->_encryptorSharedInternals->botanSessionManager, *this, server->_encryptorSharedInternals->botanPolicy, server->_encryptorSharedInternals->botanRNG, true), _server(server), _clientID(clientID)
+	ENetServerEncryptor::ENetServerEncryptor(ENetServer *server, RN::uint16 clientID) :
+		_botanServer(*this, server->_encryptorSharedInternals->botanSessionManager, *this, server->_encryptorSharedInternals->botanPolicy, server->_encryptorSharedInternals->botanRNG, true), _server(server), _clientID(clientID)
 	{
-		
 	}
 
 	ENetServerEncryptor::~ENetServerEncryptor()
 	{
-		
 	}
-	
+
 	void ENetServerEncryptor::tls_emit_data(const uint8_t data[], size_t size)
 	{
 		//RN::Data *dataPacket = RN::Data::WithBytes(data, size);
@@ -129,29 +127,29 @@ namespace RN
 		RNDebug("tls_alert");
 	}
 
-	bool ENetServerEncryptor::tls_session_established(const Botan::TLS::Session& session)
+	bool ENetServerEncryptor::tls_session_established(const Botan::TLS::Session &session)
 	{
 		RNDebug("tls_session_established");
 		return false;
 	}
 
 
-	std::vector<Botan::Certificate_Store*> ENetServerEncryptor::trusted_certificate_authorities(const std::string& type, const std::string& context)
+	std::vector<Botan::Certificate_Store *> ENetServerEncryptor::trusted_certificate_authorities(const std::string &type, const std::string &context)
 	{
-		return std::vector<Botan::Certificate_Store*>();
+		return std::vector<Botan::Certificate_Store *>();
 	}
 
-	std::vector<Botan::X509_Certificate> ENetServerEncryptor::cert_chain(const std::vector<std::string>& cert_key_types, const std::string& type, const std::string& context)
+	std::vector<Botan::X509_Certificate> ENetServerEncryptor::cert_chain(const std::vector<std::string> &cert_key_types, const std::string &type, const std::string &context)
 	{
 		if(_server->_encryptorSharedInternals->certificate)
 		{
-			return { *_server->_encryptorSharedInternals->certificate };
+			return {*_server->_encryptorSharedInternals->certificate};
 		}
-		
+
 		return std::vector<Botan::X509_Certificate>();
 	}
 
-	Botan::Private_Key* ENetServerEncryptor::private_key_for(const Botan::X509_Certificate& cert, const std::string& type, const std::string& context)
+	Botan::Private_Key *ENetServerEncryptor::private_key_for(const Botan::X509_Certificate &cert, const std::string &type, const std::string &context)
 	{
 		return _server->_encryptorSharedInternals->privateKey;
 	}
@@ -159,12 +157,13 @@ namespace RN
 
 	ENetServerEncryptorSharedInternals::ENetServerEncryptorSharedInternals(String *privateKeyPath, String *certificatePath)
 #if RN_ENET_USE_BOTAN_DTLS_ENCRYPTION
-		: botanSessionManager(botanRNG)
+		:
+		botanSessionManager(botanRNG)
 #endif
 	{
 #if RN_ENET_USE_BOTAN_DTLS_ENCRYPTION
 		//TODO: Add an assert if either of the parameters is null
-		
+
 		privateKey = Botan::PKCS8::load_key(privateKeyPath->GetUTF8String(), botanRNG);
 		certificate = new Botan::X509_Certificate(certificatePath->GetUTF8String());
 #endif
@@ -177,4 +176,4 @@ namespace RN
 		delete certificate;
 #endif
 	}
-}
+} // namespace RN

@@ -7,10 +7,10 @@
 //
 
 #include "RNShaderLibrary.h"
-#include "../Objects/RNNumber.h"
 #include "../Math/RNAlgorithm.h"
-#include "../Rendering/RNMesh.h"
+#include "../Objects/RNNumber.h"
 #include "../Rendering/RNMaterial.h"
+#include "../Rendering/RNMesh.h"
 
 namespace RN
 {
@@ -18,12 +18,10 @@ namespace RN
 
 	ShaderLibrary::ShaderLibrary()
 	{
-
 	}
 
 	ShaderLibrary::~ShaderLibrary()
 	{
-
 	}
 
 	Array *ShaderLibrary::GetSamplers(const Array *samplers)
@@ -40,12 +38,12 @@ namespace RN
 					String *filter = dict->GetObjectForKey<String>(RNCSTR("filter"));
 					String *comparison = dict->GetObjectForKey<String>(RNCSTR("comparison"));
 					Number *anisotropy = dict->GetObjectForKey<Number>(RNCSTR("anisotropy"));
-					
+
 					Shader::ArgumentSampler::WrapMode wrapMode = Shader::ArgumentSampler::WrapMode::Repeat;
 					Shader::ArgumentSampler::Filter filterType = Shader::ArgumentSampler::Filter::Anisotropic;
 					Shader::ArgumentSampler::ComparisonFunction comparisonFunction = Shader::ArgumentSampler::ComparisonFunction::Never;
 					uint8 anisotropyValue = Shader::ArgumentSampler::GetDefaultAnisotropy();
-					
+
 					if(wrap)
 					{
 						if(wrap->IsEqual(RNCSTR("clamp")))
@@ -53,7 +51,7 @@ namespace RN
 							wrapMode = Shader::ArgumentSampler::WrapMode::Clamp;
 						}
 					}
-					
+
 					if(filter)
 					{
 						if(filter->IsEqual(RNCSTR("nearest")))
@@ -65,7 +63,7 @@ namespace RN
 							filterType = Shader::ArgumentSampler::Filter::Linear;
 						}
 					}
-					
+
 					if(comparison)
 					{
 						if(comparison->IsEqual(RNCSTR("never")))
@@ -101,18 +99,18 @@ namespace RN
 							comparisonFunction = Shader::ArgumentSampler::ComparisonFunction::Always;
 						}
 					}
-					
+
 					if(anisotropy)
 					{
 						anisotropyValue = anisotropy->GetUint32Value();
 					}
-					
+
 					Shader::ArgumentSampler *sampler = new Shader::ArgumentSampler(name, -1, wrapMode, filterType, comparisonFunction, anisotropyValue);
 					samplerArray->AddObject(sampler->Autorelease());
 				}
 			});
 		}
-		
+
 		return samplerArray->Autorelease();
 	}
-}
+} // namespace RN

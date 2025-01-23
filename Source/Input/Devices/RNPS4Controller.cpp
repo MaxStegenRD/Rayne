@@ -8,9 +8,9 @@
 
 #include "RNPS4Controller.h"
 #include "../../Base/RNNotificationManager.h"
+#include "../../Debug/RNLogger.h"
 #include "../../Objects/RNAutoreleasePool.h"
 #include "../../Objects/RNValue.h"
-#include "../../Debug/RNLogger.h"
 #include "../RNInputManager.h"
 
 namespace RN
@@ -20,7 +20,6 @@ namespace RN
 	void PS4Controller::RegisterDriver()
 	{
 		NotificationManager::GetSharedInstance()->AddSubscriber(kRNInputManagerHIDDeviceAdded, [](Notification *notification) {
-
 			HIDDevice *device = notification->GetInfo<HIDDevice>();
 			if(device->GetVendorID() == 0x54c && device->GetProductID() == 0x05c4)
 			{
@@ -28,16 +27,16 @@ namespace RN
 				controller->Register();
 				controller->Release();
 			}
-
-		}, reinterpret_cast<void *>(&PS4Controller::RegisterDriver));
+		},
+																reinterpret_cast<void *>(&PS4Controller::RegisterDriver));
 	}
 
 	PS4Controller::PS4Controller(HIDDevice *device) :
 		InputDevice(device->GetDescriptor()),
 		_device(SafeRetain(device))
 	{
-		BindCommand(RNUTF8STR("rumble"), std::bind(&PS4Controller::SetRumble, this, std::placeholders::_1), { Number::GetMetaClass(), Array::GetMetaClass() });
-		BindCommand(RNUTF8STR("light"), std::bind(&PS4Controller::SetLight, this, std::placeholders::_1), { Value::GetMetaClass() });
+		BindCommand(RNUTF8STR("rumble"), std::bind(&PS4Controller::SetRumble, this, std::placeholders::_1), {Number::GetMetaClass(), Array::GetMetaClass()});
+		BindCommand(RNUTF8STR("light"), std::bind(&PS4Controller::SetLight, this, std::placeholders::_1), {Value::GetMetaClass()});
 
 
 		_analogLeft = new Linear2DAxisControl(RNCSTR("Analog Left"));
@@ -45,7 +44,7 @@ namespace RN
 
 		_analogRight = new Linear2DAxisControl(RNCSTR("Analog Right"));
 		_analogRight->SetRange(Vector2(-128), Vector2(128), Vector2(12));
-		
+
 		_buttonCross = new ButtonControl(RNCSTR("Button Cross"), Type::Button);
 
 		AddControl(_analogLeft);
@@ -99,9 +98,9 @@ namespace RN
 
 			_analogLeft->SetValue(left - 128);
 			_analogRight->SetValue(right - 128);
-			
+
 			uint8 buttons = data[5]; //Triangle, Circle, Cross, Square (bit7, bit6, bit5, bit4)
-			_buttonCross->SetPressed(buttons & (1<<5));
+			_buttonCross->SetPressed(buttons & (1 << 5));
 		}
 	}
 
@@ -137,9 +136,9 @@ namespace RN
 			Vector3 vector = object->GetValue<Vector3>();
 			vector.Normalize();
 
-			_ledRed   = static_cast<uint8>(vector.x * 255);
+			_ledRed = static_cast<uint8>(vector.x * 255);
 			_ledGreen = static_cast<uint8>(vector.y * 255);
-			_ledBlue  = static_cast<uint8>(vector.z * 255);
+			_ledBlue = static_cast<uint8>(vector.z * 255);
 		}
 
 		return nullptr;
@@ -174,4 +173,4 @@ namespace RN
 		_device->WriteReport(0x05, data);
 		data->Release();
 	}
-}
+} // namespace RN

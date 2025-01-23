@@ -40,8 +40,8 @@ namespace RN
 		private:
 			RNDeclareMetaAPI(Path, UIAPI)
 		};
-	}
-}
+	} // namespace UI
+} // namespace RN
 
 
 #endif /* __RAYNE_UIPATH_H_ */

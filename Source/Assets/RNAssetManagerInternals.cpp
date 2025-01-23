@@ -34,4 +34,4 @@ namespace RN
 	{
 		_promise.set_exception(exception);
 	}
-}
+} // namespace RN

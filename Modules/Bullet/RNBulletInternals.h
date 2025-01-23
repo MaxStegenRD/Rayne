@@ -27,6 +27,6 @@ namespace RN
 		SceneNodeAttachment *_attachment;
 		Vector3 _offset;
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_BULLETINTERNALS_H_) */

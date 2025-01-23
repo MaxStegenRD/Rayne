@@ -10,10 +10,10 @@
 #ifndef __RAYNE_TEXTURE_H_
 #define __RAYNE_TEXTURE_H_
 
+#include "../Assets/RNAsset.h"
 #include "../Base/RNBase.h"
 #include "../Objects/RNData.h"
 #include "../Objects/RNObject.h"
-#include "../Assets/RNAsset.h"
 #include "RNGPUResource.h"
 
 namespace RN
@@ -25,7 +25,7 @@ namespace RN
 		{
 			RGBA_8_SRGB,
 			BGRA_8_SRGB,
-			
+
 			RGB_8_SRGB,
 			BGR_8_SRGB,
 
@@ -54,19 +54,19 @@ namespace RN
 			Stencil_8,
 			Depth_24_Stencil_8,
 			Depth_32F_Stencil_8,
-			
+
 			RGBA_BC1_SRGB,
 			RGBA_BC2_SRGB,
 			RGBA_BC3_SRGB,
 			RGBA_BC7_SRGB,
-			
+
 			RGBA_BC1,
 			RGBA_BC2,
 			RGBA_BC3,
 			RGBA_BC4,
 			RGBA_BC5,
 			RGBA_BC7,
-			
+
 			RGBA_ASTC_4X4_SRGB,
 			RGBA_ASTC_5X4_SRGB,
 			RGBA_ASTC_5X5_SRGB,
@@ -81,7 +81,7 @@ namespace RN
 			RGBA_ASTC_10X10_SRGB,
 			RGBA_ASTC_12X10_SRGB,
 			RGBA_ASTC_12X12_SRGB,
-			
+
 			RGBA_ASTC_4X4,
 			RGBA_ASTC_5X4,
 			RGBA_ASTC_5X5,
@@ -112,10 +112,10 @@ namespace RN
 		};
 
 		RN_OPTIONS(UsageHint, uint32,
-			ShaderRead = (1 << 0),
-			ShaderWrite = (1 << 1),
-			RenderTarget = (1 << 2),
-			Subsampled = (1 << 3));
+				   ShaderRead = (1 << 0),
+				   ShaderWrite = (1 << 1),
+				   RenderTarget = (1 << 2),
+				   Subsampled = (1 << 3));
 
 		struct Descriptor
 		{
@@ -134,7 +134,6 @@ namespace RN
 				preferredClearDepth(1.0f),
 				preferredClearStencil(0)
 			{
-
 			}
 
 			static Descriptor With2DTextureAndFormat(Format format, uint32 width, uint32 height, bool mipMapped)
@@ -187,15 +186,15 @@ namespace RN
 
 			uint32 GetWidthForMipMapLevel(uint8 mipmapLevel) const
 			{
-				int newWidth = width/std::pow(2, mipmapLevel);
-				newWidth -= newWidth%2;
+				int newWidth = width / std::pow(2, mipmapLevel);
+				newWidth -= newWidth % 2;
 				return std::max(newWidth, 1);
 			}
 
 			uint32 GetHeightForMipMapLevel(uint8 mipmapLevel) const
 			{
-				int newHeight = height/std::pow(2, mipmapLevel);
-				newHeight -= newHeight%2;
+				int newHeight = height / std::pow(2, mipmapLevel);
+				newHeight -= newHeight % 2;
 				return std::max(newHeight, 1);
 			}
 
@@ -265,9 +264,9 @@ namespace RN
 		RNAPI static Texture *WithPNGData(const Data *data, const Dictionary *settings = nullptr);
 		RNAPI static Texture *WithDescriptor(const Descriptor &descriptor);
 
-		RNAPI virtual void StartStreamingData(const Region &region){};
-		RNAPI virtual void StopStreamingData(){};
-		
+		RNAPI virtual void StartStreamingData(const Region &region) {};
+		RNAPI virtual void StopStreamingData() {};
+
 		RNAPI virtual void SetData(uint32 mipmapLevel, const void *bytes, size_t bytesPerRow, size_t numberOfRows) = 0;
 		RNAPI virtual void SetData(const Region &region, uint32 mipmapLevel, const void *bytes, size_t bytesPerRow, size_t numberOfRows) = 0;
 		RNAPI virtual void SetData(const Region &region, uint32 mipmapLevel, uint32 slice, const void *bytes, size_t bytesPerRow, size_t numberOfRows) = 0;
@@ -288,7 +287,7 @@ namespace RN
 	};
 
 	RNExceptionType(InvalidTextureFormat)
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_TEXTURE_H_ */

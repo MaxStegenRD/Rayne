@@ -7,8 +7,8 @@
 //
 
 #include "RNRendererDescriptor.h"
-#include "RNRenderer.h"
 #include "../Base/RNKernel.h"
+#include "RNRenderer.h"
 
 namespace RN
 {
@@ -41,9 +41,6 @@ namespace RN
 			PrepareWithSettings(settings);
 		}
 	}
-
-
-
 
 
 	Dictionary *RendererDescriptor::GetSettings()
@@ -82,7 +79,6 @@ namespace RN
 	}
 
 
-
 	Array *RendererDescriptor::GetRenderers()
 	{
 		return RendererDescriptor::GetExtensionPoint()->GetExtensions();
@@ -93,10 +89,8 @@ namespace RN
 		Dictionary *settings = GetParameters(additionalSettings);
 
 		return GetRenderers()->GetObjectsPassingTest<RendererDescriptor>([&](RendererDescriptor *descriptor, bool &stop) -> bool {
-
 			descriptor->__PrepareWithSettings(settings);
 			return descriptor->CanCreateRenderer();
-
 		});
 	}
 
@@ -121,13 +115,11 @@ namespace RN
 		RendererDescriptor *descriptor = nullptr;
 
 		GetRenderers()->Enumerate<RendererDescriptor>([&](RendererDescriptor *tdescriptor, size_t index, bool &stop) {
-
 			if(tdescriptor->GetIdentifier()->IsEqual(identifier))
 			{
 				stop = true;
 				descriptor = tdescriptor;
 			}
-
 		});
 
 		if(descriptor)
@@ -171,4 +163,4 @@ namespace RN
 
 		return renderer;
 	}
-}
+} // namespace RN

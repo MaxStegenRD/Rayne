@@ -10,18 +10,16 @@
 
 namespace RN
 {
-	AppleXRSwapChain::AppleXRSwapChain(cp_layer_renderer_t layerRenderer) : _layerRenderer(layerRenderer)
+	AppleXRSwapChain::AppleXRSwapChain(cp_layer_renderer_t layerRenderer) :
+		_layerRenderer(layerRenderer)
 	{
-
 	}
 
 	AppleXRSwapChain::~AppleXRSwapChain()
 	{
-		
 	}
 
 	void AppleXRSwapChain::UpdatePredictedPose()
 	{
-		
 	}
-}
+} // namespace RN

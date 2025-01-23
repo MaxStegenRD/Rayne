@@ -10,20 +10,20 @@
 #include "RNKernel.h"
 
 #if RN_PLATFORM_WINDOWS
-#include <io.h>
-#include <fcntl.h>
+	#include <fcntl.h>
+	#include <io.h>
 #else
-#include <locale>
+	#include <locale>
 #endif
 
 #if RN_PLATFORM_ANDROID
-#include <android/log.h>
-#include <sys/prctl.h>
+	#include <android/log.h>
+	#include <sys/prctl.h>
 #endif
 
 #if RN_PLATFORM_MAC_OS
 
-@interface RNApplication : NSApplication <NSApplicationDelegate>
+@interface RNApplication : NSApplication<NSApplicationDelegate>
 @end
 
 @implementation RNApplication
@@ -42,13 +42,13 @@
 	{
 		[[self keyWindow] sendEvent:event];
 	}
-	
+
 	if([event type] == NSEventTypeKeyDown || [event type] == NSEventTypeKeyUp)
 	{
 		RN::InputManager *inputManager = RN::InputManager::GetSharedInstance();
 		if(inputManager) inputManager->ProcessKeyEvent([event keyCode], [event type] == NSEventTypeKeyDown);
 	}
-	
+
 	if([event type] == NSEventTypeFlagsChanged)
 	{
 		//https://developer.apple.com/documentation/appkit/nseventmodifierflags?language=objc
@@ -59,7 +59,7 @@
 			keyCode = 56;
 			isPressed = (event.modifierFlags & NSEventModifierFlagShift);
 		}
-		
+
 		RN::InputManager *inputManager = RN::InputManager::GetSharedInstance();
 		if(inputManager) inputManager->ProcessKeyEvent(keyCode, isPressed);
 	}
@@ -93,16 +93,16 @@
 #if RN_PLATFORM_ANDROID
 void Android_handle_cmd(android_app *app, int32_t cmd)
 {
-    switch(cmd)
-    {
-        case APP_CMD_INIT_WINDOW:
-            // The window is being shown, get it ready.
-            RN::NotificationManager::GetSharedInstance()->PostNotification(kRNAndroidWindowDidChange, nullptr);
-            break;
-        case APP_CMD_TERM_WINDOW:
-            // The window is being hidden or closed, clean it up.
-            RN::NotificationManager::GetSharedInstance()->PostNotification(kRNAndroidWindowDidChange, nullptr);
-            break;
+	switch(cmd)
+	{
+		case APP_CMD_INIT_WINDOW:
+			// The window is being shown, get it ready.
+			RN::NotificationManager::GetSharedInstance()->PostNotification(kRNAndroidWindowDidChange, nullptr);
+			break;
+		case APP_CMD_TERM_WINDOW:
+			// The window is being hidden or closed, clean it up.
+			RN::NotificationManager::GetSharedInstance()->PostNotification(kRNAndroidWindowDidChange, nullptr);
+			break;
 		case APP_CMD_RESUME:
 			// The window is being hidden or closed, clean it up.
 			RN::NotificationManager::GetSharedInstance()->PostNotification(kRNAndroidOnResume, nullptr);
@@ -110,52 +110,52 @@ void Android_handle_cmd(android_app *app, int32_t cmd)
 		case APP_CMD_DESTROY:
 			RN::NotificationManager::GetSharedInstance()->PostNotification(kRNAndroidOnDestroy, nullptr);
 			break;
-        default:
-            RNDebug("event not handled: " << cmd);
-    }
+		default:
+			RNDebug("event not handled: " << cmd);
+	}
 }
 
 // Helpder class to forward the cout/cerr output to logcat derived from:
 // http://stackoverflow.com/questions/8870174/is-stdcout-usable-in-android-ndk
 class AndroidBuffer : public std::streambuf
 {
-	public:
-		AndroidBuffer(android_LogPriority priority)
+public:
+	AndroidBuffer(android_LogPriority priority)
+	{
+		priority_ = priority;
+		this->setp(buffer_, buffer_ + kBufferSize - 1);
+	}
+
+private:
+	static const size_t kBufferSize = 1024;
+	int32_t overflow(int32_t c)
+	{
+		if(c == traits_type::eof())
 		{
-			priority_ = priority;
+			*this->pptr() = traits_type::to_char_type(c);
+			this->sbumpc();
+		}
+		return this->sync() < 0 ? traits_type::eof() : traits_type::not_eof(c);
+	}
+
+	int32_t sync()
+	{
+		int32_t rc = 0;
+		if(this->pbase() != this->pptr())
+		{
+			size_t sizeToWrite = this->pptr() - this->pbase();
+			char writebuf[kBufferSize + 1];
+			memcpy(writebuf, this->pbase(), sizeToWrite); //Truncate logs if longer than the size of the buffer
+			writebuf[sizeToWrite] = '\0';
+
+			rc = __android_log_write(priority_, "std", writebuf) > 0 ? 0 : -1;
 			this->setp(buffer_, buffer_ + kBufferSize - 1);
 		}
+		return rc;
+	}
 
-	private:
-		static const size_t kBufferSize = 1024;
-		int32_t overflow(int32_t c)
-		{
-			if(c == traits_type::eof())
-			{
-				*this->pptr() = traits_type::to_char_type(c);
-				this->sbumpc();
-			}
-			return this->sync() < 0? traits_type::eof() : traits_type::not_eof(c);
-		}
-
-		int32_t sync()
-		{
-			int32_t rc = 0;
-			if(this->pbase() != this->pptr())
-			{
-				size_t sizeToWrite = this->pptr() - this->pbase();
-				char writebuf[kBufferSize + 1];
-				memcpy(writebuf, this->pbase(), sizeToWrite); //Truncate logs if longer than the size of the buffer
-				writebuf[sizeToWrite] = '\0';
-
-				rc = __android_log_write(priority_, "std", writebuf) > 0? 0 : -1;
-				this->setp(buffer_, buffer_ + kBufferSize - 1);
-			}
-			return rc;
-		}
-
-		android_LogPriority priority_ = ANDROID_LOG_INFO;
-		char buffer_[kBufferSize];
+	android_LogPriority priority_ = ANDROID_LOG_INFO;
+	char buffer_[kBufferSize];
 };
 #endif
 
@@ -200,36 +200,39 @@ namespace RN
 			Kernel *result = new Kernel(app, arguments);
 
 #if RN_PLATFORM_ANDROID
-			android_app *androidApp = static_cast<android_app*>(object);
+			android_app *androidApp = static_cast<android_app *>(object);
 			RN_ASSERT(androidApp, "Object needs to be a pointer to the android_app object for Android builds.");
 
 			androidApp->onAppCmd = Android_handle_cmd;
 			result->SetAndroidApp(androidApp);
-			
+
 			JNIEnv *env = nullptr;
 			androidApp->activity->vm->AttachCurrentThread(&env, nullptr);
-			
+
 			// Note that AttachCurrentThread will reset the thread name.
 			prctl(PR_SET_NAME, (long)"RN::Main", 0, 0, 0);
-			
+
 			result->SetJNIEnvForRayneMainThread(env);
 #endif
 
 #if RN_PLATFORM_MAC_OS
-			@autoreleasepool {
+			@autoreleasepool
+			{
 				result->Bootstrap();
 			}
 #elif RN_PLATFORM_IOS
 			RN_ASSERT(object, "Object needs to be a pointer to a CAMetalLayer for iOS builds.");
-			
-			@autoreleasepool {
+
+			@autoreleasepool
+			{
 				result->SetMetalLayer(object);
 				result->Bootstrap();
 			}
 #elif RN_PLATFORM_VISIONOS
 			RN_ASSERT(object, "Object needs to be a pointer to a Layer Renderer for visionOS builds.");
-			
-			@autoreleasepool {
+
+			@autoreleasepool
+			{
 				result->SetLayerRenderer(object);
 				result->Bootstrap();
 			}
@@ -245,9 +248,10 @@ namespace RN
 #if RN_PLATFORM_ANDROID
 			kernel->GetAndroidApp()->activity->vm->DetachCurrentThread();
 #endif
-			
+
 #if RN_PLATFORM_MAC_OS || RN_PLATFORM_IOS || RN_PLATFORM_VISIONOS
-			@autoreleasepool {
+			@autoreleasepool
+			{
 				kernel->TearDown();
 			}
 #else
@@ -289,7 +293,8 @@ namespace RN
 #endif
 
 #if RN_PLATFORM_MAC_OS
-		@autoreleasepool {
+		@autoreleasepool
+		{
 			[RNApplication sharedApplication];
 			[NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
 			[NSApp finishLaunching];
@@ -297,8 +302,8 @@ namespace RN
 			[[RNApplication sharedApplication] setDelegate:(RNApplication *)[RNApplication sharedApplication]];
 			[[RNApplication sharedApplication] activateIgnoringOtherApps:YES];
 
-			@autoreleasepool {
-
+			@autoreleasepool
+			{
 				NSDate *date = [NSDate date];
 				NSEvent *event;
 
@@ -396,4 +401,4 @@ namespace RN
 
 		return versionString;
 	}
-}
+} // namespace RN

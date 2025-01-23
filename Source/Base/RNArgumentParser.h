@@ -9,10 +9,10 @@
 #ifndef __RAYNE_ARGUMENTPARSER_H_
 #define __RAYNE_ARGUMENTPARSER_H_
 
-#include "RNBase.h"
 #include "../Data/RNAny.h"
 #include "../Objects/RNArray.h"
 #include "../Objects/RNString.h"
+#include "RNBase.h"
 
 namespace RN
 {
@@ -51,7 +51,7 @@ namespace RN
 	};
 
 	RNExceptionType(ArgumentNotFound)
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_ARGUMENTPARSER_H_ */

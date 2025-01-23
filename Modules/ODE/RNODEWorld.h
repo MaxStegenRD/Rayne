@@ -45,9 +45,9 @@ namespace RN
 		ODEAPI void InsertCollisionObject(ODECollisionObject *attachment);
 		ODEAPI void RemoveCollisionObject(ODECollisionObject *attachment);
 
-//		ODEAPI void InsertConstraint(BulletConstraint *constraint);
+		//		ODEAPI void InsertConstraint(BulletConstraint *constraint);
 
-//		ODEAPI btDynamicsWorld *GetODEDynamicsWorld() { return _dynamicsWorld; }
+		//		ODEAPI btDynamicsWorld *GetODEDynamicsWorld() { return _dynamicsWorld; }
 
 		ODEAPI void SetPaused(bool paused);
 
@@ -71,7 +71,7 @@ namespace RN
 
 		RNDeclareMetaAPI(ODEWorld, ODEAPI)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_ODEWORLD_H_ */

@@ -10,9 +10,9 @@
 #define __RAYNE_FILEMANAGER_H__
 
 #include "../Base/RNBase.h"
-#include "../Objects/RNString.h"
 #include "../Objects/RNArray.h"
 #include "../Objects/RNDictionary.h"
+#include "../Objects/RNString.h"
 
 namespace RN
 {
@@ -94,7 +94,7 @@ namespace RN
 
 		RN_OPTIONS(ResolveHint, uint32,
 				   CreateNode = (1 << 0),
-		           IgnoreModifiers = (1 << 1));
+				   IgnoreModifiers = (1 << 1));
 
 		enum class Location
 		{
@@ -111,11 +111,11 @@ namespace RN
 
 		RNAPI String *GetPathForLocation(Location location);
 		RNAPI String *GetNormalizedPathFromFullPath(const String *fullPath);
-		
+
 		RNAPI bool RenameFile(const String *oldPath, const String *newPath, bool overwrite = true);
 		RNAPI bool CreateDirectory(const String *path);
 		RNAPI bool DeleteFile(const String *path);
-		
+
 		RNAPI Directory *WalkableDirectory(const String *path);
 
 		RNAPI void AddSearchPath(const String *path);
@@ -147,6 +147,6 @@ namespace RN
 		Array *_androidAppBundleFiles;
 #endif
 	};
-}
+} // namespace RN
 
 #endif /* __RAYNE_FILEMANAGER_H__ */

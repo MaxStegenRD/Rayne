@@ -8,13 +8,13 @@
 
 #include "RNSceneBasic.h"
 #include "../Debug/RNLogger.h"
-#include "../Threads/RNWorkQueue.h"
-#include "../Threads/RNWorkGroup.h"
-#include "../Objects/RNAutoreleasePool.h"
-#include "../Scene/RNEntity.h"
-#include "../Rendering/RNModel.h"
-#include "../Rendering/RNMesh.h"
 #include "../Math/RNRandom.h"
+#include "../Objects/RNAutoreleasePool.h"
+#include "../Rendering/RNMesh.h"
+#include "../Rendering/RNModel.h"
+#include "../Scene/RNEntity.h"
+#include "../Threads/RNWorkGroup.h"
+#include "../Threads/RNWorkQueue.h"
 
 #define kRNSceneUpdateBatchSize 8192 //1024
 #define kRNSceneRenderBatchSize 32
@@ -35,17 +35,19 @@ namespace RN
 		return (c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x);
 	}
 
-	SceneBasicInfo::SceneBasicInfo(Scene *scene) : SceneInfo(scene), occludedFrameCounter(0)
+	SceneBasicInfo::SceneBasicInfo(Scene *scene) :
+		SceneInfo(scene), occludedFrameCounter(0)
 	{
 		ZoneScoped;
 	}
 
-	SceneBasic::SceneBasic() : _nodesToRemove(new Array()), _occlusionDepthBufferWidth(40), _occlusionDepthBufferHeight(40), _currentFrameCount(0)
+	SceneBasic::SceneBasic() :
+		_nodesToRemove(new Array()), _occlusionDepthBufferWidth(40), _occlusionDepthBufferHeight(40), _currentFrameCount(0)
 	{
 		ZoneScoped;
 		_occlusionDepthBuffer = new float[_occlusionDepthBufferWidth * _occlusionDepthBufferHeight];
 	}
-	
+
 	SceneBasic::~SceneBasic()
 	{
 		ZoneScoped;
@@ -60,10 +62,10 @@ namespace RN
 
 		WorkQueue *queue = WorkQueue::GetGlobalQueue(WorkQueue::Priority::Default);
 
-		for(size_t i = 0; i < 4; i ++)
+		for(size_t i = 0; i < 4; i++)
 		{
 			ZoneScopedN("Update by Priority");
-            WorkGroup *group = nullptr;
+			WorkGroup *group = nullptr;
 			IntrusiveList<SceneNode>::Member *member = _updateNodes[i].GetHead();
 			IntrusiveList<SceneNode>::Member *first = member;
 
@@ -73,9 +75,8 @@ namespace RN
 			{
 				if(count == kRNSceneUpdateBatchSize)
 				{
-				    if(!group) group = new WorkGroup();
+					if(!group) group = new WorkGroup();
 					group->Perform(queue, [&, member, first] {
-						
 						ZoneScopedN("Update Batch");
 
 						AutoreleasePool pool;
@@ -87,7 +88,6 @@ namespace RN
 							UpdateNode(node, delta);
 							iterator = iterator->GetNext();
 						}
-
 					});
 
 					first = member;
@@ -95,39 +95,39 @@ namespace RN
 				}
 
 				member = member->GetNext();
-				count ++;
+				count++;
 			}
 
 			//Update remaining less than kRNSceneUpdateBatchSize number of nodes
 			if(first != member)
 			{
-//				group->Perform(queue, [&, member, first] {
-				
-					ZoneScopedN("Update Last Batch");
+				//				group->Perform(queue, [&, member, first] {
 
-					AutoreleasePool pool;
-					auto iterator = first;
+				ZoneScopedN("Update Last Batch");
 
-					while(iterator != member)
-					{
-						SceneNode *node = iterator->Get();
-						UpdateNode(node, delta);
-						iterator = iterator->GetNext();
-					}
+				AutoreleasePool pool;
+				auto iterator = first;
 
-//				});
+				while(iterator != member)
+				{
+					SceneNode *node = iterator->Get();
+					UpdateNode(node, delta);
+					iterator = iterator->GetNext();
+				}
+
+				//				});
 			}
 
 			if(group)
-            {
-			    group->Wait();
-                group->Release();
-            }
+			{
+				group->Wait();
+				group->Release();
+			}
 		}
 
 		Scene::Update(delta);
 		DidUpdate(delta);
-		
+
 		FlushDeletionQueue();
 	}
 
@@ -136,7 +136,6 @@ namespace RN
 		ZoneScoped;
 		bool didUpdateCameras = false;
 		_nodesToRemove->Enumerate<SceneNode>([&](SceneNode *node, size_t index, bool &stop) {
-
 			if(node->IsKindOfClass(Camera::GetMetaClass()))
 			{
 				Camera *camera = static_cast<Camera *>(node);
@@ -167,46 +166,46 @@ namespace RN
 	void SceneBasic::RasterizeClipSpaceTriangle(Vector4 A, Vector4 B, Vector4 C)
 	{
 		if(edgeFunction(Vector2(A), Vector2(B), Vector2(C)) < 0) return; //Triangle is facing away, can just skip completely
-		
+
 		A /= A.w;
 		A.x = A.x * 0.5f + 0.5f;
 		A.x *= _occlusionDepthBufferWidth;
 		A.y = A.y * 0.5f + 0.5f;
 		A.y *= _occlusionDepthBufferHeight;
-		
+
 		B /= B.w;
 		B.x = B.x * 0.5f + 0.5f;
 		B.x *= _occlusionDepthBufferWidth;
 		B.y = B.y * 0.5f + 0.5f;
 		B.y *= _occlusionDepthBufferHeight;
-		
+
 		C /= C.w;
 		C.x = C.x * 0.5f + 0.5f;
 		C.x *= _occlusionDepthBufferWidth;
 		C.y = C.y * 0.5f + 0.5f;
 		C.y *= _occlusionDepthBufferHeight;
-		
-		uint16 minX = std::min(std::max(std::min(A.x, std::min(B.x, C.x)), 0.0f), static_cast<float>(_occlusionDepthBufferWidth-1));
-		uint16 minY = std::min(std::max(std::min(A.y, std::min(B.y, C.y)), 0.0f), static_cast<float>(_occlusionDepthBufferHeight-1));
-		
-		uint16 maxX = std::min(std::max(std::max(A.x, std::max(B.x, C.x)), 0.0f), static_cast<float>(_occlusionDepthBufferWidth-1));
-		uint16 maxY = std::min(std::max(std::max(A.y, std::max(B.y, C.y)), 0.0f), static_cast<float>(_occlusionDepthBufferHeight-1));
-		
+
+		uint16 minX = std::min(std::max(std::min(A.x, std::min(B.x, C.x)), 0.0f), static_cast<float>(_occlusionDepthBufferWidth - 1));
+		uint16 minY = std::min(std::max(std::min(A.y, std::min(B.y, C.y)), 0.0f), static_cast<float>(_occlusionDepthBufferHeight - 1));
+
+		uint16 maxX = std::min(std::max(std::max(A.x, std::max(B.x, C.x)), 0.0f), static_cast<float>(_occlusionDepthBufferWidth - 1));
+		uint16 maxY = std::min(std::max(std::max(A.y, std::max(B.y, C.y)), 0.0f), static_cast<float>(_occlusionDepthBufferHeight - 1));
+
 		float area = edgeFunction(Vector2(A), Vector2(B), Vector2(C));
-		
+
 		for(uint16 y = minY; y <= maxY; y++)
 		{
 			for(uint16 x = minX; x <= maxX; x++)
 			{
 				Vector2 point(x, y);
-				
+
 				float w0 = edgeFunction(Vector2(B), Vector2(C), point);
 				if(w0 < 0) continue;
 				float w1 = edgeFunction(Vector2(C), Vector2(A), point);
 				if(w1 < 0) continue;
 				float w2 = edgeFunction(Vector2(A), Vector2(B), point);
 				if(w2 < 0) continue;
-				
+
 				float depth = (w0 * A.z + w1 * B.z + w2 * C.z) / area - OCCLUSION_DEPTH_BIAS; //Add a bit of an offset to prevent precision issues
 				if(depth <= 1.0f)
 				{
@@ -231,19 +230,19 @@ namespace RN
 			const Vector3 &posA = *iterator++;
 			const Vector3 &posB = *iterator++;
 			const Vector3 &posC = *iterator;
-			if(i < triangleCount-1)
+			if(i < triangleCount - 1)
 			{
 				iterator++;
 			}
-			
+
 			Vector4 A = matModelViewProj * Vector4(posB, 1.0f);
 			Vector4 B = matModelViewProj * Vector4(posA, 1.0f);
 			Vector4 C = matModelViewProj * Vector4(posC, 1.0f);
-			
+
 			//Skip triangle if all vertices are on the same side of the near or far clip planes
 			if(A.z < -A.w && B.z < -B.w && C.z < -C.w) continue;
 			if(A.z > A.w && B.z > B.w && C.z > C.w) continue;
-			
+
 			//Handle clipping of triangles that intersect the near plane, otherwise dividing by w will cause all kind of issues
 			if(A.z > A.w && B.z > B.w)
 			{
@@ -251,11 +250,11 @@ namespace RN
 				float dA = (A.z - (A.w));
 				float dB = (B.z - (B.w));
 				float dC = (C.z - (C.w));
-				float tA = dA/(dA-dC);
-				float tB = dB/(dB-dC);
-				
-				A = A + (C-A) * tA;
-				B = B + (C-B) * tB;
+				float tA = dA / (dA - dC);
+				float tB = dB / (dB - dC);
+
+				A = A + (C - A) * tA;
+				B = B + (C - B) * tB;
 			}
 			else if(A.z > A.w && C.z > C.w)
 			{
@@ -263,11 +262,11 @@ namespace RN
 				float dA = (A.z - (A.w));
 				float dB = (B.z - (B.w));
 				float dC = (C.z - (C.w));
-				float tA = dA/(dA-dB);
-				float tC = dC/(dC-dB);
-				
-				A = A + (B-A) * tA;
-				C = C + (B-C) * tC;
+				float tA = dA / (dA - dB);
+				float tC = dC / (dC - dB);
+
+				A = A + (B - A) * tA;
+				C = C + (B - C) * tC;
 			}
 			else if(B.z > B.w && C.z > C.w)
 			{
@@ -275,11 +274,11 @@ namespace RN
 				float dA = (A.z - (A.w));
 				float dB = (B.z - (B.w));
 				float dC = (C.z - (C.w));
-				float tB = dB/(dB-dA);
-				float tC = dC/(dC-dA);
-				
-				B = B + (A-B) * tB;
-				C = C + (A-C) * tC;
+				float tB = dB / (dB - dA);
+				float tC = dC / (dC - dA);
+
+				B = B + (A - B) * tB;
+				C = C + (A - C) * tC;
 			}
 			else if(A.z > A.w)
 			{
@@ -287,13 +286,13 @@ namespace RN
 				float dA = (A.z - (A.w));
 				float dB = (B.z - (B.w));
 				float dC = (C.z - (C.w));
-				float tB = dA/(dA-dB);
-				float tC = dA/(dA-dC);
-				
-				Vector4 AB = A + (B-A) * tB;
-				Vector4 AC = A + (C-A) * tC;
+				float tB = dA / (dA - dB);
+				float tC = dA / (dA - dC);
+
+				Vector4 AB = A + (B - A) * tB;
+				Vector4 AC = A + (C - A) * tC;
 				A = AB;
-				
+
 				RasterizeClipSpaceTriangle(C, AC, AB);
 			}
 			else if(B.z > B.w)
@@ -302,13 +301,13 @@ namespace RN
 				float dA = (A.z - (A.w));
 				float dB = (B.z - (B.w));
 				float dC = (C.z - (C.w));
-				float tA = dB/(dB-dA);
-				float tC = dB/(dB-dC);
-				
-				Vector4 BA = B + (A-B) * tA;
-				Vector4 BC = B + (C-B) * tC;
+				float tA = dB / (dB - dA);
+				float tC = dB / (dB - dC);
+
+				Vector4 BA = B + (A - B) * tA;
+				Vector4 BC = B + (C - B) * tC;
 				B = BA;
-				
+
 				RasterizeClipSpaceTriangle(C, BA, BC);
 			}
 			else if(C.z > C.w)
@@ -317,16 +316,16 @@ namespace RN
 				float dA = (A.z - (A.w));
 				float dB = (B.z - (B.w));
 				float dC = (C.z - (C.w));
-				float tA = dC/(dC-dA);
-				float tB = dC/(dC-dB);
-				
-				Vector4 CA = C + (A-C) * tA;
-				Vector4 CB = C + (B-C) * tB;
+				float tA = dC / (dC - dA);
+				float tB = dC / (dC - dB);
+
+				Vector4 CA = C + (A - C) * tA;
+				Vector4 CB = C + (B - C) * tB;
 				C = CA;
-				
+
 				RasterizeClipSpaceTriangle(B, CB, CA);
 			}
-			
+
 			RasterizeClipSpaceTriangle(A, B, C);
 		}
 	}
@@ -345,25 +344,25 @@ namespace RN
 		boxCorners[5] = position + Vector4(aabb.minExtend.x, aabb.maxExtend.y, aabb.minExtend.z, 0.0f);
 		boxCorners[6] = position + Vector4(aabb.minExtend.x, aabb.minExtend.y, aabb.minExtend.z, 0.0f);
 		boxCorners[7] = position + Vector4(aabb.minExtend.x, aabb.minExtend.y, aabb.maxExtend.z, 0.0f);
-		
+
 		Vector3 maxCorners;
 		Vector3 minCorners;
-		
+
 		//Project corners to camera 2D plane
 		for(int i = 0; i < 8; i++)
 		{
 			boxCorners[i] = matViewProj * boxCorners[i];
-			
+
 			if(boxCorners[i].z > boxCorners[i].w)
 			{
 				//Bounding box intersects near clipping plane, assume as visible
 				return true;
 			}
-			
+
 			boxCorners[i] /= boxCorners[i].w;
 			boxCorners[i].x = boxCorners[i].x * 0.5f + 0.5f;
 			boxCorners[i].y = boxCorners[i].y * 0.5f + 0.5f;
-			
+
 			if(i == 0)
 			{
 				maxCorners = minCorners = Vector3(boxCorners[i]);
@@ -373,15 +372,15 @@ namespace RN
 				maxCorners.x = std::max(maxCorners.x, boxCorners[i].x);
 				maxCorners.y = std::max(maxCorners.y, boxCorners[i].y);
 				maxCorners.z = std::max(maxCorners.z, boxCorners[i].z);
-				
+
 				minCorners.x = std::min(minCorners.x, boxCorners[i].x);
 				minCorners.y = std::min(minCorners.y, boxCorners[i].y);
 				//minCorners.z = std::min(minCorners.z, boxCorners[i].z); //unused
 			}
-			
+
 			//depth is 1 closest to the camera and goes down to 0 the further away it is
 		}
-		
+
 		//Fail depth test for objects that are smaller than a single pixel
 		if((maxCorners.x - minCorners.x) < screenPixelSize.x && (maxCorners.y - minCorners.y) < screenPixelSize.y)
 		{
@@ -389,16 +388,16 @@ namespace RN
 			//RNDebug("failed size test: " << (maxCorners.x - minCorners.x) << " < " << screenPixelSize.x << ", " << (maxCorners.y - minCorners.y) << " < " << screenPixelSize.y);
 			return false;
 		}
-		
+
 		minCorners.x *= _occlusionDepthBufferWidth;
 		minCorners.y *= _occlusionDepthBufferHeight;
-		
+
 		maxCorners.x *= _occlusionDepthBufferWidth;
 		maxCorners.y *= _occlusionDepthBufferHeight;
-		
+
 		uint16 minX = std::max(std::min(std::floor(minCorners.x) - 1.0f, static_cast<float>(_occlusionDepthBufferWidth - 1)), 0.0f);
 		uint16 maxX = std::max(std::min(std::ceil(maxCorners.x) + 1.0f, static_cast<float>(_occlusionDepthBufferWidth - 1)), 0.0f);
-		
+
 		uint16 minY = std::max(std::min(std::floor(minCorners.y) - 1.0f, static_cast<float>(_occlusionDepthBufferHeight - 1)), 0.0f);
 		uint16 maxY = std::max(std::min(std::ceil(maxCorners.y) + 1.0f, static_cast<float>(_occlusionDepthBufferHeight - 1)), 0.0f);
 
@@ -416,7 +415,7 @@ namespace RN
 				}
 			}
 		}
-		
+
 		return false;
 	}
 
@@ -424,7 +423,7 @@ namespace RN
 	{
 		ZoneScoped;
 		WillRender(renderer);
-		
+
 		//Run camera PostUpdate once for each camera
 		IntrusiveList<Camera>::Member *cameraMember = _cameras.GetHead();
 		while(cameraMember)
@@ -448,7 +447,7 @@ namespace RN
 					cameraMember = cameraMember->GetNext();
 					continue;
 				}
-				
+
 				//Multiview cameras need to be skipped, they are rendered through their parent camera
 				if(camera->GetIsMultiviewCamera())
 				{
@@ -460,11 +459,11 @@ namespace RN
 				std::vector<SceneNode *> sceneNodesToRender;
 				size_t firstTransparentIndex = 0;
 				size_t lastTransparentIndex = 0;
-				
+
 				occluders.reserve(_renderNodes.GetCount());
 				sceneNodesToRender.reserve(_renderNodes.GetCount());
-				
-				IntrusiveList<SceneNode>::Member *firstNodeMember = camera->_firstNodeMember? camera->_firstNodeMember : _renderNodes.GetHead();
+
+				IntrusiveList<SceneNode>::Member *firstNodeMember = camera->_firstNodeMember ? camera->_firstNodeMember : _renderNodes.GetHead();
 				IntrusiveList<SceneNode>::Member *nodeMember = firstNodeMember;
 				if(!(camera->GetFlags() & Camera::Flags::NoOcclusionCulling))
 				{
@@ -476,50 +475,48 @@ namespace RN
 						SceneNode *node = nodeMember->Get();
 						if(node->HasFlags(SceneNode::Flags::Occluder) && node->CanRender(renderer, camera))
 						{
-							SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo*>(node->GetSceneInfo());
+							SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo *>(node->GetSceneInfo());
 							sceneInfo->occluderDistance = std::max(node->GetWorldPosition().GetSquaredDistance(cameraWorldPosition), 1.0f);
 							sceneInfo->occluderSize = node->GetBoundingSphere().radius * node->GetBoundingSphere().radius / sceneInfo->occluderDistance;
 							sceneInfo->isActiveOccluder = false;
 							occluders.push_back(node);
 						}
-						
+
 						nodeMember = nodeMember->GetNext();
 					}
-					
+
 					nodeMember = firstNodeMember;
 				}
-				
+
 				//Do occlusion culling if there are 1 or more occluders!
 				if(occluders.size() > 0)
 				{
 					ZoneScopedN("Collect Entities with Occlusion Culling");
 					{
 						ZoneScopedN("Find 30 biggest occluders");
-						
+
 						//Sort occluders by approximated size on the screen
-						std::sort(occluders.begin(), occluders.end(), [](
-								SceneNode *a, SceneNode *b) {
-							SceneBasicInfo *sceneInfoA = static_cast<SceneBasicInfo*>(a->GetSceneInfo());
-							SceneBasicInfo *sceneInfoB = static_cast<SceneBasicInfo*>(b->GetSceneInfo());
+						std::sort(occluders.begin(), occluders.end(), [](SceneNode *a, SceneNode *b) {
+							SceneBasicInfo *sceneInfoA = static_cast<SceneBasicInfo *>(a->GetSceneInfo());
+							SceneBasicInfo *sceneInfoB = static_cast<SceneBasicInfo *>(b->GetSceneInfo());
 							return sceneInfoA->occluderSize > sceneInfoB->occluderSize;
 						});
-						
+
 						occluders.resize(std::min(static_cast<size_t>(30), occluders.size())); //Only keep the biggest 30 occluders in the list
-						
+
 						//Sort remaining occluders front to back
-						std::sort(occluders.begin(), occluders.end(), [](
-								SceneNode *a, SceneNode *b) {
-							SceneBasicInfo *sceneInfoA = static_cast<SceneBasicInfo*>(a->GetSceneInfo());
-							SceneBasicInfo *sceneInfoB = static_cast<SceneBasicInfo*>(b->GetSceneInfo());
+						std::sort(occluders.begin(), occluders.end(), [](SceneNode *a, SceneNode *b) {
+							SceneBasicInfo *sceneInfoA = static_cast<SceneBasicInfo *>(a->GetSceneInfo());
+							SceneBasicInfo *sceneInfoB = static_cast<SceneBasicInfo *>(b->GetSceneInfo());
 							return sceneInfoA->occluderDistance < sceneInfoB->occluderDistance;
 						});
 					}
-					
+
 					//Clear occlusion depth map
 					std::fill(_occlusionDepthBuffer, _occlusionDepthBuffer + _occlusionDepthBufferWidth * _occlusionDepthBufferHeight, 0.0f);
-					
-					Vector2 screenPixelSize = Vector2(1.0f/camera->GetRenderPass()->GetFrame().width, 1.0f/camera->GetRenderPass()->GetFrame().height);
-					
+
+					Vector2 screenPixelSize = Vector2(1.0f / camera->GetRenderPass()->GetFrame().width, 1.0f / camera->GetRenderPass()->GetFrame().height);
+
 					Vector3 randomCameraOffset = RandomNumberGenerator::GetSharedGenerator()->GetRandomVector3Range(RN::Vector3(-OCCLUSION_JITTER, -OCCLUSION_JITTER, 0.0f), RN::Vector3(OCCLUSION_JITTER, OCCLUSION_JITTER, 0.0f));
 					Matrix matViewProj = camera->GetProjectionMatrix() * Matrix::WithTranslation(randomCameraOffset) * camera->GetViewMatrix();
 					if(camera->GetIsMultiviewCamera())
@@ -528,15 +525,15 @@ namespace RN
 						RN::Camera *multiviewCamera = camera->GetMultiviewCameras()->GetObjectAtIndex<RN::Camera>(multiviewIndex);
 						matViewProj = multiviewCamera->GetProjectionMatrix() * multiviewCamera->GetViewMatrix();
 					}
-					
+
 					{
 						ZoneScopedN("Render Occluder Depth");
-						
+
 						//Render occluders to depth buffer first (first test if the bounding box is visible at all)
-						for(SceneNode *node : occluders)
+						for(SceneNode *node: occluders)
 						{
 							bool testResult = TestBoundingBox(matViewProj, node->GetBoundingBox(), screenPixelSize);
-							SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo*>(node->GetSceneInfo());
+							SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo *>(node->GetSceneInfo());
 							sceneInfo->isActiveOccluder = true;
 							if(!testResult && sceneInfo->occludedFrameCounter < 1000)
 							{
@@ -549,14 +546,14 @@ namespace RN
 									sceneInfo->occludedFrameCounter = 0;
 								}
 							}
-							
+
 							if(testResult)
 							{
 								RN::Entity *entity = node->Downcast<Entity>();
 								if(entity)
 								{
 									Matrix matModelViewProj = matViewProj * node->GetWorldTransform();
-									
+
 									Model *model = entity->GetModel();
 									RN::Model::LODStage *lodStage = model->GetLODStage(0);
 									for(int i = 0; i < lodStage->GetCount(); i++)
@@ -568,10 +565,10 @@ namespace RN
 							}
 						}
 					}
-					
+
 					{
 						ZoneScopedN("Test Objects");
-						
+
 						//Test all visible objects against depth buffer
 						while(nodeMember)
 						{
@@ -591,19 +588,19 @@ namespace RN
 								sceneNodesToRender.push_back(node);
 								continue;
 							}
-							
+
 							if(node->GetFlags() & SceneNode::Flags::Occluder)
 							{
-								SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo*>(node->GetSceneInfo());
+								SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo *>(node->GetSceneInfo());
 								if(sceneInfo->isActiveOccluder && sceneInfo->occludedFrameCounter < OCCLUSION_FRAMECOUNT)
 								{
 									sceneNodesToRender.push_back(node);
 									continue;
 								}
 							}
-							
+
 							bool testResult = TestBoundingBox(matViewProj, node->GetBoundingBox(), screenPixelSize);
-							SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo*>(node->GetSceneInfo());
+							SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo *>(node->GetSceneInfo());
 							if(!testResult && sceneInfo->occludedFrameCounter < 1000)
 							{
 								sceneInfo->occludedFrameCounter += 1;
@@ -614,7 +611,7 @@ namespace RN
 								{
 									sceneInfo->occludedFrameCounter = 0;
 								}
-								
+
 								sceneNodesToRender.push_back(node);
 							}
 						}
@@ -631,7 +628,7 @@ namespace RN
 							nodeMember = nodeMember->GetNext();
 							continue;
 						}
-						
+
 						if(node->GetRenderPriority() == SceneNode::RenderTransparent)
 						{
 							if(firstTransparentIndex == 0)
@@ -672,8 +669,7 @@ namespace RN
 				{
 					ZoneScopedN("Sort Opaque");
 					const RN::Vector3 cameraWorldPosition = camera->GetWorldPosition();
-					std::sort(sceneNodesToRender.begin(), sceneNodesToRender.end(), [cameraWorldPosition](
-							SceneNode *a, SceneNode *b) {
+					std::sort(sceneNodesToRender.begin(), sceneNodesToRender.end(), [cameraWorldPosition](SceneNode *a, SceneNode *b) {
 						if(a->GetRenderPriority() == b->GetRenderPriority() && b->GetRenderPriority() < SceneNode::RenderSky)
 						{
 							return a->GetWorldPosition().GetSquaredDistance(cameraWorldPosition) < b->GetWorldPosition().GetSquaredDistance(cameraWorldPosition);
@@ -681,13 +677,12 @@ namespace RN
 						return a->GetRenderPriority() < b->GetRenderPriority();
 					});
 				}
-				
+
 				if(camera->GetFlags() & Camera::Flags::SortTransparentBackToFront && firstTransparentIndex < lastTransparentIndex)
 				{
 					ZoneScopedN("Sort Transparent");
 					const RN::Vector3 cameraWorldPosition = camera->GetWorldPosition();
-					std::sort(sceneNodesToRender.begin() + firstTransparentIndex, sceneNodesToRender.begin() + lastTransparentIndex + 1, [cameraWorldPosition](
-							SceneNode *a, SceneNode *b) {
+					std::sort(sceneNodesToRender.begin() + firstTransparentIndex, sceneNodesToRender.begin() + lastTransparentIndex + 1, [cameraWorldPosition](SceneNode *a, SceneNode *b) {
 						return a->GetWorldPosition().GetSquaredDistance(cameraWorldPosition) > b->GetWorldPosition().GetSquaredDistance(cameraWorldPosition);
 					});
 				}
@@ -697,7 +692,7 @@ namespace RN
 				renderer->SubmitCamera(camera, [&] {
 					ZoneScopedN("Submit Drawables");
 					//TODO: Add back some multithreading while not breaking the priorities.
-					
+
 					//Submit lights first
 					IntrusiveList<Light>::Member *lightMember = _lights.GetHead();
 					while(lightMember)
@@ -705,12 +700,12 @@ namespace RN
 						Light *light = lightMember->Get();
 						if(light->CanRender(renderer, camera))
 							light->Render(renderer, camera);
-						
+
 						lightMember = lightMember->GetNext();
 					}
-					
+
 					//Submit all drawables for rendering
-					for(SceneNode *node : sceneNodesToRender)
+					for(SceneNode *node: sceneNodesToRender)
 					{
 						node->Render(renderer, camera);
 					}
@@ -719,7 +714,7 @@ namespace RN
 				cameraMember = cameraMember->GetNext();
 			}
 		}
-		
+
 		_currentFrameCount += 1;
 		_currentFrameCount %= 10000;
 
@@ -729,7 +724,7 @@ namespace RN
 	void SceneBasic::AddRenderNode(SceneNode *node)
 	{
 		ZoneScoped;
-		
+
 		Lock();
 		int32 renderPriority = node->GetRenderPriority();
 		if(!_renderNodes.GetHead() || _renderNodes.GetHead()->Get()->GetRenderPriority() >= renderPriority)
@@ -747,10 +742,10 @@ namespace RN
 			{
 				member = member->GetPrevious();
 			}
-			
+
 			_renderNodes.InsertAfter(node->_sceneRenderEntry, member);
 		}
-		
+
 		Unlock();
 	}
 
@@ -769,7 +764,7 @@ namespace RN
 			_nodesToRemove->Lock();
 			_nodesToRemove->RemoveObject(node);
 			_nodesToRemove->Unlock();
-			
+
 			//Remove and insert at the correct position, respecting the render priority.
 			Lock();
 			SceneInfo *sceneInfo = node->GetSceneInfo();
@@ -777,23 +772,23 @@ namespace RN
 			RemoveRenderNode(node);
 			node->UpdateSceneInfo(nullptr);
 			Unlock();
-			
+
 			node->UpdateSceneInfo(sceneInfo);
 			AddRenderNode(node);
 			sceneInfo->Release();
-			
+
 			node->_scheduledForRemovalFromScene = false; //Do this last, so scene change callbacks can check if this is just readding or completely new
-			
+
 			return;
 		}
-		
+
 		RN_ASSERT(node->GetSceneInfo() == nullptr, "AddNode() must be called on a Node not owned by a scene");
-		
+
 		node->Retain();
 		SceneBasicInfo *sceneInfo = new SceneBasicInfo(this);
 		node->UpdateSceneInfo(sceneInfo);
 		sceneInfo->Release();
-    
+
 		if(node->IsKindOfClass(Camera::GetMetaClass()))
 		{
 			Camera *camera = static_cast<Camera *>(node);
@@ -808,22 +803,22 @@ namespace RN
 		{
 			AddRenderNode(node);
 		}
-		
+
 		//Lock to prevent race condition of multiple threads adding nodes at the same time
 		Lock();
 		//PushFront to prevent race condition with scene iterating over the nodes.
 		_updateNodes[static_cast<size_t>(node->GetUpdatePriority())].PushFront(node->_sceneUpdateEntry);
 		Unlock();
 	}
-	
+
 	void SceneBasic::RemoveNode(SceneNode *node)
 	{
 		ZoneScoped;
 		RN_ASSERT(node->GetSceneInfo() && node->GetSceneInfo()->GetScene() == this && node->_scheduledForRemovalFromScene == false, "RemoveNode() must be called on a Node owned by the scene");
-		
+
 		_nodesToRemove->Lock();
 		_nodesToRemove->AddObject(node);
 		_nodesToRemove->Unlock();
 		node->_scheduledForRemovalFromScene = true;
 	}
-}
+} // namespace RN

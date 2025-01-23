@@ -6,19 +6,19 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
-#include "../Debug/RNLogger.h"
-#include "../Assets/RNAssetManager.h"
-#include "../Rendering/RNRenderer.h"
 #include "RNModel.h"
-#include "RNSkeleton.h"
+#include "../Assets/RNAssetManager.h"
+#include "../Debug/RNLogger.h"
+#include "../Rendering/RNRenderer.h"
 #include "RNShadowVolume.h"
+#include "RNSkeleton.h"
 
 namespace RN
 {
 	RNDefineMeta(Model, Asset)
 	RNDefineScopedMeta(Model, LODStage, Object)
 
-	static std::vector<float> __defaultLODFactors({ 0.05f, 0.125f, 0.50f, 0.75f, 0.90f });
+	static std::vector<float> __defaultLODFactors({0.05f, 0.125f, 0.50f, 0.75f, 0.90f});
 
 	Model::Model() :
 		_skeleton(nullptr), _shadowVolume(nullptr),
@@ -29,7 +29,8 @@ namespace RN
 #endif
 	{}
 
-	Model::Model(Mesh *mesh) : Model()
+	Model::Model(Mesh *mesh) :
+		Model()
 	{
 		Material *material = Material::WithShaders(nullptr, nullptr);
 		if(!RN::Renderer::IsHeadless())
@@ -47,7 +48,7 @@ namespace RN
 			material->SetVertexShader(renderer->GetDefaultShader(Shader::Type::Vertex, shaderOptions, Shader::UsageHint::DepthMultiview), Shader::UsageHint::DepthMultiview);
 			material->SetFragmentShader(renderer->GetDefaultShader(Shader::Type::Fragment, shaderOptions, Shader::UsageHint::DepthMultiview), Shader::UsageHint::DepthMultiview);
 		}
-		
+
 		auto &distances = GetDefaultLODFactors();
 		LODStage *stage = AddLODStage(distances[0]);
 
@@ -70,16 +71,17 @@ namespace RN
 		_boundingSphere(other->_boundingSphere)
 	{
 #if RN_MODEL_LOD_DISABLED
-		if(other->_lodStage) _lodStage = other->_lodStage->Copy();
-		else _lodStage = nullptr;
+		if(other->_lodStage)
+			_lodStage = other->_lodStage->Copy();
+		else
+			_lodStage = nullptr;
 #else
 		_lodStages = new Array();
-		other->_lodStages->Enumerate<LODStage>([&](LODStage *stage, size_t index, bool &stop)
-		{
+		other->_lodStages->Enumerate<LODStage>([&](LODStage *stage, size_t index, bool &stop) {
 			_lodStages->AddObject(stage->Copy()->Autorelease());
 		});
 #endif
-		
+
 		_skeleton = SafeRetain(other->_skeleton);
 	}
 
@@ -98,12 +100,12 @@ namespace RN
 		Renderer *renderer = Renderer::GetActiveRenderer();
 		RN_DEBUG_ASSERT(renderer, "No active renderer!");
 		if(!renderer) return;
-		
+
 		for(size_t lodStage = 0; lodStage < GetLODStageCount(); lodStage += 1)
 		{
 			LODStage *stage = GetLODStage(lodStage);
 			size_t count = stage->GetCount();
-			for(size_t i = 0; i < count; i ++)
+			for(size_t i = 0; i < count; i++)
 			{
 				renderer->WarmupDrawable(stage->GetMeshAtIndex(i), stage->GetMaterialAtIndex(i), camera);
 			}
@@ -254,7 +256,7 @@ namespace RN
 
 		size_t count = _lodStages->GetCount();
 
-		for(size_t i = 0; i < count; i ++)
+		for(size_t i = 0; i < count; i++)
 		{
 			LODStage *temp = _lodStages->GetObjectAtIndex<LODStage>(i);
 			temp->_index = i;
@@ -294,36 +296,36 @@ namespace RN
 			return static_cast<Model::LODStage *>(_lodStages->GetObjectAtIndex(0));
 
 		size_t result = 0;
-		for(size_t i = 0; i < count; i ++)
+		for(size_t i = 0; i < count; i++)
 		{
 			LODStage *stage = static_cast<Model::LODStage *>(_lodStages->GetObjectAtIndex(i));
 			if(distance <= stage->GetDistance())
 				return stage;
 
-			result ++;
+			result++;
 		}
 
 		return _lodStages->GetLastObject<LODStage>();
 #endif
 	}
-	
+
 	void Model::SetSkeleton(Skeleton *skeleton)
 	{
 		SafeRelease(_skeleton);
 		_skeleton = SafeRetain(skeleton);
 	}
-	
+
 	Skeleton *Model::GetSkeleton() const
 	{
 		return _skeleton;
 	}
-	
+
 	void Model::SetShadowVolume(ShadowVolume *shadowVolume)
 	{
 		SafeRelease(_shadowVolume);
 		_shadowVolume = SafeRetain(shadowVolume);
 	}
-	
+
 	ShadowVolume *Model::GetShadowVolume() const
 	{
 		return _shadowVolume;
@@ -335,7 +337,7 @@ namespace RN
 
 		LODStage *stage = GetLODStage(0);
 
-		for(LODStage::Group &group : stage->_groups)
+		for(LODStage::Group &group: stage->_groups)
 		{
 			Mesh *mesh = group._mesh;
 
@@ -363,4 +365,4 @@ namespace RN
 		__defaultLODFactors = factors;
 		std::sort(__defaultLODFactors.begin(), __defaultLODFactors.end());
 	}
-}
+} // namespace RN

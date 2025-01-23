@@ -15,57 +15,54 @@ namespace RN
 	RNDefineMeta(ODEBoxShape, ODEShape)
 	RNDefineMeta(ODEStaticPlaneShape, ODEShape)
 	RNDefineMeta(ODETriangleMeshShape, ODEShape)
-//	RNDefineMeta(ODEConvexHullShape, ODEShape)
+	//	RNDefineMeta(ODEConvexHullShape, ODEShape)
 	RNDefineMeta(ODECompoundShape, ODEShape)
-		
+
 	ODEShape::ODEShape()
 	{
-		
 	}
-	
+
 	ODEShape::~ODEShape()
 	{
-
 	}
-		
-		
-		
+
+
 	ODESphereShape::ODESphereShape(float radius)
 	{
 		_radius = radius;
 	}
-		
+
 	ODESphereShape *ODESphereShape::WithRadius(float radius)
 	{
 		ODESphereShape *shape = new ODESphereShape(radius);
 		return shape->Autorelease();
 	}
 
-		
+
 	ODEBoxShape::ODEBoxShape(const Vector3 &halfExtents)
 	{
 		_halfExtents = halfExtents;
 	}
-		
+
 	ODEBoxShape *ODEBoxShape::WithHalfExtents(const Vector3 &halfExtents)
 	{
 		ODEBoxShape *shape = new ODEBoxShape(halfExtents);
 		return shape->Autorelease();
 	}
-		
-		
+
+
 	ODEStaticPlaneShape::ODEStaticPlaneShape(const Vector3 &normal, float constant)
 	{
 		_plane = RN::Vector4(normal, constant);
 	}
-		
+
 	ODEStaticPlaneShape *ODEStaticPlaneShape::WithNormal(const Vector3 &normal, float constant)
 	{
 		ODEStaticPlaneShape *shape = new ODEStaticPlaneShape(normal, constant);
 		return shape->Autorelease();
 	}
-		
-		
+
+
 	ODETriangleMeshShape::ODETriangleMeshShape(Model *model, Vector3 scale)
 	{
 		Model::LODStage *lodStage = model->GetLODStage(0);
@@ -76,30 +73,29 @@ namespace RN
 			AddMesh(mesh, scale);
 		}
 	}
-		
+
 	ODETriangleMeshShape::ODETriangleMeshShape(Mesh *mesh, Vector3 scale)
 	{
 		AddMesh(mesh, scale);
 	}
-		
+
 	ODETriangleMeshShape::ODETriangleMeshShape(const Array *meshes, Vector3 scale)
 	{
 		meshes->Enumerate<Mesh>([&](Mesh *mesh, size_t index, bool &stop) {
 			AddMesh(mesh, scale);
 		});
 	}
-		
+
 	ODETriangleMeshShape::~ODETriangleMeshShape()
 	{
-		
 	}
-		
+
 	ODETriangleMeshShape *ODETriangleMeshShape::WithModel(Model *model, Vector3 scale)
 	{
 		ODETriangleMeshShape *shape = new ODETriangleMeshShape(model, scale);
 		return shape->Autorelease();
 	}
-		
+
 	void ODETriangleMeshShape::AddMesh(Mesh *mesh, Vector3 scale)
 	{
 		//TODO: Use btTriangleIndexVertexArray which reuses existing indexed vertex data and should be a lot faster to create
@@ -108,7 +104,7 @@ namespace RN
 		RN_ASSERT(vertexAttribute && vertexAttribute->GetType() == PrimitiveType::Vector3, "Mesh needs to have vertices of Vector3!");
 		RN_ASSERT(indexAttribute, "Mesh needs indices!");
 
-/*		physx::PxTriangleMeshDesc meshDesc;
+		/*		physx::PxTriangleMeshDesc meshDesc;
 		meshDesc.points.count = mesh->GetVerticesCount();
 		meshDesc.points.stride = mesh->GetStride();
 		meshDesc.points.data = mesh->GetCPUVertexBuffer();
@@ -138,7 +134,7 @@ namespace RN
 		{
 			for(size_t i = 0; i < mesh->GetIndicesCount(); i++)
 			{
-				uint32 index = indexOffset + static_cast<uint32>(static_cast<uint16*>(mesh->GetCPUIndicesBuffer())[i]);
+				uint32 index = indexOffset + static_cast<uint32>(static_cast<uint16 *>(mesh->GetCPUIndicesBuffer())[i]);
 				_indices.push_back(index);
 			}
 		}
@@ -146,16 +142,16 @@ namespace RN
 		{
 			for(size_t i = 0; i < mesh->GetIndicesCount(); i++)
 			{
-				uint32 index = indexOffset + static_cast<uint32*>(mesh->GetCPUIndicesBuffer())[i];
+				uint32 index = indexOffset + static_cast<uint32 *>(mesh->GetCPUIndicesBuffer())[i];
 				_indices.push_back(index);
 			}
 		}
-		
+
 
 		Mesh::Chunk trichunk = mesh->GetTrianglesChunk();
 		Mesh::ElementIterator<Vector3> normalsIterator = trichunk.GetIterator<Vector3>(Mesh::VertexAttribute::Feature::Normals);
 
-		for(size_t i = 0; i < mesh->GetIndicesCount()/3; i++)
+		for(size_t i = 0; i < mesh->GetIndicesCount() / 3; i++)
 		{
 			if(i > 0) normalsIterator++;
 			const Vector3 &normal1 = *(normalsIterator++);
@@ -169,7 +165,7 @@ namespace RN
 	}
 
 
-/*	ODEConvexHullShape::ODEConvexHullShape(Mesh *mesh)
+	/*	ODEConvexHullShape::ODEConvexHullShape(Mesh *mesh)
 	{
 		const Mesh::VertexAttribute *vertexAttribute = mesh->GetAttribute(Mesh::VertexAttribute::Feature::Vertices);
 		if (!vertexAttribute || vertexAttribute->GetType() != PrimitiveType::Vector3)
@@ -203,7 +199,7 @@ namespace RN
 
 		delete convexHullComputer;
 		_shape = shape;*/
-/*	}
+	/*	}
 
 	ODEConvexHullShape *ODEConvexHullShape::WithMesh(Mesh *mesh)
 	{
@@ -212,22 +208,21 @@ namespace RN
 	}
 	*/
 
-	
+
 	ODECompoundShape::ODECompoundShape()
 	{
-
 	}
-		
+
 	ODECompoundShape::~ODECompoundShape()
 	{
-		for(auto shape : _shapes)
+		for(auto shape: _shapes)
 		{
 			shape->Release();
 		}
 	}
-		
+
 	void ODECompoundShape::AddChild(ODEShape *shape, const RN::Vector3 &position, const RN::Quaternion &rotation)
 	{
 		_shapes.push_back(shape->Retain());
 	}
-}
+} // namespace RN

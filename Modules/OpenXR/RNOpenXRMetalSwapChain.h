@@ -9,8 +9,8 @@
 #ifndef __RAYNE_OpenXRMETALSWAPCHAIN_H_
 #define __RAYNE_OpenXRMETALSWAPCHAIN_H_
 
-#include "RNMetalRenderer.h"
 #include "RNMetalFramebuffer.h"
+#include "RNMetalRenderer.h"
 #include "RNMetalSwapChain.h"
 
 #include "RNOpenXR.h"
@@ -51,6 +51,6 @@ namespace RN
 
 		RNDeclareMetaAPI(OpenXRMetalSwapChain, OXRAPI)
 	};
-}
+} // namespace RN
 
 #endif /* __RAYNE_OpenXRMETALSWAPCHAIN_H_ */

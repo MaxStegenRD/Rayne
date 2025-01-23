@@ -6,13 +6,13 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
+#include "RNInputIOS.h"
 #include "../Base/RNBaseInternal.h"
 #include "../Debug/RNLogger.h"
-#include "RNInputIOS.h"
 
 #define kInputQueueSize 512
 
 namespace RN
 {
-	
+
 }

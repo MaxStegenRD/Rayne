@@ -44,8 +44,8 @@ namespace RN
 			T expectedAndActual = expected;
 			return atomic.compare_exchange_weak(expectedAndActual, desired, order);
 		}
-	}
-}
+	} // namespace __Private
+} // namespace RN
 
 
 #endif /* __RAYNE_LOCKTOOLS_H_ */

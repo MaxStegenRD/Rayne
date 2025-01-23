@@ -10,8 +10,8 @@
 #define __RAYNE_OpenXRWINDOW_H_
 
 #include "RNOpenXR.h"
-#include "RNVRWindow.h"
 #include "RNVRCompositorLayer.h"
+#include "RNVRWindow.h"
 
 namespace RN
 {
@@ -23,10 +23,11 @@ namespace RN
 	struct OpenXRWindowInternals;
 	class OpenXRWindow : public VRWindow
 	{
-	friend OpenXRVulkanSwapChain;
-	friend OpenXRD3D12SwapChain;
-	friend OpenXRMetalSwapChain;
-	friend OpenXRCompositorLayer;
+		friend OpenXRVulkanSwapChain;
+		friend OpenXRD3D12SwapChain;
+		friend OpenXRMetalSwapChain;
+		friend OpenXRCompositorLayer;
+
 	public:
 		OXRAPI OpenXRWindow();
 		OXRAPI ~OpenXRWindow();
@@ -68,13 +69,13 @@ namespace RN
 		OXRAPI void Update(float delta, float near, float far) final;
 
 		OXRAPI VRWindow::DeviceType GetDeviceType() const final;
-		OXRAPI String *GetRuntimeName() const final { return _runtimeName;  }
+		OXRAPI String *GetRuntimeName() const final { return _runtimeName; }
 		OXRAPI VRWindow::Origin GetOrigin() const final { return VRWindow::Origin::Floor; }
 
 		OXRAPI Mesh *GetHiddenAreaMesh(RN::numeric::uint8 eye) const override;
 
 		OXRAPI Array *GetRequiredVulkanInstanceExtensions() const final;
-        OXRAPI Array *GetRequiredVulkanDeviceExtensions(RN::RendererDescriptor *descriptor, RenderingDevice *device) const final;
+		OXRAPI Array *GetRequiredVulkanDeviceExtensions(RN::RendererDescriptor *descriptor, RenderingDevice *device) const final;
 
 	private:
 		void InitializeInput();
@@ -130,7 +131,7 @@ namespace RN
 
 		RNDeclareMetaAPI(OpenXRWindow, OXRAPI)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_OpenXRWINDOW_H_ */

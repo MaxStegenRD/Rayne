@@ -27,21 +27,20 @@ namespace RN
 	RNDefineMeta(ResonanceAudioSystem, Object)
 
 	//TODO: Allow to initialize with preferred device names and fall back to defaults
-	ResonanceAudioSystem::ResonanceAudioSystem(uint32 sampleRate, uint32 frameSize, uint8 channelCount) : _frameSize(frameSize), _sampleRate(sampleRate), _channelCount(channelCount)
+	ResonanceAudioSystem::ResonanceAudioSystem(uint32 sampleRate, uint32 frameSize, uint8 channelCount) :
+		_frameSize(frameSize), _sampleRate(sampleRate), _channelCount(channelCount)
 	{
-
 	}
-		
+
 	ResonanceAudioSystem::~ResonanceAudioSystem()
 	{
-		
 	}
-	
+
 	ResonanceAudioSystem *ResonanceAudioSystem::WithInfo(uint32 sampleRate, uint32 frameSize, uint8 channelCount)
 	{
 		ResonanceAudioSystem *audioSystem = nullptr;
 		audioSystem = new ResonanceAudioSystemMiniAudio(sampleRate, frameSize, channelCount);
-		
+
 		RN_ASSERT(audioSystem, "Couldn't create audio system, platform not supported?");
 		return audioSystem->Autorelease();
 	}
@@ -52,18 +51,19 @@ namespace RN
 
 	ResonanceAudioDeviceMiniAudio::~ResonanceAudioDeviceMiniAudio()
 	{
-		ma_device_id *typedDeviceID = static_cast<ma_device_id*>(deviceID);
+		ma_device_id *typedDeviceID = static_cast<ma_device_id *>(deviceID);
 		if(typedDeviceID) delete typedDeviceID;
 	}
-	
-	ResonanceAudioSystemMiniAudio::ResonanceAudioSystemMiniAudio(uint32 sampleRate, uint32 frameSize, uint8 channelCount) : ResonanceAudioSystem(sampleRate, frameSize, channelCount), _internals(new ResonanceAudioSystemMiniAudioInternals()), _outputDevice(nullptr), _inputDevice(nullptr)
+
+	ResonanceAudioSystemMiniAudio::ResonanceAudioSystemMiniAudio(uint32 sampleRate, uint32 frameSize, uint8 channelCount) :
+		ResonanceAudioSystem(sampleRate, frameSize, channelCount), _internals(new ResonanceAudioSystemMiniAudioInternals()), _outputDevice(nullptr), _inputDevice(nullptr)
 	{
 		if(ma_context_init(NULL, 0, NULL, &_internals->context) != MA_SUCCESS)
 		{
 			// Error.
 		}
 	}
-	
+
 	ResonanceAudioSystemMiniAudio::~ResonanceAudioSystemMiniAudio()
 	{
 		if(_outputDevice)
@@ -82,16 +82,16 @@ namespace RN
 
 		delete _internals;
 	}
-	
-	void ResonanceAudioSystemMiniAudio::AudioCallback(ma_device* pDevice, void* pOutput, const void* pInput, uint32 frameCount)
+
+	void ResonanceAudioSystemMiniAudio::AudioCallback(ma_device *pDevice, void *pOutput, const void *pInput, uint32 frameCount)
 	{
-		ResonanceAudioSystemMiniAudio *instance = static_cast<ResonanceAudioSystemMiniAudio*>(pDevice->pUserData);
+		ResonanceAudioSystemMiniAudio *instance = static_cast<ResonanceAudioSystemMiniAudio *>(pDevice->pUserData);
 		if(instance->_audioCallback)
 		{
 			instance->_audioCallback(pOutput, pInput, frameCount, 0);
 		}
 	}
-	
+
 	void ResonanceAudioSystemMiniAudio::SetOutputDevice(ResonanceAudioDevice *outputDevice)
 	{
 		RN_ASSERT(outputDevice || outputDevice->type == ResonanceAudioDevice::Type::Output, "Not an output device!");
@@ -105,20 +105,20 @@ namespace RN
 		SafeRetain(_outputDevice);
 
 		ma_device_config config = ma_device_config_init(ma_device_type_playback);
-		config.playback.pDeviceID = static_cast<ma_device_id*>(outputDevice->Downcast<ResonanceAudioDeviceMiniAudio>()->deviceID);
-		config.playback.format = ma_format_f32;   // Set to ma_format_unknown to use the device's native format.
-		config.playback.channels = _channelCount;               // Set to 0 to use the device's native channel count.
-		config.sampleRate = _sampleRate;           // Set to 0 to use the device's native sample rate.
+		config.playback.pDeviceID = static_cast<ma_device_id *>(outputDevice->Downcast<ResonanceAudioDeviceMiniAudio>()->deviceID);
+		config.playback.format = ma_format_f32; // Set to ma_format_unknown to use the device's native format.
+		config.playback.channels = _channelCount; // Set to 0 to use the device's native channel count.
+		config.sampleRate = _sampleRate; // Set to 0 to use the device's native sample rate.
 		config.periodSizeInFrames = _frameSize;
-		config.dataCallback = &AudioCallback;   // This function will be called when miniaudio needs more data.
-		config.pUserData = this;   // Can be accessed from the device object (device.pUserData).
+		config.dataCallback = &AudioCallback; // This function will be called when miniaudio needs more data.
+		config.pUserData = this; // Can be accessed from the device object (device.pUserData).
 
 		if(ma_device_init(&_internals->context, &config, &_internals->outputDevice) != MA_SUCCESS)
 		{
-			return;  // Failed to initialize the device.
+			return; // Failed to initialize the device.
 		}
 
-		ma_device_start(&_internals->outputDevice);     // The device is sleeping by default so you'll need to start it manually.
+		ma_device_start(&_internals->outputDevice); // The device is sleeping by default so you'll need to start it manually.
 
 		RNInfo("Using audio output device: " << _outputDevice->name);
 	}
@@ -137,20 +137,20 @@ namespace RN
 		SafeRetain(_inputDevice);
 
 		ma_device_config config = ma_device_config_init(ma_device_type_capture);
-		config.playback.pDeviceID = static_cast<ma_device_id*>(inputDevice->Downcast<ResonanceAudioDeviceMiniAudio>()->deviceID);
-		config.playback.format = ma_format_f32;   // Set to ma_format_unknown to use the device's native format.
-		config.playback.channels = _channelCount;               // Set to 0 to use the device's native channel count.
-		config.sampleRate = _sampleRate;           // Set to 0 to use the device's native sample rate.
-		config.dataCallback = &AudioCallback;   // This function will be called when miniaudio needs more data.
-		config.pUserData = this;   // Can be accessed from the device object (device.pUserData).
+		config.playback.pDeviceID = static_cast<ma_device_id *>(inputDevice->Downcast<ResonanceAudioDeviceMiniAudio>()->deviceID);
+		config.playback.format = ma_format_f32; // Set to ma_format_unknown to use the device's native format.
+		config.playback.channels = _channelCount; // Set to 0 to use the device's native channel count.
+		config.sampleRate = _sampleRate; // Set to 0 to use the device's native sample rate.
+		config.dataCallback = &AudioCallback; // This function will be called when miniaudio needs more data.
+		config.pUserData = this; // Can be accessed from the device object (device.pUserData).
 
 		if(ma_device_init(&_internals->context, &config, &_internals->inputDevice) != MA_SUCCESS)
 		{
-			return;  // Failed to initialize the device.
+			return; // Failed to initialize the device.
 		}
 
-		ma_device_start(&_internals->inputDevice);     // The device is sleeping by default so you'll need to start it manually.
-		
+		ma_device_start(&_internals->inputDevice); // The device is sleeping by default so you'll need to start it manually.
+
 		RNInfo("Using audio input device: " << _inputDevice->name);
 	}
 
@@ -158,9 +158,9 @@ namespace RN
 	{
 		Array *deviceArray = new Array();
 
-		ma_device_info* playbackInfos;
+		ma_device_info *playbackInfos;
 		ma_uint32 playbackCount;
-		ma_device_info* captureInfos;
+		ma_device_info *captureInfos;
 		ma_uint32 captureCount;
 		if(ma_context_get_devices(&_internals->context, &playbackInfos, &playbackCount, &captureInfos, &captureCount) != MA_SUCCESS)
 		{
@@ -183,7 +183,7 @@ namespace RN
 			ResonanceAudioDeviceMiniAudio *inputDevice = new ResonanceAudioDeviceMiniAudio(ResonanceAudioDevice::Type::Input, deviceID, captureInfos[i].name, captureInfos[i].isDefault || captureCount == 1);
 			deviceArray->AddObject(inputDevice->Autorelease());
 		}
-		
+
 		return deviceArray->Autorelease();
 	}
 
@@ -218,4 +218,4 @@ namespace RN
 
 		return inputDevice; //Will be autoreleased as part of the devices array
 	}
-}
+} // namespace RN

@@ -54,7 +54,7 @@ namespace RN
 
 		RNDeclareMetaAPI(SplashWorld, SPAPI)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_SPLASHWORLD_H_ */

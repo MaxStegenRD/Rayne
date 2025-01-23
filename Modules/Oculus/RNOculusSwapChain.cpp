@@ -13,7 +13,8 @@ namespace RN
 {
 	RNDefineMeta(OculusSwapChain, D3D12SwapChain)
 
-	OculusSwapChain::OculusSwapChain(const Window::SwapChainDescriptor &descriptor) : _submitResult(0), _frameCounter(0), _colorSwapChain{ nullptr, nullptr }, _depthSwapChain{nullptr, nullptr}, _colorTexture(nullptr), _depthTexture(nullptr)
+	OculusSwapChain::OculusSwapChain(const Window::SwapChainDescriptor &descriptor) :
+		_submitResult(0), _frameCounter(0), _colorSwapChain {nullptr, nullptr}, _depthSwapChain {nullptr, nullptr}, _colorTexture(nullptr), _depthTexture(nullptr)
 	{
 		_session = nullptr;
 		_descriptor = descriptor;
@@ -28,7 +29,7 @@ namespace RN
 		if(OVR_FAILURE(result))
 			return;
 
-		
+
 		result = ovr_Create(&_session, &_luID);
 		if(OVR_FAILURE(result))
 		{
@@ -90,7 +91,7 @@ namespace RN
 		swapChainDesc.Height = bufferSize.h;
 		swapChainDesc.MipLevels = 1;
 		swapChainDesc.SampleCount = 1;
-		swapChainDesc.MiscFlags = 0;// ovrTextureMisc_DX_Typeless;
+		swapChainDesc.MiscFlags = 0; // ovrTextureMisc_DX_Typeless;
 		swapChainDesc.StaticImage = ovrFalse;
 		swapChainDesc.BindFlags = ovrTextureBind_DX_RenderTarget;
 
@@ -100,9 +101,9 @@ namespace RN
 		if(!OVR_SUCCESS(result))
 			return;
 		result = ovr_CreateTextureSwapChainDX(_session, _renderer->GetCommandQueue(), &swapChainDesc, &_colorSwapChain[1]);
-		if (!OVR_SUCCESS(result))
+		if(!OVR_SUCCESS(result))
 			return;
-		
+
 		int textureCount = 0;
 		ovr_GetTextureSwapChainLength(_session, _colorSwapChain[0], &textureCount);
 		_descriptor.bufferCount = textureCount;
@@ -154,18 +155,18 @@ namespace RN
 			depthSwapChainDesc.BindFlags = ovrTextureBind_DX_DepthStencil;
 
 			result = ovr_CreateTextureSwapChainDX(_session, _renderer->GetCommandQueue(), &depthSwapChainDesc, &_depthSwapChain[0]);
-			if (!OVR_SUCCESS(result))
+			if(!OVR_SUCCESS(result))
 				return;
 
 			result = ovr_CreateTextureSwapChainDX(_session, _renderer->GetCommandQueue(), &depthSwapChainDesc, &_depthSwapChain[1]);
-			if (!OVR_SUCCESS(result))
+			if(!OVR_SUCCESS(result))
 				return;
 		}
 
-		_swapChainColorBuffers[0] = new ID3D12Resource*[_descriptor.bufferCount];
-		_swapChainColorBuffers[1] = new ID3D12Resource*[_descriptor.bufferCount];
-		_swapChainDepthBuffers[0] = new ID3D12Resource*[_descriptor.bufferCount];
-		_swapChainDepthBuffers[1] = new ID3D12Resource*[_descriptor.bufferCount];
+		_swapChainColorBuffers[0] = new ID3D12Resource *[_descriptor.bufferCount];
+		_swapChainColorBuffers[1] = new ID3D12Resource *[_descriptor.bufferCount];
+		_swapChainDepthBuffers[0] = new ID3D12Resource *[_descriptor.bufferCount];
+		_swapChainDepthBuffers[1] = new ID3D12Resource *[_descriptor.bufferCount];
 
 		for(int i = 0; i < _descriptor.bufferCount; i++)
 		{
@@ -182,7 +183,7 @@ namespace RN
 		_hmdToEyeViewPose[1] = _eyeRenderDesc[1].HmdToEyePose;
 
 		// Initialize our single full screen Fov layer.
-		_imageLayer.Header.Type = _depthSwapChain[0]?ovrLayerType_EyeFovDepth:ovrLayerType_EyeFov;
+		_imageLayer.Header.Type = _depthSwapChain[0] ? ovrLayerType_EyeFovDepth : ovrLayerType_EyeFov;
 		_imageLayer.Header.Flags = 0;
 		_imageLayer.ColorTexture[0] = _colorSwapChain[0];
 		_imageLayer.ColorTexture[1] = _colorSwapChain[1];
@@ -228,7 +229,7 @@ namespace RN
 	{
 		SafeRelease(_colorTexture);
 		SafeRelease(_depthTexture);
-		
+
 		if(_colorSwapChain[0])
 		{
 			ovr_DestroyTextureSwapChain(_session, _colorSwapChain[0]);
@@ -315,7 +316,7 @@ namespace RN
 		}
 
 		_colorTexture->TransitionToState(commandList, oldColorSourceState);
-		if(_depthTexture)	_depthTexture->TransitionToState(commandList, oldDepthSourceState);
+		if(_depthTexture) _depthTexture->TransitionToState(commandList, oldDepthSourceState);
 	}
 
 	void OculusSwapChain::PresentBackBuffer()
@@ -355,7 +356,7 @@ namespace RN
 
 	void OculusSwapChain::UpdatePredictedPose()
 	{
-		double displayMidpointSeconds = ovr_GetPredictedDisplayTime(_session, 0);	//TODO: Frameindex as second param
+		double displayMidpointSeconds = ovr_GetPredictedDisplayTime(_session, 0); //TODO: Frameindex as second param
 		_hmdState = ovr_GetTrackingState(_session, displayMidpointSeconds, ovrTrue);
 		ovr_CalcEyePoses(_hmdState.HeadPose.ThePose, _hmdToEyeViewPose, _imageLayer.RenderPose);
 	}
@@ -366,4 +367,4 @@ namespace RN
 		_imageLayer.ProjectionDesc.Projection23 = m23;
 		_imageLayer.ProjectionDesc.Projection32 = m32;
 	}
-}
+} // namespace RN

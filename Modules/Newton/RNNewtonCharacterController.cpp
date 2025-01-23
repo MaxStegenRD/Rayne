@@ -15,10 +15,10 @@ namespace RN
 {
 	RNDefineMeta(NewtonCharacterController, NewtonCollisionObject)
 
-	unsigned int NewtonCharacterController::SweepTestPreFilter(const NewtonBody* const body, const NewtonCollision* const collision, void* const userData)
+	unsigned int NewtonCharacterController::SweepTestPreFilter(const NewtonBody *const body, const NewtonCollision *const collision, void *const userData)
 	{
-		NewtonCollisionObject *object0 = static_cast<NewtonCollisionObject*>(NewtonBodyGetUserData(body));
-		NewtonCollisionObject *object1 = static_cast<NewtonCollisionObject*>(userData);
+		NewtonCollisionObject *object0 = static_cast<NewtonCollisionObject *>(NewtonBodyGetUserData(body));
+		NewtonCollisionObject *object1 = static_cast<NewtonCollisionObject *>(userData);
 
 		bool filterMask = (object0->GetCollisionFilterGroup() & object1->GetCollisionFilterMask()) && (object1->GetCollisionFilterGroup() & object0->GetCollisionFilterMask());
 		bool filterID = (object0->GetCollisionFilterIgnoreID() == 0 && object1->GetCollisionFilterIgnoreID() == 0) || (object0->GetCollisionFilterID() != object1->GetCollisionFilterIgnoreID() && object0->GetCollisionFilterIgnoreID() != object1->GetCollisionFilterID());
@@ -28,26 +28,27 @@ namespace RN
 		return 0;
 	}
 
-/*	float NewtonCharacterController::SweepTestFilter(const NewtonBody* const body, const NewtonCollision* constshapeHit, const float* const hitContact, const float* const hitNormal, long collisionID, void* constuserData, float intersectParam)
+	/*	float NewtonCharacterController::SweepTestFilter(const NewtonBody* const body, const NewtonCollision* constshapeHit, const float* const hitContact, const float* const hitNormal, long collisionID, void* constuserData, float intersectParam)
 	{
 		return intersectParam;
 	}*/
-		
-	NewtonCharacterController::NewtonCharacterController(float radius, float height, float stepHeight) : _gravity(0.0f), _stepHeight(stepHeight), _totalHeight(height + radius * 2.0f)
+
+	NewtonCharacterController::NewtonCharacterController(float radius, float height, float stepHeight) :
+		_gravity(0.0f), _stepHeight(stepHeight), _totalHeight(height + radius * 2.0f)
 	{
 		RN_ASSERT(height > stepHeight, "Height needs to be bigger than step height!");
 		_shape = NewtonCapsuleShape::WithRadius(radius, height - stepHeight)->Retain();
 
-/*		::NewtonWorld *newtonInstance = NewtonWorld::GetSharedInstance()->GetNewtonInstance();
+		/*		::NewtonWorld *newtonInstance = NewtonWorld::GetSharedInstance()->GetNewtonInstance();
 		_body = NewtonCreateKinematicBody(newtonInstance, _shape->GetNewtonShape(), nullptr);*/
 	}
-		
+
 	NewtonCharacterController::~NewtonCharacterController()
 	{
-//		NewtonDestroyBody(_body);
+		//		NewtonDestroyBody(_body);
 		_shape->Release();
 	}
-		
+
 	void NewtonCharacterController::Move(const Vector3 &direction, float delta)
 	{
 		if(delta < k::EpsilonFloat)
@@ -70,10 +71,10 @@ namespace RN
 		}
 		else
 		{
-			_gravity += gforce*delta;
+			_gravity += gforce * delta;
 			if(_gravity < groundDistance)
 			{
-				groundDistance = -_gravity*delta;
+				groundDistance = -_gravity * delta;
 			}
 			else
 			{
@@ -92,17 +93,17 @@ namespace RN
 
 		::NewtonWorld *newtonInstance = NewtonWorld::GetSharedInstance()->GetNewtonInstance();
 		float params;
-		NewtonWorldConvexCast(newtonInstance, poseMatrix.m, &targetPosition.x, _shape->GetNewtonShape(), &params, (void*)this, SweepTestPreFilter, nullptr, 0, 0);
+		NewtonWorldConvexCast(newtonInstance, poseMatrix.m, &targetPosition.x, _shape->GetNewtonShape(), &params, (void *)this, SweepTestPreFilter, nullptr, 0, 0);
 
-		return direction.GetLength()*params;
+		return direction.GetLength() * params;
 	}
 
 	Vector3 NewtonCharacterController::GetFeetOffset() const
 	{
-		return RN::Vector3(0.0f, -_totalHeight/2.0, 0.0f);
+		return RN::Vector3(0.0f, -_totalHeight / 2.0, 0.0f);
 	}
 
-/*	void BulletKinematicController::SetFallSpeed(float speed)
+	/*	void BulletKinematicController::SetFallSpeed(float speed)
 	{
 		_controller->setFallSpeed(speed);
 	}
@@ -132,14 +133,14 @@ namespace RN
 	{
 		_controller->jump();
 	}*/
-		
+
 	void NewtonCharacterController::DidUpdate(SceneNode::ChangeSet changeSet)
 	{
 		NewtonCollisionObject::DidUpdate(changeSet);
-			
+
 		if(changeSet & SceneNode::ChangeSet::Position)
 		{
-/*			Vector3 position = GetWorldPosition() - _offset;
+			/*			Vector3 position = GetWorldPosition() - _offset;
 			Quaternion rotation = GetWorldRotation();
 			Matrix poseMatrix = Matrix::WithRotation(rotation) * Matrix::WithTranslation(position);
 			NewtonBodySetMatrix(_body, poseMatrix.m);*/
@@ -149,7 +150,7 @@ namespace RN
 		{
 			if(!_owner && GetParent())
 			{
-/*				Vector3 position = GetWorldPosition() - _offset;
+				/*				Vector3 position = GetWorldPosition() - _offset;
 				Quaternion rotation = GetWorldRotation();
 				Matrix poseMatrix = Matrix::WithRotation(rotation) * Matrix::WithTranslation(position);
 				NewtonBodySetMatrix(_body, poseMatrix.m);*/
@@ -166,9 +167,9 @@ namespace RN
 			return;
 		}
 
-/*		const physx::PxExtendedVec3 &position = _controller->getPosition();
+		/*		const physx::PxExtendedVec3 &position = _controller->getPosition();
 
 		_didUpdatePosition = true;
 		SetWorldPosition(Vector3(position.x, position.y, position.z) + _offset);*/
 	}
-}
+} // namespace RN

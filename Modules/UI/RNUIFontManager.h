@@ -21,12 +21,13 @@ namespace RN
 
 		class Font : public Object
 		{
-		friend FontManager;
+			friend FontManager;
+
 		public:
 			UIAPI ~Font();
-			
+
 			UIAPI Mesh *GetMeshForCharacter(int codepoint);
-			
+
 			UIAPI float GetOffsetForNextCharacter(int currentCodepoint, int nextCodepoint);
 			UIAPI float GetHeight();
 			UIAPI float GetAscent();
@@ -34,20 +35,20 @@ namespace RN
 			UIAPI float GetLineOffset();
 			UIAPI Texture *GetFontTexture();
 			UIAPI bool IsSDFFont();
-			
+
 		private:
 			Font(String *filepath, bool preloadASCII = true);
-			
+
 			void *_arFont;
 			Texture *_fontTexture;
 			Vector2 _textureResolution;
 			std::map<size_t, size_t> _codePointToIndex;
-			
+
 			stbtt_fontinfo *_fontInfo;
 			Data *_fontData;
-			
+
 			Dictionary *_meshes;
-			
+
 			RNDeclareMetaAPI(Font, UIAPI)
 		};
 
@@ -55,21 +56,21 @@ namespace RN
 		{
 		public:
 			UIAPI static FontManager *GetSharedInstance();
-			
+
 			UIAPI FontManager();
 			UIAPI ~FontManager();
-			
+
 			UIAPI Font *GetFontForFilepath(String *filepath, bool preloadASCII = true);
-			
+
 		private:
 			Dictionary *_fonts;
-			
+
 			static FontManager *_sharedInstance;
-			
+
 			RNDeclareMetaAPI(FontManager, UIAPI)
 		};
-	}
-}
+	} // namespace UI
+} // namespace RN
 
 
 #endif /* __RAYNE_UIFONTMANAGER_H_ */

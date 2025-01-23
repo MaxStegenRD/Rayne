@@ -22,13 +22,13 @@ namespace RN
 			UIAPI ~ScrollView();
 
 			UIAPI virtual void Update(float delta, Vector2 cursorPosition, bool touched, Vector2 alternativeScrollSpeed = Vector2());
-			
+
 			UIAPI void SetPixelPerInch(float pixelPerInch);
 			float GetPixelsPerInch() const { return _pixelPerInch; }
-			
+
 			bool IsScrolling() const { return _isScrolling; }
 			Vector2 GetScrollSpeed() const { return _scrollSpeed; }
-			
+
 			bool IsScrollInteraction() const { return _isScrollInteraction; }
 
 		private:
@@ -36,20 +36,20 @@ namespace RN
 			bool _isScrolling;
 			bool _wasTouched;
 			bool _isScrollInteraction;
-			
+
 			bool _scrollsVertical;
 			bool _scrollsHorizontal;
-			
+
 			float _tapTimer;
 			float _pixelPerInch;
-			
+
 			Vector2 _scrollSpeed;
 			Vector2 _previousCursorPosition;
 
 			RNDeclareMetaAPI(ScrollView, UIAPI)
 		};
-	}
-}
+	} // namespace UI
+} // namespace RN
 
 
 #endif /* __RAYNE_UISCROLLVIEW_H_ */

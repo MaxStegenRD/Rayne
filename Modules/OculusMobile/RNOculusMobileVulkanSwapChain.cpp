@@ -9,10 +9,10 @@
 #include "RNOculusMobileVulkanSwapChain.h"
 #include "RNVulkanInternals.h"
 
-#include "VrApi_Vulkan.h"
 #include "VrApi_Helpers.h"
-#include "VrApi_SystemUtils.h"
 #include "VrApi_Input.h"
+#include "VrApi_SystemUtils.h"
+#include "VrApi_Vulkan.h"
 
 namespace RN
 {
@@ -68,17 +68,15 @@ namespace RN
 		_frameIndex = _semaphoreIndex %= _descriptor.bufferCount;
 	}
 
-    void OculusMobileVulkanSwapChain::Prepare(VkCommandBuffer commandBuffer)
+	void OculusMobileVulkanSwapChain::Prepare(VkCommandBuffer commandBuffer)
 	{
-
 	}
 
-    void OculusMobileVulkanSwapChain::Finalize(VkCommandBuffer commandBuffer)
+	void OculusMobileVulkanSwapChain::Finalize(VkCommandBuffer commandBuffer)
 	{
-
 	}
 
-    void OculusMobileVulkanSwapChain::PresentBackBuffer(VkQueue queue)
+	void OculusMobileVulkanSwapChain::PresentBackBuffer(VkQueue queue)
 	{
 		if(_presentEvent)
 		{
@@ -86,12 +84,12 @@ namespace RN
 		}
 	}
 
-    VkImage OculusMobileVulkanSwapChain::GetVulkanColorBuffer(int i) const
+	VkImage OculusMobileVulkanSwapChain::GetVulkanColorBuffer(int i) const
 	{
 		return vrapi_GetTextureSwapChainBufferVulkan(_colorSwapChain, i);
 	}
 
-    VkImage OculusMobileVulkanSwapChain::GetVulkanDepthBuffer(int i) const
+	VkImage OculusMobileVulkanSwapChain::GetVulkanDepthBuffer(int i) const
 	{
 		return nullptr;
 	}
@@ -104,18 +102,16 @@ namespace RN
 	}
 
 	ovrMatrix4f OculusMobileVulkanSwapChain::GetTanAngleMatrixForEye(uint8 eye)
-    {
-    	ovrMatrix4f *projection = &_hmdState.Eye[eye].ProjectionMatrix;
+	{
+		ovrMatrix4f *projection = &_hmdState.Eye[eye].ProjectionMatrix;
 
-    	const ovrMatrix4f tanAngleMatrix =
-    	{ {
-    		{ 0.5f * projection->M[0][0], 0.0f, 0.5f * projection->M[0][2] - 0.5f, 0.0f },
-    		{ 0.0f, -0.5f * projection->M[1][1], -0.5f * projection->M[1][2] - 0.5f, 0.0f },
-    		{ 0.0f, 0.0f, -1.0f, 0.0f },
-    		// Store the values to convert a clip-Z to a linear depth in the unused matrix elements.
-    		{ projection->M[2][2], projection->M[2][3], projection->M[3][2], 1.0f }
-    	} };
+		const ovrMatrix4f tanAngleMatrix =
+		{{{0.5f * projection->M[0][0], 0.0f, 0.5f * projection->M[0][2] - 0.5f, 0.0f},
+		  {0.0f, -0.5f * projection->M[1][1], -0.5f * projection->M[1][2] - 0.5f, 0.0f},
+		  {0.0f, 0.0f, -1.0f, 0.0f},
+		  // Store the values to convert a clip-Z to a linear depth in the unused matrix elements.
+		  {projection->M[2][2], projection->M[2][3], projection->M[3][2], 1.0f}}};
 
-    	return tanAngleMatrix;
-    }
-}
+		return tanAngleMatrix;
+	}
+} // namespace RN

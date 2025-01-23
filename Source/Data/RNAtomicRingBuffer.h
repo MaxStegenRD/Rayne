@@ -37,7 +37,7 @@ namespace RN
 
 			return false;
 		}
-		
+
 		bool Push(T &&value)
 		{
 			size_t tail = _tail.load(std::memory_order_relaxed);
@@ -81,7 +81,7 @@ namespace RN
 
 	private:
 		static RN_CONSTEXPR size_t Capacity = Size + 1;
-		
+
 		size_t Advance(size_t index) const
 		{
 			return (index + 1) % Capacity;
@@ -92,6 +92,6 @@ namespace RN
 
 		std::array<T, Capacity> _buffer;
 	};
-}
+} // namespace RN
 
 #endif /* __RAYNE_ATOMICRINGBUFFER_H__ */

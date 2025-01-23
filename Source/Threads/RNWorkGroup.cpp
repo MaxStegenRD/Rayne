@@ -18,7 +18,7 @@ namespace RN
 
 	WorkGroup::~WorkGroup()
 	{
-		for(auto &pair : _waiters)
+		for(auto &pair: _waiters)
 		{
 			WorkQueue *queue = std::get<0>(pair);
 			queue->Release();
@@ -30,7 +30,6 @@ namespace RN
 		Enter();
 
 		queue->Perform([this, f = std::move(function)]() mutable {
-
 			Function func(std::move(f));
 			func();
 
@@ -53,7 +52,7 @@ namespace RN
 				LockGuard<Lockable> lock(_lock);
 				_signal.NotifyAll();
 
-				for(auto &pair : _waiters)
+				for(auto &pair: _waiters)
 				{
 					WorkQueue *queue = std::get<0>(pair);
 					queue->Perform(std::move(std::get<1>(pair)));
@@ -82,4 +81,4 @@ namespace RN
 		LockGuard<Lockable> lock(_lock);
 		_waiters.push_back(std::make_pair(queue->Retain(), std::move(function)));
 	}
-}
+} // namespace RN

@@ -29,7 +29,7 @@ namespace RN
 			right(tright)
 		{}
 
-		bool operator ==(const EdgeInsets &other)
+		bool operator==(const EdgeInsets &other)
 		{
 			if(Math::FastAbs(top - other.top) >= k::EpsilonFloat)
 				return false;
@@ -46,7 +46,7 @@ namespace RN
 			return true;
 		}
 
-		bool operator !=(const EdgeInsets &other)
+		bool operator!=(const EdgeInsets &other)
 		{
 			return !(*this == other);
 		}
@@ -54,7 +54,7 @@ namespace RN
 		float top, bottom, left, right;
 	};
 
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_UIEDGEINSETS_H_ */

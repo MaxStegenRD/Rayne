@@ -45,13 +45,13 @@ namespace RN
 		//FBhapticsRotationOption CustomProjectToVest(FVector Location, UPrimitiveComponent* HitComponent, float HalfHeight, FVector UpVector, FVector ForwardVector);
 
 		static bool _isBhapticsAvailableChecked;
-		   
+
 	private:
 		static BHapticsDevicePosition StringToDevicePosition(const String *positionString);
 		static const String *DevicePositionToString(BHapticsDevicePosition position);
 
 		static bool _isBhapticsAvailable;
 	};
-}
+} // namespace RN
 
 #endif //__RAYNE_BHAPTICS_ANDROID_WRAPPER_H_

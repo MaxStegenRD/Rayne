@@ -28,11 +28,11 @@ namespace RN
 
 		RNAPI Array *GetAllObjects() const;
 
-		void Enumerate(const std::function<void (Object *, bool &)>& callback) const
+		void Enumerate(const std::function<void(Object *, bool &)> &callback) const
 		{
 			bool stop = false;
 
-			for(Entry &entry : _storage)
+			for(Entry &entry: _storage)
 			{
 				Object *object = entry.object.Load();
 				if(!object)
@@ -46,11 +46,11 @@ namespace RN
 		}
 
 		template<class T>
-		void Enumerate(const std::function<void (T *, bool &)>& callback) const
+		void Enumerate(const std::function<void(T *, bool &)> &callback) const
 		{
 			bool stop = false;
 
-			for(Entry &entry : _storage)
+			for(Entry &entry: _storage)
 			{
 				Object *object = entry.object.Load();
 				if(!object)
@@ -79,7 +79,7 @@ namespace RN
 
 		__RNDeclareMetaInternal(WeakStorage)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_WEAKSTORAGE_H_ */

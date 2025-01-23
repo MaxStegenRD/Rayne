@@ -10,20 +10,20 @@
 #include "../Threads/RNThread.h"
 
 #if RN_PLATFORM_POSIX
-#include <cxxabi.h>
-#if !RN_PLATFORM_ANDROID
-	#include <execinfo.h>
-#endif
-#include <stdlib.h>
-#include <dlfcn.h>
+	#include <cxxabi.h>
+	#if !RN_PLATFORM_ANDROID
+		#include <execinfo.h>
+	#endif
+	#include <dlfcn.h>
+	#include <stdlib.h>
 #endif
 
 #if RN_PLATFORM_WINDOWS
-#include <DbgHelp.h>
+	#include <DbgHelp.h>
 #endif
 
 #if RN_COMPILER_MSVC
-#pragma comment(lib, "DbgHelp.lib")
+	#pragma comment(lib, "DbgHelp.lib")
 #endif
 
 #define kRNExceptionMaxSymbols 64
@@ -42,7 +42,7 @@ namespace RN
 	{
 		GatherInfo();
 	}
-	
+
 	Exception::Exception(const String *reason) :
 		_reason(reason->GetUTF8String())
 	{
@@ -53,29 +53,28 @@ namespace RN
 	{}
 
 
-	
 	RN_NOINLINE void Exception::GatherInfo()
 	{
 		void *symbols[kRNExceptionMaxSymbols];
 		size_t size;
-		
+
 		std::string unknwonSymbol("<..>");
-		
+
 #if RN_PLATFORM_POSIX && !RN_PLATFORM_ANDROID
 		size = backtrace(symbols, kRNExceptionMaxSymbols);
-		
-		for(size_t i = 2; i < size; i ++)
+
+		for(size_t i = 2; i < size; i++)
 		{
 			Dl_info info;
 			int status = dladdr(symbols[i], &info);
-			
+
 			if(status != 0)
 			{
 				const char *symbol = abi::__cxa_demangle((char *)info.dli_sname, 0, 0, 0);
 				std::string symbolname = symbol ? std::string(symbol) : unknwonSymbol;
-				
+
 				_callStack.push_back(std::pair<uintptr_t, std::string>((uintptr_t)symbols[i], symbolname));
-				
+
 				if(symbol)
 					free((char *)symbol);
 			}
@@ -83,35 +82,34 @@ namespace RN
 			{
 				_callStack.push_back(std::pair<uintptr_t, std::string>((uintptr_t)symbols[i], unknwonSymbol));
 			}
-			
 		}
 #endif
-		
+
 #if RN_PLATFORM_WINDOWS
 		HANDLE process = ::GetCurrentProcess();
-		
+
 		static std::once_flag flag;
 		std::call_once(flag, [&]() {
 			::SymInitialize(process, nullptr, true);
 		});
-		
+
 		size = ::CaptureStackBackTrace(0, kRNExceptionMaxSymbols, symbols, nullptr);
-		
-		SYMBOL_INFO *symbol  = reinterpret_cast<SYMBOL_INFO *>(calloc(sizeof(SYMBOL_INFO) + 256, 1));
-		symbol->MaxNameLen   = 255;
+
+		SYMBOL_INFO *symbol = reinterpret_cast<SYMBOL_INFO *>(calloc(sizeof(SYMBOL_INFO) + 256, 1));
+		symbol->MaxNameLen = 255;
 		symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-		
-		for(size_t i = 2; i < size; i ++)
+
+		for(size_t i = 2; i < size; i++)
 		{
 			::SymFromAddr(process, reinterpret_cast<DWORD64>(symbols[i]), 0, symbol);
-			
+
 			std::string name = (symbol->NameLen == 0) ? unknwonSymbol : std::string(symbol->Name);
 			_callStack.push_back(std::pair<uintptr_t, std::string>((uintptr_t)symbols[i], std::move(name)));
 		}
 #endif
-		
+
 		_thread = Thread::GetCurrentThread();
-		
+
 		if(_reason.empty())
 			_reason = "Jabberwock is killing user";
 	}
@@ -120,4 +118,4 @@ namespace RN
 	{
 		return _reason.c_str();
 	}
-}
+} // namespace RN

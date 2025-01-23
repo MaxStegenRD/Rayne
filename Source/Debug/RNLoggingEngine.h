@@ -12,8 +12,8 @@
 
 #include "../Base/RNBase.h"
 #include "../Objects/RNObject.h"
-#include "RNLogger.h"
 #include "RNLogFormatter.h"
+#include "RNLogger.h"
 
 namespace RN
 {
@@ -94,7 +94,7 @@ namespace RN
 		__RNDeclareMetaInternal(WideCharStreamLoggingEngine)
 	};
 #endif
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_LOGGINGENGINE_H_ */

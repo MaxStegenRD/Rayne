@@ -10,22 +10,21 @@
 #ifndef __RAYNE_MESH_H_
 #define __RAYNE_MESH_H_
 
-#include "../Base/RNBase.h"
 #include "../Assets/RNAsset.h"
+#include "../Base/RNBase.h"
+#include "../Math/RNAABB.h"
+#include "../Math/RNAlgorithm.h"
+#include "../Math/RNSphere.h"
 #include "../Objects/RNObject.h"
 #include "../Objects/RNString.h"
-#include "../Math/RNAlgorithm.h"
-#include "../Math/RNAABB.h"
-#include "../Math/RNSphere.h"
-#include "RNRendererTypes.h"
 #include "RNGPUBuffer.h"
+#include "RNRendererTypes.h"
 
 namespace RN
 {
 	class Mesh : public Asset
 	{
 	public:
-		
 		struct VertexAttribute
 		{
 		public:
@@ -40,9 +39,9 @@ namespace RN
 				Color1,
 				UVCoords0,
 				UVCoords1,
-				
+
 				Indices,
-				
+
 				BoneWeights,
 				BoneIndices,
 
@@ -65,11 +64,11 @@ namespace RN
 				SafeRelease(_name);
 			}
 
-			bool operator ==(const VertexAttribute &other) const
+			bool operator==(const VertexAttribute &other) const
 			{
 				return IsEqual(other);
 			}
-			bool operator !=(const VertexAttribute &other) const
+			bool operator!=(const VertexAttribute &other) const
 			{
 				return !IsEqual(other);
 			}
@@ -87,7 +86,6 @@ namespace RN
 			size_t GetSize() const { return _size; }
 
 		private:
-
 			PrimitiveType _type;
 
 			Feature _feature;
@@ -106,7 +104,7 @@ namespace RN
 				_featureSet(0),
 				_names(nullptr)
 			{
-				for(auto &attribute : _attributes)
+				for(auto &attribute: _attributes)
 				{
 					_featureSet |= (1 << static_cast<uint32>(attribute.GetFeature()));
 
@@ -131,7 +129,7 @@ namespace RN
 				_hash(other._hash)
 			{}
 
-			VertexDescriptor &operator =(const VertexDescriptor &other)
+			VertexDescriptor &operator=(const VertexDescriptor &other)
 			{
 				SafeRelease(_names);
 
@@ -149,11 +147,11 @@ namespace RN
 			}
 
 
-			bool operator== (VertexDescriptor &other) const
+			bool operator==(VertexDescriptor &other) const
 			{
 				return IsEqual(other);
 			}
-			bool operator!= (VertexDescriptor &other) const
+			bool operator!=(VertexDescriptor &other) const
 			{
 				return IsEqual(other);
 			}
@@ -169,7 +167,7 @@ namespace RN
 					return false;
 
 				size_t count = _attributes.size();
-				for(size_t i = 0; i < count; i ++)
+				for(size_t i = 0; i < count; i++)
 				{
 					if(_attributes[i] != other._attributes[i])
 						return false;
@@ -224,22 +222,22 @@ namespace RN
 			}
 
 
-			T *operator ->()
+			T *operator->()
 			{
 				return _ptr;
 			}
 
-			const T *operator ->() const
+			const T *operator->() const
 			{
 				return _ptr;
 			}
 
-			T &operator *()
+			T &operator*()
 			{
 				return *_ptr;
 			}
 
-			const T &operator *() const
+			const T &operator*() const
 			{
 				return *_ptr;
 			}
@@ -252,39 +250,39 @@ namespace RN
 			}
 
 
-			ElementIterator<T> operator +(size_t value) const
+			ElementIterator<T> operator+(size_t value) const
 			{
 				ElementIterator<T> result(*this);
 				result.Advance(value);
 
 				return result;
 			}
-			ElementIterator<T> &operator +=(size_t value)
+			ElementIterator<T> &operator+=(size_t value)
 			{
 				Advance(value);
 				return *this;
 			}
 
-			ElementIterator<T> operator -(size_t value) const
+			ElementIterator<T> operator-(size_t value) const
 			{
 				ElementIterator<T> result(*this);
 				result.Decrease(value);
 
 				return result;
 			}
-			ElementIterator<T> &operator -=(size_t value)
+			ElementIterator<T> &operator-=(size_t value)
 			{
 				Decrease(value);
 				return *this;
 			}
 
 
-			ElementIterator<T> &operator ++()
+			ElementIterator<T> &operator++()
 			{
 				Advance(1);
 				return *this;
 			}
-			ElementIterator<T> operator ++(int)
+			ElementIterator<T> operator++(int)
 			{
 				ElementIterator<T> result(*this);
 				Advance(1);
@@ -293,12 +291,12 @@ namespace RN
 			}
 
 
-			ElementIterator<T> &operator --()
+			ElementIterator<T> &operator--()
 			{
 				Decrease(1);
 				return *this;
 			}
-			ElementIterator<T> operator --(int)
+			ElementIterator<T> operator--(int)
 			{
 				ElementIterator<T> result(*this);
 				Decrease(1);
@@ -344,8 +342,10 @@ namespace RN
 			ElementIterator<T> GetIterator(VertexAttribute::Feature feature)
 			{
 				size_t offset = _mesh->GetAttribute(feature)->GetOffset();
-				if(feature == VertexAttribute::Feature::Indices) _indicesDescriptor = _mesh->GetAttribute(VertexAttribute::Feature::Indices);
-				else if(feature != VertexAttribute::Feature::Vertices) offset += _mesh->_vertexPositionsSeparatedSize;
+				if(feature == VertexAttribute::Feature::Indices)
+					_indicesDescriptor = _mesh->GetAttribute(VertexAttribute::Feature::Indices);
+				else if(feature != VertexAttribute::Feature::Vertices)
+					offset += _mesh->_vertexPositionsSeparatedSize;
 				uint8 *ptr = reinterpret_cast<uint8 *>(feature == VertexAttribute::Feature::Indices ? GetIndexData() : GetVertexData()) + offset; //TODO: First index is assumed to be 0, but could be different
 
 				return ElementIterator<T>(feature, this, reinterpret_cast<T *>(ptr), 0);
@@ -355,14 +355,19 @@ namespace RN
 			ElementIterator<T> GetIteratorAtIndex(VertexAttribute::Feature feature, size_t index)
 			{
 				size_t offset = _mesh->GetAttribute(feature)->GetOffset();
-				if(feature == VertexAttribute::Feature::Indices) _indicesDescriptor = _mesh->GetAttribute(VertexAttribute::Feature::Indices);
-				else if(feature != VertexAttribute::Feature::Vertices) offset += _mesh->_vertexPositionsSeparatedSize;
+				if(feature == VertexAttribute::Feature::Indices)
+					_indicesDescriptor = _mesh->GetAttribute(VertexAttribute::Feature::Indices);
+				else if(feature != VertexAttribute::Feature::Vertices)
+					offset += _mesh->_vertexPositionsSeparatedSize;
 				uint8 *ptr = reinterpret_cast<uint8 *>(feature == VertexAttribute::Feature::Indices ? GetIndexData() : GetVertexData()) + offset;
-				
+
 				size_t stride = 0;
-				if(feature == VertexAttribute::Feature::Indices) stride = _indicesDescriptor->GetSize();
-				else if(feature == VertexAttribute::Feature::Vertices && _mesh->GetVertexPositionsSeparatedSize() > 0) stride = _mesh->GetVertexPositionsSeparatedStride();
-				else stride = _mesh->GetStride();
+				if(feature == VertexAttribute::Feature::Indices)
+					stride = _indicesDescriptor->GetSize();
+				else if(feature == VertexAttribute::Feature::Vertices && _mesh->GetVertexPositionsSeparatedSize() > 0)
+					stride = _mesh->GetVertexPositionsSeparatedStride();
+				else
+					stride = _mesh->GetStride();
 				ptr += stride * index;
 
 				ElementIterator<T> result(feature, this, reinterpret_cast<T *>(ptr), index);
@@ -453,7 +458,7 @@ namespace RN
 		size_t GetIndicesCount() const { return _indicesCount; }
 		size_t GetVertexPositionsSeparatedSize() const { return _vertexPositionsSeparatedSize; }
 		size_t GetVertexPositionsSeparatedStride() const { return _vertexPositionsSeparatedStride; }
-		
+
 		DrawMode GetDrawMode() const { return _drawMode; }
 
 		const std::vector<VertexAttribute> &GetVertexAttributes() const { return _vertexAttributes; }
@@ -464,7 +469,7 @@ namespace RN
 
 		void *GetCPUVertexBuffer() const { return _vertexBufferCPU; }
 		void *GetCPUIndicesBuffer() const { return _indicesBufferCPU; }
-		
+
 		bool changedVertices;
 		bool changedIndices;
 
@@ -478,7 +483,7 @@ namespace RN
 		GPUBuffer *_indicesBuffer;
 		void *_vertexBufferCPU;
 		void *_indicesBufferCPU;
-		
+
 		bool _isStreamed; //This means makes the vertex and index buffers use multiple buffers, so that new data can be written to one while the GPU renders another, will also not be unmapped
 
 		size_t _vertexPositionsSeparatedSize;
@@ -502,7 +507,7 @@ namespace RN
 
 		__RNDeclareMetaInternal(Mesh)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_MESH_H_ */

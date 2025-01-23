@@ -21,19 +21,18 @@ namespace RN
 		RNAPI ~AutoreleasePool();
 
 		RNAPI static void PerformBlock(Function &&function);
-		
+
 		RNAPI void AddObject(const Object *object);
 		RNAPI void Drain();
-		
+
 		RNAPI static AutoreleasePool *GetCurrentPool();
 
 		std::vector<const Object *> _objects;
-		
+
 	private:
 		AutoreleasePool *_parent;
 		std::thread::id _owner;
-		
 	};
-}
+} // namespace RN
 
 #endif /* __RAYNE_AUTORELEASEPOOL_H__ */

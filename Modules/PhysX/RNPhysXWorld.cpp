@@ -19,7 +19,8 @@ namespace RN
 
 	PhysXWorld *PhysXWorld::_sharedInstance = nullptr;
 
-	PhysXWorld::PhysXWorld(const Vector3 &gravity, String *pvdServerIP) : _pvd(nullptr), _hasVehicles(false), _substeps(1), _paused(false), _isSimulating(false)
+	PhysXWorld::PhysXWorld(const Vector3 &gravity, String *pvdServerIP) :
+		_pvd(nullptr), _hasVehicles(false), _substeps(1), _paused(false), _isSimulating(false)
 	{
 		RN_ASSERT(!_sharedInstance, "There can only be one PhysX instance at a time!");
 		_sharedInstance = this;
@@ -30,7 +31,7 @@ namespace RN
 		if(pvdServerIP)
 		{
 			_pvd = physx::PxCreatePvd(*_foundation);
-			physx::PxPvdTransport* transport = physx::PxDefaultPvdSocketTransportCreate(pvdServerIP->GetUTF8String(), 5425, 100); //First parameter is ip of system running the physx visual debugger
+			physx::PxPvdTransport *transport = physx::PxDefaultPvdSocketTransportCreate(pvdServerIP->GetUTF8String(), 5425, 100); //First parameter is ip of system running the physx visual debugger
 			_pvd->connect(*transport, physx::PxPvdInstrumentationFlag::eALL);
 		}
 
@@ -53,10 +54,10 @@ namespace RN
 		sceneDesc.cpuDispatcher = _dispatcher;
 		sceneDesc.filterShader = PhysXCallback::CollisionFilterShader;
 		sceneDesc.simulationEventCallback = _simulationCallback;
-		sceneDesc.flags |= physx::PxSceneFlag::eENABLE_ACTIVE_ACTORS | physx::PxSceneFlag::eENABLE_CCD /*| physx::PxSceneFlag::eREQUIRE_RW_LOCK*/ | physx::PxSceneFlag::eADAPTIVE_FORCE/* | physx::PxSceneFlag::eENABLE_STABILIZATION*/; // adaptive force and stabilization can not both be enabled!
+		sceneDesc.flags |= physx::PxSceneFlag::eENABLE_ACTIVE_ACTORS | physx::PxSceneFlag::eENABLE_CCD /*| physx::PxSceneFlag::eREQUIRE_RW_LOCK*/ | physx::PxSceneFlag::eADAPTIVE_FORCE /* | physx::PxSceneFlag::eENABLE_STABILIZATION*/; // adaptive force and stabilization can not both be enabled!
 		_scene = _physics->createScene(sceneDesc);
 
-		physx::PxPvdSceneClient* pvdClient = _scene->getScenePvdClient();
+		physx::PxPvdSceneClient *pvdClient = _scene->getScenePvdClient();
 		if(pvdClient)
 		{
 			pvdClient->setScenePvdFlag(physx::PxPvdSceneFlag::eTRANSMIT_CONSTRAINTS, true);
@@ -86,11 +87,11 @@ namespace RN
 
 		if(_pvd)
 		{
-			physx::PxPvdTransport* transport = _pvd->getTransport();
+			physx::PxPvdTransport *transport = _pvd->getTransport();
 			_pvd->release();
 			transport->release();
 		}
-		
+
 		_foundation->release();
 
 		_sharedInstance = nullptr;
@@ -117,7 +118,7 @@ namespace RN
 		PxInitVehicleSDK(*_physics);
 		PxVehicleSetBasisVectors(physx::PxVec3(0.0f, 1.0f, 0.0f), physx::PxVec3(0.0f, 0.0f, -1.0f));
 		PxVehicleSetUpdateMode(physx::PxVehicleUpdateMode::eVELOCITY_CHANGE);
-		
+
 		_hasVehicles = true;
 	}
 
@@ -135,7 +136,7 @@ namespace RN
 	{
 		if(_paused)
 			return;
-		
+
 		if(delta > 0.1f || delta < k::EpsilonFloat)
 			return;
 
@@ -144,7 +145,7 @@ namespace RN
 			for(int i = 0; i < _substeps; i++)
 			{
 				_isSimulating = true;
-				_scene->simulate(delta/static_cast<double>(_substeps));	//TODO: Fix this to use fixed steps with interpolation...
+				_scene->simulate(delta / static_cast<double>(_substeps)); //TODO: Fix this to use fixed steps with interpolation...
 				_scene->fetchResults(true);
 				_isSimulating = false;
 			}
@@ -162,7 +163,7 @@ namespace RN
 			void *userData = actors[i]->userData;
 			if(userData)
 			{
-				PhysXCollisionObject *collisionObject = static_cast<PhysXCollisionObject*>(userData);
+				PhysXCollisionObject *collisionObject = static_cast<PhysXCollisionObject *>(userData);
 				collisionObject->UpdatePosition();
 			}
 		}
@@ -191,19 +192,19 @@ namespace RN
 		hit.distance = -1.0f;
 		hit.node = nullptr;
 		hit.collisionObject = nullptr;
-		
-		Vector3 diff = to-from;
+
+		Vector3 diff = to - from;
 		float distance = diff.GetLength();
 		diff.Normalize();
 		physx::PxRaycastBuffer callback;
 		physx::PxFilterData filterData;
-        filterData.word0 = filterGroup;
+		filterData.word0 = filterGroup;
 		filterData.word1 = filterMask;
 		filterData.word2 = 0;
 		filterData.word3 = 0;
 		PhysXQueryFilterCallback queryFilter;
-		bool didHit = _scene->raycast(physx::PxVec3(from.x, from.y, from.z), physx::PxVec3(diff.x, diff.y, diff.z), distance, callback, physx::PxHitFlags(physx::PxHitFlag::eDEFAULT), physx::PxQueryFilterData(filterData, physx::PxQueryFlag::eDYNAMIC|physx::PxQueryFlag::eSTATIC|physx::PxQueryFlag::ePREFILTER), &queryFilter);
-		
+		bool didHit = _scene->raycast(physx::PxVec3(from.x, from.y, from.z), physx::PxVec3(diff.x, diff.y, diff.z), distance, callback, physx::PxHitFlags(physx::PxHitFlag::eDEFAULT), physx::PxQueryFilterData(filterData, physx::PxQueryFlag::eDYNAMIC | physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::ePREFILTER), &queryFilter);
+
 		if(didHit)
 		{
 			hit.distance = callback.block.distance;
@@ -211,19 +212,19 @@ namespace RN
 			hit.normal.x = callback.block.normal.x;
 			hit.normal.y = callback.block.normal.y;
 			hit.normal.z = callback.block.normal.z;
-			
+
 			if(callback.block.actor)
 			{
 				void *userData = callback.block.actor->userData;
 				if(userData)
 				{
-					hit.collisionObject = static_cast<PhysXCollisionObject*>(userData);
+					hit.collisionObject = static_cast<PhysXCollisionObject *>(userData);
 					hit.node = hit.collisionObject->GetParent();
 					if(hit.node) hit.node->Retain()->Autorelease();
 				}
 			}
 		}
-		
+
 		return hit;
 	}
 
@@ -233,8 +234,8 @@ namespace RN
 		hit.distance = -1.0f;
 		hit.node = nullptr;
 		hit.collisionObject = nullptr;
-		
-		Vector3 diff = to-from;
+
+		Vector3 diff = to - from;
 		float distance = diff.GetLength();
 		diff.Normalize();
 		physx::PxSweepBuffer callback;
@@ -244,11 +245,11 @@ namespace RN
 		filterData.word2 = 0;
 		filterData.word3 = 0;
 		PhysXQueryFilterCallback queryFilter;
-		
+
 		physx::PxTransform pose = physx::PxTransform(physx::PxVec3(from.x, from.y, from.z), physx::PxQuat(rotation.x, rotation.y, rotation.z, rotation.w));
 		if(shape->GetPhysXShape())
 		{
-			if(_scene->sweep(shape->GetPhysXShape()->getGeometry().any(), pose, physx::PxVec3(diff.x, diff.y, diff.z), distance, callback, physx::PxHitFlags(physx::PxHitFlag::eDEFAULT), physx::PxQueryFilterData(filterData, physx::PxQueryFlag::eDYNAMIC|physx::PxQueryFlag::eSTATIC|physx::PxQueryFlag::ePREFILTER), &queryFilter, 0, inflation))
+			if(_scene->sweep(shape->GetPhysXShape()->getGeometry().any(), pose, physx::PxVec3(diff.x, diff.y, diff.z), distance, callback, physx::PxHitFlags(physx::PxHitFlag::eDEFAULT), physx::PxQueryFilterData(filterData, physx::PxQueryFlag::eDYNAMIC | physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::ePREFILTER), &queryFilter, 0, inflation))
 			{
 				hit.distance = callback.block.distance;
 				hit.position.x = callback.block.position.x;
@@ -257,13 +258,13 @@ namespace RN
 				hit.normal.x = callback.block.normal.x;
 				hit.normal.y = callback.block.normal.y;
 				hit.normal.z = callback.block.normal.z;
-				
+
 				if(callback.block.actor)
 				{
 					void *userData = callback.block.actor->userData;
 					if(userData)
 					{
-						hit.collisionObject = static_cast<PhysXCollisionObject*>(userData);
+						hit.collisionObject = static_cast<PhysXCollisionObject *>(userData);
 						hit.node = hit.collisionObject->GetParent();
 						if(hit.node) hit.node->Retain()->Autorelease();
 					}
@@ -274,7 +275,7 @@ namespace RN
 		{
 			RNDebug("CastSweep does not currently support this shape type!");
 		}
-		
+
 		return hit;
 	}
 
@@ -283,7 +284,7 @@ namespace RN
 		const physx::PxU32 bufferSize = maxNumberOfOverlaps;
 		physx::PxSweepHit *hitBuffer = new physx::PxSweepHit[bufferSize];
 		physx::PxSweepBuffer callback(hitBuffer, bufferSize);
-		
+
 		physx::PxFilterData filterData;
 		filterData.word0 = filterGroup;
 		filterData.word1 = filterMask;
@@ -294,7 +295,7 @@ namespace RN
 		std::vector<PhysXContactInfo> results;
 		if(shape->GetPhysXShape())
 		{
-			if(_scene->sweep(shape->GetPhysXShape()->getGeometry().any(), pose, physx::PxVec3(0.0f, 1.0f, 0.0f), 0.0f, callback, physx::PxHitFlags(physx::PxHitFlag::eDEFAULT), physx::PxQueryFilterData(filterData, physx::PxQueryFlag::eDYNAMIC|physx::PxQueryFlag::eSTATIC|physx::PxQueryFlag::eNO_BLOCK|physx::PxQueryFlag::ePREFILTER), &queryFilter, 0, inflation))
+			if(_scene->sweep(shape->GetPhysXShape()->getGeometry().any(), pose, physx::PxVec3(0.0f, 1.0f, 0.0f), 0.0f, callback, physx::PxHitFlags(physx::PxHitFlag::eDEFAULT), physx::PxQueryFilterData(filterData, physx::PxQueryFlag::eDYNAMIC | physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::eNO_BLOCK | physx::PxQueryFlag::ePREFILTER), &queryFilter, 0, inflation))
 			{
 				for(uint32 i = 0; i < callback.nbTouches; i++)
 				{
@@ -309,7 +310,7 @@ namespace RN
 						void *userData = callback.touches[i].actor->userData;
 						if(userData)
 						{
-							hit.collisionObject = static_cast<PhysXCollisionObject*>(userData);
+							hit.collisionObject = static_cast<PhysXCollisionObject *>(userData);
 							hit.node = hit.collisionObject->GetParent();
 							if(hit.node) hit.node->Retain()->Autorelease();
 						}
@@ -325,7 +326,7 @@ namespace RN
 			for(size_t i = 0; i < compoundShape->GetNumberOfShapes(); i++)
 			{
 				PhysXShape *tempShape = compoundShape->GetShape(i);
-				if(_scene->sweep(tempShape->GetPhysXShape()->getGeometry().any(), pose, physx::PxVec3(0.0f, 1.0f, 0.0f), 0.0f, callback, physx::PxHitFlags(physx::PxHitFlag::eDEFAULT), physx::PxQueryFilterData(filterData, physx::PxQueryFlag::eDYNAMIC|physx::PxQueryFlag::eSTATIC|physx::PxQueryFlag::eNO_BLOCK|physx::PxQueryFlag::ePREFILTER), 0, 0, inflation))
+				if(_scene->sweep(tempShape->GetPhysXShape()->getGeometry().any(), pose, physx::PxVec3(0.0f, 1.0f, 0.0f), 0.0f, callback, physx::PxHitFlags(physx::PxHitFlag::eDEFAULT), physx::PxQueryFilterData(filterData, physx::PxQueryFlag::eDYNAMIC | physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::eNO_BLOCK | physx::PxQueryFlag::ePREFILTER), 0, 0, inflation))
 				{
 					for(uint32 i = 0; i < callback.nbTouches; i++)
 					{
@@ -340,7 +341,7 @@ namespace RN
 							void *userData = callback.touches[i].actor->userData;
 							if(userData)
 							{
-								hit.collisionObject = static_cast<PhysXCollisionObject*>(userData);
+								hit.collisionObject = static_cast<PhysXCollisionObject *>(userData);
 								hit.node = hit.collisionObject->GetParent();
 								if(hit.node) hit.node->Retain()->Autorelease();
 							}
@@ -357,7 +358,7 @@ namespace RN
 		}
 
 		delete[] hitBuffer;
-		
+
 		return results;
 	}
-}
+} // namespace RN

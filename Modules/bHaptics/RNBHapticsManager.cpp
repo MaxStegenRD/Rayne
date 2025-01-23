@@ -17,8 +17,9 @@
 namespace RN
 {
 	RNDefineMeta(BHapticsManager, SceneAttachment)
-	
-	BHapticsManager::BHapticsManager(const String *applicationID, const String *apiKey, const String *defaultConfig, bool requestPermission) : _currentDevices(nullptr), _wantsDeviceUpdate(true)
+
+	BHapticsManager::BHapticsManager(const String *applicationID, const String *apiKey, const String *defaultConfig, bool requestPermission) :
+		_currentDevices(nullptr), _wantsDeviceUpdate(true)
 	{
 #if RN_PLATFORM_ANDROID
 		BHapticsAndroidWrapper::Initialize(applicationID, apiKey, defaultConfig, requestPermission);
@@ -35,7 +36,7 @@ namespace RN
 		}*/
 #endif
 	}
-		
+
 	BHapticsManager::~BHapticsManager()
 	{
 #if RN_PLATFORM_WINDOWS
@@ -45,8 +46,8 @@ namespace RN
 
 	void BHapticsManager::Update(float delta)
 	{
-	    if(_wantsDeviceUpdate)
-	    {
+		if(_wantsDeviceUpdate)
+		{
 			const Array *currentDevices = nullptr;
 #if RN_PLATFORM_ANDROID
 			currentDevices = BHapticsAndroidWrapper::GetCurrentDevices();
@@ -56,7 +57,7 @@ namespace RN
 			if(wsIsConnected() && deviceStr.length() > 0)
 			{
 				const Array *jsonDevices = JSONSerialization::ObjectFromString<RN::Array>(RNSTR(deviceStr));
-				if (jsonDevices && jsonDevices->GetCount() > 0)
+				if(jsonDevices && jsonDevices->GetCount() > 0)
 				{
 					Array *devices = new RN::Array(jsonDevices->GetCount());
 					jsonDevices->Enumerate<Dictionary>([&](Dictionary *dict, size_t index, bool &stop) {
@@ -81,16 +82,16 @@ namespace RN
 				}
 			}
 #endif
-            if(currentDevices)
-            {
+			if(currentDevices)
+			{
 				SafeRelease(_currentDevices);
 				_currentDevices = currentDevices->Retain();
-            }
-			
-			_wantsDeviceUpdate = false;
-        }
+			}
 
-		for(const auto call : _queue)
+			_wantsDeviceUpdate = false;
+		}
+
+		for(const auto call: _queue)
 		{
 			call();
 		}
@@ -102,7 +103,7 @@ namespace RN
 		if(!_currentDevices) return;
 
 		eventName->Retain();
-		_queue.push_back([eventName, intensity, duration, xOffsetAngle, yOffset](){
+		_queue.push_back([eventName, intensity, duration, xOffsetAngle, yOffset]() {
 #if RN_PLATFORM_ANDROID
 			BHapticsAndroidWrapper::Play(eventName, intensity, duration, xOffsetAngle, yOffset);
 #elif RN_PLATFORM_WINDOWS
@@ -113,7 +114,7 @@ namespace RN
 		});
 	}
 
-/*	void BHapticsManager::SubmitDot(const String *key, BHapticsDevicePosition position, const std::vector<BHapticsDotPoint> &points, int duration)
+	/*	void BHapticsManager::SubmitDot(const String *key, BHapticsDevicePosition position, const std::vector<BHapticsDotPoint> &points, int duration)
 	{
 #if RN_PLATFORM_ANDROID
 		key->Retain();
@@ -196,12 +197,12 @@ namespace RN
 	void BHapticsManager::PingDevice(BHapticsDevicePosition position)
 	{
 		if(!_currentDevices) return;
-		
-		_currentDevices->Enumerate<BHapticsDevice>([&](BHapticsDevice *device, size_t index, bool &stop){
+
+		_currentDevices->Enumerate<BHapticsDevice>([&](BHapticsDevice *device, size_t index, bool &stop) {
 			if(device->position == position && device->address)
 			{
 				device->Retain();
-				_queue.push_back([device](){
+				_queue.push_back([device]() {
 #if RN_PLATFORM_ANDROID
 					BHapticsAndroidWrapper::Ping(device->address);
 #elif RN_PLATFORM_WINDOWS
@@ -213,4 +214,4 @@ namespace RN
 			}
 		});
 	}
-}
+} // namespace RN

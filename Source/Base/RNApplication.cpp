@@ -7,16 +7,15 @@
 //
 
 #include "RNApplication.h"
-#include "RNKernel.h"
-#include "../Rendering/RNRenderingDevice.h"
 #include "../Debug/RNLoggingEngine.h"
+#include "../Rendering/RNRenderingDevice.h"
+#include "RNKernel.h"
 
 namespace RN
 {
 	Application::Application() :
 		_title(nullptr)
 	{
-
 	}
 
 	Application::~Application()
@@ -36,11 +35,15 @@ namespace RN
 		_title->Retain();
 	}
 
-	void Application::WillFinishLaunching(Kernel *kernel) {}
-	void Application::DidFinishLaunching(Kernel *kernel) {}
-	void Application::WillExit() {}
+	void Application::WillFinishLaunching(Kernel *kernel)
+	{}
+	void Application::DidFinishLaunching(Kernel *kernel)
+	{}
+	void Application::WillExit()
+	{}
 
-	void Application::WillStep(float delta) {}
+	void Application::WillStep(float delta)
+	{}
 	void Application::DidStep(float delta)
 	{
 #if RN_PLATFORM_WINDOWS && !RN_BUILD_DEBUG
@@ -50,10 +53,14 @@ namespace RN
 #endif
 	}
 
-	void Application::WillBecomeActive() {}
-	void Application::DidBecomeActive() {}
-	void Application::WillResignActive() {}
-	void Application::DidResignActive() {}
+	void Application::WillBecomeActive()
+	{}
+	void Application::DidBecomeActive()
+	{}
+	void Application::WillResignActive()
+	{}
+	void Application::DidResignActive()
+	{}
 
 	RendererDescriptor *Application::GetPreferredRenderer() const
 	{
@@ -64,34 +71,34 @@ namespace RN
 	{
 		return devices->GetFirstObject<RenderingDevice>();
 	}
-	
+
 	Array *Application::GetLoggingEngines()
 	{
 		DebugLogFormatter *formatter = new DebugLogFormatter();
 
 #if RN_PLATFORM_WINDOWS
-#if RN_BUILD_DEBUG
+	#if RN_BUILD_DEBUG
 		LoggingEngine *engine = new WideCharStreamLoggingEngine(std::wcout, true);
-#else
+	#else
 		String *loggingFilePath = FileManager::GetSharedInstance()->GetPathForLocation(FileManager::Location::ExternalSaveDirectory);
 		loggingFilePath->AppendPathComponent(RNCSTR("logs/RNLogs.txt"));
-		
+
 		_fileStream.open(loggingFilePath->GetUTF8String());
 		LoggingEngine *engine = new WideCharStreamLoggingEngine(_fileStream, true);
-#endif
+	#endif
 		engine->SetLogFormatter(formatter->Autorelease());
-		return Array::WithObjects({ engine->Autorelease() });
+		return Array::WithObjects({engine->Autorelease()});
 #else
 		LoggingEngine *engine = new StreamLoggingEngine(std::cout, true);
 		engine->SetLogFormatter(formatter->Autorelease());
-		
+
 		String *loggingFilePath = FileManager::GetSharedInstance()->GetPathForLocation(FileManager::Location::ExternalSaveDirectory);
 		loggingFilePath->AppendPathComponent(RNCSTR("logs/RNLogs.txt"));
 		_fileStream.open(loggingFilePath->GetUTF8String());
 		LoggingEngine *engine2 = new StreamLoggingEngine(_fileStream, true);
 		engine2->SetLogFormatter(formatter);
-		
-		return Array::WithObjects({ engine->Autorelease(), engine2->Autorelease() });
+
+		return Array::WithObjects({engine->Autorelease(), engine2->Autorelease()});
 #endif
 	}
-}
+} // namespace RN

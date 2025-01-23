@@ -69,7 +69,7 @@ namespace RN
 			uint32 *_bytes;
 			uint32 _offset;
 		};
-	}
+	} // namespace Random
 
 	class RandomNumberGenerator : public Object
 	{
@@ -125,6 +125,6 @@ namespace RN
 	RNAPI Vector4 GetRandomVector4Range(const Vector4 &min, const Vector4 &max);
 
 	RNObjectClass(RandomNumberGenerator)
-}
+} // namespace RN
 
 #endif /* __RAYNE_RANDOM_H__ */

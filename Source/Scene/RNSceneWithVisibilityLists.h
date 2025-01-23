@@ -21,25 +21,25 @@ namespace RN
 		public:
 			RNAPI virtual bool ContainsPosition(const RN::Vector3 &cameraPosition) const;
 			std::vector<SceneNode *> nodes;
-			
+
 			__RNDeclareMetaInternal(Volume)
 		};
-		
+
 		class AxisAlignedBoxVolume : public Volume
 		{
 		public:
 			RNAPI bool ContainsPosition(const RN::Vector3 &cameraPosition) const final;
-			
+
 			Vector3 boundsMin;
 			Vector3 boundsMax;
-			
+
 			__RNDeclareMetaInternal(AxisAlignedBoxVolume)
 		};
-		
+
 		RNAPI ~SceneWithVisibilityLists();
-		
+
 		RNAPI void AddVolume(Volume *volume);
-		
+
 		RNAPI void AddNode(SceneNode *node) override;
 		RNAPI void RemoveNode(SceneNode *node) override;
 
@@ -48,34 +48,34 @@ namespace RN
 
 		RNAPI void Update(float delta) override;
 		RNAPI void Render(Renderer *renderer) override;
-		
+
 		RNAPI void RenderVolumeList(Renderer *renderer, Camera *camera, const Volume *volume);
-		
+
 		RNAPI void AddRenderNode(SceneNode *node);
 		RNAPI void RemoveRenderNode(SceneNode *node);
 
 		IntrusiveList<SceneNode> _updateNodes[4];
 		IntrusiveList<Camera> _cameras;
 		IntrusiveList<Light> _lights;
-		
+
 		Array *_volumes;
 		Volume *_defaultVolume;
-		
+
 		bool _isAddingVolume;
 
 		__RNDeclareMetaInternal(SceneWithVisibilityLists)
 	};
-	
+
 	class SceneWithVisibilityListsInfo : public SceneInfo
 	{
 	public:
 		SceneWithVisibilityListsInfo(Scene *scene);
-		
-		std::vector<SceneWithVisibilityLists::Volume *>volumes;
-		
+
+		std::vector<SceneWithVisibilityLists::Volume *> volumes;
+
 		__RNDeclareMetaInternal(SceneWithVisibilityListsInfo)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_SCENEWITHVISIBILITYLISTS_H__ */

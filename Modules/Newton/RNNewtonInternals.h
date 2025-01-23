@@ -20,6 +20,6 @@ namespace RN
 		static void SerializeCallback(void *serializeHandle, const void *buffer, int size);
 		static void DeserializeCallback(void *serializeHandle, void *buffer, int size);
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_NEWTONINTERNALS_H_) */

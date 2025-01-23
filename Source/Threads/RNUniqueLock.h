@@ -99,7 +99,7 @@ namespace RN
 		bool _hasLock;
 		T &_lock;
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_UNIQUELOCK_H_ */

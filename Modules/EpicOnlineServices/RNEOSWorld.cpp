@@ -9,28 +9,28 @@
 #include "RNEOSWorld.h"
 
 #if RN_PLATFORM_ANDROID
-#include "Android/eos_Android_base.h"
-#include "Android/eos_android.h"
+	#include "Android/eos_Android_base.h"
+	#include "Android/eos_android.h"
 #endif
 
-#include "eos_platform_prereqs.h"
-#include "eos_sdk.h"
-#include "eos_logging.h"
-#include "eos_common.h"
 #include "eos_auth.h"
 #include "eos_auth_types.h"
+#include "eos_common.h"
 #include "eos_connect.h"
 #include "eos_connect_types.h"
 #include "eos_lobby.h"
 #include "eos_lobby_types.h"
+#include "eos_logging.h"
 #include "eos_p2p.h"
 #include "eos_p2p_types.h"
+#include "eos_platform_prereqs.h"
+#include "eos_sdk.h"
 
 #if !RN_PLATFORM_WINDOWS
-#include <netinet/ip.h>
-#include <netinet/ip_icmp.h>
+	#include <netinet/ip.h>
+	#include <netinet/ip_icmp.h>
 #else
-#include "Windows/eos_windows.h"
+	#include "Windows/eos_windows.h"
 #endif
 
 namespace RN
@@ -39,12 +39,13 @@ namespace RN
 
 	EOSWorld *EOSWorld::_instance = nullptr;
 
-	EOSWorld* EOSWorld::GetInstance()
+	EOSWorld *EOSWorld::GetInstance()
 	{
 		return _instance;
 	}
 
-	EOSWorld::EOSWorld(String *productName, String *productVersion, String *productID, String *sandboxID, String *deploymentID, String *clientID, String *clientSecret, std::function<void(std::function<void(String *, const String *, EOSAuthServiceType)>)> externalLoginCallback, bool allowFallbackToDeviceID) : _hosts(new Array()), _externalLoginCallback(nullptr), _loginState(LoginStateIsNotLoggedIn), _loggedInUserID(nullptr), _lobbyManager(nullptr), _allowFallbackToDeviceID(allowFallbackToDeviceID)
+	EOSWorld::EOSWorld(String *productName, String *productVersion, String *productID, String *sandboxID, String *deploymentID, String *clientID, String *clientSecret, std::function<void(std::function<void(String *, const String *, EOSAuthServiceType)>)> externalLoginCallback, bool allowFallbackToDeviceID) :
+		_hosts(new Array()), _externalLoginCallback(nullptr), _loginState(LoginStateIsNotLoggedIn), _loggedInUserID(nullptr), _lobbyManager(nullptr), _allowFallbackToDeviceID(allowFallbackToDeviceID)
 	{
 		RN_ASSERT(!_instance, "There already is an EOSWorld!");
 
@@ -53,15 +54,15 @@ namespace RN
 			_externalLoginCallback = std::move(externalLoginCallback);
 		}
 
-		EOS_InitializeOptions SDKOptions = { 0 };
+		EOS_InitializeOptions SDKOptions = {0};
 		SDKOptions.ApiVersion = EOS_INITIALIZE_API_LATEST;
 		SDKOptions.ProductName = productName->GetUTF8String();
 		SDKOptions.ProductVersion = productVersion->GetUTF8String();
-		
+
 #if RN_PLATFORM_ANDROID
 		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
 
-		static EOS_Android_InitializeOptions JNIOptions = { 0 };
+		static EOS_Android_InitializeOptions JNIOptions = {0};
 		JNIOptions.ApiVersion = EOS_ANDROID_INITIALIZEOPTIONS_API_LATEST;
 
 		JNIOptions.OptionalInternalDirectory = app->activity->internalDataPath;
@@ -83,16 +84,16 @@ namespace RN
 #else
 		EOS_Logging_SetLogLevel(EOS_ELogCategory::EOS_LC_ALL_CATEGORIES, EOS_ELogLevel::EOS_LOG_Warning);
 #endif
-		
-		static EOS_Platform_RTCOptions rtcOptions = { 0 };
+
+		static EOS_Platform_RTCOptions rtcOptions = {0};
 		rtcOptions.ApiVersion = EOS_PLATFORM_RTCOPTIONS_API_LATEST;
-		
+
 #if RN_PLATFORM_WINDOWS
 		// Get absolute path for xaudio2_9redist.dll file
 		String *filePath = FileManager::GetSharedInstance()->GetPathForLocation(FileManager::Location::ApplicationDirectory);
 		filePath->AppendPathComponent(RNCSTR("/xaudio2_9redist.dll"));
 
-		EOS_Windows_RTCOptions WindowsRtcOptions = { 0 };
+		EOS_Windows_RTCOptions WindowsRtcOptions = {0};
 		WindowsRtcOptions.ApiVersion = EOS_WINDOWS_RTCOPTIONS_API_LATEST;
 		WindowsRtcOptions.XAudio29DllPath = filePath->GetUTF8String();
 		rtcOptions.PlatformSpecificOptions = &WindowsRtcOptions;
@@ -111,32 +112,32 @@ namespace RN
 		platformOptions.CacheDirectory = nullptr;
 		platformOptions.TickBudgetInMilliseconds = 0; //Do all work, no matter how long
 		platformOptions.RTCOptions = &rtcOptions;
-		
+
 		_platformHandle = EOS_Platform_Create(&platformOptions);
-		
+
 		_connectInterfaceHandle = EOS_Platform_GetConnectInterface(_platformHandle);
 		_p2pInterfaceHandle = EOS_Platform_GetP2PInterface(_platformHandle);
-		
+
 		EOS_Connect_AddNotifyAuthExpirationOptions authExpirationOptions = {0};
 		authExpirationOptions.ApiVersion = EOS_CONNECT_ADDNOTIFYAUTHEXPIRATION_API_LATEST;
 		EOS_Connect_AddNotifyAuthExpiration(_connectInterfaceHandle, &authExpirationOptions, this, ConnectOnAuthExpirationCallback);
-		
+
 		EOS_Connect_AddNotifyLoginStatusChangedOptions loginStatusChangedOptions = {0};
 		loginStatusChangedOptions.ApiVersion = EOS_CONNECT_ADDNOTIFYLOGINSTATUSCHANGED_API_LATEST;
 		EOS_Connect_AddNotifyLoginStatusChanged(_connectInterfaceHandle, &loginStatusChangedOptions, this, ConnectOnLoginStatusChangedCallback);
-		
-//#if !RN_PLATFORM_ANDROID
+
+		//#if !RN_PLATFORM_ANDROID
 		EOS_P2P_SetRelayControlOptions relayControlOptions = {};
 		relayControlOptions.ApiVersion = EOS_P2P_SETRELAYCONTROL_API_LATEST;
-//#if RN_PLATFORM_ANDROID
+		//#if RN_PLATFORM_ANDROID
 		relayControlOptions.RelayControl = EOS_ERelayControl::EOS_RC_AllowRelays;
-//#else
+		//#else
 		//relayControlOptions.RelayControl = EOS_ERelayControl::EOS_RC_ForceRelays;
 		EOS_P2P_SetRelayControl(_p2pInterfaceHandle, &relayControlOptions);
-//#endif
+		//#endif
 		_instance = this;
 	}
-		
+
 	EOSWorld::~EOSWorld()
 	{
 		_hosts->Release();
@@ -149,7 +150,7 @@ namespace RN
 	void EOSWorld::Update(float delta)
 	{
 		EOS_Platform_Tick(_platformHandle);
-		
+
 		_hosts->Enumerate<EOSHost>([&](EOSHost *host, size_t index, bool &stop) {
 			host->Update(delta);
 		});
@@ -176,7 +177,7 @@ namespace RN
 		{
 			_lobbyManager = new EOSLobbyManager(this);
 		}
-		
+
 		return _lobbyManager;
 	}
 
@@ -188,7 +189,7 @@ namespace RN
 		{
 			return RNSTR(outBuffer);
 		}
-		
+
 		return nullptr;
 	}
 
@@ -199,7 +200,7 @@ namespace RN
 
 	double EOSWorld::Ping(String *ip, size_t repetitions)
 	{
-/*#if !RN_PLATFORM_WINDOWS
+		/*#if !RN_PLATFORM_WINDOWS
 		RNDebug("Pinging " << ip << ".");
 		
 		struct PingPacket
@@ -307,7 +308,7 @@ namespace RN
 		}
 		
 		std::sort(pingTimes.begin(), pingTimes.end());*/
-		
+
 		/*double averagePing = 0.0;
 		int filterSize = pingTimes.size() / 4;
 		for(int i = filterSize; i < pingTimes.size() - filterSize; i++)
@@ -318,13 +319,13 @@ namespace RN
 		averagePing /= pingTimes.size() - 2 * filterSize;
 		
 		RNDebug("Pinging Finished with average of " << averagePing << "ms");*/
-		
-/*		double lowestPing = pingTimes.size() > 0?pingTimes[0]:10000.0;;
+
+		/*		double lowestPing = pingTimes.size() > 0?pingTimes[0]:10000.0;;
 		RNDebug("Pinging Finished with lowest of " << lowestPing << "ms");
 		
 		return lowestPing;
 #endif*/
-		
+
 		return 0.0;
 	}
 
@@ -340,12 +341,11 @@ namespace RN
 	{
 		RNDebug("Start user login");
 		if(_loginState == LoginStateIsLoggingIn || _loginState == LoginStateIsLoggedIn) return;
-		
+
 		RNDebug("Start user login for real");
 		_loginState = LoginStateIsLoggingIn;
-		
-		std::function<void(String *, const String *, EOSAuthServiceType)> loginCallback = [&](String *userName, const String *loginToken, EOSAuthServiceType serviceType){
-			
+
+		std::function<void(String *, const String *, EOSAuthServiceType)> loginCallback = [&](String *userName, const String *loginToken, EOSAuthServiceType serviceType) {
 			EOS_Connect_Credentials connectCredentials = {};
 			connectCredentials.ApiVersion = EOS_CONNECT_CREDENTIALS_API_LATEST;
 
@@ -355,14 +355,14 @@ namespace RN
 				{
 					connectCredentials.Type = EOS_EExternalCredentialType::EOS_ECT_OCULUS_USERID_NONCE;
 				}
-				
+
 				connectCredentials.Token = loginToken->GetUTF8String();
 			}
 			else
 			{
 				connectCredentials.Type = EOS_EExternalCredentialType::EOS_ECT_DEVICEID_ACCESS_TOKEN;
 			}
-			
+
 			EOS_Connect_UserLoginInfo userInfo;
 			userInfo.ApiVersion = EOS_CONNECT_USERLOGININFO_API_LATEST;
 			userInfo.NsaIdToken = nullptr;
@@ -374,7 +374,7 @@ namespace RN
 			{
 				userInfo.DisplayName = "__NO_NAME__";
 			}
-			
+
 			EOS_Connect_LoginOptions connectOptions = {0};
 			connectOptions.ApiVersion = EOS_CONNECT_LOGIN_API_LATEST;
 			connectOptions.Credentials = &connectCredentials;
@@ -383,7 +383,7 @@ namespace RN
 			RNDebug("Now logging in");
 			EOS_Connect_Login(_connectInterfaceHandle, &connectOptions, this, ConnectOnLoginCallback);
 		};
-		
+
 		if(_externalLoginCallback)
 		{
 			_externalLoginCallback(loginCallback);
@@ -404,8 +404,8 @@ namespace RN
 		if(Data->ResultCode == EOS_EResult::EOS_Success)
 		{
 			RNDebug("Succesfully created device ID");
-			
-			EOSWorld *eosWorld = static_cast<EOSWorld*>(Data->ClientData);
+
+			EOSWorld *eosWorld = static_cast<EOSWorld *>(Data->ClientData);
 			eosWorld->_loginState = LoginStateIsLoggingInNoDeviceID;
 			eosWorld->LoginUser();
 		}
@@ -421,7 +421,7 @@ namespace RN
 		{
 			RNDebug("Succesfully created user");
 
-			EOSWorld *eosWorld = static_cast<EOSWorld*>(Data->ClientData);
+			EOSWorld *eosWorld = static_cast<EOSWorld *>(Data->ClientData);
 			eosWorld->_loginState = LoginStateIsLoggingInNoUser;
 			eosWorld->LoginUser();
 		}
@@ -433,7 +433,7 @@ namespace RN
 
 	void EOSWorld::ConnectOnLoginCallback(const EOS_Connect_LoginCallbackInfo *Data)
 	{
-		EOSWorld *eosWorld = static_cast<EOSWorld*>(Data->ClientData);
+		EOSWorld *eosWorld = static_cast<EOSWorld *>(Data->ClientData);
 		if(Data->ResultCode == EOS_EResult::EOS_Success)
 		{
 			RNDebug("Successful login");
@@ -456,7 +456,7 @@ namespace RN
 		else if(Data->ResultCode == EOS_EResult::EOS_NotFound)
 		{
 			RNDebug("No credentials found, creating device ID...");
-			EOSWorld *eosWorld = static_cast<EOSWorld*>(Data->ClientData);
+			EOSWorld *eosWorld = static_cast<EOSWorld *>(Data->ClientData);
 			eosWorld->CreateDeviceID();
 		}
 		else
@@ -476,14 +476,14 @@ namespace RN
 	void EOSWorld::ConnectOnAuthExpirationCallback(const EOS_Connect_AuthExpirationCallbackInfo *Data)
 	{
 		RNDebug("EOS auth is about to expire, starting renew process");
-		EOSWorld *eosWorld = static_cast<EOSWorld*>(Data->ClientData);
+		EOSWorld *eosWorld = static_cast<EOSWorld *>(Data->ClientData);
 		eosWorld->_loginState = LoginStateLoginExpired;
 		eosWorld->LoginUser();
 	}
-	
+
 	void EOSWorld::ConnectOnLoginStatusChangedCallback(const EOS_Connect_LoginStatusChangedCallbackInfo *Data)
 	{
-		EOSWorld *eosWorld = static_cast<EOSWorld*>(Data->ClientData);
+		EOSWorld *eosWorld = static_cast<EOSWorld *>(Data->ClientData);
 		switch(Data->CurrentStatus)
 		{
 			case EOS_ELoginStatus::EOS_LS_NotLoggedIn:
@@ -504,4 +504,4 @@ namespace RN
 			}
 		}
 	}
-}
+} // namespace RN

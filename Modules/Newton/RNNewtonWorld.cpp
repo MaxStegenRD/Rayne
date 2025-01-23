@@ -15,10 +15,10 @@ namespace RN
 
 	NewtonWorld *NewtonWorld::_sharedInstance = nullptr;
 
-	int NewtonWorld::AABBOverlapCallback(const NewtonMaterial* const material, const NewtonBody* const body0, const NewtonBody* const body1, int threadIndex)
+	int NewtonWorld::AABBOverlapCallback(const NewtonMaterial *const material, const NewtonBody *const body0, const NewtonBody *const body1, int threadIndex)
 	{
-		NewtonCollisionObject *object0 = static_cast<NewtonCollisionObject*>(NewtonBodyGetUserData(body0));
-		NewtonCollisionObject *object1 = static_cast<NewtonCollisionObject*>(NewtonBodyGetUserData(body1));
+		NewtonCollisionObject *object0 = static_cast<NewtonCollisionObject *>(NewtonBodyGetUserData(body0));
+		NewtonCollisionObject *object1 = static_cast<NewtonCollisionObject *>(NewtonBodyGetUserData(body1));
 
 		bool filterMask = (object0->GetCollisionFilterGroup() & object1->GetCollisionFilterMask()) && (object1->GetCollisionFilterGroup() & object0->GetCollisionFilterMask());
 		bool filterID = (object0->GetCollisionFilterIgnoreID() == 0 && object1->GetCollisionFilterIgnoreID() == 0) || (object0->GetCollisionFilterID() != object1->GetCollisionFilterIgnoreID() && object0->GetCollisionFilterIgnoreID() != object1->GetCollisionFilterID());
@@ -28,12 +28,12 @@ namespace RN
 		return 0;
 	}
 
-	void NewtonWorld::ProcessCallback(const NewtonJoint* const contact, float timestep, int threadIndex)
+	void NewtonWorld::ProcessCallback(const NewtonJoint *const contact, float timestep, int threadIndex)
 	{
-		
 	}
 
-	NewtonWorld::NewtonWorld(const Vector3 &gravity, bool debug) : _paused(false), _gravity(gravity)
+	NewtonWorld::NewtonWorld(const Vector3 &gravity, bool debug) :
+		_paused(false), _gravity(gravity)
 	{
 		RN_ASSERT(!_sharedInstance, "There can only be one PhysX instance at a time!");
 		_sharedInstance = this;
@@ -56,16 +56,16 @@ namespace RN
 
 	void NewtonWorld::SetGravity(const Vector3 &gravity)
 	{
-//		Lock();
+		//		Lock();
 		_gravity = gravity;
-//		Unlock();
+		//		Unlock();
 	}
 
 	Vector3 NewtonWorld::GetGravity()
 	{
-//		Lock();
+		//		Lock();
 		return _gravity;
-//		Unlock();
+		//		Unlock();
 	}
 
 	void NewtonWorld::SetSubsteps(uint8 substeps)
@@ -75,28 +75,27 @@ namespace RN
 
 	void NewtonWorld::SetPaused(bool paused)
 	{
-//		Lock();
+		//		Lock();
 		_paused = paused;
-//		Unlock();
+		//		Unlock();
 	}
 
 	void NewtonWorld::Update(float delta)
 	{
-//		Lock();
+		//		Lock();
 		bool paused = _paused;
-//		Unlock();
+		//		Unlock();
 
 		if(paused || delta > 1.0f)
 			return;
-		
+
 		NewtonUpdate(_newtonInstance, delta);
 	}
 
 
-
-/*	PhysXContactInfo PhysXWorld::CastRay(const Vector3 &from, const Vector3 &to)
+	/*	PhysXContactInfo PhysXWorld::CastRay(const Vector3 &from, const Vector3 &to)
 	{
 		PhysXContactInfo hit;
 		return hit;
 	}*/
-}
+} // namespace RN

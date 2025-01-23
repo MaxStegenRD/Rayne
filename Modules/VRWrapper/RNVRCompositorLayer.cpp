@@ -12,13 +12,12 @@ namespace RN
 {
 	RNDefineMeta(VRCompositorLayer, Object)
 
-	VRCompositorLayer::VRCompositorLayer(Type type) : _type(type)
+	VRCompositorLayer::VRCompositorLayer(Type type) :
+		_type(type)
 	{
-		
 	}
 
 	VRCompositorLayer::~VRCompositorLayer()
 	{
-		
 	}
-}
+} // namespace RN

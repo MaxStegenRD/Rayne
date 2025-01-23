@@ -7,11 +7,11 @@
 //
 
 #include "RNWindow.h"
-#include "../Debug/RNLogger.h"
 #include "../Base/RNKernel.h"
+#include "../Debug/RNLogger.h"
 
 #if RN_PLATFORM_MAC_OS
-#include <AppKit/AppKit.h>
+	#include <AppKit/AppKit.h>
 #endif
 
 namespace RN
@@ -49,15 +49,15 @@ namespace RN
 		GetClientRect(hwnd, &clientRect);
 
 		// Convert the client area to screen coordinates.
-		POINT pt = { clientRect.left, clientRect.top };
-		POINT pt2 = { clientRect.right, clientRect.bottom };
+		POINT pt = {clientRect.left, clientRect.top};
+		POINT pt2 = {clientRect.right, clientRect.bottom};
 		ClientToScreen(hwnd, &pt);
 		ClientToScreen(hwnd, &pt2);
 		SetRect(&clientRect, pt.x + 1, pt.y + 1, pt2.x - 1, pt2.y - 1);
 
 		ClipCursor(&clientRect);
 #elif RN_PLATFORM_MAC_OS
-		NSWindow *window = reinterpret_cast<NSWindow*>(windowHandle);
+		NSWindow *window = reinterpret_cast<NSWindow *>(windowHandle);
 		CGAssociateMouseAndMouseCursorPosition(false);
 		CGWarpMouseCursorPosition(CGPointMake(window.frame.origin.x + window.frame.size.width / 2, window.frame.origin.y + window.frame.size.height / 2));
 #elif RN_PLATFORM_LINUX
@@ -131,4 +131,4 @@ namespace RN
 		xcb_free_cursor(connection, cursor);
 #endif
 	}
-}
+} // namespace RN

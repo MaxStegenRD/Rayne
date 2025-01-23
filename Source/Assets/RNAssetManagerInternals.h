@@ -50,6 +50,6 @@ namespace RN
 
 		__RNDeclareMetaInternal(PendingAsset)
 	};
-}
+} // namespace RN
 
 #endif /* __RAYNE_ASSETMANAGERINTERNALS_H_ */

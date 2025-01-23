@@ -7,15 +7,15 @@
 //
 
 #include "RNOculusAudioPlayer.h"
-#include "RNOculusAudioWorld.h"
-#include "RNOculusAudioSampler.h"
 #include "RNOculusAudioInternals.h"
+#include "RNOculusAudioSampler.h"
+#include "RNOculusAudioWorld.h"
 
 namespace RN
 {
 	RNDefineMeta(OculusAudioPlayer, Object)
 
-		OculusAudioPlayer::OculusAudioPlayer(AudioAsset *asset) :
+	OculusAudioPlayer::OculusAudioPlayer(AudioAsset *asset) :
 		_sampler(new OculusAudioSampler(nullptr)),
 		_isPlaying(false),
 		_isRepeating(false),
@@ -24,11 +24,11 @@ namespace RN
 		_currentTime(0.0f)
 	{
 		RN_ASSERT(OculusAudioWorld::_instance, "You need to create a OculusAudioWorld before creating audio players!");
-		
+
 		SetAudioAsset(asset);
 		OculusAudioWorld::_instance->AddAudioPlayer(this);
 	}
-	
+
 	OculusAudioPlayer::~OculusAudioPlayer()
 	{
 		if(OculusAudioWorld::_instance)
@@ -47,18 +47,18 @@ namespace RN
 			_inputChannels = asset->GetChannels();
 		}
 	}
-		
+
 	void OculusAudioPlayer::SetRepeat(bool repeat)
 	{
 		_sampler->SetRepeat(repeat);
 		_isRepeating = repeat;
 	}
-	
+
 	void OculusAudioPlayer::SetPitch(float pitch)
 	{
 		_pitch = pitch;
 	}
-		
+
 	void OculusAudioPlayer::SetGain(float gain)
 	{
 		_gain = gain;
@@ -104,7 +104,7 @@ namespace RN
 					_currentTime += skipTime;
 					_sampler->GetAsset()->PopData(nullptr, skipBytes);
 				}
-				
+
 				_sampler->GetAsset()->PopData(nullptr, assetFrameSamples);
 			}
 		}
@@ -112,10 +112,10 @@ namespace RN
 		//handle mono input
 		if(_inputChannels == 1)
 		{
-			for (int n = 0; n < sampleCount; n++)
+			for(int n = 0; n < sampleCount; n++)
 			{
 				//TODO: support more output layouts
-				for (int i = 0; i < 2; i++)
+				for(int i = 0; i < 2; i++)
 				{
 					OculusAudioWorld::_instance->_sharedFrameData[n * 2 + i] = _sampler->GetSample(_currentTime, 0) * _gain;
 				}
@@ -139,4 +139,4 @@ namespace RN
 
 		*outputBuffer = OculusAudioWorld::_instance->_sharedFrameData;
 	}
-}
+} // namespace RN

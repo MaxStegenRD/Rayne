@@ -15,21 +15,19 @@ namespace RN
 	RNDefineMeta(PostProcessingAPIStage, RenderPass)
 	RNDefineMeta(PostProcessingStage, RenderPass)
 
-	PostProcessingAPIStage::PostProcessingAPIStage(Type type) : _type(type)
+	PostProcessingAPIStage::PostProcessingAPIStage(Type type) :
+		_type(type)
 	{
-
 	}
 
 	PostProcessingAPIStage::~PostProcessingAPIStage()
 	{
-		
 	}
 
 
-
-	PostProcessingStage::PostProcessingStage() : _material(nullptr)
+	PostProcessingStage::PostProcessingStage() :
+		_material(nullptr)
 	{
-
 	}
 
 	PostProcessingStage::~PostProcessingStage()
@@ -43,4 +41,4 @@ namespace RN
 		SafeRelease(_material);
 		_material = SafeRetain(material);
 	}
-}
+} // namespace RN

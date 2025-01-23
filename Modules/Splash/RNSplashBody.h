@@ -19,11 +19,11 @@ namespace RN
 	{
 	public:
 		SPAPI SplashBody(SplashShape *shape, float mass);
-			
+
 		SPAPI ~SplashBody();
-			
+
 		SPAPI static SplashBody *WithShape(SplashShape *shape, float mass);
-			
+
 		SPAPI void SetLinearVelocity(const Vector3 &velocity);
 		SPAPI void SetAngularVelocity(const Vector3 &velocity);
 
@@ -41,10 +41,10 @@ namespace RN
 		SPAPI void PrepareCollision(float delta);
 		SPAPI void Collide(SplashBody *other, float delta);
 		SPAPI void Move(float delta);
-			
+
 	protected:
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
-			
+
 	private:
 		Vector3 _offset;
 		SplashShape *_shape;
@@ -54,9 +54,9 @@ namespace RN
 		Vector3 _linearAcceleration;
 		Vector3 _linearVelocity;
 		Vector3 _angularVelocity;
-			
+
 		RNDeclareMetaAPI(SplashBody, SPAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_SPLASHBODY_H_) */

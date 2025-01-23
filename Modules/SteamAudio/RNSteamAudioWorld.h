@@ -10,8 +10,8 @@
 #define __RAYNE_STEAMAUDIOWORLD_H_
 
 #include "RNSteamAudio.h"
-#include "RNSteamAudioSource.h"
 #include "RNSteamAudioPlayer.h"
+#include "RNSteamAudioSource.h"
 
 struct SoundIo;
 struct SoundIoDevice;
@@ -30,7 +30,11 @@ namespace RN
 			Output
 		};
 
-		~SteamAudioDevice() { name->Release(); id->Release(); }
+		~SteamAudioDevice()
+		{
+			name->Release();
+			id->Release();
+		}
 
 		const Type type;
 		const uint32 index;
@@ -39,7 +43,8 @@ namespace RN
 		const bool isDefault;
 
 	private:
-		SteamAudioDevice(Type type, uint32 index, const char *name, const char *id, bool isDefault) : type(type), index(index), name(RNSTR(name)->Retain()), id(RNSTR(id)->Retain()), isDefault(isDefault) { }
+		SteamAudioDevice(Type type, uint32 index, const char *name, const char *id, bool isDefault) :
+			type(type), index(index), name(RNSTR(name)->Retain()), id(RNSTR(id)->Retain()), isDefault(isDefault) {}
 
 		RNDeclareMetaAPI(SteamAudioDevice, SAAPI)
 	};
@@ -80,11 +85,11 @@ namespace RN
 
 		SAAPI void SetOutputDevice(SteamAudioDevice *outputDevice);
 		SAAPI void SetInputDevice(SteamAudioDevice *inputDevice, AudioAsset *targetAsset);
-			
+
 		SAAPI void SetListener(SceneNode *listener);
 		SceneNode *GetListener() const { return _listener; };
 
-		SAAPI SteamAudioPlayer *PlaySound(AudioAsset*resource) const;
+		SAAPI SteamAudioPlayer *PlaySound(AudioAsset *resource) const;
 		SAAPI SteamAudioSource *PlaySound(AudioAsset *resource, RN::Vector3 position) const;
 
 		SAAPI void AddMaterial(const SteamAudioMaterial &material);
@@ -94,14 +99,14 @@ namespace RN
 		SAAPI void *GetBinauralRenderer() const { return _binauralRenderer; }
 		SAAPI void *GetEnvironmentalRenderer() const { return _environmentalRenderer; }
 		SAAPI void *GetEnvironment() const { return _environment; }
-		
-		SAAPI void SetCustomWriteCallback(const std::function<void (double)> &customWriteCallback);
+
+		SAAPI void SetCustomWriteCallback(const std::function<void(double)> &customWriteCallback);
 
 		SAAPI void RemoveAudioSource(SteamAudioSource *source) const;
 
 	protected:
 		void Update(float delta) override;
-			
+
 	private:
 		static void ReadCallback(struct SoundIoInStream *inStream, int minSampleCount, int maxSampleCount);
 		static void WriteCallback(struct SoundIoOutStream *outStream, int minSampleCount, int maxSampleCount);
@@ -148,13 +153,13 @@ namespace RN
 
 		std::vector<SteamAudioMaterial> _sceneMaterials;
 		std::vector<SteamAudioGeometry> _sceneGeometry;
-		
-		std::function<void (double)> _customWriteCallback;
+
+		std::function<void(double)> _customWriteCallback;
 
 		SteamAudioWorldInternals *_internals;
-			
+
 		RNDeclareMetaAPI(SteamAudioWorld, SAAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_STEAMAUDIOWORLD_H_) */

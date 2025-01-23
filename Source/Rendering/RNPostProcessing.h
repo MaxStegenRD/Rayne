@@ -12,8 +12,8 @@
 
 #include "../Base/RNBase.h"
 #include "../Math/RNRect.h"
-#include "RNRenderPass.h"
 #include "RNMaterial.h"
+#include "RNRenderPass.h"
 
 
 namespace RN
@@ -53,7 +53,7 @@ namespace RN
 
 		__RNDeclareMetaInternal(PostProcessingStage)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_POSTPROCESSING_H__ */

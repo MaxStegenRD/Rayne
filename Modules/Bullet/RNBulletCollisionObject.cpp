@@ -14,8 +14,8 @@
 namespace RN
 {
 	RNDefineMeta(BulletCollisionObject, SceneNodeAttachment)
-		
-		BulletCollisionObject::BulletCollisionObject() :
+
+	BulletCollisionObject::BulletCollisionObject() :
 		_collisionFilter(btBroadphaseProxy::DefaultFilter),
 		_collisionFilterMask(btBroadphaseProxy::AllFilter),
 		_owner(nullptr),
@@ -23,7 +23,7 @@ namespace RN
 		_contactCallback(nullptr),
 		_simulationStepCallback(nullptr)
 	{}
-		
+
 	BulletCollisionObject::~BulletCollisionObject()
 	{
 		if(_material)
@@ -32,8 +32,8 @@ namespace RN
 			_material->Release();
 		}
 	}
-		
-		
+
+
 	void BulletCollisionObject::SetCollisionFilter(short int filter)
 	{
 		_collisionFilter = filter;
@@ -51,15 +51,15 @@ namespace RN
 			_connection->Disconnect();
 			_material->Release();
 		}
-			
+
 		if((_material = SafeRetain(tmaterial)))
 		{
 			_connection = _material->signal.Connect(std::bind(&BulletCollisionObject::UpdateFromMaterial, this, std::placeholders::_1));
 			UpdateFromMaterial(_material);
 		}
 	}
-		
-	void BulletCollisionObject::SetContactCallback(std::function<void (BulletCollisionObject *, const BulletContactInfo&)> &&callback)
+
+	void BulletCollisionObject::SetContactCallback(std::function<void(BulletCollisionObject *, const BulletContactInfo &)> &&callback)
 	{
 		_contactCallback = std::move(callback);
 	}
@@ -68,25 +68,25 @@ namespace RN
 	{
 		_simulationStepCallback = std::move(callback);
 	}
-		
+
 	void BulletCollisionObject::SetPositionOffset(RN::Vector3 offset)
 	{
 		this->offset = offset;
 	}
-		
+
 	void BulletCollisionObject::ReInsertIntoWorld()
 	{
 		if(_owner)
 		{
 			auto world = _owner;
-				
+
 			world->Lock();
 			world->RemoveCollisionObject(this);
 			world->InsertCollisionObject(this);
 			world->Unlock();
 		}
 	}
-		
+
 	void BulletCollisionObject::InsertIntoWorld(BulletWorld *world)
 	{
 		_owner = world;
@@ -95,42 +95,42 @@ namespace RN
 	{
 		_owner = nullptr;
 	}
-		
+
 	void BulletCollisionObject::DidUpdate(SceneNode::ChangeSet changeSet)
 	{
 		if(changeSet & SceneNode::ChangeSet::World)
 		{
 			SceneInfo *sceneInfo = GetParent()->GetSceneInfo();
-				
+
 			if(!sceneInfo && _owner)
 			{
 				_owner->RemoveCollisionObject(this);
 				return;
 			}
-				
+
 			if(sceneInfo && !_owner)
 			{
 				BulletWorld::GetSharedInstance()->InsertCollisionObject(this);
 				return;
 			}
 		}
-        
-        if(changeSet & SceneNode::ChangeSet::Attachments)
-        {
-            SceneInfo *sceneInfo = GetParent()->GetSceneInfo();
-            
-            if(sceneInfo)
-            {
-                if(!_owner && GetParent())
-                {
-                    BulletWorld::GetSharedInstance()->InsertCollisionObject(this);
-                }
-                else if(_owner && !GetParent())
-                {
-                    if(_owner)
-                        _owner->RemoveCollisionObject(this);
-                }
-            }
-        }
+
+		if(changeSet & SceneNode::ChangeSet::Attachments)
+		{
+			SceneInfo *sceneInfo = GetParent()->GetSceneInfo();
+
+			if(sceneInfo)
+			{
+				if(!_owner && GetParent())
+				{
+					BulletWorld::GetSharedInstance()->InsertCollisionObject(this);
+				}
+				else if(_owner && !GetParent())
+				{
+					if(_owner)
+						_owner->RemoveCollisionObject(this);
+				}
+			}
+		}
 	}
-}
+} // namespace RN

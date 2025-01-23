@@ -39,7 +39,7 @@ namespace RN
 
 		__RNDeclareMetaInternal(GPUResource)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_GPURESOURCE_H_ */

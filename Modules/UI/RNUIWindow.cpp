@@ -25,7 +25,6 @@ namespace RN
 
 		Window::~Window()
 		{
-			
 		}
 
 		void Window::Open(Server *server)
@@ -45,5 +44,5 @@ namespace RN
 		{
 			Draw(false);
 		}
-	}
-}
+	} // namespace UI
+} // namespace RN

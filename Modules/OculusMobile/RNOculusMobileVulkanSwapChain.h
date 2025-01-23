@@ -9,8 +9,8 @@
 #ifndef __RAYNE_OCULUSMOBILEVULKANSWAPCHAIN_H_
 #define __RAYNE_OCULUSMOBILEVULKANSWAPCHAIN_H_
 
-#include "RNVulkanRenderer.h"
 #include "RNVulkanFramebuffer.h"
+#include "RNVulkanRenderer.h"
 #include "RNVulkanSwapChain.h"
 
 #include "VrApi.h"
@@ -47,7 +47,7 @@ namespace RN
 
 		RNDeclareMetaAPI(OculusMobileVulkanSwapChain, OVRAPI)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_OCULUSMOBILEVULKANSWAPCHAIN_H_ */

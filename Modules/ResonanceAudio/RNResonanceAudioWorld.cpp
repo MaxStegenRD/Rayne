@@ -18,20 +18,20 @@ namespace RN
 
 	ResonanceAudioWorld *ResonanceAudioWorld::_instance = nullptr;
 
-	ResonanceAudioWorld* ResonanceAudioWorld::GetInstance()
+	ResonanceAudioWorld *ResonanceAudioWorld::GetInstance()
 	{
 		return _instance;
 	}
-	
+
 	void ResonanceAudioWorld::AudioCallback(void *outputBuffer, const void *inputBuffer, unsigned int frameSize, unsigned int status)
 	{
 		AutoreleasePool pool;
-		for(ResonanceAudioSource *source : _instance->_audioSources)
+		for(ResonanceAudioSource *source: _instance->_audioSources)
 		{
 			source->Update();
 		}
 
-		float *floatOutputBuffer = static_cast<float*>(outputBuffer);
+		float *floatOutputBuffer = static_cast<float *>(outputBuffer);
 		if(!_instance->_audioAPI->FillInterleavedOutputBuffer(2, frameSize, floatOutputBuffer))
 		{
 			//RNDebug("Shit. " << frameSize);
@@ -57,26 +57,26 @@ namespace RN
 		_audioSystem->Retain();
 		_audioSystem->SetAudioCallback(AudioCallback);
 	}
-		
+
 	ResonanceAudioWorld::~ResonanceAudioWorld()
 	{
 		_audioSystem->Release();
 
 		if(_sharedFrameData)
 		{
-			delete [] _sharedFrameData;
+			delete[] _sharedFrameData;
 			_sharedFrameData = nullptr;
 		}
 
 		_instance = nullptr;
 	}
 
-	void ResonanceAudioWorld::AddAudioSource(ResonanceAudioSource* source)
+	void ResonanceAudioWorld::AddAudioSource(ResonanceAudioSource *source)
 	{
 		_audioSources.push_back(source);
 	}
 
-	void ResonanceAudioWorld::RemoveAudioSource(ResonanceAudioSource* source)
+	void ResonanceAudioWorld::RemoveAudioSource(ResonanceAudioSource *source)
 	{
 		auto iterator = std::find(_audioSources.begin(), _audioSources.end(), source);
 		if(iterator != _audioSources.end())
@@ -89,7 +89,7 @@ namespace RN
 	{
 		_audioAPI->EnableRoomEffects(enabled);
 	}
-	
+
 	void ResonanceAudioWorld::SetSimpleRoom(Vector3 position, Vector3 dimensions, float reflectionConstant, ResonanceAudioMaterial left, ResonanceAudioMaterial right, ResonanceAudioMaterial bottom, ResonanceAudioMaterial top, ResonanceAudioMaterial front, ResonanceAudioMaterial back)
 	{
 		vraudio::RoomProperties roomProperties;
@@ -110,7 +110,7 @@ namespace RN
 		_audioAPI->SetReverbProperties(vraudio::ComputeReverbProperties(roomProperties));
 		_audioAPI->SetReflectionProperties(vraudio::ComputeReflectionProperties(roomProperties));
 
-		for(ResonanceAudioSource *source : _instance->_audioSources)
+		for(ResonanceAudioSource *source: _instance->_audioSources)
 		{
 			Vector3 sourcePosition = source->GetWorldPosition();
 			vraudio::WorldPosition audioSourcePosition;
@@ -159,11 +159,11 @@ namespace RN
 		}
 	}
 
-	void ResonanceAudioWorld::SetRaycastCallback(const std::function<void (Vector3, Vector3, float &distance)> &raycastCallback)
+	void ResonanceAudioWorld::SetRaycastCallback(const std::function<void(Vector3, Vector3, float &distance)> &raycastCallback)
 	{
 		_raycastCallback = raycastCallback;
 	}
-		
+
 	void ResonanceAudioWorld::Update(float delta)
 	{
 		//Update listener position
@@ -216,27 +216,27 @@ namespace RN
 			SetSimpleRoom(listenerPosition, dimensions, 1.0f, material[0], material[1], material[2], material[3], material[4], material[5]);
 		}
 	}
-	
+
 	void ResonanceAudioWorld::SetInputBuffer(AudioAsset *inputBuffer)
 	{
 		RN_ASSERT(!inputBuffer || (inputBuffer->GetData()->GetLength() > 2 * _audioSystem->_frameSize), "Requires an input buffer big enough to contain two frames of audio data!");
-		
+
 		SafeRelease(_inputBuffer);
 		_inputBuffer = inputBuffer;
 		SafeRetain(_inputBuffer);
 	}
-		
+
 	void ResonanceAudioWorld::SetListener(SceneNode *listener)
 	{
 		if(_listener)
 			_listener->Release();
-			
+
 		_listener = nullptr;
 
 		if(listener)
 			_listener = listener->Retain();
 	}
-		
+
 	ResonanceAudioSource *ResonanceAudioWorld::PlaySound(AudioAsset *resource) const
 	{
 		ResonanceAudioSource *source = new ResonanceAudioSource(resource);
@@ -257,9 +257,9 @@ namespace RN
 
 		return source->Autorelease();
 	}
-	
-/*	void ResonanceAudioWorld::SetCustomWriteCallback(const std::function<void (double)> &customWriteCallback)
+
+	/*	void ResonanceAudioWorld::SetCustomWriteCallback(const std::function<void (double)> &customWriteCallback)
 	{
 		_customWriteCallback = customWriteCallback;
 	}*/
-}
+} // namespace RN

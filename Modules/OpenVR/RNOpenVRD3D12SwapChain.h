@@ -45,7 +45,7 @@ namespace RN
 
 		RNDeclareMetaAPI(OpenVRD3D12SwapChain, OVRAPI)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_OPENVRD3D12SWAPCHAIN_H_ */

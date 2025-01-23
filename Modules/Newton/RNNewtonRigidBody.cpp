@@ -7,8 +7,8 @@
 //
 
 #include "RNNewtonRigidBody.h"
-#include "RNNewtonWorld.h"
 #include "Newton.h"
+#include "RNNewtonWorld.h"
 
 namespace RN
 {
@@ -16,7 +16,7 @@ namespace RN
 
 	void NewtonRigidBody::ForceAndTorqueCallback(const NewtonBody *body, float delta, int threadIndex)
 	{
-		NewtonRigidBody *userObject = static_cast<NewtonRigidBody*>(NewtonBodyGetUserData(body));
+		NewtonRigidBody *userObject = static_cast<NewtonRigidBody *>(NewtonBodyGetUserData(body));
 		if(userObject->_useGravity)
 		{
 			NewtonWorld *newtonWorld = NewtonWorld::GetSharedInstance();
@@ -36,10 +36,10 @@ namespace RN
 
 	void NewtonRigidBody::TransformCallback(const NewtonBody *body, const float *matrix, int threadIndex)
 	{
-		NewtonRigidBody *userObject = static_cast<NewtonRigidBody*>(NewtonBodyGetUserData(body));
+		NewtonRigidBody *userObject = static_cast<NewtonRigidBody *>(NewtonBodyGetUserData(body));
 		userObject->UpdatePosition();
 	}
-		
+
 	NewtonRigidBody::NewtonRigidBody(NewtonShape *shape, float mass) :
 		_shape(shape->Retain()),
 		_body(nullptr)
@@ -55,32 +55,31 @@ namespace RN
 			NewtonBodySetForceAndTorqueCallback(_body, NewtonRigidBody::ForceAndTorqueCallback);
 			NewtonBodySetTransformCallback(_body, TransformCallback);
 		}
-			
 	}
-		
+
 	NewtonRigidBody::~NewtonRigidBody()
 	{
 		NewtonDestroyBody(_body);
 		_shape->Release();
 	}
-	
-		
+
+
 	NewtonRigidBody *NewtonRigidBody::WithShape(NewtonShape *shape, float mass)
 	{
 		NewtonRigidBody *body = new NewtonRigidBody(shape, mass);
 		return body->Autorelease();
 	}
-		
+
 	void NewtonRigidBody::SetMass(float mass)
 	{
-		float inertia[3] = { 1, 1, 1 };
+		float inertia[3] = {1, 1, 1};
 		if(mass > k::EpsilonFloat)
 		{
 			float origin[3];
 			NewtonConvexCollisionCalculateInertialMatrix(_shape->GetNewtonShape(), inertia, origin);
 			NewtonBodySetCentreOfMass(_body, origin);
 		}
-		
+
 		NewtonBodySetMassMatrix(_body, mass, inertia[0], inertia[1], inertia[2]);
 	}
 
@@ -93,15 +92,15 @@ namespace RN
 	{
 		NewtonBodySetOmega(_body, &velocity.x);
 	}
-		
+
 	void NewtonRigidBody::SetDamping(float linear, float angular)
 	{
 		NewtonBodySetLinearDamping(_body, linear);
 
-		float angularValues[3] = {angular , angular , angular};
+		float angularValues[3] = {angular, angular, angular};
 		NewtonBodySetAngularDamping(_body, angularValues);
 	}
-		
+
 	Vector3 NewtonRigidBody::GetLinearVelocity() const
 	{
 		RN::Vector3 velocity;
@@ -124,9 +123,9 @@ namespace RN
 	{
 		_useGravity = enable;
 	}
-		
-		
-/*
+
+
+	/*
 	void PhysXDynamicBody::ApplyForce(const Vector3 &force)
 	{
 		_rigidBody->applyCentralForce(btVector3(force.x, force.y, force.z));
@@ -157,8 +156,8 @@ namespace RN
 		_rigidBody->applyImpulse(btVector3(impulse.x, impulse.y, impulse.z), btVector3(origin.x, origin.y, origin.z));
 	}*/
 
-	
-/*	bool NewtonRigidBody::SweepTest(std::vector<PhysXContactInfo> &contactInfo, const Vector3 &direction, const Vector3 &offsetPosition, const Quaternion &offsetRotation) const
+
+	/*	bool NewtonRigidBody::SweepTest(std::vector<PhysXContactInfo> &contactInfo, const Vector3 &direction, const Vector3 &offsetPosition, const Quaternion &offsetRotation) const
 	{
 		physx::PxTransform pose = _actor->getGlobalPose();
 		pose.p += physx::PxVec3(offsetPosition.x, offsetPosition.y, offsetPosition.z);
@@ -269,11 +268,11 @@ namespace RN
 
 		return newRotation;
 	}*/
-		
+
 	void NewtonRigidBody::DidUpdate(SceneNode::ChangeSet changeSet)
 	{
 		NewtonCollisionObject::DidUpdate(changeSet);
-		
+
 		if(changeSet & SceneNode::ChangeSet::Position)
 		{
 			Vector3 position = GetWorldPosition() - _offset;
@@ -296,7 +295,7 @@ namespace RN
 		}
 	}
 
-/*	void NewtonRigidBody::UpdateFromMaterial(BulletMaterial *material)
+	/*	void NewtonRigidBody::UpdateFromMaterial(BulletMaterial *material)
 	{
 		_rigidBody->setFriction(material->GetFriction());
 		_rigidBody->setRollingFriction(material->GetRollingFriction());
@@ -321,4 +320,4 @@ namespace RN
 		SetWorldPosition(position + _offset);
 		SetWorldRotation(rotation);
 	}
-}
+} // namespace RN

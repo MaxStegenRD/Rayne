@@ -36,15 +36,15 @@ namespace RN
 	{
 		ZoneScoped;
 		if(Renderer::IsHeadless()) return;
-		
+
 		Renderer *renderer = Renderer::GetActiveRenderer();
 #if RN_MODEL_LOD_DISABLED
-		for(auto *drawable : _drawables)
+		for(auto *drawable: _drawables)
 			renderer->DeleteDrawable(drawable);
 #else
-		for(auto &drawables : _drawables)
+		for(auto &drawables: _drawables)
 		{
-			for(Drawable *drawable : drawables)
+			for(Drawable *drawable: drawables)
 				renderer->DeleteDrawable(drawable);
 		}
 #endif
@@ -67,13 +67,13 @@ namespace RN
 				Renderer *renderer = Renderer::GetActiveRenderer();
 				size_t stages = _model->GetLODStageCount();
 
-				for(size_t i = 0; i < stages; i ++)
+				for(size_t i = 0; i < stages; i++)
 				{
 					Model::LODStage *stage = _model->GetLODStage(i);
 					size_t groups = stage->GetCount();
 
 #if RN_MODEL_LOD_DISABLED //In this case there only ever is one stage
-					for(size_t j = 0; j < groups; j ++)
+					for(size_t j = 0; j < groups; j++)
 					{
 						_drawables.push_back(renderer->CreateDrawable());
 					}
@@ -81,9 +81,9 @@ namespace RN
 					_drawables.emplace_back(groups, nullptr);
 
 					auto &drawables = _drawables.back();
-					for(size_t j = 0; j < groups; j ++)
+					for(size_t j = 0; j < groups; j++)
 					{
-						drawables[j] =	renderer->CreateDrawable();
+						drawables[j] = renderer->CreateDrawable();
 					}
 #endif
 				}
@@ -107,17 +107,17 @@ namespace RN
 		lodDistance /= distanceCamera->GetClipFar();
 
 		const Model::LODStage *stage = _model->GetLODStageForDistance(lodDistance);
-		
+
 		size_t index = stage->_index;
 		auto &drawables = _drawables[index];
 #endif
 
 		size_t count = stage->GetCount();
 
-		for(size_t i = 0; i < count; i ++)
+		for(size_t i = 0; i < count; i++)
 		{
 			Material *material = stage->GetMaterialAtIndex(i);
-			
+
 			if(!material->_skipRendering)
 			{
 #if RN_MODEL_LOD_DISABLED
@@ -135,18 +135,18 @@ namespace RN
 	{
 		ZoneScoped;
 		if(!_model) return;
-		
+
 		size_t lodStageCount = _model->GetLODStageCount();
 		for(size_t lodStage = 0; lodStage < lodStageCount; lodStage += 1)
 		{
 			Model::LODStage *stage = _model->GetLODStage(lodStage);
-			
+
 #if !RN_MODEL_LOD_DISABLED
 			auto &drawables = _drawables[lodStage];
 #endif
 
 			size_t count = stage->GetCount();
-			for(size_t i = 0; i < count; i ++)
+			for(size_t i = 0; i < count; i++)
 			{
 #if RN_MODEL_LOD_DISABLED
 				Drawable *drawable = _drawables[i];
@@ -161,7 +161,7 @@ namespace RN
 	bool Entity::CanRender(Renderer *renderer, Camera *camera) const
 	{
 		if(!_model) return false;
-		
+
 		return CanRenderUtil(renderer, camera);
 	}
-}
+} // namespace RN

@@ -9,8 +9,8 @@
 #ifndef __RAYNE_OpenXRVULKANSWAPCHAIN_H_
 #define __RAYNE_OpenXRVULKANSWAPCHAIN_H_
 
-#include "RNVulkanRenderer.h"
 #include "RNVulkanFramebuffer.h"
+#include "RNVulkanRenderer.h"
 #include "RNVulkanSwapChain.h"
 
 #include "RNOpenXR.h"
@@ -52,7 +52,7 @@ namespace RN
 
 		RNDeclareMetaAPI(OpenXRVulkanSwapChain, OXRAPI)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_OpenXRVULKANSWAPCHAIN_H_ */

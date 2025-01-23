@@ -32,9 +32,9 @@ namespace RN
 			x = Math::ConvertFloatToHalf(other.x);
 			y = Math::ConvertFloatToHalf(other.y);
 		}
-		
+
 		HalfVector2(const HalfVector2 &other) = default;
-		
+
 		Vector2 GetVector2()
 		{
 			Vector2 result;
@@ -72,9 +72,9 @@ namespace RN
 			y = Math::ConvertFloatToHalf(other.y);
 			z = Math::ConvertFloatToHalf(other.z);
 		}
-		
+
 		HalfVector3(const HalfVector3 &other) = default;
-		
+
 		Vector3 GetVector3()
 		{
 			Vector3 result;
@@ -92,7 +92,7 @@ namespace RN
 			uint16 z;
 		};
 	};
-		
+
 	class HalfVector4
 	{
 	public:
@@ -117,9 +117,9 @@ namespace RN
 			z = Math::ConvertFloatToHalf(other.z);
 			w = Math::ConvertFloatToHalf(other.w);
 		}
-		
+
 		HalfVector4(const HalfVector4 &other) = default;
-		
+
 		Vector4 GetVector4()
 		{
 			Vector4 result;
@@ -145,6 +145,6 @@ namespace RN
 	static_assert(std::is_trivially_copyable<HalfVector3>::value, "HalfVector3 must be trivially copyable");
 	static_assert(std::is_trivially_copyable<HalfVector4>::value, "HalfVector4 must be trivially copyable");
 #endif
-}
+} // namespace RN
 
 #endif /* __RAYNE_HALFVECTOR_H__ */

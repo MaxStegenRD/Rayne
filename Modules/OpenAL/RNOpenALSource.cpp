@@ -7,8 +7,8 @@
 //
 
 #include "RNOpenALSource.h"
-#include "RNOpenALWorld.h"
 #include "RNOpenALResourceAttachment.h"
+#include "RNOpenALWorld.h"
 
 #include "AL/al.h"
 #include "AL/alc.h"
@@ -17,7 +17,7 @@ namespace RN
 {
 	RNDefineMeta(OpenALSource, SceneNode)
 
-		OpenALSource::OpenALSource(AudioAsset *asset) :
+	OpenALSource::OpenALSource(AudioAsset *asset) :
 		_asset(nullptr),
 		_isPlaying(false),
 		_isRepeating(false),
@@ -26,7 +26,7 @@ namespace RN
 		_ringBufferTemp(nullptr)
 	{
 		_oldPosition = GetWorldPosition();
-			
+
 		alGenSources(1, &_source);
 		alSourcef(_source, AL_PITCH, 1);
 		alSourcef(_source, AL_GAIN, 1);
@@ -34,32 +34,32 @@ namespace RN
 
 		SetAudioAsset(asset);
 	}
-		
+
 	OpenALSource::~OpenALSource()
 	{
 		alDeleteSources(1, &_source);
-		
+
 		if(_asset && (_asset->GetType() == AudioAsset::Type::Ringbuffer || _asset->GetType() == AudioAsset::Type::Decoder))
 		{
 			alDeleteBuffers(3, _ringBuffersID);
 		}
 		SafeRelease(_asset);
-		
+
 		delete[] _ringBufferTemp;
 	}
 
 	void OpenALSource::SetAudioAsset(AudioAsset *asset)
 	{
 		LockGuard<Lockable> lock(_lock);
-		
+
 		if(_asset == asset) return;
-		
+
 		bool wasPlaying = _isPlaying;
 		alSourceStop(_source);
 		_isPlaying = false;
-		
+
 		alSourcei(_source, AL_BUFFER, 0);
-		
+
 		if(_asset && (_asset->GetType() == AudioAsset::Type::Ringbuffer || _asset->GetType() == AudioAsset::Type::Decoder))
 		{
 			alDeleteBuffers(3, _ringBuffersID);
@@ -70,89 +70,89 @@ namespace RN
 		SafeRetain(_asset);
 
 		if(!_asset) return;
-		
+
 		if(_asset->GetType() == AudioAsset::Type::Static)
 		{
 			OpenALResourceAttachment *attachment = OpenALResourceAttachment::GetAttachmentForResource(asset);
 			alSourcei(_source, AL_BUFFER, attachment->GetBufferID());
-			alSourcei(_source, AL_LOOPING, _isRepeating?AL_TRUE: AL_FALSE);
+			alSourcei(_source, AL_LOOPING, _isRepeating ? AL_TRUE : AL_FALSE);
 		}
 		else if(_asset->GetType() == AudioAsset::Type::Ringbuffer || _asset->GetType() == AudioAsset::Type::Decoder)
 		{
 			alSourcei(_source, AL_LOOPING, AL_FALSE);
-			
+
 			alGenBuffers(3, _ringBuffersID);
-			
+
 			_ringBufferTemp = new int16[3840 * _asset->GetChannels()];
 			std::fill(_ringBufferTemp, _ringBufferTemp + 3840, 0);
-			
+
 			//TODO: make the format more flexible
-			ALenum format = _asset->GetChannels() == 1? AL_FORMAT_MONO16 : AL_FORMAT_STEREO16;
+			ALenum format = _asset->GetChannels() == 1 ? AL_FORMAT_MONO16 : AL_FORMAT_STEREO16;
 			ALsizei bufferSize = 3840 * sizeof(int16) * _asset->GetChannels();
 			alBufferData(_ringBuffersID[0], format, _ringBufferTemp, bufferSize, _asset->GetSampleRate());
 			alBufferData(_ringBuffersID[1], format, _ringBufferTemp, bufferSize, _asset->GetSampleRate());
 			alBufferData(_ringBuffersID[2], format, _ringBufferTemp, bufferSize, _asset->GetSampleRate());
 			alSourceQueueBuffers(_source, 3, _ringBuffersID);
 		}
-		
+
 		if(_asset && _asset->GetType() == AudioAsset::Type::Decoder)
 		{
 			_asset->Decode();
 		}
-		
+
 		if(wasPlaying)
 		{
 			_isPlaying = true;
 			alSourcePlay(_source);
 		}
 	}
-		
+
 	void OpenALSource::SetRepeat(bool repeat)
 	{
 		LockGuard<Lockable> lock(_lock);
-		
+
 		_isRepeating = repeat;
-		
+
 		//It will just keep playing the same buffer if looping streamed stuff
 		if(!_asset || _asset->GetType() == AudioAsset::Type::Ringbuffer || _asset->GetType() == AudioAsset::Type::Decoder) return;
-		
-		alSourcei(_source, AL_LOOPING, repeat?AL_TRUE: AL_FALSE);
+
+		alSourcei(_source, AL_LOOPING, repeat ? AL_TRUE : AL_FALSE);
 	}
-		
+
 	void OpenALSource::SetPitch(float pitch)
 	{
 		LockGuard<Lockable> lock(_lock);
-		
+
 		alSourcef(_source, AL_PITCH, pitch);
 	}
-		
+
 	void OpenALSource::SetGain(float gain)
 	{
 		LockGuard<Lockable> lock(_lock);
-		
+
 		alSourcef(_source, AL_GAIN, gain);
 	}
-		
+
 	void OpenALSource::SetRange(float min, float max, float rolloff)
 	{
 		LockGuard<Lockable> lock(_lock);
-		
+
 		alSourcef(_source, AL_REFERENCE_DISTANCE, min);
 		alSourcef(_source, AL_MAX_DISTANCE, max);
 		alSourcef(_source, AL_ROLLOFF_FACTOR, rolloff);
 	}
-		
+
 	void OpenALSource::SetSelfdestruct(bool selfdestruct)
 	{
 		LockGuard<Lockable> lock(_lock);
-		
+
 		_isSelfdestructing = selfdestruct;
 	}
-		
+
 	void OpenALSource::Play()
 	{
 		LockGuard<Lockable> lock(_lock);
-		
+
 		UpdatePosition(0.0f);
 
 		alSourcePlay(_source);
@@ -163,28 +163,28 @@ namespace RN
 	void OpenALSource::Stop()
 	{
 		LockGuard<Lockable> lock(_lock);
-		
+
 		alSourceStop(_source);
 		alSourcePause(_source);
-        _isPlaying = false;
-		
+		_isPlaying = false;
+
 		//RNDebug("Stopped: " << (_isPlaying? "true" : "false"));
 	}
-	
+
 	void OpenALSource::Pause()
 	{
 		LockGuard<Lockable> lock(_lock);
-		
+
 		alSourcePause(_source);
 		_isPlaying = false;
-		
+
 		//RNDebug("Paused: " << (_isPlaying? "true" : "false"));
 	}
 
-    void OpenALSource::Seek(float time)
-    {
+	void OpenALSource::Seek(float time)
+	{
 		LockGuard<Lockable> lock(_lock);
-		
+
 		if(_asset && _asset->GetType() == AudioAsset::Type::Decoder)
 		{
 			_asset->Seek(time);
@@ -193,7 +193,7 @@ namespace RN
 		{
 			alSourcef(_source, AL_SEC_OFFSET, time);
 		}
-    }
+	}
 
 	bool OpenALSource::IsPlaying()
 	{
@@ -212,15 +212,15 @@ namespace RN
 		LockGuard<Lockable> lock(_lock);
 		return _isRepeating;
 	}
-	
+
 	void OpenALSource::Update(float delta)
 	{
 		SceneNode::Update(delta);
-		
+
 		LockGuard<Lockable> lock(_lock);
-		
+
 		if(!_isPlaying) return;
-		
+
 		bool hasEnded = false;
 		if(_asset && (_asset->GetType() == AudioAsset::Type::Ringbuffer || _asset->GetType() == AudioAsset::Type::Decoder))
 		{
@@ -229,21 +229,21 @@ namespace RN
 			{
 				isPlaying = _asset->Decode();
 			}
-			
+
 			ALint numberOfProcessedBuffers = 0;
 			alGetSourcei(_source, AL_BUFFERS_PROCESSED, &numberOfProcessedBuffers);
-			bool needsRestart = numberOfProcessedBuffers >=3 && _isPlaying;
+			bool needsRestart = numberOfProcessedBuffers >= 3 && _isPlaying;
 			while(numberOfProcessedBuffers > 0)
 			{
 				uint32 bufferedSamples = _asset->GetBufferedSize() / _asset->GetBytesPerSample();
 				if(bufferedSamples >= 3840)
 				{
-					if(bufferedSamples > 3840*5 && _asset->GetType() != AudioAsset::Type::Decoder)
+					if(bufferedSamples > 3840 * 5 && _asset->GetType() != AudioAsset::Type::Decoder)
 					{
 						_asset->PopData(nullptr, _asset->GetBufferedSize() - 2 * 3840 * _asset->GetBytesPerSample());
 						RNDebug("too much buffered audio: skipping");
 					}
-					
+
 					//TODO: Make better and don't hardcode sample type and buffer format and multiple channels
 					if(_asset->GetBytesPerSample() / _asset->GetChannels() > 2)
 					{
@@ -272,24 +272,24 @@ namespace RN
 					std::fill(_ringBufferTemp + bufferedSamples, _ringBufferTemp + 3840, (int16)0);
 					//RNDebug("not enough buffered audio: adding silence");
 				}
-				
+
 				//TODO: support multiple channels
 				ALuint bufferID = 0;
 				alSourceUnqueueBuffers(_source, 1, &bufferID);
-				ALenum format = _asset->GetChannels() == 1? AL_FORMAT_MONO16 : AL_FORMAT_STEREO16;
+				ALenum format = _asset->GetChannels() == 1 ? AL_FORMAT_MONO16 : AL_FORMAT_STEREO16;
 				ALsizei bufferSize = 3840 * sizeof(int16) * _asset->GetChannels();
 				alBufferData(bufferID, format, _ringBufferTemp, bufferSize, _asset->GetSampleRate());
 				alSourceQueueBuffers(_source, 1, &bufferID);
-				
+
 				numberOfProcessedBuffers -= 1;
 			}
-			
+
 			if(needsRestart)
 			{
 				alSourcePlay(_source);
 			}
 		}
-		
+
 		ALenum sourceState = AL_STOPPED;
 		alGetSourcei(_source, AL_SOURCE_STATE, &sourceState);
 		if((sourceState == AL_STOPPED && _asset && _asset->GetType() == AudioAsset::Type::Static) || hasEnded)
@@ -306,7 +306,7 @@ namespace RN
 				if(_asset && _asset->GetType() == AudioAsset::Type::Decoder)
 				{
 					_asset->Seek(0.0f);
-					
+
 					if(_isRepeating)
 					{
 						_isPlaying = true;
@@ -316,7 +316,7 @@ namespace RN
 				}
 			}
 		}
-		
+
 		UpdatePosition(delta);
 	}
 
@@ -335,4 +335,4 @@ namespace RN
 		_velocity = _velocity * 0.95f + velocity * 0.05f; //Smoothen the velocity
 		alSourcefv(_source, AL_VELOCITY, &_velocity.x);
 	}
-}
+} // namespace RN

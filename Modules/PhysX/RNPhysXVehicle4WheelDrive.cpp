@@ -7,8 +7,8 @@
 //
 
 #include "RNPhysXVehicle4WheelDrive.h"
-#include "RNPhysXWorld.h"
 #include "RNPhysXInternals.h"
+#include "RNPhysXWorld.h"
 
 #include "PxPhysicsAPI.h"
 
@@ -16,7 +16,7 @@ namespace RN
 {
 	RNDefineMeta(PhysXVehicle4WheelDrive, PhysXCollisionObject)
 
-/*	physx::PxVehicleKeySmoothingData gKeySmoothingData=
+	/*	physx::PxVehicleKeySmoothingData gKeySmoothingData=
 	{
 		{
 			3.0f,    //rise rate eANALOG_INPUT_ACCEL
@@ -46,17 +46,18 @@ namespace RN
 		PX_MAX_F32, PX_MAX_F32
 	};
 	physx::PxFixedSizeLookupTable<8> gSteerVsForwardSpeedTable(gSteerVsForwardSpeedData,4);*/
-		
-	PhysXVehicle4WheelDrive::PhysXVehicle4WheelDrive(PhysXCompoundShape *compoundShape, int8 wheelCount, uint32 chassisCollisionGroup, uint32 chassisCollisionMask, uint32 wheelCollisionGroup, uint32 wheelCollisionMask) : _shape(compoundShape->Retain()), _wheelEntities(nullptr), _wheelCount(wheelCount)
+
+	PhysXVehicle4WheelDrive::PhysXVehicle4WheelDrive(PhysXCompoundShape *compoundShape, int8 wheelCount, uint32 chassisCollisionGroup, uint32 chassisCollisionMask, uint32 wheelCollisionGroup, uint32 wheelCollisionMask) :
+		_shape(compoundShape->Retain()), _wheelEntities(nullptr), _wheelCount(wheelCount)
 	{
 		//The first wheelCount objects in the compound shape need to be the tires!
-		
-		
+
+
 		physx::PxVehicleChassisData chassisData;
 		chassisData.mMass = 1400.0f;
-		
+
 		RN::Vector3 chassisDimensions(2.0f, 1.0f, 4.0f);
-		
+
 		//The origin is at the center of the chassis mesh.
 		//Set the center of mass a bit lower
 		chassisData.mCMOffset = physx::PxVec3(0.0f, -0.5f, 0.0f);
@@ -67,10 +68,10 @@ namespace RN
 		//A bit of tweaking here.  The car will have more responsive turning if we reduce the
 		//y-component of the chassis moment of inertia.
 		chassisData.mMOI.y *= 0.6f;
-		
+
 		PhysXWorld *world = PhysXWorld::GetSharedInstance();
 		physx::PxPhysics *physics = PhysXWorld::GetSharedInstance()->GetPhysXInstance();
-		
+
 		physx::PxVec3 *wheelCenterActorOffsets = new physx::PxVec3[_wheelCount];
 		for(int i = 0; i < _wheelCount; i++)
 		{
@@ -82,17 +83,17 @@ namespace RN
 
 		physx::PxVehicleDriveSimData4W driveSimData;
 		PhysXVehicleInternal::SetupDriveSimData4W(&driveSimData, wheelsSimData);
-		
+
 		physx::PxFilterData wheelSimFilterData;
 		wheelSimFilterData.word0 = 0;
 		wheelSimFilterData.word1 = 0;
-		
+
 		physx::PxFilterData simFilterData;
 		simFilterData.word0 = chassisCollisionGroup;
 		simFilterData.word1 = chassisCollisionMask;
 
 		_actor = physics->createRigidDynamic(physx::PxTransform(physx::PxIdentity));
-		
+
 		world->Lock();
 		PhysXVehicleInternal::SetupVehicleActor(compoundShape, _wheelCount, chassisData, wheelSimFilterData, simFilterData, _actor);
 		world->GetPhysXScene()->addActor(*_actor);
@@ -102,50 +103,50 @@ namespace RN
 		_vehicleDrive4W = physx::PxVehicleDrive4W::allocate(_wheelCount);
 		_vehicleDrive4W->setup(physics, _actor, *wheelsSimData, driveSimData, _wheelCount - 4);
 		wheelsSimData->free();
-		
-		_raycastQueryResults = static_cast<void*>(new physx::PxRaycastQueryResult[_wheelCount]);
-		_raycastHitBuffer = static_cast<void*>(new physx::PxRaycastHit[_wheelCount]);
+
+		_raycastQueryResults = static_cast<void *>(new physx::PxRaycastQueryResult[_wheelCount]);
+		_raycastHitBuffer = static_cast<void *>(new physx::PxRaycastHit[_wheelCount]);
 		physx::PxBatchQueryDesc sqDesc(_wheelCount, 0, 0);
-		sqDesc.queryMemory.userRaycastResultBuffer = static_cast<physx::PxRaycastQueryResult*>(_raycastQueryResults);
-		sqDesc.queryMemory.userRaycastTouchBuffer = static_cast<physx::PxRaycastHit*>(_raycastHitBuffer);
+		sqDesc.queryMemory.userRaycastResultBuffer = static_cast<physx::PxRaycastQueryResult *>(_raycastQueryResults);
+		sqDesc.queryMemory.userRaycastTouchBuffer = static_cast<physx::PxRaycastHit *>(_raycastHitBuffer);
 		sqDesc.queryMemory.raycastTouchBufferSize = _wheelCount;
 		sqDesc.preFilterShader = PhysXCallback::VehicleQueryPreFilter;
 		world->Lock();
 		_batchQuery = world->GetPhysXScene()->createBatchQuery(sqDesc);
 		world->Unlock();
-		
+
 		_vehicleDrive4W->mDriveDynData.setUseAutoGears(true);
 	}
-	
+
 	PhysXVehicle4WheelDrive::~PhysXVehicle4WheelDrive()
 	{
-		delete [] static_cast<physx::PxRaycastQueryResult*>(_raycastQueryResults);
-		delete [] static_cast<physx::PxRaycastHit*>(_raycastHitBuffer);
-		
+		delete[] static_cast<physx::PxRaycastQueryResult *>(_raycastQueryResults);
+		delete[] static_cast<physx::PxRaycastHit *>(_raycastHitBuffer);
+
 		SafeRelease(_wheelEntities);
 	}
 
 	void PhysXVehicle4WheelDrive::Update(float delta)
 	{
-		if(delta > 1.0f/20.0f) return;
-		
+		if(delta > 1.0f / 20.0f) return;
+
 		physx::PxVehicleWheels *vehicles[1] = {_vehicleDrive4W};
-		PxVehicleSuspensionRaycasts(_batchQuery, 1, vehicles, _wheelCount, static_cast<physx::PxRaycastQueryResult*>(_raycastQueryResults));
-		
+		PxVehicleSuspensionRaycasts(_batchQuery, 1, vehicles, _wheelCount, static_cast<physx::PxRaycastQueryResult *>(_raycastQueryResults));
+
 		Vector3 worldGravity = PhysXWorld::GetSharedInstance()->GetGravity();
 		physx::PxVec3 gravity(worldGravity.x, worldGravity.y, worldGravity.z);
-		
+
 		physx::PxVehicleDrivableSurfaceToTireFrictionPairs *frictionPairs = PhysXVehicleInternal::CreateFrictionPairs(nullptr);
-		
+
 		PxVehicleUpdates(delta, gravity, *frictionPairs, 1, vehicles, nullptr, nullptr);
 	}
 
 	void PhysXVehicle4WheelDrive::SetAcceleration(float acceleration)
 	{
-/*		physx::PxVehicleDrive4WRawInputData rawInputData;
+		/*		physx::PxVehicleDrive4WRawInputData rawInputData;
 		rawInputData.setDigitalAccel(true);
 		PxVehicleDrive4WSmoothDigitalRawInputsAndSetAnalogInputs(gKeySmoothingData, gSteerVsForwardSpeedTable, rawInputData, 1.0f/60.0f, false, *_vehicleDrive4W);*/
-		
+
 		_vehicleDrive4W->mDriveDynData.setAnalogInput(physx::PxVehicleDrive4WControl::eANALOG_INPUT_ACCEL, acceleration);
 	}
 
@@ -187,7 +188,7 @@ namespace RN
 		shape->setQueryFilterData(filterData);
 		shape->setFlag(physx::PxShapeFlag::eSIMULATION_SHAPE, false);*/
 
-//		_controller->invalidateCache();
+		//		_controller->invalidateCache();
 	}
 
 	void PhysXVehicle4WheelDrive::SetWheelEntities(Array *wheelEntities)
@@ -221,7 +222,7 @@ namespace RN
 	void PhysXVehicle4WheelDrive::DidUpdate(SceneNode::ChangeSet changeSet)
 	{
 		PhysXCollisionObject::DidUpdate(changeSet);
-		
+
 		if(changeSet & SceneNode::ChangeSet::Position)
 		{
 			RN::Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
@@ -256,7 +257,7 @@ namespace RN
 		RN::Vector3 positionOffset = rotation.GetRotatedVector(_positionOffset);
 		SetWorldPosition(Vector3(transform.p.x, transform.p.y, transform.p.z) + positionOffset);
 		SetWorldRotation(rotation);
-		
+
 		if(_wheelEntities)
 		{
 			for(int i = 0; i < _wheelCount; i++)
@@ -264,10 +265,10 @@ namespace RN
 				PhysXShape *shape = _shape->GetShape(i);
 				const physx::PxTransform &wheelPose = shape->GetPhysXShape()->getLocalPose();
 				Entity *wheelEntity = _wheelEntities->GetObjectAtIndex<Entity>(i);
-				
+
 				wheelEntity->SetWorldPosition(GetWorldPosition() + GetWorldRotation().GetRotatedVector(Vector3(wheelPose.p.x, wheelPose.p.y, wheelPose.p.z)));
 				wheelEntity->SetWorldRotation(GetWorldRotation() * Quaternion(wheelPose.q.x, wheelPose.q.y, wheelPose.q.z, wheelPose.q.w));
 			}
 		}
 	}
-}
+} // namespace RN

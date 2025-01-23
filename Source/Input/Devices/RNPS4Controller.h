@@ -10,8 +10,8 @@
 #define __RAYNE_PS4CONTROLLER_H_
 
 #include "../../Base/RNBase.h"
-#include "../RNInputDevice.h"
 #include "../RNHIDDevice.h"
+#include "../RNInputDevice.h"
 
 namespace RN
 {
@@ -40,7 +40,7 @@ namespace RN
 
 		Linear2DAxisControl *_analogLeft;
 		Linear2DAxisControl *_analogRight;
-		
+
 		ButtonControl *_buttonCross;
 
 		uint8 _rumbleLarge;
@@ -52,7 +52,7 @@ namespace RN
 
 		RNDeclareMeta(PS4Controller)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_PS4CONTROLLER_H_ */

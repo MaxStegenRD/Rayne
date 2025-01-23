@@ -19,7 +19,7 @@ namespace RN
 		std::time_t timet = std::chrono::system_clock::to_time_t(time);
 
 #if RN_PLATFORM_POSIX
-		std::tm tm = std::tm{0};
+		std::tm tm = std::tm {0};
 		localtime_r(&timet, &tm);
 #else
 		std::tm tm = *localtime(&timet);
@@ -31,7 +31,9 @@ namespace RN
 		stream.precision(3);
 		stream << tm.tm_mon + 1 << '/' << tm.tm_mday << '/' << tm.tm_year - 100 << ' ';
 
-#define PutTwoDigitNumber(n) if(n < 10) stream << '0'; stream << std::fixed << n
+#define PutTwoDigitNumber(n)  \
+	if(n < 10) stream << '0'; \
+	stream << std::fixed << n
 
 		PutTwoDigitNumber(tm.tm_hour) << ':';
 		PutTwoDigitNumber(tm.tm_min) << ':';
@@ -46,4 +48,4 @@ namespace RN
 		std::string time = FormatTime(message.time);
 		return RNSTR(time << " " << message.GetFileName() << ":" << message.line << " " << message.message);
 	}
-}
+} // namespace RN

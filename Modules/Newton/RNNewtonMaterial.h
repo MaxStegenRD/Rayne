@@ -22,22 +22,22 @@ namespace RN
 	{
 	public:
 		PXAPI PhysXMaterial();
-			
+
 		PXAPI void SetStaticFriction(float friction);
 		PXAPI void SetDynamicFriction(float friction);
 		PXAPI void SetRestitution(float restitution);
-			
+
 		PXAPI float GetStaticFriction() const;
 		PXAPI float GetDynamicFriction() const;
 		PXAPI float GetRestitution() const;
 
 		PXAPI physx::PxMaterial *GetPhysXMaterial() const { return _material; }
-			
+
 	private:
 		physx::PxMaterial *_material;
-			
+
 		RNDeclareMetaAPI(PhysXMaterial, PXAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_PHYSXMATERIAL_H_) */

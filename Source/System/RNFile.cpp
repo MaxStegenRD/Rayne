@@ -12,9 +12,9 @@
 #if RN_PLATFORM_WINDOWS
 	#include "../Base/RNUnistd.h"
 #elif RN_PLATFORM_POSIX
-	#include <unistd.h>
 	#include <fcntl.h>
-#define O_BINARY 0x0
+	#include <unistd.h>
+	#define O_BINARY 0x0
 #endif
 
 #if RN_PLATFORM_ANDROID
@@ -43,13 +43,13 @@ namespace RN
 
 #if RN_PLATFORM_ANDROID
 	File::File(AAsset *asset, const String *path, Mode mode) :
-    		_fd(-1),
-    		_asset(asset),
-    		_mode(mode),
-    		_path(path->Copy())
-    {
-    	_size = static_cast<size_t>(AAsset_getLength(_asset));
-    }
+		_fd(-1),
+		_asset(asset),
+		_mode(mode),
+		_path(path->Copy())
+	{
+		_size = static_cast<size_t>(AAsset_getLength(_asset));
+	}
 #endif
 
 	File::~File()
@@ -103,7 +103,7 @@ namespace RN
 		uint8 *bytes = static_cast<uint8 *>(buffer);
 
 		int error = errno;
-		ScopeGuard guard([=]{
+		ScopeGuard guard([=] {
 			errno = error;
 		});
 
@@ -162,7 +162,6 @@ namespace RN
 	}
 
 
-
 	size_t File::Write(const void *buffer, size_t size)
 	{
 		RN_ASSERT(_mode & Mode::Write, "Trying to write to a file not opened for writing");
@@ -172,12 +171,11 @@ namespace RN
 		const uint8 *bytes = static_cast<const uint8 *>(buffer);
 
 		int error = errno;
-		ScopeGuard guard([=]{
+		ScopeGuard guard([=] {
 			errno = error;
 		});
 
 		do {
-
 			ssize_t written = write(_fd, bytes + totalWritten, left);
 			if(written == 0)
 				break;
@@ -215,7 +213,6 @@ namespace RN
 	}
 
 
-
 	int File::CreateFileDescriptor() const
 	{
 		return dup(_fd);
@@ -226,16 +223,9 @@ namespace RN
 #if RN_PLATFORM_ANDROID
 		if(_asset)
 		{
-			return funopen(_asset, [](void *cookie, char *buf, int size) -> int {
-				return AAsset_read((AAsset *)cookie, buf, size);
-			}, [](void *cookie, const char *buf, int size) -> int {
-				return EACCES;
-			}, [](void *cookie, fpos_t offset, int whence) -> fpos_t {
-				return AAsset_seek((AAsset *)cookie, offset, whence);
-			}, [](void *cookie) -> int {
+			return funopen(_asset, [](void *cookie, char *buf, int size) -> int { return AAsset_read((AAsset *)cookie, buf, size); }, [](void *cookie, const char *buf, int size) -> int { return EACCES; }, [](void *cookie, fpos_t offset, int whence) -> fpos_t { return AAsset_seek((AAsset *)cookie, offset, whence); }, [](void *cookie) -> int {
 				AAsset_close((AAsset *)cookie);
-				return 0;
-			});
+				return 0; });
 		}
 		else
 #endif
@@ -279,8 +269,10 @@ namespace RN
 
 		if(mode & Mode::Write)
 		{
-			if((mode & Mode::Append)) oflag |= O_APPEND;
-			else oflag |= O_TRUNC;
+			if((mode & Mode::Append))
+				oflag |= O_APPEND;
+			else
+				oflag |= O_TRUNC;
 
 			if(!(mode & Mode::NoCreate))
 				oflag |= O_CREAT;
@@ -358,12 +350,12 @@ namespace RN
 	}
 
 
-#define ConvenienceReader(type, name) \
-	type File::name() \
-	{ \
-		type buffer; \
+#define ConvenienceReader(type, name)                        \
+	type File::name()                                        \
+	{                                                        \
+		type buffer;                                         \
 		RN_UNUSED size_t read = Read(&buffer, sizeof(type)); \
-		return buffer; \
+		return buffer;                                       \
 	}
 
 	ConvenienceReader(uint8, ReadUint8)
@@ -376,4 +368,4 @@ namespace RN
 	ConvenienceReader(int64, ReadInt64)
 	ConvenienceReader(float, ReadFloat)
 	ConvenienceReader(double, ReadDouble)
-}
+} // namespace RN

@@ -31,6 +31,6 @@ namespace RN
 		IPLAudioBuffer inputBuffer;
 		IPLAudioBuffer outputBuffer;
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_STEAMAUDIOINTERNALS_H_) */

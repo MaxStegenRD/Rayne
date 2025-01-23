@@ -13,9 +13,9 @@
 namespace RN
 {
 	physx::PxFilterFlags PhysXCallback::CollisionFilterShader(
-		physx::PxFilterObjectAttributes attributes0, physx::PxFilterData filterData0,
-		physx::PxFilterObjectAttributes attributes1, physx::PxFilterData filterData1,
-		physx::PxPairFlags& pairFlags, const void* constantBlock, physx::PxU32 constantBlockSize)
+	physx::PxFilterObjectAttributes attributes0, physx::PxFilterData filterData0,
+	physx::PxFilterObjectAttributes attributes1, physx::PxFilterData filterData1,
+	physx::PxPairFlags &pairFlags, const void *constantBlock, physx::PxU32 constantBlockSize)
 	{
 		// let triggers through
 		if(physx::PxFilterObjectIsTrigger(attributes0) || physx::PxFilterObjectIsTrigger(attributes1))
@@ -27,7 +27,7 @@ namespace RN
 		// generate contacts for all that were not filtered above
 		pairFlags = physx::PxPairFlag::eCONTACT_DEFAULT | physx::PxPairFlag::eDETECT_CCD_CONTACT | physx::PxPairFlag::eNOTIFY_THRESHOLD_FORCE_FOUND | physx::PxPairFlag::eNOTIFY_THRESHOLD_FORCE_PERSISTS | physx::PxPairFlag::eNOTIFY_CONTACT_POINTS;
 
-		// trigger the contact callback for pairs (A,B) where 
+		// trigger the contact callback for pairs (A,B) where
 		// the filtermask of A contains the ID of B and vice versa.
 		bool filterMask = (filterData0.word0 & filterData1.word1) && (filterData1.word0 & filterData0.word1);
 		bool filterID = (filterData0.word3 == 0 && filterData1.word3 == 0) || (filterData0.word2 != filterData1.word3 && filterData0.word3 != filterData1.word2);
@@ -37,14 +37,14 @@ namespace RN
 		return physx::PxFilterFlag::eKILL;
 	}
 
-	physx::PxFilterFlags PhysXCallback::VehicleFilterShader(physx::PxFilterObjectAttributes attributes0, physx::PxFilterData filterData0, physx::PxFilterObjectAttributes attributes1, physx::PxFilterData filterData1, physx::PxPairFlags& pairFlags, const void* constantBlock, physx::PxU32 constantBlockSize)
+	physx::PxFilterFlags PhysXCallback::VehicleFilterShader(physx::PxFilterObjectAttributes attributes0, physx::PxFilterData filterData0, physx::PxFilterObjectAttributes attributes1, physx::PxFilterData filterData1, physx::PxPairFlags &pairFlags, const void *constantBlock, physx::PxU32 constantBlockSize)
 	{
 		PX_UNUSED(attributes0);
 		PX_UNUSED(attributes1);
 		PX_UNUSED(constantBlock);
 		PX_UNUSED(constantBlockSize);
 
-		if( (0 == (filterData0.word0 & filterData1.word1)) && (0 == (filterData1.word0 & filterData0.word1)) )
+		if((0 == (filterData0.word0 & filterData1.word1)) && (0 == (filterData1.word0 & filterData0.word1)))
 			return physx::PxFilterFlag::eSUPPRESS;
 
 		pairFlags = physx::PxPairFlag::eCONTACT_DEFAULT;
@@ -53,7 +53,7 @@ namespace RN
 		return physx::PxFilterFlags();
 	}
 
-	physx::PxQueryHitType::Enum PhysXCallback::VehicleQueryPreFilter(physx::PxFilterData filterData0, physx::PxFilterData filterData1, const void* constantBlock, physx::PxU32 constantBlockSize, physx::PxHitFlags& queryFlags)
+	physx::PxQueryHitType::Enum PhysXCallback::VehicleQueryPreFilter(physx::PxFilterData filterData0, physx::PxFilterData filterData1, const void *constantBlock, physx::PxU32 constantBlockSize, physx::PxHitFlags &queryFlags)
 	{
 		bool filterMask = (filterData1.word0 & filterData0.word1) && (filterData0.word0 & filterData1.word1);
 		if(filterMask)
@@ -64,7 +64,7 @@ namespace RN
 		return physx::PxQueryHitType::eNONE;
 	}
 
-	physx::PxQueryHitType::Enum PhysXQueryFilterCallback::preFilter(const physx::PxFilterData& filterData, const physx::PxShape* shape, const physx::PxRigidActor* actor, physx::PxHitFlags& queryFlags)
+	physx::PxQueryHitType::Enum PhysXQueryFilterCallback::preFilter(const physx::PxFilterData &filterData, const physx::PxShape *shape, const physx::PxRigidActor *actor, physx::PxHitFlags &queryFlags)
 	{
 		const physx::PxFilterData &shapeFilterData = shape->getQueryFilterData();
 		bool filterMask = (shapeFilterData.word0 & filterData.word1) && (filterData.word0 & shapeFilterData.word1);
@@ -75,12 +75,12 @@ namespace RN
 		return physx::PxQueryHitType::eNONE;
 	}
 
-	physx::PxQueryHitType::Enum PhysXQueryFilterCallback::postFilter(const physx::PxFilterData& filterData, const physx::PxQueryHit& hit)
+	physx::PxQueryHitType::Enum PhysXQueryFilterCallback::postFilter(const physx::PxFilterData &filterData, const physx::PxQueryHit &hit)
 	{
 		return physx::PxQueryHitType::eNONE;
 	}
 
-	void PhysXSimulationCallback::onContact(const physx::PxContactPairHeader& pairHeader, const physx::PxContactPair* pairs, physx::PxU32 nbPairs)
+	void PhysXSimulationCallback::onContact(const physx::PxContactPairHeader &pairHeader, const physx::PxContactPair *pairs, physx::PxU32 nbPairs)
 	{
 		for(physx::PxU32 i = 0; i < nbPairs; i++)
 		{
@@ -94,8 +94,8 @@ namespace RN
 					contactState = PhysXCollisionObject::ContactState::Continue;
 				}
 
-				PhysXCollisionObject *objectA = static_cast<PhysXCollisionObject*>(pairHeader.actors[0]->userData);
-				PhysXCollisionObject *objectB = static_cast<PhysXCollisionObject*>(pairHeader.actors[1]->userData);
+				PhysXCollisionObject *objectA = static_cast<PhysXCollisionObject *>(pairHeader.actors[0]->userData);
+				PhysXCollisionObject *objectB = static_cast<PhysXCollisionObject *>(pairHeader.actors[1]->userData);
 
 				physx::PxContactPairPoint contactPoint;
 				int nbPoints = contactPair.extractContacts(&contactPoint, 1);
@@ -133,8 +133,8 @@ namespace RN
 
 	void PhysXKinematicControllerCallback::onShapeHit(const physx::PxControllerShapeHit &hit)
 	{
-		PhysXCollisionObject *objectA = static_cast<PhysXCollisionObject*>(hit.controller->getUserData());
-		PhysXCollisionObject *objectB = static_cast<PhysXCollisionObject*>(hit.actor->userData);
+		PhysXCollisionObject *objectA = static_cast<PhysXCollisionObject *>(hit.controller->getUserData());
+		PhysXCollisionObject *objectB = static_cast<PhysXCollisionObject *>(hit.actor->userData);
 		if(objectA->_contactCallback)
 		{
 			PhysXContactInfo contactInfo;
@@ -148,29 +148,27 @@ namespace RN
 		}
 	}
 
-	void PhysXKinematicControllerCallback::onControllerHit(const physx::PxControllersHit& hit)
+	void PhysXKinematicControllerCallback::onControllerHit(const physx::PxControllersHit &hit)
 	{
-
 	}
 
 	void PhysXKinematicControllerCallback::onObstacleHit(const physx::PxControllerObstacleHit &hit)
 	{
-
 	}
 
-	bool PhysXKinematicControllerCallback::filter(const physx::PxController& a, const physx::PxController& b)
+	bool PhysXKinematicControllerCallback::filter(const physx::PxController &a, const physx::PxController &b)
 	{
-		PhysXKinematicController *controllerA = static_cast<PhysXKinematicController*>(a.getUserData());
-		PhysXKinematicController *controllerB = static_cast<PhysXKinematicController*>(b.getUserData());
+		PhysXKinematicController *controllerA = static_cast<PhysXKinematicController *>(a.getUserData());
+		PhysXKinematicController *controllerB = static_cast<PhysXKinematicController *>(b.getUserData());
 		if(controllerA->GetCollisionFilterGroup() & controllerB->GetCollisionFilterMask() && controllerB->GetCollisionFilterGroup() & controllerA->GetCollisionFilterMask())
 		{
 			return true;
 		}
-		
+
 		return false;
 	}
 
-	physx::PxControllerBehaviorFlags PhysXKinematicControllerCallback::getBehaviorFlags(const physx::PxShape& shape, const physx::PxActor& actor)
+	physx::PxControllerBehaviorFlags PhysXKinematicControllerCallback::getBehaviorFlags(const physx::PxShape &shape, const physx::PxActor &actor)
 	{
 		return physx::PxControllerBehaviorFlag::eCCT_CAN_RIDE_ON_OBJECT | physx::PxControllerBehaviorFlag::eCCT_SLIDE;
 	}
@@ -185,7 +183,7 @@ namespace RN
 		return physx::PxControllerBehaviorFlags(0);
 	}
 
-	void PhysXVehicleInternal::SetupWheelsSimulationData(const float wheelMass, PhysXCompoundShape *compoundShape, const float numWheels, const physx::PxVec3* wheelCenterActorOffsets, const physx::PxVec3& chassisCMOffset, const float chassisMass, physx::PxVehicleWheelsSimData* wheelsSimData, uint32 wheelRaycastGroup, uint32 wheelRaycastMask)
+	void PhysXVehicleInternal::SetupWheelsSimulationData(const float wheelMass, PhysXCompoundShape *compoundShape, const float numWheels, const physx::PxVec3 *wheelCenterActorOffsets, const physx::PxVec3 &chassisCMOffset, const float chassisMass, physx::PxVehicleWheelsSimData *wheelsSimData, uint32 wheelRaycastGroup, uint32 wheelRaycastMask)
 	{
 		//Set up the wheels.
 		physx::PxVehicleWheelData wheels[PX_MAX_NB_WHEELS];
@@ -196,21 +194,21 @@ namespace RN
 				physx::PxShape *shape = compoundShape->GetShape(i)->GetPhysXShape();
 				const physx::PxConvexMeshGeometry &meshGeometry = shape->getGeometry().convexMesh();
 				const physx::PxU32 numWheelVerts = meshGeometry.convexMesh->getNbVertices();
-				const physx::PxVec3* wheelVerts = meshGeometry.convexMesh->getVertices();
+				const physx::PxVec3 *wheelVerts = meshGeometry.convexMesh->getVertices();
 				physx::PxVec3 wheelMin(PX_MAX_F32, PX_MAX_F32, PX_MAX_F32);
 				physx::PxVec3 wheelMax(-PX_MAX_F32, -PX_MAX_F32, -PX_MAX_F32);
 				for(uint32 j = 0; j < numWheelVerts; j++)
 				{
-					wheelMin.x = physx::PxMin(wheelMin.x,wheelVerts[j].x);
-					wheelMin.y = physx::PxMin(wheelMin.y,wheelVerts[j].y);
-					wheelMin.z = physx::PxMin(wheelMin.z,wheelVerts[j].z);
-					wheelMax.x = physx::PxMax(wheelMax.x,wheelVerts[j].x);
-					wheelMax.y = physx::PxMax(wheelMax.y,wheelVerts[j].y);
-					wheelMax.z = physx::PxMax(wheelMax.z,wheelVerts[j].z);
+					wheelMin.x = physx::PxMin(wheelMin.x, wheelVerts[j].x);
+					wheelMin.y = physx::PxMin(wheelMin.y, wheelVerts[j].y);
+					wheelMin.z = physx::PxMin(wheelMin.z, wheelVerts[j].z);
+					wheelMax.x = physx::PxMax(wheelMax.x, wheelVerts[j].x);
+					wheelMax.y = physx::PxMax(wheelMax.y, wheelVerts[j].y);
+					wheelMax.z = physx::PxMax(wheelMax.z, wheelVerts[j].z);
 				}
 				wheels[i].mWidth = wheelMax.x - wheelMin.x;
 				wheels[i].mRadius = physx::PxMax(wheelMax.y, wheelMax.z) * 0.975f;
-				
+
 				wheels[i].mMass = wheelMass;
 				wheels[i].mMOI = 0.5f * wheelMass * wheels[i].mRadius * wheels[i].mRadius;
 			}
@@ -218,7 +216,7 @@ namespace RN
 			//Enable the handbrake for the rear wheels only.
 			wheels[physx::PxVehicleDrive4WWheelOrder::eREAR_LEFT].mMaxHandBrakeTorque = 4000.0f;
 			wheels[physx::PxVehicleDrive4WWheelOrder::eREAR_RIGHT].mMaxHandBrakeTorque = 4000.0f;
-			
+
 			//Enable steering for the front wheels only.
 			wheels[physx::PxVehicleDrive4WWheelOrder::eFRONT_LEFT].mMaxSteer = k::Pi * 0.3333f;
 			wheels[physx::PxVehicleDrive4WWheelOrder::eFRONT_RIGHT].mMaxSteer = k::Pi * 0.3333f;
@@ -239,9 +237,8 @@ namespace RN
 		{
 			//Compute the mass supported by each suspension spring.
 			float suspSprungMasses[PX_MAX_NB_WHEELS];
-			PxVehicleComputeSprungMasses
-				(numWheels, wheelCenterActorOffsets,
-				 chassisCMOffset, chassisMass, 1, suspSprungMasses);
+			PxVehicleComputeSprungMasses(numWheels, wheelCenterActorOffsets,
+										 chassisCMOffset, chassisMass, 1, suspSprungMasses);
 
 			//Set the suspension data.
 			for(uint32 i = 0; i < numWheels; i++)
@@ -259,8 +256,8 @@ namespace RN
 			const float camberAngleAtMaxCompression = -0.01f;
 			for(uint32 i = 0; i < numWheels; i += 2)
 			{
-				suspensions[i + 0].mCamberAtRest =  camberAngleAtRest;
-				suspensions[i + 1].mCamberAtRest =  -camberAngleAtRest;
+				suspensions[i + 0].mCamberAtRest = camberAngleAtRest;
+				suspensions[i + 1].mCamberAtRest = -camberAngleAtRest;
 				suspensions[i + 0].mCamberAtMaxDroop = camberAngleAtMaxDroop;
 				suspensions[i + 1].mCamberAtMaxDroop = -camberAngleAtMaxDroop;
 				suspensions[i + 0].mCamberAtMaxCompression = camberAngleAtMaxCompression;
@@ -278,7 +275,7 @@ namespace RN
 			for(uint32 i = 0; i < numWheels; i++)
 			{
 				//Vertical suspension travel.
-				suspTravelDirections[i] = physx::PxVec3(0,-1,0);
+				suspTravelDirections[i] = physx::PxVec3(0, -1, 0);
 
 				//Wheel center offset is offset from rigid body center of mass.
 				wheelCentreCMOffsets[i] = wheelCenterActorOffsets[i] - chassisCMOffset;
@@ -315,7 +312,7 @@ namespace RN
 		}
 	}
 
-	void PhysXVehicleInternal::SetupDriveSimData4W(physx::PxVehicleDriveSimData4W *driveSimData, physx::PxVehicleWheelsSimData* wheelsSimData)
+	void PhysXVehicleInternal::SetupDriveSimData4W(physx::PxVehicleDriveSimData4W *driveSimData, physx::PxVehicleWheelsSimData *wheelsSimData)
 	{
 		//Diff
 		physx::PxVehicleDifferential4WData diff;
@@ -325,7 +322,7 @@ namespace RN
 		//Engine
 		physx::PxVehicleEngineData engine;
 		engine.mPeakTorque = 1100.0f;
-		engine.mMaxOmega = 1000.0f;//approx 10000 rpm
+		engine.mMaxOmega = 1000.0f; //approx 10000 rpm
 		driveSimData->setEngineData(engine);
 
 		//Gears
@@ -347,7 +344,7 @@ namespace RN
 		driveSimData->setAckermannGeometryData(ackermann);
 	}
 
-	void PhysXVehicleInternal::SetupVehicleActor(PhysXCompoundShape *compoundShape, const uint32 numWheels, const physx::PxVehicleChassisData& chassisData, const physx::PxFilterData& wheelSimFilterData, const physx::PxFilterData& chassisSimFilterData, physx::PxRigidDynamic *vehActor)
+	void PhysXVehicleInternal::SetupVehicleActor(PhysXCompoundShape *compoundShape, const uint32 numWheels, const physx::PxVehicleChassisData &chassisData, const physx::PxFilterData &wheelSimFilterData, const physx::PxFilterData &chassisSimFilterData, physx::PxRigidDynamic *vehActor)
 	{
 		//Wheel and chassis query filter data.
 		//Optional: cars don't drive on other cars.
@@ -355,14 +352,14 @@ namespace RN
 		setupNonDrivableSurface(wheelQryFilterData);
 		PxFilterData chassisQryFilterData;
 		setupNonDrivableSurface(chassisQryFilterData);*/
-		
+
 		int counter = 0;
-		for(PhysXShape *tempShape : compoundShape->_shapes)
+		for(PhysXShape *tempShape: compoundShape->_shapes)
 		{
 			physx::PxShape *physxShape = tempShape->GetPhysXShape();
 			vehActor->attachShape(*physxShape);
 			physxShape->setLocalPose(physx::PxTransform(physx::PxIdentity));
-			
+
 			if(counter < numWheels)
 			{
 				//physxShape->setQueryFilterData(wheelQryFilterData);
@@ -381,15 +378,15 @@ namespace RN
 		vehActor->setCMassLocalPose(physx::PxTransform(chassisData.mCMOffset, physx::PxQuat(physx::PxIdentity)));
 	}
 
-	physx::PxVehicleDrivableSurfaceToTireFrictionPairs* PhysXVehicleInternal::CreateFrictionPairs(const physx::PxMaterial* defaultMaterial)
+	physx::PxVehicleDrivableSurfaceToTireFrictionPairs *PhysXVehicleInternal::CreateFrictionPairs(const physx::PxMaterial *defaultMaterial)
 	{
 		physx::PxVehicleDrivableSurfaceType surfaceTypes[1];
 		surfaceTypes[0].mType = 0;
 
-		const physx::PxMaterial* surfaceMaterials[1];
+		const physx::PxMaterial *surfaceMaterials[1];
 		surfaceMaterials[0] = defaultMaterial;
 
-		physx::PxVehicleDrivableSurfaceToTireFrictionPairs* surfaceTirePairs = physx::PxVehicleDrivableSurfaceToTireFrictionPairs::allocate(1, 1);
+		physx::PxVehicleDrivableSurfaceToTireFrictionPairs *surfaceTirePairs = physx::PxVehicleDrivableSurfaceToTireFrictionPairs::allocate(1, 1);
 
 		surfaceTirePairs->setup(1, 1, &surfaceMaterials[0], surfaceTypes);
 
@@ -402,4 +399,4 @@ namespace RN
 		}
 		return surfaceTirePairs;
 	}
-}
+} // namespace RN

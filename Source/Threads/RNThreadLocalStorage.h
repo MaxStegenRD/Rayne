@@ -140,7 +140,8 @@ namespace RN
 				Thread *thread = Thread::GetCurrentThread();
 				thread->ExecuteOnExit([](void *context) {
 					CleanBuffer(context);
-				}, buffer);
+				},
+									  buffer);
 			}
 
 			return reinterpret_cast<T *>(buffer);
@@ -176,6 +177,6 @@ namespace RN
 		DWORD _key;
 	};
 #endif
-}
+} // namespace RN
 
 #endif /* __RAYNE_THREADLOCALSTORAGE_H__ */

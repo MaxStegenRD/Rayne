@@ -18,15 +18,15 @@ namespace RN
 	public:
 		OpenALResourceAttachment(RN::AudioAsset *resource);
 		~OpenALResourceAttachment();
-			
+
 		uint32 GetBufferID() const { return _bufferID; }
-			
+
 		static OpenALResourceAttachment *GetAttachmentForResource(RN::AudioAsset *resource);
-			
+
 	private:
 		int GetALFormat(short channels, short bitsPerSample);
 		uint32 _bufferID;
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_OPENALRESOURCEATTACHMENT_H_) */

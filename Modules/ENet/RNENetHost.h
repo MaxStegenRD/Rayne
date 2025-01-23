@@ -66,11 +66,10 @@ namespace RN
 
 		::ENetHost *_enetHost;
 		uint32 _channelCount;
-			
+
 	private:
-			
 		RNDeclareMetaAPI(ENetHost, ENAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_ENETHOST_H_) */

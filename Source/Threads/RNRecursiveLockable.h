@@ -35,7 +35,7 @@ namespace RN
 		{
 			_mutex.lock();
 			_thread = std::this_thread::get_id();
-			
+
 			/*if(RN_EXPECT_TRUE(__Private::CompareExchangeWeak<uint8>(_flag, 0, kLockFlagLocked)))
 			{
 				_thread = std::this_thread::get_id();
@@ -75,10 +75,10 @@ namespace RN
 		{
 			//RN_DEBUG_ASSERT(IsLocked(), "RecursiveLockable must be acquired in order to be released!");
 			RN_DEBUG_ASSERT(_thread.load(std::memory_order_acquire) == std::this_thread::get_id(), "RecursiveLockable must be unlocked from the thread that locked it");
-			
+
 			_mutex.unlock();
 
-/*			if((-- _threadRecursion) > 0)
+			/*			if((-- _threadRecursion) > 0)
 				return;
 
 			if(RN_EXPECT_TRUE(__Private::CompareExchangeWeak<uint8>(_flag, kLockFlagLocked, 0)))
@@ -101,14 +101,14 @@ namespace RN
 
 		static constexpr uint8 kLockFlagLocked = (1 << 0);
 		static constexpr uint8 kLockFlagParked = (1 << 1);
-		
+
 		std::recursive_mutex _mutex;
 
 		std::atomic<uint8> _flag;
 		std::atomic<std::thread::id> _thread;
 		size_t _threadRecursion;
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_RECURSIVELOCKABLE_H_ */

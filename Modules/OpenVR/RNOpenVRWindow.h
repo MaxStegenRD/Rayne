@@ -9,9 +9,9 @@
 #ifndef __RAYNE_OPENVRWINDOW_H_
 #define __RAYNE_OPENVRWINDOW_H_
 
-#include "RNVRWindow.h"
 #include "RNOpenVR.h"
 #include "RNVRTrackingState.h"
+#include "RNVRWindow.h"
 
 namespace vr
 {
@@ -84,7 +84,7 @@ namespace RN
 
 		OVRAPI Mesh *GetHiddenAreaMesh(uint8 eye) const final;
 		OVRAPI const Window::SwapChainDescriptor &GetSwapChainDescriptor() const final;
-		
+
 		OVRAPI VRWindow::DeviceType GetDeviceType() const final { return VRWindow::DeviceType::OpenVR; }
 
 #ifdef RN_OPENVR_SUPPORTS_VULKAN
@@ -118,7 +118,7 @@ namespace RN
 
 		RNDeclareMetaAPI(OpenVRWindow, OVRAPI)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_OPENVRWINDOW_H_ */

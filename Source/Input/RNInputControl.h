@@ -11,11 +11,11 @@
 
 #include "../Base/RNBase.h"
 #include "../Data/RNIntrusiveList.h"
-#include "../Objects/RNObject.h"
-#include "../Objects/RNNumber.h"
 #include "../Objects/RNArray.h"
-#include "../Objects/RNString.h"
 #include "../Objects/RNDictionary.h"
+#include "../Objects/RNNumber.h"
+#include "../Objects/RNObject.h"
+#include "../Objects/RNString.h"
 
 namespace RN
 {
@@ -248,6 +248,6 @@ namespace RN
 
 		__RNDeclareMetaInternal(Linear2DAxisControl)
 	};
-}
+} // namespace RN
 
 #endif /* __RAYNE_INPUTCONTROL_H_ */

@@ -37,41 +37,41 @@ namespace RN
 			{
 				delete _content;
 			}
-			
-			
-			any &operator =(const any &other)
+
+
+			any &operator=(const any &other)
 			{
 				any temp(other);
 				std::swap(_content, temp._content);
-				
+
 				return *this;
 			}
-			any &operator =(any &&other)
+			any &operator=(any &&other)
 			{
 				std::swap(_content, other._content);
-				
+
 				delete other._content;
 				other._content = nullptr;
-				
+
 				return *this;
 			}
 			template<class T>
-			any &operator =(const T &value)
+			any &operator=(const T &value)
 			{
 				any temp(value);
 				std::swap(_content, temp._content);
-				
+
 				return *this;
 			}
-			
-			
+
+
 			any &swap(any &other)
 			{
 				std::swap(_content, other._content);
 				return *this;
 			}
-			
-			
+
+
 			bool empty() const
 			{
 				return !_content;
@@ -85,18 +85,18 @@ namespace RN
 			{
 				return _content ? _content->type() : typeid(void);
 			}
-			
+
 		private:
 			class placeholder
 			{
 			public:
 				virtual ~placeholder()
 				{}
-				
+
 				virtual const std::type_info &type() const = 0;
 				virtual placeholder *clone() const = 0;
 			};
-			
+
 			template<class T>
 			class holder : public placeholder
 			{
@@ -107,7 +107,7 @@ namespace RN
 				holder(T &&value) :
 					held(std::move(value))
 				{}
-				
+
 				const std::type_info &type() const override
 				{
 					return typeid(T);
@@ -116,19 +116,19 @@ namespace RN
 				{
 					return new holder(held);
 				}
-				
+
 				T held;
-				
+
 			private:
-				holder &operator =(const holder &);
+				holder &operator=(const holder &);
 			};
-			
+
 			template<class T>
 			friend T *any_cast(any *);
-			
+
 			placeholder *_content;
 		};
-		
+
 		class bad_any_cast : public std::bad_cast
 		{
 		public:
@@ -137,8 +137,8 @@ namespace RN
 				return "stl::bad_any_cast: failed conversion using stl::any_cast";
 			}
 		};
-	
-		
+
+
 		template<class T>
 		T *any_cast(any *operand)
 		{
@@ -149,16 +149,16 @@ namespace RN
 		{
 			return any_cast<T>(const_cast<any *>(operand));
 		}
-		
+
 		template<class T>
 		T any_cast(any &operand)
 		{
 			typedef typename std::remove_reference<T>::type type;
-			
+
 			type *result = any_cast<type>(&operand);
 			if(!result)
 				throw bad_any_cast();
-				
+
 			return static_cast<type &>(*result);
 		}
 		template<class T>
@@ -167,7 +167,7 @@ namespace RN
 			typedef typename std::remove_reference<T>::type type;
 			return any_cast<const type &>(const_cast<any &>(operand));
 		}
-	}
-}
+	} // namespace stl
+} // namespace RN
 
 #endif /* __RAYNE_ANY_H__ */

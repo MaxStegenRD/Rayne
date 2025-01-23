@@ -6,9 +6,9 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
+#include "RNInputOSX.h"
 #include "../Base/RNBaseInternal.h"
 #include "../Debug/RNLogger.h"
-#include "RNInputOSX.h"
 
 #define kInputQueueSize 512
 
@@ -50,7 +50,7 @@ namespace RN
 
 	OSXHIDDevice::~OSXHIDDevice()
 	{
-		for(auto iterator : _inputReports)
+		for(auto iterator: _inputReports)
 			iterator.second->Release();
 
 		CFRelease(_device);
@@ -58,7 +58,7 @@ namespace RN
 
 	void OSXHIDDevice::Open()
 	{
-		if((_openCount ++) == 0)
+		if((_openCount++) == 0)
 		{
 			IOReturn result = IOHIDDeviceOpen(_device, kIOHIDOptionsTypeNone);
 			if(result != kIOReturnSuccess)
@@ -86,7 +86,7 @@ namespace RN
 	}
 	void OSXHIDDevice::Close()
 	{
-		if((-- _openCount) == 0)
+		if((--_openCount) == 0)
 		{
 			IOHIDDeviceRegisterInputReportCallback(_device, nullptr, 0, nullptr, this); //While it causes a warning, the null here are all correct!
 			IOHIDDeviceUnscheduleFromRunLoop(_device, CFRunLoopGetMain(), kCFRunLoopCommonModes);
@@ -217,41 +217,35 @@ namespace RN
 	}
 
 
-
 	const char *kKeyboardButtonName[0xE8] =
-		{
-			"0x00", "0x01", "0x02", "0x03", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L",
-			"M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "1", "2",
-			"3", "4", "5", "6", "7", "8", "9", "0", "Return", "Escape", "Delete", "Tab", "Space", "-", "=", "[",
-			"]", "\\", "Pound", ";", "'", "`", ",", ".", "/", "Caps Lockable", "F1", "F2", "F3", "F4", "F5", "F6",
-			"F7", "F8", "F9", "F10", "F11", "F12", "Print", "Scroll Lockable", "Pause", "Insert", "Home", "Page Up", "Del", "End", "Page Down", "Right",
-			"Left", "Down", "Up", "Clear", "Pad /", "Pad *", "Pad -", "Pad +", "Enter", "Pad 1", "Pad 2", "Pad 3", "Pad 4", "Pad 5", "Pad 6", "Pad 7",
-			"Pad 8", "Pad 9", "Pad 0", "Pad .", "Slash", "Appl", "Power", "Pad =", "F13", "F14", "F15", "F16", "F17", "F18", "F19", "F20",
-			"F21", "F22", "F23", "F24", "Exec", "Help", "Menu", "Select", "Stop", "Again", "Undo", "Cut", "Copy", "Paste", "Find", "Mute",
-			"Vol Up", "Vol Down", "Caps-Lockable", "Num-Lockable", "Scroll-Lockable", "Pad ,", "Pad =", "Inter1", "Inter2", "Inter3", "Inter4", "Inter5", "Inter6", "Inter7", "Inter8", "Inter9",
-			"Lang1", "Lang2", "Lang3", "Lang4", "Lang5", "Lang6", "Lang7", "Lang8", "Lang9", "Erase", "SysReq", "Cancel", "Clear", "Prior", "Ret", "Separator",
-			"Out", "Oper", "Clear/Again", "CrSel", "ExCel", "0xA5", "0xA6", "0xA7", "0xA8", "0xA9", "0xAA", "0xAB", "0xAC", "0xAD", "0xAE", "0xAF",
-			"0xB0", "0xB1", "0xB2", "0xB3", "0xB4", "0xB5", "0xB6", "0xB7", "0xB8", "0xB9", "0xBA", "0xBB", "0xBC", "0xBD", "0xBE", "0xBF",
-			"0xC0", "0xC1", "0xC2", "0xC3", "0xC4", "0xC5", "0xC6", "0xC7", "0xC8", "0xC9", "0xCA", "0xCB", "0xCC", "0xCD", "0xCE", "0xCF",
-			"0xD0", "0xD1", "0xD2", "0xD3", "0xD4", "0xD5", "0xD6", "0xD7", "0xD8", "0xD9", "0xDA", "0xDB", "0xDC", "0xDD", "0xDE", "0xDF",
-			"Left Control", "Left Shift", "Left Option", "Left Command", "Right Control", "Right Shift", "Right Option", "Right Command"
-		};
+	{
+	"0x00", "0x01", "0x02", "0x03", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L",
+	"M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "1", "2",
+	"3", "4", "5", "6", "7", "8", "9", "0", "Return", "Escape", "Delete", "Tab", "Space", "-", "=", "[",
+	"]", "\\", "Pound", ";", "'", "`", ",", ".", "/", "Caps Lockable", "F1", "F2", "F3", "F4", "F5", "F6",
+	"F7", "F8", "F9", "F10", "F11", "F12", "Print", "Scroll Lockable", "Pause", "Insert", "Home", "Page Up", "Del", "End", "Page Down", "Right",
+	"Left", "Down", "Up", "Clear", "Pad /", "Pad *", "Pad -", "Pad +", "Enter", "Pad 1", "Pad 2", "Pad 3", "Pad 4", "Pad 5", "Pad 6", "Pad 7",
+	"Pad 8", "Pad 9", "Pad 0", "Pad .", "Slash", "Appl", "Power", "Pad =", "F13", "F14", "F15", "F16", "F17", "F18", "F19", "F20",
+	"F21", "F22", "F23", "F24", "Exec", "Help", "Menu", "Select", "Stop", "Again", "Undo", "Cut", "Copy", "Paste", "Find", "Mute",
+	"Vol Up", "Vol Down", "Caps-Lockable", "Num-Lockable", "Scroll-Lockable", "Pad ,", "Pad =", "Inter1", "Inter2", "Inter3", "Inter4", "Inter5", "Inter6", "Inter7", "Inter8", "Inter9",
+	"Lang1", "Lang2", "Lang3", "Lang4", "Lang5", "Lang6", "Lang7", "Lang8", "Lang9", "Erase", "SysReq", "Cancel", "Clear", "Prior", "Ret", "Separator",
+	"Out", "Oper", "Clear/Again", "CrSel", "ExCel", "0xA5", "0xA6", "0xA7", "0xA8", "0xA9", "0xAA", "0xAB", "0xAC", "0xAD", "0xAE", "0xAF",
+	"0xB0", "0xB1", "0xB2", "0xB3", "0xB4", "0xB5", "0xB6", "0xB7", "0xB8", "0xB9", "0xBA", "0xBB", "0xBC", "0xBD", "0xBE", "0xBF",
+	"0xC0", "0xC1", "0xC2", "0xC3", "0xC4", "0xC5", "0xC6", "0xC7", "0xC8", "0xC9", "0xCA", "0xCB", "0xCC", "0xCD", "0xCE", "0xCF",
+	"0xD0", "0xD1", "0xD2", "0xD3", "0xD4", "0xD5", "0xD6", "0xD7", "0xD8", "0xD9", "0xDA", "0xDB", "0xDC", "0xDD", "0xDE", "0xDF",
+	"Left Control", "Left Shift", "Left Option", "Left Command", "Right Control", "Right Shift", "Right Option", "Right Command"};
 
 	const char *kLinearAxisName[3] =
-		{
-			"X-Axis ", "Y-Axis ", "Z-Axis "
-		};
+	{
+	"X-Axis ", "Y-Axis ", "Z-Axis "};
 
 	const char *kRotationAxisName[3] =
-		{
-			"RX-Axis ", "RY-Axis ", "RZ-Axis "
-		};
+	{
+	"RX-Axis ", "RY-Axis ", "RZ-Axis "};
 
 	const char *kDeltaAxisName[3] =
-		{
-			"X-Delta ", "Y-Delta ", "Z-Delta "
-		};
-
+	{
+	"X-Delta ", "Y-Delta ", "Z-Delta "};
 
 
 	OSXPlatformDevice::OSXPlatformDevice(const Descriptor &descriptor, IOHIDDeviceRef device) :
@@ -267,18 +261,18 @@ namespace RN
 	{
 		if(!_device)
 			return;
-			
+
 		CFRetain(_device);
 
 		CFArrayRef elements = IOHIDDeviceCopyMatchingElements(_device, NULL, kIOHIDOptionsTypeNone);
-        if(elements)
-        {
-            BuildControlTree(this, elements);
-            CFRelease(elements);
-        }
+		if(elements)
+		{
+			BuildControlTree(this, elements);
+			CFRelease(elements);
+		}
 
 		// Prepare the queue
-		for(HIDElement *element : _allElements)
+		for(HIDElement *element: _allElements)
 			IOHIDQueueAddElement(_queue, element->element);
 	}
 
@@ -286,13 +280,13 @@ namespace RN
 	{
 		if(!_device)
 			return;
-		
+
 		CFRelease(_device);
 		CFRelease(_queue);
 
 		IOHIDDeviceClose(_device, kIOHIDOptionsTypeNone);
 
-		for(HIDElement *element : _allElements)
+		for(HIDElement *element: _allElements)
 			delete element;
 	}
 
@@ -300,7 +294,7 @@ namespace RN
 	{
 		size_t count = static_cast<size_t>(CFArrayGetCount(elements));
 
-		for(size_t i = 0; i < count; i ++)
+		for(size_t i = 0; i < count; i++)
 		{
 			IOHIDElementRef element = (IOHIDElementRef)CFArrayGetValueAtIndex(elements, i);
 
@@ -366,17 +360,17 @@ namespace RN
 
 									if(relative)
 									{
-										control = new DeltaAxisControl(RNSTR(kDeltaAxisName[usage - kHIDUsage_GD_X] << (++ _deltaAxisCount)), axis);
+										control = new DeltaAxisControl(RNSTR(kDeltaAxisName[usage - kHIDUsage_GD_X] << (++_deltaAxisCount)), axis);
 									}
 									else
 									{
-										control = new LinearAxisControl(RNSTR(kLinearAxisName[usage - kHIDUsage_GD_X] << (++ _linearAxisCount)), axis);
+										control = new LinearAxisControl(RNSTR(kLinearAxisName[usage - kHIDUsage_GD_X] << (++_linearAxisCount)), axis);
 									}
 
 									break;
 								}
 								case kHIDUsage_GD_Wheel:
-									control = new DeltaAxisControl(RNSTR(kDeltaAxisName[2] << (++ _deltaAxisCount)), AxisControl::Axis::Z);
+									control = new DeltaAxisControl(RNSTR(kDeltaAxisName[2] << (++_deltaAxisCount)), AxisControl::Axis::Z);
 									break;
 
 								case kHIDUsage_GD_Rx:
@@ -384,12 +378,12 @@ namespace RN
 								case kHIDUsage_GD_Rz:
 								{
 									AxisControl::Axis axis = static_cast<AxisControl::Axis>((usage - kHIDUsage_GD_Rx) + 1);
-									control = new RotationAxisControl(RNSTR(kRotationAxisName[usage - kHIDUsage_GD_Rx] << (++ _rotationAxisCount)), axis);
+									control = new RotationAxisControl(RNSTR(kRotationAxisName[usage - kHIDUsage_GD_Rx] << (++_rotationAxisCount)), axis);
 									break;
 								}
 
 								case kHIDUsage_GD_Slider:
-									control = new SliderControl(RNSTR("Slider " << (++ _sliderCount)));
+									control = new SliderControl(RNSTR("Slider " << (++_sliderCount)));
 									break;
 
 								default:
@@ -400,7 +394,7 @@ namespace RN
 						}
 						case kHIDPage_Button:
 						{
-							String *name = RNSTR("Button " << (++ _buttonCount));
+							String *name = RNSTR("Button " << (++_buttonCount));
 							control = new ButtonControl(name, InputControl::Type::Button);
 						}
 
@@ -513,38 +507,38 @@ namespace RN
 		OSXPlatformDevice(descriptor, device)
 	{
 		CGEventMask mask = CGEventMaskBit(kCGEventLeftMouseDown) |
-			CGEventMaskBit(kCGEventLeftMouseUp) |
-			CGEventMaskBit(kCGEventRightMouseDown) |
-			CGEventMaskBit(kCGEventRightMouseUp) |
-			CGEventMaskBit(kCGEventMouseMoved) |
-			CGEventMaskBit(kCGEventLeftMouseDragged) |
-			CGEventMaskBit(kCGEventRightMouseDragged) |
-			CGEventMaskBit(kCGEventScrollWheel) |
-			CGEventMaskBit(kCGEventOtherMouseDown) |
-			CGEventMaskBit(kCGEventOtherMouseUp) |
-			CGEventMaskBit(kCGEventOtherMouseDragged);
+		CGEventMaskBit(kCGEventLeftMouseUp) |
+		CGEventMaskBit(kCGEventRightMouseDown) |
+		CGEventMaskBit(kCGEventRightMouseUp) |
+		CGEventMaskBit(kCGEventMouseMoved) |
+		CGEventMaskBit(kCGEventLeftMouseDragged) |
+		CGEventMaskBit(kCGEventRightMouseDragged) |
+		CGEventMaskBit(kCGEventScrollWheel) |
+		CGEventMaskBit(kCGEventOtherMouseDown) |
+		CGEventMaskBit(kCGEventOtherMouseUp) |
+		CGEventMaskBit(kCGEventOtherMouseDragged);
 
 		_eventTap = CGEventTapCreate(kCGHIDEventTap, kCGHeadInsertEventTap, kCGEventTapOptionListenOnly, mask, &OSXMouseDevice::EventCallback, this);
 		_runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, _eventTap, 0);
-		
+
 		if(device == nullptr)
 		{
 			DeltaAxisControl *xAxisControl = new DeltaAxisControl(RNSTR(kDeltaAxisName[0] << "1"), AxisControl::Axis::X);
 			AddControl(xAxisControl);
 			xAxisControl->Release();
-			
+
 			DeltaAxisControl *yAxisControl = new DeltaAxisControl(RNSTR(kDeltaAxisName[1] << "2"), AxisControl::Axis::Y);
 			AddControl(yAxisControl);
 			yAxisControl->Release();
-			
+
 			ButtonControl *leftButtonControl = new ButtonControl(RNSTR("Button " << 1), ButtonControl::Type::Button);
 			AddControl(leftButtonControl);
 			leftButtonControl->Release();
-			
+
 			ButtonControl *rightButtonControl = new ButtonControl(RNSTR("Button " << 2), ButtonControl::Type::Button);
 			AddControl(rightButtonControl);
 			rightButtonControl->Release();
-			
+
 			ButtonControl *middleButtonControl = new ButtonControl(RNSTR("Button " << 3), ButtonControl::Type::Button);
 			AddControl(middleButtonControl);
 			middleButtonControl->Release();
@@ -555,7 +549,7 @@ namespace RN
 
 		_buttonControls = new Array();
 
-		for(size_t i = 1;; i ++)
+		for(size_t i = 1;; i++)
 		{
 			ButtonControl *control = GetControlWithName<ButtonControl>(RNSTR("Button " << i));
 			if(!control)
@@ -600,10 +594,10 @@ namespace RN
 		if(_deltaYAxis)
 			_deltaYAxis->SetValue(_lastDelta.y);
 
-		for(auto &pair : _buttonEvents)
+		for(auto &pair: _buttonEvents)
 		{
-            if(pair.first >= _buttonControls->GetCount()) continue;
-            
+			if(pair.first >= _buttonControls->GetCount()) continue;
+
 			ButtonControl *control = _buttonControls->GetObjectAtIndex<ButtonControl>(pair.first);
 			control->SetPressed(pair.second);
 		}
@@ -732,10 +726,10 @@ namespace RN
 			case kHIDPage_GenericDesktop:
 			{
 				CFNumberRef productID = (CFNumberRef)IOHIDDeviceGetProperty(deviceRef, CFSTR(kIOHIDProductIDKey));
-				CFNumberRef vendorID  = (CFNumberRef)IOHIDDeviceGetProperty(deviceRef, CFSTR(kIOHIDVendorIDKey));
+				CFNumberRef vendorID = (CFNumberRef)IOHIDDeviceGetProperty(deviceRef, CFSTR(kIOHIDVendorIDKey));
 
 				CFStringRef productValue = (CFStringRef)IOHIDDeviceGetProperty(deviceRef, CFSTR(kIOHIDProductKey));
-				CFStringRef vendorValue  = (CFStringRef)IOHIDDeviceGetProperty(deviceRef, CFSTR(kIOHIDManufacturerKey));
+				CFStringRef vendorValue = (CFStringRef)IOHIDDeviceGetProperty(deviceRef, CFSTR(kIOHIDManufacturerKey));
 
 				if(!productValue || !vendorValue)
 					break;
@@ -829,7 +823,6 @@ namespace RN
 	void OSXPlatformHIDDeviceRemoved(__unused void *context, __unused IOReturn result, __unused void *sender, IOHIDDeviceRef deviceRef)
 	{
 		_foundDevices->Enumerate<OSXPlatformDevice>([&](OSXPlatformDevice *device, size_t index, bool &stop) {
-
 			if(device->GetRawDevice() == deviceRef)
 			{
 				if(device->IsActive())
@@ -841,7 +834,6 @@ namespace RN
 				_foundDevices->RemoveObjectAtIndex(index);
 				stop = true;
 			}
-
 		});
 	}
 
@@ -857,9 +849,9 @@ namespace RN
 
 		IOHIDManagerScheduleWithRunLoop(_hidManager, CFRunLoopGetMain(), kCFRunLoopDefaultMode);
 		IOHIDManagerOpen(_hidManager, kIOHIDOptionsTypeNone);
-		
-		
-/*		if(!_hasMouse)
+
+
+		/*		if(!_hasMouse)
 		{
 			InputDevice::Descriptor descriptor(InputDevice::Category::Mouse);
 			descriptor.SetVendor(RNCSTR("blubb"));
@@ -876,13 +868,11 @@ namespace RN
 	void TearDownPlatformDeviceTree()
 	{
 		_foundDevices->Enumerate<OSXPlatformDevice>([](OSXPlatformDevice *device, size_t index, bool &stop) {
-
 			if(device->IsActive())
 				device->Deactivate();
 
 			if(device->IsRegistered())
 				device->Unregister();
-
 		});
 		_foundDevices->Release();
 		_foundDevices = nullptr;
@@ -893,4 +883,4 @@ namespace RN
 		CFRelease(_hidManager);
 		_hidManager = nullptr;
 	}
-}
+} // namespace RN

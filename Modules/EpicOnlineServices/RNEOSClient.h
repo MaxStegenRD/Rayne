@@ -27,15 +27,15 @@ namespace RN
 
 	protected:
 		EOSAPI virtual void Update(float delta) override;
-			
+
 	private:
 		static void OnConnectionClosedCallback(const EOS_P2P_OnRemoteConnectionClosedInfo *Data);
-		
+
 		void ForceDisconnect(RN::uint16 reason);
 		uint64 _connectionClosedNotificationID;
-			
+
 		RNDeclareMetaAPI(EOSClient, EOSAPI)
 	};
-}
+} // namespace RN
 
 #endif /* defined(__RAYNE_EOSCLIENT_H_) */

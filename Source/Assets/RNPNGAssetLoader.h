@@ -27,7 +27,7 @@ namespace RN
 
 		__RNDeclareMetaInternal(PNGAssetLoader)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_PNGASSETLOADER_H_ */

@@ -7,9 +7,9 @@
 //
 
 #include "RNOculusAudioSource.h"
-#include "RNOculusAudioWorld.h"
-#include "RNOculusAudioSampler.h"
 #include "RNOculusAudioInternals.h"
+#include "RNOculusAudioSampler.h"
+#include "RNOculusAudioWorld.h"
 
 namespace RN
 {
@@ -22,7 +22,7 @@ namespace RN
 		_wantsIndirectSound(wantsIndirectSound),
 		_isPlaying(false),
 		_isRepeating(false),
-//		_isSelfdestructing(false),
+		//		_isSelfdestructing(false),
 		_hasTimeOfFlight(true),
 		_hasReverb(true),
 		_gain(1.0f),
@@ -34,11 +34,11 @@ namespace RN
 		RN_ASSERT(OculusAudioWorld::_instance, "You need to create a OculusAudioWorld before creating audio sources!");
 		OculusAudioWorld::_instance->AddAudioSource(this);
 	}
-	
+
 	OculusAudioSource::~OculusAudioSource()
 	{
 		//World retains the source because of this, so if constructor is called, the world doesn't have this source anymore...
-/*		if(OculusAudioWorld::_instance)
+		/*		if(OculusAudioWorld::_instance)
 			OculusAudioWorld::_instance->RemoveAudioSource(this);*/
 
 		_sampler->Release();
@@ -48,7 +48,7 @@ namespace RN
 	{
 		_sampler->SetAudioAsset(asset);
 	}
-		
+
 	void OculusAudioSource::SetRepeat(bool repeat)
 	{
 		_sampler->SetRepeat(repeat);
@@ -59,23 +59,23 @@ namespace RN
 	{
 		_radius = radius;
 	}
-	
+
 	void OculusAudioSource::SetPitch(float pitch)
 	{
 		_pitch = pitch;
 	}
-		
+
 	void OculusAudioSource::SetGain(float gain)
 	{
 		_gain = gain;
 	}
-		
+
 	void OculusAudioSource::SetRange(RN::Vector2 minMaxRange)
 	{
 		_minMaxRange = minMaxRange;
 	}
-		
-/*	void OculusAudioSource::SetSelfdestruct(bool selfdestruct)
+
+	/*	void OculusAudioSource::SetSelfdestruct(bool selfdestruct)
 	{
 		_isSelfdestructing = selfdestruct;
 	}*/
@@ -90,7 +90,7 @@ namespace RN
 		_hasTimeOfFlight = tof;
 	}
 
-		
+
 	void OculusAudioSource::Play()
 	{
 		_isPlaying = true;
@@ -100,12 +100,12 @@ namespace RN
 	{
 		_isPlaying = false;
 	}
-	
+
 	void OculusAudioSource::Seek(double time)
 	{
 		_currentTime = time;
 	}
-	
+
 	bool OculusAudioSource::HasEnded() const
 	{
 		return (_currentTime >= _sampler->GetTotalTime());
@@ -156,4 +156,4 @@ namespace RN
 		_currentTime = localTime;
 		*outputBuffer = OculusAudioWorld::_instance->_sharedFrameData;
 	}
-}
+} // namespace RN

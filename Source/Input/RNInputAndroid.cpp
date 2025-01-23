@@ -15,11 +15,9 @@ namespace RN
 {
 	void BuildPlatformDeviceTree()
 	{
-
 	}
 
 	void TearDownPlatformDeviceTree()
 	{
-
 	}
-}
+} // namespace RN

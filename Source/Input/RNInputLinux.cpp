@@ -6,8 +6,8 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
-#include "../Debug/RNLogger.h"
 #include "RNInputLinux.h"
+#include "../Debug/RNLogger.h"
 /*#include <libudev.h>
 #include <libevdev-1.0/libevdev/libevdev.h>
 #include <fcntl.h>
@@ -23,109 +23,101 @@ namespace RN
 
 	RNDefineMeta(LinuxPlatformDevice, InputDevice)
 
-    LinuxHIDDevice::~LinuxHIDDevice()
-    {
+	LinuxHIDDevice::~LinuxHIDDevice()
+	{
+	}
 
-    }
-
-    void LinuxHIDDevice::Open()
-    {
-
-    }
-    void LinuxHIDDevice::Close()
-    {
-
-    }
+	void LinuxHIDDevice::Open()
+	{
+	}
+	void LinuxHIDDevice::Close()
+	{
+	}
 
 
-    Data *LinuxHIDDevice::ReadReport(uint32 reportID) const
-    {
-        return nullptr;
-    }
+	Data *LinuxHIDDevice::ReadReport(uint32 reportID) const
+	{
+		return nullptr;
+	}
 
-    size_t LinuxHIDDevice::WriteReport(uint32 reportID, const Data *data)
-    {
-        return 0;
-    }
+	size_t LinuxHIDDevice::WriteReport(uint32 reportID, const Data *data)
+	{
+		return 0;
+	}
 
-    Data *LinuxHIDDevice::ReadFeatureReport(uint32 reportID) const
-    {
-        return nullptr;
-    }
+	Data *LinuxHIDDevice::ReadFeatureReport(uint32 reportID) const
+	{
+		return nullptr;
+	}
 
-    const String *LinuxHIDDevice::GetManufacturerString() const
-    {
-        return nullptr;
-    }
-    const String *LinuxHIDDevice::GetProductString() const
-    {
-        return nullptr;
-    }
-    const String *LinuxHIDDevice::GetSerialString() const
-    {
-        return nullptr;
-    }
+	const String *LinuxHIDDevice::GetManufacturerString() const
+	{
+		return nullptr;
+	}
+	const String *LinuxHIDDevice::GetProductString() const
+	{
+		return nullptr;
+	}
+	const String *LinuxHIDDevice::GetSerialString() const
+	{
+		return nullptr;
+	}
 
-    uint32 LinuxHIDDevice::GetVendorID() const
-    {
-        return 0;
-    }
-    uint32 LinuxHIDDevice::GetProductID() const
-    {
-        return 0;
-    }
+	uint32 LinuxHIDDevice::GetVendorID() const
+	{
+		return 0;
+	}
+	uint32 LinuxHIDDevice::GetProductID() const
+	{
+		return 0;
+	}
 
 
-    const char *kKeyboardButtonName[] =
-            {
-					"0x00", "Escape", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", "Erase", "Tab", "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P",
-					"KEY_LEFTBRACE", "KEY_RIGHTBRACE", "Enter", "Left Control", "A", "S", "D", "F", "G", "H", "J", "K", "L", ";", "'", "KEY_GRAVE", "Left Shift", "\\",
-					"Z", "X", "C", "V", "B", "N", "M", ",", ".", "/", "Right Shift", "KEY_KPASTERISK", "Left Option", "Space", "Caps-Lockable", "F1", "F2", "F3", "F4", "F5", "F6",
-					"F7", "F8", "F9", "F10", "Num-Lockable", "Scroll-Lockable", "Pad 7", "Pad 8", "Pad 9", "Pad -", "Pad 4", "Pad 5", "Pad 6", "Pad +", "Pad 1", "Pad 2", "Pad 3", "Pad 0",
-					"Pad .", "EMPTY SLOT", "KEY_ZENKAKUHANKAKU", "KEY_102ND", "F11", "F12", "KEY_RO", "KEY_KATAKANA", "KEY_HIRAGANA", "KEY_HENKAN", "KEY_KATAKANAHIRAGANA", "KEY_MUHENKAN",
-					"KEY_KPJPCOMMA", "Enter", "Right Control", "Pad /", "KEY_SYSRQ", "Right Option", "KEY_LINEFEED", "Home", "Up", "Page Up", "Left", "Right", "End",
-					"Down", "Page Down", "Insert", "Del", "KEY_MACRO", "KEY_MUTE", "KEY_VOLUMEDOWN", "KEY_VOLUMEUP", "KEY_POWER", "Pad =", "KEY_KPPLUSMINUS", "Pause", "KEY_SCALE",
-					"KEY_KPCOMMA", "KEY_HANGEUL", "KEY_HANJA", "KEY_YEN", "KEY_LEFTMETA", "KEY_RIGHTMETA", "KEY_COMPOSE", "KEY_STOP", "KEY_AGAIN", "KEY_PROPS", "KEY_UNDO", "KEY_FRONT", "KEY_COPY",
-					"KEY_OPEN", "KEY_PASTE", "KEY_FIND", "KEY_CUT", "KEY_HELP", "KEY_MENU", "KEY_CALC", "KEY_SETUP", "KEY_SLEEP", "KEY_WAKEUP", "KEY_FILE", "KEY_SENDFILE", "KEY_DELETEFILE",
-					"KEY_XFER", "KEY_PROG1", "KEY_PROG2", "KEY_WWW", "KEY_MSDOS", "KEY_COFFEE", "KEY_ROTATE_DISPLAY", "KEY_CYCLEWINDOWS", "KEY_MAIL", "KEY_BOOKMARKS", "KEY_COMPUTER",
-					"KEY_BACK", "KEY_FORWARD", "KEY_CLOSECD", "KEY_EJECTCD", "KEY_EJECTCLOSECD", "KEY_NEXTSONG", "KEY_PLAYPAUSE", "KEY_PREVIOUSSONG", "KEY_STOPCD", "KEY_RECORD", "KEY_REWIND",
-					"KEY_PHONE", "KEY_ISO", "KEY_CONFIG", "KEY_HOMEPAGE", "KEY_REFRESH", "KEY_EXIT", "KEY_MOVE", "KEY_EDIT", "KEY_SCROLLUP", "KEY_SCROLLDOWN", "KEY_KPLEFTPAREN", "KEY_KPRIGHTPAREN",
-					"KEY_NEW", "KEY_REDO", "F13", "F14", "F15", "F16", "F17", "F18", "F19", "F20", "F21", "F22", "F23", "F24", "EMPTY SLOT", "EMPTY SLOT", "EMPTY SLOT", "EMPTY SLOT", "EMPTY SLOT",
-					"KEY_PLAYCD", "KEY_PAUSECD", "KEY_PROG3", "KEY_PROG4", "KEY_DASHBOARD", "KEY_SUSPEND", "KEY_CLOSE", "KEY_PLAY", "KEY_FASTFORWARD", "KEY_BASSBOOST", "KEY_PRINT", "KEY_HP",
-					"KEY_CAMERA", "KEY_SOUND", "KEY_QUESTION", "KEY_EMAIL", "KEY_CHAT", "KEY_SEARCH", "KEY_CONNECT", "KEY_FINANCE", "KEY_SPORT", "KEY_SHOP", "KEY_ALTERASE", "KEY_CANCEL",
-					"KEY_BRIGHTNESSDOWN", "KEY_BRIGHTNESSUP", "KEY_MEDIA", "KEY_SWITCHVIDEOMODE", "KEY_KBDILLUMTOGGLE", "KEY_KBDILLUMDOWN", "KEY_KBDILLUMUP", "KEY_SEND", "KEY_REPLY", "KEY_FORWARDMAIL",
-					"KEY_SAVE", "KEY_DOCUMENTS", "KEY_BATTERY", "KEY_BLUETOOTH", "KEY_WLAN", "KEY_UWB", "KEY_UNKNOWN", "KEY_VIDEO_NEXT", "KEY_VIDEO_PREV", "KEY_BRIGHTNESS_CYCLE", "KEY_BRIGHTNESS_AUTO",
-					"KEY_DISPLAY_OFF", "KEY_WWAN", "KEY_RFKILL", "KEY_MICMUTE", "EMPTY SLOT", "EMPTY SLOT", "EMPTY SLOT", "EMPTY SLOT", "EMPTY SLOT", "EMPTY SLOT", "EMPTY SLOT"
-            };
+	const char *kKeyboardButtonName[] =
+	{
+	"0x00", "Escape", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", "Erase", "Tab", "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P",
+	"KEY_LEFTBRACE", "KEY_RIGHTBRACE", "Enter", "Left Control", "A", "S", "D", "F", "G", "H", "J", "K", "L", ";", "'", "KEY_GRAVE", "Left Shift", "\\",
+	"Z", "X", "C", "V", "B", "N", "M", ",", ".", "/", "Right Shift", "KEY_KPASTERISK", "Left Option", "Space", "Caps-Lockable", "F1", "F2", "F3", "F4", "F5", "F6",
+	"F7", "F8", "F9", "F10", "Num-Lockable", "Scroll-Lockable", "Pad 7", "Pad 8", "Pad 9", "Pad -", "Pad 4", "Pad 5", "Pad 6", "Pad +", "Pad 1", "Pad 2", "Pad 3", "Pad 0",
+	"Pad .", "EMPTY SLOT", "KEY_ZENKAKUHANKAKU", "KEY_102ND", "F11", "F12", "KEY_RO", "KEY_KATAKANA", "KEY_HIRAGANA", "KEY_HENKAN", "KEY_KATAKANAHIRAGANA", "KEY_MUHENKAN",
+	"KEY_KPJPCOMMA", "Enter", "Right Control", "Pad /", "KEY_SYSRQ", "Right Option", "KEY_LINEFEED", "Home", "Up", "Page Up", "Left", "Right", "End",
+	"Down", "Page Down", "Insert", "Del", "KEY_MACRO", "KEY_MUTE", "KEY_VOLUMEDOWN", "KEY_VOLUMEUP", "KEY_POWER", "Pad =", "KEY_KPPLUSMINUS", "Pause", "KEY_SCALE",
+	"KEY_KPCOMMA", "KEY_HANGEUL", "KEY_HANJA", "KEY_YEN", "KEY_LEFTMETA", "KEY_RIGHTMETA", "KEY_COMPOSE", "KEY_STOP", "KEY_AGAIN", "KEY_PROPS", "KEY_UNDO", "KEY_FRONT", "KEY_COPY",
+	"KEY_OPEN", "KEY_PASTE", "KEY_FIND", "KEY_CUT", "KEY_HELP", "KEY_MENU", "KEY_CALC", "KEY_SETUP", "KEY_SLEEP", "KEY_WAKEUP", "KEY_FILE", "KEY_SENDFILE", "KEY_DELETEFILE",
+	"KEY_XFER", "KEY_PROG1", "KEY_PROG2", "KEY_WWW", "KEY_MSDOS", "KEY_COFFEE", "KEY_ROTATE_DISPLAY", "KEY_CYCLEWINDOWS", "KEY_MAIL", "KEY_BOOKMARKS", "KEY_COMPUTER",
+	"KEY_BACK", "KEY_FORWARD", "KEY_CLOSECD", "KEY_EJECTCD", "KEY_EJECTCLOSECD", "KEY_NEXTSONG", "KEY_PLAYPAUSE", "KEY_PREVIOUSSONG", "KEY_STOPCD", "KEY_RECORD", "KEY_REWIND",
+	"KEY_PHONE", "KEY_ISO", "KEY_CONFIG", "KEY_HOMEPAGE", "KEY_REFRESH", "KEY_EXIT", "KEY_MOVE", "KEY_EDIT", "KEY_SCROLLUP", "KEY_SCROLLDOWN", "KEY_KPLEFTPAREN", "KEY_KPRIGHTPAREN",
+	"KEY_NEW", "KEY_REDO", "F13", "F14", "F15", "F16", "F17", "F18", "F19", "F20", "F21", "F22", "F23", "F24", "EMPTY SLOT", "EMPTY SLOT", "EMPTY SLOT", "EMPTY SLOT", "EMPTY SLOT",
+	"KEY_PLAYCD", "KEY_PAUSECD", "KEY_PROG3", "KEY_PROG4", "KEY_DASHBOARD", "KEY_SUSPEND", "KEY_CLOSE", "KEY_PLAY", "KEY_FASTFORWARD", "KEY_BASSBOOST", "KEY_PRINT", "KEY_HP",
+	"KEY_CAMERA", "KEY_SOUND", "KEY_QUESTION", "KEY_EMAIL", "KEY_CHAT", "KEY_SEARCH", "KEY_CONNECT", "KEY_FINANCE", "KEY_SPORT", "KEY_SHOP", "KEY_ALTERASE", "KEY_CANCEL",
+	"KEY_BRIGHTNESSDOWN", "KEY_BRIGHTNESSUP", "KEY_MEDIA", "KEY_SWITCHVIDEOMODE", "KEY_KBDILLUMTOGGLE", "KEY_KBDILLUMDOWN", "KEY_KBDILLUMUP", "KEY_SEND", "KEY_REPLY", "KEY_FORWARDMAIL",
+	"KEY_SAVE", "KEY_DOCUMENTS", "KEY_BATTERY", "KEY_BLUETOOTH", "KEY_WLAN", "KEY_UWB", "KEY_UNKNOWN", "KEY_VIDEO_NEXT", "KEY_VIDEO_PREV", "KEY_BRIGHTNESS_CYCLE", "KEY_BRIGHTNESS_AUTO",
+	"KEY_DISPLAY_OFF", "KEY_WWAN", "KEY_RFKILL", "KEY_MICMUTE", "EMPTY SLOT", "EMPTY SLOT", "EMPTY SLOT", "EMPTY SLOT", "EMPTY SLOT", "EMPTY SLOT", "EMPTY SLOT"};
 
 	const char *kMouseButtonName[] =
-			{
-					"Mouse Left", "Mouse Right", "Mouse Middle", "Mouse Side", "Mouse Extra", "Mouse Forward", "Mouse Back", "Mouse Task"
-			};
+	{
+	"Mouse Left", "Mouse Right", "Mouse Middle", "Mouse Side", "Mouse Extra", "Mouse Forward", "Mouse Back", "Mouse Task"};
 
-    const char *kRelativeAxisName[] =
-            {
-                    "X-Delta ", "Y-Delta ", "Z-Delta ", "RX-Delta ", "RY-Delta ", "RZ-Delta ", "HWheel", "Dial", "Wheel", "Misc"
-            };
+	const char *kRelativeAxisName[] =
+	{
+	"X-Delta ", "Y-Delta ", "Z-Delta ", "RX-Delta ", "RY-Delta ", "RZ-Delta ", "HWheel", "Dial", "Wheel", "Misc"};
 
 	const char *kAbsoluteAxisName[] =
-			{
-					"X-Axis ", "Y-Axis ", "Z-Axis ", "RX-Axis ", "RY-Axis ", "RZ-Axis "
-			};
+	{
+	"X-Axis ", "Y-Axis ", "Z-Axis ", "RX-Axis ", "RY-Axis ", "RZ-Axis "};
 
 
-
-    LinuxPlatformDevice::LinuxPlatformDevice(const Descriptor &descriptor) ://, udev_device *device) :
-            InputDevice(descriptor),
-			//_udevDevice(device),
-            _hasDataAvailable(false),
-            _buttonCount(0),
-            _sliderCount(0),
-            _deltaAxisCount(0),
-            _linearAxisCount(0),
-            _rotationAxisCount(0)
-    {
- /*       if(!_udevDevice)
+	LinuxPlatformDevice::LinuxPlatformDevice(const Descriptor &descriptor) : //, udev_device *device) :
+		InputDevice(descriptor),
+		//_udevDevice(device),
+		_hasDataAvailable(false),
+		_buttonCount(0),
+		_sliderCount(0),
+		_deltaAxisCount(0),
+		_linearAxisCount(0),
+		_rotationAxisCount(0)
+	{
+		/*       if(!_udevDevice)
             return;
 
         udev_device_ref(_udevDevice);
@@ -164,28 +156,28 @@ namespace RN
 		}
 
 		udev_enumerate_unref(enumerate);*/
-    }
+	}
 
-    LinuxPlatformDevice::~LinuxPlatformDevice()
-    {
- //       if(!_udevDevice)
- //           return;
+	LinuxPlatformDevice::~LinuxPlatformDevice()
+	{
+		//       if(!_udevDevice)
+		//           return;
 
-//		libevdev_free(_device);
+		//		libevdev_free(_device);
 		//close(_fileHandle);
 
-//        udev_device_unref(_udevDevice);
+		//        udev_device_unref(_udevDevice);
 
- /*
+		/*
         for(HIDElement *element : _allElements)
             delete element;*/
-    }
+	}
 
-    void LinuxPlatformDevice::AddControl(InputControl *control)
+	void LinuxPlatformDevice::AddControl(InputControl *control)
 	{
 		if(control)
 		{
-/*			HIDElement *hidElement = new HIDElement(element, control);
+			/*			HIDElement *hidElement = new HIDElement(element, control);
 
 			_allElements.push_back(hidElement);
 			_elements.emplace(cookie, hidElement);*/
@@ -193,7 +185,7 @@ namespace RN
 			InputDevice::AddControl(control);
 			control->Release();
 
-/*			switch(control->GetType())
+			/*			switch(control->GetType())
 			{
 				case InputControl::Type::RotationAxis:
 				case InputControl::Type::LinearAxis:
@@ -220,9 +212,9 @@ namespace RN
 		}
 	}
 
-    void LinuxPlatformDevice::BuildControlTree()
-    {
- /*   	for(int eventType = 0; eventType < EV_CNT; eventType++)
+	void LinuxPlatformDevice::BuildControlTree()
+	{
+		/*   	for(int eventType = 0; eventType < EV_CNT; eventType++)
 		{
     		if(libevdev_has_event_type(_device, eventType))
 			{
@@ -319,7 +311,7 @@ namespace RN
 			}
 		}*/
 
-/*        size_t count = static_cast<size_t>(CFArrayGetCount(elements));
+		/*        size_t count = static_cast<size_t>(CFArrayGetCount(elements));
 
         for(size_t i = 0; i < count; i ++)
         {
@@ -472,13 +464,13 @@ namespace RN
                     break;
             }
         }*/
-    }
+	}
 
-    void LinuxPlatformDevice::Update()
-    {
-        InputDevice::Update();
+	void LinuxPlatformDevice::Update()
+	{
+		InputDevice::Update();
 
-/*        while(_hasDataAvailable)
+		/*        while(_hasDataAvailable)
         {
             IOHIDValueRef value = IOHIDQueueCopyNextValue(_queue);
             if(!value)
@@ -499,38 +491,38 @@ namespace RN
 
             CFRelease(value);
         }*/
-    }
+	}
 
-/*    void LinuxPlatformDevice::DataAvailableCallback(void *context, __unused IOReturn result, __unused void *sender)
+	/*    void LinuxPlatformDevice::DataAvailableCallback(void *context, __unused IOReturn result, __unused void *sender)
     {
         OSXPlatformDevice *device = static_cast<OSXPlatformDevice *>(context);
         device->_hasDataAvailable = true;
     }*/
 
-    bool LinuxPlatformDevice::__Activate()
-    {
-/*        if(IOHIDDeviceOpen(_device, kIOHIDOptionsTypeNone) != kIOReturnSuccess)
+	bool LinuxPlatformDevice::__Activate()
+	{
+		/*        if(IOHIDDeviceOpen(_device, kIOHIDOptionsTypeNone) != kIOReturnSuccess)
             return false;
 
         IOHIDQueueStart(_queue);
         IOHIDQueueRegisterValueAvailableCallback(_queue, &OSXPlatformDevice::DataAvailableCallback, this);
         IOHIDQueueScheduleWithRunLoop(_queue, CFRunLoopGetMain(), kCFRunLoopDefaultMode);
 */
-        return true;
-    }
-    bool LinuxPlatformDevice::__Deactivate()
-    {
- /*       IOHIDQueueStop(_queue);
+		return true;
+	}
+	bool LinuxPlatformDevice::__Deactivate()
+	{
+		/*       IOHIDQueueStop(_queue);
         IOHIDQueueUnscheduleFromRunLoop(_queue, CFRunLoopGetMain(), kCFRunLoopDefaultMode);
 
         IOHIDDeviceClose(_device, kIOHIDOptionsTypeNone);*/
 
-        return true;
-    }
+		return true;
+	}
 
 
-    // Device management
-/*    InputDevice::Category LinuxPlatformGetHIDDeviceCategory(udev_device *device)
+	// Device management
+	/*    InputDevice::Category LinuxPlatformGetHIDDeviceCategory(udev_device *device)
     {
         InputDevice::Category category = 0;
 
@@ -630,10 +622,10 @@ namespace RN
         });
     }*/
 
-    void BuildPlatformDeviceTree()
-    {
-        _foundDevices = new Array();
- /*       _udev = udev_new();
+	void BuildPlatformDeviceTree()
+	{
+		_foundDevices = new Array();
+		/*       _udev = udev_new();
 
         if(!_udev)
         {
@@ -678,12 +670,11 @@ namespace RN
         }
 
         udev_enumerate_unref(enumerate);*/
-    }
+	}
 
-    void TearDownPlatformDeviceTree()
-    {
+	void TearDownPlatformDeviceTree()
+	{
 		_foundDevices->Enumerate<LinuxPlatformDevice>([](LinuxPlatformDevice *device, size_t index, bool &stop) {
-
 			if(device->IsActive())
 				device->Deactivate();
 
@@ -694,7 +685,7 @@ namespace RN
 		_foundDevices->Release();
 		_foundDevices = nullptr;
 
- //       udev_unref(_udev);
- //       _udev = nullptr;
-    }
-}
+		//       udev_unref(_udev);
+		//       _udev = nullptr;
+	}
+} // namespace RN

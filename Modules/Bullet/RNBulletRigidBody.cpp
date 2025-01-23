@@ -7,14 +7,14 @@
 //
 
 #include "RNBulletRigidBody.h"
-#include "RNBulletWorld.h"
-#include "RNBulletMaterial.h"
 #include "RNBulletInternals.h"
+#include "RNBulletMaterial.h"
+#include "RNBulletWorld.h"
 
 namespace RN
 {
 	RNDefineMeta(BulletRigidBody, BulletCollisionObject)
-		
+
 	BulletRigidBody::BulletRigidBody(BulletShape *shape, float mass) :
 		_shape(shape->Retain()),
 		_rigidBody(nullptr),
@@ -22,13 +22,13 @@ namespace RN
 	{
 		Vector3 inertia = _shape->CalculateLocalInertia(mass);
 		btVector3 btInertia = btVector3(inertia.x, inertia.y, inertia.z);
-			
+
 		btRigidBody::btRigidBodyConstructionInfo info(mass, _motionState, _shape->GetBulletShape(), btInertia);
-			
+
 		_rigidBody = new btRigidBody(info);
 		_rigidBody->setUserPointer(this);
 	}
-		
+
 	BulletRigidBody::BulletRigidBody(BulletShape *shape, float mass, const Vector3 &inertia) :
 		_shape(shape->Retain()),
 		_rigidBody(nullptr),
@@ -36,17 +36,17 @@ namespace RN
 	{
 		btVector3 btInertia = btVector3(inertia.x, inertia.y, inertia.z);
 		btRigidBody::btRigidBodyConstructionInfo info(mass, _motionState, _shape->GetBulletShape(), btInertia);
-			
+
 		_rigidBody = new btRigidBody(info);
 	}
-		
+
 	BulletRigidBody::~BulletRigidBody()
 	{
 		_shape->Release();
 		delete _rigidBody;
 	}
-	
-		
+
+
 	BulletRigidBody *BulletRigidBody::WithShape(BulletShape *shape, float mass)
 	{
 		BulletRigidBody *body = new BulletRigidBody(shape, mass);
@@ -57,12 +57,12 @@ namespace RN
 		BulletRigidBody *body = new BulletRigidBody(shape, mass, inertia);
 		return body->Autorelease();
 	}
-	
+
 	btCollisionObject *BulletRigidBody::GetBulletCollisionObject() const
 	{
 		return _rigidBody;
 	}
-		
+
 	void BulletRigidBody::SetMass(float mass)
 	{
 		Vector3 inertia = _shape->CalculateLocalInertia(mass);
@@ -88,12 +88,12 @@ namespace RN
 	{
 		_rigidBody->setCcdSweptSphereRadius(radius);
 	}
-		
+
 	void BulletRigidBody::SetGravity(const RN::Vector3 &gravity)
 	{
 		_rigidBody->setGravity(btVector3(gravity.x, gravity.y, gravity.z));
 	}
-		
+
 	void BulletRigidBody::SetDamping(float linear, float angular)
 	{
 		_rigidBody->setDamping(linear, angular);
@@ -101,47 +101,47 @@ namespace RN
 
 	void BulletRigidBody::SetAllowDeactivation(bool canDeactivate)
 	{
-		_rigidBody->forceActivationState(canDeactivate?ACTIVE_TAG:DISABLE_DEACTIVATION);
+		_rigidBody->forceActivationState(canDeactivate ? ACTIVE_TAG : DISABLE_DEACTIVATION);
 	}
 
-    void BulletRigidBody::Activate()
-    {
-        _rigidBody->activate();
-    }
-		
+	void BulletRigidBody::Activate()
+	{
+		_rigidBody->activate();
+	}
+
 	Vector3 BulletRigidBody::GetLinearVelocity() const
 	{
-		const btVector3& velocity = _rigidBody->getLinearVelocity();
+		const btVector3 &velocity = _rigidBody->getLinearVelocity();
 		return Vector3(velocity.x(), velocity.y(), velocity.z());
 	}
 	Vector3 BulletRigidBody::GetAngularVelocity() const
 	{
-		const btVector3& velocity = _rigidBody->getAngularVelocity();
+		const btVector3 &velocity = _rigidBody->getAngularVelocity();
 		return Vector3(velocity.x(), velocity.y(), velocity.z());
 	}
-		
-		
+
+
 	Vector3 BulletRigidBody::GetCenterOfMass() const
 	{
-		const btVector3& center = _rigidBody->getCenterOfMassPosition();
+		const btVector3 &center = _rigidBody->getCenterOfMassPosition();
 		return Vector3(center.x(), center.y(), center.z());
 	}
 	Matrix BulletRigidBody::GetCenterOfMassTransform() const
 	{
-		const btTransform& transform = _rigidBody->getCenterOfMassTransform();
-			
+		const btTransform &transform = _rigidBody->getCenterOfMassTransform();
+
 		btQuaternion rotation = transform.getRotation();
-		btVector3 position    = transform.getOrigin();
-			
+		btVector3 position = transform.getOrigin();
+
 		Matrix matrix;
-			
+
 		matrix.Translate(Vector3(position.x(), position.y(), position.z()));
 		matrix.Rotate(Quaternion(rotation.x(), rotation.y(), rotation.z(), rotation.w()));
-			
+
 		return matrix;
 	}
-		
-		
+
+
 	void BulletRigidBody::ApplyForce(const Vector3 &force)
 	{
 		_rigidBody->applyCentralForce(btVector3(force.x, force.y, force.z));
@@ -154,7 +154,7 @@ namespace RN
 	{
 		_rigidBody->clearForces();
 	}
-		
+
 	void BulletRigidBody::ApplyTorque(const Vector3 &torque)
 	{
 		_rigidBody->applyTorque(btVector3(torque.x, torque.y, torque.z));
@@ -171,17 +171,16 @@ namespace RN
 	{
 		_rigidBody->applyImpulse(btVector3(impulse.x, impulse.y, impulse.z), btVector3(origin.x, origin.y, origin.z));
 	}
-		
-		
-		
+
+
 	void BulletRigidBody::DidUpdate(SceneNode::ChangeSet changeSet)
 	{
 		BulletCollisionObject::DidUpdate(changeSet);
-			
+
 		if(changeSet & SceneNode::ChangeSet::Position)
 		{
 			btTransform transform;
-				
+
 			_motionState->getWorldTransform(transform);
 			_rigidBody->setCenterOfMassTransform(transform);
 		}
@@ -194,28 +193,28 @@ namespace RN
 		_rigidBody->setRestitution(material->GetRestitution());
 		_rigidBody->setDamping(material->GetLinearDamping(), material->GetAngularDamping());
 	}
-		
-		
+
+
 	void BulletRigidBody::InsertIntoWorld(BulletWorld *world)
 	{
 		BulletCollisionObject::InsertIntoWorld(world);
 		_motionState->SetSceneNode(this);
-			
+
 		{
 			btTransform transform;
-				
+
 			_motionState->getWorldTransform(transform);
 			_rigidBody->setCenterOfMassTransform(transform);
 		}
-			
+
 		auto bulletWorld = world->GetBulletDynamicsWorld();
 		bulletWorld->addRigidBody(_rigidBody, GetCollisionFilter(), GetCollisionFilterMask());
 	}
-		
+
 	void BulletRigidBody::RemoveFromWorld(BulletWorld *world)
 	{
 		BulletCollisionObject::RemoveFromWorld(world);
-			
+
 		auto bulletWorld = world->GetBulletDynamicsWorld();
 		bulletWorld->removeRigidBody(_rigidBody);
 	}
@@ -225,4 +224,4 @@ namespace RN
 		BulletCollisionObject::SetPositionOffset(offset);
 		_motionState->SetPositionOffset(offset);
 	}
-}
+} // namespace RN

@@ -10,9 +10,9 @@
 #define __RAYNE_SPATIALMAP_H__
 
 #include "../Base/RNBase.h"
-#include "../Math/RNVector.h"
-#include "../Math/RNMath.h"
 #include "../Math/RNAABB.h"
+#include "../Math/RNMath.h"
+#include "../Math/RNVector.h"
 
 #define P1 1149851
 #define P2 1860498
@@ -26,7 +26,7 @@ namespace RN
 {
 	struct SpatialHasher
 	{
-		size_t operator ()(const Vector3 &vector) const
+		size_t operator()(const Vector3 &vector) const
 		{
 			int32 x = static_cast<int32>(vector.x);
 			int32 y = static_cast<int32>(vector.y);
@@ -61,7 +61,7 @@ namespace RN
 			_entries.erase(position);
 		}
 
-		T &operator [](const Vector3 &key)
+		T &operator[](const Vector3 &key)
 		{
 			Vector3 translated(std::move(TranslateVector(key)));
 			return _entries[translated];
@@ -79,7 +79,7 @@ namespace RN
 			return RawContains(translated + offset);
 		}
 
-		void Query(const AABB &aabb, std::vector <T> &result)
+		void Query(const AABB &aabb, std::vector<T> &result)
 		{
 			Vector3 position(std::move(TranslateVector(aabb.position)));
 			Vector3 extents(aabb.maxExtend - aabb.minExtend);
@@ -153,9 +153,9 @@ namespace RN
 		size_t _spacing;
 		bool _spacingY;
 
-		std::unordered_map <Vector3, T, SpatialHasher> _entries;
+		std::unordered_map<Vector3, T, SpatialHasher> _entries;
 	};
-}
+} // namespace RN
 
 #undef P1
 #undef P2

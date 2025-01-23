@@ -11,8 +11,8 @@
 
 #include "RNAssimp.h"
 #include <assimp/Importer.hpp>
-#include <assimp/scene.h>
 #include <assimp/postprocess.h>
+#include <assimp/scene.h>
 
 namespace RN
 {
@@ -36,7 +36,7 @@ namespace RN
 
 		RNDeclareMetaAPI(AssimpAssetLoader, ASAPI)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_ASSIMPASSETLOADER_H_ */

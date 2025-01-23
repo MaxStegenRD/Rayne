@@ -12,20 +12,20 @@
 namespace RN
 {
 	RNDefineMeta(NewtonCollisionObject, SceneNodeAttachment)
-		
-		NewtonCollisionObject::NewtonCollisionObject() :
+
+	NewtonCollisionObject::NewtonCollisionObject() :
 		_collisionFilterGroup(0),
 		_collisionFilterMask(0xffffffff),
 		_collisionFilterID(0),
 		_collisionFilterIgnoreID(0),
 		_owner(nullptr)
 	{}
-		
+
 	NewtonCollisionObject::~NewtonCollisionObject()
 	{
 	}
-		
-		
+
+
 	void NewtonCollisionObject::SetCollisionFilter(uint32 group, uint32 mask)
 	{
 		_collisionFilterGroup = group;
@@ -37,22 +37,22 @@ namespace RN
 		_collisionFilterID = id;
 		_collisionFilterIgnoreID = ignoreid;
 	}
-		
-	void NewtonCollisionObject::SetContactCallback(std::function<void (NewtonCollisionObject *, const NewtonContactInfo&, ContactState)> &&callback)
+
+	void NewtonCollisionObject::SetContactCallback(std::function<void(NewtonCollisionObject *, const NewtonContactInfo &, ContactState)> &&callback)
 	{
 		_contactCallback = std::move(callback);
 	}
-		
+
 	void NewtonCollisionObject::SetPositionOffset(RN::Vector3 offset)
 	{
 		_offset = offset;
 		UpdatePosition();
 	}
-		
-		
+
+
 	void NewtonCollisionObject::DidUpdate(SceneNode::ChangeSet changeSet)
 	{
-/*		if(changeSet & SceneNode::ChangeSet::World)
+		/*		if(changeSet & SceneNode::ChangeSet::World)
 		{
 			World *world = GetParent()->GetWorld();
 				
@@ -69,4 +69,4 @@ namespace RN
 			}
 		}*/
 	}
-}
+} // namespace RN

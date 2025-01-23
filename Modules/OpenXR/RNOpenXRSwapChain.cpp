@@ -11,7 +11,8 @@
 
 namespace RN
 {
-	OpenXRSwapChain::OpenXRSwapChain(const OpenXRWindow *window, OpenXRCompositorLayer *layer, SwapChainType type) : _internals(new OpenXRSwapchainInternals()), _xrWindow(window), _layer(layer), _isActive(false), _swapChainType(type), _hasContent(false)
+	OpenXRSwapChain::OpenXRSwapChain(const OpenXRWindow *window, OpenXRCompositorLayer *layer, SwapChainType type) :
+		_internals(new OpenXRSwapchainInternals()), _xrWindow(window), _layer(layer), _isActive(false), _swapChainType(type), _hasContent(false)
 	{
 		_internals->currentFoveationProfile = XR_NULL_HANDLE;
 	}
@@ -20,4 +21,4 @@ namespace RN
 	{
 		delete _internals;
 	}
-}
+} // namespace RN

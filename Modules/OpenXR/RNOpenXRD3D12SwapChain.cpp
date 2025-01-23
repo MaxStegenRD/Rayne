@@ -8,21 +8,22 @@
 
 #include "RNOpenXRD3D12SwapChain.h"
 
-#include "RNOpenXRWindow.h"
-#include "RNOpenXRInternals.h"
+#include "RND3D12Framebuffer.h"
 #include "RND3D12Internals.h"
 #include "RND3D12Renderer.h"
-#include "RND3D12Framebuffer.h"
+#include "RNOpenXRInternals.h"
+#include "RNOpenXRWindow.h"
 
 namespace RN
 {
 	RNDefineMeta(OpenXRD3D12SwapChain, D3D12SwapChain)
 
-	OpenXRD3D12SwapChain::OpenXRD3D12SwapChain(const OpenXRWindow *window, const Window::SwapChainDescriptor &descriptor, const Vector2 &size) : OpenXRSwapChain(window, SwapChainType::D3D12)
+	OpenXRD3D12SwapChain::OpenXRD3D12SwapChain(const OpenXRWindow *window, const Window::SwapChainDescriptor &descriptor, const Vector2 &size) :
+		OpenXRSwapChain(window, SwapChainType::D3D12)
 	{
 		_renderer = Renderer::GetActiveRenderer()->Downcast<D3D12Renderer>();
 		_size = size;
-		
+
 		_descriptor = descriptor;
 		_descriptor.colorFormat = Texture::Format::RGBA_8_SRGB; //TODO: Don´t hardcode the format here?
 		_descriptor.layerCount = 2;
@@ -56,21 +57,21 @@ namespace RN
 
 		if(!XR_SUCCEEDED(xrCreateSwapchain(_xrWindow->_internals->session, &swapchainCreateInfo, &_internals->swapchain)))
 		{
-		   RN_ASSERT(false, "failed creating swapchain");
+			RN_ASSERT(false, "failed creating swapchain");
 		}
 
 		uint32 numberOfSwapChainImages = 0;
 		xrEnumerateSwapchainImages(_internals->swapchain, 0, &numberOfSwapChainImages, nullptr);
 
 		XrSwapchainImageD3D12KHR *swapchainImages = new XrSwapchainImageD3D12KHR[numberOfSwapChainImages];
-		_swapchainImages = new ID3D12Resource*[numberOfSwapChainImages];
+		_swapchainImages = new ID3D12Resource *[numberOfSwapChainImages];
 
 		for(uint32 i = 0; i < numberOfSwapChainImages; i++)
 		{
 			swapchainImages[i].type = XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR;
 			swapchainImages[i].next = nullptr;
 		}
-		xrEnumerateSwapchainImages(_internals->swapchain, numberOfSwapChainImages, &numberOfSwapChainImages, (XrSwapchainImageBaseHeader*)swapchainImages);
+		xrEnumerateSwapchainImages(_internals->swapchain, numberOfSwapChainImages, &numberOfSwapChainImages, (XrSwapchainImageBaseHeader *)swapchainImages);
 		_descriptor.bufferCount = numberOfSwapChainImages;
 
 		for(uint32 i = 0; i < numberOfSwapChainImages; i++)
@@ -80,7 +81,6 @@ namespace RN
 		delete[] swapchainImages;
 
 		_framebuffer = new D3D12Framebuffer(_size, _descriptor.layerCount, this, _renderer, _descriptor.colorFormat, _descriptor.depthStencilFormat);
-
 	}
 
 	OpenXRD3D12SwapChain::~OpenXRD3D12SwapChain()
@@ -90,11 +90,11 @@ namespace RN
 		delete[] _swapchainImages;
 	}
 
-	void OpenXRD3D12SwapChain::ResizeSwapChain(const Vector2& size)
+	void OpenXRD3D12SwapChain::ResizeSwapChain(const Vector2 &size)
 	{
 		_size = size;
 		//_framebuffer->WillUpdateSwapChain(); //As all it does is free the swap chain d3d buffer resources, it would free the targetTexture resource and should't be called in this case...
-/*		SafeRelease(_targetTexture);
+		/*		SafeRelease(_targetTexture);
 		Texture::Descriptor textureDescriptor = Texture::Descriptor::With2DTextureAndFormat(_descriptor.colorFormat, _size.x, _size.y, false);
 		textureDescriptor.usageHint = Texture::UsageHint::RenderTarget;
 		textureDescriptor.depth = _descriptor.layerCount;
@@ -129,17 +129,15 @@ namespace RN
 
 	void OpenXRD3D12SwapChain::Prepare(D3D12CommandList *commandList)
 	{
-		
 	}
 
 	void OpenXRD3D12SwapChain::Finalize(D3D12CommandList *commandList)
 	{
-
 	}
 
 	void OpenXRD3D12SwapChain::PresentBackBuffer()
 	{
-		if (!_isActive) return;
+		if(!_isActive) return;
 
 		XrSwapchainImageReleaseInfo swapchainImageReleaseInfo;
 		swapchainImageReleaseInfo.type = XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO;
@@ -161,4 +159,4 @@ namespace RN
 	{
 		return GetFramebuffer();
 	}
-}
+} // namespace RN

@@ -40,8 +40,8 @@ namespace RN
 	protected:
 		RNAPI SceneNodeAttachment();
 
-		virtual void WillUpdate(SceneNode::ChangeSet changeSet){}
-		virtual void DidUpdate(SceneNode::ChangeSet changeSet){}
+		virtual void WillUpdate(SceneNode::ChangeSet changeSet) {}
+		virtual void DidUpdate(SceneNode::ChangeSet changeSet) {}
 
 	private:
 		void __WillUpdate(SceneNode::ChangeSet changeSet);
@@ -52,7 +52,7 @@ namespace RN
 
 		__RNDeclareMetaInternal(SceneNodeAttachment)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_SCENENODEATTACHMENT_H__ */

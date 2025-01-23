@@ -13,15 +13,13 @@ namespace RN
 	RNDefineMeta(SplashShape, Object)
 	RNDefineMeta(SplashConvexHullShape, SplashShape)
 	RNDefineMeta(SplashCompoundShape, SplashShape)
-		
+
 	SplashShape::SplashShape()
 	{
-		
 	}
-		
+
 	SplashShape::~SplashShape()
 	{
-
 	}
 
 	SplashShape *SplashShape::GetTransformedCopy(const Matrix &transformation) const
@@ -36,7 +34,6 @@ namespace RN
 
 	SplashConvexHullShape::SplashConvexHullShape()
 	{
-		
 	}
 
 	SplashConvexHullShape::SplashConvexHullShape(Mesh *mesh)
@@ -66,7 +63,7 @@ namespace RN
 		_vertices.clear();
 		_indices.clear();
 
-		uint32 extremeIndices[6] = { 0, 0, 0, 0, 0, 0 };
+		uint32 extremeIndices[6] = {0, 0, 0, 0, 0, 0};
 
 		//Find one extreme along each coordinate axis, as these are guaranteed part of the convex hull
 		for(uint32 i = 0; i < vertices.size(); i++)
@@ -131,11 +128,11 @@ namespace RN
 			}
 		}
 
-		uint32 finalIndices[4] = { (extremeIndicesList[0])[0], -1, -1, -1 };
+		uint32 finalIndices[4] = {(extremeIndicesList[0])[0], -1, -1, -1};
 		uint8 currentIndex = 1;
 		for(int i = 1; i < 6 && currentIndex < 4; i++)
 		{
-			for(uint32 index : extremeIndicesList[i])
+			for(uint32 index: extremeIndicesList[i])
 			{
 				bool isNew = true;
 				for(int n = 0; n < currentIndex; n++)
@@ -166,10 +163,10 @@ namespace RN
 
 		//Use indices into _vertices array (the numbers in the end)
 		std::vector<HullPlane> planes;
-		planes.push_back(HullPlane{ Plane::WithTriangle(_vertices[0], _vertices[2], _vertices[1]), 0, 2, 1 });
-		planes.push_back(HullPlane{ Plane::WithTriangle(_vertices[0], _vertices[3], _vertices[2]), 0, 3, 2 });
-		planes.push_back(HullPlane{ Plane::WithTriangle(_vertices[0], _vertices[1], _vertices[3]), 0, 1, 3 });
-		planes.push_back(HullPlane{ Plane::WithTriangle(_vertices[1], _vertices[2], _vertices[3]), 1, 2, 3 });
+		planes.push_back(HullPlane {Plane::WithTriangle(_vertices[0], _vertices[2], _vertices[1]), 0, 2, 1});
+		planes.push_back(HullPlane {Plane::WithTriangle(_vertices[0], _vertices[3], _vertices[2]), 0, 3, 2});
+		planes.push_back(HullPlane {Plane::WithTriangle(_vertices[0], _vertices[1], _vertices[3]), 0, 1, 3});
+		planes.push_back(HullPlane {Plane::WithTriangle(_vertices[1], _vertices[2], _vertices[3]), 1, 2, 3});
 
 		size_t previousIndexSet = 0;
 		size_t currentIndexSet = 1;
@@ -239,9 +236,9 @@ namespace RN
 				lastAddedVertexIndex = bestIndex;
 
 				uint32 newIndex = _vertices.size();
-				planes.push_back(HullPlane{ Plane::WithTriangle(_vertices[planes[currentPlaneIndex].indices[0]], _vertices[planes[currentPlaneIndex].indices[1]], vertices[bestIndex]), planes[currentPlaneIndex].indices[0], planes[currentPlaneIndex].indices[1], newIndex });
-				planes.push_back(HullPlane{ Plane::WithTriangle(_vertices[planes[currentPlaneIndex].indices[2]], _vertices[planes[currentPlaneIndex].indices[0]], vertices[bestIndex]), planes[currentPlaneIndex].indices[2], planes[currentPlaneIndex].indices[0], newIndex });
-				planes.push_back(HullPlane{ Plane::WithTriangle(_vertices[planes[currentPlaneIndex].indices[1]], _vertices[planes[currentPlaneIndex].indices[2]], vertices[bestIndex]), planes[currentPlaneIndex].indices[1], planes[currentPlaneIndex].indices[2], newIndex });
+				planes.push_back(HullPlane {Plane::WithTriangle(_vertices[planes[currentPlaneIndex].indices[0]], _vertices[planes[currentPlaneIndex].indices[1]], vertices[bestIndex]), planes[currentPlaneIndex].indices[0], planes[currentPlaneIndex].indices[1], newIndex});
+				planes.push_back(HullPlane {Plane::WithTriangle(_vertices[planes[currentPlaneIndex].indices[2]], _vertices[planes[currentPlaneIndex].indices[0]], vertices[bestIndex]), planes[currentPlaneIndex].indices[2], planes[currentPlaneIndex].indices[0], newIndex});
+				planes.push_back(HullPlane {Plane::WithTriangle(_vertices[planes[currentPlaneIndex].indices[1]], _vertices[planes[currentPlaneIndex].indices[2]], vertices[bestIndex]), planes[currentPlaneIndex].indices[1], planes[currentPlaneIndex].indices[2], newIndex});
 				_vertices.push_back(vertices[bestIndex]);
 			}
 
@@ -283,7 +280,7 @@ namespace RN
 		newShape->_indices = _indices;
 		newShape->_vertices.reserve(_vertices.size());
 
-		for(const Vector3 &vertex : _vertices)
+		for(const Vector3 &vertex: _vertices)
 		{
 			Vector3 transformedVertex = transformation * vertex;
 			newShape->_vertices.push_back(transformedVertex);
@@ -298,12 +295,12 @@ namespace RN
 		Vector3 closestVertices[3];
 		float closestDistance[3] = {FLT_MAX, FLT_MAX, FLT_MAX};
 
-		for(const Vector3 &vertex1 : _vertices)
+		for(const Vector3 &vertex1: _vertices)
 		{
-			for(const Vector3 &vertex2 : otherShape->_vertices)
+			for(const Vector3 &vertex2: otherShape->_vertices)
 			{
 				Vector3 result = vertex1 - vertex2;
-				float distance = result.x*result.x + result.y*result.y + result.z*result.z;
+				float distance = result.x * result.x + result.y * result.y + result.z * result.z;
 				for(int i = 0; i < 3; i++)
 				{
 					if(closestDistance[i] > distance)
@@ -334,7 +331,7 @@ namespace RN
 	void SplashConvexHullShape::AddMesh(std::vector<Vector3> &vertices, Mesh *mesh)
 	{
 		const Mesh::VertexAttribute *vertexAttribute = mesh->GetAttribute(Mesh::VertexAttribute::Feature::Vertices);
-		if (!vertexAttribute || vertexAttribute->GetType() != PrimitiveType::Vector3)
+		if(!vertexAttribute || vertexAttribute->GetType() != PrimitiveType::Vector3)
 		{
 			return;
 		}
@@ -343,7 +340,7 @@ namespace RN
 		Mesh::ElementIterator<Vector3> vertexIterator = chunk.GetIterator<Vector3>(Mesh::VertexAttribute::Feature::Vertices);
 
 		vertices.reserve(vertices.size() + mesh->GetVerticesCount());
-		
+
 		for(size_t i = 0; i < mesh->GetVerticesCount(); i++)
 		{
 			if(i > 0)
@@ -353,9 +350,9 @@ namespace RN
 			const Vector3 &vertex = *vertexIterator;
 
 			bool skip = false;
-			for(const Vector3 &other : vertices)
+			for(const Vector3 &other: vertices)
 			{
-				if(vertex.GetDistance(other) < k::EpsilonFloat*5.0f)
+				if(vertex.GetDistance(other) < k::EpsilonFloat * 5.0f)
 				{
 					skip = true;
 				}
@@ -381,17 +378,15 @@ namespace RN
 	}
 
 
-	
 	SplashCompoundShape::SplashCompoundShape()
 	{
-		
 	}
 
 	SplashCompoundShape::SplashCompoundShape(Model *model)
 	{
 		Model::LODStage *lodStage = model->GetLODStage(0);
 		size_t meshes = lodStage->GetCount();
-		for (size_t i = 0; i < meshes; i++)
+		for(size_t i = 0; i < meshes; i++)
 		{
 			Mesh *mesh = lodStage->GetMeshAtIndex(i);
 			SplashConvexHullShape *shape = SplashConvexHullShape::WithMesh(mesh);
@@ -406,15 +401,15 @@ namespace RN
 			AddChild(shape, Vector3(), Quaternion());
 		});
 	}
-		
+
 	SplashCompoundShape::~SplashCompoundShape()
 	{
-		for(auto shape : _shapes)
+		for(auto shape: _shapes)
 		{
 			shape->Release();
 		}
 	}
-		
+
 	void SplashCompoundShape::AddChild(SplashShape *shape, const RN::Vector3 &position, const RN::Quaternion &rotation)
 	{
 		_shapes.push_back(shape->Retain());
@@ -425,4 +420,4 @@ namespace RN
 		SplashCompoundShape *shape = new SplashCompoundShape(model);
 		return shape->Autorelease();
 	}
-}
+} // namespace RN

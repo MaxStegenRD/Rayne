@@ -9,8 +9,8 @@
 #include "RNSteamAudioWorld.h"
 #include "RNSteamAudioInternals.h"
 
-#include "soundio/soundio.h"
 #include "phonon.h"
+#include "soundio/soundio.h"
 
 namespace RN
 {
@@ -19,7 +19,7 @@ namespace RN
 
 	SteamAudioWorld *SteamAudioWorld::_instance = nullptr;
 
-	SteamAudioWorld* SteamAudioWorld::GetInstance()
+	SteamAudioWorld *SteamAudioWorld::GetInstance()
 	{
 		return _instance;
 	}
@@ -54,9 +54,8 @@ namespace RN
 				for(int sample = 0; sample < sampleCount; sample += 1)
 				{
 					//TODO: Support multiple input channels
-					for(int channel = 0; channel < 1/*inStream->layout.channel_count*/; channel += 1)
+					for(int channel = 0; channel < 1 /*inStream->layout.channel_count*/; channel += 1)
 					{
-						
 						memcpy(data, areas[channel].ptr, inStream->bytes_per_sample);
 						//_instance->_inputFrameData[sample] = *static_cast<float*>(areas[channel].ptr);
 						areas[channel].ptr += areas[channel].step;
@@ -76,19 +75,19 @@ namespace RN
 			remainingSamples -= sampleCount;
 		}
 	}
-	
+
 	void SteamAudioWorld::WriteCallback(struct SoundIoOutStream *outStream, int minSampleCount, int maxSampleCount)
 	{
 		if(!_instance || _instance->_isUpdatingScene)
 			return;
-		
+
 		struct SoundIoChannelArea *areas;
 		int remainingSamples = std::max(static_cast<int>(_instance->_frameSize), minSampleCount);
-		
+
 		while(remainingSamples > 0)
 		{
 			int sampleCount = remainingSamples;
-			
+
 			if(soundio_outstream_begin_write(outStream, &areas, &sampleCount) > 0)
 				break;
 			if(!sampleCount)
@@ -96,14 +95,14 @@ namespace RN
 
 			const struct SoundIoChannelLayout *layout = &outStream->layout;
 			float sampleLength = 1.0f / static_cast<float>(outStream->sample_rate);
-			int currentSampleCount = 0;//std::max(std::min(static_cast<int>(_instance->_frameSize), maxSampleCount), minSampleCount);
+			int currentSampleCount = 0; //std::max(std::min(static_cast<int>(_instance->_frameSize), maxSampleCount), minSampleCount);
 			int processedSampleCount = 0;
-			
+
 			while(processedSampleCount < sampleCount)
 			{
 				currentSampleCount = std::min(static_cast<int>(_instance->_frameSize), sampleCount - processedSampleCount);
 				float secondsPerFrame = sampleLength * currentSampleCount;
-				
+
 				if(_instance->_customWriteCallback)
 				{
 					_instance->_customWriteCallback(secondsPerFrame);
@@ -134,9 +133,9 @@ namespace RN
 				if(_instance->_scene)
 				{
 					iplGetMixedEnvironmentalAudio(_instance->_environmentalRenderer,
-						IPLVector3{ listenerPosition.x, listenerPosition.y, listenerPosition.z },
-						IPLVector3{ listenerForward.x, listenerForward.y, listenerForward.z },
-						IPLVector3{ listenerUp.x, listenerUp.y, listenerUp.z }, mixingBuffer[1]);
+												  IPLVector3 {listenerPosition.x, listenerPosition.y, listenerPosition.z},
+												  IPLVector3 {listenerForward.x, listenerForward.y, listenerForward.z},
+												  IPLVector3 {listenerUp.x, listenerUp.y, listenerUp.z}, mixingBuffer[1]);
 				}
 				else
 				{
@@ -198,22 +197,22 @@ namespace RN
 
 					memcpy(_instance->_outputFrameData, mixingBuffer[1].interleavedBuffer, layout->channel_count * currentSampleCount * sizeof(float));
 				}
-				
+
 				//Write audio data to the device
 				int actualSample = 0;
-				for(int sample = processedSampleCount; sample < processedSampleCount+currentSampleCount; sample++)
+				for(int sample = processedSampleCount; sample < processedSampleCount + currentSampleCount; sample++)
 				{
 					for(int channel = 0; channel < layout->channel_count; channel++)
 					{
-						float *ptr = reinterpret_cast<float*>(areas[channel].ptr + areas[channel].step * sample);
+						float *ptr = reinterpret_cast<float *>(areas[channel].ptr + areas[channel].step * sample);
 						*ptr = _instance->_outputFrameData[actualSample * layout->channel_count + channel];
 					}
 					actualSample++;
 				}
-				
+
 				processedSampleCount += currentSampleCount;
 			}
-			
+
 			soundio_outstream_end_write(outStream);
 			remainingSamples -= sampleCount;
 		}
@@ -255,12 +254,12 @@ namespace RN
 
 		//Initialize Steam Audio
 		iplCreateContext(nullptr, nullptr, nullptr, &_internals->context);
-		
+
 		_internals->settings.samplingRate = sampleRate;
 		_internals->settings.frameSize = frameSize;
 		_internals->settings.convolutionType = IPL_CONVOLUTIONTYPE_PHONON;
 
-		IPLHrtfParams hrtfParams{IPL_HRTFDATABASETYPE_DEFAULT, nullptr, 0, nullptr, nullptr};
+		IPLHrtfParams hrtfParams {IPL_HRTFDATABASETYPE_DEFAULT, nullptr, 0, nullptr, nullptr};
 		iplCreateBinauralRenderer(_internals->context, _internals->settings, hrtfParams, &_binauralRenderer); //TODO: HRTF is only a good idea with headphones, add alternative
 
 		_internals->internalAmbisonicsFormat.channelLayoutType = IPL_CHANNELLAYOUTTYPE_AMBISONICS;
@@ -288,7 +287,7 @@ namespace RN
 		_instance = this;
 		UpdateScene();
 	}
-		
+
 	SteamAudioWorld::~SteamAudioWorld()
 	{
 		SafeRelease(_audioSources);
@@ -319,7 +318,7 @@ namespace RN
 			iplDestroyEnvironment(&_environment);
 		}
 
-		if (_sceneMesh)
+		if(_sceneMesh)
 		{
 			iplDestroyStaticMesh(&_sceneMesh);
 			_sceneMesh = nullptr;
@@ -355,7 +354,7 @@ namespace RN
 
 			_frameSize = 0;
 		}
-		
+
 		iplDestroyContext(&_internals->context);
 
 		_instance = nullptr;
@@ -397,7 +396,7 @@ namespace RN
 		}
 
 		RNInfo("Using audio device: " << _outDevice->name);
-		
+
 		if(_sampleRate > _outDevice->sample_rates->max)
 		{
 			_sampleRate = _outDevice->sample_rates->max;
@@ -474,7 +473,7 @@ namespace RN
 		_inStream->format = SoundIoFormatFloat32NE;
 		_inStream->sample_rate = _sampleRate;
 		_inStream->layout = _inDevice->current_layout;
-		_inStream->software_latency = _frameSize/static_cast<float>(_sampleRate);
+		_inStream->software_latency = _frameSize / static_cast<float>(_sampleRate);
 		_inStream->read_callback = ReadCallback;
 
 		int err;
@@ -530,7 +529,7 @@ namespace RN
 			_sceneMesh = nullptr;
 		}
 
-		if (_scene)
+		if(_scene)
 		{
 			iplDestroyScene(&_scene);
 			_scene = nullptr;
@@ -551,16 +550,16 @@ namespace RN
 			//TODO: Create scene!
 
 			int counter = 0;
-			for(const SteamAudioMaterial &material : _sceneMaterials)
+			for(const SteamAudioMaterial &material: _sceneMaterials)
 			{
-				iplSetSceneMaterial(_scene, counter++, IPLMaterial{ material.lowFrequencyAbsorption, material.midFrequencyAbsorption, material.highFrequencyAbsorption, material.scattering });
+				iplSetSceneMaterial(_scene, counter++, IPLMaterial {material.lowFrequencyAbsorption, material.midFrequencyAbsorption, material.highFrequencyAbsorption, material.scattering});
 			}
 
 			std::vector<IPLVector3> vertices;
 			std::vector<IPLTriangle> triangles;
 			std::vector<IPLint32> materials;
 
-			for(const SteamAudioGeometry &geometry : _sceneGeometry)
+			for(const SteamAudioGeometry &geometry: _sceneGeometry)
 			{
 				const Mesh::VertexAttribute *vertexAttribute = geometry.mesh->GetAttribute(Mesh::VertexAttribute::Feature::Vertices);
 				RN_ASSERT(vertexAttribute && vertexAttribute->GetType() == PrimitiveType::Vector3, "SteamAudioGeometry mesh has an unsupported vertex format.");
@@ -573,19 +572,19 @@ namespace RN
 					if(i > 0) vertexIterator++;
 					const Vector3 &vertex = *vertexIterator;
 					Vector3 transformedVertex = geometry.scale * geometry.rotation.GetRotatedVector(vertex) + geometry.position;
-					vertices.push_back(IPLVector3{ transformedVertex.x, transformedVertex.y, transformedVertex.z });
+					vertices.push_back(IPLVector3 {transformedVertex.x, transformedVertex.y, transformedVertex.z});
 				}
 
 				//Collect triangles and materials
 				Mesh::ElementIterator<uint16> indexIterator = chunk.GetIterator<uint16>(Mesh::VertexAttribute::Feature::Indices);
-				for(size_t i = 0; i < geometry.mesh->GetIndicesCount()/3; i++)
+				for(size_t i = 0; i < geometry.mesh->GetIndicesCount() / 3; i++)
 				{
 					if(i > 0) indexIterator++;
 					const uint16 index1 = *(indexIterator++);
 					const uint16 index2 = *(indexIterator++);
 					const uint16 index3 = *(indexIterator);
 
-					triangles.push_back(IPLTriangle{ {static_cast<IPLint32>(index1), static_cast<IPLint32>(index2), static_cast<IPLint32>(index3)} });
+					triangles.push_back(IPLTriangle {{static_cast<IPLint32>(index1), static_cast<IPLint32>(index2), static_cast<IPLint32>(index3)}});
 					materials.push_back(geometry.materialIndex);
 				}
 			}
@@ -601,7 +600,7 @@ namespace RN
 		_sceneMaterials.clear();
 		_sceneGeometry.clear();
 
-		iplCreateEnvironment(_internals->context, nullptr, simulationSettings, _scene, nullptr, &_environment);	//TODO: 4th paramter should be a scene object for indirect sound modeling
+		iplCreateEnvironment(_internals->context, nullptr, simulationSettings, _scene, nullptr, &_environment); //TODO: 4th paramter should be a scene object for indirect sound modeling
 		iplCreateEnvironmentalRenderer(_internals->context, _environment, _internals->settings, _internals->internalAmbisonicsFormat, nullptr, nullptr, &_environmentalRenderer);
 
 		_audioSources->Enumerate<SteamAudioSource>([&](SteamAudioSource *source, size_t index, bool &stop) {
@@ -610,23 +609,23 @@ namespace RN
 
 		_isUpdatingScene = false;
 	}
-		
+
 	void SteamAudioWorld::Update(float delta)
 	{
-//		soundio_flush_events(_soundio);	//TODO: Call this and handle changing devices
+		//		soundio_flush_events(_soundio);	//TODO: Call this and handle changing devices
 	}
-		
+
 	void SteamAudioWorld::SetListener(SceneNode *listener)
 	{
 		if(_listener)
 			_listener->Release();
-			
+
 		_listener = nullptr;
 
 		if(listener)
 			_listener = listener->Retain();
 	}
-		
+
 	SteamAudioPlayer *SteamAudioWorld::PlaySound(AudioAsset *resource) const
 	{
 		SteamAudioPlayer *player = new SteamAudioPlayer(resource);
@@ -668,7 +667,7 @@ namespace RN
 		//Get all output devices
 		int defaultOutputDeviceIndex = soundio_default_output_device_index(soundio);
 		int outputDeviceCount = soundio_output_device_count(soundio);
-		for (int i = 0; i < outputDeviceCount; i++)
+		for(int i = 0; i < outputDeviceCount; i++)
 		{
 			device = soundio_get_output_device(soundio, i);
 			if(device && !device->is_raw)
@@ -682,10 +681,10 @@ namespace RN
 		//Get all input devices
 		int defaultInputDeviceIndex = soundio_default_input_device_index(soundio);
 		int inputDeviceCount = soundio_input_device_count(soundio);
-		for (int i = 0; i < inputDeviceCount; i++)
+		for(int i = 0; i < inputDeviceCount; i++)
 		{
 			device = soundio_get_input_device(soundio, i);
-			if (device && !device->is_raw)
+			if(device && !device->is_raw)
 			{
 				SteamAudioDevice *saDevice = new SteamAudioDevice(SteamAudioDevice::Type::Input, i, device->name, device->id, i == defaultInputDeviceIndex);
 				deviceArray->AddObject(saDevice->Autorelease());
@@ -751,9 +750,9 @@ namespace RN
 
 		return saDevice;
 	}
-	
-	void SteamAudioWorld::SetCustomWriteCallback(const std::function<void (double)> &customWriteCallback)
+
+	void SteamAudioWorld::SetCustomWriteCallback(const std::function<void(double)> &customWriteCallback)
 	{
 		_customWriteCallback = customWriteCallback;
 	}
-}
+} // namespace RN

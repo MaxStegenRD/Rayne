@@ -6,18 +6,18 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
+#include "RNFileManager.h"
+#include "../Base/RNApplication.h"
 #include "../Base/RNBaseInternal.h"
 #include "../Base/RNKernel.h"
-#include "../Base/RNApplication.h"
 #include "../Modules/RNModule.h"
-#include "RNFileManager.h"
 
 #include "zip.h"
 
 #if RN_PLATFORM_POSIX
 	#include <dirent.h>
-	#include <unistd.h>
 	#include <sys/stat.h>
+	#include <unistd.h>
 #endif
 #if RN_PLATFORM_WINDOWS
 	#include <io.h>
@@ -112,19 +112,19 @@ namespace RN
 			const String *relativePath = GetPath();
 			if(isAbsolutePath)
 			{
-				relativePath = GetPath()->GetSubstring(Range(apkFilePath->GetLength()+1, GetPath()->GetLength() - apkFilePath->GetLength()-1));
+				relativePath = GetPath()->GetSubstring(Range(apkFilePath->GetLength() + 1, GetPath()->GetLength() - apkFilePath->GetLength() - 1));
 			}
 			else
 			{
 				relativePath = RNSTR("assets/" << relativePath);
 			}
 
-			apkInternalFilePaths->Enumerate<String>([&](String *nameString, size_t index, bool &stop){
+			apkInternalFilePaths->Enumerate<String>([&](String *nameString, size_t index, bool &stop) {
 				String *assetPath = nullptr;
 
 				if(nameString->HasPrefix(relativePath))
 				{
-					assetPath = nameString->GetSubstring(Range(relativePath->GetLength(), nameString->GetLength()-relativePath->GetLength()));
+					assetPath = nameString->GetSubstring(Range(relativePath->GetLength(), nameString->GetLength() - relativePath->GetLength()));
 				}
 
 				if(assetPath)
@@ -268,7 +268,6 @@ namespace RN
 			return;
 
 		do {
-
 			if(ffd.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN)
 				continue;
 
@@ -337,15 +336,15 @@ namespace RN
 #if RN_PLATFORM_POSIX
 	char *realpath_expand(const char *path, char *buffer)
 	{
-#if RN_PLATFORM_ANDROID
+	#if RN_PLATFORM_ANDROID
 		const String *rootResourcesPath = FileManager::GetSharedInstance()->GetPathForLocation(FileManager::Location::RootResourcesDirectory);
 		if(RNSTR(path)->HasPrefix(rootResourcesPath))
 		{
 			std::strcpy(buffer, path);
 			return buffer;
 		}
-#endif
-#if RN_PLATFORM_LINUX || RN_PLATFORM_ANDROID
+	#endif
+	#if RN_PLATFORM_LINUX || RN_PLATFORM_ANDROID
 		char *home;
 
 		if(path[0] == '~' && (home = getenv("HOME")))
@@ -357,8 +356,8 @@ namespace RN
 		{
 			return realpath(path, buffer);
 		}
-#endif
-#if RN_PLATFORM_MAC_OS || RN_PLATFORM_IOS || RN_PLATFORM_VISIONOS
+	#endif
+	#if RN_PLATFORM_MAC_OS || RN_PLATFORM_IOS || RN_PLATFORM_VISIONOS
 		if(path[0] == '~')
 		{
 			NSString *string = [[NSString stringWithCString:path encoding:NSASCIIStringEncoding] stringByExpandingTildeInPath];
@@ -368,7 +367,7 @@ namespace RN
 		{
 			return realpath(path, buffer);
 		}
-#endif
+	#endif
 	}
 #endif
 
@@ -432,7 +431,6 @@ namespace RN
 			String *base = GetPathForLocation(Location::RootResourcesDirectory);
 
 			paths->Enumerate<String>([&](String *path, size_t index, bool &stop) {
-
 				Range range = path->GetRangeOfString(delimiter, 0, Range(0, 2));
 				if(range.origin == 0)
 				{
@@ -495,7 +493,6 @@ namespace RN
 		LockGuard<Lockable> lock(_lock);
 
 		_nodes->Enumerate<Directory>([&](Directory *directory, size_t tindex, bool &stop) {
-
 			if(path->HasPrefix(directory->GetPath()))
 			{
 				size_t length = directory->GetPath()->GetLength() + 1;
@@ -503,7 +500,6 @@ namespace RN
 				path = path->GetSubstring(Range(length, path->GetLength() - length));
 				stop = true;
 			}
-
 		});
 
 		return path;
@@ -546,7 +542,6 @@ namespace RN
 			return nullptr;
 
 		nodes->Enumerate<Directory>([&](Directory *directory, size_t index, bool &stop) {
-
 			Directory *node = directory;
 
 			for(size_t i = 0; i < componentCount; i++)
@@ -578,7 +573,6 @@ namespace RN
 
 			if(result)
 				stop = true;
-
 		});
 
 		if(result)
@@ -635,7 +629,7 @@ namespace RN
 		if(hint & ResolveHint::CreateNode)
 		{
 			String *parent = expanded->StringByDeletingLastPathComponent();
-			
+
 			if(access(parent->GetUTF8String(), F_OK) != -1)
 				return expanded->GetNormalizedPath();
 		}
@@ -649,13 +643,11 @@ namespace RN
 		static bool isAppBundle = false;
 		static std::once_flag flag;
 
-		std::call_once(flag, [&]{
-
+		std::call_once(flag, [&] {
 			NSArray *arguments = [[NSProcessInfo processInfo] arguments];
 			NSString *directory = [arguments objectAtIndex:0];
 
 			isAppBundle = ([directory rangeOfString:@".app"].location != NSNotFound);
-
 		});
 #endif
 		switch(location)
@@ -706,7 +698,7 @@ namespace RN
 				char *temp = buffer + strlen(buffer);
 				while(temp != buffer)
 				{
-					temp --;
+					temp--;
 
 					if(*temp == '/' || *temp == '\\')
 					{
@@ -720,14 +712,14 @@ namespace RN
 #endif
 #if RN_PLATFORM_LINUX
 				char buffer[PATH_MAX];
-                std::fill(buffer, buffer + PATH_MAX, 0);
+				std::fill(buffer, buffer + PATH_MAX, 0);
 				size_t size = PATH_MAX;
 				readlink("/proc/self/exe", buffer, size);
 
 				char *temp = buffer + strlen(buffer);
 				while(temp != buffer)
 				{
-					temp --;
+					temp--;
 
 					if(*temp == '/' || *temp == '\\')
 					{
@@ -741,7 +733,7 @@ namespace RN
 #endif
 #if RN_PLATFORM_ANDROID
 				android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
-				JNIEnv* env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
+				JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
 
 				//Check for and clear any pending jni exceptions that would prevent the previous code from working
 				jboolean flag = env->ExceptionCheck();
@@ -801,7 +793,7 @@ namespace RN
 				char *temp = buffer + strlen(buffer);
 				while(temp != buffer)
 				{
-					temp --;
+					temp--;
 
 					if(*temp == '/' || *temp == '\\')
 					{
@@ -821,7 +813,7 @@ namespace RN
 				char *temp = buffer + strlen(buffer);
 				while(temp != buffer)
 				{
-					temp --;
+					temp--;
 
 					if(*temp == '/' || *temp == '\\')
 					{
@@ -847,7 +839,7 @@ namespace RN
 				NSURL *url = [[[NSFileManager defaultManager] URLsForDirectory:NSApplicationSupportDirectory inDomains:NSUserDomainMask] lastObject];
 				url = [url URLByAppendingPathComponent:[NSString stringWithUTF8String:application->GetUTF8String()]];
 
-	//			[[NSFileManager defaultManager] createDirectoryAtURL:url withIntermediateDirectories:YES attributes:nil error:NULL];
+				//			[[NSFileManager defaultManager] createDirectoryAtURL:url withIntermediateDirectories:YES attributes:nil error:NULL];
 
 				return RNSTR([[url path] UTF8String]);
 
@@ -865,14 +857,14 @@ namespace RN
 
 				String *path = RNSTR(tpath << "/" << application);
 
-//				::CreateDirectory(path->GetUTF8String(), NULL);
+				//				::CreateDirectory(path->GetUTF8String(), NULL);
 				return path;
 #endif
 #if RN_PLATFORM_LINUX
 				char *home = getenv("HOME");
 				const String *application = Kernel::GetSharedInstance()->GetApplication()->GetTitle();
 				String *path = RNSTR(home << "/." << application);
-//				mkdir(path->GetUTF8String(), S_IRWXU);
+				//				mkdir(path->GetUTF8String(), S_IRWXU);
 				return path;
 #endif
 #if RN_PLATFORM_ANDROID
@@ -880,7 +872,7 @@ namespace RN
 				return RNSTR(dataPath);
 #endif
 			}
-				
+
 			case Location::ExternalSaveDirectory:
 			{
 #if RN_PLATFORM_ANDROID
@@ -898,14 +890,14 @@ namespace RN
 		bool isDirectory = false;
 		bool exists = PathExists(path, isDirectory);
 		if(!exists || !isDirectory) return nullptr;
-		
+
 		Node *node = ResolvePath(path, 0);
 		if(node) return node->Downcast<Directory>();
-		
+
 		Directory *directory = new Directory(path);
 		return directory->Autorelease();
 	}
-	
+
 	bool FileManager::RenameFile(const String *oldPath, const String *newPath, bool overwrite)
 	{
 		if(overwrite) std::remove(newPath->GetUTF8String());
@@ -916,7 +908,7 @@ namespace RN
 	{
 		return (std::remove(path->GetUTF8String()) == 0);
 	}
-	
+
 	bool FileManager::CreateDirectory(const String *path)
 	{
 #if RN_PLATFORM_MAC_OS || RN_PLATFORM_IOS || RN_PLATFORM_VISIONOS
@@ -936,11 +928,11 @@ namespace RN
 			{
 				RNDebug("Creating Path: " << fullPath);
 
-#if RN_PLATFORM_WINDOWS
+	#if RN_PLATFORM_WINDOWS
 				if(!::CreateDirectory(fullPath->GetUTF8String(), NULL))
-#elif RN_PLATFORM_LINUX || RN_PLATFORM_ANDROID
-				if (mkdir(fullPath->GetUTF8String(), S_IRWXU | S_IRWXG | S_IRWXO) != 0) //read, write and execute / search / list permission for same user, group and everyone else
-#endif
+	#elif RN_PLATFORM_LINUX || RN_PLATFORM_ANDROID
+				if(mkdir(fullPath->GetUTF8String(), S_IRWXU | S_IRWXG | S_IRWXO) != 0) //read, write and execute / search / list permission for same user, group and everyone else
+	#endif
 				{
 					RNDebug("Failed creating path with error: " << errno);
 					return false;
@@ -951,7 +943,7 @@ namespace RN
 				return false;
 			}
 		}
-		
+
 		return true;
 #endif
 	}
@@ -1039,7 +1031,6 @@ namespace RN
 		}
 
 		prefix->Release();
-
 	}
 	void FileManager::__RemoveModule(Module *module)
 	{
@@ -1121,4 +1112,4 @@ namespace RN
 		return true;
 #endif
 	}
-}
+} // namespace RN

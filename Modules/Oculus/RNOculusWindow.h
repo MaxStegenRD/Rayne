@@ -18,7 +18,7 @@ namespace RN
 	class OculusWindow : public VRWindow
 	{
 	public:
-/*		enum Eye
+		/*		enum Eye
 		{
 			Left,
 			Right
@@ -64,7 +64,7 @@ namespace RN
 
 		RNDeclareMetaAPI(OculusWindow, OVRAPI)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_OCULUSWINDOW_H_ */

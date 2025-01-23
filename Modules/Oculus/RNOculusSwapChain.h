@@ -9,8 +9,8 @@
 #ifndef __RAYNE_OCULUSSWAPCHAIN_H_
 #define __RAYNE_OCULUSSWAPCHAIN_H_
 
-#include "RND3D12Renderer.h"
 #include "RND3D12Framebuffer.h"
+#include "RND3D12Renderer.h"
 #include "RND3D12SwapChain.h"
 
 #include "OVR_CAPI_D3D.h"
@@ -65,7 +65,7 @@ namespace RN
 
 		RNDeclareMetaAPI(OculusSwapChain, OVRAPI)
 	};
-}
+} // namespace RN
 
 
 #endif /* __RAYNE_OCULUSSWAPCHAIN_H_ */
