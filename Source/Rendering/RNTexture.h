@@ -114,8 +114,7 @@ namespace RN
 		RN_OPTIONS(UsageHint, uint32,
 			ShaderRead = (1 << 0),
 			ShaderWrite = (1 << 1),
-			RenderTarget = (1 << 2),
-			Subsampled = (1 << 3));
+			RenderTarget = (1 << 2));
 
 		struct Descriptor
 		{
@@ -150,7 +149,7 @@ namespace RN
 				return descriptor;
 			}
 
-			static Descriptor With2DRenderTargetFormat(Format format, uint32 width, uint32 height, bool isSubsampled = false)
+			static Descriptor With2DRenderTargetFormat(Format format, uint32 width, uint32 height)
 			{
 				Descriptor descriptor;
 				descriptor.type = Type::Type2D;
@@ -159,12 +158,11 @@ namespace RN
 				descriptor.format = format;
 				descriptor.usageHint = UsageHint::ShaderRead | UsageHint::RenderTarget;
 				descriptor.accessOptions = GPUResource::AccessOptions::Private;
-				if(isSubsampled) descriptor.usageHint |= UsageHint::Subsampled;
 
 				return descriptor;
 			}
 
-			static Descriptor With2DRenderTargetFormatAndMSAA(Format format, uint32 width, uint32 height, uint8 sampleCount, uint8 sampleQuality = 0, bool isSubsampled = false)
+			static Descriptor With2DRenderTargetFormatAndMSAA(Format format, uint32 width, uint32 height, uint8 sampleCount, uint8 sampleQuality = 0)
 			{
 				Descriptor descriptor;
 				descriptor.type = Type::Type2D;
@@ -175,7 +173,6 @@ namespace RN
 				descriptor.accessOptions = GPUResource::AccessOptions::Private;
 				descriptor.sampleCount = sampleCount;
 				descriptor.sampleQuality = sampleQuality;
-				if(isSubsampled) descriptor.usageHint |= UsageHint::Subsampled;
 
 				return descriptor;
 			}

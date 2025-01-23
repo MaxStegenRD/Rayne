@@ -321,7 +321,7 @@ namespace RN
 		imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		imageInfo.samples = static_cast<VkSampleCountFlagBits>(descriptor.sampleCount);
 		imageInfo.usage = VkImageUsageFromDescriptor(descriptor, imageInfo.format);
-		imageInfo.flags = (descriptor.usageHint & UsageHint::Subsampled && device->GetSupportsFragmentDensityMaps())? VK_IMAGE_CREATE_SUBSAMPLED_BIT_EXT : 0;
+		imageInfo.flags = 0;
 		imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 		imageInfo.mipLevels = descriptor.mipMaps;
@@ -331,7 +331,7 @@ namespace RN
 
 		if(descriptor.type == Texture::Type::TypeCube)
 		{
-			imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+			imageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 		}
 
 		if(descriptor.usageHint & UsageHint::RenderTarget)

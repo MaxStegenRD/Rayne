@@ -92,7 +92,6 @@ namespace RN
 		_supportsPerformanceLevels = false;
 		_supportsAndroidThreadType = false;
 		_supportsFoveatedRendering = false;
-		_supportsVulkanSwapchainCreateInfoMETA = false;
 		_supportsLocalDimming = false;
 		_supportsVisibilityMask = false;
 		_supportsPassthrough = false;
@@ -231,11 +230,6 @@ namespace RN
 				extensions.push_back(extension.extensionName);
 				_supportsDynamicResolution = true;
 			}
-/*			else if(std::strcmp(extension.extensionName, XR_META_VULKAN_SWAPCHAIN_CREATE_INFO_EXTENSION_NAME) == 0)
-			{
-				extensions.push_back(extension.extensionName);
-				_supportsVulkanSwapchainCreateInfoMETA = true;
-			}*/
 #if XR_USE_PLATFORM_ANDROID
 			else if(std::strcmp(extension.extensionName, XR_KHR_ANDROID_THREAD_SETTINGS_EXTENSION_NAME) == 0)
 			{

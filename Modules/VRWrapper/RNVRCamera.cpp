@@ -149,12 +149,12 @@ namespace RN
 
 		if(_msaaSampleCount > 1)
 		{
-			Texture::Descriptor msaaColorTextureDescriptor = Texture::Descriptor::With2DRenderTargetFormatAndMSAA(colorFormat, windowSize.x, windowSize.y, _msaaSampleCount, 0, true);
+			Texture::Descriptor msaaColorTextureDescriptor = Texture::Descriptor::With2DRenderTargetFormatAndMSAA(colorFormat, windowSize.x, windowSize.y, _msaaSampleCount);
 			msaaColorTextureDescriptor.depth = layerCount;
 			msaaColorTextureDescriptor.type = layerCount > 1? Texture::Type::Type2DArray : Texture::Type::Type2D;
 			Texture *msaaTexture = Texture::WithDescriptor(msaaColorTextureDescriptor);
 
-			Texture::Descriptor msaaDepthTextureDescriptor = Texture::Descriptor::With2DRenderTargetFormatAndMSAA(depthFormat, windowSize.x, windowSize.y, _msaaSampleCount, 0, true);
+			Texture::Descriptor msaaDepthTextureDescriptor = Texture::Descriptor::With2DRenderTargetFormatAndMSAA(depthFormat, windowSize.x, windowSize.y, _msaaSampleCount);
 			msaaDepthTextureDescriptor.depth = layerCount;
 			msaaDepthTextureDescriptor.type = layerCount > 1? Texture::Type::Type2DArray : Texture::Type::Type2D;
 			Texture *msaaDepthTexture = Texture::WithDescriptor(msaaDepthTextureDescriptor);
@@ -167,7 +167,7 @@ namespace RN
 		//TODO: Depth buffer handling for Android with 2 resolve buffers
 		if(_msaaSampleCount <= 1 && (!_window || _window->GetSwapChainDescriptor().depthStencilFormat == Texture::Format::Invalid || _debugWindow))
 		{
-			Texture::Descriptor depthTextureDescriptor = Texture::Descriptor::With2DRenderTargetFormat(depthFormat, windowSize.x, windowSize.y, true);
+			Texture::Descriptor depthTextureDescriptor = Texture::Descriptor::With2DRenderTargetFormat(depthFormat, windowSize.x, windowSize.y);
 			depthTextureDescriptor.depth = layerCount;
 			depthTextureDescriptor.type = layerCount > 1 ? Texture::Type::Type2DArray : Texture::Type::Type2D;
 			
