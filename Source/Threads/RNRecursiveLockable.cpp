@@ -6,9 +6,10 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
-#include "RNRecursiveLockable.h"
 #include "../Base/RNBase.h"
 #include "RNFutex.h"
+
+#include "RNRecursiveLockable.h"
 
 namespace RN
 {

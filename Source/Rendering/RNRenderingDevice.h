@@ -14,6 +14,7 @@
 
 namespace RN
 {
+	class Array;
 	class RenderingDevice : public Object
 	{
 	public:

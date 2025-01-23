@@ -9,8 +9,9 @@
 #ifndef __RAYNE_PHYSXINTERNALS_H_
 #define __RAYNE_PHYSXINTERNALS_H_
 
-#include "PxPhysicsAPI.h"
 #include "RNPhysX.h"
+
+#include "PxPhysicsAPI.h"
 
 namespace RN
 {
