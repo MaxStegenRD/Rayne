@@ -120,6 +120,7 @@ namespace RN
 		bool _supportsPreferredFramerate;
 		bool _supportsAndroidThreadType;
 		bool _supportsFoveatedRendering;
+		bool _supportsVulkanSwapchainCreateInfoMETA;
 		bool _supportsLocalDimming;
 		bool _supportsVisibilityMask;
 		bool _supportsPassthrough;
