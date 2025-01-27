@@ -41,13 +41,13 @@
 	//#define _AMD64_
 
 	//#include <ntdef.h>
-	#include <NTDDNDIS.h>
 	#include <WinSock2.h>
 	#include <windows.h>
+	#include <NTDDNDIS.h>
 
-	#include <Psapi.h>
-	#include <ShlObj.h>
 	#include <commdlg.h>
+	#include <ShlObj.h>
+	#include <Psapi.h>
 
 	#undef near
 	#undef far
