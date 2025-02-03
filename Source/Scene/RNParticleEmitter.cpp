@@ -23,6 +23,7 @@ namespace RN
 		_material(nullptr),
 		_mesh(nullptr),
 		_isLocal(true),
+		_ignoreScale(false),
 		_isSorted(false),
 		_isRenderedInversed(false),
 		_maxParticles(100),
@@ -59,6 +60,7 @@ namespace RN
 		_material(emitter->GetMaterial()),
 		_mesh(nullptr),
 		_isLocal(emitter->_isLocal),
+		_ignoreScale(emitter->_ignoreScale),
 		_isSorted(emitter->_isSorted),
 		_isRenderedInversed(emitter->_isRenderedInversed),
 		_maxParticles(emitter->_maxParticles),
@@ -222,7 +224,7 @@ namespace RN
 		Mesh::ElementIterator<Vector2> sizeIterator = chunk.GetIterator<Vector2>(Mesh::VertexAttribute::Feature::UVCoords1);
 		Mesh::ElementIterator<RN::uint16> indexIterator = chunk.GetIterator<RN::uint16>(Mesh::VertexAttribute::Feature::Indices);
 
-		float scale = GetWorldScale().x;
+		float scale = _ignoreScale ? 1.0f : GetWorldScale().x;
 
 		int stop = std::min(static_cast<int>(_particles.size()), static_cast<int>(_maxParticles));
 		int start = 0;

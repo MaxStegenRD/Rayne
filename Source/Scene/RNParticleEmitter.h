@@ -43,6 +43,9 @@ namespace RN
 		RNAPI bool GetIsLocal() const { return _isLocal; }
 		RNAPI void SetIsLocal(bool local) { _isLocal = local; }
 
+		RNAPI bool GetIgnoreScale() const { return _ignoreScale; }
+		RNAPI void SetIgnoreScale(bool ignore) { _ignoreScale = ignore; }
+
 		RNAPI void SetCanRollParticles(bool canRoll) { _canRollParticles = canRoll; }
 
 		RNAPI bool GetIsSorted() const { return _isSorted; }
@@ -75,6 +78,7 @@ namespace RN
 		Mesh *_mesh;
 
 		bool _isLocal;
+		bool _ignoreScale;
 		bool _isSorted;
 		bool _isRenderedInversed;
 		bool _canRollParticles;
