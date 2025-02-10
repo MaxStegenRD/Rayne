@@ -351,6 +351,12 @@ namespace RN
 
 	bool ParticleEmitter::CanRender(Renderer *renderer, Camera *camera) const
 	{
+		if((GetRenderGroup() & camera->GetRenderGroup()) == 0)
+			return false;
+
+		if(HasFlags(Flags::Hidden))
+			return false;
+
 		//TODO: Add occlusion culling or something
 		return true;
 	}
