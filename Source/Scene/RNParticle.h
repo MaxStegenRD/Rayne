@@ -42,7 +42,7 @@ namespace RN
 		RNAPI void Update(float delta) final;
 
 		Vector3 velocity;
-		Vector3 gravity;
+		Vector3 acceleration;
 		Interpolator<float> rotationInterpolator;
 		Interpolator<Color> colorInterpolator;
 		Interpolator<Vector2> sizeInterpolator;

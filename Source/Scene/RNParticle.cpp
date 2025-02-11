@@ -48,7 +48,7 @@ namespace RN
 		color = colorInterpolator.GetValue(time);
 		size = sizeInterpolator.GetValue(time);
 
-		velocity += gravity * delta;
+		velocity += acceleration * delta;
 		position += velocity * delta;
 	}
 } // namespace RN
