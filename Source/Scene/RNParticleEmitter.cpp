@@ -398,7 +398,9 @@ namespace RN
 		_velocityRandomizeMin(Vector3(-0.5f, -0.5f, -0.5f)),
 		_velocityRandomizeMax(Vector3(0.5f, 0.5f, 0.5f)),
 		_positionRandomizeMin(Vector3(-0.5f, -0.5f, -0.5f)),
-		_positionRandomizeMax(Vector3(0.5f, 0.5f, 0.5f))
+		_positionRandomizeMax(Vector3(0.5f, 0.5f, 0.5f)),
+		_accelerationRandomizeMin(Vector3(0.0f, 0.0f, 0.0f)),
+		_accelerationRandomizeMax(Vector3(0.0f, 0.0f, 0.0f))
 	{
 	}
 
@@ -416,7 +418,9 @@ namespace RN
 		_velocityRandomizeMin(emitter->_velocityRandomizeMin),
 		_velocityRandomizeMax(emitter->_velocityRandomizeMax),
 		_positionRandomizeMin(emitter->_positionRandomizeMin),
-		_positionRandomizeMax(emitter->_positionRandomizeMax)
+		_positionRandomizeMax(emitter->_positionRandomizeMax),
+		_accelerationRandomizeMin(emitter->_accelerationRandomizeMin),
+		_accelerationRandomizeMax(emitter->_accelerationRandomizeMax)
 	{
 	}
 
@@ -428,7 +432,7 @@ namespace RN
 		float lifespan = _rng->GetRandomFloatRange(_lifeSpan.x, _lifeSpan.y);
 		particle->lifespan = lifespan;
 
-		particle->gravity = _gravity;
+		particle->acceleration = _gravity + _rng->GetRandomVector3Range(_accelerationRandomizeMin, _accelerationRandomizeMax);
 		particle->velocity = _velocity + _rng->GetRandomVector3Range(_velocityRandomizeMin, _velocityRandomizeMax);
 
 		float sizeScale = 1.0f;
@@ -439,7 +443,7 @@ namespace RN
 
 			particle->position *= scale;
 			particle->position += GetWorldPosition();
-			particle->gravity *= scale;
+			particle->acceleration *= scale;
 			particle->velocity *= scale;
 		}
 

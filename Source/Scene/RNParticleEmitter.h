@@ -124,6 +124,10 @@ namespace RN
 		void SetPositionRandomizeMin(const Vector3 &positionRandomizeMin) { _positionRandomizeMin = positionRandomizeMin; }
 		Vector3 GetPositionRandomizeMax() const { return _positionRandomizeMax; }
 		void SetPositionRandomizeMax(const Vector3 &positionRandomizeMax) { _positionRandomizeMax = positionRandomizeMax; }
+		Vector3 GetAccelerationRandomizeMin() const { return _accelerationRandomizeMin; }
+		void SetAccelerationRandomizeMin(const Vector3 &accelerationRandomizeMin) { _accelerationRandomizeMin = accelerationRandomizeMin; }
+		Vector3 GetAccelerationRandomizeMax() const { return _accelerationRandomizeMax; }
+		void SetAccelerationRandomizeMax(const Vector3 &accelerationRandomizeMax) { _accelerationRandomizeMax = accelerationRandomizeMax; }
 
 	private:
 		Particle *CreateParticle() override;
@@ -141,6 +145,8 @@ namespace RN
 		Vector3 _velocityRandomizeMax;
 		Vector3 _positionRandomizeMin;
 		Vector3 _positionRandomizeMax;
+		Vector3 _accelerationRandomizeMin;
+		Vector3 _accelerationRandomizeMax;
 
 		__RNDeclareMetaInternal(GenericParticleEmitter)
 	};
