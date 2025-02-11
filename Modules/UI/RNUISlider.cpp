@@ -67,8 +67,8 @@ namespace RN
 			{
 				_isActive = true;
 
-				float movementRange = GetBounds().width - 15.0f;
-				_value = (transformedPosition.x - GetBounds().x) * (_to - _from) / movementRange + _from;
+				float movementRange = std::max(GetBounds().width - 15.0f, 0.0f);
+				_value = (movementRange > 0.0f ? (transformedPosition.x - GetBounds().x) * (_to - _from) / movementRange : 0.0f) + _from;
 				if(_step > k::EpsilonFloat) _value = std::round(_value / _step) * _step;
 				if(_value > _to) _value = _to;
 				if(_value < _from) _value = _from;
