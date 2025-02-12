@@ -63,6 +63,8 @@ namespace RN
 		RNAPI bool CanRender(Renderer *renderer, Camera *camera) const override;
 		RNAPI void Render(Renderer *renderer, Camera *camera) const override;
 
+		RNAPI size_t GetNumParticles() const { return _particles.size(); }
+
 	protected:
 		RNAPI virtual Particle *CreateParticle();
 		RandomNumberGenerator *_rng;
