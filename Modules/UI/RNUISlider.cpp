@@ -42,8 +42,8 @@ namespace RN
 			if(clampedValue < _from) clampedValue = _from;
 			if(clampedValue > _to) clampedValue = _to;
 
-			float sliderPosition = (clampedValue - _from) / (_to - _from);
-			float movementRange = GetFrame().width - 15.0f;
+			float sliderPosition = _to > _from ? (clampedValue - _from) / (_to - _from) : 0.0f;
+			float movementRange = std::max(GetFrame().width - 15.0f, 0.0f);
 
 			Rect handleFrame = _handleView->GetFrame();
 			handleFrame.x = sliderPosition * movementRange;
@@ -73,7 +73,7 @@ namespace RN
 				if(_value > _to) _value = _to;
 				if(_value < _from) _value = _from;
 
-				float sliderPosition = (_value - _from) / (_to - _from);
+				float sliderPosition = _to > _from ? (_value - _from) / (_to - _from) : 0.0f;
 				Rect handleFrame = _handleView->GetFrame();
 				handleFrame.x = sliderPosition * movementRange;
 				_handleView->SetFrame(handleFrame);
