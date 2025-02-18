@@ -228,6 +228,53 @@ namespace RN
 		return hit;
 	}
 
+	std::vector<PhysXContactInfo> PhysXWorld::CastRayAll(const Vector3 &from, const Vector3 &to, uint32 filterGroup, uint32 filterMask)
+	{
+		Vector3 diff = to - from;
+		float distance = diff.GetLength();
+		diff.Normalize();
+		physx::PxRaycastBuffer callback;
+		physx::PxFilterData filterData;
+		filterData.word0 = filterGroup;
+		filterData.word1 = filterMask;
+		filterData.word2 = 0;
+		filterData.word3 = 0;
+		PhysXQueryFilterCallback queryFilter;
+		
+		std::vector<PhysXContactInfo> results;
+		bool didHit = _scene->raycast(physx::PxVec3(from.x, from.y, from.z), physx::PxVec3(diff.x, diff.y, diff.z), distance, callback, physx::PxHitFlags(physx::PxHitFlag::eDEFAULT), physx::PxQueryFilterData(filterData, physx::PxQueryFlag::eDYNAMIC | physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::eNO_BLOCK | physx::PxQueryFlag::ePREFILTER), &queryFilter);
+		
+		if(didHit)
+		{
+			for(uint32 i = 0; i < callback.nbTouches; i++)
+			{
+				PhysXContactInfo hit;
+				hit.distance = callback.touches[i].distance;
+				hit.node = nullptr;
+				hit.collisionObject = nullptr;
+				hit.position = from + diff * hit.distance;
+				hit.normal.x = callback.touches[i].normal.x;
+				hit.normal.y = callback.touches[i].normal.y;
+				hit.normal.z = callback.touches[i].normal.z;
+				
+				if(callback.touches[i].actor)
+				{
+					void *userData = callback.touches[i].actor->userData;
+					if(userData)
+					{
+						hit.collisionObject = static_cast<PhysXCollisionObject *>(userData);
+						hit.node = hit.collisionObject->GetParent();
+						if(hit.node) hit.node->Retain()->Autorelease();
+					}
+				}
+				
+				results.push_back(hit);
+			}
+		}
+
+		return results;
+	}
+
 	PhysXContactInfo PhysXWorld::CastSweep(PhysXShape *shape, const Quaternion &rotation, const Vector3 &from, const Vector3 &to, float inflation, uint32 filterGroup, uint32 filterMask)
 	{
 		PhysXContactInfo hit;
