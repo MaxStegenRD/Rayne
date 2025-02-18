@@ -228,12 +228,16 @@ namespace RN
 		return hit;
 	}
 
-	std::vector<PhysXContactInfo> PhysXWorld::CastRayAll(const Vector3 &from, const Vector3 &to, uint32 filterGroup, uint32 filterMask)
+	std::vector<PhysXContactInfo> PhysXWorld::CastRayAll(const Vector3 &from, const Vector3 &to, uint32 filterGroup, uint32 filterMask, uint32 maxNumberOfHits)
 	{
 		Vector3 diff = to - from;
 		float distance = diff.GetLength();
 		diff.Normalize();
-		physx::PxRaycastBuffer callback;
+		
+		const physx::PxU32 bufferSize = maxNumberOfHits;
+		physx::PxRaycastHit *hitBuffer = new physx::PxRaycastHit[bufferSize];
+		physx::PxRaycastBuffer callback(hitBuffer, bufferSize);
+		
 		physx::PxFilterData filterData;
 		filterData.word0 = filterGroup;
 		filterData.word1 = filterMask;
