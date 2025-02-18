@@ -56,24 +56,61 @@ namespace RN
 
 		RNAPI RandomNumberGenerator *GetGenerator() const { return _rng; }
 
-		RNAPI void SpawnParticles(size_t particles);
-		RNAPI Particle *SpawnParticle();
+		Vector2 GetLifeSpan() const { return _lifeSpan; }
+		void SetLifeSpan(const Vector2 &lifeSpan) { _lifeSpan = lifeSpan; }
+		
+		Vector3 GetPositionRandomizeMin() const { return _positionRandomizeMin; }
+		void SetPositionRandomizeMin(const Vector3 &positionRandomizeMin) { _positionRandomizeMin = positionRandomizeMin; }
+		Vector3 GetPositionRandomizeMax() const { return _positionRandomizeMax; }
+		void SetPositionRandomizeMax(const Vector3 &positionRandomizeMax) { _positionRandomizeMax = positionRandomizeMax; }
 
 		RNAPI void Update(float delta) override;
 		RNAPI bool CanRender(Renderer *renderer, Camera *camera) const override;
 		RNAPI void Render(Renderer *renderer, Camera *camera) const override;
 
-		RNAPI size_t GetNumParticles() const { return _particles.size(); }
+		RNAPI size_t GetNumParticles() const { return _lifespans.size(); }
 
 	protected:
-		RNAPI virtual Particle *CreateParticle();
+		//RNAPI virtual Particle *CreateParticle();
+		
+		RNAPI virtual void UpdateLifespans(float delta);
+		RNAPI virtual void RemoveParticles(const std::vector<size_t> &indices);
+
+		RNAPI virtual void UpdateParticles(float delta);
+
+		RNAPI virtual void SpawnParticles(float delta);
+		RNAPI virtual size_t GetNumParticlesToSpawn(float delta) const;
+
+		RNAPI virtual void CreateParticles(size_t numParticlesToCreate);
+
+		RNAPI float *GetLifespans() { return _lifespans.data(); }
+		RNAPI ParticleData *GetParticleData() { return _particles.data(); }
+
+		template<typename T>
+		static void RemoveParticlesImpl(const std::vector<size_t>& indices, std::vector<T>& vector)
+		{
+			const size_t numIndices = indices.size();
+			for (size_t j = numIndices; j > 0; j--)
+			{
+				const size_t i = indices[j - 1];
+				const size_t n = numIndices - j + 1;
+				vector[i] = std::move(*(vector.end() - n));
+			}
+			vector.resize(vector.size() - indices.size());
+		}
+
 		RandomNumberGenerator *_rng;
 
 	private:
-		void UpdateParticles(float delta);
+
 		void UpdateMesh() const;
 
-		std::vector<Particle *> _particles;
+		std::vector<float> _lifespans;
+		std::vector<ParticleData> _particles;
+
+		std::vector<size_t> _particlesToRemove;
+
+		//std::vector<Particle *> _particles;
 
 		Drawable *_drawable;
 		Material *_material;
@@ -87,6 +124,10 @@ namespace RN
 		uint32 _maxParticles;
 		uint32 _maxParticlesSoft;
 		float _spawnRate;
+		
+		Vector2 _lifeSpan;
+		Vector3 _positionRandomizeMin;
+		Vector3 _positionRandomizeMax;
 
 		float _time;
 
@@ -100,8 +141,6 @@ namespace RN
 		RNAPI GenericParticleEmitter();
 		RNAPI GenericParticleEmitter(const GenericParticleEmitter *emitter);
 
-		Vector2 GetLifeSpan() const { return _lifeSpan; }
-		void SetLifeSpan(const Vector2 &lifeSpan) { _lifeSpan = lifeSpan; }
 		Color GetStartColor() const { return _startColor; }
 		void SetStartColor(const Color &startColor) { _startColor = startColor; }
 		Color GetEndColor() const { return _endColor; }
@@ -122,19 +161,24 @@ namespace RN
 		void SetVelocityRandomizeMin(const Vector3 &velocityRandomizeMin) { _velocityRandomizeMin = velocityRandomizeMin; }
 		Vector3 GetVelocityRandomizeMax() const { return _velocityRandomizeMax; }
 		void SetVelocityRandomizeMax(const Vector3 &velocityRandomizeMax) { _velocityRandomizeMax = velocityRandomizeMax; }
-		Vector3 GetPositionRandomizeMin() const { return _positionRandomizeMin; }
-		void SetPositionRandomizeMin(const Vector3 &positionRandomizeMin) { _positionRandomizeMin = positionRandomizeMin; }
-		Vector3 GetPositionRandomizeMax() const { return _positionRandomizeMax; }
-		void SetPositionRandomizeMax(const Vector3 &positionRandomizeMax) { _positionRandomizeMax = positionRandomizeMax; }
 		Vector3 GetAccelerationRandomizeMin() const { return _accelerationRandomizeMin; }
 		void SetAccelerationRandomizeMin(const Vector3 &accelerationRandomizeMin) { _accelerationRandomizeMin = accelerationRandomizeMin; }
 		Vector3 GetAccelerationRandomizeMax() const { return _accelerationRandomizeMax; }
 		void SetAccelerationRandomizeMax(const Vector3 &accelerationRandomizeMax) { _accelerationRandomizeMax = accelerationRandomizeMax; }
 
-	private:
-		Particle *CreateParticle() override;
+	protected:
+		RNAPI void RemoveParticles(const std::vector<size_t>& indices) override;
+		RNAPI void UpdateParticles(float delta) override;
+		RNAPI void CreateParticles(size_t numParticlesToCreate) override;
 
-		Vector2 _lifeSpan;
+		GenericParticleData *GetGenericParticles() { return _genericParticles.data(); }
+
+	private:
+		std::vector<GenericParticleData> _genericParticles;
+
+		//Particle *CreateParticle() override;
+
+		//Vector2 _lifeSpan;
 		Color _startColor;
 		Color _endColor;
 		Vector2 _startSize;
@@ -145,8 +189,6 @@ namespace RN
 		Vector3 _velocity;
 		Vector3 _velocityRandomizeMin;
 		Vector3 _velocityRandomizeMax;
-		Vector3 _positionRandomizeMin;
-		Vector3 _positionRandomizeMax;
 		Vector3 _accelerationRandomizeMin;
 		Vector3 _accelerationRandomizeMax;
 

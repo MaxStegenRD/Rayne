@@ -29,8 +29,11 @@ namespace RN
 		_maxParticles(100),
 		_maxParticlesSoft(100),
 		_spawnRate(0.05f),
-		_time(0.0f),
-		_canRollParticles(false)
+		_canRollParticles(false),
+		_lifeSpan(Vector2(2.0f, 4.0f)),
+		_positionRandomizeMin(Vector3(-0.5f, -0.5f, -0.5f)),
+		_positionRandomizeMax(Vector3(0.5f, 0.5f, 0.5f)),
+		_time(0.0f)
 	{
 		_rng = new RandomNumberGenerator(RandomNumberGenerator::Type::MersenneTwister);
 
@@ -64,7 +67,11 @@ namespace RN
 		_isSorted(emitter->_isSorted),
 		_isRenderedInversed(emitter->_isRenderedInversed),
 		_maxParticles(emitter->_maxParticles),
-		_spawnRate(emitter->_spawnRate)
+		_spawnRate(emitter->_spawnRate),
+		_lifeSpan(emitter->_lifeSpan),
+		_positionRandomizeMin(emitter->_positionRandomizeMin),
+		_positionRandomizeMax(emitter->_positionRandomizeMax),
+		_time(emitter->_time)
 	{
 		_rng = emitter->GetGenerator();
 
@@ -74,11 +81,6 @@ namespace RN
 
 	ParticleEmitter::~ParticleEmitter()
 	{
-		for(Particle *particle : _particles)
-		{
-			delete particle;
-		}
-
 		SafeRelease(_material);
 		SafeRelease(_mesh);
 		SafeRelease(_rng);
@@ -146,7 +148,7 @@ namespace RN
 		_rng = SafeRetain(generator);
 	}
 
-
+	/*
 	Particle *ParticleEmitter::SpawnParticle()
 	{
 		Particle *particle = CreateParticle();
@@ -155,7 +157,9 @@ namespace RN
 
 		return particle;
 	}
+	*/
 
+	/*
 	void ParticleEmitter::SpawnParticles(size_t particles)
 	{
 		if(particles == 0)
@@ -172,16 +176,43 @@ namespace RN
 
 		_particles.insert(_particles.end(), spawned.begin(), spawned.end());
 	}
+	*/
 
-
+	/*
 	Particle *ParticleEmitter::CreateParticle()
 	{
 		RN_ASSERT(_material, "ParticleEmitter need a material to spawn particles");
 		return new Particle();
 	}
+	*/
+
+	void ParticleEmitter::UpdateLifespans(float delta)
+	{
+		for(float& lifespan : _lifespans)
+		{
+			lifespan -= delta;
+		}
+
+		_particlesToRemove.clear();
+		const size_t numParticles = GetNumParticles();
+		for (size_t i = 0; i < numParticles; i++)
+		{
+			if(_lifespans[i] <= 0.0f)
+				_particlesToRemove.emplace_back(i);
+		}
+
+		RemoveParticles(_particlesToRemove);
+	}
+
+	void ParticleEmitter::RemoveParticles(const std::vector<size_t> &indices)
+	{
+		RemoveParticlesImpl(indices, _lifespans);
+		RemoveParticlesImpl(indices, _particles);
+	}
 
 	void ParticleEmitter::UpdateParticles(float delta)
 	{
+		/*
 		for(auto i = _particles.begin(); i != _particles.end();)
 		{
 			Particle *particle = *i;
@@ -211,6 +242,73 @@ namespace RN
 
 			SpawnParticles(spawn);
 		}
+		*/
+	}
+
+	void ParticleEmitter::SpawnParticles(float delta)
+	{
+		if(_spawnRate < k::EpsilonFloat)
+			return;
+
+		const size_t numParticlesToSpawn = GetNumParticlesToSpawn(delta);
+		_time = fmodf((_time + delta), _spawnRate);
+
+		if(numParticlesToSpawn > 0)
+		{
+			CreateParticles(numParticlesToSpawn);
+		}
+	}
+
+	size_t ParticleEmitter::GetNumParticlesToSpawn(float delta) const
+	{
+		if(_spawnRate < k::EpsilonFloat)
+			return 0;
+
+		uint32 spawn = floorf((_time + delta) / _spawnRate);
+
+		if(_maxParticles > 0 && _maxParticlesSoft > 0)
+			spawn = std::min(_maxParticlesSoft - static_cast<uint32>(GetNumParticles()), spawn);
+
+		return spawn;
+	}
+
+	void ParticleEmitter::CreateParticles(size_t numParticlesToCreate)
+	{
+		const size_t prevNumParticles = GetNumParticles();
+		const size_t newNumParticles = prevNumParticles + numParticlesToCreate;
+		_lifespans.resize(newNumParticles);
+		_particles.resize(newNumParticles);
+
+		if(GetIsLocal())
+		{
+			for(size_t i = prevNumParticles; i < newNumParticles; i++)
+			{
+				_lifespans[i] = _rng->GetRandomFloatRange(_lifeSpan.x, _lifeSpan.y);
+			
+				_particles[i].position = _rng->GetRandomVector3Range(_positionRandomizeMin, _positionRandomizeMax);
+				_particles[i].rotation = 0.0f;
+				_particles[i].size = Vector2(1.0f);
+				_particles[i].color = RN::Color::White();
+			}
+		}
+		else
+		{
+			const RN::Vector3 emitterPosition = GetWorldPosition();
+			const RN::Quaternion emitterRotation = GetWorldRotation();
+			const RN::Vector3 halfScale = GetWorldScale() * 0.5f;
+
+			for(size_t i = prevNumParticles; i < newNumParticles; i++)
+			{
+				_lifespans[i] = _rng->GetRandomFloatRange(_lifeSpan.x, _lifeSpan.y);
+			
+				const RN::Vector3 localPosition = _rng->GetRandomVector3Range(-halfScale, halfScale);
+				//const RN::Vector3 localPosition = _rng->GetRandomVector3Range(_positionRandomizeMin, _positionRandomizeMax);
+				_particles[i].position = emitterRotation.GetRotatedVector(localPosition) + emitterPosition;
+				_particles[i].rotation = 0.0f;
+				_particles[i].size = Vector2(1.0f);
+				_particles[i].color = RN::Color::White();
+			}
+		}
 	}
 
 	void ParticleEmitter::UpdateMesh() const
@@ -226,7 +324,7 @@ namespace RN
 
 		float scale = _ignoreScale ? 1.0f : GetWorldScale().x;
 
-		int stop = std::min(static_cast<int>(_particles.size()), static_cast<int>(_maxParticles));
+		int stop = std::min(static_cast<int>(GetNumParticles()), static_cast<int>(_maxParticles));
 		int start = 0;
 		int increment = 1;
 		if(_isRenderedInversed)
@@ -239,24 +337,24 @@ namespace RN
 		{
 			for(int i = start; i >= 0 && i < stop; i += increment)
 			{
-				Particle *particle = _particles[i];
+				const ParticleData &particle = _particles[i];
 
-				*vertexIterator++ = particle->position;
-				*vertexIterator++ = particle->position;
-				*vertexIterator++ = particle->position;
-				*vertexIterator++ = particle->position;
+				*vertexIterator++ = particle.position;
+				*vertexIterator++ = particle.position;
+				*vertexIterator++ = particle.position;
+				*vertexIterator++ = particle.position;
 
-				*colorIterator++ = particle->color;
-				*colorIterator++ = particle->color;
-				*colorIterator++ = particle->color;
-				*colorIterator++ = particle->color;
+				*colorIterator++ = particle.color;
+				*colorIterator++ = particle.color;
+				*colorIterator++ = particle.color;
+				*colorIterator++ = particle.color;
 
 				*texcoordsIterator++ = Vector2(0.0f, 0.0f);
 				*texcoordsIterator++ = Vector2(1.0f, 0.0f);
 				*texcoordsIterator++ = Vector2(0.0f, 1.0f);
 				*texcoordsIterator++ = Vector2(1.0f, 1.0f);
 
-				Vector2 halfSize = particle->size / 2.0f * scale;
+				Vector2 halfSize = particle.size / 2.0f * scale;
 				Vector2 halfDirectionTop;
 				halfDirectionTop.x = halfSize.x;
 				halfDirectionTop.y = halfSize.y;
@@ -282,31 +380,31 @@ namespace RN
 		{
 			for(int i = start; i >= 0 && i < stop; i += increment)
 			{
-				Particle *particle = _particles[i];
+				const ParticleData &particle = _particles[i];
 
-				*vertexIterator++ = particle->position;
-				*vertexIterator++ = particle->position;
-				*vertexIterator++ = particle->position;
-				*vertexIterator++ = particle->position;
+				*vertexIterator++ = particle.position;
+				*vertexIterator++ = particle.position;
+				*vertexIterator++ = particle.position;
+				*vertexIterator++ = particle.position;
 
-				*colorIterator++ = particle->color;
-				*colorIterator++ = particle->color;
-				*colorIterator++ = particle->color;
-				*colorIterator++ = particle->color;
+				*colorIterator++ = particle.color;
+				*colorIterator++ = particle.color;
+				*colorIterator++ = particle.color;
+				*colorIterator++ = particle.color;
 
 				*texcoordsIterator++ = Vector2(0.0f, 0.0f);
 				*texcoordsIterator++ = Vector2(1.0f, 0.0f);
 				*texcoordsIterator++ = Vector2(0.0f, 1.0f);
 				*texcoordsIterator++ = Vector2(1.0f, 1.0f);
 
-				Vector2 halfSize = particle->size / 2.0f * scale;
+				Vector2 halfSize = particle.size / 2.0f * scale;
 				Vector2 halfDirectionTop;
-				halfDirectionTop.x = Math::Cos(particle->rotation) * halfSize.x - Math::Sin(particle->rotation) * halfSize.y;
-				halfDirectionTop.y = Math::Sin(particle->rotation) * halfSize.x + Math::Cos(particle->rotation) * halfSize.y;
+				halfDirectionTop.x = Math::Cos(particle.rotation) * halfSize.x - Math::Sin(particle.rotation) * halfSize.y;
+				halfDirectionTop.y = Math::Sin(particle.rotation) * halfSize.x + Math::Cos(particle.rotation) * halfSize.y;
 
 				Vector2 halfDirectionBottom;
-				halfDirectionBottom.x = Math::Cos(particle->rotation) * halfSize.x + Math::Sin(particle->rotation) * halfSize.y;
-				halfDirectionBottom.y = Math::Sin(particle->rotation) * halfSize.x - Math::Cos(particle->rotation) * halfSize.y;
+				halfDirectionBottom.x = Math::Cos(particle.rotation) * halfSize.x + Math::Sin(particle.rotation) * halfSize.y;
+				halfDirectionBottom.y = Math::Sin(particle.rotation) * halfSize.x - Math::Cos(particle.rotation) * halfSize.y;
 
 				*sizeIterator++ = -halfDirectionTop;
 				*sizeIterator++ = halfDirectionBottom;
@@ -343,7 +441,9 @@ namespace RN
 	{
 		SceneNode::Update(delta);
 
+		UpdateLifespans(delta);
 		UpdateParticles(delta);
+		SpawnParticles(delta);
 
 		if(!_isSorted)
 			UpdateMesh();
@@ -365,7 +465,7 @@ namespace RN
 	{
 		SceneNode::Render(renderer, camera);
 
-		if(!_material || _particles.empty())
+		if(!_material || GetNumParticles() == 0)
 			return;
 
 		if(_isSorted)
@@ -386,7 +486,7 @@ namespace RN
 	// ---------------------
 
 	GenericParticleEmitter::GenericParticleEmitter() :
-		_lifeSpan(Vector2(2.0f, 4.0f)),
+		//_lifeSpan(Vector2(2.0f, 4.0f)),
 		_startColor(Color()),
 		_endColor(Color(1.0f, 1.0f, 1.0f, 0.0f)),
 		_startSize(Vector2(0.5f, 1.5f)),
@@ -397,8 +497,6 @@ namespace RN
 		_velocity(Vector3(0.0f, 0.5f, 0.0f)),
 		_velocityRandomizeMin(Vector3(-0.5f, -0.5f, -0.5f)),
 		_velocityRandomizeMax(Vector3(0.5f, 0.5f, 0.5f)),
-		_positionRandomizeMin(Vector3(-0.5f, -0.5f, -0.5f)),
-		_positionRandomizeMax(Vector3(0.5f, 0.5f, 0.5f)),
 		_accelerationRandomizeMin(Vector3(0.0f, 0.0f, 0.0f)),
 		_accelerationRandomizeMax(Vector3(0.0f, 0.0f, 0.0f))
 	{
@@ -406,7 +504,7 @@ namespace RN
 
 	GenericParticleEmitter::GenericParticleEmitter(const GenericParticleEmitter *emitter) :
 		ParticleEmitter(emitter),
-		_lifeSpan(emitter->_lifeSpan),
+		//_lifeSpan(emitter->_lifeSpan),
 		_startColor(emitter->_startColor),
 		_endColor(emitter->_endColor),
 		_startSize(emitter->_startSize),
@@ -417,13 +515,88 @@ namespace RN
 		_velocity(emitter->_velocity),
 		_velocityRandomizeMin(emitter->_velocityRandomizeMin),
 		_velocityRandomizeMax(emitter->_velocityRandomizeMax),
-		_positionRandomizeMin(emitter->_positionRandomizeMin),
-		_positionRandomizeMax(emitter->_positionRandomizeMax),
+		//_positionRandomizeMin(emitter->_positionRandomizeMin),
+		//_positionRandomizeMax(emitter->_positionRandomizeMax),
 		_accelerationRandomizeMin(emitter->_accelerationRandomizeMin),
 		_accelerationRandomizeMax(emitter->_accelerationRandomizeMax)
 	{
 	}
 
+	void GenericParticleEmitter::RemoveParticles(const std::vector<size_t>& indices)
+	{
+		ParticleEmitter::RemoveParticles(indices);
+		RemoveParticlesImpl(indices, _genericParticles);
+	}
+
+	void GenericParticleEmitter::UpdateParticles(float delta)
+	{
+		auto lerp = [](auto a, auto b, float t) {
+			return a * (1.0f - t) + b * t;
+		};
+
+		ParticleEmitter::UpdateParticles(delta);
+
+		const size_t numParticles = GetNumParticles();
+		const float *lifespans = GetLifespans();
+		ParticleData *particles = GetParticleData();
+
+		for(size_t i = 0; i < numParticles; i++)
+		{
+			GenericParticleData &genericData = _genericParticles[i];
+
+			const float t = 1.0f - lifespans[i] * genericData.invStartLifespan;
+
+			particles[i].rotation = lerp(genericData.startRotation, genericData.endRotation, t);
+			particles[i].size = Vector2(lerp(genericData.startSize, genericData.endSize, t));
+			particles[i].color = lerp(_startColor, _endColor, t);
+
+			genericData.velocity += genericData.acceleration * delta;
+			particles[i].position += genericData.velocity * delta;
+		}
+	}
+
+	void GenericParticleEmitter::CreateParticles(size_t numParticlesToCreate)
+	{
+		const size_t prevNumParticles = GetNumParticles();
+
+		ParticleEmitter::CreateParticles(numParticlesToCreate);
+
+		const size_t newNumParticles = GetNumParticles();
+		
+		_genericParticles.resize(newNumParticles);
+
+		const float *lifespans = GetLifespans();
+		ParticleData *particles = GetParticleData();
+
+		for(size_t i = prevNumParticles; i < newNumParticles; i++)
+		{
+			GenericParticleData &genericData = _genericParticles[i];
+
+			genericData.invStartLifespan = lifespans[i] > 0.0f ? 1.0f / lifespans[i] : 0.0f;
+
+			genericData.startSize = _rng->GetRandomFloatRange(_startSize.x, _startSize.y);
+			genericData.endSize = _rng->GetRandomFloatRange(_endSize.x, _endSize.y);
+
+			genericData.startRotation = _rng->GetRandomFloatRange(_startRotation.x, _startRotation.y);
+			genericData.endRotation = _rng->GetRandomFloatRange(_endRotation.x, _endRotation.y);
+
+			genericData.acceleration = _gravity + _rng->GetRandomVector3Range(_accelerationRandomizeMin, _accelerationRandomizeMax);
+			genericData.velocity = _velocity + _rng->GetRandomVector3Range(_velocityRandomizeMin, _velocityRandomizeMax);
+
+			particles[i].rotation = genericData.startRotation;
+			particles[i].size = Vector2(genericData.startSize);
+			particles[i].color = _startColor;
+
+			/*
+			if (!GetIsLocal())
+			{
+				particles[i].position += GetWorldPosition();
+			}
+			*/
+		}
+	}
+
+	/*
 	RN::Particle *GenericParticleEmitter::CreateParticle()
 	{
 		GenericParticle *particle = new GenericParticle();
@@ -463,4 +636,5 @@ namespace RN
 
 		return particle;
 	}
+	*/
 } // namespace RN

@@ -47,6 +47,28 @@ namespace RN
 		Interpolator<Color> colorInterpolator;
 		Interpolator<Vector2> sizeInterpolator;
 	};
+
+	struct ParticleData
+	{
+		Vector3 position;
+		float rotation;
+		Vector2 size;
+		Color color;
+	};
+
+	struct GenericParticleData
+	{
+		float invStartLifespan;
+
+		float startSize;
+		float endSize;
+
+		float startRotation;
+		float endRotation;
+
+		Vector3 acceleration;
+		Vector3 velocity;
+	};
 } // namespace RN
 
 #endif /* __RAYNE_PARTICLE_H__ */
