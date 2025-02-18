@@ -93,7 +93,7 @@ namespace RN
 			if(animationType != AnimationTypeNone)
 			{
 				if(_delegate) _delegate->StackViewViewChangedTransitionState(view, true);
-				if(_delegate) _delegate->StackViewViewChangedTransitionState(oldTopView, true);
+				if(_delegate && oldTopView) _delegate->StackViewViewChangedTransitionState(oldTopView, true);
 			}
 		}
 
