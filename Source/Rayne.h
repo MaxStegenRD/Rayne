@@ -96,7 +96,6 @@
 #include "Scene/RNCamera.h"
 #include "Scene/RNEntity.h"
 #include "Scene/RNLight.h"
-#include "Scene/RNParticle.h"
 #include "Scene/RNParticleEmitter.h"
 #include "Scene/RNScene.h"
 #include "Scene/RNSceneAttachment.h"
