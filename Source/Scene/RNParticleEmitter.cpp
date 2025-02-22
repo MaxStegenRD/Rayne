@@ -29,8 +29,8 @@ namespace RN
 		_maxParticles(100),
 		_maxParticlesSoft(100),
 		_spawnRate(0.05f),
-		_time(0.0f),
-		_canRollParticles(false)
+		_canRollParticles(false),
+		_time(0.0f)
 	{
 		_rng = new RandomNumberGenerator(RandomNumberGenerator::Type::MersenneTwister);
 
@@ -64,7 +64,8 @@ namespace RN
 		_isSorted(emitter->_isSorted),
 		_isRenderedInversed(emitter->_isRenderedInversed),
 		_maxParticles(emitter->_maxParticles),
-		_spawnRate(emitter->_spawnRate)
+		_spawnRate(emitter->_spawnRate),
+		_time(emitter->_time)
 	{
 		_rng = emitter->GetGenerator();
 
@@ -74,11 +75,6 @@ namespace RN
 
 	ParticleEmitter::~ParticleEmitter()
 	{
-		for(Particle *particle : _particles)
-		{
-			delete particle;
-		}
-
 		SafeRelease(_material);
 		SafeRelease(_mesh);
 		SafeRelease(_rng);
@@ -146,71 +142,76 @@ namespace RN
 		_rng = SafeRetain(generator);
 	}
 
-
-	Particle *ParticleEmitter::SpawnParticle()
+	void ParticleEmitter::UpdateLifespans(float delta)
 	{
-		Particle *particle = CreateParticle();
-
-		_particles.push_back(particle);
-
-		return particle;
-	}
-
-	void ParticleEmitter::SpawnParticles(size_t particles)
-	{
-		if(particles == 0)
-			return;
-
-		std::vector<Particle *> spawned;
-		spawned.reserve(particles);
-
-		for(int i = 0; i < particles; i++)
+		for(float& lifespan : _lifespans)
 		{
-			Particle *particle = CreateParticle();
-			if(particle) spawned.push_back(particle);
+			lifespan -= delta;
 		}
 
-		_particles.insert(_particles.end(), spawned.begin(), spawned.end());
+		_particlesToRemove.clear();
+		const size_t numParticles = GetNumParticles();
+		for(size_t i = 0; i < numParticles; i++)
+		{
+			if(_lifespans[i] <= 0.0f)
+			{
+				_particlesToRemove.emplace_back(i);
+			}
+		}
+
+		if(!_particlesToRemove.empty())
+		{
+			RemoveParticles(_particlesToRemove);
+		}
 	}
 
-
-	Particle *ParticleEmitter::CreateParticle()
+	void ParticleEmitter::RemoveParticles(const std::vector<size_t> &indices)
 	{
-		RN_ASSERT(_material, "ParticleEmitter need a material to spawn particles");
-		return new Particle();
+		RemoveParticlesImpl(indices, _lifespans);
+		RemoveParticlesImpl(indices, _particles);
 	}
 
 	void ParticleEmitter::UpdateParticles(float delta)
 	{
-		for(auto i = _particles.begin(); i != _particles.end();)
-		{
-			Particle *particle = *i;
-			particle->Update(delta);
+	}
 
-			if(particle->lifespan <= 0.0f)
-			{
-				delete particle;
-
-				i = _particles.erase(i);
-				continue;
-			}
-
-			i++;
-		}
-
+	void ParticleEmitter::SpawnParticles(float delta)
+	{
 		if(_spawnRate < k::EpsilonFloat)
 			return;
 
-		uint32 spawn = floorf((_time + delta) / _spawnRate);
+		const size_t numParticlesToSpawn = GetNumParticlesToSpawn(delta);
 		_time = fmodf((_time + delta), _spawnRate);
 
-		if(spawn > 0)
+		if(numParticlesToSpawn > 0)
 		{
-			if(_maxParticles > 0 && _maxParticlesSoft > 0)
-				spawn = std::min(_maxParticlesSoft - static_cast<uint32>(_particles.size()), spawn);
-
-			SpawnParticles(spawn);
+			CreateParticles(numParticlesToSpawn);
 		}
+	}
+
+	size_t ParticleEmitter::GetNumParticlesToSpawn(float delta) const
+	{
+		if(_spawnRate < k::EpsilonFloat)
+			return 0;
+
+		uint32 spawn = floorf((_time + delta) / _spawnRate);
+
+		if(_maxParticles > 0 && _maxParticlesSoft > 0)
+			spawn = std::min(_maxParticlesSoft - static_cast<uint32>(GetNumParticles()), spawn);
+
+		return spawn;
+	}
+
+	void ParticleEmitter::CreateParticles(size_t numParticlesToCreate)
+	{
+		const size_t prevNumParticles = GetNumParticles();
+		const size_t newNumParticles = prevNumParticles + numParticlesToCreate;
+		
+		_lifespans.resize(newNumParticles, 1.0f);
+
+		const Vector3 spawnPosition = GetIsLocal() ? Vector3(0.0f, 0.0f, 0.0f) : GetWorldPosition();
+		ParticleData defaultParticle = {spawnPosition, 0.0f, Vector2(1.0f), RN::Color::White()};
+		_particles.resize(newNumParticles, defaultParticle);
 	}
 
 	void ParticleEmitter::UpdateMesh() const
@@ -224,9 +225,36 @@ namespace RN
 		Mesh::ElementIterator<Vector2> sizeIterator = chunk.GetIterator<Vector2>(Mesh::VertexAttribute::Feature::UVCoords1);
 		Mesh::ElementIterator<RN::uint16> indexIterator = chunk.GetIterator<RN::uint16>(Mesh::VertexAttribute::Feature::Indices);
 
+		/* HACK: convert the iterators to plain pointers and get their strides
+		 * then copy everything by plain memcpy
+		 * this circumvents the iterator's complexity and speeds up the copy loop roughly 3x
+		 */
+
+		uint8 *vertexPtr = reinterpret_cast<uint8 *>(&*vertexIterator);
+		uint8 *colorPtr = reinterpret_cast<uint8 *>(&*colorIterator);
+		uint8 *texcoordsPtr = reinterpret_cast<uint8 *>(&*texcoordsIterator);
+		uint8 *sizePtr = reinterpret_cast<uint8 *>(&*sizeIterator);
+		uint8 *indexPtr = reinterpret_cast<uint8 *>(&*indexIterator);
+
+		const size_t stride = _mesh->GetStride();
+		const size_t vertexStride = _mesh->GetVertexPositionsSeparatedSize() > 0 ? _mesh->GetVertexPositionsSeparatedStride() : stride;
+		const size_t indexStride = _mesh->GetAttribute(Mesh::VertexAttribute::Feature::Indices)->GetSize();
+
+		auto copy1 = [](uint8 *&ptr, size_t stride, const auto &value) {
+			memcpy(ptr, &value, sizeof(value));
+			ptr += stride;
+		};
+
+		auto copy4 = [copy1](uint8 *&ptr, size_t stride, const auto &value) {
+			copy1(ptr, stride, value);
+			copy1(ptr, stride, value);
+			copy1(ptr, stride, value);
+			copy1(ptr, stride, value);
+		};
+
 		float scale = _ignoreScale ? 1.0f : GetWorldScale().x;
 
-		int stop = std::min(static_cast<int>(_particles.size()), static_cast<int>(_maxParticles));
+		int stop = std::min(static_cast<int>(GetNumParticles()), static_cast<int>(_maxParticles));
 		int start = 0;
 		int increment = 1;
 		if(_isRenderedInversed)
@@ -239,24 +267,18 @@ namespace RN
 		{
 			for(int i = start; i >= 0 && i < stop; i += increment)
 			{
-				Particle *particle = _particles[i];
+				const ParticleData &particle = _particles[i];
 
-				*vertexIterator++ = particle->position;
-				*vertexIterator++ = particle->position;
-				*vertexIterator++ = particle->position;
-				*vertexIterator++ = particle->position;
+				copy4(vertexPtr, vertexStride, particle.position);
 
-				*colorIterator++ = particle->color;
-				*colorIterator++ = particle->color;
-				*colorIterator++ = particle->color;
-				*colorIterator++ = particle->color;
+				copy4(colorPtr, stride, particle.color);
 
-				*texcoordsIterator++ = Vector2(0.0f, 0.0f);
-				*texcoordsIterator++ = Vector2(1.0f, 0.0f);
-				*texcoordsIterator++ = Vector2(0.0f, 1.0f);
-				*texcoordsIterator++ = Vector2(1.0f, 1.0f);
+				copy1(texcoordsPtr, stride, Vector2(0.0f, 0.0f));
+				copy1(texcoordsPtr, stride, Vector2(1.0f, 0.0f));
+				copy1(texcoordsPtr, stride, Vector2(0.0f, 1.0f));
+				copy1(texcoordsPtr, stride, Vector2(1.0f, 1.0f));
 
-				Vector2 halfSize = particle->size / 2.0f * scale;
+				Vector2 halfSize = particle.size / 2.0f * scale;
 				Vector2 halfDirectionTop;
 				halfDirectionTop.x = halfSize.x;
 				halfDirectionTop.y = halfSize.y;
@@ -265,71 +287,65 @@ namespace RN
 				halfDirectionBottom.x = halfSize.x;
 				halfDirectionBottom.y = -halfSize.y;
 
-				*sizeIterator++ = -halfDirectionTop;
-				*sizeIterator++ = halfDirectionBottom;
-				*sizeIterator++ = -halfDirectionBottom;
-				*sizeIterator++ = halfDirectionTop;
+				copy1(sizePtr, stride, -halfDirectionTop);
+				copy1(sizePtr, stride, halfDirectionBottom);
+				copy1(sizePtr, stride, -halfDirectionBottom);
+				copy1(sizePtr, stride, halfDirectionTop);
 
-				*indexIterator++ = i * 4 + 0;
-				*indexIterator++ = i * 4 + 1;
-				*indexIterator++ = i * 4 + 2;
-				*indexIterator++ = i * 4 + 2;
-				*indexIterator++ = i * 4 + 1;
-				*indexIterator++ = i * 4 + 3;
+				copy1(indexPtr, indexStride, uint16(i * 4 + 0));
+				copy1(indexPtr, indexStride, uint16(i * 4 + 1));
+				copy1(indexPtr, indexStride, uint16(i * 4 + 2));
+				copy1(indexPtr, indexStride, uint16(i * 4 + 2));
+				copy1(indexPtr, indexStride, uint16(i * 4 + 1));
+				copy1(indexPtr, indexStride, uint16(i * 4 + 3));
 			}
 		}
 		else
 		{
 			for(int i = start; i >= 0 && i < stop; i += increment)
 			{
-				Particle *particle = _particles[i];
+				const ParticleData &particle = _particles[i];
+				
+				copy4(vertexPtr, vertexStride, particle.position);
+				
+				copy4(colorPtr, stride, particle.color);
 
-				*vertexIterator++ = particle->position;
-				*vertexIterator++ = particle->position;
-				*vertexIterator++ = particle->position;
-				*vertexIterator++ = particle->position;
+				copy1(texcoordsPtr, stride, Vector2(0.0f, 0.0f));
+				copy1(texcoordsPtr, stride, Vector2(1.0f, 0.0f));
+				copy1(texcoordsPtr, stride, Vector2(0.0f, 1.0f));
+				copy1(texcoordsPtr, stride, Vector2(1.0f, 1.0f));
 
-				*colorIterator++ = particle->color;
-				*colorIterator++ = particle->color;
-				*colorIterator++ = particle->color;
-				*colorIterator++ = particle->color;
-
-				*texcoordsIterator++ = Vector2(0.0f, 0.0f);
-				*texcoordsIterator++ = Vector2(1.0f, 0.0f);
-				*texcoordsIterator++ = Vector2(0.0f, 1.0f);
-				*texcoordsIterator++ = Vector2(1.0f, 1.0f);
-
-				Vector2 halfSize = particle->size / 2.0f * scale;
+				Vector2 halfSize = particle.size / 2.0f * scale;
 				Vector2 halfDirectionTop;
-				halfDirectionTop.x = Math::Cos(particle->rotation) * halfSize.x - Math::Sin(particle->rotation) * halfSize.y;
-				halfDirectionTop.y = Math::Sin(particle->rotation) * halfSize.x + Math::Cos(particle->rotation) * halfSize.y;
+				halfDirectionTop.x = Math::Cos(particle.rotation) * halfSize.x - Math::Sin(particle.rotation) * halfSize.y;
+				halfDirectionTop.y = Math::Sin(particle.rotation) * halfSize.x + Math::Cos(particle.rotation) * halfSize.y;
 
 				Vector2 halfDirectionBottom;
-				halfDirectionBottom.x = Math::Cos(particle->rotation) * halfSize.x + Math::Sin(particle->rotation) * halfSize.y;
-				halfDirectionBottom.y = Math::Sin(particle->rotation) * halfSize.x - Math::Cos(particle->rotation) * halfSize.y;
+				halfDirectionBottom.x = Math::Cos(particle.rotation) * halfSize.x + Math::Sin(particle.rotation) * halfSize.y;
+				halfDirectionBottom.y = Math::Sin(particle.rotation) * halfSize.x - Math::Cos(particle.rotation) * halfSize.y;
 
-				*sizeIterator++ = -halfDirectionTop;
-				*sizeIterator++ = halfDirectionBottom;
-				*sizeIterator++ = -halfDirectionBottom;
-				*sizeIterator++ = halfDirectionTop;
+				copy1(sizePtr, stride, -halfDirectionTop);
+				copy1(sizePtr, stride, halfDirectionBottom);
+				copy1(sizePtr, stride, -halfDirectionBottom);
+				copy1(sizePtr, stride, halfDirectionTop);
 
-				*indexIterator++ = i * 4 + 0;
-				*indexIterator++ = i * 4 + 1;
-				*indexIterator++ = i * 4 + 2;
-				*indexIterator++ = i * 4 + 2;
-				*indexIterator++ = i * 4 + 1;
-				*indexIterator++ = i * 4 + 3;
+				copy1(indexPtr, indexStride, uint16(i * 4 + 0));
+				copy1(indexPtr, indexStride, uint16(i * 4 + 1));
+				copy1(indexPtr, indexStride, uint16(i * 4 + 2));
+				copy1(indexPtr, indexStride, uint16(i * 4 + 2));
+				copy1(indexPtr, indexStride, uint16(i * 4 + 1));
+				copy1(indexPtr, indexStride, uint16(i * 4 + 3));
 			}
 		}
 
 		for(uint32 i = stop; i < _maxParticles; i++)
 		{
-			*indexIterator++ = i * 4 + 0;
-			*indexIterator++ = i * 4 + 0;
-			*indexIterator++ = i * 4 + 0;
-			*indexIterator++ = i * 4 + 0;
-			*indexIterator++ = i * 4 + 0;
-			*indexIterator++ = i * 4 + 0;
+			copy1(indexPtr, indexStride, uint16(i * 4 + 0));
+			copy1(indexPtr, indexStride, uint16(i * 4 + 0));
+			copy1(indexPtr, indexStride, uint16(i * 4 + 0));
+			copy1(indexPtr, indexStride, uint16(i * 4 + 0));
+			copy1(indexPtr, indexStride, uint16(i * 4 + 0));
+			copy1(indexPtr, indexStride, uint16(i * 4 + 0));
 		}
 
 		//TODO:Make this less ugly... these variables should get set when changing things with the iterator or something
@@ -343,7 +359,9 @@ namespace RN
 	{
 		SceneNode::Update(delta);
 
+		UpdateLifespans(delta);
 		UpdateParticles(delta);
+		SpawnParticles(delta);
 
 		if(!_isSorted)
 			UpdateMesh();
@@ -365,7 +383,7 @@ namespace RN
 	{
 		SceneNode::Render(renderer, camera);
 
-		if(!_material || _particles.empty())
+		if(!_material || GetNumParticles() == 0)
 			return;
 
 		if(_isSorted)
@@ -424,43 +442,92 @@ namespace RN
 	{
 	}
 
-	RN::Particle *GenericParticleEmitter::CreateParticle()
+	void GenericParticleEmitter::RemoveParticles(const std::vector<size_t>& indices)
 	{
-		GenericParticle *particle = new GenericParticle();
-		particle->position = _rng->GetRandomVector3Range(_positionRandomizeMin, _positionRandomizeMax);
+		ParticleEmitter::RemoveParticles(indices);
+		RemoveParticlesImpl(indices, _genericParticles);
+	}
 
-		float lifespan = _rng->GetRandomFloatRange(_lifeSpan.x, _lifeSpan.y);
-		particle->lifespan = lifespan;
+	void GenericParticleEmitter::UpdateParticles(float delta)
+	{
+		auto lerp = [](auto a, auto b, float t) {
+			return a + (b - a) * t;
+		};
 
-		particle->acceleration = _gravity + _rng->GetRandomVector3Range(_accelerationRandomizeMin, _accelerationRandomizeMax);
-		particle->velocity = _velocity + _rng->GetRandomVector3Range(_velocityRandomizeMin, _velocityRandomizeMax);
+		ParticleEmitter::UpdateParticles(delta);
 
-		float sizeScale = 1.0f;
-		if(!GetIsLocal())
+		const size_t numParticles = GetNumParticles();
+		const float *lifespans = GetLifespans();
+		ParticleData *particles = GetParticleData();
+
+		for(size_t i = 0; i < numParticles; i++)
 		{
-			Vector3 scale = GetWorldScale();
-			sizeScale = std::max(std::max(scale.x, scale.y), scale.z);
+			GenericParticleData &genericData = _genericParticles[i];
 
-			particle->position *= scale;
-			particle->position += GetWorldPosition();
-			particle->acceleration *= scale;
-			particle->velocity *= scale;
+			const float t = 1.0f - lifespans[i] * genericData.invStartLifespan;
+
+			particles[i].rotation = lerp(genericData.startRotation, genericData.endRotation, t);
+			particles[i].size = Vector2(lerp(genericData.startSize, genericData.endSize, t));
+			particles[i].color = lerp(_startColor, _endColor, t);
+
+			genericData.velocity += genericData.acceleration * delta;
+			particles[i].position += genericData.velocity * delta;
+		}
+	}
+
+	void GenericParticleEmitter::CreateParticles(size_t numParticlesToCreate)
+	{
+		const size_t prevNumParticles = GetNumParticles();
+
+		ParticleEmitter::CreateParticles(numParticlesToCreate);
+
+		const size_t newNumParticles = GetNumParticles();
+		
+		_genericParticles.resize(newNumParticles);
+
+		float *lifespans = GetLifespans();
+		ParticleData *particles = GetParticleData();
+
+		for(size_t i = prevNumParticles; i < newNumParticles; i++)
+		{
+			ParticleData &particle = particles[i];
+			GenericParticleData &genericData = _genericParticles[i];
+
+			lifespans[i] = _rng->GetRandomFloatRange(_lifeSpan.x, _lifeSpan.y);
+
+			genericData.invStartLifespan = lifespans[i] > 0.0f ? 1.0f / lifespans[i] : 0.0f;
+
+			genericData.startSize = _rng->GetRandomFloatRange(_startSize.x, _startSize.y);
+			genericData.endSize = _rng->GetRandomFloatRange(_endSize.x, _endSize.y);
+
+			genericData.startRotation = _rng->GetRandomFloatRange(_startRotation.x, _startRotation.y);
+			genericData.endRotation = _rng->GetRandomFloatRange(_endRotation.x, _endRotation.y);
+
+			genericData.acceleration = _gravity + _rng->GetRandomVector3Range(_accelerationRandomizeMin, _accelerationRandomizeMax);
+			genericData.velocity = _velocity + _rng->GetRandomVector3Range(_velocityRandomizeMin, _velocityRandomizeMax);
+
+			particle.position = _rng->GetRandomVector3Range(_positionRandomizeMin, _positionRandomizeMax);
+			particle.rotation = genericData.startRotation;
+			particle.size = Vector2(genericData.startSize);
+			particle.color = _startColor;
 		}
 
-		particle->sizeInterpolator.SetStartValue(Vector2(_rng->GetRandomFloatRange(_startSize.x, _startSize.y)) * sizeScale);
-		particle->sizeInterpolator.SetEndValue(Vector2(_rng->GetRandomFloatRange(_endSize.x, _endSize.y)) * sizeScale);
-		particle->sizeInterpolator.SetDuration(lifespan);
+		if(!GetIsLocal())
+		{
+			const Vector3 scale = GetWorldScale();
+			const float sizeScale = std::max(std::max(scale.x, scale.y), scale.z);
 
-		particle->colorInterpolator.SetStartValue(_startColor);
-		particle->colorInterpolator.SetEndValue(_endColor);
-		particle->colorInterpolator.SetDuration(lifespan);
+			for(size_t i = prevNumParticles; i < newNumParticles; i++)
+			{
+				_genericParticles[i].acceleration *= scale;
+				_genericParticles[i].velocity *= scale;
+				_genericParticles[i].startSize *= sizeScale;
+				_genericParticles[i].endSize *= sizeScale;
 
-		particle->rotationInterpolator.SetStartValue(Math::DegreesToRadians(_rng->GetRandomFloatRange(_startRotation.x, _startRotation.y)));
-		particle->rotationInterpolator.SetEndValue(Math::DegreesToRadians(_rng->GetRandomFloatRange(_endRotation.x, _endRotation.y)));
-		particle->rotationInterpolator.SetDuration(lifespan);
-
-		particle->Update(0.0f);
-
-		return particle;
+				particles[i].position *= scale;
+				particles[i].position += GetWorldPosition();
+				particles[i].size *= sizeScale;
+			}
+		}
 	}
 } // namespace RN

@@ -15,11 +15,18 @@
 #include "../Rendering/RNMesh.h"
 #include "../Rendering/RNRenderer.h"
 #include "../Rendering/RNTexture.h"
-#include "RNParticle.h"
 #include "RNSceneNode.h"
 
 namespace RN
 {
+	struct ParticleData
+	{
+		Vector3 position;
+		float rotation;
+		Vector2 size;
+		Color color;
+	};
+
 	class ParticleEmitter : public SceneNode
 	{
 	public:
@@ -56,24 +63,48 @@ namespace RN
 
 		RNAPI RandomNumberGenerator *GetGenerator() const { return _rng; }
 
-		RNAPI void SpawnParticles(size_t particles);
-		RNAPI Particle *SpawnParticle();
-
 		RNAPI void Update(float delta) override;
 		RNAPI bool CanRender(Renderer *renderer, Camera *camera) const override;
 		RNAPI void Render(Renderer *renderer, Camera *camera) const override;
 
-		RNAPI size_t GetNumParticles() const { return _particles.size(); }
+		RNAPI size_t GetNumParticles() const { return _lifespans.size(); }
 
-	protected:
-		RNAPI virtual Particle *CreateParticle();
+	protected:		
+		RNAPI virtual void UpdateLifespans(float delta);
+		RNAPI virtual void RemoveParticles(const std::vector<size_t> &indices);
+
+		RNAPI virtual void UpdateParticles(float delta);
+
+		RNAPI virtual void SpawnParticles(float delta);
+		RNAPI virtual size_t GetNumParticlesToSpawn(float delta) const;
+
+		RNAPI virtual void CreateParticles(size_t numParticlesToCreate);
+
+		RNAPI float *GetLifespans() { return _lifespans.data(); }
+		RNAPI ParticleData *GetParticleData() { return _particles.data(); }
+
+		template<typename T>
+		static void RemoveParticlesImpl(const std::vector<size_t>& indices, std::vector<T>& vector)
+		{
+			const size_t numIndices = indices.size();
+			for(size_t j = numIndices; j > 0; j--)
+			{
+				const size_t i = indices[j - 1];
+				const size_t n = numIndices - j + 1;
+				vector[i] = std::move(*(vector.end() - n));
+			}
+			vector.resize(vector.size() - numIndices);
+		}
+
 		RandomNumberGenerator *_rng;
 
 	private:
-		void UpdateParticles(float delta);
 		void UpdateMesh() const;
 
-		std::vector<Particle *> _particles;
+		std::vector<float> _lifespans;
+		std::vector<ParticleData> _particles;
+
+		std::vector<size_t> _particlesToRemove;
 
 		Drawable *_drawable;
 		Material *_material;
@@ -93,13 +124,26 @@ namespace RN
 		__RNDeclareMetaInternal(ParticleEmitter)
 	};
 
+	struct GenericParticleData
+	{
+		float invStartLifespan;
+
+		float startSize;
+		float endSize;
+
+		float startRotation;
+		float endRotation;
+
+		Vector3 acceleration;
+		Vector3 velocity;
+	};
 
 	class GenericParticleEmitter : public ParticleEmitter
 	{
 	public:
 		RNAPI GenericParticleEmitter();
 		RNAPI GenericParticleEmitter(const GenericParticleEmitter *emitter);
-
+		
 		Vector2 GetLifeSpan() const { return _lifeSpan; }
 		void SetLifeSpan(const Vector2 &lifeSpan) { _lifeSpan = lifeSpan; }
 		Color GetStartColor() const { return _startColor; }
@@ -131,9 +175,16 @@ namespace RN
 		Vector3 GetAccelerationRandomizeMax() const { return _accelerationRandomizeMax; }
 		void SetAccelerationRandomizeMax(const Vector3 &accelerationRandomizeMax) { _accelerationRandomizeMax = accelerationRandomizeMax; }
 
-	private:
-		Particle *CreateParticle() override;
+	protected:
+		RNAPI void RemoveParticles(const std::vector<size_t> &indices) override;
+		RNAPI void UpdateParticles(float delta) override;
+		RNAPI void CreateParticles(size_t numParticlesToCreate) override;
 
+		GenericParticleData *GetGenericParticles() { return _genericParticles.data(); }
+
+	private:
+		std::vector<GenericParticleData> _genericParticles;
+		
 		Vector2 _lifeSpan;
 		Color _startColor;
 		Color _endColor;
