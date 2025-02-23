@@ -684,6 +684,8 @@ namespace RN
 			case PrimitiveType::Color:
 				return 16;
 		}
+		
+		return 1;
 	}
 
 	size_t MetalRenderer::GetSizeForType(PrimitiveType type) const
@@ -724,6 +726,8 @@ namespace RN
 			case PrimitiveType::Matrix4x4:
 				return 64;
 		}
+		
+		return 1;
 	}
 
 	Texture *MetalRenderer::CreateTextureWithDescriptor(const Texture::Descriptor &descriptor)

@@ -232,6 +232,8 @@ namespace RN
 			case Format::Invalid:
 				return MTLPixelFormatInvalid;
 		}
+		
+		return MTLPixelFormatRGBA8Unorm_sRGB;
 	}
 	
 	MTLTextureDescriptor *MetalTexture::DescriptorForTextureDescriptor(const Descriptor &descriptor, bool isIOSurfaceBacked)
