@@ -26,6 +26,7 @@ namespace RN
 			UIAPI void SetAttributedText(AttributedString *text);
 
 			UIAPI void SetDefaultAttributes(const TextAttributes &attributes);
+			UIAPI TextAttributes GetDefaultAttributes() const { return _defaultAttributes; }
 			UIAPI void SetTextColor(const Color &color);
 			UIAPI void SetVerticalAlignment(TextVerticalAlignment alignment);
 
