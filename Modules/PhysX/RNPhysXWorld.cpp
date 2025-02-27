@@ -377,7 +377,7 @@ namespace RN
 			for(size_t i = 0; i < compoundShape->GetNumberOfShapes(); i++)
 			{
 				PhysXShape *tempShape = compoundShape->GetShape(i);
-				if(_scene->sweep(tempShape->GetPhysXShape()->getGeometry().any(), pose, physx::PxVec3(0.0f, 1.0f, 0.0f), 0.0f, callback, physx::PxHitFlags(physx::PxHitFlag::eDEFAULT), physx::PxQueryFilterData(filterData, physx::PxQueryFlag::eDYNAMIC | physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::eNO_BLOCK | physx::PxQueryFlag::ePREFILTER), 0, 0, inflation))
+				if(_scene->sweep(tempShape->GetPhysXShape()->getGeometry().any(), pose, physx::PxVec3(0.0f, 1.0f, 0.0f), 0.0f, callback, physx::PxHitFlags(physx::PxHitFlag::eDEFAULT), physx::PxQueryFilterData(filterData, physx::PxQueryFlag::eDYNAMIC | physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::eNO_BLOCK | physx::PxQueryFlag::ePREFILTER), &queryFilter, 0, inflation))
 				{
 					for(uint32 i = 0; i < callback.nbTouches; i++)
 					{

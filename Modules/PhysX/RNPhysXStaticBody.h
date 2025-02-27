@@ -32,6 +32,7 @@ namespace RN
 		PXAPI void SetCollisionFilter(uint32 group, uint32 mask) override;
 
 		PXAPI physx::PxRigidStatic *GetPhysXActor() const { return _actor; }
+		PXAPI PhysXShape *GetShape() const { return _shape; }
 
 	protected:
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
