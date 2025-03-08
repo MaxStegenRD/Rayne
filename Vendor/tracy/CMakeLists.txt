@@ -1,5 +1,7 @@
 option(TRACY_ENABLE "" OFF)
 
+include(FetchContent)
+
 FetchContent_Declare(
 	tracy
 	GIT_REPOSITORY https://github.com/wolfpld/tracy.git
