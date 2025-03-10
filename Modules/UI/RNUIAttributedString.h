@@ -49,6 +49,8 @@ namespace RN
 			UIAPI TextAttributes(const TextAttributes &attributes) :
 				_font(attributes._font->Retain()), _color(attributes._color), _alignment(attributes._alignment), _wrapMode(attributes._wrapMode), _fontSize(attributes._fontSize), _kerning(attributes._kerning), _range(attributes._range) {}
 			UIAPI ~TextAttributes() { _font->Release(); }
+			
+			UIAPI TextAttributes &operator=(const TextAttributes &rhs);
 
 			UIAPI void SetFont(Font *font);
 			UIAPI void SetFontSize(float size);

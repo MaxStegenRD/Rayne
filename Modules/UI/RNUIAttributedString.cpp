@@ -13,6 +13,19 @@ namespace RN
 	namespace UI
 	{
 		RNDefineMeta(AttributedString, String)
+	
+		TextAttributes &TextAttributes::operator=(const TextAttributes &rhs)
+		{
+			SafeRelease(_font);
+			_font = SafeRetain(rhs._font);
+			_color = rhs._color;
+			_alignment = rhs._alignment;
+			_wrapMode = rhs._wrapMode;
+			_fontSize = rhs._fontSize;
+			_kerning = rhs._kerning;
+			_range = rhs._range;
+			return *this;
+		}
 
 		void TextAttributes::SetFont(Font *font)
 		{
