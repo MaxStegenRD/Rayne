@@ -390,6 +390,58 @@ namespace RN
 		}
 		else
 		{
+#if RN_BUILD_DEBUG && RN_PLATFORM_WINDOWS
+			if(Kernel::GetSharedInstance()->GetArguments().HasArgumentAndValue("eos_dev_user", '\0'))
+			{
+				const ArgumentParser::Argument EOSDevUser = Kernel::GetSharedInstance()->GetArguments().ParseArgument("eos_dev_user", '\0');
+				RNDebug("Logging in EOS Dev user " << EOSDevUser.GetValue());
+
+				EOS_Auth_Credentials credentials = {0};
+				credentials.ApiVersion = EOS_AUTH_CREDENTIALS_API_LATEST;
+				credentials.Type = EOS_ELoginCredentialType::EOS_LCT_Developer;
+				credentials.Id = "localhost:4567";
+				credentials.Token = EOSDevUser.GetValue()->GetUTF8String();
+
+				EOS_Auth_LoginOptions loginOptions = {0};
+				loginOptions.ApiVersion = EOS_AUTH_LOGIN_API_LATEST;
+				loginOptions.Credentials = &credentials;
+
+				EOS_Auth_Login(EOS_Platform_GetAuthInterface(_platformHandle), &loginOptions, this, [](const EOS_Auth_LoginCallbackInfo *Data) {
+					EOSWorld *eosWorld = static_cast<EOSWorld *>(Data->ClientData);
+
+					RNDebug("EOS_Auth_Login returned " << static_cast<int>(Data->ResultCode));
+
+					EOS_Auth_CopyIdTokenOptions tokenOptions = {0};
+					tokenOptions.ApiVersion = EOS_AUTH_COPYIDTOKEN_API_LATEST;
+					tokenOptions.AccountId = Data->SelectedAccountId;
+
+					EOS_Auth_IdToken* token = nullptr;
+					EOS_Auth_CopyIdToken(EOS_Platform_GetAuthInterface(eosWorld->GetPlatformHandle()), &tokenOptions, &token);
+				
+					EOS_Connect_Credentials connectCredentials = {0};
+					connectCredentials.ApiVersion = EOS_CONNECT_CREDENTIALS_API_LATEST;
+					connectCredentials.Type = EOS_EExternalCredentialType::EOS_ECT_EPIC_ID_TOKEN;
+					connectCredentials.Token = token->JsonWebToken;
+
+					EOS_Connect_UserLoginInfo userInfo = {0};
+					userInfo.ApiVersion = EOS_CONNECT_USERLOGININFO_API_LATEST;
+					userInfo.NsaIdToken = nullptr;
+
+					EOS_Connect_LoginOptions connectOptions = {0};
+					connectOptions.ApiVersion = EOS_CONNECT_LOGIN_API_LATEST;
+					connectOptions.Credentials = &connectCredentials;
+					connectOptions.UserLoginInfo = &userInfo;
+
+					RNDebug("Now logging in");
+					EOS_Connect_Login(EOS_Platform_GetConnectInterface(eosWorld->GetPlatformHandle()), &connectOptions, eosWorld, ConnectOnLoginCallback);
+
+					EOS_Auth_IdToken_Release(token);
+				});
+
+				return;
+			}
+#endif
+
 			loginCallback(nullptr, nullptr, EOSAuthServiceTypeNone);
 		}
 	}
@@ -422,6 +474,16 @@ namespace RN
 			RNDebug("Succesfully created user");
 
 			EOSWorld *eosWorld = static_cast<EOSWorld *>(Data->ClientData);
+
+#if RN_BUILD_DEBUG && RN_PLATFORM_WINDOWS
+			if(Kernel::GetSharedInstance()->GetArguments().HasArgumentAndValue("eos_dev_user", '\0'))
+			{
+				eosWorld->_loginState = LoginStateIsLoggedIn;
+				eosWorld->_loggedInUserID = Data->LocalUserId;
+				return;
+			}
+#endif
+
 			eosWorld->_loginState = LoginStateIsLoggingInNoUser;
 			eosWorld->LoginUser();
 		}
@@ -444,6 +506,18 @@ namespace RN
 		else if(Data->ResultCode == EOS_EResult::EOS_InvalidUser)
 		{
 			RNDebug("Failed login, invalid user, trying to create a new one");
+#if RN_BUILD_DEBUG && RN_PLATFORM_WINDOWS
+			if(Kernel::GetSharedInstance()->GetArguments().HasArgumentAndValue("eos_dev_user", '\0'))
+			{
+				EOS_Connect_CreateUserOptions createUserOptions = {0};
+				createUserOptions.ApiVersion = EOS_CONNECT_CREATEUSER_API_LATEST;
+				createUserOptions.ContinuanceToken = Data->ContinuanceToken;
+				EOS_Connect_CreateUser(eosWorld->_connectInterfaceHandle, &createUserOptions, eosWorld, ConnectOnCreateUserCallback);
+
+				return;
+			}
+#endif
+
 #if RN_PLATFORM_ANDROID
 			EOS_Connect_CreateUserOptions createUserOptions = {0};
 			createUserOptions.ApiVersion = EOS_CONNECT_CREATEUSER_API_LATEST;
