@@ -35,6 +35,8 @@ namespace RN
 			UIAPI float GetLineOffset();
 			UIAPI Texture *GetFontTexture();
 			UIAPI bool IsSDFFont();
+			
+			bool IsValid() const { return _fontInfo != nullptr || _fontTexture != nullptr; }
 
 		private:
 			Font(String *filepath, bool preloadASCII = true);
