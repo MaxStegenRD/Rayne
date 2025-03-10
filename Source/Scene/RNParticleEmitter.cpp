@@ -514,19 +514,28 @@ namespace RN
 
 		if(!GetIsLocal())
 		{
-			const Vector3 scale = GetWorldScale();
-			const float sizeScale = std::max(std::max(scale.x, scale.y), scale.z);
-
+			const Quaternion rotation = GetWorldRotation();
 			for(size_t i = prevNumParticles; i < newNumParticles; i++)
 			{
-				_genericParticles[i].acceleration *= scale;
-				_genericParticles[i].velocity *= scale;
-				_genericParticles[i].startSize *= sizeScale;
-				_genericParticles[i].endSize *= sizeScale;
-
-				particles[i].position *= scale;
-				particles[i].position += GetWorldPosition();
-				particles[i].size *= sizeScale;
+				_genericParticles[i].acceleration = rotation.GetRotatedVector(_genericParticles[i].acceleration);
+				_genericParticles[i].velocity = rotation.GetRotatedVector(_genericParticles[i].velocity);
+			}
+			
+			if(!GetIgnoreScale())
+			{
+				const Vector3 scale = GetWorldScale();
+				const float sizeScale = std::max(std::max(scale.x, scale.y), scale.z);
+				
+				for(size_t i = prevNumParticles; i < newNumParticles; i++)
+				{
+					_genericParticles[i].acceleration *= scale;
+					_genericParticles[i].velocity *= scale;
+					_genericParticles[i].startSize *= sizeScale;
+					_genericParticles[i].endSize *= sizeScale;
+					
+					particles[i].position *= scale;
+					particles[i].position += GetWorldPosition();
+				}
 			}
 		}
 	}
