@@ -216,6 +216,11 @@ namespace RN
 
 	void ParticleEmitter::UpdateMesh() const
 	{
+		if(HasFlags(Flags::Hidden) || GetNumParticles() == 0)
+		{
+			return;
+		}
+		
 		_mesh->BeginChanges();
 		Mesh::Chunk chunk = _mesh->GetChunk();
 
@@ -373,6 +378,9 @@ namespace RN
 			return false;
 
 		if(HasFlags(Flags::Hidden))
+			return false;
+		
+		if(GetNumParticles() == 0)
 			return false;
 
 		//TODO: Add occlusion culling or something
