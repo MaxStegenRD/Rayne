@@ -94,13 +94,17 @@ namespace RN
 	}
 #endif
 
-	VulkanWindow::VulkanWindow(const Vector2 &size, Screen *screen, VulkanRenderer *renderer, const Window::SwapChainDescriptor &descriptor) :
+	VulkanWindow::VulkanWindow(const Vector2 &size, Screen *screen, VulkanRenderer *renderer, const Window::SwapChainDescriptor &descriptor, void *hwnd) :
 		Window(screen),
 		_renderer(renderer),
 		_swapChain(nullptr),
 		_keyPressedAlt(false),
 		_keyPressedReturn(false)
 	{
+#if !RN_PLATFORM_ANDROID
+		RN_DEBUG_ASSERT(!hwnd, "hwnd parameter will be ignored on all platforms but android!");
+#endif
+
 #if RN_PLATFORM_WINDOWS
 		HINSTANCE hInstance = ::GetModuleHandle(nullptr);
 
@@ -205,7 +209,7 @@ namespace RN
         _swapChain = new VulkanSwapChain(actualSize, _window, renderer, descriptor);
 #endif
 #if RN_PLATFORM_ANDROID
-		_window = Kernel::GetSharedInstance()->GetAndroidApp()->window;
+		_window = hwnd? static_cast<ANativeWindow*>(hwnd) : Kernel::GetSharedInstance()->GetAndroidApp()->window;
 
 		// Create the swap chain
         _swapChain = new VulkanSwapChain(GetSize(), _window, renderer, descriptor);

@@ -197,9 +197,9 @@ namespace RN
 		_lock.Unlock();
 	}
 
-	Window *VulkanRenderer::CreateAWindow(const Vector2 &size, Screen *screen, const Window::SwapChainDescriptor &descriptor)
+	Window *VulkanRenderer::CreateAWindow(const Vector2 &size, Screen *screen, const Window::SwapChainDescriptor &descriptor, void *hwnd)
 	{
-		VulkanWindow *window = new VulkanWindow(size, screen, this, descriptor);
+		VulkanWindow *window = new VulkanWindow(size, screen, this, descriptor, hwnd);
 
 		if(!_mainWindow)
 			_mainWindow = window->Retain();

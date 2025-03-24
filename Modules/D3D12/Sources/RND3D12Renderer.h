@@ -39,7 +39,7 @@ namespace RN
 		D3DAPI D3D12Renderer(D3D12RendererDescriptor *descriptor, D3D12Device *device);
 		D3DAPI ~D3D12Renderer();
 
-		D3DAPI Window *CreateAWindow(const Vector2 &size, Screen *screen, const Window::SwapChainDescriptor &descriptor = Window::SwapChainDescriptor()) final;
+		D3DAPI Window *CreateAWindow(const Vector2 &size, Screen *screen, const Window::SwapChainDescriptor &descriptor = Window::SwapChainDescriptor(), void *hwnd = nullptr) final;
 		D3DAPI void SetMainWindow(Window *window) final;
 		D3DAPI Window *GetMainWindow() final;
 

@@ -56,7 +56,7 @@ namespace RN
 		VKAPI bool GetFullscreen() const;
 
 	private:
-		VulkanWindow(const Vector2 &size, Screen *screen, VulkanRenderer *renderer, const Window::SwapChainDescriptor &descriptor);
+		VulkanWindow(const Vector2 &size, Screen *screen, VulkanRenderer *renderer, const Window::SwapChainDescriptor &descriptor, void *hwnd);
 
 		VulkanSwapChain *_swapChain;
 		VulkanRenderer *_renderer;

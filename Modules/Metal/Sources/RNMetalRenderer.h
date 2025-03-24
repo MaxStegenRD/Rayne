@@ -36,7 +36,7 @@ namespace RN
 		MTLAPI MetalRenderer(MetalRendererDescriptor *descriptor, MetalDevice *device);
 		MTLAPI ~MetalRenderer();
 
-		MTLAPI Window *CreateAWindow(const Vector2 &size, Screen *screen, const Window::SwapChainDescriptor &descriptor = Window::SwapChainDescriptor()) final;
+		MTLAPI Window *CreateAWindow(const Vector2 &size, Screen *screen, const Window::SwapChainDescriptor &descriptor = Window::SwapChainDescriptor(), void *hwnd = nullptr) final;
 		MTLAPI Window *GetMainWindow() final;
 		MTLAPI void SetMainWindow(Window *window) final;
 

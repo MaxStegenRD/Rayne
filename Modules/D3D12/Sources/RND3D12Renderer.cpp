@@ -124,7 +124,7 @@ namespace RN
 		}
 	}
 
-	Window *D3D12Renderer::CreateAWindow(const Vector2 &size, Screen *screen, const Window::SwapChainDescriptor &descriptor)
+	Window *D3D12Renderer::CreateAWindow(const Vector2 &size, Screen *screen, const Window::SwapChainDescriptor &descriptor, void *hwnd)
 	{
 		D3D12Window *window = new D3D12Window(size, screen, this, descriptor);
 

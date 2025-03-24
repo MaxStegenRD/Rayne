@@ -54,7 +54,7 @@ namespace RN
 	}
 
 
-	Window *MetalRenderer::CreateAWindow(const Vector2 &size, Screen *screen, const Window::SwapChainDescriptor &descriptor)
+	Window *MetalRenderer::CreateAWindow(const Vector2 &size, Screen *screen, const Window::SwapChainDescriptor &descriptor, void *hwnd)
 	{
 		ZoneScoped;
 		MetalWindow *window = new MetalWindow(size, screen, this, descriptor);
