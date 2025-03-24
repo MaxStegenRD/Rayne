@@ -87,10 +87,14 @@ namespace RN
 		_dynamicBufferPool = new VulkanDynamicBufferPool();
 
 		_internals->descriptorPool.Init(this);
+
+		_internals->stateCoordinator.LoadPipelineCache(Kernel::GetSharedInstance()->GetApplication()->GetBuildNumber(), device, GetAllocatorCallback());
 	}
 
 	VulkanRenderer::~VulkanRenderer()
 	{
+		_internals->stateCoordinator.DestroyPipelineCache(GetVulkanDevice(), GetAllocatorCallback());
+
 		_mipMapTextures->Release();
 		//delete _dynamicBufferPool; //TODO: Should probably be deleted, but currently this just crashes.
 		vmaDestroyAllocator(_internals->memoryAllocator);
@@ -295,6 +299,9 @@ namespace RN
 	void VulkanRenderer::Render(Function &&function)
 	{
 		ZoneScoped;
+
+		_internals->stateCoordinator.SavePipelineCache(Kernel::GetSharedInstance()->GetApplication()->GetBuildNumber(), GetVulkanDevice()); //This won't do anything if no new pipelines were loaded
+
 		_currentDrawableIndex = 0;
 		_internals->renderPasses.clear();
 		_internals->totalDrawableCount = 0;

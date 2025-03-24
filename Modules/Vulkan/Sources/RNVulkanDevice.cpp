@@ -91,11 +91,26 @@ namespace RN
 		}
 
 		vk::GetPhysicalDeviceMemoryProperties(device, &_memoryProperties);
+
+		VkPhysicalDeviceProperties properties;
+		vk::GetPhysicalDeviceProperties(device, &properties);
+		for(int i = 0; i < VK_UUID_SIZE; i++)
+		{
+			pipelineCacheUUID[i] = properties.pipelineCacheUUID[i];
+		}
 	}
 
 	VulkanDevice::~VulkanDevice()
 	{
 		SafeRelease(_deviceExtensions);
+	}
+
+	void VulkanDevice::GetPipelineCacheUUID(uint8 *uuid)
+	{
+		for(int i = 0; i < VK_UUID_SIZE; i++)
+		{
+			uuid[i] = pipelineCacheUUID[i];
+		}
 	}
 
 	void VulkanDevice::GetQueueProperties(std::vector<VkQueueFamilyProperties> &queues)

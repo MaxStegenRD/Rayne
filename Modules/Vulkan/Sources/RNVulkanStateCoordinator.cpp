@@ -12,6 +12,7 @@
 #include "RNVulkanFramebuffer.h"
 #include "RNVulkanWindow.h"
 #include "RNVulkanDynamicGPUBuffer.h"
+#include "RNVulkanInternals.h"
 
 namespace RN
 {
@@ -98,14 +99,142 @@ namespace RN
 	}
 
 	VulkanStateCoordinator::VulkanStateCoordinator() :
-		_lastDepthStencilState(nullptr)
-	{}
+		_lastDepthStencilState(nullptr), _pipelineCache(VK_NULL_HANDLE), _pipelineCacheNeedsSaving(false)
+	{
+
+	}
 
 	VulkanStateCoordinator::~VulkanStateCoordinator()
 	{
 		//TODO: Clean up correctly...
 		for(VulkanPipelineStateCollection *collection : _renderingStates)
 			delete collection;
+	}
+
+	void VulkanStateCoordinator::LoadPipelineCache(uint64 buildNumber, VulkanDevice *device, VkAllocationCallbacks *allocatorCallbacks)
+	{
+		if(_pipelineCache != VK_NULL_HANDLE) return;
+
+		RN::String *cachePath = FileManager::GetSharedInstance()->GetPathForLocation(RN::FileManager::Location::InternalSaveDirectory);
+		cachePath = cachePath->StringByAppendingString(RNCSTR("/cache/"));
+
+		size_t dataSize = 0;
+		uint8 *data = nullptr;
+		try
+		{
+			File *cacheFile = File::WithName(RNSTR(cachePath << "shaders.blob"), File::Mode::Read);
+			dataSize = cacheFile->GetSize();
+
+			if(dataSize > sizeof(VulkanPipelineCachePrefixHeader))
+			{
+				VulkanPipelineCachePrefixHeader prefixHeader = {};
+				cacheFile->Read(&prefixHeader, sizeof(VulkanPipelineCachePrefixHeader));
+
+				bool isValid = true;
+				uint8 uuid[VK_UUID_SIZE];
+				device->GetPipelineCacheUUID(uuid);
+				if(prefixHeader.magic != 8372610) isValid = false;
+				if(prefixHeader.dataSize != dataSize - sizeof(VulkanPipelineCachePrefixHeader)) isValid = false;
+				if(prefixHeader.buildNumber != buildNumber) isValid = false;
+				if(prefixHeader.vendorID != device->GetVendorID()) isValid = false;
+				if(prefixHeader.deviceID != device->GetDeviceID()) isValid = false;
+				if(prefixHeader.driverVersion != device->GetDriverVersion()) isValid = false;
+				if(prefixHeader.driverABI != sizeof(void*)) isValid = false;
+				for(int i = 0; i < VK_UUID_SIZE; i++)
+				{
+					if(prefixHeader.uuid[i] != uuid[i]) isValid = false;
+				}
+
+				if(isValid)
+				{
+					dataSize = prefixHeader.dataSize;
+					data = new uint8[dataSize];
+					cacheFile->Read(data, dataSize);
+
+					uint64 simpleHash = 0;
+					for(int i = 0; i < dataSize; i++)
+					{
+						simpleHash += data[i];
+					}
+					if(prefixHeader.dataHash != simpleHash) isValid = false;
+					else RNInfo("Loading pipeline cache with size: " << dataSize);
+				}
+
+				if(!isValid)
+				{
+					dataSize = 0;
+					RNInfo("Creating new pipeline cache");
+				}
+			}
+		}
+		catch(RN::FileNotFoundException exception)
+		{
+
+		}
+
+		VkPipelineCacheCreateInfo createInfo = {};
+		createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+		createInfo.pNext = nullptr;
+		createInfo.flags = 0;
+		createInfo.initialDataSize = dataSize;
+		createInfo.pInitialData = data;
+
+		RNVulkanValidate(vk::CreatePipelineCache(device->GetDevice(), &createInfo, allocatorCallbacks, &_pipelineCache));
+
+		delete[] data;
+	}
+
+	void VulkanStateCoordinator::SavePipelineCache(uint64 buildNumber, VulkanDevice *device)
+	{
+		if(_pipelineCache == VK_NULL_HANDLE || !_pipelineCacheNeedsSaving) return;
+
+		size_t dataSize = 0;
+		RNVulkanValidate(vk::GetPipelineCacheData(device->GetDevice(), _pipelineCache, &dataSize, nullptr));
+
+		uint8 *data = new uint8[dataSize];
+		RNVulkanValidate(vk::GetPipelineCacheData(device->GetDevice(), _pipelineCache, &dataSize, data));
+
+		uint64 simpleHash = 0;
+		for(int i = 0; i < dataSize; i++)
+		{
+			simpleHash += data[i];
+		}
+
+		VulkanPipelineCachePrefixHeader prefixHeader = {};
+		prefixHeader.magic = 8372610;
+		prefixHeader.dataSize = dataSize;
+		prefixHeader.dataHash = simpleHash;
+		prefixHeader.buildNumber = buildNumber;
+		prefixHeader.vendorID = device->GetVendorID();
+		prefixHeader.deviceID = device->GetDeviceID();
+		prefixHeader.driverVersion = device->GetDriverVersion();
+		prefixHeader.driverABI = sizeof(void*);
+		device->GetPipelineCacheUUID(prefixHeader.uuid);
+
+		RN::String *cachePath = FileManager::GetSharedInstance()->GetPathForLocation(RN::FileManager::Location::InternalSaveDirectory);
+		cachePath = cachePath->StringByAppendingString(RNCSTR("/cache/"));
+
+		if(!FileManager::GetSharedInstance()->PathExists(cachePath))
+		{
+			FileManager::GetSharedInstance()->CreateDirectory(cachePath);
+		}
+
+		File *cacheFile = File::WithName(RNSTR(cachePath << "shaders.new.blob"), File::Mode::Write);
+		cacheFile->Write(&prefixHeader, sizeof(VulkanPipelineCachePrefixHeader));
+		cacheFile->Write(data, dataSize);
+
+		delete[] data;
+
+		FileManager::GetSharedInstance()->RenameFile(RNSTR(cachePath << "shaders.new.blob"), RNSTR(cachePath << "shaders.blob"));
+		_pipelineCacheNeedsSaving = false;
+	}
+
+	void VulkanStateCoordinator::DestroyPipelineCache(VulkanDevice *device, VkAllocationCallbacks *allocatorCallbacks)
+	{
+		if(_pipelineCache == VK_NULL_HANDLE) return;
+
+		vk::DestroyPipelineCache(device->GetDevice(), _pipelineCache, allocatorCallbacks);
+		_pipelineCache = VK_NULL_HANDLE;
 	}
 
 	const VulkanRootSignature *VulkanStateCoordinator::GetRootSignature(const VulkanPipelineStateDescriptor &descriptor)
@@ -665,8 +794,8 @@ namespace RN
 		pipelineCreateInfo.pStages = shaderStages.data();
 
 		VkPipeline pipeline;
-		//TODO: Use pipeline cache for creating related pipelines! (second parameter)
-		RNVulkanValidate(vk::CreateGraphicsPipelines(device->GetDevice(),  VK_NULL_HANDLE, 1, &pipelineCreateInfo, renderer->GetAllocatorCallback(), &pipeline));
+		RNVulkanValidate(vk::CreateGraphicsPipelines(device->GetDevice(), _pipelineCache, 1, &pipelineCreateInfo, renderer->GetAllocatorCallback(), &pipeline));
+		_pipelineCacheNeedsSaving = true;
 
 		// Create the rendering state
 		VulkanPipelineState *state = new VulkanPipelineState();

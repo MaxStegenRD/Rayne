@@ -18,6 +18,7 @@ namespace RN
 	class VulkanFramebuffer;
 	class VulkanDynamicBufferReference;
 	class VulkanShader;
+	class VulkanDevice;
 
 	struct VulkanUniformState
 	{
@@ -172,6 +173,10 @@ namespace RN
 		VulkanUniformState *GetUniformStateForPipelineState(const VulkanPipelineState *pipelineState);
 		VulkanRenderPassState *GetRenderPassState(const VulkanFramebuffer *framebuffer, const VulkanFramebuffer *resolveFramebuffer, RenderPass::Flags flags, uint8 multiviewCount);
 
+		void LoadPipelineCache(uint64 buildNumber, VulkanDevice *device, VkAllocationCallbacks *allocatorCallbacks);
+		void SavePipelineCache(uint64 buildNumber, VulkanDevice *device);
+		void DestroyPipelineCache(VulkanDevice *device, VkAllocationCallbacks *allocatorCallbacks);
+
 	private:
 		std::vector<VkVertexInputAttributeDescription> CreateVertexElementDescriptorsFromMesh(Mesh *mesh, VulkanShader *vertexShader, bool &vertexPositionsOnly);
 		const VulkanPipelineState *GetRenderPipelineStateInCollection(VulkanPipelineStateCollection *collection, Mesh *mesh, const VulkanPipelineStateDescriptor &pipelineDescriptor);
@@ -182,6 +187,9 @@ namespace RN
 		std::vector<VulkanRenderPassState*> _renderPassStates;
 		std::vector<VulkanPipelineStateCollection *> _renderingStates;
 		std::vector<VulkanRootSignature *> _rootSignatures;
+
+		VkPipelineCache _pipelineCache;
+		bool _pipelineCacheNeedsSaving;
 	};
 }
 

@@ -33,6 +33,8 @@ namespace RN
 		VkPhysicalDevice GetPhysicalDevice() const { return _physicalDevice; }
 		VulkanInstance *GetInstance() const { return _instance; }
 
+		void GetPipelineCacheUUID(uint8 *uuid);
+
 		uint32_t GetWorkQueue() const { return static_cast<uint32_t>(_workQueue); }
 
 		VKAPI VkBool32 GetMemoryWithType(uint32_t typeBits, VkFlags properties, uint32_t &typeIndex) const;
@@ -59,6 +61,7 @@ namespace RN
 		VulkanInstance *_instance;
 		VkPhysicalDevice _physicalDevice;
 		VkDevice _device;
+		uint8 pipelineCacheUUID[VK_UUID_SIZE];
 
 		size_t _workQueue;
 

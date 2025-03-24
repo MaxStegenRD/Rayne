@@ -392,6 +392,23 @@ namespace RN
 			std::vector<VkDescriptorSetLayout> _descriptorSetLayouts;
 			std::vector<size_t> _usedFrames;
 	};
+
+	//Based on https://zeux.io/2019/07/17/serializing-pipeline-cache/
+	struct VulkanPipelineCachePrefixHeader
+	{
+		uint32 magic; //Always 8372610
+		uint32 dataSize; //Equal to *pDataSize returned by vkGetPipelineCacheData
+		uint64 dataHash; //A hash of pipeline cache data, including the header
+
+		uint64 buildNumber;
+
+		uint32 vendorID; //Equal to VkPhysicalDeviceProperties::vendorID
+		uint32 deviceID; //Equal to VkPhysicalDeviceProperties::deviceID
+		uint32 driverVersion; //Equal to VkPhysicalDeviceProperties::driverVersion
+		uint32 driverABI; //Equal to sizeof(void*)
+
+		uint8 uuid[VK_UUID_SIZE]; //Equal to VkPhysicalDeviceProperties::pipelineCacheUUID
+	};
 }
 
 #endif /* __RAYNE_VULKANINTERNALS_H__ */
