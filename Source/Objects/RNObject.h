@@ -427,6 +427,7 @@ public:                                                         \
 		T *Load() const
 		{
 			T *object = _value;
+			if(!object) return object;
 
 			object->Retain();
 			object->Autorelease();
