@@ -28,6 +28,7 @@ namespace RN
 		RenderingDevice::Descriptor descriptor = { 0 };
 
 		descriptor.vendorID = dxgiDescriptor.VendorId;
+		descriptor.deviceID = 0;
 		descriptor.driverVersion = RNVersionMake(dxgiDescriptor.Revision, 0, 0);
 		descriptor.apiVersion = RNVersionMake(12, 0, 0);
 

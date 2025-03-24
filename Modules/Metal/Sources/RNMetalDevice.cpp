@@ -23,6 +23,7 @@ namespace RN
 
 		descriptor.type = Type::Discrete;
 		descriptor.vendorID = 0;
+		descriptor.deviceID = 0;
 		descriptor.driverVersion = 0;
 
 		if([[device name] localizedCaseInsensitiveContainsString:@"Intel"])

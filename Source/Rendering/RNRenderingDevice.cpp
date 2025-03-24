@@ -19,6 +19,7 @@ namespace RN
 		_apiVersion = descriptor.apiVersion;
 		_driverVersion = descriptor.driverVersion;
 		_vendorID = descriptor.vendorID;
+		_deviceID = descriptor.deviceID;
 		_type = descriptor.type;
 	}
 
@@ -30,7 +31,7 @@ namespace RN
 	bool RenderingDevice::IsEqual(const Object *other) const
 	{
 		const RenderingDevice *device = other->Downcast<RenderingDevice>();
-		return (device && _name->IsEqual(device->_name) && _apiVersion == device->_apiVersion && _driverVersion == device->_driverVersion && _vendorID == device->_vendorID && _type == device->_type);
+		return (device && _name->IsEqual(device->_name) && _apiVersion == device->_apiVersion && _driverVersion == device->_driverVersion && _vendorID == device->_vendorID && _type == device->_type && _deviceID == device->_deviceID);
 	}
 
 	const String *RenderingDevice::GetDescription() const

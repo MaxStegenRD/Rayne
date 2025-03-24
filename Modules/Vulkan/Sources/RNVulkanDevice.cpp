@@ -23,6 +23,7 @@ namespace RN
 		descriptor.apiVersion = RNVersionMake(VK_VERSION_MAJOR(properties.apiVersion), VK_VERSION_MINOR(properties.apiVersion), VK_VERSION_PATCH(properties.apiVersion));
 		descriptor.driverVersion = RNVersionMake(VK_VERSION_MAJOR(properties.driverVersion), VK_VERSION_MINOR(properties.driverVersion), VK_VERSION_PATCH(properties.driverVersion));
 		descriptor.vendorID = properties.vendorID;
+		descriptor.deviceID = properties.deviceID;
 
 		switch(properties.deviceType)
 		{

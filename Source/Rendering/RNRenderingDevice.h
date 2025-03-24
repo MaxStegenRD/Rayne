@@ -33,6 +33,7 @@ namespace RN
 			uint32 apiVersion;
 			uint32 driverVersion;
 			uint32 vendorID;
+			uint32 deviceID;
 			Type type;
 		};
 
@@ -46,6 +47,7 @@ namespace RN
 		uint32 GetAPIVersion() const { return _apiVersion; }
 		uint32 GetDriverVersion() const { return _driverVersion; }
 		uint32 GetVendorID() const { return _vendorID; }
+		uint32 GetDeviceID() const { return _deviceID; }
 		Type GetType() const { return _type; }
 
 		virtual void SetExtensions(Array *extensions) {}
@@ -59,6 +61,7 @@ namespace RN
 		uint32 _apiVersion;
 		uint32 _driverVersion;
 		uint32 _vendorID;
+		uint32 _deviceID;
 
 		Type _type;
 
