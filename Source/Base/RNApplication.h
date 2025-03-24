@@ -38,6 +38,8 @@ namespace RN
 		RNAPI virtual RendererDescriptor *GetPreferredRenderer() const;
 		RNAPI virtual RenderingDevice *GetPreferredRenderingDevice(RN::RendererDescriptor *descriptor, const Array *devices) const;
 
+		RNAPI virtual uint64 GetBuildNumber() const { return 0; }
+
 		RNAPI Array *GetLoggingEngines();
 
 		const String *GetTitle() const { return _title; }
