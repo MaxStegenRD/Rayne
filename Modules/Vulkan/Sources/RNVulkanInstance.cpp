@@ -154,7 +154,7 @@ namespace RN
 		VkApplicationInfo appInfo = {};
 		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 		appInfo.pApplicationName = Kernel::GetSharedInstance()->GetApplication()->GetTitle()->GetUTF8String();
-		appInfo.applicationVersion = 0;
+		appInfo.applicationVersion = Kernel::GetSharedInstance()->GetApplication()->GetBuildNumber();
 		appInfo.pEngineName = "Rayne";
 		appInfo.engineVersion = GetAPIVersion();
 		appInfo.apiVersion = VK_MAKE_VERSION(1, 1, 0);
