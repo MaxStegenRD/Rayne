@@ -2084,7 +2084,21 @@ namespace RN
 							}
 							else
 							{
-								VulkanTexture *materialTexture = drawable->material->GetTextures()->GetObjectAtIndex<VulkanTexture>(argument->GetMaterialTextureIndex());
+								Object *textureObject = drawable->material->GetTextures()->GetObjectAtIndex(argument->GetMaterialTextureIndex());
+
+								VulkanTexture *materialTexture = nullptr;
+								if(textureObject->IsKindOfClass(VulkanTexture::GetMetaClass()))
+								{
+									materialTexture = static_cast<VulkanTexture*>(textureObject);
+								}
+								else
+								{
+									VulkanFramebuffer *framebuffer = static_cast<VulkanFramebuffer*>(textureObject);
+									size_t textureIndex = 0;
+									if(framebuffer->GetSwapChain()) textureIndex = framebuffer->GetSwapChain()->GetFrameIndex();
+									materialTexture = framebuffer->GetColorTexture(textureIndex)->Downcast<VulkanTexture>();
+								}
+
 								imageView = materialTexture->_imageView;
 
                                 if(materialTexture->GetDescriptor().usageHint & Texture::UsageHint::RenderTarget)

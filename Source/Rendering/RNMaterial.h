@@ -69,6 +69,8 @@ namespace RN
 		FrontFace
 	};
 
+	class Framebuffer;
+
 	class Material : public Object
 	{
 		friend class Entity;
@@ -153,6 +155,7 @@ namespace RN
 		RNAPI static Material *WithMaterial(const Material *material);
 
 		RNAPI void SetTextures(const Array *textures);
+		RNAPI void AddTexture(Framebuffer *framebuffer);
 		RNAPI void AddTexture(Texture *texture);
 		RNAPI void RemoveAllTextures();
 

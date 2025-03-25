@@ -7,6 +7,7 @@
 //
 
 #include "RNMaterial.h"
+#include "RNFramebuffer.h"
 
 namespace RN
 {
@@ -164,6 +165,11 @@ namespace RN
 	{
 		SafeRelease(_textures);
 		_textures = textures->Copy();
+	}
+
+	void Material::AddTexture(Framebuffer *texture)
+	{
+		_textures->AddObject(texture);
 	}
 
 	void Material::AddTexture(Texture *texture)

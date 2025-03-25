@@ -1389,8 +1389,21 @@ namespace RN
 				uint8 materialTextureIndex = argument->GetMaterialTextureIndex();
 				if(materialTextureIndex < textures->GetCount())
 				{
-					MetalTexture *texture = textures->GetObjectAtIndex<MetalTexture>(materialTextureIndex);
-					[encoder setFragmentTexture:(id<MTLTexture>)texture->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
+					Object *textureObject = textures->GetObjectAtIndex(argument->GetMaterialTextureIndex());
+
+					id<MTLTexture> texture = nullptr;
+					if(textureObject->IsKindOfClass(MetalTexture::GetMetaClass()))
+					{
+						texture = (id<MTLTexture>)static_cast<MetalTexture*>(textureObject)->__GetUnderlyingTexture();
+					}
+					else
+					{
+						MetalFramebuffer *framebuffer = static_cast<MetalFramebuffer*>(textureObject);
+						if(framebuffer->GetSwapChain()) texture = framebuffer->GetSwapChain()->GetMetalColorTexture();
+						else texture = (id<MTLTexture>)framebuffer->GetColorTexture()->Downcast<MetalTexture>()->__GetUnderlyingTexture();
+					}
+					
+					[encoder setFragmentTexture:texture atIndex:argument->GetIndex()];
 				}
 				else
 				{
