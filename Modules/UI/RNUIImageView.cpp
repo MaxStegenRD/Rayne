@@ -15,14 +15,20 @@ namespace RN
 		RNDefineMeta(ImageView, View)
 
 		ImageView::ImageView() :
-			_image(nullptr), _color(Color::White())
+			_framebuffer(nullptr), _image(nullptr), _color(Color::White())
 		{
 		}
 
 		ImageView::ImageView(Texture *image) :
-			_image(nullptr), _color(Color::White())
+				_framebuffer(nullptr), _image(nullptr), _color(Color::White())
 		{
 			SetImage(image);
+		}
+
+		ImageView::ImageView(Framebuffer *framebuffer) :
+				_framebuffer(framebuffer->Retain()), _image(nullptr), _color(Color::White())
+		{
+
 		}
 
 		ImageView::~ImageView()
@@ -99,8 +105,9 @@ namespace RN
 
 				lodStage->AddMesh(lodStage->GetMeshAtIndex(0), material);
 
-				if(_image) material->AddTexture(_image);
-				material->SetSkipRendering(_image == nullptr || finalColor.a < k::EpsilonFloat);
+				if(_framebuffer) material->AddTexture(_framebuffer);
+				else if(_image) material->AddTexture(_image);
+				material->SetSkipRendering((_image == nullptr && _framebuffer == nullptr) || finalColor.a < k::EpsilonFloat);
 
 				Model *model = GetModel();
 				model->Retain();

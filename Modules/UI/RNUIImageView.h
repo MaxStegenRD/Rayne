@@ -20,6 +20,7 @@ namespace RN
 		public:
 			UIAPI ImageView();
 			UIAPI ImageView(Texture *image);
+			UIAPI ImageView(Framebuffer *framebuffer);
 			UIAPI ~ImageView();
 
 			UIAPI void SetImage(Texture *image);
@@ -32,6 +33,7 @@ namespace RN
 			UIAPI void SetOpacityFromParent(float parentCombinedOpacity) override;
 
 		private:
+			Framebuffer *_framebuffer;
 			Texture *_image;
 			Color _color;
 
