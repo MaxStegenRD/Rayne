@@ -23,8 +23,10 @@ namespace RN
 			UIAPI ImageView(Framebuffer *framebuffer);
 			UIAPI ~ImageView();
 
+			UIAPI void SetFramebuffer(Framebuffer *framebuffer);
 			UIAPI void SetImage(Texture *image);
 			Texture *GetImage() const { return _image; }
+			Framebuffer *GetFramebuffer() const { return _framebuffer; }
 
 			UIAPI void SetColor(Color color); //Multiplicative, including alpha!
 

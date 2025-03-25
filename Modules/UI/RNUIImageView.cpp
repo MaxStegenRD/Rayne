@@ -38,8 +38,9 @@ namespace RN
 
 		void ImageView::SetImage(Texture *image)
 		{
-			if(_image == image) return;
+			if(_image == image && !_framebuffer) return;
 
+			SafeRelease(_framebuffer);
 			SafeRelease(_image);
 			_image = SafeRetain(image);
 
@@ -53,6 +54,27 @@ namespace RN
 				Color finalColor = _color;
 				finalColor.a *= _combinedOpacityFactor;
 				material->SetSkipRendering(_image == nullptr || finalColor.a < k::EpsilonFloat);
+			}
+		}
+	
+		void ImageView::SetFramebuffer(Framebuffer *framebuffer)
+		{
+			if(_framebuffer == framebuffer) return;
+
+			SafeRelease(_image);
+			SafeRelease(_framebuffer);
+			_framebuffer = SafeRetain(_framebuffer);
+
+			Model *model = GetModel();
+			if(model)
+			{
+				Material *material = model->GetLODStage(0)->GetMaterialAtIndex(1);
+				material->RemoveAllTextures();
+				if(_framebuffer) material->AddTexture(_framebuffer);
+
+				Color finalColor = _color;
+				finalColor.a *= _combinedOpacityFactor;
+				material->SetSkipRendering(_framebuffer == nullptr || finalColor.a < k::EpsilonFloat);
 			}
 		}
 
