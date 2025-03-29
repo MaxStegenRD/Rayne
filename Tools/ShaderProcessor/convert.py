@@ -70,6 +70,11 @@ def main():
         preprocessHLSLPath = os.path.join(shaderConductorCmdPath, 'preprocessForHLSL.py')
         shaderConductorExectutableName = 'ShaderConductorCmd.exe'
         fxcCmdPath = 'C:/Program Files (x86)/Windows Kits/10/bin/x64/fxc.exe'
+        fxcSearchPath = pathlib.Path(os.path.join(shaderConductorCmdPath, 'C:/Program Files (x86)/Windows Kits/10/'))
+        for path in fxcSearchPath.glob('**/x64/fxc.exe'):
+            print(path)
+            fxcCmdPath = path
+            break
     elif platform.system() == 'Linux':
         supportedFormats = ['spirv', 'metal_macos', 'metal_ios', 'metal_ios_sim', 'metal_visionos', 'metal_visionos_sim']
     else:
