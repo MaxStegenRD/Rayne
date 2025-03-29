@@ -171,7 +171,7 @@ def main():
             print('Platform not supported')
 
         if platform == 'windows':
-            preferredShaderType = 'cso,spirv'
+            preferredShaderType = 'spirv'
         elif platform == 'macos':
             preferredShaderType = 'metal_macos'
         elif platform == 'ios':
