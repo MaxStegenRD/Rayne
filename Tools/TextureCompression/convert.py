@@ -96,9 +96,9 @@ def prepare():
         bc7encPath = os.path.join(bc7encPath, 'build')
         os.makedirs(bc7encPath)
         if os.path.isfile(os.path.join(os.path.dirname(sys.argv[0]), 'Vendor/bc7enc_rdo/ispc')):
-            subprocess.call(['cmake', '-D SUPPORT_BC7E=TRUE', '..'], cwd=os.path.abspath(bc7encPath))
+            subprocess.call(['cmake', '-DCMAKE_POLICY_VERSION_MINIMUM=3.5', '-D SUPPORT_BC7E=TRUE', '..'], cwd=os.path.abspath(bc7encPath))
         else:
-            subprocess.call(['cmake', '..'], cwd=os.path.abspath(bc7encPath))
+            subprocess.call(['cmake', '-DCMAKE_POLICY_VERSION_MINIMUM=3.5', '..'], cwd=os.path.abspath(bc7encPath))
         subprocess.call(['cmake', '--build',  '.', '--config', 'Release'], cwd=os.path.abspath(bc7encPath))
 
     elif platform.system() == 'Linux':

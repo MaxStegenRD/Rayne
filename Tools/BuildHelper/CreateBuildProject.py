@@ -93,37 +93,37 @@ def main():
 	buildType = "-DCMAKE_BUILD_TYPE="+configCmakeBuildType
 
 	if operatingSystem == 'windows':
-		cmakeCall = ['cmake', projectRootPath, '-G', 'Visual Studio 17 2022', '-A', 'x64', buildType]
+		cmakeCall = ['cmake', projectRootPath, '-DCMAKE_POLICY_VERSION_MINIMUM=3.5', '-G', 'Visual Studio 17 2022', '-A', 'x64', buildType]
 		cmakeCall.extend(buildconfiguration)
 		subprocess.run(cmakeCall)
 	elif operatingSystem == 'linux':
-		cmakeCall = ['cmake', '-G', 'Ninja', projectRootPath, buildType]
+		cmakeCall = ['cmake', '-G', 'Ninja', projectRootPath, '-DCMAKE_POLICY_VERSION_MINIMUM=3.5', buildType]
 		cmakeCall.extend(buildconfiguration)
 		subprocess.run(cmakeCall)
 	elif operatingSystem == 'macos':
-		cmakeCall = ['cmake', '-G', 'Xcode', projectRootPath]
+		cmakeCall = ['cmake', '-G', 'Xcode', projectRootPath, '-DCMAKE_POLICY_VERSION_MINIMUM=3.5']
 		cmakeCall.extend(buildconfiguration)
 		subprocess.run(cmakeCall)
 	elif operatingSystem =='ios':
-		cmakeCall = ['cmake', '-G', 'Xcode', '-DCMAKE_SYSTEM_NAME=iOS', projectRootPath]
+		cmakeCall = ['cmake', '-G', 'Xcode', '-DCMAKE_SYSTEM_NAME=iOS', projectRootPath, '-DCMAKE_POLICY_VERSION_MINIMUM=3.5']
 		cmakeCall.extend(buildconfiguration)
 		subprocess.run(cmakeCall)
 	elif operatingSystem =='ios_sim':
 		simulatorRootOutput = subprocess.run(['xcodebuild', '-version', '-sdk', 'iphonesimulator', 'Path'], capture_output=True)
 		simulatorRoot = simulatorRootOutput.stdout.decode("utf-8").strip()
-		cmakeCall = ['cmake', '-G', 'Xcode', '-DCMAKE_SYSTEM_NAME=iOS', '-DCMAKE_OSX_SYSROOT='+simulatorRoot, projectRootPath]
+		cmakeCall = ['cmake', '-G', 'Xcode', '-DCMAKE_SYSTEM_NAME=iOS', '-DCMAKE_OSX_SYSROOT='+simulatorRoot, projectRootPath, '-DCMAKE_POLICY_VERSION_MINIMUM=3.5']
 		cmakeCall.extend(buildconfiguration)
 		subprocess.run(cmakeCall)
 	elif operatingSystem =='visionos':
 		sysRootOutput = subprocess.run(['xcodebuild', '-version', '-sdk', 'xros', 'Path'], capture_output=True)
 		sysRoot = sysRootOutput.stdout.decode("utf-8").strip()
-		cmakeCall = ['cmake', '-G', 'Xcode', '-DCMAKE_SYSTEM_NAME=visionOS', '-DCMAKE_OSX_SYSROOT='+sysRoot, projectRootPath]
+		cmakeCall = ['cmake', '-G', 'Xcode', '-DCMAKE_SYSTEM_NAME=visionOS', '-DCMAKE_OSX_SYSROOT='+sysRoot, projectRootPath, '-DCMAKE_POLICY_VERSION_MINIMUM=3.5']
 		cmakeCall.extend(buildconfiguration)
 		subprocess.run(cmakeCall)
 	elif operatingSystem =='visionos_sim':
 		simulatorRootOutput = subprocess.run(['xcodebuild', '-version', '-sdk', 'xrsimulator', 'Path'], capture_output=True)
 		simulatorRoot = simulatorRootOutput.stdout.decode("utf-8").strip()
-		cmakeCall = ['cmake', '-G', 'Xcode', '-DCMAKE_SYSTEM_NAME=visionOS', '-DCMAKE_OSX_SYSROOT='+simulatorRoot, projectRootPath]
+		cmakeCall = ['cmake', '-G', 'Xcode', '-DCMAKE_SYSTEM_NAME=visionOS', '-DCMAKE_OSX_SYSROOT='+simulatorRoot, projectRootPath, '-DCMAKE_POLICY_VERSION_MINIMUM=3.5']
 		cmakeCall.extend(buildconfiguration)
 		subprocess.run(cmakeCall)
 	elif operatingSystem == 'android':

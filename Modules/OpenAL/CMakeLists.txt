@@ -51,7 +51,7 @@ if(IOS OR VISIONOS)
         #Build static for iOS and visionOS. Since this module itself is dynamically linked and open source it should be fine with the license...
         ExternalProject_Add(openal
         GIT_REPOSITORY https://github.com/kcat/openal-soft.git
-        GIT_TAG refs/tags/1.23.1
+        GIT_TAG refs/tags/1.24.2
         GIT_SHALLOW ON
         GIT_PROGRESS ON
         UPDATE_COMMAND ""
