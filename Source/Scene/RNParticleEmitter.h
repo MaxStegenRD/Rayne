@@ -68,6 +68,8 @@ namespace RN
 		RNAPI void Render(Renderer *renderer, Camera *camera) const override;
 
 		RNAPI size_t GetNumParticles() const { return _lifespans.size(); }
+		
+		RNAPI void MakeDirty(); //Can be used to force update the drawable. Some changes, such as replacing shaders within the same material won't have an effect otherwise
 
 	protected:		
 		RNAPI virtual void UpdateLifespans(float delta);

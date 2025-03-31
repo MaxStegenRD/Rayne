@@ -80,6 +80,11 @@ namespace RN
 		SafeRelease(_rng);
 	}
 
+	void ParticleEmitter::MakeDirty()
+	{
+		_drawable->MakeDirty();
+	}
+
 	void ParticleEmitter::Cook(float time, int steps)
 	{
 		float delta = time / steps;
