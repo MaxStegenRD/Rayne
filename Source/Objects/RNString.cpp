@@ -1054,4 +1054,19 @@ namespace RN
 		Data *data = GetDataWithEncoding(encoding);
 		data->WriteToFile(file);
 	}
+
+	bool String::IsNullOrEmpty(const String *string)
+	{
+		return !string || string->GetLength() == 0;
+	}
+
+	bool String::AreEqual(const String *stringA, const String *stringB)
+	{
+		return (!stringA && !stringB) || (stringA && stringB && stringA->IsEqual(stringB));
+	}
+
+	bool String::AreEqual_NullIsEmpty(const String *stringA, const String *stringB)
+	{
+		return (IsNullOrEmpty(stringA) && IsNullOrEmpty(stringB)) || (stringA && stringB && stringA->IsEqual(stringB));
+	}
 } // namespace RN

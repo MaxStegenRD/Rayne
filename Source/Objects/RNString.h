@@ -120,6 +120,10 @@ namespace RN
 
 		RNAPI void WriteToFile(const String *file, Encoding encoding);
 
+		RNAPI static bool IsNullOrEmpty(const String *string);
+		RNAPI static bool AreEqual(const String *stringA, const String *stringB);
+		RNAPI static bool AreEqual_NullIsEmpty(const String *stringA, const String *stringB);
+
 	private:
 		size_t __GetTrailingPathLocation() const;
 		void __DeleteTrailingPath();
