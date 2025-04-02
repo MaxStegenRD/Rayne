@@ -115,7 +115,7 @@ namespace RN
 
 	void ParticleEmitter::SetMaxParticles(uint32 maxParticles)
 	{
-		if(_maxParticles == maxParticles) return;
+		if(_maxParticles == maxParticles && _mesh) return;
 		
 		RN_ASSERT(maxParticles < 16383, "Maximum number of particles needs to be smaller than 16383!");
 		_maxParticles = maxParticles;
