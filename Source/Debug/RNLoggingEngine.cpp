@@ -56,7 +56,7 @@ namespace RN
 	}
 	void StreamLoggingEngine::Flush()
 	{
-		_stream.flush();
+		//_stream.flush();
 	}
 
 	bool StreamLoggingEngine::IsOpen() const
@@ -66,7 +66,7 @@ namespace RN
 
 	void StreamLoggingEngine::Log(const String *message)
 	{
-		_stream << message->GetUTF8String() << "\n";
+		_stream << message->GetUTF8String() << std::endl; //endl will automatically flush it
 	}
 	void StreamLoggingEngine::LogBreak()
 	{}
@@ -92,11 +92,11 @@ namespace RN
 	void WideCharStreamLoggingEngine::Close()
 	{
 		_open = false;
-		_stream.flush();
+		//_stream.flush();
 	}
 	void WideCharStreamLoggingEngine::Flush()
 	{
-		_stream.flush();
+		//_stream.flush();
 	}
 
 	bool WideCharStreamLoggingEngine::IsOpen() const
@@ -122,7 +122,6 @@ namespace RN
 		if(result != 0)
 		{
 			_stream << buffer;
-			return;
 		}
 		else
 		{
@@ -137,6 +136,7 @@ namespace RN
 				delete[] allocBuffer;
 			}
 		}
+		_stream.flush(); //Flush after every message to not miss anything on crash
 	}
 #endif
 } // namespace RN
