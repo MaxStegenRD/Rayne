@@ -123,6 +123,9 @@ namespace RN
 
 		float _time;
 
+		// mutable so it can change in UpdateMesh
+		mutable bool _meshIsInitialized;
+
 		__RNDeclareMetaInternal(ParticleEmitter)
 	};
 

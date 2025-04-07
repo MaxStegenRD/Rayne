@@ -9,6 +9,8 @@
 #include "RNParticleEmitter.h"
 #include "../Rendering/RNRenderer.h"
 
+#include "../Debug/RNLogger.h"
+
 namespace RN
 {
 	RNDefineMeta(ParticleEmitter, SceneNode)
@@ -30,7 +32,8 @@ namespace RN
 		_maxParticlesSoft(100),
 		_spawnRate(0.05f),
 		_canRollParticles(false),
-		_time(0.0f)
+		_time(0.0f),
+		_meshIsInitialized(false)
 	{
 		_rng = new RandomNumberGenerator(RandomNumberGenerator::Type::MersenneTwister);
 
@@ -128,6 +131,8 @@ namespace RN
 						  Mesh::VertexAttribute(Mesh::VertexAttribute::Feature::UVCoords1, PrimitiveType::Vector2),
 						  Mesh::VertexAttribute(Mesh::VertexAttribute::Feature::Indices, PrimitiveType::Uint16)},
 						 maxParticles * 4, maxParticles * 6, true); //Create a streamable mesh
+
+		_meshIsInitialized = false;
 	}
 
 	void ParticleEmitter::SetMaxParticlesSoft(uint32 maxParticles)
@@ -364,6 +369,8 @@ namespace RN
 		_mesh->changedVertices = true;
 		_mesh->changedIndices = true;
 		_mesh->EndChanges();
+
+		_meshIsInitialized = true;
 	}
 
 
@@ -388,6 +395,9 @@ namespace RN
 			return false;
 		
 		if(GetNumParticles() == 0)
+			return false;
+
+		if(!_meshIsInitialized && !_isSorted) // sorted meshes get updated after this
 			return false;
 
 		//TODO: Add occlusion culling or something
