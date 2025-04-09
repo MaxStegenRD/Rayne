@@ -59,11 +59,11 @@ namespace RN
 	
 		void ImageView::SetFramebuffer(Framebuffer *framebuffer)
 		{
-			if(_framebuffer == framebuffer) return;
+			if(_framebuffer == framebuffer && !_image) return;
 
 			SafeRelease(_image);
 			SafeRelease(_framebuffer);
-			_framebuffer = SafeRetain(_framebuffer);
+			_framebuffer = SafeRetain(framebuffer);
 
 			Model *model = GetModel();
 			if(model)
