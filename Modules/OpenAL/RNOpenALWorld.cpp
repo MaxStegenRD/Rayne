@@ -16,27 +16,66 @@
 #include "AL/alc.h"
 #include "AL/alext.h"
 
+static LPALCLOOPBACKOPENDEVICESOFT alcLoopbackOpenDeviceSOFT = nullptr;
+static LPALCISRENDERFORMATSUPPORTEDSOFT alcIsRenderFormatSupportedSOFT = nullptr;
+static LPALCRENDERSAMPLESSOFT alcRenderSamplesSOFT = nullptr;
+
 namespace RN
 {
 	RNDefineMeta(OpenALWorld, SceneAttachment)
+	RNDefineMeta(OpenALOutputDevice, Object)
 
-	OpenALWorld::OpenALWorld(String *outputDeviceName) :
-		_audioListener(nullptr), _outputDevice(nullptr), _inputDevice(nullptr), _inputBuffer(nullptr), _inputBufferTemp(nullptr)
+	OpenALWorld *OpenALWorld::_sharedInstance = nullptr;
+
+	OpenALOutputDevice::OpenALOutputDevice(const String *outputDeviceName, bool loopback) : _outputDevice(nullptr), _context(nullptr), _isLoopback(loopback), _missingTime(0.0f), _isManualUpdate(false), _outputBufferTemp(nullptr)
 	{
-		if(outputDeviceName)
-			_outputDevice = alcOpenDevice(outputDeviceName->GetUTF8String());
-		else
-			_outputDevice = alcOpenDevice(nullptr);
-		if(!_outputDevice)
+		std::vector<int> attributes;
+		attributes.push_back(ALC_HRTF_SOFT);
+		attributes.push_back(ALC_TRUE);
+		attributes.push_back(ALC_MONO_SOURCES);
+		attributes.push_back(512);
+		attributes.push_back(ALC_STEREO_SOURCES);
+		attributes.push_back(64);
+		
+		if(loopback)
 		{
-			RNDebug("rayne-openal: Could not open output audio device.");
-			return;
+			if(!alcIsExtensionPresent(NULL, "ALC_SOFT_loopback"))
+			{
+				RNError("rayne-openal: ALC_SOFT_loopback not supported!");
+				return;
+			}
+
+			if(!alcLoopbackOpenDeviceSOFT) alcLoopbackOpenDeviceSOFT = reinterpret_cast<LPALCLOOPBACKOPENDEVICESOFT>(alcGetProcAddress(NULL, "alcLoopbackOpenDeviceSOFT"));
+			if(!alcIsRenderFormatSupportedSOFT) alcIsRenderFormatSupportedSOFT = reinterpret_cast<LPALCISRENDERFORMATSUPPORTEDSOFT>(alcGetProcAddress(NULL, "alcIsRenderFormatSupportedSOFT"));
+			if(!alcRenderSamplesSOFT) alcRenderSamplesSOFT = reinterpret_cast<LPALCRENDERSAMPLESSOFT>(alcGetProcAddress(NULL, "alcRenderSamplesSOFT"));
+
+			_outputDevice = alcLoopbackOpenDeviceSOFT(outputDeviceName ? outputDeviceName->GetUTF8String() : nullptr);
+			
+			//These are required for contexts with a loopback device!
+			attributes.push_back(ALC_FORMAT_CHANNELS_SOFT);
+			attributes.push_back(ALC_STEREO_SOFT);
+			attributes.push_back(ALC_FORMAT_TYPE_SOFT);
+			attributes.push_back(ALC_SHORT_SOFT);
+			attributes.push_back(ALC_FREQUENCY);
+			attributes.push_back(48000);
+
+			_outputBufferTemp = new int16[2048]; //to fit 1024 stereo samples
+		}
+		else
+		{
+			if(outputDeviceName)
+				_outputDevice = alcOpenDevice(outputDeviceName->GetUTF8String());
+			else
+				_outputDevice = alcOpenDevice(nullptr);
+			if(!_outputDevice)
+			{
+				RNError("rayne-openal: Could not open output audio device.");
+				return;
+			}
 		}
 
-		//Enable HRTF
-		int attributes[7] = {ALC_HRTF_SOFT, ALC_TRUE, ALC_MONO_SOURCES, 512, ALC_STEREO_SOURCES, 256, 0};
-
-		_context = alcCreateContext(_outputDevice, attributes);
+		attributes.push_back(0); //End the attributes list with a 0!
+		_context = alcCreateContext(_outputDevice, attributes.data());
 		alcMakeContextCurrent(_context);
 		if(!_context)
 		{
@@ -55,6 +94,100 @@ namespace RN
 		}
 	}
 
+	OpenALOutputDevice::~OpenALOutputDevice()
+	{
+		alcMakeContextCurrent(nullptr);
+		alcDestroyContext(_context);
+		alcCloseDevice(_outputDevice);
+	}
+
+	void OpenALOutputDevice::MakeCurrent()
+	{
+		alcMakeContextCurrent(_context);
+	}
+
+	size_t OpenALOutputDevice::GetFrameTotalSampleCount(float delta)
+	{
+		if(!_isLoopback || !_isManualUpdate) return 0;
+		
+		//Don't lose any time!
+		delta += _missingTime;
+		size_t sampleCount = delta * 48000;
+		_missingTime = delta - sampleCount / 48000.0f;
+		
+		return sampleCount;
+	}
+
+	void OpenALOutputDevice::GetFrameSamples(size_t sampleCount, uint8 *samples)
+	{
+		if(!_isLoopback || !_isManualUpdate) return;
+
+		size_t offset = 0;
+		size_t remainingSamples = sampleCount;
+		while(offset < sampleCount)
+		{
+			size_t requestedSamples = std::min(remainingSamples, 1024ul);
+			if(samples)
+			{
+				//samples are shorts and interleaved stereo, so each sample consists of two 2byte shorts
+				alcRenderSamplesSOFT(_outputDevice, samples + offset * 2 * 2, requestedSamples);
+			}
+			else
+			{
+				alcRenderSamplesSOFT(_outputDevice, _outputBufferTemp, requestedSamples);
+			}
+			offset += requestedSamples;
+			remainingSamples -= requestedSamples;
+		}
+	}
+
+	void OpenALOutputDevice::ProgressContext(float delta)
+	{
+		if(!_isLoopback || _isManualUpdate) return;
+		
+		//Don't lose any time!
+		delta += _missingTime;
+		ALCsizei remainingSamples = delta * 48000;
+		_missingTime = delta - remainingSamples / 48000.0f;
+
+		while(remainingSamples > 0)
+		{
+			ALCsizei sampleCount = std::min(remainingSamples, 1024);
+			alcRenderSamplesSOFT(_outputDevice, _outputBufferTemp, sampleCount);
+			remainingSamples -= sampleCount;
+		}
+	}
+
+	void OpenALOutputDevice::SetListener(OpenALListener *attachment)
+	{
+		if(_audioListener) _audioListener->_owner = nullptr;
+		_audioListener = attachment;
+		if(_audioListener) _audioListener->_owner = this;
+	}
+
+	OpenALSource *OpenALOutputDevice::PlaySound(AudioAsset *resource)
+	{
+		if(_audioListener)
+		{
+			OpenALSource *source = new OpenALSource(resource);
+			_audioListener->GetParent()->AddChild(source->Autorelease());
+			source->SetSelfdestruct(true);
+			source->Play();
+			return source;
+		}
+		return nullptr;
+	}
+
+
+	OpenALWorld::OpenALWorld(const String *outputDeviceName) : _outputDevices(new Array()), _inputDevice(nullptr), _inputBuffer(nullptr), _inputBufferTemp(nullptr)
+	{
+		RN_ASSERT(!_sharedInstance, "There can only be one OpenAL instance at a time!");
+		_sharedInstance = this;
+		
+		OpenALOutputDevice *outputDevice = new OpenALOutputDevice(outputDeviceName);
+		_outputDevices->AddObject(outputDevice->Autorelease());
+	}
+
 	OpenALWorld::~OpenALWorld()
 	{
 		if(_inputDevice)
@@ -62,15 +195,15 @@ namespace RN
 			alcCaptureStop(_inputDevice);
 			alcCaptureCloseDevice(_inputDevice);
 		}
-
-		alcMakeContextCurrent(nullptr);
-		alcDestroyContext(_context);
-		alcCloseDevice(_outputDevice);
+		
+		_outputDevices->Release();
 
 		if(_inputBufferTemp)
 		{
 			delete[] _inputBufferTemp;
 		}
+		
+		_sharedInstance = nullptr;
 	}
 
 	void OpenALWorld::RequestMicrophonePermission()
@@ -254,7 +387,7 @@ namespace RN
 		return MicrophonePermissionStateForbidden;
 	}
 
-	void OpenALWorld::SetInputDevice(String *inputDeviceName)
+	void OpenALWorld::SetInputDevice(const String *inputDeviceName)
 	{
 		if(_inputDevice)
 		{
@@ -267,12 +400,10 @@ namespace RN
 
 		if(inputDeviceName)
 		{
-			if(inputDeviceName->IsEqual(RNCSTR("default"))) inputDeviceName = nullptr;
-
 #if RN_PLATFORM_MAC_OS
-			_inputDevice = alcCaptureOpenDevice(inputDeviceName ? inputDeviceName->GetUTF8String() : nullptr, 48000, AL_FORMAT_MONO16, 1920);
+			_inputDevice = alcCaptureOpenDevice(inputDeviceName && !inputDeviceName->IsEqual(RNCSTR("default")) ? inputDeviceName->GetUTF8String() : nullptr, 48000, AL_FORMAT_MONO16, 1920);
 #else
-			_inputDevice = alcCaptureOpenDevice(inputDeviceName ? inputDeviceName->GetUTF8String() : nullptr, 48000, AL_FORMAT_MONO16, 960);
+			_inputDevice = alcCaptureOpenDevice(inputDeviceName && !inputDeviceName->IsEqual(RNCSTR("default")) ? inputDeviceName->GetUTF8String() : nullptr, 48000, AL_FORMAT_MONO16, 960);
 #endif
 
 			if(!_inputDevice)
@@ -326,41 +457,39 @@ namespace RN
 			alcCaptureSamples(_inputDevice, (ALCvoid *)_inputBufferTemp, sampleCount);
 			_inputBuffer->PushData(_inputBufferTemp, sampleCount * 2);
 		}
+		
+		_outputDevices->Enumerate<OpenALOutputDevice>([&](OpenALOutputDevice *device, size_t index, bool &stop){
+			device->ProgressContext(delta);
+		});
+	}
+
+	void OpenALWorld::SetListener(OpenALListener *attachment)
+	{
+		GetOutputDevice(0)->SetListener(attachment);
+	}
+
+	OpenALSource *OpenALWorld::PlaySound(AudioAsset *resource)
+	{
+		return GetOutputDevice(0)->PlaySound(resource);
+	}
+
+	void OpenALWorld::AddOutputDevice(OpenALOutputDevice *device)
+	{
+		_outputDevices->AddObject(device);
 	}
 
 	void OpenALWorld::SetDopplerEffect(float factor, float speedOfSound)
 	{
-		alDopplerFactor(factor);
-		alSpeedOfSound(speedOfSound);
+		_outputDevices->Enumerate<OpenALOutputDevice>([&](OpenALOutputDevice *device, size_t index, bool &stop){
+			device->MakeCurrent();
+			alDopplerFactor(factor);
+			alSpeedOfSound(speedOfSound);
+		});
 	}
 
 	void OpenALWorld::SetInputAudioAsset(AudioAsset *bufferAsset)
 	{
 		SafeRelease(_inputBuffer);
 		_inputBuffer = SafeRetain(bufferAsset);
-	}
-
-	void OpenALWorld::SetListener(OpenALListener *attachment)
-	{
-		if(_audioListener)
-			_audioListener->RemoveFromWorld();
-
-		_audioListener = attachment;
-
-		if(_audioListener)
-			_audioListener->InsertIntoWorld(this);
-	}
-
-	OpenALSource *OpenALWorld::PlaySound(AudioAsset *resource)
-	{
-		if(_audioListener)
-		{
-			OpenALSource *source = new OpenALSource(resource);
-			_audioListener->GetParent()->AddChild(source->Autorelease());
-			source->SetSelfdestruct(true);
-			source->Play();
-			return source;
-		}
-		return nullptr;
 	}
 } // namespace RN

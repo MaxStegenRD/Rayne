@@ -13,29 +13,18 @@
 
 namespace RN
 {
-	class OpenALWorld;
+	class OpenALOutputDevice;
 	class OpenALListener : public SceneNodeAttachment
 	{
+	friend OpenALOutputDevice;
 	public:
-		friend OpenALWorld;
-
 		OALAPI OpenALListener();
 		OALAPI ~OpenALListener() override;
 
 		OALAPI void Update(float delta) override;
 
-	protected:
-		void DidUpdate(SceneNode::ChangeSet changeSet) override;
-		//void DidAddToParent() override;
-		//void WillRemoveFromParent() override;
-
-		void ReInsertIntoWorld();
-		virtual void InsertIntoWorld(OpenALWorld *world);
-		virtual void RemoveFromWorld();
-
 	private:
-		OpenALWorld *_owner;
-
+		WeakRef<OpenALOutputDevice> _owner;
 		Vector3 _oldPosition;
 
 		RNDeclareMetaAPI(OpenALListener, OALAPI)
