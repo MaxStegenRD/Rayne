@@ -50,6 +50,8 @@ namespace RN
 		Vector4 GetHSV() const;
 		Color GammaToLinear();
 		Color LinearToGamma();
+		
+		bool IsValid() const;
 
 		static Color Red() { return Color(1.0f, 0.0f, 0.0f); }
 		static Color Green() { return Color(0.0f, 1.0f, 0.0f); }
@@ -471,6 +473,23 @@ namespace RN
 		}
 
 		return Vector4(h - k::Pi, s, v, a);
+	}
+
+	RN_INLINE bool Color::IsValid() const
+	{
+		if(!std::isfinite(r))
+			return false;
+
+		if(!std::isfinite(g))
+			return false;
+
+		if(!std::isfinite(b))
+			return false;
+
+		if(!std::isfinite(a))
+			return false;
+
+		return true;
 	}
 
 #if RN_SUPPORTS_TRIVIALLY_COPYABLE
