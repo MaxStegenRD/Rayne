@@ -85,6 +85,11 @@ namespace RN
 
 		OALAPI static void RequestMicrophonePermission();
 		OALAPI static MicrophonePermissionState GetMicrophonePermissionState();
+
+		OALAPI void SetInputSamplesCallback(std::function<void(uint32 /*sampleRate*/, uint32 /*channelCount*/, uint32 /*frameCount*/, int16 * /*frames*/)> inputSamplesCallback)
+		{
+			_inputSamplesCallback = std::move(inputSamplesCallback);
+		}
 		
 		static OpenALWorld *GetSharedInstance() { return _sharedInstance; }
 
@@ -99,6 +104,8 @@ namespace RN
 		ALCdevice *_inputDevice;
 		AudioAsset *_inputBuffer;
 		int16 *_inputBufferTemp;
+
+		std::function<void(uint32, uint32, uint32, int16 *)> _inputSamplesCallback;
 
 		RNDeclareMetaAPI(OpenALWorld, OALAPI)
 	};
