@@ -450,12 +450,13 @@ namespace RN
 
 	void OpenALWorld::Update(float delta)
 	{
-		if(_inputDevice && _inputBuffer)
+		if(_inputDevice && (_inputBuffer || _inputSamplesCallback))
 		{
 			ALint sampleCount = 0;
 			alcGetIntegerv(_inputDevice, ALC_CAPTURE_SAMPLES, (ALCsizei)sizeof(ALint), &sampleCount);
 			alcCaptureSamples(_inputDevice, (ALCvoid *)_inputBufferTemp, sampleCount);
-			_inputBuffer->PushData(_inputBufferTemp, sampleCount * 2);
+			if(_inputSamplesCallback) _inputSamplesCallback(48000, 1, sampleCount, _inputBufferTemp);
+			if(_inputBuffer) _inputBuffer->PushData(_inputBufferTemp, sampleCount * 2);
 		}
 		
 		_outputDevices->Enumerate<OpenALOutputDevice>([&](OpenALOutputDevice *device, size_t index, bool &stop){
