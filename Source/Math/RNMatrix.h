@@ -566,6 +566,33 @@ namespace RN
 		*this *= Matrix::WithRotation(rotation);
 	}
 
+	RN_INLINE void Matrix::MakeObliqueNearPlane(const Plane &clipPlane)
+	{
+		//Based on https://terathon.com/blog/oblique-clipping.html and https://aras-p.info/texts/obliqueortho.html
+		
+		Vector4 clipPlaneVector = clipPlane.GetPlaneVector();
+
+		// Calculate the clip-space corner point opposite(!? z1 IS the clipping plane in my case!? but this seems to work...) the clipping plane
+		// as (sgn(clipPlane.x), sgn(clipPlane.y), 1, 1) and
+		// transform it into camera space by multiplying it
+		// by the inverse of the projection matrix
+		Vector4 q;
+		q.x = (clipPlaneVector.x > 0.0f ? 1.0f : (clipPlaneVector.x < 0.0f ? -1.0f : 0.0f));
+		q.y = (clipPlaneVector.y > 0.0f ? 1.0f : (clipPlaneVector.y < 0.0f ? -1.0f : 0.0f));
+		q.z = 1.0f;
+		q.w = 1.0f;
+		q = GetInverse() * q;
+
+		// Calculate the scaled plane vector
+		Vector4 c = clipPlaneVector * (2.0f / clipPlaneVector.GetDotProduct(q));
+
+		// Replace the third row of the projection matrix
+		m[2] = c.x + m[3];
+		m[6] = c.y + m[7];
+		m[10] = c.z + m[11];
+		m[14] = c.w + m[15];
+	}
+
 	RN_INLINE void Matrix::Transpose()
 	{
 		float temp[16];

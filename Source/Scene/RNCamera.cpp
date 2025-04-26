@@ -16,8 +16,7 @@ namespace RN
 	RNDefineMeta(Camera, SceneNode)
 
 	Camera::Camera(RenderPass *renderPass) :
-		_cameraSceneEntry(this),
-		_flags(Camera::Flags::Defaults)
+		_cameraSceneEntry(this), _flags(Camera::Flags::Defaults)
 	{
 		if(!renderPass)
 		{
@@ -73,11 +72,12 @@ namespace RN
 		_fogNear = 100.0f;
 		_fogFar = 500.0f;
 		_ambient = Color::White();
-		_clipPlane = Plane();
+		_customNearClipPlane = Plane();
 
 		_dirtyProjection = true;
 		_dirtyPosition = true;
 		_dirtyFrustum = true;
+		_hasCustomNearClipPlane = false;
 
 		_shaderHint = Shader::UsageHint::Default;
 		_prefersLightManager = false;
@@ -176,9 +176,10 @@ namespace RN
 	{
 		_ambient = color;
 	}
-	void Camera::SetClipPlane(const Plane &clipPlane)
+	void Camera::SetCustomNearClipPlane(const Plane &clipPlane, bool enabled)
 	{
-		_clipPlane = clipPlane;
+		_customNearClipPlane = clipPlane;
+		_hasCustomNearClipPlane = enabled;
 	}
 
 	/*	void Camera::SetLightManager(LightManager *lightManager)
@@ -293,6 +294,7 @@ namespace RN
 	{
 		SceneNode::Update(delta);
 		_dirtyPosition = true;
+		if(_hasCustomNearClipPlane) _dirtyProjection = true;
 	}
 
 	void Camera::PostUpdate()
@@ -333,6 +335,13 @@ namespace RN
 		}
 
 		_projectionMatrix = Matrix::WithProjectionPerspective(_fov, tempAspect, _clipNear, _clipFar);
+		if(_hasCustomNearClipPlane)
+		{
+			Vector3 planePosition = _viewMatrix * _customNearClipPlane.GetPosition();
+			Vector4 planeNormal = _viewMatrix * RN::Vector4(_customNearClipPlane.GetNormal(), 0.0f);
+			_projectionMatrix.MakeObliqueNearPlane(Plane::WithPositionNormal(planePosition, RN::Vector3(planeNormal)));
+		}
+		
 		_inverseProjectionMatrix = _projectionMatrix.GetInverse();
 
 		_dirtyProjection = false;
