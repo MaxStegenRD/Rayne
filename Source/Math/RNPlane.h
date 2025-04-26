@@ -35,6 +35,8 @@ namespace RN
 		Vector3 GetPosition() const { return _position; }
 		Vector3 GetNormal() const { return _normal; }
 		float GetD() const { return _d; }
+		
+		Vector4 GetPlaneVector() const { return Vector4(_normal.x, _normal.y, _normal.z, _d); }
 
 		ContactInfo CastRay(const Vector3 &position, const Vector3 &direction) const;
 
@@ -98,12 +100,12 @@ namespace RN
 
 	RN_INLINE float Plane::GetDistance(const Vector3 &position) const
 	{
-		return position.GetDotProduct(_normal) - _d;
+		return position.GetDotProduct(_normal) + _d;
 	}
 
 	RN_INLINE void Plane::CalculateD()
 	{
-		_d = _normal.GetDotProduct(_position) + _offset;
+		_d = -_normal.GetDotProduct(_position) - _offset;
 	}
 
 	RN_INLINE Plane::ContactInfo Plane::CastRay(const Vector3 &position, const Vector3 &direction) const
