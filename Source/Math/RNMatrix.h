@@ -572,7 +572,7 @@ namespace RN
 		
 		Vector4 clipPlaneVector = clipPlane.GetPlaneVector();
 
-		// Calculate the clip-space corner point opposite(!? z1 IS the clipping plane in my case!? but this seems to work...) the clipping plane
+		// Calculate the clip-space corner point opposite(!? z = 1 IS the clipping plane in my case!? but this seems to work...) the clipping plane
 		// as (sgn(clipPlane.x), sgn(clipPlane.y), 1, 1) and
 		// transform it into camera space by multiplying it
 		// by the inverse of the projection matrix
@@ -586,7 +586,7 @@ namespace RN
 		// Calculate the scaled plane vector
 		Vector4 c = clipPlaneVector * (2.0f / clipPlaneVector.GetDotProduct(q));
 
-		// Replace the third row of the projection matrix
+		// Replace the third row of the projection matrix and add the 4th row to it
 		m[2] = c.x + m[3];
 		m[6] = c.y + m[7];
 		m[10] = c.z + m[11];

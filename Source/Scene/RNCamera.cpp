@@ -450,6 +450,8 @@ namespace RN
 
 	bool Camera::InFrustum(const Vector3 &position, float radius)
 	{
+		if(_hasCustomNearClipPlane) return true;
+		
 		if(_frustumCenter.GetDistance(position) > _frustumRadius + radius)
 			return false;
 
