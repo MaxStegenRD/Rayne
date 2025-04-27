@@ -65,7 +65,7 @@ namespace RN
 			UIAPI Vector4 GetCornerRadius() const { return _cornerRadius; }
 			UIAPI void SetOpacity(float opacity);
 			UIAPI void MakeCircle();
-			UIAPI void SetOutline(Color color, float thickness);
+			UIAPI virtual void SetOutline(Color color, float thickness);
 
 			UIAPI virtual void Draw(bool isParentHidden);
 
@@ -119,6 +119,9 @@ namespace RN
 			BlendFactor _blendDestinationFactorA;
 			BlendOperation _blendOperationA;
 
+			bool _hasOutline;
+			Color _outlineColor;
+
 		private:
 			void ConvertPointToWindow(Vector2 &point) const;
 			void ConvertPointFromWindow(Vector2 &point) const;
@@ -139,8 +142,6 @@ namespace RN
 			bool _isCircle;
 			Color _backgroundColor[4];
 			bool _hasBackgroundGradient;
-			bool _hasOutline;
-			Color _outlineColor;
 			float _outlineThickness;
 
 			View *_superview;

@@ -29,6 +29,7 @@ namespace RN
 			Framebuffer *GetFramebuffer() const { return _framebuffer; }
 
 			UIAPI void SetColor(Color color); //Multiplicative, including alpha!
+			UIAPI void SetOutline(Color color, float thickness) override;
 			UIAPI void SetImageMaterial(Material *material);
 
 		protected:

@@ -94,6 +94,25 @@ namespace RN
 			}
 		}
 
+		void ImageView::SetOutline(Color color, float thickness)
+		{
+			View::SetOutline(color, thickness);
+			Lock();
+			RN::Model *model = GetModel();
+			if(model && model->GetLODStage(0)->GetCount() > 1)
+			{
+				Color finalColor;
+				finalColor = _outlineColor;
+				finalColor.a *= _combinedOpacityFactor;
+
+				Material *material = model->GetLODStage(0)->GetMaterialAtIndex(1);
+				material->SetUIOutlineColor(finalColor);
+
+				//TODO: Skip rendering stuff should also depend on the outline being visible or not...
+			}
+			Unlock();
+		}
+
 		void ImageView::SetImageMaterial(Material *material)
 		{
 			RN_ASSERT(material, "A valid material is required!");
@@ -112,6 +131,17 @@ namespace RN
 			Color finalColor = _color;
 			finalColor.a *= _combinedOpacityFactor;
 			material->SetDiffuseColor(finalColor);
+
+			if(_hasOutline)
+			{
+				Color finalOutlineColor;
+				finalOutlineColor = _outlineColor;
+				finalOutlineColor.a *= _combinedOpacityFactor;
+
+				material->SetUIOutlineColor(finalOutlineColor);
+
+				//TODO: Skip rendering stuff should also depend on the outline being visible or not... see background gradient...
+			}
 
 			const Rect &scissorRect = GetScissorRect();
 			material->SetUIClippingRect(Vector4(scissorRect.GetLeft(), scissorRect.GetRight(), scissorRect.GetTop(), scissorRect.GetBottom()));
@@ -143,6 +173,7 @@ namespace RN
 					shaderOptions->AddDefine("RN_UI", "1");
 					shaderOptions->AddDefine("RN_UV0", "1");
 					if(GetCornerRadius().x > 0.0f || GetCornerRadius().y > 0.0f || GetCornerRadius().z > 0.0f || GetCornerRadius().w > 0.0f) shaderOptions->AddDefine("RN_UV1", "1");
+					if(_hasOutline) shaderOptions->AddDefine("RN_UI_OUTLINE", "1");
 
 					material = RN::Material::WithShaders(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Vertex, shaderOptions), Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Fragment, shaderOptions));
 					material->SetVertexShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Vertex, shaderOptions, RN::Shader::UsageHint::Multiview), RN::Shader::UsageHint::Multiview);

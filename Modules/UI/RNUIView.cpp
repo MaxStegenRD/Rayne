@@ -43,9 +43,9 @@ namespace RN
 			_blendSourceFactorA(BlendFactor::One),
 			_blendDestinationFactorA(BlendFactor::One),
 			_blendOperationA(BlendOperation::Max),
+			_hasOutline(false),
 			_cornerRadius(0.0f, 0.0f, 0.0f, 0.0f),
 			_isCircle(false),
-			_hasOutline(false),
 			_outlineThickness(0.0f),
 			_renderPriorityOverride(0),
 			_renderPriorityOffset(1)
