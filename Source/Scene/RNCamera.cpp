@@ -357,7 +357,7 @@ namespace RN
 
 		if(_flags & Flags::UseSimpleCulling)
 		{
-			_frustumCenter = Vector3(0.0f, 0.0f, _clipFar * 0.5f);
+			_frustumCenter = Vector3(0.0f, 0.0f, _clipFar * 0.5f) + GetWorldPosition();
 			_frustumRadius = _clipFar * 1.5;
 			return;
 		}
@@ -450,7 +450,7 @@ namespace RN
 
 	bool Camera::InFrustum(const Vector3 &position, float radius)
 	{
-		if(_hasCustomNearClipPlane) return true;
+		//if(_hasCustomNearClipPlane) return true;
 		
 		if(_frustumCenter.GetDistance(position) > _frustumRadius + radius)
 			return false;
