@@ -15,18 +15,18 @@ namespace RN
 		RNDefineMeta(ImageView, View)
 
 		ImageView::ImageView() :
-			_framebuffer(nullptr), _image(nullptr), _color(Color::White())
+			_framebuffer(nullptr), _image(nullptr), _color(Color::White()), _imageMaterial(nullptr)
 		{
 		}
 
 		ImageView::ImageView(Texture *image) :
-				_framebuffer(nullptr), _image(nullptr), _color(Color::White())
+			_framebuffer(nullptr), _image(nullptr), _color(Color::White()), _imageMaterial(nullptr)
 		{
 			SetImage(image);
 		}
 
 		ImageView::ImageView(Framebuffer *framebuffer) :
-				_framebuffer(framebuffer->Retain()), _image(nullptr), _color(Color::White())
+			_framebuffer(framebuffer->Retain()), _image(nullptr), _color(Color::White()), _imageMaterial(nullptr)
 		{
 
 		}
@@ -34,6 +34,7 @@ namespace RN
 		ImageView::~ImageView()
 		{
 			SafeRelease(_image);
+			SafeRelease(_imageMaterial);
 		}
 
 		void ImageView::SetImage(Texture *image)
@@ -93,6 +94,40 @@ namespace RN
 			}
 		}
 
+		void ImageView::SetImageMaterial(Material *material)
+		{
+			RN_ASSERT(material, "A valid material is required!");
+
+			SafeRelease(_imageMaterial);
+			_imageMaterial = SafeRetain(material);
+
+			material->SetAlphaToCoverage(false);
+			material->SetDepthMode(_depthMode);
+			material->SetDepthWriteEnabled(false);
+			material->SetCullMode(CullMode::None);
+			material->SetBlendOperation(BlendOperation::Add, BlendOperation::Max);
+			material->SetBlendFactorSource(BlendFactor::SourceAlpha, BlendFactor::One);
+			material->SetBlendFactorDestination(BlendFactor::OneMinusSourceAlpha, BlendFactor::One);
+
+			Color finalColor = _color;
+			finalColor.a *= _combinedOpacityFactor;
+			material->SetDiffuseColor(finalColor);
+
+			const Rect &scissorRect = GetScissorRect();
+			material->SetUIClippingRect(Vector4(scissorRect.GetLeft(), scissorRect.GetRight(), scissorRect.GetTop(), scissorRect.GetBottom()));
+			material->SetUIOffset(Vector2(0.0f, 0.0f));
+
+			if(_framebuffer) material->AddTexture(_framebuffer);
+			else if(_image) material->AddTexture(_image);
+			material->SetSkipRendering((_image == nullptr && _framebuffer == nullptr) || finalColor.a < k::EpsilonFloat);
+
+			Model *model = GetModel();
+			if(model && model->GetLODStage(0)->GetCount() > 1)
+			{
+				model->GetLODStage(0)->ReplaceMaterial(material, 1);
+			}
+		}
+
 		void ImageView::UpdateModel()
 		{
 			View::UpdateModel();
@@ -100,36 +135,23 @@ namespace RN
 
 			if(lodStage->GetCount() < 2)
 			{
-				RN::Shader::Options *shaderOptions = RN::Shader::Options::WithNone();
-				shaderOptions->EnableAlpha();
-				shaderOptions->AddDefine("RN_UI", "1");
-				shaderOptions->AddDefine("RN_UV0", "1");
-				if(GetCornerRadius().x > 0.0f || GetCornerRadius().y > 0.0f || GetCornerRadius().z > 0.0f || GetCornerRadius().w > 0.0f) shaderOptions->AddDefine("RN_UV1", "1");
+				RN::Material *material = _imageMaterial;
+				if(!material)
+				{
+					RN::Shader::Options *shaderOptions = RN::Shader::Options::WithNone();
+					shaderOptions->EnableAlpha();
+					shaderOptions->AddDefine("RN_UI", "1");
+					shaderOptions->AddDefine("RN_UV0", "1");
+					if(GetCornerRadius().x > 0.0f || GetCornerRadius().y > 0.0f || GetCornerRadius().z > 0.0f || GetCornerRadius().w > 0.0f) shaderOptions->AddDefine("RN_UV1", "1");
 
-				RN::Material *material = RN::Material::WithShaders(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Vertex, shaderOptions), Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Fragment, shaderOptions));
-				material->SetVertexShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Vertex, shaderOptions, RN::Shader::UsageHint::Multiview), RN::Shader::UsageHint::Multiview);
-				material->SetFragmentShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Fragment, shaderOptions, RN::Shader::UsageHint::Multiview), RN::Shader::UsageHint::Multiview);
-				material->SetAlphaToCoverage(false);
-				material->SetDepthMode(_depthMode);
-				material->SetDepthWriteEnabled(false);
-				material->SetCullMode(CullMode::None);
-				material->SetBlendOperation(BlendOperation::Add, BlendOperation::Max);
-				material->SetBlendFactorSource(BlendFactor::SourceAlpha, BlendFactor::One);
-				material->SetBlendFactorDestination(BlendFactor::OneMinusSourceAlpha, BlendFactor::One);
+					material = RN::Material::WithShaders(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Vertex, shaderOptions), Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Fragment, shaderOptions));
+					material->SetVertexShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Vertex, shaderOptions, RN::Shader::UsageHint::Multiview), RN::Shader::UsageHint::Multiview);
+					material->SetFragmentShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Fragment, shaderOptions, RN::Shader::UsageHint::Multiview), RN::Shader::UsageHint::Multiview);
 
-				Color finalColor = _color;
-				finalColor.a *= _combinedOpacityFactor;
-				material->SetDiffuseColor(finalColor);
-
-				const Rect &scissorRect = GetScissorRect();
-				material->SetUIClippingRect(Vector4(scissorRect.GetLeft(), scissorRect.GetRight(), scissorRect.GetTop(), scissorRect.GetBottom()));
-				material->SetUIOffset(Vector2(0.0f, 0.0f));
+					SetImageMaterial(material);
+				}
 
 				lodStage->AddMesh(lodStage->GetMeshAtIndex(0), material);
-
-				if(_framebuffer) material->AddTexture(_framebuffer);
-				else if(_image) material->AddTexture(_image);
-				material->SetSkipRendering((_image == nullptr && _framebuffer == nullptr) || finalColor.a < k::EpsilonFloat);
 
 				Model *model = GetModel();
 				model->Retain();
