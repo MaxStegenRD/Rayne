@@ -65,6 +65,10 @@ namespace RN
 
 			_subscribers.emplace(std::make_pair(key, std::move(subscribers)));
 		}
+		else
+		{
+			iterator->second.emplace_back(callback, token);
+		}
 	}
 
 	void NotificationManager::RemoveSubscriber(const String *name, void *token)
@@ -86,6 +90,10 @@ namespace RN
 			it++;
 		}
 
-		iterator->first->Release(); //Release the "name"
+		if(iterator->second.size() == 0)
+		{
+			iterator->first->Release(); //Release the "name"a
+			_subscribers.erase(iterator);
+		}
 	}
 } // namespace RN
