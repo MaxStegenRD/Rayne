@@ -16,35 +16,12 @@ namespace RN
 {
 	RNDefineMeta(OpenALListener, SceneNodeAttachment)
 
-	OpenALListener::OpenALListener() :
-		_owner(nullptr)
+	OpenALListener::OpenALListener()
 	{
 	}
 
 	OpenALListener::~OpenALListener()
 	{
-	}
-
-	void OpenALListener::ReInsertIntoWorld()
-	{
-		if(_owner)
-		{
-			auto world = _owner;
-			world->Lock();
-			world->SetListener(nullptr);
-			world->SetListener(this);
-			world->Unlock();
-		}
-	}
-
-	void OpenALListener::InsertIntoWorld(OpenALWorld *world)
-	{
-		_owner = world;
-	}
-
-	void OpenALListener::RemoveFromWorld()
-	{
-		_owner = nullptr;
 	}
 
 	void OpenALListener::Update(float delta)
@@ -60,42 +37,11 @@ namespace RN
 		Vector3 orientation[2];
 		orientation[0] = GetForward();
 		orientation[1] = GetUp();
+		
+		_owner->MakeCurrent();
 
 		alListenerfv(AL_POSITION, &position.x);
 		alListenerfv(AL_VELOCITY, &velocity.x);
 		alListenerfv(AL_ORIENTATION, &orientation[0].x);
 	}
-
-	void OpenALListener::DidUpdate(SceneNode::ChangeSet changeSet)
-	{
-		SceneNodeAttachment::DidUpdate(changeSet);
-		/*		if(changeSet & SceneNode::ChangeSet::World)
-		{
-			World *world = GetParent()->GetWorld();
-				
-			if(!world && _owner)
-			{
-				_owner->SetAudioListener(nullptr);
-				return;
-			}
-				
-			if(world && !_owner)
-			{
-				AudioWorld::GetSharedInstance()->SetAudioListener(this);
-				return;
-			}
-		}*/
-	}
-
-	/*	void OpenALListener::DidAddToParent()
-	{
-		if(!_owner)
-			AudioWorld::GetSharedInstance()->SetAudioListener(this);
-	}
-		
-	void OpenALListener::WillRemoveFromParent()
-	{
-		if(_owner)
-			_owner->SetAudioListener(nullptr);
-	}*/
 } // namespace RN

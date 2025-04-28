@@ -656,7 +656,7 @@ namespace RN
 		rasterizationState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 		rasterizationState.lineWidth = 1.0f;
 		rasterizationState.flags = 0;
-		rasterizationState.depthClampEnable = VK_TRUE;
+		rasterizationState.depthClampEnable = VK_FALSE;
 		rasterizationState.depthBiasEnable = VK_FALSE;
 		if(descriptor.usePolygonOffset)
 		{

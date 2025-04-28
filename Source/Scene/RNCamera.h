@@ -74,7 +74,7 @@ namespace RN
 		RNAPI void SetFogNear(float near);
 		RNAPI void SetFogFar(float far);
 		RNAPI void SetAmbientColor(Color color);
-		RNAPI void SetClipPlane(const Plane &clipPlane);
+		RNAPI void SetCustomNearClipPlane(const Plane &clipPlane, bool enabled = true);
 		RNAPI void SetOrthogonalFrustum(float top, float bottom, float left, float right);
 		RNAPI void SetProjectionMatrix(const Matrix &projectionMatrix);
 
@@ -111,7 +111,7 @@ namespace RN
 		float GetFogNear() const { return _fogNear; }
 		float GetFogFar() const { return _fogFar; }
 		const Color &GetAmbientColor() const { return _ambient; }
-		const Plane &GetClipPlane() const { return _clipPlane; }
+		const Plane &GetCustomNearClipPlane() const { return _customNearClipPlane; }
 		const Matrix &GetProjectionMatrix() const { return _projectionMatrix; }
 		const Matrix &GetInverseProjectionMatrix() const { return _inverseProjectionMatrix; }
 		const Matrix &GetViewMatrix() const { return _viewMatrix; }
@@ -139,6 +139,7 @@ namespace RN
 		bool _dirtyPosition;
 		bool _dirtyProjection;
 		bool _dirtyFrustum;
+		bool _hasCustomNearClipPlane;
 		int32 _priority;
 
 		Vector3 _frustumCenter;
@@ -168,7 +169,7 @@ namespace RN
 		Color _fogColor1;
 		Color _ambient;
 
-		Plane _clipPlane;
+		Plane _customNearClipPlane;
 		//		LightManager *_lightManager;
 		Shader::UsageHint _shaderHint;
 

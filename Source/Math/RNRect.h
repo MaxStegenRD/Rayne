@@ -28,6 +28,20 @@ namespace RN
 		bool operator==(const Rect &other) const;
 		bool operator!=(const Rect &other) const;
 
+		Rect &operator+=(const Rect &other);
+		Rect &operator-=(const Rect &other);
+
+		Rect operator+(const Rect &other) const;
+		Rect operator-(const Rect &other) const;
+
+		Rect &operator*=(float other);
+		Rect &operator/=(float other);
+
+		Rect operator*(float other) const;
+		Rect operator/(float other) const;
+
+		Rect GetLerp(const Rect &other, float factor) const;
+
 		bool ContainsPoint(const Vector2 &point) const;
 		bool IntersectsRect(const Rect &other) const;
 		bool ContainsRect(const Rect &other) const;
@@ -128,6 +142,100 @@ namespace RN
 		return false;
 	}
 
+	RN_INLINE Rect &Rect::operator+=(const Rect &other)
+	{
+		x += other.x;
+		y += other.y;
+		width += other.width;
+		height += other.height;
+
+		return *this;
+	}
+
+	RN_INLINE Rect &Rect::operator-=(const Rect &other)
+	{
+		x -= other.x;
+		y -= other.y;
+		width -= other.width;
+		height -= other.height;
+
+		return *this;
+	}
+
+
+	RN_INLINE Rect Rect::operator+(const Rect &other) const
+	{
+		Rect result(*this);
+
+		result.x += other.x;
+		result.y += other.y;
+		result.width += other.width;
+		result.height += other.height;
+
+		return result;
+	}
+
+	RN_INLINE Rect Rect::operator-(const Rect &other) const
+	{
+		Rect result(*this);
+
+		result.x -= other.x;
+		result.y -= other.y;
+		result.width -= other.width;
+		result.height -= other.height;
+
+		return result;
+	}
+
+	RN_INLINE Rect &Rect::operator*=(float other)
+	{
+		x *= other;
+		y *= other;
+		width *= other;
+		height *= other;
+
+		return *this;
+	}
+
+	RN_INLINE Rect &Rect::operator/=(float other)
+	{
+		x /= other;
+		y /= other;
+		width /= other;
+		height /= other;
+
+		return *this;
+	}
+
+	RN_INLINE Rect Rect::operator*(float other) const
+	{
+		Rect result(*this);
+
+		result.x *= other;
+		result.y *= other;
+		result.width *= other;
+		result.height *= other;
+
+		return result;
+	}
+
+	RN_INLINE Rect Rect::operator/(float other) const
+	{
+		Rect result(*this);
+
+		result.x /= other;
+		result.y /= other;
+		result.width /= other;
+		result.height /= other;
+
+		return result;
+	}
+
+
+	RN_INLINE Rect Rect::GetLerp(const Rect &other, float factor) const
+	{
+		return *this * (1.0f - factor) + other * factor;
+	}
 
 	RN_INLINE bool Rect::ContainsPoint(const Vector2 &point) const
 	{

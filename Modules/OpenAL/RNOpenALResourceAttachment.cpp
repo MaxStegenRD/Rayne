@@ -8,6 +8,8 @@
 
 #include "RNOpenALResourceAttachment.h"
 
+#include "RNOpenALWorld.h"
+
 #include <AL/al.h>
 #include <AL/alc.h>
 
@@ -15,15 +17,35 @@ static const char *kResourceAttachmentKey = "kResourceAttachmentKey";
 
 namespace RN
 {
-	OpenALResourceAttachment::OpenALResourceAttachment(RN::AudioAsset *resource)
+	OpenALResourceAttachment::OpenALResourceAttachment(RN::AudioAsset *resource) : _resource(resource)
 	{
-		alGenBuffers(1, &_bufferID);
-		alBufferData(_bufferID, GetALFormat(resource->GetChannels(), resource->GetBytesPerSample() * 8), resource->GetData()->GetBytes(), static_cast<int>(resource->GetData()->GetLength()), resource->GetSampleRate());
+		
 	}
 
 	OpenALResourceAttachment::~OpenALResourceAttachment()
 	{
-		alDeleteBuffers(1, &_bufferID);
+		for(auto pair : _bufferID)
+		{
+			pair.first->MakeCurrent(); //This could crash if a device was deleted before this attachment!
+			alDeleteBuffers(1, &pair.second);
+		}
+	}
+
+	uint32 OpenALResourceAttachment::GetBufferID(OpenALOutputDevice *outputDevice)
+	{
+		if(_bufferID.count(outputDevice) > 0)
+		{
+			return _bufferID[outputDevice];
+		}
+		
+		outputDevice->MakeCurrent();
+		uint32 bufferID;
+		alGenBuffers(1, &bufferID);
+		alBufferData(bufferID, GetALFormat(_resource->GetChannels(), _resource->GetBytesPerSample() * 8), _resource->GetData()->GetBytes(), static_cast<int>(_resource->GetData()->GetLength()), _resource->GetSampleRate());
+		
+		_bufferID[outputDevice] = bufferID;
+		
+		return bufferID;
 	}
 
 	int OpenALResourceAttachment::GetALFormat(short channels, short bitsPerSample)

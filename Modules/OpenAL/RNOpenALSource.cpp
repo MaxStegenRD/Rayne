@@ -27,21 +27,34 @@ namespace RN
 	{
 		_oldPosition = GetWorldPosition();
 
-		alGenSources(1, &_source);
-		alSourcef(_source, AL_PITCH, 1);
-		alSourcef(_source, AL_GAIN, 1);
-		alSourcei(_source, AL_LOOPING, AL_FALSE);
+		OpenALWorld::GetSharedInstance()->GetOutputDevices()->Enumerate<OpenALOutputDevice>([&](OpenALOutputDevice *device, size_t index, bool &stop){
+			device->MakeCurrent();
+			
+			uint32 source;
+			alGenSources(1, &source);
+			alSourcef(source, AL_PITCH, 1);
+			alSourcef(source, AL_GAIN, 1);
+			alSourcei(source, AL_LOOPING, AL_FALSE);
+			
+			_source[device] = source;
+		});
 
 		SetAudioAsset(asset);
 	}
 
 	OpenALSource::~OpenALSource()
 	{
-		alDeleteSources(1, &_source);
-
-		if(_asset && (_asset->GetType() == AudioAsset::Type::Ringbuffer || _asset->GetType() == AudioAsset::Type::Decoder))
+		for(auto pair : _source)
 		{
-			alDeleteBuffers(3, _ringBuffersID);
+			pair.first->MakeCurrent();
+			alDeleteSources(1, &pair.second);
+			
+			if(_asset && (_asset->GetType() == AudioAsset::Type::Ringbuffer || _asset->GetType() == AudioAsset::Type::Decoder))
+			{
+				alDeleteBuffers(1, &_ringBuffersID[0][pair.first]);
+				alDeleteBuffers(1, &_ringBuffersID[1][pair.first]);
+				alDeleteBuffers(1, &_ringBuffersID[2][pair.first]);
+			}
 		}
 		SafeRelease(_asset);
 
@@ -55,14 +68,20 @@ namespace RN
 		if(_asset == asset) return;
 
 		bool wasPlaying = _isPlaying;
-		alSourceStop(_source);
 		_isPlaying = false;
-
-		alSourcei(_source, AL_BUFFER, 0);
-
-		if(_asset && (_asset->GetType() == AudioAsset::Type::Ringbuffer || _asset->GetType() == AudioAsset::Type::Decoder))
+		
+		for(auto pair : _source)
 		{
-			alDeleteBuffers(3, _ringBuffersID);
+			pair.first->MakeCurrent();
+			alSourceStop(pair.second);
+			alSourcei(pair.second, AL_BUFFER, 0);
+			
+			if(_asset && (_asset->GetType() == AudioAsset::Type::Ringbuffer || _asset->GetType() == AudioAsset::Type::Decoder))
+			{
+				alDeleteBuffers(1, &_ringBuffersID[0][pair.first]);
+				alDeleteBuffers(1, &_ringBuffersID[1][pair.first]);
+				alDeleteBuffers(1, &_ringBuffersID[2][pair.first]);
+			}
 		}
 
 		SafeRelease(_asset);
@@ -73,26 +92,37 @@ namespace RN
 
 		if(_asset->GetType() == AudioAsset::Type::Static)
 		{
-			OpenALResourceAttachment *attachment = OpenALResourceAttachment::GetAttachmentForResource(asset);
-			alSourcei(_source, AL_BUFFER, attachment->GetBufferID());
-			alSourcei(_source, AL_LOOPING, _isRepeating ? AL_TRUE : AL_FALSE);
+			for(auto pair : _source)
+			{
+				pair.first->MakeCurrent();
+				OpenALResourceAttachment *attachment = OpenALResourceAttachment::GetAttachmentForResource(asset);
+				alSourcei(pair.second, AL_BUFFER, attachment->GetBufferID(pair.first));
+				alSourcei(pair.second, AL_LOOPING, _isRepeating ? AL_TRUE : AL_FALSE);
+			}
 		}
 		else if(_asset->GetType() == AudioAsset::Type::Ringbuffer || _asset->GetType() == AudioAsset::Type::Decoder)
 		{
-			alSourcei(_source, AL_LOOPING, AL_FALSE);
-
-			alGenBuffers(3, _ringBuffersID);
-
 			_ringBufferTemp = new int16[3840 * _asset->GetChannels()];
 			std::fill(_ringBufferTemp, _ringBufferTemp + 3840, 0);
-
-			//TODO: make the format more flexible
-			ALenum format = _asset->GetChannels() == 1 ? AL_FORMAT_MONO16 : AL_FORMAT_STEREO16;
-			ALsizei bufferSize = 3840 * sizeof(int16) * _asset->GetChannels();
-			alBufferData(_ringBuffersID[0], format, _ringBufferTemp, bufferSize, _asset->GetSampleRate());
-			alBufferData(_ringBuffersID[1], format, _ringBufferTemp, bufferSize, _asset->GetSampleRate());
-			alBufferData(_ringBuffersID[2], format, _ringBufferTemp, bufferSize, _asset->GetSampleRate());
-			alSourceQueueBuffers(_source, 3, _ringBuffersID);
+			
+			for(auto pair : _source)
+			{
+				pair.first->MakeCurrent();
+				alSourcei(pair.second, AL_LOOPING, AL_FALSE);
+				alGenBuffers(1, &_ringBuffersID[0][pair.first]);
+				alGenBuffers(1, &_ringBuffersID[1][pair.first]);
+				alGenBuffers(1, &_ringBuffersID[2][pair.first]);
+				
+				//TODO: make the format more flexible
+				ALenum format = _asset->GetChannels() == 1 ? AL_FORMAT_MONO16 : AL_FORMAT_STEREO16;
+				ALsizei bufferSize = 3840 * sizeof(int16) * _asset->GetChannels();
+				alBufferData(_ringBuffersID[0][pair.first], format, _ringBufferTemp, bufferSize, _asset->GetSampleRate());
+				alBufferData(_ringBuffersID[1][pair.first], format, _ringBufferTemp, bufferSize, _asset->GetSampleRate());
+				alBufferData(_ringBuffersID[2][pair.first], format, _ringBufferTemp, bufferSize, _asset->GetSampleRate());
+				alSourceQueueBuffers(pair.second, 1, &_ringBuffersID[0][pair.first]);
+				alSourceQueueBuffers(pair.second, 1, &_ringBuffersID[1][pair.first]);
+				alSourceQueueBuffers(pair.second, 1, &_ringBuffersID[2][pair.first]);
+			}
 		}
 
 		if(_asset && _asset->GetType() == AudioAsset::Type::Decoder)
@@ -103,7 +133,12 @@ namespace RN
 		if(wasPlaying)
 		{
 			_isPlaying = true;
-			alSourcePlay(_source);
+			
+			for(auto pair : _source)
+			{
+				pair.first->MakeCurrent();
+				alSourcePlay(pair.second);
+			}
 		}
 	}
 
@@ -116,30 +151,46 @@ namespace RN
 		//It will just keep playing the same buffer if looping streamed stuff
 		if(!_asset || _asset->GetType() == AudioAsset::Type::Ringbuffer || _asset->GetType() == AudioAsset::Type::Decoder) return;
 
-		alSourcei(_source, AL_LOOPING, repeat ? AL_TRUE : AL_FALSE);
+		for(auto pair : _source)
+		{
+			pair.first->MakeCurrent();
+			alSourcei(pair.second, AL_LOOPING, repeat ? AL_TRUE : AL_FALSE);
+		}
 	}
 
 	void OpenALSource::SetPitch(float pitch)
 	{
 		LockGuard<Lockable> lock(_lock);
 
-		alSourcef(_source, AL_PITCH, pitch);
+		for(auto pair : _source)
+		{
+			pair.first->MakeCurrent();
+			alSourcef(pair.second, AL_PITCH, pitch);
+		}
 	}
 
 	void OpenALSource::SetGain(float gain)
 	{
 		LockGuard<Lockable> lock(_lock);
 
-		alSourcef(_source, AL_GAIN, gain);
+		for(auto pair : _source)
+		{
+			pair.first->MakeCurrent();
+			alSourcef(pair.second, AL_GAIN, gain);
+		}
 	}
 
 	void OpenALSource::SetRange(float min, float max, float rolloff)
 	{
 		LockGuard<Lockable> lock(_lock);
 
-		alSourcef(_source, AL_REFERENCE_DISTANCE, min);
-		alSourcef(_source, AL_MAX_DISTANCE, max);
-		alSourcef(_source, AL_ROLLOFF_FACTOR, rolloff);
+		for(auto pair : _source)
+		{
+			pair.first->MakeCurrent();
+			alSourcef(pair.second, AL_REFERENCE_DISTANCE, min);
+			alSourcef(pair.second, AL_MAX_DISTANCE, max);
+			alSourcef(pair.second, AL_ROLLOFF_FACTOR, rolloff);
+		}
 	}
 
 	void OpenALSource::SetSelfdestruct(bool selfdestruct)
@@ -155,7 +206,12 @@ namespace RN
 
 		UpdatePosition(0.0f);
 
-		alSourcePlay(_source);
+		for(auto pair : _source)
+		{
+			pair.first->MakeCurrent();
+			alSourcePlay(pair.second);
+		}
+
 		_isPlaying = true;
 		_hasEnded = false;
 	}
@@ -164,8 +220,13 @@ namespace RN
 	{
 		LockGuard<Lockable> lock(_lock);
 
-		alSourceStop(_source);
-		alSourcePause(_source);
+		for(auto pair : _source)
+		{
+			pair.first->MakeCurrent();
+			alSourceStop(pair.second);
+			alSourcePause(pair.second);
+		}
+
 		_isPlaying = false;
 
 		//RNDebug("Stopped: " << (_isPlaying? "true" : "false"));
@@ -175,7 +236,12 @@ namespace RN
 	{
 		LockGuard<Lockable> lock(_lock);
 
-		alSourcePause(_source);
+		for(auto pair : _source)
+		{
+			pair.first->MakeCurrent();
+			alSourcePause(pair.second);
+		}
+
 		_isPlaying = false;
 
 		//RNDebug("Paused: " << (_isPlaying? "true" : "false"));
@@ -191,7 +257,11 @@ namespace RN
 		}
 		else
 		{
-			alSourcef(_source, AL_SEC_OFFSET, time);
+			for(auto pair : _source)
+			{
+				pair.first->MakeCurrent();
+				alSourcef(pair.second, AL_SEC_OFFSET, time);
+			}
 		}
 	}
 
@@ -231,7 +301,9 @@ namespace RN
 			}
 
 			ALint numberOfProcessedBuffers = 0;
-			alGetSourcei(_source, AL_BUFFERS_PROCESSED, &numberOfProcessedBuffers);
+			//Use the first source as reference here, hoping that all devices progress together...
+			_source.begin()->first->MakeCurrent();
+			alGetSourcei(_source.begin()->second, AL_BUFFERS_PROCESSED, &numberOfProcessedBuffers);
 			bool needsRestart = numberOfProcessedBuffers >= 3 && _isPlaying;
 			while(numberOfProcessedBuffers > 0)
 			{
@@ -263,8 +335,12 @@ namespace RN
 				{
 					if(!isPlaying)
 					{
-						alSourceStop(_source);
-						alSourcePause(_source);
+						for(auto pair : _source)
+						{
+							pair.first->MakeCurrent();
+							alSourceStop(pair.second);
+							alSourcePause(pair.second);
+						}
 						_isPlaying = false;
 						hasEnded = true;
 					}
@@ -275,23 +351,33 @@ namespace RN
 
 				//TODO: support multiple channels
 				ALuint bufferID = 0;
-				alSourceUnqueueBuffers(_source, 1, &bufferID);
 				ALenum format = _asset->GetChannels() == 1 ? AL_FORMAT_MONO16 : AL_FORMAT_STEREO16;
 				ALsizei bufferSize = 3840 * sizeof(int16) * _asset->GetChannels();
-				alBufferData(bufferID, format, _ringBufferTemp, bufferSize, _asset->GetSampleRate());
-				alSourceQueueBuffers(_source, 1, &bufferID);
+				
+				for(auto pair : _source)
+				{
+					pair.first->MakeCurrent();
+					alSourceUnqueueBuffers(pair.second, 1, &bufferID);
+					alBufferData(bufferID, format, _ringBufferTemp, bufferSize, _asset->GetSampleRate());
+					alSourceQueueBuffers(pair.second, 1, &bufferID);
+				}
 
 				numberOfProcessedBuffers -= 1;
 			}
 
 			if(needsRestart)
 			{
-				alSourcePlay(_source);
+				for(auto pair : _source)
+				{
+					pair.first->MakeCurrent();
+					alSourcePlay(pair.second);
+				}
 			}
 		}
 
 		ALenum sourceState = AL_STOPPED;
-		alGetSourcei(_source, AL_SOURCE_STATE, &sourceState);
+		_source.begin()->first->MakeCurrent();
+		alGetSourcei(_source.begin()->second, AL_SOURCE_STATE, &sourceState);
 		if((sourceState == AL_STOPPED && _asset && _asset->GetType() == AudioAsset::Type::Static) || hasEnded)
 		{
 			_isPlaying = false;
@@ -311,7 +397,12 @@ namespace RN
 					{
 						_isPlaying = true;
 						_hasEnded = false;
-						alSourcePlay(_source);
+						
+						for(auto pair : _source)
+						{
+							pair.first->MakeCurrent();
+							alSourcePlay(pair.second);
+						}
 					}
 				}
 			}
@@ -323,16 +414,20 @@ namespace RN
 	void OpenALSource::UpdatePosition(float delta)
 	{
 		Vector3 position = GetWorldPosition();
-		alSourcefv(_source, AL_POSITION, &position.x);
-
+		
 		Vector3 velocity = position - _oldPosition;
 		_oldPosition = position;
-
-		if(delta == 0.0f)
-			return;
-
-		velocity /= delta;
-		_velocity = _velocity * 0.95f + velocity * 0.05f; //Smoothen the velocity
-		alSourcefv(_source, AL_VELOCITY, &_velocity.x);
+		if(delta != 0.0f)
+		{
+			velocity /= delta;
+			_velocity = _velocity * 0.95f + velocity * 0.05f; //Smoothen the velocity
+		}
+		
+		for(auto pair : _source)
+		{
+			pair.first->MakeCurrent();
+			alSourcefv(pair.second, AL_POSITION, &position.x);
+			alSourcefv(pair.second, AL_VELOCITY, &_velocity.x);
+		}
 	}
 } // namespace RN

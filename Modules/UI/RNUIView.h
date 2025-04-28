@@ -66,6 +66,7 @@ namespace RN
 			UIAPI void SetOpacity(float opacity);
 			UIAPI void MakeCircle();
 			UIAPI virtual void SetOutline(Color color, float thickness);
+			UIAPI void SetMirrorUV(bool mirrorU, bool mirrorV);
 
 			UIAPI virtual void Draw(bool isParentHidden);
 
@@ -137,6 +138,9 @@ namespace RN
 			bool _isHidden;
 			bool _isHiddenByParent;
 			Rect _scissorRect;
+			
+			bool _mirrorU;
+			bool _mirrorV;
 
 			RN::Vector4 _cornerRadius;
 			bool _isCircle;

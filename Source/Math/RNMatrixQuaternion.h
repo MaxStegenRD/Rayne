@@ -11,10 +11,13 @@
 
 #include "../Base/RNBase.h"
 #include "RNVector.h"
+#include "RNPlane.h"
 
 namespace RN
 {
 	class Quaternion;
+
+	//Matrices are column major in Rayne! So for example m[2] is the first element in the third row!
 	class RN_ALIGNAS(16) Matrix
 	{
 	public:
@@ -40,7 +43,7 @@ namespace RN
 		static Matrix WithProjectionOrthogonal(float left, float right, float bottom, float top, float clipnear, float clipfar);
 		static Matrix WithProjectionPerspective(float arc, float aspect, float clipnear, float clipfar);
 		static Matrix WithProjectionPerspective(float leftTangent, float rightTangent, float topTangent, float bottomTangent, float clipnear, float clipfar);
-		//		static Matrix WithInverseProjectionPerspective(float arc, float aspect, float clipnear, float clipfar); //TODO: Fix...
+		//static Matrix WithInverseProjectionPerspective(float arc, float aspect, float clipnear, float clipfar); //TODO: Fix...
 
 		float GetDeterminant() const;
 
@@ -55,6 +58,8 @@ namespace RN
 		void Rotate(const Vector3 &rotation);
 		void Rotate(const Vector4 &rotation);
 		void Rotate(const Quaternion &rotation);
+		
+		void MakeObliqueNearPlane(const Plane &clipPlane);
 
 		void Transpose();
 		Matrix GetTransposed() const;

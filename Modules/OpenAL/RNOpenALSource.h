@@ -14,6 +14,7 @@
 namespace RN
 {
 	class OpenALWorld;
+	class OpenALOutputDevice;
 	class OpenALSource : public SceneNode
 	{
 	public:
@@ -52,7 +53,7 @@ namespace RN
 		OpenALWorld *_owner;
 		AudioAsset *_asset;
 
-		uint32 _source;
+		std::map<OpenALOutputDevice*, uint32> _source;
 		Vector3 _oldPosition;
 		Vector3 _velocity;
 
@@ -61,7 +62,7 @@ namespace RN
 		bool _isSelfdestructing;
 		bool _hasEnded;
 
-		uint32 _ringBuffersID[3];
+		std::map<OpenALOutputDevice*, uint32> _ringBuffersID[3];
 		int16 *_ringBufferTemp;
 
 		Lockable _lock;

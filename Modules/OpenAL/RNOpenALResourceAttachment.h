@@ -13,19 +13,22 @@
 
 namespace RN
 {
+	class OpenALOutputDevice;
 	class OpenALResourceAttachment : public RN::Object
 	{
 	public:
 		OpenALResourceAttachment(RN::AudioAsset *resource);
 		~OpenALResourceAttachment();
 
-		uint32 GetBufferID() const { return _bufferID; }
+		uint32 GetBufferID(OpenALOutputDevice *outputDevice);
 
 		static OpenALResourceAttachment *GetAttachmentForResource(RN::AudioAsset *resource);
 
 	private:
 		int GetALFormat(short channels, short bitsPerSample);
-		uint32 _bufferID;
+		std::map<OpenALOutputDevice *, uint32> _bufferID;
+		
+		AudioAsset *_resource;
 	};
 } // namespace RN
 

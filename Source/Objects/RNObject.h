@@ -395,6 +395,12 @@ public:                                                         \
 		{
 			Assign(other._value);
 		}
+
+		StrongRef(StrongRef<T> &&other) noexcept :
+			_value(std::exchange(other._value, nullptr))
+		{
+		}
+
 		~StrongRef()
 		{
 			if(_value)
@@ -404,6 +410,13 @@ public:                                                         \
 		StrongRef &operator=(const StrongRef<T> &other)
 		{
 			Assign(other._value);
+			return *this;
+		}
+
+		StrongRef& operator=(StrongRef<T> &&other) noexcept
+		{
+			StrongRef<T> tmp(std::move(other));
+			swap(*this, tmp);
 			return *this;
 		}
 
@@ -433,6 +446,12 @@ public:                                                         \
 			object->Autorelease();
 
 			return object;
+		}
+
+		friend void swap(StrongRef<T> &a, StrongRef<T> &b) noexcept
+		{
+			using std::swap;
+			swap(a._value, b._value);
 		}
 
 	private:

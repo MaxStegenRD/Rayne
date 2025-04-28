@@ -18,6 +18,42 @@ typedef struct ALCdevice ALCdevice;
 typedef struct ALCcontext ALCcontext;
 namespace RN
 {
+	class OpenALOutputDevice : public Object
+	{
+	friend class OpenALWorld;
+	public:
+		OALAPI OpenALOutputDevice(const String *outputDeviceName = nullptr, bool loopback = false);
+		OALAPI ~OpenALOutputDevice() override;
+		
+		OALAPI void MakeCurrent();
+		
+		OALAPI void SetListener(OpenALListener *attachment);
+		OpenALListener *GetListener() const { return _audioListener; }
+		
+		OALAPI OpenALSource *PlaySound(AudioAsset *resource);
+		
+		OALAPI size_t GetFrameTotalSampleCount(float delta); //Only ever call this once per frame!
+		void StartManualUpdate() { _isManualUpdate = true; }
+		void StopManualUpdate() { _isManualUpdate = false; }
+		OALAPI void GetFrameSamples(size_t sampleCount, uint8 *samples);
+		
+	private:
+		void ProgressContext(float delta);
+		
+		StrongRef<OpenALListener> _audioListener;
+
+		ALCdevice *_outputDevice;
+		ALCcontext *_context;
+		
+		bool _isManualUpdate;
+		bool _isLoopback;
+		float _missingTime;
+
+		int16 *_outputBufferTemp;
+
+		RNDeclareMetaAPI(OpenALOutputDevice, OALAPI)
+	};
+
 	class OpenALWorld : public SceneAttachment
 	{
 	public:
@@ -28,16 +64,21 @@ namespace RN
 			MicrophonePermissionStateForbidden
 		};
 
-		OALAPI OpenALWorld(String *outputDeviceName = nullptr);
+		OALAPI OpenALWorld(const String *outputDeviceName = nullptr);
 		OALAPI ~OpenALWorld() override;
+		
+		OALAPI void AddOutputDevice(OpenALOutputDevice *device);
 
-		OALAPI void SetInputDevice(String *inputDeviceName);
+		OALAPI void SetInputDevice(const String *inputDeviceName);
 		OALAPI void SetInputAudioAsset(AudioAsset *bufferAsset);
-
-		OALAPI void SetListener(OpenALListener *attachment);
-		OALAPI OpenALSource *PlaySound(AudioAsset *resource);
+		
+		const Array *GetOutputDevices() const { return _outputDevices; }
+		OpenALOutputDevice *GetOutputDevice(size_t index) const { return _outputDevices->GetObjectAtIndex<OpenALOutputDevice>(index); }
 
 		OALAPI void SetDopplerEffect(float factor, float speedOfSound = 343.3);
+		
+		OALAPI void SetListener(OpenALListener *attachment);
+		OALAPI OpenALSource *PlaySound(AudioAsset *resource);
 
 		OALAPI static Array *GetOutputDeviceNames();
 		OALAPI static Array *GetInputDeviceNames();
@@ -45,18 +86,26 @@ namespace RN
 		OALAPI static void RequestMicrophonePermission();
 		OALAPI static MicrophonePermissionState GetMicrophonePermissionState();
 
+		OALAPI void SetInputSamplesCallback(std::function<void(uint32 /*sampleRate*/, uint32 /*channelCount*/, uint32 /*frameCount*/, int16 * /*frames*/)> inputSamplesCallback)
+		{
+			_inputSamplesCallback = std::move(inputSamplesCallback);
+		}
+		
+		static OpenALWorld *GetSharedInstance() { return _sharedInstance; }
+
 	protected:
 		void Update(float delta) override;
 
 	private:
-		OpenALListener *_audioListener;
-
-		ALCdevice *_outputDevice;
+		static OpenALWorld *_sharedInstance;
+		
+		Array *_outputDevices;
+		
 		ALCdevice *_inputDevice;
-		ALCcontext *_context;
-
 		AudioAsset *_inputBuffer;
 		int16 *_inputBufferTemp;
+
+		std::function<void(uint32, uint32, uint32, int16 *)> _inputSamplesCallback;
 
 		RNDeclareMetaAPI(OpenALWorld, OALAPI)
 	};
