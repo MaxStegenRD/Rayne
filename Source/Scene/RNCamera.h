@@ -119,6 +119,12 @@ namespace RN
 		const RN::Array *GetMultiviewCameras() const { return _multiviewCameras; }
 		bool GetIsMultiviewCamera() const { return _isMultiviewCamera; }
 
+		RNAPI void AddRenderNode(RN::SceneNode *node);
+		RNAPI void RemoveRenderNode(RN::SceneNode *node);
+		RNAPI void TruncateRenderNodes(size_t length);
+		RNAPI void ClearRenderNodes();
+		RNAPI const Array *GetRenderNodes() const { return _renderNodes; }
+
 		RNAPI void SetFirstSceneNodeMember(IntrusiveList<SceneNode>::Member *member); //If this is set, it has to be reset if the member is removed from the scene!
 
 		//TODO: Make private but keep accessible to user made scene implementations
@@ -189,8 +195,10 @@ namespace RN
 		Material *_material;
 		Camera *_lodCamera;
 
-		RN::Array *_multiviewCameras;
+		Array *_multiviewCameras;
 		bool _isMultiviewCamera;
+
+		Array *_renderNodes; //If this is set, only the scene nodes in this list will be rendered by the camera and everything else will be ignored, skipping occlusion culling. Useful when there is only a small set of things that can be visible in a camera
 
 		__RNDeclareMetaInternal(Camera);
 	};

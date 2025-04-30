@@ -77,9 +77,10 @@ namespace RN
 		}
 		virtual void MakeDirty() {}
 
-		Mesh *mesh;
-		Material *material;
-		Skeleton *skeleton;
+		//Comments are all related to making this independent of what happens in the update loop to put rendering on a separate thread!
+		Mesh *mesh; //Relatively static, maybe all data used during rendering can be const and only set when creating the mesh. Mesh updates that change more than the mesh data require a new mesh already anyway. GPU buffers already use multibuffering and should be fine!?
+		Material *material; //Could consider just copying and updating that copy if something changed!?
+		Skeleton *skeleton; //Can just store the matrices instead to lose dependency on the skeleton for multithreading!
 		Matrix modelMatrix;
 		Matrix inverseModelMatrix;
 	};

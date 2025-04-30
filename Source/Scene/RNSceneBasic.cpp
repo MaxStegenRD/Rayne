@@ -465,7 +465,7 @@ namespace RN
 
 				IntrusiveList<SceneNode>::Member *firstNodeMember = camera->_firstNodeMember ? camera->_firstNodeMember : _renderNodes.GetHead();
 				IntrusiveList<SceneNode>::Member *nodeMember = firstNodeMember;
-				if(!(camera->GetFlags() & Camera::Flags::NoOcclusionCulling))
+				if(!(camera->GetFlags() & Camera::Flags::NoOcclusionCulling) && !camera->GetRenderNodes())
 				{
 					ZoneScopedN("Collect Occluders");
 					const RN::Vector3 cameraWorldPosition = camera->GetWorldPosition();
@@ -645,23 +645,43 @@ namespace RN
 				else
 				{
 					ZoneScopedN("Collect Entities");
-					while(nodeMember)
+					if(camera->GetRenderNodes())
 					{
-						SceneNode *node = nodeMember->Get();
-						if(node->CanRender(renderer, camera))
-						{
-							if(node->GetRenderPriority() == SceneNode::RenderTransparent)
+						camera->GetRenderNodes()->Enumerate<SceneNode>([&](SceneNode *node, size_t index, bool &stop) {
+							//if(node->CanRender(renderer, camera))
 							{
-								if(firstTransparentIndex == 0)
+								if(node->GetRenderPriority() == SceneNode::RenderTransparent)
 								{
-									firstTransparentIndex = sceneNodesToRender.size();
+									if(firstTransparentIndex == 0)
+									{
+										firstTransparentIndex = sceneNodesToRender.size();
+									}
+									lastTransparentIndex = sceneNodesToRender.size();
 								}
-								lastTransparentIndex = sceneNodesToRender.size();
+								sceneNodesToRender.push_back(node);
 							}
-							sceneNodesToRender.push_back(node);
+						});
+					}
+					else
+					{
+						while(nodeMember)
+						{
+							SceneNode *node = nodeMember->Get();
+							if(node->CanRender(renderer, camera))
+							{
+								if(node->GetRenderPriority() == SceneNode::RenderTransparent)
+								{
+									if(firstTransparentIndex == 0)
+									{
+										firstTransparentIndex = sceneNodesToRender.size();
+									}
+									lastTransparentIndex = sceneNodesToRender.size();
+								}
+								sceneNodesToRender.push_back(node);
+							}
+							
+							nodeMember = nodeMember->GetNext();
 						}
-
-						nodeMember = nodeMember->GetNext();
 					}
 				}
 

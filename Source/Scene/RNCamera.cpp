@@ -47,6 +47,7 @@ namespace RN
 		SafeRelease(_material);
 
 		SafeRelease(_multiviewCameras);
+		SafeRelease(_renderNodes);
 
 		/*		if(_lightManager)
 		{
@@ -98,6 +99,8 @@ namespace RN
 		_frustumPlaneOffsets[3] = 0.0f;
 
 		_firstNodeMember = nullptr;
+
+		_renderNodes = nullptr;
 	}
 
 	// Setter
@@ -341,7 +344,7 @@ namespace RN
 			Vector4 planeNormal = _viewMatrix * RN::Vector4(_customNearClipPlane.GetNormal(), 0.0f);
 			_projectionMatrix.MakeObliqueNearPlane(Plane::WithPositionNormal(planePosition, RN::Vector3(planeNormal)));
 		}
-		
+
 		_inverseProjectionMatrix = _projectionMatrix.GetInverse();
 
 		_dirtyProjection = false;
@@ -451,7 +454,7 @@ namespace RN
 	bool Camera::InFrustum(const Vector3 &position, float radius)
 	{
 		//if(_hasCustomNearClipPlane) return true;
-		
+
 		if(_frustumCenter.GetDistance(position) > _frustumRadius + radius)
 			return false;
 
@@ -533,5 +536,41 @@ namespace RN
 	void Camera::SetFirstSceneNodeMember(IntrusiveList<SceneNode>::Member *member)
 	{
 		_firstNodeMember = member;
+	}
+
+	void Camera::AddRenderNode(RN::SceneNode *node)
+	{
+		if(!_renderNodes) _renderNodes = new Array();
+
+		_renderNodes->AddObject(node);
+
+		/*size_t insertIndex = 0;
+		_renderNodes->Enumerate<SceneNode>([&](SceneNode *oldNode, size_t index, bool &stop) {
+			if(oldNode->GetRenderPriority() > node->GetRenderPriority())
+			{
+				insertIndex = index;
+				stop = true;
+			}
+		});
+		_renderNodes->InsertObjectAtIndex(node, insertIndex);*/
+	}
+
+	void Camera::RemoveRenderNode(RN::SceneNode *node)
+	{
+		if(!_renderNodes) return;
+		_renderNodes->RemoveObject(node);
+	}
+
+	void Camera::TruncateRenderNodes(size_t length)
+	{
+		while(_renderNodes->GetCount() > length)
+		{
+			_renderNodes->RemoveObjectAtIndex(length);
+		}
+	}
+
+	void Camera::ClearRenderNodes()
+	{
+		SafeRelease(_renderNodes);
 	}
 } // namespace RN
