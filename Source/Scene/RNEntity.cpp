@@ -95,7 +95,7 @@ namespace RN
 
 	void Entity::Render(Renderer *renderer, Camera *camera) const
 	{
-		if(!RN_EXPECT_FALSE(_model))
+		if(!_model)//RN_EXPECT_FALSE(!_model))
 			return;
 
 #if RN_MODEL_LOD_DISABLED
