@@ -402,6 +402,7 @@ namespace RN
 		renderPass.cameraFogDistance = Vector2(camera->GetFogNear(), camera->GetFogFar());
 		renderPass.cameraFogColor0 = camera->GetFogColor0();
 		renderPass.cameraFogColor1 = camera->GetFogColor1();
+		renderPass.cameraTag = camera->GetTag();
 
 		Framebuffer *framebuffer = cameraRenderPass->GetFramebuffer();
 		MetalSwapChain *newSwapChain = nullptr;
@@ -955,6 +956,12 @@ namespace RN
 				case Shader::UniformDescriptor::Identifier::CameraFogDistance:
 				{
 					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.cameraFogDistance.x, descriptor->GetSize());
+					break;
+				}
+					
+				case Shader::UniformDescriptor::Identifier::CameraTag:
+				{
+					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.cameraTag, descriptor->GetSize());
 					break;
 				}
 					

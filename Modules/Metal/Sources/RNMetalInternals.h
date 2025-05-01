@@ -204,6 +204,8 @@ namespace RN
 		Color cameraFogColor1;
 		Vector2 cameraClipDistance;
 		Vector2 cameraFogDistance;
+		int32 cameraTag;
+		
 		uint8 multiviewLayer;
 
 		std::vector<uint32> instanceSteps; //number of drawables in the drawables list that use the same pipeline state and can all be rendered with the same draw call as result

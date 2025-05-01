@@ -238,6 +238,7 @@ namespace RN
 		Color cameraFogColor1;
 		Vector2 cameraClipDistance;
 		Vector2 cameraFogDistance;
+		uint32 cameraTag;
 		VulkanRenderPassCameraInfo cameraInfo;
 		std::vector<VulkanRenderPassCameraInfo> multiviewCameraInfo;
 		uint8 multiviewLayer;

@@ -298,6 +298,11 @@ namespace RN
 			_identifier = CameraFogDistance;
 			_type = PrimitiveType::Vector2;
 		}
+		else if(name->IsEqual(RNCSTR("camera_tag")) || name->IsEqual(RNCSTR("cameraTag")))
+		{
+			_identifier = CameraTag;
+			_type = PrimitiveType::Uint32;
+		}
 		else if(name->IsEqual(RNCSTR("material_ambientcolor")) || name->IsEqual(RNCSTR("ambientColor")) || name->IsEqual(RNCSTR("in_var_INSTANCE_AMBIENTCOLOR")))
 		{
 			_identifier = AmbientColor;
