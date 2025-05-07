@@ -477,7 +477,7 @@ namespace RN
 				if(renderPass.previousRenderPass && renderPass.previousRenderPass->GetFramebuffer())
 				{
 					Texture *texture = renderPass.previousRenderPass->GetFramebuffer()->GetColorTexture(0);
-					if (texture)
+					if(texture)
 					{
 						VulkanTexture *vulkanTexture = texture->Downcast<VulkanTexture>();
 						if(vulkanTexture->GetCurrentLayout() != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
