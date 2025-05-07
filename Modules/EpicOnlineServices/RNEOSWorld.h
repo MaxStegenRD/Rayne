@@ -10,7 +10,6 @@
 #define __RAYNE_EOSWORLD_H_
 
 #include "RNEOS.h"
-#include "RNEOSClient.h"
 #include "RNEOSLobbyManager.h"
 #include "RNEOSServer.h"
 

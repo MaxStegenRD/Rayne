@@ -45,6 +45,7 @@ namespace RN
 		Color operator*(float other) const;
 		Color operator/(float other) const;
 
+		bool IsValid() { return r >= 0 && g >= 0 && b >= 0 && a >= 0 && r <= 1 && g <= 1 && b <= 1 && a <= 1; }
 		Color GetLerp(const Color &other, float factor) const;
 
 		Vector4 GetHSV() const;

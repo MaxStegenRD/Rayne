@@ -1,5 +1,5 @@
 //
-//  RNEOSHost.cpp
+//  RNEOSClient.cpp
 //  Rayne-EOS
 //
 //  Copyright 2021 by Überpixel. All rights reserved.
@@ -57,7 +57,7 @@ namespace RN
 		Lock();
 		RN_ASSERT(_status == Status::Disconnected, "Already connected to a server.");
 
-		_status = Status::Connecting;
+		_status = Connecting;
 
 		EOSWorld *world = EOSWorld::GetInstance();
 
@@ -107,7 +107,8 @@ namespace RN
 			return;
 		}
 
-		_peers.insert(std::pair<uint16, Peer>(peer.userID, peer));
+		_peers.insert(std::pair(serverProductID, peer));
+		_idMap[0] = serverProductID;
 
 		Unlock();
 	}
@@ -157,6 +158,7 @@ namespace RN
 		Lock();
 		_status = Status::Disconnected;
 		_peers.clear();
+		_idMap.clear();
 		Unlock();
 
 		RNDebug("Disconnected!");
@@ -176,7 +178,7 @@ namespace RN
 
 		EOSWorld *world = EOSWorld::GetInstance();
 
-		Peer &peer = _peers[0];
+		Peer &peer = _peers.begin()->second; //Server is only peer
 
 		uint32 nextPacketSize = 0;
 		EOS_P2P_GetNextReceivedPacketSizeOptions nextPacketSizeOptions = {0};

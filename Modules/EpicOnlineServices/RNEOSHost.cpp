@@ -25,7 +25,7 @@ namespace RN
 	RNDefineMeta(EOSHost, Object)
 
 	EOSHost::EOSHost() :
-		_pingTimer(10.0), _status(Status::Disconnected)
+		_pingTimer(10.0), _status(Status::Disconnected), _userID(0)
 	{
 	}
 
@@ -33,7 +33,7 @@ namespace RN
 	{
 	}
 
-	bool EOSHost::IsPacketInOrder(EOSHost::ProtocolPacketType packetType, uint16 senderID, uint8 packetID, uint8 channel)
+	bool EOSHost::IsPacketInOrder(EOSHost::ProtocolPacketType packetType, EOS_ProductUserId senderID, uint8 packetID, uint8 channel)
 	{
 		EOSWorld *world = EOSWorld::GetInstance();
 		Peer &peer = _peers[senderID];
@@ -90,7 +90,7 @@ namespace RN
 		return false;
 	}
 
-	void EOSHost::SendPing(uint16 receiverID, bool isResponse, uint8 responseID)
+	void EOSHost::SendPing(EOS_ProductUserId receiverID, bool isResponse, uint8 responseID)
 	{
 		Lock();
 		EOSWorld *world = EOSWorld::GetInstance();
@@ -126,7 +126,7 @@ namespace RN
 		sendPacketOptions.ApiVersion = EOS_P2P_SENDPACKET_API_LATEST;
 		sendPacketOptions.Channel = 255;
 		sendPacketOptions.LocalUserId = world->GetUserID();
-		sendPacketOptions.RemoteUserId = _peers[receiverID].internalID;
+		sendPacketOptions.RemoteUserId = receiverID;
 		sendPacketOptions.SocketId = &socketID;
 		sendPacketOptions.Reliability = EOS_EPacketReliability::EOS_PR_UnreliableUnordered;
 		sendPacketOptions.bAllowDelayedDelivery = false;
@@ -138,7 +138,8 @@ namespace RN
 
 	void EOSHost::SendPacket(Data *data, uint16 receiverID, uint32 channel, bool reliable)
 	{
-		if(_peers[receiverID]._wantsDisconnect) return; //Don't allow sending more data to users that are about to be disconnected.
+		EOS_ProductUserId internalReceiverID = _idMap[receiverID];
+		if(_peers[internalReceiverID]._wantsDisconnect) return; //Don't allow sending more data to users that are about to be disconnected.
 
 		//Only reliable packets can be split up, unreliable packets need to be small enough to fit a single networking packet
 		RN_DEBUG_ASSERT(data->GetLength() < MAX_PACKET_SIZE || reliable, "Packet too big!");
@@ -146,18 +147,18 @@ namespace RN
 		if(!reliable && data->GetLength() >= MAX_PACKET_SIZE) return; //Don't send if unreliable packet is too big. Since it is unreliable, not sending it is acceptable.
 
 		Lock();
-		if(_peers.size() == 0 || _peers.find(receiverID) == _peers.end())
+		if(_peers.empty() || _peers.find(internalReceiverID) == _peers.end())
 		{
 			Unlock();
 			return;
 		}
 
-		if(_peers[receiverID]._scheduledPackets.find(channel) != _peers[receiverID]._scheduledPackets.end())
+		if(_peers[internalReceiverID]._scheduledPackets.find(channel) != _peers[internalReceiverID]._scheduledPackets.end())
 		{
-			_peers[receiverID]._scheduledPackets.insert(std::pair<uint32, std::queue<Packet>>(channel, std::queue<Packet>()));
+			_peers[internalReceiverID]._scheduledPackets.insert(std::pair(channel, std::queue<Packet>()));
 		}
 
-		_peers[receiverID]._scheduledPackets[channel].push({receiverID, channel, reliable, data->Retain()});
+		_peers[internalReceiverID]._scheduledPackets[channel].push({internalReceiverID, channel, reliable, data->Retain()});
 
 		Unlock();
 	}
@@ -228,22 +229,21 @@ namespace RN
 				packetHeader.packetID = rawData[dataIndex + 1];
 				packetHeader.dataLength = rawData[dataIndex + 2] | (rawData[dataIndex + 3] << 8); //These are pings, so this should always be 0!?
 
-				uint16 id = GetUserIDForInternalID(senderUserID);
 				if(packetHeader.packetType == ProtocolPacketTypePingRequest)
 				{
-					SendPing(id, true, packetHeader.packetID);
+					SendPing(senderUserID, true, packetHeader.packetID);
 				}
 				else if(packetHeader.packetType == ProtocolPacketTypePingResponse)
 				{
-					if(_peers[id]._lastPingID - 1 == packetHeader.packetID)
+					if(_peers[senderUserID]._lastPingID - 1 == packetHeader.packetID)
 					{
 						Clock::time_point receivedPingTime = Clock::now();
-						auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(receivedPingTime - _peers[id]._sentPingTime).count();
+						auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(receivedPingTime - _peers[senderUserID]._sentPingTime).count();
 						double timeElapsed = milliseconds / 1000.0;
 
 						//RNDebug("Ping time for " << id << ": " << timeElapsed);
 
-						_peers[id].smoothedRoundtripTime = _peers[id].smoothedRoundtripTime * 0.75 + timeElapsed * 0.25;
+						_peers[senderUserID].smoothedRoundtripTime = _peers[senderUserID].smoothedRoundtripTime * 0.75 + timeElapsed * 0.25;
 					}
 					else
 					{
@@ -396,15 +396,9 @@ namespace RN
 
 	uint16 EOSHost::GetUserIDForInternalID(EOS_ProductUserId internalID)
 	{
-		for(auto &pair : _peers)
-		{
-			if(pair.second.internalID == internalID)
-			{
-				return pair.first;
-			}
-		}
-
-		return 0;
+		auto it = _peers.find(internalID);
+		if (it != _peers.end()) return it->second.userID;
+		return static_cast<uint16>(-1);
 	}
 
 	bool EOSHost::HasReliableDataInTransit()
@@ -422,6 +416,6 @@ namespace RN
 
 	double EOSHost::GetLastRoundtripTime(uint16 peerID)
 	{
-		return _peers[peerID].smoothedRoundtripTime;
+		return _peers[_idMap[peerID]].smoothedRoundtripTime;
 	}
 } // namespace RN

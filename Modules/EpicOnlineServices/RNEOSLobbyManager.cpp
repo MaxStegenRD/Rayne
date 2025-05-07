@@ -71,12 +71,17 @@ namespace RN
 
 		_rtcInterfaceHandle = EOS_Platform_GetRTCInterface(world->GetPlatformHandle());
 		_rtcAudioInterfaceHandle = EOS_RTC_GetAudioInterface(_rtcInterfaceHandle);
+
+		EOS_Lobby_AddNotifyLobbyMemberStatusReceivedOptions statusOptions = {};
+		statusOptions.ApiVersion = EOS_LOBBY_ADDNOTIFYLOBBYMEMBERSTATUSRECEIVED_API_LATEST;
+		_memberStatusReceivedNotificationID = EOS_Lobby_AddNotifyLobbyMemberStatusReceived(_lobbyInterfaceHandle, &statusOptions, this, LobbyOnMemberStatusReceived);
 	}
 
 	EOSLobbyManager::~EOSLobbyManager()
 	{
 		ResetLobbySearchCallback();
 		SafeRelease(_connectedLobbyID);
+		EOS_Lobby_RemoveNotifyLobbyMemberStatusReceived(_lobbyInterfaceHandle, _memberStatusReceivedNotificationID);
 	}
 
 	void EOSLobbyManager::SetGlobalAudioOptions(bool voiceEnabled, bool unmixed, std::function<void(RN::String *eosUserID, RN::uint32 sampleRate, RN::uint32 channels, RN::uint32 framesCount, RN::int16 *frames)> audioReceivedCallback, std::function<void(RN::uint32 sampleRate, RN::uint32 channels, RN::uint32 framesCount, RN::int16 *frames)> audioBeforeSendCallback)
@@ -342,6 +347,37 @@ namespace RN
 		EOS_Lobby_JoinLobby(_lobbyInterfaceHandle, &joinOptions, this, LobbyOnJoinCallback);
 	}
 
+	void EOSLobbyManager::RetrievePeers()
+	{
+		RN_ASSERT(_isConnectedToLobby, "Cannot retrieve peers: not connected to lobby.");
+
+		EOS_LobbyDetails_GetMemberCountOptions getMemberCountOptions {};
+		getMemberCountOptions.ApiVersion = EOS_LOBBYDETAILS_GETMEMBERCOUNT_API_LATEST;
+		uint32_t memberCount = EOS_LobbyDetails_GetMemberCount(_lobbyDetails, &getMemberCountOptions);
+		_remotePeers.clear();
+
+		for(uint32_t i = 0; i < memberCount; ++i)
+		{
+			EOS_LobbyDetails_GetMemberByIndexOptions getMemberOptions {};
+			getMemberOptions.ApiVersion = EOS_LOBBYDETAILS_GETMEMBERBYINDEX_API_LATEST;
+			getMemberOptions.MemberIndex = i;
+			EOS_ProductUserId MemberId = EOS_LobbyDetails_GetMemberByIndex(_lobbyDetails, &getMemberOptions);
+
+			if(MemberId != EOSWorld::GetInstance()->GetUserID())
+			{
+				_remotePeers.push_back(MemberId);
+			}
+		}
+	}
+	void EOSLobbyManager::AddRemotePeer(EOS_ProductUserId peerID)
+	{
+		_remotePeers.push_back(peerID);
+	}
+	void EOSLobbyManager::RemoveRemotePeer(EOS_ProductUserId peerID)
+	{
+		_remotePeers.erase(std::remove(_remotePeers.begin(), _remotePeers.end(), peerID), _remotePeers.end());
+	}
+
 	void EOSLobbyManager::LeaveCurrentLobby()
 	{
 		if(!_isConnectedToLobby) return;
@@ -362,6 +398,14 @@ namespace RN
 			leaveOptions.LobbyId = _connectedLobbyID->GetUTF8String();
 			EOS_Lobby_LeaveLobby(_lobbyInterfaceHandle, &leaveOptions, this, LobbyOnLeaveCallback);
 		}
+
+		if(_lobbyDetails)
+		{
+			EOS_LobbyDetails_Release(_lobbyDetails);
+			_lobbyDetails = nullptr;
+		}
+
+		_remotePeers.clear();
 	}
 
 	void EOSLobbyManager::KickFromCurrentLobby(EOS_ProductUserId userHandle)
@@ -481,6 +525,12 @@ namespace RN
 			lobbyManager->_isConnectedToLobby = true;
 			lobbyManager->_connectedLobbyID = new String(Data->LobbyId);
 			lobbyManager->_isConnectedLobbyOwner = true;
+
+			EOS_Lobby_CopyLobbyDetailsHandleOptions copyOptions;
+			copyOptions.ApiVersion = EOS_LOBBY_COPYLOBBYDETAILSHANDLE_API_LATEST;
+			copyOptions.LocalUserId = EOSWorld::GetInstance()->GetUserID();
+			copyOptions.LobbyId = Data->LobbyId;
+			EOS_EResult copyDetailsResult = EOS_Lobby_CopyLobbyDetailsHandle(lobbyManager->_lobbyInterfaceHandle, &copyOptions, &lobbyManager->_lobbyDetails);
 
 			if(lobbyManager->_isVoiceEnabled && (lobbyManager->_audioReceivedCallback || lobbyManager->_audioBeforeSendCallback))
 			{
@@ -766,6 +816,15 @@ namespace RN
 		searchData->handle = nullptr;
 	}
 
+	EOS_ProductUserId EOSLobbyManager::GetLobbyOwnerID()
+	{
+		RN_ASSERT(_isConnectedToLobby, "Cannot query owner of lobby: not connected to any lobby.");
+
+		EOS_LobbyDetails_GetLobbyOwnerOptions getLobbyOwnerOptions = {0};
+		getLobbyOwnerOptions.ApiVersion = EOS_LOBBYDETAILS_GETLOBBYOWNER_API_LATEST;
+		return EOS_LobbyDetails_GetLobbyOwner(_lobbyDetails, &getLobbyOwnerOptions);
+	}
+
 	void EOSLobbyManager::LobbyOnUpdateCallback(const EOS_Lobby_UpdateLobbyCallbackInfo *Data)
 	{
 		if(Data->ResultCode == EOS_EResult::EOS_Success)
@@ -788,6 +847,17 @@ namespace RN
 
 			lobbyManager->_isConnectedToLobby = true;
 			lobbyManager->_connectedLobbyID = new String(Data->LobbyId);
+
+			EOS_Lobby_CopyLobbyDetailsHandleOptions copyOptions;
+			copyOptions.ApiVersion = EOS_LOBBY_COPYLOBBYDETAILSHANDLE_API_LATEST;
+			copyOptions.LocalUserId = EOSWorld::GetInstance()->GetUserID();
+			copyOptions.LobbyId = Data->LobbyId;
+			EOS_EResult copyDetailsResult = EOS_Lobby_CopyLobbyDetailsHandle(lobbyManager->_lobbyInterfaceHandle, &copyOptions, &lobbyManager->_lobbyDetails);
+			if(copyDetailsResult == EOS_EResult::EOS_Success)
+			{
+				lobbyManager->RetrievePeers();
+			}
+
 			if(lobbyManager->_didJoinLobbyCallback)
 			{
 				lobbyManager->_didJoinLobbyCallback(EOSResult::Success);
@@ -877,6 +947,26 @@ namespace RN
 		{
 			EOS_RTCAudio_RemoveNotifyAudioBeforeSend(lobbyManager->_rtcAudioInterfaceHandle, lobbyManager->_currentAudioBeforeSendNotificationID);
 			lobbyManager->_currentAudioBeforeSendNotificationID = 0;
+		}
+	}
+
+	void EOSLobbyManager::LobbyOnMemberStatusReceived(const EOS_Lobby_LobbyMemberStatusReceivedCallbackInfo *Data)
+	{
+		EOSLobbyManager *lobbyManager = static_cast<EOSLobbyManager *>(Data->ClientData);
+		RNDebug("Lobby member status received for " << Data->TargetUserId << " in lobby " << Data->LobbyId);
+
+		switch(Data->CurrentStatus)
+		{
+			case EOS_ELobbyMemberStatus::EOS_LMS_JOINED:
+				RNDebug("Member joined: " << Data->TargetUserId);
+				lobbyManager->AddRemotePeer(Data->TargetUserId);
+				break;
+			case EOS_ELobbyMemberStatus::EOS_LMS_LEFT:
+				RNDebug("Member left: " << Data->TargetUserId);
+				lobbyManager->RemoveRemotePeer(Data->TargetUserId);
+				break;
+			default:
+				break;
 		}
 	}
 

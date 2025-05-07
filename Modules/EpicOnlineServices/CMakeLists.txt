@@ -17,6 +17,7 @@ set(SOURCES
         RNEOSLobbyManager.cpp
         RNEOSHost.cpp
         RNEOSClient.cpp
+        RNEOSP2PClient.cpp
         RNEOSServer.cpp)
 
 set(HEADERS
@@ -25,6 +26,7 @@ set(HEADERS
         RNEOSLobbyManager.h
         RNEOSHost.h
         RNEOSClient.h
+        RNEOSP2PClient.h
         RNEOSServer.h)
 
 set(DEFINES RN_BUILD_EOS)

@@ -55,7 +55,7 @@ namespace RN
 
 		struct Packet
 		{
-			uint16 receiverID;
+			EOS_ProductUserId receiverID;
 			uint32 channel;
 			bool isReliable;
 			Data *data;
@@ -115,13 +115,15 @@ namespace RN
 		EOSAPI virtual void HandleDidConnect(uint16 userID) {};
 		EOSAPI virtual void HandleDidDisconnect(uint16 userID, uint16 reason) {};
 
-		EOSAPI void SendPing(uint16 receiverID, bool isResponse, uint8 responseID);
-		EOSAPI bool IsPacketInOrder(EOSHost::ProtocolPacketType packetType, uint16 senderID, uint8 packetID, uint8 channel);
+		EOSAPI bool IsPacketInOrder(EOSHost::ProtocolPacketType packetType, EOS_ProductUserId senderID, uint8 packetID, uint8 channel);
+		EOSAPI void SendPing(EOS_ProductUserId receiverID, bool isResponse, uint8 responseID);
 
+		uint16 _userID;
 		Status _status;
 		float _pingTimer;
 
-		std::map<uint16, Peer> _peers;
+		std::map<EOS_ProductUserId, Peer> _peers;
+		std::map<uint16, EOS_ProductUserId> _idMap;
 
 	private:
 		RNDeclareMetaAPI(EOSHost, EOSAPI)
