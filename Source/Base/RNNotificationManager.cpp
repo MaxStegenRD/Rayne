@@ -92,8 +92,9 @@ namespace RN
 
 		if(iterator->second.size() == 0)
 		{
-			iterator->first->Release(); //Release the "name"a
+			String *key = iterator->first;
 			_subscribers.erase(iterator);
+			key->Release(); //Release the "name"
 		}
 	}
 } // namespace RN
