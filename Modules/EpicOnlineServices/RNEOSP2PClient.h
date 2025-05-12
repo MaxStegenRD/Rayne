@@ -30,6 +30,7 @@ namespace RN
 
 	protected:
 		EOSAPI virtual void Update(float delta) override;
+		void LogPeers() const;
 
 	private:
 		static void OnConnectionRequestCallback(const EOS_P2P_OnIncomingConnectionRequestInfo *Data);
@@ -42,6 +43,7 @@ namespace RN
 		bool _isHost; //This client is hosting the current session
 
 		uint16 GetUnusedUserID() const;
+		void AssignUserID(uint16 ownUserID);
 
 		RNDeclareMetaAPI(EOSP2PClient, EOSAPI)
 	};

@@ -119,6 +119,7 @@ namespace RN
 		EOSAPI void SendPing(EOS_ProductUserId receiverID, bool isResponse, uint8 responseID);
 
 		uint16 _userID;
+		uint16 _hostID;
 		Status _status;
 		float _pingTimer;
 

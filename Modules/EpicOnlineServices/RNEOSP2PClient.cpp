@@ -19,7 +19,7 @@ namespace RN
 	RNDefineMeta(EOSP2PClient, EOSHost)
 
 	EOSP2PClient::EOSP2PClient(bool isHost, uint16 maxConnections) :
-		_isHost(isHost), _maxConnections(maxConnections)
+		_maxConnections(maxConnections), _isHost(isHost)
 	{
 		Lock();
 		_userID = _isHost ? 0 : 0xFFFF;
@@ -55,10 +55,11 @@ namespace RN
 
 	void EOSP2PClient::Connect(EOS_ProductUserId remoteProductUserID)
 	{
+		RNDebug("Connecting to " << remoteProductUserID);
 		Lock();
-		RN_ASSERT(_status == Disconnected, "Cannot connect in current status." + _status);
+		RN_ASSERT(_status != Disconnecting, "Cannot connect in current status." + _status);
 
-		_status = Connecting;
+		if(_status == Disconnected) _status = Connecting;
 
 		EOSWorld *world = EOSWorld::GetInstance();
 
@@ -92,11 +93,15 @@ namespace RN
 			return;
 		}
 
+		//Create peer with unknown user ID. Will be set via connection response
+		_peers.insert(std::pair(remoteProductUserID, CreatePeer(0xFFFF, remoteProductUserID)));
+
 		Unlock();
 	}
 
 	void EOSP2PClient::Disconnect()
 	{
+		RNDebug("Disconnecting");
 		Lock();
 		if(_status == Disconnected || _status == Disconnecting)
 		{
@@ -128,9 +133,10 @@ namespace RN
 
 		Unlock();
 	}
-	
+
 	void EOSP2PClient::DisconnectUser(uint16 userID, uint16 data)
 	{
+		RNDebug("Disconnecting user " << userID);
 		Lock();
 		EOSWorld *world = EOSWorld::GetInstance();
 
@@ -147,18 +153,20 @@ namespace RN
 		EOS_P2P_CloseConnection(world->GetP2PHandle(), &options);
 		Unlock();
 	}
-	
+
 	void EOSP2PClient::DisconnectUserDelayed(uint16 userID, float delay)
 	{
+		RNDebug("Disconnecting user " << userID << " in " << delay << " seconds");
 		Lock();
 		EOS_ProductUserId internalID = _idMap[userID];
 		_peers[internalID]._disconnectDelay = delay;
 		_peers[internalID]._wantsDisconnect = true;
 		Unlock();
 	}
-	
+
 	void EOSP2PClient::DisconnectAll()
 	{
+		RNDebug("Disconnecting all users");
 		Lock();
 		EOSWorld *world = EOSWorld::GetInstance();
 
@@ -177,13 +185,13 @@ namespace RN
 
 	void EOSP2PClient::ForceDisconnect(uint16 reason)
 	{
+		RNDebug("ForceDisconnect()");
 		Lock();
 		_status = Disconnected;
 		_peers.clear();
 		_idMap.clear();
 		Unlock();
 
-		RNDebug("Disconnected!");
 		HandleDidDisconnect(0, reason);
 	}
 
@@ -198,6 +206,44 @@ namespace RN
 		}
 
 		return -1;
+	}
+
+	void EOSP2PClient::AssignUserID(uint16 ownUserID)
+	{
+		RNDebug("Was assigned user ID " << ownUserID);
+		_userID = ownUserID;
+
+		//Let peers know
+		EOSWorld *world = EOSWorld::GetInstance();
+		EOS_P2P_SocketId socketID = {};
+		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
+		strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
+
+		for(auto peer : _peers)
+		{
+			ProtocolPacketHeader packetHeader;
+			packetHeader.packetType = ProtocolPacketTypeConnectResponse;
+			packetHeader.packetID = 0;
+			packetHeader.dataLength = 4;
+
+			Data *packetData = new Data();
+			packetData->Append(&packetHeader, 4);
+			packetData->Append(&_userID, sizeof(uint16));
+			packetData->Append(&peer.second.userID, sizeof(uint16));
+
+			EOS_P2P_SendPacketOptions sendPacketOptions = {};
+			sendPacketOptions.ApiVersion = EOS_P2P_SENDPACKET_API_LATEST;
+			sendPacketOptions.SocketId = &socketID;
+			sendPacketOptions.LocalUserId = world->GetUserID();
+			sendPacketOptions.RemoteUserId = peer.first;
+			sendPacketOptions.Channel = 0;
+			sendPacketOptions.Reliability = EOS_EPacketReliability::EOS_PR_ReliableOrdered;
+			sendPacketOptions.bAllowDelayedDelivery = true;
+			sendPacketOptions.DataLengthBytes = packetData->GetLength();
+			sendPacketOptions.Data = packetData->GetBytes();
+
+			EOS_P2P_SendPacket(world->GetP2PHandle(), &sendPacketOptions);
+		}
 	}
 
 	void EOSP2PClient::Update(float delta)
@@ -245,7 +291,8 @@ namespace RN
 
 			if(_peers.find(senderUserID) == _peers.end())
 			{
-				//Create peer with unknow user ID. Will be set via connection response
+				//Create peer with unknown user ID. Will be set via connection response
+				RNDebug("Received packet from unknown user " << senderUserID << " (creating peer)");
 				_peers.insert(std::pair(senderUserID, CreatePeer(0xFFFF, senderUserID)));
 			}
 			uint16 senderID = _peers[senderUserID].userID;
@@ -356,9 +403,11 @@ namespace RN
 					packetHeader.packetType = static_cast<ProtocolPacketType>(rawData[dataIndex + 0]);
 					packetHeader.packetID = rawData[dataIndex + 1];
 					packetHeader.dataLength = rawData[dataIndex + 2] | rawData[dataIndex + 3] << 8;
+					dataIndex += 4;
 
 					if(packetHeader.packetType == ProtocolPacketTypeConnectRequest)
 					{
+						RNDebug("Received connect request from " << senderUserID);
 						if(packetHeader.packetID == 0)
 						{
 							//This is handled in OnConnectionRequestCallback
@@ -368,36 +417,41 @@ namespace RN
 						{
 							RNDebug("Malformed connect request");
 						}
-						dataIndex += packetHeader.dataLength + 4;
+						dataIndex += packetHeader.dataLength; //Should be 0
 						continue;
 					}
 
 					if(packetHeader.packetType == ProtocolPacketTypeConnectResponse)
 					{
-						if(packetHeader.packetID == 0 && packetHeader.dataLength <= 4)
+						if(packetHeader.packetID == 0 && packetHeader.dataLength == 4)
 						{
-							RNDebug("Connected to " << senderUserID);
-							dataIndex += 4;
 							uint16 remoteUserID = rawData[dataIndex] | rawData[dataIndex + 1] << 8;
+							uint16 ownUserID = rawData[dataIndex + 2] | rawData[dataIndex + 3] << 8;
+							dataIndex += 4;
+							RNDebug("Received connect response from " << senderUserID << " with user ID " << remoteUserID << " and own user ID " << ownUserID);
 
-							if(packetHeader.dataLength > 2)
+							//Received remote user ID
+							if(_peers[senderUserID].userID == 0xFFFF && remoteUserID != 0xFFFF)
 							{
-								uint16 ownUserID = rawData[dataIndex + 2] | rawData[dataIndex + 3] << 8;
-								if(ownUserID != 0xFFFF) _userID = ownUserID;
-								RNDebug("Was assigned user ID " << ownUserID);
-								_status = Connected;
+								_peers[senderUserID].userID = remoteUserID;
+								_idMap[remoteUserID] = senderUserID;
+
+								Unlock();
+								HandleDidConnect(remoteUserID);
+								Lock();
 							}
 
-							//Assign user ID
-							_peers[senderUserID].userID = remoteUserID;
-							_idMap[remoteUserID] = senderUserID;
-
-							Unlock();
-							HandleDidConnect(remoteUserID);
-							Lock();
+							//Received own user ID from host
+							if(_userID == 0xFFFF && ownUserID != 0xFFFF)
+							{
+								_hostID = remoteUserID;
+								AssignUserID(ownUserID);
+								_status = Connected;
+							}
 						}
 						else
 						{
+							dataIndex += packetHeader.dataLength;
 							RNDebug("Malformed connect response");
 						}
 						continue;
@@ -405,13 +459,13 @@ namespace RN
 
 					if(!IsPacketInOrder(packetHeader.packetType, senderUserID, packetHeader.packetID, channel))
 					{
-						dataIndex += packetHeader.dataLength + 4;
+						dataIndex += packetHeader.dataLength;
 						continue;
 					}
 
 					//Get data object from the packet without protocol header
-					Data *data = Data::WithBytes(&rawData[dataIndex + 4], packetHeader.dataLength);
-					dataIndex += packetHeader.dataLength + 4;
+					Data *data = Data::WithBytes(&rawData[dataIndex], packetHeader.dataLength);
+					dataIndex += packetHeader.dataLength;
 
 					Unlock();
 					ReceivedPacket(data, senderID, channel);
@@ -443,6 +497,15 @@ namespace RN
 		Unlock();
 	}
 
+	void EOSP2PClient::LogPeers() const
+	{
+		RNDebug("Peers known: " << _peers.size());
+		for(auto peer : _peers)
+		{
+			RNDebug("Peer: " << peer.first << " | user id: " << peer.second.userID);
+		}
+	}
+
 	void EOSP2PClient::OnConnectionRequestCallback(const EOS_P2P_OnIncomingConnectionRequestInfo *Data)
 	{
 		EOSP2PClient *client = static_cast<EOSP2PClient *>(Data->ClientData);
@@ -456,72 +519,68 @@ namespace RN
 
 		EOS_P2P_AcceptConnection(EOSWorld::GetInstance()->GetP2PHandle(), &acceptOptions);
 
-		RNDebug("Remote client connected");
+		RNDebug("Accepted connection request from " << Data->RemoteUserId);
 
 		ProtocolPacketHeader packetHeader;
 		packetHeader.packetType = ProtocolPacketTypeConnectResponse;
 		packetHeader.packetID = 0;
+		packetHeader.dataLength = 4;
 
 		RN::Data *packetData = new RN::Data();
-		uint16 localUserID = client->_userID;
+		packetData->Append(&packetHeader, 4);
+		packetData->Append(&client->_userID, sizeof(uint16));
+		uint16 remoteUserID = client->_isHost ? client->GetUnusedUserID() : 0xFFFF;
+		packetData->Append(&remoteUserID, sizeof(uint16));
+
+		const Peer &peer = client->CreatePeer(remoteUserID, Data->RemoteUserId);
+		client->_peers.insert(std::pair(Data->RemoteUserId, peer));
 
 		//If hosting the session, assign a new client user id, else ask for user id by sending connection request
 		if(client->_isHost)
 		{
-			const Peer &peer = client->CreatePeer(client->GetUnusedUserID(), Data->RemoteUserId);
-			client->_peers.insert(std::pair(Data->RemoteUserId, peer));
-			client->_idMap[peer.userID] = Data->RemoteUserId;
-			packetHeader.dataLength = 4;
-			packetData->Append(&packetHeader, 4);
-			packetData->Append(&localUserID, sizeof(uint16));
-			packetData->Append(&peer.userID, sizeof(uint16));
+			RNDebug("Assigning user id " << peer.userID);
+			client->_idMap[remoteUserID] = Data->RemoteUserId;
 			client->HandleDidConnect(peer.userID);
 		}
 		else
 		{
-			const Peer &peer = client->CreatePeer(0xFFFF, Data->RemoteUserId);
-			client->_peers.insert(std::pair(Data->RemoteUserId, peer));
-			packetHeader.dataLength = 2;
-			packetData->Append(&packetHeader, 4);
-			packetData->Append(&localUserID, sizeof(uint16));
+			RNDebug("Requesting user id from " << Data->RemoteUserId);
+			client->Connect(Data->RemoteUserId); //Request user id
 		}
 
-		EOS_P2P_SendPacketOptions connectConfirmOptions = {};
-		connectConfirmOptions.ApiVersion = EOS_P2P_SENDPACKET_API_LATEST;
-		connectConfirmOptions.SocketId = Data->SocketId;
-		connectConfirmOptions.LocalUserId = world->GetUserID();
-		connectConfirmOptions.RemoteUserId = Data->RemoteUserId;
-		connectConfirmOptions.Channel = 0;
-		connectConfirmOptions.Reliability = EOS_EPacketReliability::EOS_PR_ReliableOrdered;
-		connectConfirmOptions.bAllowDelayedDelivery = true;
-		connectConfirmOptions.DataLengthBytes = packetData->GetLength();
-		connectConfirmOptions.Data = packetData->GetBytes();
+		client->LogPeers();
 
-		EOS_P2P_SendPacket(world->GetP2PHandle(), &connectConfirmOptions);
+		EOS_P2P_SendPacketOptions sendPacketOptions = {};
+		sendPacketOptions.ApiVersion = EOS_P2P_SENDPACKET_API_LATEST;
+		sendPacketOptions.SocketId = Data->SocketId;
+		sendPacketOptions.LocalUserId = world->GetUserID();
+		sendPacketOptions.RemoteUserId = Data->RemoteUserId;
+		sendPacketOptions.Channel = 0;
+		sendPacketOptions.Reliability = EOS_EPacketReliability::EOS_PR_ReliableOrdered;
+		sendPacketOptions.bAllowDelayedDelivery = true;
+		sendPacketOptions.DataLengthBytes = packetData->GetLength();
+		sendPacketOptions.Data = packetData->GetBytes();
 
-		if(!client->_isHost)
-		{
-			bool isClientUserIDAssigned = client->_peers[Data->RemoteUserId].userID != 0xFFFF;
-			if(!isClientUserIDAssigned) client->Connect(Data->RemoteUserId); //Asking for user id
-		}
+		EOS_P2P_SendPacket(world->GetP2PHandle(), &sendPacketOptions);
 	}
 
 	void EOSP2PClient::OnConnectionClosedCallback(const EOS_P2P_OnRemoteConnectionClosedInfo *Data)
 	{
 		EOSP2PClient *client = static_cast<EOSP2PClient *>(Data->ClientData);
+		uint16 id = client->_peers[Data->RemoteUserId].userID;
+		client->_idMap.erase(id);
+		client->_peers.erase(Data->RemoteUserId);
+		RNDebug("Peer disconnected. peer id: " << id << " | product ID: " << Data->RemoteUserId);
+		RNDebug("Peers left: " << client->_peers.size());
+		for(auto peer : client->_peers)
+		{
+			RNDebug("Peer: " << peer.first << " | user id: " << peer.second.userID);
+		}
+		if(client->_peers.empty() && !client->_isHost)
+		{
+			client->_status = Disconnected;
+		}
 
-		if(client->_isHost)
-		{
-			uint16 id = client->_peers[Data->RemoteUserId].userID;
-			RNDebug("Client disconnected: " << id);
-			client->_idMap.erase(id);
-			client->_peers.erase(Data->RemoteUserId);
-			client->HandleDidDisconnect(id, static_cast<uint16>(Data->Reason));
-		}
-		else
-		{
-			RNDebug("Disconnected from Server");
-			client->ForceDisconnect(static_cast<uint16>(Data->Reason));
-		}
+		client->HandleDidDisconnect(id, static_cast<uint16>(Data->Reason));
 	}
 } // namespace RN
