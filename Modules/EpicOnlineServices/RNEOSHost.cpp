@@ -41,16 +41,9 @@ namespace RN
 		//Send ack for reliable data. EOS has something like this internally, but does not expose any of it :(
 		if(packetType == ProtocolPacketTypeReliableData)
 		{
-			EOS_P2P_SocketId socketID = {0};
+			EOS_P2P_SocketId socketID = {};
 			socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-			socketID.SocketName[0] = 'F';
-			socketID.SocketName[1] = 'u';
-			socketID.SocketName[2] = 'c';
-			socketID.SocketName[3] = 'k';
-			socketID.SocketName[4] = 'Y';
-			socketID.SocketName[5] = 'e';
-			socketID.SocketName[6] = 'a';
-			socketID.SocketName[7] = 'h';
+			strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
 
 			ProtocolPacketHeader packetHeader;
 			packetHeader.packetType = ProtocolPacketTypeReliableDataAck;
@@ -95,16 +88,9 @@ namespace RN
 		Lock();
 		EOSWorld *world = EOSWorld::GetInstance();
 
-		EOS_P2P_SocketId socketID = {0};
+		EOS_P2P_SocketId socketID = {};
 		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-		socketID.SocketName[0] = 'F';
-		socketID.SocketName[1] = 'u';
-		socketID.SocketName[2] = 'c';
-		socketID.SocketName[3] = 'k';
-		socketID.SocketName[4] = 'Y';
-		socketID.SocketName[5] = 'e';
-		socketID.SocketName[6] = 'a';
-		socketID.SocketName[7] = 'h';
+		strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
 
 		ProtocolPacketHeader packetHeader;
 		if(isResponse)
@@ -122,7 +108,7 @@ namespace RN
 			_peers[receiverID]._sentPingTime = Clock::now();
 		}
 
-		EOS_P2P_SendPacketOptions sendPacketOptions = {0};
+		EOS_P2P_SendPacketOptions sendPacketOptions = {};
 		sendPacketOptions.ApiVersion = EOS_P2P_SENDPACKET_API_LATEST;
 		sendPacketOptions.Channel = 255;
 		sendPacketOptions.LocalUserId = world->GetUserID();
@@ -178,16 +164,9 @@ namespace RN
 			}
 		}
 
-		EOS_P2P_SocketId socketID = {0};
+		EOS_P2P_SocketId socketID = {};
 		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-		socketID.SocketName[0] = 'F';
-		socketID.SocketName[1] = 'u';
-		socketID.SocketName[2] = 'c';
-		socketID.SocketName[3] = 'k';
-		socketID.SocketName[4] = 'Y';
-		socketID.SocketName[5] = 'e';
-		socketID.SocketName[6] = 'a';
-		socketID.SocketName[7] = 'h';
+		strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
 
 		uint32 nextPacketSize = 0;
 		uint8 pingChannel = 255;
@@ -203,7 +182,7 @@ namespace RN
 				continue;
 			}
 
-			EOS_P2P_ReceivePacketOptions receiveOptions = {0};
+			EOS_P2P_ReceivePacketOptions receiveOptions = {};
 			receiveOptions.ApiVersion = EOS_P2P_RECEIVEPACKET_API_LATEST;
 			receiveOptions.LocalUserId = world->GetUserID();
 			receiveOptions.MaxDataSizeBytes = nextPacketSize;
@@ -302,7 +281,7 @@ namespace RN
 							data->Append(packetData->GetDataInRange(Range(dataOffset, dataLength)));
 							dataOffset += dataLength;
 
-							EOS_P2P_SendPacketOptions sendPacketOptions = {0};
+							EOS_P2P_SendPacketOptions sendPacketOptions = {};
 							sendPacketOptions.ApiVersion = EOS_P2P_SENDPACKET_API_LATEST;
 							sendPacketOptions.Channel = pair.first;
 							sendPacketOptions.LocalUserId = world->GetUserID();
@@ -349,7 +328,7 @@ namespace RN
 							//scheduled_count += 1;
 						}
 
-						EOS_P2P_SendPacketOptions sendPacketOptions = {0};
+						EOS_P2P_SendPacketOptions sendPacketOptions = {};
 						sendPacketOptions.ApiVersion = EOS_P2P_SENDPACKET_API_LATEST;
 						sendPacketOptions.Channel = pair.first;
 						sendPacketOptions.LocalUserId = world->GetUserID();
@@ -397,7 +376,7 @@ namespace RN
 	uint16 EOSHost::GetUserIDForInternalID(EOS_ProductUserId internalID)
 	{
 		auto it = _peers.find(internalID);
-		if (it != _peers.end()) return it->second.userID;
+		if(it != _peers.end()) return it->second.userID;
 		return static_cast<uint16>(-1);
 	}
 

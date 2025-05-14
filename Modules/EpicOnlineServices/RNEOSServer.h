@@ -21,7 +21,7 @@ namespace RN
 	{
 	public:
 		EOSAPI EOSServer(uint16 maxConnections = 16);
-		EOSAPI ~EOSServer();
+		EOSAPI ~EOSServer() override;
 
 		EOSAPI void DisconnectUser(uint16 userID, uint16 data);
 		EOSAPI void DisconnectUserDelayed(uint16 userID, uint16 data, float delay = 1.0f); //Using this, will not immediately force disconnect the user, leaving some time for previously sent data to arrive (like a reason for getting disconnected)

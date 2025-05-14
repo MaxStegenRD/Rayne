@@ -13,7 +13,7 @@
 #include <queue>
 
 struct EOS_ProductUserIdDetails;
-typedef struct EOS_ProductUserIdDetails *EOS_ProductUserId;
+typedef EOS_ProductUserIdDetails *EOS_ProductUserId;
 
 namespace RN
 {
@@ -97,7 +97,7 @@ namespace RN
 		};
 
 		EOSAPI EOSHost();
-		EOSAPI ~EOSHost();
+		EOSAPI ~EOSHost() override;
 
 		EOSAPI void SendPacket(Data *data, uint16 receiverID = 0, uint32 channel = 0, bool reliable = false);
 		EOSAPI virtual void ReceivedPacket(Data *data, uint32 senderID, uint32 channel) {};
@@ -113,10 +113,10 @@ namespace RN
 		EOSAPI Peer CreatePeer(uint16 userID, EOS_ProductUserId internalID);
 		EOSAPI uint16 GetUserIDForInternalID(EOS_ProductUserId internalID);
 
-		EOSAPI virtual void HandleDidConnect(uint16 userID) {};
-		EOSAPI virtual void HandleDidDisconnect(uint16 userID, uint16 reason) {};
+		EOSAPI virtual void HandleDidConnect(uint16 userID) {}
+		EOSAPI virtual void HandleDidDisconnect(uint16 userID, uint16 reason) {}
 
-		EOSAPI bool IsPacketInOrder(EOSHost::ProtocolPacketType packetType, EOS_ProductUserId senderID, uint8 packetID, uint8 channel);
+		EOSAPI bool IsPacketInOrder(ProtocolPacketType packetType, EOS_ProductUserId senderID, uint8 packetID, uint8 channel);
 		EOSAPI void SendPing(EOS_ProductUserId receiverID, bool isResponse, uint8 responseID);
 
 		uint16 _userID;

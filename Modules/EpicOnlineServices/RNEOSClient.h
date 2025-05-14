@@ -20,7 +20,7 @@ namespace RN
 	{
 	public:
 		EOSAPI EOSClient();
-		EOSAPI ~EOSClient();
+		EOSAPI ~EOSClient() override;
 
 		EOSAPI void Connect(EOS_ProductUserId serverProductID);
 		EOSAPI void Disconnect() override;

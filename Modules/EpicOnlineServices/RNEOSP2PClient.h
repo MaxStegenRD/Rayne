@@ -20,7 +20,7 @@ namespace RN
 	{
 	public:
 		EOSAPI EOSP2PClient(bool isHost, uint16 maxConnections);
-		EOSAPI ~EOSP2PClient();
+		EOSAPI ~EOSP2PClient() override;
 
 		EOSAPI void Connect(EOS_ProductUserId remoteProductUserID);
 		EOSAPI void Disconnect() override;
