@@ -967,7 +967,7 @@ namespace RN
 				break;
 			case EOS_ELobbyMemberStatus::EOS_LMS_CLOSED:
 				RNDebug("Lobby closed: " << Data->TargetUserId);
-				EOSWorld::GetInstance()->CloseConnections();
+				EOSWorld::GetInstance()->Disconnect();
 				break;
 			default:
 				break;
