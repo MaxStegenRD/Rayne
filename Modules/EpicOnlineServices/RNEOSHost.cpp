@@ -122,31 +122,57 @@ namespace RN
 		Unlock();
 	}
 
+	void EOSHost::SendPacket(Data *data, EOS_ProductUserId receiverID, uint32 channel, bool reliable)
+	{
+		Lock();
+		if(_peers[receiverID]._wantsDisconnect)
+		{
+			Unlock();
+			return; //Don't allow sending more data to users that are about to be disconnected.
+		}
+
+		if(_peers.find(receiverID) == _peers.end())
+		{
+			Unlock();
+			RNDebug("Unknown peer " << receiverID);
+			return;
+		}
+
+		if(_peers[receiverID]._scheduledPackets.find(channel) != _peers[receiverID]._scheduledPackets.end())
+		{
+			_peers[receiverID]._scheduledPackets.insert(std::pair(channel, std::queue<Packet>()));
+		}
+
+		_peers[receiverID]._scheduledPackets[channel].push({receiverID, channel, reliable, data->Retain()});
+
+		Unlock();
+	}
+	
 	void EOSHost::SendPacket(Data *data, uint16 receiverID, uint32 channel, bool reliable)
 	{
-		EOS_ProductUserId internalReceiverID = _idMap[receiverID];
-		if(_peers[internalReceiverID]._wantsDisconnect) return; //Don't allow sending more data to users that are about to be disconnected.
-
 		//Only reliable packets can be split up, unreliable packets need to be small enough to fit a single networking packet
 		RN_DEBUG_ASSERT(data->GetLength() < MAX_PACKET_SIZE || reliable, "Packet too big!");
 
 		if(!reliable && data->GetLength() >= MAX_PACKET_SIZE) return; //Don't send if unreliable packet is too big. Since it is unreliable, not sending it is acceptable.
 
 		Lock();
-		if(_peers.empty() || _peers.find(internalReceiverID) == _peers.end())
+		if(_idMap.find(receiverID) == _idMap.end())
 		{
 			Unlock();
+			RNDebug("Unknown receiver ID " << receiverID);
 			return;
 		}
-
-		if(_peers[internalReceiverID]._scheduledPackets.find(channel) != _peers[internalReceiverID]._scheduledPackets.end())
-		{
-			_peers[internalReceiverID]._scheduledPackets.insert(std::pair(channel, std::queue<Packet>()));
-		}
-
-		_peers[internalReceiverID]._scheduledPackets[channel].push({internalReceiverID, channel, reliable, data->Retain()});
-
+		EOS_ProductUserId internalReceiverID = _idMap[receiverID];
+		SendPacket(data, internalReceiverID, channel, reliable);
 		Unlock();
+	}
+	
+	void EOSHost::BroadcastPacket(Data *data, uint32 channel, bool reliable)
+	{
+		for (auto peer : _peers)
+		{
+			SendPacket(data, peer.first, channel, reliable);
+		} 
 	}
 
 	void EOSHost::Update(float delta)

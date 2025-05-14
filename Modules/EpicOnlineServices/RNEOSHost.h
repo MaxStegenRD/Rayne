@@ -99,8 +99,9 @@ namespace RN
 		EOSAPI EOSHost();
 		EOSAPI ~EOSHost() override;
 
-		EOSAPI void SendPacket(Data *data, uint16 receiverID = 0, uint32 channel = 0, bool reliable = false);
-		EOSAPI virtual void ReceivedPacket(Data *data, uint32 senderID, uint32 channel) {};
+		EOSAPI void SendPacket(Data *data, uint16 receiverID, uint32 channel = 0, bool reliable = false);
+		EOSAPI void BroadcastPacket(Data *data, uint32 channel = 0, bool reliable = false);
+		EOSAPI virtual void ReceivedPacket(Data *data, uint32 senderID, uint32 channel) {}
 
 		EOSAPI Status GetStatus() const { return _status; }
 		EOSAPI bool HasReliableDataInTransit();
@@ -117,6 +118,7 @@ namespace RN
 		EOSAPI virtual void HandleDidDisconnect(uint16 userID, uint16 reason) {}
 
 		EOSAPI bool IsPacketInOrder(ProtocolPacketType packetType, EOS_ProductUserId senderID, uint8 packetID, uint8 channel);
+		EOSAPI void SendPacket(Data *data, EOS_ProductUserId receiverID, uint32 channel = 0, bool reliable = false);
 		EOSAPI void SendPing(EOS_ProductUserId receiverID, bool isResponse, uint8 responseID);
 
 		uint16 _userID;

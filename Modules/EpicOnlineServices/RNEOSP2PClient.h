@@ -26,8 +26,10 @@ namespace RN
 		EOSAPI void Disconnect() override;
 		EOSAPI void DisconnectUser(uint16 userID, uint16 data);
 		EOSAPI void DisconnectUserDelayed(uint16 userID, float delay = 1.0f); //Using this, will not immediately force disconnect the user, leaving some time for previously sent data to arrive (like a reason for getting disconnected)
+		EOSAPI bool IsHost() { return _isHost;}
 
 	protected:
+		bool _isHost; //This client is hosting the current session
 		EOSAPI virtual void Update(float delta) override;
 		void LogPeers() const;
 
@@ -39,7 +41,6 @@ namespace RN
 		uint16 _maxConnections;
 		uint64 _connectionRequestNotificationID;
 		uint64 _connectionClosedNotificationID;
-		bool _isHost; //This client is hosting the current session
 
 		uint16 GetUnusedUserID() const;
 		void AssignUserID(uint16 ownUserID);
