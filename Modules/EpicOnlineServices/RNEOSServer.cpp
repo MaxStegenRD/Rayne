@@ -314,7 +314,7 @@ namespace RN
 		Unlock();
 	}
 
-	void EOSServer::DisconnectAll()
+	void EOSServer::Disconnect()
 	{
 		Lock();
 		EOSWorld *world = EOSWorld::GetInstance();

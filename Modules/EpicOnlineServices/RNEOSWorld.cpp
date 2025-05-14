@@ -171,6 +171,13 @@ namespace RN
 		_hosts->RemoveObject(host);
 	}
 
+	void EOSWorld::Disconnect()
+	{
+		_hosts->Enumerate<EOSHost>([&](EOSHost *host, size_t, bool &) {
+			host->Disconnect();
+		});
+	}
+
 	EOSLobbyManager *EOSWorld::GetLobbyManager()
 	{
 		if(!_lobbyManager)
@@ -415,9 +422,9 @@ namespace RN
 					tokenOptions.ApiVersion = EOS_AUTH_COPYIDTOKEN_API_LATEST;
 					tokenOptions.AccountId = Data->SelectedAccountId;
 
-					EOS_Auth_IdToken* token = nullptr;
+					EOS_Auth_IdToken *token = nullptr;
 					EOS_Auth_CopyIdToken(EOS_Platform_GetAuthInterface(eosWorld->GetPlatformHandle()), &tokenOptions, &token);
-				
+
 					EOS_Connect_Credentials connectCredentials = {0};
 					connectCredentials.ApiVersion = EOS_CONNECT_CREDENTIALS_API_LATEST;
 					connectCredentials.Type = EOS_EExternalCredentialType::EOS_ECT_EPIC_ID_TOKEN;

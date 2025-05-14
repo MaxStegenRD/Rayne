@@ -965,6 +965,10 @@ namespace RN
 				RNDebug("Member left: " << Data->TargetUserId);
 				lobbyManager->RemoveRemotePeer(Data->TargetUserId);
 				break;
+			case EOS_ELobbyMemberStatus::EOS_LMS_CLOSED:
+				RNDebug("Lobby closed: " << Data->TargetUserId);
+				EOSWorld::GetInstance()->CloseConnections();
+				break;
 			default:
 				break;
 		}

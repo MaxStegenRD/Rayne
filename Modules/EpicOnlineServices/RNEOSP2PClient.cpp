@@ -120,16 +120,26 @@ namespace RN
 
 		EOSWorld *world = EOSWorld::GetInstance();
 
-		EOS_P2P_SocketId socketID = {0};
+		EOS_P2P_SocketId socketID = {};
 		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
 		strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
 
-		EOS_P2P_CloseConnectionsOptions options = {0};
+		EOS_P2P_CloseConnectionsOptions options;
 		options.ApiVersion = EOS_P2P_CLOSECONNECTION_API_LATEST;
 		options.LocalUserId = world->GetUserID();
 		options.SocketId = &socketID;
 
-		EOS_P2P_CloseConnections(world->GetP2PHandle(), &options);
+		if(EOS_P2P_CloseConnections(world->GetP2PHandle(), &options) == EOS_EResult::EOS_Success)
+		{
+			RNDebug("Closed all connections");
+			_status = Disconnected;
+			_peers.clear();
+			_idMap.clear();
+			HandleDidDisconnect(_userID, 0); //OnConnectionClosedCallback is not guaranteed to be called when lobby closed, so explicitly call handler here
+		} else
+		{
+			RNWarning("Failed closing all connections");
+		}
 
 		Unlock();
 	}
@@ -164,25 +174,6 @@ namespace RN
 		Unlock();
 	}
 
-	void EOSP2PClient::DisconnectAll()
-	{
-		RNDebug("Disconnecting all users");
-		Lock();
-		EOSWorld *world = EOSWorld::GetInstance();
-
-		EOS_P2P_SocketId socketID = {};
-		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-		strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
-
-		EOS_P2P_CloseConnectionsOptions options;
-		options.ApiVersion = EOS_P2P_CLOSECONNECTION_API_LATEST;
-		options.LocalUserId = world->GetUserID();
-		options.SocketId = &socketID;
-
-		EOS_P2P_CloseConnections(world->GetP2PHandle(), &options);
-		Unlock();
-	}
-
 	void EOSP2PClient::ForceDisconnect(uint16 reason)
 	{
 		RNDebug("ForceDisconnect()");
@@ -192,7 +183,7 @@ namespace RN
 		_idMap.clear();
 		Unlock();
 
-		HandleDidDisconnect(0, reason);
+		HandleDidDisconnect(_userID, reason);
 	}
 
 	uint16 EOSP2PClient::GetUnusedUserID() const

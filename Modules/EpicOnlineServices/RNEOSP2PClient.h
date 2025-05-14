@@ -23,10 +23,9 @@ namespace RN
 		EOSAPI ~EOSP2PClient();
 
 		EOSAPI void Connect(EOS_ProductUserId remoteProductUserID);
-		EOSAPI void Disconnect();
+		EOSAPI void Disconnect() override;
 		EOSAPI void DisconnectUser(uint16 userID, uint16 data);
 		EOSAPI void DisconnectUserDelayed(uint16 userID, float delay = 1.0f); //Using this, will not immediately force disconnect the user, leaving some time for previously sent data to arrive (like a reason for getting disconnected)
-		EOSAPI void DisconnectAll();
 
 	protected:
 		EOSAPI virtual void Update(float delta) override;
