@@ -24,8 +24,8 @@ namespace RN
 
 		EOSAPI void Connect(EOS_ProductUserId remoteProductUserID);
 		EOSAPI void Disconnect() override;
-		EOSAPI void DisconnectUser(uint16 userID, uint16 data);
-		EOSAPI void DisconnectUserDelayed(uint16 userID, float delay = 1.0f); //Using this, will not immediately force disconnect the user, leaving some time for previously sent data to arrive (like a reason for getting disconnected)
+		EOSAPI void DisconnectClient(uint16 clientID, uint16 data);
+		EOSAPI void DisconnectClientDelayed(uint16 clientID, float delay = 1.0f); //Using this, will not immediately force disconnect the user, leaving some time for previously sent data to arrive (like a reason for getting disconnected)
 
 	protected:
 		EOSAPI void Update(float delta) override;
@@ -40,8 +40,8 @@ namespace RN
 		uint64 _connectionRequestNotificationID;
 		uint64 _connectionClosedNotificationID;
 
-		uint16 GetUnusedUserID() const;
-		void AssignUserID(uint16 userID);
+		uint16 GetUnusedClientID() const;
+		void AssignClientID(uint16 clientID);
 
 		RNDeclareMetaAPI(EOSP2PClient, EOSAPI)
 	};

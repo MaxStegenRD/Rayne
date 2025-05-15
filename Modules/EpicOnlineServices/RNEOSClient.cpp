@@ -22,7 +22,7 @@ namespace RN
 	{
 		Lock();
 		_status = Disconnected;
-		_userID = USER_ID_NONE;
+		_clientID = CLIENT_ID_NONE;
 
 		EOSWorld *world = EOSWorld::GetInstance();
 

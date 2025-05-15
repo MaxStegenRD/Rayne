@@ -9,7 +9,7 @@
 #ifndef __RAYNE_EOSHOST_H_
 #define __RAYNE_EOSHOST_H_
 
-#define USER_ID_NONE 0xffff
+#define CLIENT_ID_NONE 0xffff
 
 #include "RNEOS.h"
 #include <queue>
@@ -65,7 +65,7 @@ namespace RN
 
 		struct Peer
 		{
-			uint16 userID;
+			uint16 clientID;
 			EOS_ProductUserId internalID;
 			double smoothedRoundtripTime;
 
@@ -114,18 +114,18 @@ namespace RN
 	protected:
 		EOSAPI virtual void Update(float delta);
 
-		EOSAPI Peer CreatePeer(uint16 userID, EOS_ProductUserId internalID);
+		EOSAPI Peer CreatePeer(uint16 clientID, EOS_ProductUserId internalID);
 		EOSAPI uint16 GetUserIDForInternalID(EOS_ProductUserId internalID);
 
-		EOSAPI virtual void HandleDidConnect(uint16 userID) {}
-		EOSAPI virtual void HandleDidDisconnect(uint16 userID, uint16 reason) {}
+		EOSAPI virtual void HandleDidConnect(uint16 clientID) {}
+		EOSAPI virtual void HandleDidDisconnect(uint16 clientID, uint16 reason) {}
 
 		EOSAPI bool IsPacketInOrder(ProtocolPacketType packetType, EOS_ProductUserId senderID, uint8 packetID, uint8 channel);
 		EOSAPI void SendPacket(Data *data, EOS_ProductUserId receiverID, uint32 channel = 0, bool reliable = false);
 		EOSAPI void SendPing(EOS_ProductUserId receiverID, bool isResponse, uint8 responseID);
 
-		uint16 _userID;
-		uint16 _serverUserID;
+		uint16 _clientID;
+		uint16 _serverClientID;
 		bool _isServer;
 		Status _status;
 		float _pingTimer;

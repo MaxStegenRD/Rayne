@@ -25,7 +25,7 @@ namespace RN
 	RNDefineMeta(EOSHost, Object)
 
 	EOSHost::EOSHost() :
-		_pingTimer(10.0), _status(Disconnected), _userID(USER_ID_NONE), _serverUserID(USER_ID_NONE), _isServer(false)
+		_pingTimer(10.0), _status(Disconnected), _clientID(CLIENT_ID_NONE), _serverClientID(CLIENT_ID_NONE), _isServer(false)
 	{
 	}
 
@@ -378,10 +378,10 @@ namespace RN
 		//if(scheduled_count + sent_count > 0) RNDebug("Did send " << scheduled_count << " scheduled packets as " << sent_count << " packets to " << _peers.size() << " peers.");
 	}
 
-	EOSHost::Peer EOSHost::CreatePeer(uint16 userID, EOS_ProductUserId internalID)
+	EOSHost::Peer EOSHost::CreatePeer(uint16 clientID, EOS_ProductUserId internalID)
 	{
 		Peer peer;
-		peer.userID = userID;
+		peer.clientID = clientID;
 		peer.internalID = internalID;
 		peer.smoothedRoundtripTime = 0.05;
 		peer._lastPingID = 0;
@@ -402,7 +402,7 @@ namespace RN
 	uint16 EOSHost::GetUserIDForInternalID(EOS_ProductUserId internalID)
 	{
 		auto it = _peers.find(internalID);
-		if(it != _peers.end()) return it->second.userID;
+		if(it != _peers.end()) return it->second.clientID;
 		return static_cast<uint16>(-1);
 	}
 
