@@ -25,7 +25,7 @@ namespace RN
 	RNDefineMeta(EOSHost, Object)
 
 	EOSHost::EOSHost() :
-		_pingTimer(10.0), _status(Status::Disconnected), _userID(0), _hostID(0)
+		_pingTimer(10.0), _status(Disconnected), _userID(USER_ID_NONE), _serverUserID(USER_ID_NONE), _isServer(false)
 	{
 	}
 
@@ -33,7 +33,7 @@ namespace RN
 	{
 	}
 
-	bool EOSHost::IsPacketInOrder(EOSHost::ProtocolPacketType packetType, EOS_ProductUserId senderID, uint8 packetID, uint8 channel)
+	bool EOSHost::IsPacketInOrder(ProtocolPacketType packetType, EOS_ProductUserId senderID, uint8 packetID, uint8 channel)
 	{
 		EOSWorld *world = EOSWorld::GetInstance();
 		Peer &peer = _peers[senderID];
@@ -147,7 +147,7 @@ namespace RN
 
 		Unlock();
 	}
-	
+
 	void EOSHost::SendPacket(Data *data, uint16 receiverID, uint32 channel, bool reliable)
 	{
 		//Only reliable packets can be split up, unreliable packets need to be small enough to fit a single networking packet
@@ -166,13 +166,13 @@ namespace RN
 		SendPacket(data, internalReceiverID, channel, reliable);
 		Unlock();
 	}
-	
+
 	void EOSHost::BroadcastPacket(Data *data, uint32 channel, bool reliable)
 	{
-		for (auto peer : _peers)
+		for(auto peer : _peers)
 		{
 			SendPacket(data, peer.first, channel, reliable);
-		} 
+		}
 	}
 
 	void EOSHost::Update(float delta)
@@ -196,7 +196,7 @@ namespace RN
 
 		uint32 nextPacketSize = 0;
 		uint8 pingChannel = 255;
-		EOS_P2P_GetNextReceivedPacketSizeOptions nextPacketSizeOptions = {0};
+		EOS_P2P_GetNextReceivedPacketSizeOptions nextPacketSizeOptions = {};
 		nextPacketSizeOptions.ApiVersion = EOS_P2P_GETNEXTRECEIVEDPACKETSIZE_API_LATEST;
 		nextPacketSizeOptions.LocalUserId = world->GetUserID();
 		nextPacketSizeOptions.RequestedChannel = &pingChannel;
@@ -215,12 +215,12 @@ namespace RN
 			receiveOptions.RequestedChannel = &pingChannel;
 
 			EOS_ProductUserId senderUserID;
-			EOS_P2P_SocketId socketID;
+			EOS_P2P_SocketId receivingSocketID;
 			uint8 channel = 0;
 			uint32 bytesWritten = 0;
 
 			uint8 *rawData = new uint8[nextPacketSize];
-			if(EOS_P2P_ReceivePacket(world->GetP2PHandle(), &receiveOptions, &senderUserID, &socketID, &channel, rawData, &bytesWritten) != EOS_EResult::EOS_Success)
+			if(EOS_P2P_ReceivePacket(world->GetP2PHandle(), &receiveOptions, &senderUserID, &receivingSocketID, &channel, rawData, &bytesWritten) != EOS_EResult::EOS_Success)
 			{
 				RNDebug("Failed receiving Data");
 				break;

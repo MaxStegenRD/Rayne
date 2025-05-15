@@ -19,11 +19,12 @@ namespace RN
 	RNDefineMeta(EOSP2PClient, EOSHost)
 
 	EOSP2PClient::EOSP2PClient(bool isHost, uint16 maxConnections) :
-		_maxConnections(maxConnections), _isHost(isHost)
+		_maxConnections(maxConnections)
 	{
 		Lock();
-		_userID = _isHost ? 0 : 0xFFFF;
-		_status = _isHost ? Server : Disconnected;
+		_isServer = isHost;
+		_userID = isHost ? 0 : USER_ID_NONE;
+		_status = isHost ? Server : Disconnected;
 
 		EOSWorld *world = EOSWorld::GetInstance();
 
@@ -94,7 +95,7 @@ namespace RN
 		}
 
 		//Create peer with unknown user ID. Will be set via connection response
-		_peers.insert(std::pair(remoteProductUserID, CreatePeer(0xFFFF, remoteProductUserID)));
+		_peers.insert(std::pair(remoteProductUserID, CreatePeer(USER_ID_NONE, remoteProductUserID)));
 
 		Unlock();
 	}
@@ -135,6 +136,8 @@ namespace RN
 			_status = Disconnected;
 			_peers.clear();
 			_idMap.clear();
+			_userID = USER_ID_NONE;
+			_isServer = false;
 			HandleDidDisconnect(_userID, 0); //OnConnectionClosedCallback is not guaranteed to be called when lobby closed, so explicitly call handler here
 		} else
 		{
@@ -181,6 +184,8 @@ namespace RN
 		_status = Disconnected;
 		_peers.clear();
 		_idMap.clear();
+		_userID = USER_ID_NONE;
+		_isServer = false;
 		Unlock();
 
 		HandleDidDisconnect(_userID, reason);
@@ -199,10 +204,10 @@ namespace RN
 		return -1;
 	}
 
-	void EOSP2PClient::AssignUserID(uint16 ownUserID)
+	void EOSP2PClient::AssignUserID(uint16 userID)
 	{
-		RNDebug("Was assigned user ID " << ownUserID);
-		_userID = ownUserID;
+		RNDebug("Was assigned user ID " << userID);
+		_userID = userID;
 
 		//Let peers know
 		EOSWorld *world = EOSWorld::GetInstance();
@@ -295,8 +300,8 @@ namespace RN
 				ProtocolPacketHeaderMultipart packetHeader;
 				packetHeader.packetType = static_cast<ProtocolPacketType>(rawData[0]);
 				packetHeader.packetID = rawData[1];
-				packetHeader.dataPart = rawData[2] | (rawData[3] << 8);
-				packetHeader.totalDataParts = rawData[4] | (rawData[5] << 8);
+				packetHeader.dataPart = rawData[2] | rawData[3] << 8;
+				packetHeader.totalDataParts = rawData[4] | rawData[5] << 8;
 
 				//RNDebug("Received multipart data (" << packetHeader.packetID <<  "), part " << packetHeader.dataPart << " of " << packetHeader.totalDataParts);
 
@@ -416,13 +421,13 @@ namespace RN
 					{
 						if(packetHeader.packetID == 0 && packetHeader.dataLength == 4)
 						{
-							uint16 remoteUserID = rawData[dataIndex] | rawData[dataIndex + 1] << 8;
-							uint16 ownUserID = rawData[dataIndex + 2] | rawData[dataIndex + 3] << 8;
+							uint16 remoteUserID = rawData[dataIndex] | rawData[dataIndex + 1] << 8; //User id of sender
+							uint16 ownUserID = rawData[dataIndex + 2] | rawData[dataIndex + 3] << 8; //User id sender has assigned to receiver 
 							dataIndex += 4;
 							RNDebug("Received connect response from " << senderUserID << " with user ID " << remoteUserID << " and own user ID " << ownUserID);
 
 							//Received remote user ID
-							if(_peers[senderUserID].userID == 0xFFFF && remoteUserID != 0xFFFF)
+							if(_peers[senderUserID].userID == USER_ID_NONE && remoteUserID != USER_ID_NONE)
 							{
 								_peers[senderUserID].userID = remoteUserID;
 								_idMap[remoteUserID] = senderUserID;
@@ -432,10 +437,10 @@ namespace RN
 								Lock();
 							}
 
-							//Received own user ID from host
-							if(_userID == 0xFFFF && ownUserID != 0xFFFF)
+							//Received own user ID from server
+							if(_userID == USER_ID_NONE && ownUserID != USER_ID_NONE)
 							{
-								_hostID = remoteUserID;
+								_serverUserID = remoteUserID;
 								AssignUserID(ownUserID);
 								_status = Connected;
 							}
@@ -520,14 +525,14 @@ namespace RN
 		RN::Data *packetData = new RN::Data();
 		packetData->Append(&packetHeader, 4);
 		packetData->Append(&client->_userID, sizeof(uint16));
-		uint16 remoteUserID = client->_isHost ? client->GetUnusedUserID() : 0xFFFF;
+		uint16 remoteUserID = client->IsServer() ? client->GetUnusedUserID() : USER_ID_NONE;
 		packetData->Append(&remoteUserID, sizeof(uint16));
 
 		const Peer &peer = client->CreatePeer(remoteUserID, Data->RemoteUserId);
 		client->_peers.insert(std::pair(Data->RemoteUserId, peer));
 
 		//If hosting the session, assign a new client user id, else ask for user id by sending connection request
-		if(client->_isHost)
+		if(client->IsServer())
 		{
 			RNDebug("Assigning user id " << peer.userID);
 			client->_idMap[remoteUserID] = Data->RemoteUserId;
@@ -562,12 +567,7 @@ namespace RN
 		client->_idMap.erase(id);
 		client->_peers.erase(Data->RemoteUserId);
 		RNDebug("Peer disconnected. peer id: " << id << " | product ID: " << Data->RemoteUserId);
-		RNDebug("Peers left: " << client->_peers.size());
-		for(auto peer : client->_peers)
-		{
-			RNDebug("Peer: " << peer.first << " | user id: " << peer.second.userID);
-		}
-		if(client->_peers.empty() && !client->_isHost)
+		if(client->_peers.empty() && !client->IsServer())
 		{
 			client->_status = Disconnected;
 		}

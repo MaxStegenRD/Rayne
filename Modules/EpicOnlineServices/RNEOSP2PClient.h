@@ -26,24 +26,22 @@ namespace RN
 		EOSAPI void Disconnect() override;
 		EOSAPI void DisconnectUser(uint16 userID, uint16 data);
 		EOSAPI void DisconnectUserDelayed(uint16 userID, float delay = 1.0f); //Using this, will not immediately force disconnect the user, leaving some time for previously sent data to arrive (like a reason for getting disconnected)
-		EOSAPI bool IsHost() { return _isHost;}
 
 	protected:
-		bool _isHost; //This client is hosting the current session
-		EOSAPI virtual void Update(float delta) override;
+		EOSAPI void Update(float delta) override;
 		void LogPeers() const;
 
 	private:
 		static void OnConnectionRequestCallback(const EOS_P2P_OnIncomingConnectionRequestInfo *Data);
 		static void OnConnectionClosedCallback(const EOS_P2P_OnRemoteConnectionClosedInfo *Data);
 
-		void ForceDisconnect(RN::uint16 reason);
+		void ForceDisconnect(uint16 reason);
 		uint16 _maxConnections;
 		uint64 _connectionRequestNotificationID;
 		uint64 _connectionClosedNotificationID;
 
 		uint16 GetUnusedUserID() const;
-		void AssignUserID(uint16 ownUserID);
+		void AssignUserID(uint16 userID);
 
 		RNDeclareMetaAPI(EOSP2PClient, EOSAPI)
 	};

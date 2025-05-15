@@ -23,28 +23,22 @@ namespace RN
 		_maxConnections(maxConnections)
 	{
 		Lock();
-		_status = Status::Server;
+		_status = Server;
+		_isServer = true;
 
 		EOSWorld *world = EOSWorld::GetInstance();
 
-		EOS_P2P_SocketId socketID = {0};
+		EOS_P2P_SocketId socketID = {};
 		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-		socketID.SocketName[0] = 'F';
-		socketID.SocketName[1] = 'u';
-		socketID.SocketName[2] = 'c';
-		socketID.SocketName[3] = 'k';
-		socketID.SocketName[4] = 'Y';
-		socketID.SocketName[5] = 'e';
-		socketID.SocketName[6] = 'a';
-		socketID.SocketName[7] = 'h';
+		strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
 
-		EOS_P2P_AddNotifyPeerConnectionRequestOptions connectListenerOptions = {0};
+		EOS_P2P_AddNotifyPeerConnectionRequestOptions connectListenerOptions;
 		connectListenerOptions.ApiVersion = EOS_P2P_ADDNOTIFYPEERCONNECTIONREQUEST_API_LATEST;
 		connectListenerOptions.LocalUserId = world->GetUserID();
 		connectListenerOptions.SocketId = &socketID;
 		_connectionRequestNotificationID = EOS_P2P_AddNotifyPeerConnectionRequest(world->GetP2PHandle(), &connectListenerOptions, this, OnConnectionRequestCallback);
 
-		EOS_P2P_AddNotifyPeerConnectionClosedOptions disconnectListenerOptions = {0};
+		EOS_P2P_AddNotifyPeerConnectionClosedOptions disconnectListenerOptions;
 		disconnectListenerOptions.ApiVersion = EOS_P2P_ADDNOTIFYPEERCONNECTIONCLOSED_API_LATEST;
 		disconnectListenerOptions.LocalUserId = world->GetUserID();
 		disconnectListenerOptions.SocketId = &socketID;
@@ -87,12 +81,12 @@ namespace RN
 		EOSWorld *world = EOSWorld::GetInstance();
 
 		uint32 nextPacketSize = 0;
-		EOS_P2P_GetNextReceivedPacketSizeOptions nextPacketSizeOptions = {0};
+		EOS_P2P_GetNextReceivedPacketSizeOptions nextPacketSizeOptions = {};
 		nextPacketSizeOptions.ApiVersion = EOS_P2P_GETNEXTRECEIVEDPACKETSIZE_API_LATEST;
 		nextPacketSizeOptions.LocalUserId = world->GetUserID();
 		while(EOS_P2P_GetNextReceivedPacketSize(world->GetP2PHandle(), &nextPacketSizeOptions, &nextPacketSize) == EOS_EResult::EOS_Success)
 		{
-			EOS_P2P_ReceivePacketOptions receiveOptions = {0};
+			EOS_P2P_ReceivePacketOptions receiveOptions = {};
 			receiveOptions.ApiVersion = EOS_P2P_RECEIVEPACKET_API_LATEST;
 			receiveOptions.LocalUserId = world->GetUserID();
 			receiveOptions.MaxDataSizeBytes = nextPacketSize;
@@ -119,8 +113,8 @@ namespace RN
 				ProtocolPacketHeaderMultipart packetHeader;
 				packetHeader.packetType = static_cast<ProtocolPacketType>(rawData[0]);
 				packetHeader.packetID = rawData[1];
-				packetHeader.dataPart = rawData[2] | (rawData[3] << 8);
-				packetHeader.totalDataParts = rawData[4] | (rawData[5] << 8);
+				packetHeader.dataPart = rawData[2] | rawData[3] << 8;
+				packetHeader.totalDataParts = rawData[4] | rawData[5] << 8;
 
 				//RNDebug("Received multipart data (" << packetHeader.packetID <<  "), part " << packetHeader.dataPart << " of " << packetHeader.totalDataParts);
 
@@ -293,18 +287,11 @@ namespace RN
 		Lock();
 		EOSWorld *world = EOSWorld::GetInstance();
 
-		EOS_P2P_SocketId socketID = {0};
+		EOS_P2P_SocketId socketID = {};
 		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-		socketID.SocketName[0] = 'F';
-		socketID.SocketName[1] = 'u';
-		socketID.SocketName[2] = 'c';
-		socketID.SocketName[3] = 'k';
-		socketID.SocketName[4] = 'Y';
-		socketID.SocketName[5] = 'e';
-		socketID.SocketName[6] = 'a';
-		socketID.SocketName[7] = 'h';
+		strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
 
-		EOS_P2P_CloseConnectionOptions options = {0};
+		EOS_P2P_CloseConnectionOptions options;
 		options.ApiVersion = EOS_P2P_CLOSECONNECTION_API_LATEST;
 		options.LocalUserId = world->GetUserID();
 		options.RemoteUserId = _idMap[userID];
@@ -319,18 +306,11 @@ namespace RN
 		Lock();
 		EOSWorld *world = EOSWorld::GetInstance();
 
-		EOS_P2P_SocketId socketID = {0};
+		EOS_P2P_SocketId socketID = {};
 		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-		socketID.SocketName[0] = 'F';
-		socketID.SocketName[1] = 'u';
-		socketID.SocketName[2] = 'c';
-		socketID.SocketName[3] = 'k';
-		socketID.SocketName[4] = 'Y';
-		socketID.SocketName[5] = 'e';
-		socketID.SocketName[6] = 'a';
-		socketID.SocketName[7] = 'h';
+		strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
 
-		EOS_P2P_CloseConnectionsOptions options = {0};
+		EOS_P2P_CloseConnectionsOptions options;
 		options.ApiVersion = EOS_P2P_CLOSECONNECTION_API_LATEST;
 		options.LocalUserId = world->GetUserID();
 		options.SocketId = &socketID;
@@ -344,18 +324,11 @@ namespace RN
 		EOSServer *server = static_cast<EOSServer *>(Data->ClientData);
 		EOSWorld *world = EOSWorld::GetInstance();
 
-		EOS_P2P_SocketId socketID = {0};
+		EOS_P2P_SocketId socketID = {};
 		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-		socketID.SocketName[0] = 'F';
-		socketID.SocketName[1] = 'u';
-		socketID.SocketName[2] = 'c';
-		socketID.SocketName[3] = 'k';
-		socketID.SocketName[4] = 'Y';
-		socketID.SocketName[5] = 'e';
-		socketID.SocketName[6] = 'a';
-		socketID.SocketName[7] = 'h';
+		strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
 
-		EOS_P2P_AcceptConnectionOptions connectionOptions = {0};
+		EOS_P2P_AcceptConnectionOptions connectionOptions;
 		connectionOptions.ApiVersion = EOS_P2P_ACCEPTCONNECTION_API_LATEST;
 		connectionOptions.SocketId = &socketID;
 		connectionOptions.LocalUserId = world->GetUserID();
@@ -364,7 +337,7 @@ namespace RN
 
 		RNDebug("A new client connected");
 		const Peer &peer = server->CreatePeer(server->GetUserID(), Data->RemoteUserId);
-		server->_peers.insert(std::pair<EOS_ProductUserId, Peer>(peer.internalID, peer));
+		server->_peers.insert(std::pair(peer.internalID, peer));
 		server->_idMap[peer.userID] = peer.internalID;
 
 		ProtocolPacketHeader packetHeader;
@@ -378,7 +351,7 @@ namespace RN
 		packetData->Append(&serverUserID, sizeof(uint16));
 		packetData->Append(&peer.userID, sizeof(uint16));
 
-		EOS_P2P_SendPacketOptions connectConfirmOptions = {0};
+		EOS_P2P_SendPacketOptions connectConfirmOptions = {};
 		connectConfirmOptions.ApiVersion = EOS_P2P_SENDPACKET_API_LATEST;
 		connectConfirmOptions.SocketId = &socketID;
 		connectConfirmOptions.LocalUserId = world->GetUserID();

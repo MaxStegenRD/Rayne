@@ -13,7 +13,6 @@
 #include "eos_p2p.h"
 #include "eos_p2p_types.h"
 #include "eos_platform_prereqs.h"
-#include "eos_sdk.h"
 
 namespace RN
 {
@@ -22,22 +21,16 @@ namespace RN
 	EOSClient::EOSClient()
 	{
 		Lock();
-		_status = Status::Disconnected;
+		_status = Disconnected;
+		_userID = USER_ID_NONE;
 
 		EOSWorld *world = EOSWorld::GetInstance();
 
-		EOS_P2P_SocketId socketID = {0};
+		EOS_P2P_SocketId socketID = {};
 		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-		socketID.SocketName[0] = 'F';
-		socketID.SocketName[1] = 'u';
-		socketID.SocketName[2] = 'c';
-		socketID.SocketName[3] = 'k';
-		socketID.SocketName[4] = 'Y';
-		socketID.SocketName[5] = 'e';
-		socketID.SocketName[6] = 'a';
-		socketID.SocketName[7] = 'h';
+		strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
 
-		EOS_P2P_AddNotifyPeerConnectionClosedOptions disconnectListenerOptions = {0};
+		EOS_P2P_AddNotifyPeerConnectionClosedOptions disconnectListenerOptions;
 		disconnectListenerOptions.ApiVersion = EOS_P2P_ADDNOTIFYPEERCONNECTIONCLOSED_API_LATEST;
 		disconnectListenerOptions.LocalUserId = world->GetUserID();
 		disconnectListenerOptions.SocketId = &socketID;
@@ -61,23 +54,16 @@ namespace RN
 
 		EOSWorld *world = EOSWorld::GetInstance();
 
-		EOS_P2P_SocketId socketID = {0};
+		EOS_P2P_SocketId socketID = {};
 		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-		socketID.SocketName[0] = 'F';
-		socketID.SocketName[1] = 'u';
-		socketID.SocketName[2] = 'c';
-		socketID.SocketName[3] = 'k';
-		socketID.SocketName[4] = 'Y';
-		socketID.SocketName[5] = 'e';
-		socketID.SocketName[6] = 'a';
-		socketID.SocketName[7] = 'h';
+		strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
 
 		ProtocolPacketHeader packetHeader;
 		packetHeader.packetType = ProtocolPacketTypeConnectRequest;
 		packetHeader.packetID = 0;
 		packetHeader.dataLength = 0;
 
-		EOS_P2P_SendPacketOptions connectionOptions = {0};
+		EOS_P2P_SendPacketOptions connectionOptions = {};
 		connectionOptions.ApiVersion = EOS_P2P_SENDPACKET_API_LATEST;
 		connectionOptions.SocketId = &socketID;
 		connectionOptions.LocalUserId = world->GetUserID();
@@ -93,7 +79,7 @@ namespace RN
 		if(result != EOS_EResult::EOS_Success)
 		{
 			RNDebug("Couldn't connect to server!");
-			_status = Status::Disconnected;
+			_status = Disconnected;
 			Unlock();
 			return;
 		}
@@ -102,7 +88,7 @@ namespace RN
 		if(peer.internalID == NULL)
 		{
 			RNDebug("Couldn't connect to server!");
-			_status = Status::Disconnected;
+			_status = Disconnected;
 			Unlock();
 			return;
 		}
@@ -116,35 +102,28 @@ namespace RN
 	void EOSClient::Disconnect()
 	{
 		Lock();
-		if(_status == Status::Disconnected || _status == Status::Disconnecting)
+		if(_status == Disconnected || _status == Disconnecting)
 		{
 			Unlock();
 			return;
 		}
 
-		if(_status == Status::Connecting)
+		if(_status == Connecting)
 		{
 			Unlock();
 			ForceDisconnect(0);
 			return;
 		}
 
-		_status = Status::Disconnecting;
+		_status = Disconnecting;
 
 		EOSWorld *world = EOSWorld::GetInstance();
 
-		EOS_P2P_SocketId socketID = {0};
+		EOS_P2P_SocketId socketID = {};
 		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-		socketID.SocketName[0] = 'F';
-		socketID.SocketName[1] = 'u';
-		socketID.SocketName[2] = 'c';
-		socketID.SocketName[3] = 'k';
-		socketID.SocketName[4] = 'Y';
-		socketID.SocketName[5] = 'e';
-		socketID.SocketName[6] = 'a';
-		socketID.SocketName[7] = 'h';
+		strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
 
-		EOS_P2P_CloseConnectionsOptions options = {0};
+		EOS_P2P_CloseConnectionsOptions options;
 		options.ApiVersion = EOS_P2P_CLOSECONNECTION_API_LATEST;
 		options.LocalUserId = world->GetUserID();
 		options.SocketId = &socketID;
@@ -153,10 +132,10 @@ namespace RN
 		Unlock();
 	}
 
-	void EOSClient::ForceDisconnect(RN::uint16 reason)
+	void EOSClient::ForceDisconnect(uint16 reason)
 	{
 		Lock();
-		_status = Status::Disconnected;
+		_status = Disconnected;
 		_peers.clear();
 		_idMap.clear();
 		Unlock();
@@ -170,7 +149,7 @@ namespace RN
 		EOSHost::Update(delta); //Needs to go first as it picks out some packets! TODO: This also handles sending new packets, would reduce some latency if this was done at the end of this method
 
 		Lock();
-		if(_status == Status::Disconnected)
+		if(_status == Disconnected)
 		{
 			Unlock();
 			return;
@@ -181,7 +160,7 @@ namespace RN
 		Peer &peer = _peers.begin()->second; //Server is only peer
 
 		uint32 nextPacketSize = 0;
-		EOS_P2P_GetNextReceivedPacketSizeOptions nextPacketSizeOptions = {0};
+		EOS_P2P_GetNextReceivedPacketSizeOptions nextPacketSizeOptions = {};
 		nextPacketSizeOptions.ApiVersion = EOS_P2P_GETNEXTRECEIVEDPACKETSIZE_API_LATEST;
 		nextPacketSizeOptions.LocalUserId = world->GetUserID();
 		while(EOS_P2P_GetNextReceivedPacketSize(world->GetP2PHandle(), &nextPacketSizeOptions, &nextPacketSize) == EOS_EResult::EOS_Success)
@@ -192,7 +171,7 @@ namespace RN
 				continue;
 			}
 
-			EOS_P2P_ReceivePacketOptions receiveOptions = {0};
+			EOS_P2P_ReceivePacketOptions receiveOptions = {};
 			receiveOptions.ApiVersion = EOS_P2P_RECEIVEPACKET_API_LATEST;
 			receiveOptions.LocalUserId = world->GetUserID();
 			receiveOptions.MaxDataSizeBytes = nextPacketSize;
@@ -216,8 +195,8 @@ namespace RN
 				ProtocolPacketHeaderMultipart packetHeader;
 				packetHeader.packetType = static_cast<ProtocolPacketType>(rawData[0]);
 				packetHeader.packetID = rawData[1];
-				packetHeader.dataPart = rawData[2] | (rawData[3] << 8);
-				packetHeader.totalDataParts = rawData[4] | (rawData[5] << 8);
+				packetHeader.dataPart = rawData[2] | rawData[3] << 8;
+				packetHeader.totalDataParts = rawData[4] | rawData[5] << 8;
 
 				//RNDebug("Received multipart data (" << packetHeader.packetID <<  "), part " << packetHeader.dataPart << " of " << packetHeader.totalDataParts);
 
@@ -314,7 +293,7 @@ namespace RN
 					ProtocolPacketHeader packetHeader;
 					packetHeader.packetType = static_cast<ProtocolPacketType>(rawData[dataIndex + 0]);
 					packetHeader.packetID = rawData[dataIndex + 1];
-					packetHeader.dataLength = rawData[dataIndex + 2] | (rawData[dataIndex + 3] << 8);
+					packetHeader.dataLength = rawData[dataIndex + 2] | rawData[dataIndex + 3] << 8;
 
 					if(packetHeader.packetType == ProtocolPacketTypeConnectResponse)
 					{

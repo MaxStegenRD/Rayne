@@ -9,6 +9,8 @@
 #ifndef __RAYNE_EOSHOST_H_
 #define __RAYNE_EOSHOST_H_
 
+#define USER_ID_NONE 0xffff
+
 #include "RNEOS.h"
 #include <queue>
 
@@ -107,6 +109,7 @@ namespace RN
 		EOSAPI bool HasReliableDataInTransit();
 		EOSAPI double GetLastRoundtripTime(uint16 peerID);
 		EOSAPI virtual void Disconnect() = 0;
+		EOSAPI bool IsServer() { return _isServer; }
 
 	protected:
 		EOSAPI virtual void Update(float delta);
@@ -122,7 +125,8 @@ namespace RN
 		EOSAPI void SendPing(EOS_ProductUserId receiverID, bool isResponse, uint8 responseID);
 
 		uint16 _userID;
-		uint16 _hostID;
+		uint16 _serverUserID;
+		bool _isServer;
 		Status _status;
 		float _pingTimer;
 
