@@ -776,7 +776,7 @@ namespace RN
 
 	RN_INLINE Vector4 Vector4::GetNormalized(const float n) const
 	{
-		return Vector4(*this).Normalize();
+		return Vector4(*this).Normalize(n);
 	}
 
 	RN_INLINE float Vector4::GetDistance(const Vector4 &other) const
