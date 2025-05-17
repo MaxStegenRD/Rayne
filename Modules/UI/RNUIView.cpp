@@ -818,12 +818,12 @@ namespace RN
 					//Outter outline
 					segment.type = KG::PathSegment::TypeLine;
 					segment.controlPoints.push_back({cornerRadius.x, 0.0});
-					segment.controlPoints.push_back({_frame.width - cornerRadius.x, 0.0});
+					segment.controlPoints.push_back({_frame.width - cornerRadius.y, 0.0});
 					mypath.segments.push_back(segment);
 
 					segment.type = KG::PathSegment::TypeBezierQuadratic;
 					segment.controlPoints.clear();
-					segment.controlPoints.push_back({_frame.width - cornerRadius.x, 0.0});
+					segment.controlPoints.push_back({_frame.width - cornerRadius.y, 0.0});
 					segment.controlPoints.push_back({_frame.width, 0.0});
 					segment.controlPoints.push_back({_frame.width, -cornerRadius.y});
 					mypath.segments.push_back(segment);
@@ -831,38 +831,38 @@ namespace RN
 					segment.type = KG::PathSegment::TypeLine;
 					segment.controlPoints.clear();
 					segment.controlPoints.push_back({_frame.width, -cornerRadius.y});
-					segment.controlPoints.push_back({_frame.width, -_frame.height + cornerRadius.y});
+					segment.controlPoints.push_back({_frame.width, -_frame.height + cornerRadius.w});
 					mypath.segments.push_back(segment);
 
 					segment.type = KG::PathSegment::TypeBezierQuadratic;
 					segment.controlPoints.clear();
-					segment.controlPoints.push_back({_frame.width, -_frame.height + cornerRadius.y});
+					segment.controlPoints.push_back({_frame.width, -_frame.height + cornerRadius.w});
 					segment.controlPoints.push_back({_frame.width, -_frame.height});
-					segment.controlPoints.push_back({_frame.width - cornerRadius.x, -_frame.height});
+					segment.controlPoints.push_back({_frame.width - cornerRadius.w, -_frame.height});
 					mypath.segments.push_back(segment);
 
 					segment.type = KG::PathSegment::TypeLine;
 					segment.controlPoints.clear();
-					segment.controlPoints.push_back({_frame.width - cornerRadius.x, -_frame.height});
-					segment.controlPoints.push_back({cornerRadius.x, -_frame.height});
+					segment.controlPoints.push_back({_frame.width - cornerRadius.w, -_frame.height});
+					segment.controlPoints.push_back({cornerRadius.z, -_frame.height});
 					mypath.segments.push_back(segment);
 
 					segment.type = KG::PathSegment::TypeBezierQuadratic;
 					segment.controlPoints.clear();
-					segment.controlPoints.push_back({cornerRadius.x, -_frame.height});
+					segment.controlPoints.push_back({cornerRadius.z, -_frame.height});
 					segment.controlPoints.push_back({0.0, -_frame.height});
-					segment.controlPoints.push_back({0.0, -_frame.height + cornerRadius.y});
+					segment.controlPoints.push_back({0.0, -_frame.height + cornerRadius.z});
 					mypath.segments.push_back(segment);
 
 					segment.type = KG::PathSegment::TypeLine;
 					segment.controlPoints.clear();
-					segment.controlPoints.push_back({0.0, -_frame.height + cornerRadius.y});
-					segment.controlPoints.push_back({0.0, -cornerRadius.y});
+					segment.controlPoints.push_back({0.0, -_frame.height + cornerRadius.z});
+					segment.controlPoints.push_back({0.0, -cornerRadius.x});
 					mypath.segments.push_back(segment);
 
 					segment.type = KG::PathSegment::TypeBezierQuadratic;
 					segment.controlPoints.clear();
-					segment.controlPoints.push_back({0.0, -cornerRadius.y});
+					segment.controlPoints.push_back({0.0, -cornerRadius.x});
 					segment.controlPoints.push_back({0.0, 0.0});
 					segment.controlPoints.push_back({cornerRadius.x, 0.0});
 					mypath.segments.push_back(segment);
@@ -874,54 +874,54 @@ namespace RN
 					//Inner outline
 					segment.type = KG::PathSegment::TypeLine;
 					segment.controlPoints.clear();
-					segment.controlPoints.push_back({cornerRadius.x, -_outlineThickness});
-					segment.controlPoints.push_back({_frame.width - cornerRadius.x, -_outlineThickness});
+					segment.controlPoints.push_back({std::max(_outlineThickness, cornerRadius.x), -_outlineThickness});
+					segment.controlPoints.push_back({_frame.width - std::max(_outlineThickness, cornerRadius.y), -_outlineThickness});
 					mypath.segments.push_back(segment);
 
 					segment.type = KG::PathSegment::TypeBezierQuadratic;
 					segment.controlPoints.clear();
-					segment.controlPoints.push_back({_frame.width - cornerRadius.x, -_outlineThickness});
+					segment.controlPoints.push_back({_frame.width - std::max(_outlineThickness, cornerRadius.y), -_outlineThickness});
 					segment.controlPoints.push_back({_frame.width - _outlineThickness, -_outlineThickness});
-					segment.controlPoints.push_back({_frame.width - _outlineThickness, -cornerRadius.y});
+					segment.controlPoints.push_back({_frame.width - _outlineThickness, -std::max(_outlineThickness, cornerRadius.y)});
 					mypath.segments.push_back(segment);
 
 					segment.type = KG::PathSegment::TypeLine;
 					segment.controlPoints.clear();
-					segment.controlPoints.push_back({_frame.width - _outlineThickness, -cornerRadius.y});
-					segment.controlPoints.push_back({_frame.width - _outlineThickness, -_frame.height + cornerRadius.y});
+					segment.controlPoints.push_back({_frame.width - _outlineThickness, -std::max(_outlineThickness, cornerRadius.y)});
+					segment.controlPoints.push_back({_frame.width - _outlineThickness, -_frame.height + std::max(_outlineThickness, cornerRadius.w)});
 					mypath.segments.push_back(segment);
 
 					segment.type = KG::PathSegment::TypeBezierQuadratic;
 					segment.controlPoints.clear();
-					segment.controlPoints.push_back({_frame.width - _outlineThickness, -_frame.height + cornerRadius.y});
+					segment.controlPoints.push_back({_frame.width - _outlineThickness, -_frame.height + std::max(_outlineThickness, cornerRadius.w)});
 					segment.controlPoints.push_back({_frame.width - _outlineThickness, -_frame.height + _outlineThickness});
-					segment.controlPoints.push_back({_frame.width - cornerRadius.x, -_frame.height + _outlineThickness});
+					segment.controlPoints.push_back({_frame.width - std::max(_outlineThickness, cornerRadius.w), -_frame.height + _outlineThickness});
 					mypath.segments.push_back(segment);
 
 					segment.type = KG::PathSegment::TypeLine;
 					segment.controlPoints.clear();
-					segment.controlPoints.push_back({_frame.width - cornerRadius.x, -_frame.height + _outlineThickness});
-					segment.controlPoints.push_back({cornerRadius.x, -_frame.height + _outlineThickness});
+					segment.controlPoints.push_back({_frame.width - std::max(_outlineThickness, cornerRadius.w), -_frame.height + _outlineThickness});
+					segment.controlPoints.push_back({std::max(_outlineThickness, cornerRadius.z), -_frame.height + _outlineThickness});
 					mypath.segments.push_back(segment);
 
 					segment.type = KG::PathSegment::TypeBezierQuadratic;
 					segment.controlPoints.clear();
-					segment.controlPoints.push_back({cornerRadius.x, -_frame.height + _outlineThickness});
+					segment.controlPoints.push_back({std::max(_outlineThickness, cornerRadius.z), -_frame.height + _outlineThickness});
 					segment.controlPoints.push_back({_outlineThickness, -_frame.height + _outlineThickness});
-					segment.controlPoints.push_back({_outlineThickness, -_frame.height + cornerRadius.y});
+					segment.controlPoints.push_back({_outlineThickness, -_frame.height + std::max(_outlineThickness, cornerRadius.z)});
 					mypath.segments.push_back(segment);
 
 					segment.type = KG::PathSegment::TypeLine;
 					segment.controlPoints.clear();
-					segment.controlPoints.push_back({_outlineThickness, -_frame.height + cornerRadius.y});
-					segment.controlPoints.push_back({_outlineThickness, -cornerRadius.y});
+					segment.controlPoints.push_back({_outlineThickness, -_frame.height + std::max(_outlineThickness, cornerRadius.z)});
+					segment.controlPoints.push_back({_outlineThickness, -std::max(_outlineThickness, cornerRadius.x)});
 					mypath.segments.push_back(segment);
 
 					segment.type = KG::PathSegment::TypeBezierQuadratic;
 					segment.controlPoints.clear();
-					segment.controlPoints.push_back({_outlineThickness, -cornerRadius.y});
+					segment.controlPoints.push_back({_outlineThickness, -std::max(_outlineThickness, cornerRadius.x)});
 					segment.controlPoints.push_back({_outlineThickness, -_outlineThickness});
-					segment.controlPoints.push_back({cornerRadius.x, -_outlineThickness});
+					segment.controlPoints.push_back({std::max(_outlineThickness, cornerRadius.x), -_outlineThickness});
 					mypath.segments.push_back(segment);
 
 					paths.paths.push_back(mypath);
