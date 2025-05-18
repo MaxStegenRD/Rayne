@@ -54,6 +54,7 @@ namespace RN
 		AudioAsset *_asset;
 
 		std::map<OpenALOutputDevice*, uint32> _source;
+		std::map<OpenALOutputDevice*, size_t> _ringbufferRemainingOffset;
 		Vector3 _oldPosition;
 		Vector3 _velocity;
 

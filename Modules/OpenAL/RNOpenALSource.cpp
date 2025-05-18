@@ -299,80 +299,87 @@ namespace RN
 			{
 				isPlaying = _asset->Decode();
 			}
-
-			ALint numberOfProcessedBuffers = 0;
-			//Use the first source as reference here, hoping that all devices progress together...
-			_source.begin()->first->MakeCurrent();
-			alGetSourcei(_source.begin()->second, AL_BUFFERS_PROCESSED, &numberOfProcessedBuffers);
-			bool needsRestart = numberOfProcessedBuffers >= 3 && _isPlaying;
-			while(numberOfProcessedBuffers > 0)
+			
+			//Throw away samples if there is too much buffered audio
+			uint32 bufferedSamples = _asset->GetBufferedSize() / _asset->GetBytesPerSample();
+			if(bufferedSamples > 3840 * 5 && _asset->GetType() != AudioAsset::Type::Decoder)
 			{
-				uint32 bufferedSamples = _asset->GetBufferedSize() / _asset->GetBytesPerSample();
-				if(bufferedSamples >= 3840)
-				{
-					if(bufferedSamples > 3840 * 5 && _asset->GetType() != AudioAsset::Type::Decoder)
-					{
-						_asset->PopData(nullptr, _asset->GetBufferedSize() - 2 * 3840 * _asset->GetBytesPerSample());
-						RNDebug("too much buffered audio: skipping");
-					}
+				_asset->PopData(nullptr, _asset->GetBufferedSize() - 2 * 3840 * _asset->GetBytesPerSample());
+				RNDebug("too much buffered audio: skipping");
+			}
 
-					//TODO: Make better and don't hardcode sample type and buffer format and multiple channels
-					if(_asset->GetBytesPerSample() / _asset->GetChannels() > 2)
+			size_t samplesToActuallyPop = 100000;
+			for(auto pair : _source)
+			{
+				ALint numberOfProcessedBuffers = 0;
+				pair.first->MakeCurrent();
+				alGetSourcei(pair.second, AL_BUFFERS_PROCESSED, &numberOfProcessedBuffers);
+				bool needsRestart = numberOfProcessedBuffers >= 3 && _isPlaying;
+				size_t samplesToPop = 0;
+				while(numberOfProcessedBuffers > 0)
+				{
+					uint32 bufferedSize = _asset->GetBufferedSize() - _ringbufferRemainingOffset[pair.first];
+					uint32 bufferedSamples = bufferedSize / _asset->GetBytesPerSample();
+					if(bufferedSamples >= 3840)
 					{
-						float samplesBuffer[3840];
-						_asset->PopData(samplesBuffer, _asset->GetBytesPerSample() * 3840);
-						for(size_t i = 0; i < 3840; i++)
+						//TODO: Make better and don't hardcode sample type and buffer format and multiple channels
+						if(_asset->GetBytesPerSample() / _asset->GetChannels() > 2)
 						{
-							_ringBufferTemp[i] = samplesBuffer[i] * 32000.0f;
+							float samplesBuffer[3840];
+							samplesToPop = 3840 * _asset->GetBytesPerSample();
+							_asset->PopData(samplesBuffer, samplesToPop, true, _ringbufferRemainingOffset[pair.first]);
+							_ringbufferRemainingOffset[pair.first] += samplesToPop;
+							for(size_t i = 0; i < 3840; i++)
+							{
+								_ringBufferTemp[i] = samplesBuffer[i] * 32000.0f;
+							}
+						}
+						else
+						{
+							samplesToPop = 3840 * _asset->GetBytesPerSample();
+							_asset->PopData(_ringBufferTemp, samplesToPop, true, _ringbufferRemainingOffset[pair.first]);
+							_ringbufferRemainingOffset[pair.first] += samplesToPop;
 						}
 					}
 					else
 					{
-						_asset->PopData(_ringBufferTemp, _asset->GetBytesPerSample() * 3840);
-					}
-				}
-				else
-				{
-					if(!isPlaying)
-					{
-						for(auto pair : _source)
+						if(!isPlaying)
 						{
-							pair.first->MakeCurrent();
 							alSourceStop(pair.second);
 							alSourcePause(pair.second);
+							_isPlaying = false;
+							hasEnded = true;
 						}
-						_isPlaying = false;
-						hasEnded = true;
+						samplesToPop = bufferedSize;
+						_asset->PopData(_ringBufferTemp, samplesToPop, true, _ringbufferRemainingOffset[pair.first]);
+						_ringbufferRemainingOffset[pair.first] += samplesToPop;
+						std::fill(_ringBufferTemp + bufferedSamples, _ringBufferTemp + 3840, (int16)0);
+						//RNDebug("not enough buffered audio: adding silence");
 					}
-					_asset->PopData(_ringBufferTemp, _asset->GetBufferedSize());
-					std::fill(_ringBufferTemp + bufferedSamples, _ringBufferTemp + 3840, (int16)0);
-					//RNDebug("not enough buffered audio: adding silence");
-				}
-
-				//TODO: support multiple channels
-				ALuint bufferID = 0;
-				ALenum format = _asset->GetChannels() == 1 ? AL_FORMAT_MONO16 : AL_FORMAT_STEREO16;
-				ALsizei bufferSize = 3840 * sizeof(int16) * _asset->GetChannels();
-				
-				for(auto pair : _source)
-				{
-					pair.first->MakeCurrent();
+					
+					//TODO: support multiple channels
+					ALuint bufferID = 0;
+					ALenum format = _asset->GetChannels() == 1 ? AL_FORMAT_MONO16 : AL_FORMAT_STEREO16;
+					ALsizei bufferSize = 3840 * sizeof(int16) * _asset->GetChannels();
+					
 					alSourceUnqueueBuffers(pair.second, 1, &bufferID);
 					alBufferData(bufferID, format, _ringBufferTemp, bufferSize, _asset->GetSampleRate());
 					alSourceQueueBuffers(pair.second, 1, &bufferID);
+					
+					numberOfProcessedBuffers -= 1;
 				}
-
-				numberOfProcessedBuffers -= 1;
-			}
-
-			if(needsRestart)
-			{
-				for(auto pair : _source)
+				
+				if(needsRestart)
 				{
 					pair.first->MakeCurrent();
 					alSourcePlay(pair.second);
 				}
+				
+				samplesToActuallyPop = std::min(samplesToActuallyPop, _ringbufferRemainingOffset[pair.first]);
 			}
+
+			_asset->PopData(nullptr, samplesToActuallyPop); //Move the read head
+			for(auto &kv : _ringbufferRemainingOffset) kv.second -= std::min(kv.second, samplesToActuallyPop);
 		}
 
 		ALenum sourceState = AL_STOPPED;
