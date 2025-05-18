@@ -72,12 +72,15 @@ namespace RN
 		}
 	}
 
-	void AudioAsset::PopData(void *bytes, size_t size)
+	void AudioAsset::PopData(void *bytes, size_t size, bool keepData, size_t offset)
 	{
+		//TODO: Shuld probably just lock here to protect the read position... Two threads messing with the read position will just mess things up anyway and cause undefined issues
 		RN_ASSERT(_type == Type::Ringbuffer || _type == Type::Decoder, "PopData can only be called on an AudioAsset initialized as Ringbuffer or Decoder.");
 
 		if(!bytes)
 		{
+			if(keepData || offset > 0) return;
+			
 			_readPosition.fetch_add(size);
 			_bufferedSize.fetch_sub(size);
 
@@ -93,25 +96,22 @@ namespace RN
 
 		uint8 *data = static_cast<uint8 *>(bytes);
 		size_t remainingLength = size;
+		uint32 readPosition = _readPosition + offset;
+		readPosition = readPosition % _data->GetLength();
 		while(remainingLength)
 		{
 			size_t fittingLength = remainingLength;
-			fittingLength = std::min(fittingLength, _data->GetLength() - _readPosition);
-			_data->GetBytesInRange(data, Range(_readPosition, fittingLength));
-			_readPosition.fetch_add(fittingLength);
+			fittingLength = std::min(fittingLength, _data->GetLength() - readPosition);
+			_data->GetBytesInRange(data, Range(readPosition, fittingLength));
+			readPosition += fittingLength;
 			data += fittingLength;
+			readPosition = readPosition % _data->GetLength();
 
-			//Do the modulo atomically by trying it until the values match
-			uint32 oldValue = _readPosition;
-			uint32 newValue = _readPosition % _data->GetLength();
-			while(!_readPosition.compare_exchange_weak(oldValue, newValue, std::memory_order_relaxed))
-			{
-				newValue = oldValue % _data->GetLength();
-			}
-
-			_bufferedSize.fetch_sub(fittingLength);
+			if(!keepData && offset == 0) _bufferedSize.fetch_sub(fittingLength);
 			remainingLength -= fittingLength;
 		}
+		
+		if(!keepData) _readPosition.store(readPosition, std::memory_order_relaxed);
 	}
 
 	bool AudioAsset::Decode()
