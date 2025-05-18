@@ -17,7 +17,7 @@ namespace RN
 {
 	RNDefineMeta(OpenALSource, SceneNode)
 
-	OpenALSource::OpenALSource(AudioAsset *asset) :
+	OpenALSource::OpenALSource(AudioAsset *asset, size_t ignoreDeviceAtIndex) :
 		_asset(nullptr),
 		_isPlaying(false),
 		_isRepeating(false),
@@ -28,6 +28,8 @@ namespace RN
 		_oldPosition = GetWorldPosition();
 
 		OpenALWorld::GetSharedInstance()->GetOutputDevices()->Enumerate<OpenALOutputDevice>([&](OpenALOutputDevice *device, size_t index, bool &stop){
+			if(index == ignoreDeviceAtIndex) return;
+
 			device->MakeCurrent();
 			
 			uint32 source;

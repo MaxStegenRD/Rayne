@@ -27,7 +27,7 @@ namespace RN
 			AttenuationFunctionInverseDistanceClamped
 		};
 
-		OALAPI OpenALSource(AudioAsset *asset);
+		OALAPI OpenALSource(AudioAsset *asset, size_t ignoreDeviceAtIndex = -1);
 		OALAPI ~OpenALSource() override;
 
 		OALAPI void Update(float delta) override;
