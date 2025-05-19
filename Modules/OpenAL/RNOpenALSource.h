@@ -26,6 +26,14 @@ namespace RN
 			AttenuationFunctionLinear,
 			AttenuationFunctionInverseDistanceClamped
 		};
+		
+		struct SourceState
+		{
+			std::vector<RN::uint32> freeBuffers;
+			std::vector<RN::uint32> allBuffers;
+			size_t readOffset = 0;
+			RN::uint32 sourceID;
+		};
 
 		OALAPI OpenALSource(AudioAsset *asset, size_t ignoreDeviceAtIndex = -1);
 		OALAPI ~OpenALSource() override;
@@ -53,8 +61,7 @@ namespace RN
 		OpenALWorld *_owner;
 		AudioAsset *_asset;
 
-		std::map<OpenALOutputDevice*, uint32> _source;
-		std::map<OpenALOutputDevice*, size_t> _ringbufferRemainingOffset;
+		std::map<OpenALOutputDevice*, SourceState> _source;
 		Vector3 _oldPosition;
 		Vector3 _velocity;
 
@@ -62,8 +69,8 @@ namespace RN
 		bool _isRepeating;
 		bool _isSelfdestructing;
 		bool _hasEnded;
+		bool _isBuffering;
 
-		std::map<OpenALOutputDevice*, uint32> _ringBuffersID[3];
 		int16 *_ringBufferTemp;
 
 		Lockable _lock;
