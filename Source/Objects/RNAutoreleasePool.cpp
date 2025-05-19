@@ -45,7 +45,7 @@ namespace RN
 		RN_ASSERT(object, "Object mustn't be NULL");
 
 #if RN_BUILD_DEBUG
-		RN_ASSERT(object->_autoreleaseCounter.fetch_add(1) < object->_refCount, "Object will be overreleased by autorelease pool!");
+		RN_ASSERT(object->_autoreleaseCounter.fetch_add(1) < object->_refCount.load(std::memory_order_relaxed), "Object will be overreleased by autorelease pool!");
 #endif
 
 		_objects.push_back(object);

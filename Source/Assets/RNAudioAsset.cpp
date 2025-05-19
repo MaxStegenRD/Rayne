@@ -80,7 +80,7 @@ namespace RN
 		if(!bytes)
 		{
 			if(keepData || offset > 0) return;
-			
+
 			_readPosition.fetch_add(size);
 			_bufferedSize.fetch_sub(size);
 
@@ -110,7 +110,7 @@ namespace RN
 			if(!keepData && offset == 0) _bufferedSize.fetch_sub(fittingLength);
 			remainingLength -= fittingLength;
 		}
-		
+
 		if(!keepData) _readPosition.store(readPosition, std::memory_order_relaxed);
 	}
 

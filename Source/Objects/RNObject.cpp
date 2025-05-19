@@ -102,7 +102,7 @@ namespace RN
 		AssertZombieInteraction();
 
 #if RN_BUILD_DEBUG
-		if(_isTracked) WillChangeReferenceCount(_refCount + 1);
+		if(_isTracked) WillChangeReferenceCount(_refCount.load(std::memory_order_relaxed) + 1);
 #endif
 
 		_refCount.fetch_add(1, std::memory_order_relaxed); // RMW pairs with relaxed memory ordering
@@ -113,7 +113,7 @@ namespace RN
 		AssertZombieInteraction();
 
 #if RN_BUILD_DEBUG
-		if(_isTracked) WillChangeReferenceCount(_refCount + 1);
+		if(_isTracked) WillChangeReferenceCount(_refCount.load(std::memory_order_relaxed) + 1);
 #endif
 
 		_refCount.fetch_add(1, std::memory_order_relaxed); // RMW pairs with relaxed memory ordering
@@ -134,9 +134,9 @@ namespace RN
 #endif
 
 #if RN_BUILD_DEBUG
-		RN_ASSERT(_refCount > _autoreleaseCounter, "Object is in too many autorelease pools and will be over released!");
+		RN_ASSERT(_refCount.load(std::memory_order_relaxed) > _autoreleaseCounter.load(std::memory_order_relaxed), "Object is in too many autorelease pools and will be over released!");
 
-		if(_isTracked) WillChangeReferenceCount(_refCount - 1);
+		if(_isTracked) WillChangeReferenceCount(_refCount.load(std::memory_order_relaxed) - 1);
 #endif
 
 		// If this is the last reference this thread has, which it very well might be,
@@ -163,7 +163,7 @@ namespace RN
 		AssertZombieInteraction();
 
 #if RN_BUILD_DEBUG
-		if(_isTracked) WillChangeAutoreleaseCount(_autoreleaseCounter + 1);
+		if(_isTracked) WillChangeAutoreleaseCount(_autoreleaseCounter.load(std::memory_order_relaxed) + 1);
 #endif
 
 		AutoreleasePool *pool = AutoreleasePool::GetCurrentPool();
@@ -185,7 +185,7 @@ namespace RN
 		AssertZombieInteraction();
 
 #if RN_BUILD_DEBUG
-		if(_isTracked) WillChangeAutoreleaseCount(_autoreleaseCounter + 1);
+		if(_isTracked) WillChangeAutoreleaseCount(_autoreleaseCounter.load(std::memory_order_relaxed) + 1);
 #endif
 
 		AutoreleasePool *pool = AutoreleasePool::GetCurrentPool();
