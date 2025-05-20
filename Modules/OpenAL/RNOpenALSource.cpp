@@ -335,6 +335,12 @@ namespace RN
 					hasEnded = true;
 				}
 			}
+			
+			size_t biggestReadOffset = 0;
+			for(auto &pair : _source)
+			{
+				biggestReadOffset = std::max(pair.second.readOffset, biggestReadOffset);
+			}
 
 			size_t bytesToActuallyPop = std::numeric_limits<size_t>::max();
 			for(auto &pair : _source)
@@ -347,6 +353,12 @@ namespace RN
 					ALuint bufferID = 0;
 					alSourceUnqueueBuffers(pair.second.sourceID, 1, &bufferID);
 					pair.second.freeBuffers.push_back(bufferID);
+				}
+				
+				if(biggestReadOffset - pair.second.readOffset > CHUNK_FRAMES * _asset->GetBytesPerSample() * _asset->GetChannels() * 8)
+				{
+					//If too far behind, skip forward to not hold back other devices
+					pair.second.readOffset = biggestReadOffset;
 				}
 				
 				size_t bytesToPop = 0;
