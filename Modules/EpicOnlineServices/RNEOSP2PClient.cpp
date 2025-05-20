@@ -427,23 +427,29 @@ namespace RN
 							dataIndex += 4;
 							RNDebug("Received connect response from " << senderUserID << " with client ID " << remoteClientID << " and own client ID " << ownClientID);
 
-							//Received remote user ID
+							//Received remote user ID. Do this first to add peer for client id broadcasting
+							bool didConnect = false;
 							if(_peers[senderUserID].clientID == CLIENT_ID_NONE && remoteClientID != CLIENT_ID_NONE)
 							{
 								_peers[senderUserID].clientID = remoteClientID;
 								_idMap[remoteClientID] = senderUserID;
-
-								Unlock();
-								HandleDidConnect(remoteClientID);
-								Lock();
+								didConnect = true;
 							}
 
 							//Received own client ID from server
-							if(_clientID == CLIENT_ID_NONE && ownClientID != CLIENT_ID_NONE)
+							if(_clientID == CLIENT_ID_NONE && ownClientID != CLIENT_ID_NONE && remoteClientID != CLIENT_ID_NONE)
 							{
 								_serverClientID = remoteClientID;
-								AssignClientID(ownClientID);
+								AssignClientID(ownClientID); //Broadcasts freshly assigned id to peers
 								_status = Connected;
+							}
+
+							//Handle connection after the server client id was set
+							if(didConnect)
+							{
+								Unlock();
+								HandleDidConnect(remoteClientID);
+								Lock();
 							}
 						}
 						else
