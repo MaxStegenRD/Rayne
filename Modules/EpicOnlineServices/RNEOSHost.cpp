@@ -167,10 +167,11 @@ namespace RN
 		Unlock();
 	}
 
-	void EOSHost::BroadcastPacket(Data *data, uint32 channel, bool reliable)
+	void EOSHost::BroadcastPacket(Data *data, uint32 channel, bool reliable, RN::uint16 excludeClientID)
 	{
 		for(auto peer : _peers)
 		{
+			if(excludeClientID != CLIENT_ID_NONE && peer.second.clientID == excludeClientID) continue;
 			SendPacket(data, peer.first, channel, reliable);
 		}
 	}
