@@ -24,6 +24,7 @@ namespace RN
 		Lock();
 		_isServer = isHost;
 		_clientID = isHost ? 0 : CLIENT_ID_NONE;
+		_serverClientID = isHost ? 0 : CLIENT_ID_NONE;
 		_status = isHost ? Server : Disconnected;
 
 		EOSWorld *world = EOSWorld::GetInstance();
