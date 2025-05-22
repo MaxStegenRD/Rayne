@@ -96,7 +96,13 @@ namespace RN
 		_internals->stateCoordinator.DestroyPipelineCache(GetVulkanDevice(), GetAllocatorCallback());
 
 		_mipMapTextures->Release();
-		//delete _dynamicBufferPool; //TODO: Should probably be deleted, but currently this just crashes.
+
+		for(auto &frameRes : _internals->frameResources)
+			frameRes.finishedCallback();
+		_internals->frameResources.clear();
+
+		delete _dynamicBufferPool;
+
 		vmaDestroyAllocator(_internals->memoryAllocator);
 	}
 
