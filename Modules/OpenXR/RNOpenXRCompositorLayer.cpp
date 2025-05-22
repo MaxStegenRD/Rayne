@@ -152,6 +152,8 @@ namespace RN
 			_internals->layerPassthroughFb = XR_NULL_HANDLE;
 		}
 
+		delete _internals;
+
 		if(_swapChain)
 		{
 #ifdef XR_USE_GRAPHICS_API_D3D12
