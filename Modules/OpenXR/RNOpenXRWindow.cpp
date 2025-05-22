@@ -500,6 +500,10 @@ namespace RN
 		}
 
 		StopRendering();
+
+		//The framebuffer retains and autoreleases the swapchain every frame, this guarantees it to be released before destroying the xr instance
+		if(AutoreleasePool::GetCurrentPool()) AutoreleasePool::GetCurrentPool()->Drain();
+
 		SafeRelease(_runtimeName);
 		xrDestroyInstance(_internals->instance);
 		delete _internals;
