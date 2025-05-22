@@ -120,7 +120,7 @@ namespace RN
 
 	void OpenALOutputDevice::GetFrameSamples(size_t sampleCount, uint8 *samples)
 	{
-		if(!_isLoopback || !_isManualUpdate) return;
+		if(!_isLoopback || !_isManualUpdate || sampleCount == 0) return;
 
 		size_t offset = 0;
 		size_t remainingSamples = sampleCount;
