@@ -34,6 +34,7 @@ namespace RN
 		velocity /= delta;
 		_velocity = velocity;
 		_oldPosition = position;
+		_rotation = GetWorldRotation();
 
 		Vector3 orientation[2];
 		orientation[0] = GetForward();
