@@ -170,6 +170,16 @@ def copyAndroidBuildSystem(fromdir, projectRoot, buildConfig, platform, isDemo):
 		androidActivity = androidActivity.split(".")[0]
 		androidActivity = "." + androidActivity
 
+	androidSDKVersionMin = b"29"
+	androidSDKVersionMinOverride = getSettingFromConfig("android", platform, "sdk-version-min~android", buildConfig)
+	if androidSDKVersionMinOverride:
+		androidSDKVersionMin = androidSDKVersionMinOverride.encode('utf-8')
+
+	androidSDKVersionTarget = b"32"
+	androidSDKVersionTargetOverride = getSettingFromConfig("android", platform, "sdk-version-target~android", buildConfig)
+	if androidSDKVersionTargetOverride:
+		androidSDKVersionTarget = androidSDKVersionTargetOverride.encode('utf-8')
+
 	for root, subdirs, files in os.walk(fromdir):
 		relativeRoot = os.path.relpath(root, fromdir)
 
@@ -193,6 +203,8 @@ def copyAndroidBuildSystem(fromdir, projectRoot, buildConfig, platform, isDemo):
 				fileContent = fileContent.replace(b"__RN_PERMISSIONS__", permissionsString)
 				fileContent = fileContent.replace(b"__RN_ANDROID_DEPENDENCIES__", dependenciesString)
 				fileContent = fileContent.replace(b"__RN_APPLICATION_PROPERTIES__", applicationPropertiesString)
+				fileContent = fileContent.replace(b"__RN_ANDROID_SDK_VERSION_MIN__", androidSDKVersionMin)
+				fileContent = fileContent.replace(b"__RN_ANDROID_SDK_VERSION_TARGET__", androidSDKVersionTarget)
 
 				with open(writeFilePath, 'wb') as writeFile:
 					writeFile.write(fileContent)
