@@ -32,6 +32,7 @@ namespace RN
 		Vector3 position = GetWorldPosition();
 		Vector3 velocity = position - _oldPosition;
 		velocity /= delta;
+		_velocity = velocity;
 		_oldPosition = position;
 
 		Vector3 orientation[2];

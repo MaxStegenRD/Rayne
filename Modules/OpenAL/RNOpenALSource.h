@@ -50,6 +50,8 @@ namespace RN
 		OALAPI void SetGain(float gain);
 		OALAPI void SetRange(float min, float max, float rolloff = 1.0f);
 		OALAPI void SetSelfdestruct(bool selfdestruct);
+		
+		OALAPI void ForceSetPosition(RN::Vector3 position, RN::Vector3 velocity);
 
 		OALAPI bool IsPlaying();
 		OALAPI bool HasEnded();

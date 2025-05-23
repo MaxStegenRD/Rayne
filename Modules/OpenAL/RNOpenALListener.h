@@ -22,10 +22,14 @@ namespace RN
 		OALAPI ~OpenALListener() override;
 
 		OALAPI void Update(float delta) override;
+		
+		Vector3 GetVelocity() const { return _velocity; }
 
 	private:
 		WeakRef<OpenALOutputDevice> _owner;
 		Vector3 _oldPosition;
+		
+		Vector3 _velocity;
 
 		RNDeclareMetaAPI(OpenALListener, OALAPI)
 	};

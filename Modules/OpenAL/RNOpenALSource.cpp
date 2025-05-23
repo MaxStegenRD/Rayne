@@ -464,6 +464,18 @@ namespace RN
 		UpdatePosition(delta);
 	}
 
+	void OpenALSource::ForceSetPosition(RN::Vector3 position, RN::Vector3 velocity)
+	{
+		_velocity = _velocity * 0.95f + velocity * 0.05f; //Smoothen the velocity
+		
+		for(auto &pair : _source)
+		{
+			pair.first->MakeCurrent();
+			alSourcefv(pair.second.sourceID, AL_POSITION, &position.x);
+			alSourcefv(pair.second.sourceID, AL_VELOCITY, &_velocity.x);
+		}
+	}
+
 	void OpenALSource::UpdatePosition(float delta)
 	{
 		Vector3 position = GetWorldPosition();
