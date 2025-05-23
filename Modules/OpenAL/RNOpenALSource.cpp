@@ -26,7 +26,8 @@ namespace RN
 		_isSelfdestructing(false),
 		_hasEnded(false),
 		_ringBufferTemp(nullptr),
-		_isBuffering(true)
+		_isBuffering(true),
+		_ignoreNextPositionUpdate(false)
 	{
 		_oldPosition = GetWorldPosition();
 
@@ -466,7 +467,10 @@ namespace RN
 
 	void OpenALSource::ForceSetPosition(RN::Vector3 position, RN::Vector3 velocity)
 	{
-		_velocity = _velocity * 0.95f + velocity * 0.05f; //Smoothen the velocity
+		_ignoreNextPositionUpdate = true;
+		
+		_oldPosition = position;
+		_velocity = velocity;
 		
 		for(auto &pair : _source)
 		{
@@ -478,6 +482,12 @@ namespace RN
 
 	void OpenALSource::UpdatePosition(float delta)
 	{
+		if(_ignoreNextPositionUpdate)
+		{
+			_ignoreNextPositionUpdate = false;
+			return;
+		}
+		
 		Vector3 position = GetWorldPosition();
 		
 		Vector3 velocity = position - _oldPosition;

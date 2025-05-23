@@ -16,7 +16,7 @@ namespace RN
 {
 	RNDefineMeta(OpenALListener, SceneNodeAttachment)
 
-	OpenALListener::OpenALListener()
+	OpenALListener::OpenALListener() : _manualUpdate(false)
 	{
 	}
 
@@ -25,6 +25,12 @@ namespace RN
 	}
 
 	void OpenALListener::Update(float delta)
+	{
+		if(_manualUpdate) return;
+		UpdateManual(delta);
+	}
+
+	void OpenALListener::UpdateManual(float delta)
 	{
 		if(!_owner || !GetParent() || delta <= 0.0f)
 			return;

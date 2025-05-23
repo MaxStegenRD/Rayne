@@ -72,6 +72,8 @@ namespace RN
 		bool _isSelfdestructing;
 		bool _hasEnded;
 		bool _isBuffering;
+		
+		bool _ignoreNextPositionUpdate;
 
 		int16 *_ringBufferTemp;
 
