@@ -67,6 +67,7 @@ namespace RN
 			UIAPI void MakeCircle();
 			UIAPI virtual void SetOutline(Color color, float thickness);
 			UIAPI void SetMirrorUV(bool mirrorU, bool mirrorV);
+			UIAPI void SetUVOffsetAndScale(RN::Vector2 offset, RN::Vector2 scale);
 
 			UIAPI virtual void Draw(bool isParentHidden);
 
@@ -78,7 +79,7 @@ namespace RN
 			int32 GetRenderPriorityOffset() const { return _renderPriorityOffset; }
 			UIAPI int32 GetMaxRenderPriorityOffset() const;
 
-			UIAPI void SetRenderGroupForAll(uint8 renderGroup);
+			UIAPI void SetRenderGroupForAll(uint16 renderGroup);
 
 			UIAPI virtual void HandleButtonClick();
 			UIAPI virtual void HandleButtonClickLate();
@@ -139,6 +140,8 @@ namespace RN
 			bool _isHiddenByParent;
 			Rect _scissorRect;
 			
+			Vector2 _uvOffset;
+			Vector2 _uvScale;
 			bool _mirrorU;
 			bool _mirrorV;
 

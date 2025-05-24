@@ -47,6 +47,7 @@ namespace RN
 			_isCircle(false),
 			_hasOutline(false),
 			_outlineThickness(0.0f),
+			_uvScale(1.0f, 1.0f),
 			_mirrorU(false),
 			_mirrorV(false),
 			_renderPriorityOverride(0),
@@ -525,6 +526,21 @@ namespace RN
 			_needsMeshUpdate = true;
 			Unlock();
 		}
+	
+		void View::SetUVOffsetAndScale(RN::Vector2 offset, RN::Vector2 scale)
+		{
+			Lock();
+			if(_uvOffset == offset && _uvScale == scale)
+			{
+				Unlock();
+				return;
+			}
+			
+			_uvOffset = offset;
+			_uvScale = scale;
+			_needsMeshUpdate = true;
+			Unlock();
+		}
 
 		void View::SetCullMode(CullMode cullMode)
 		{
@@ -599,7 +615,7 @@ namespace RN
 			return offset + maxAdditionalOffset;
 		}
 
-		void View::SetRenderGroupForAll(uint8 renderGroup)
+		void View::SetRenderGroupForAll(uint16 renderGroup)
 		{
 			SetRenderGroup(renderGroup);
 			GetSubviews()->Enumerate<View>([renderGroup](View *view, size_t index, bool &stop) {
@@ -1020,8 +1036,8 @@ namespace RN
 
 				for(int i = 0; i < 20; i++)
 				{
-					vertexUV0Buffer[i * 2 + 0] = vertexPositionBuffer[i * vertexPositionSize + 0] / _frame.width;
-					vertexUV0Buffer[i * 2 + 1] = -vertexPositionBuffer[i * vertexPositionSize + 1] / _frame.height;
+					vertexUV0Buffer[i * 2 + 0] = vertexPositionBuffer[i * vertexPositionSize + 0] / _frame.width * _uvScale.x + _uvOffset.x;
+					vertexUV0Buffer[i * 2 + 1] = -vertexPositionBuffer[i * vertexPositionSize + 1] / _frame.height * _uvScale.y + _uvOffset.y;
 					
 					if(_mirrorU)
 					{
@@ -1114,8 +1130,8 @@ namespace RN
 						vertexPositionBuffer[(i + 20) * vertexPositionSize + 1] = outlineTriangleMesh.vertices[i * outlineTriangleMeshVertexFloatCount + 1];
 						vertexPositionBuffer[(i + 20) * vertexPositionSize + 2] = 1.0f;
 
-						vertexUV0Buffer[(i + 20) * 2 + 0] = vertexPositionBuffer[(i + 20) * vertexPositionSize + 0] / _frame.width;
-						vertexUV0Buffer[(i + 20) * 2 + 1] = -vertexPositionBuffer[(i + 20) * vertexPositionSize + 1] / _frame.height;
+						vertexUV0Buffer[(i + 20) * 2 + 0] = vertexPositionBuffer[(i + 20) * vertexPositionSize + 0] / _frame.width * _uvScale.x + _uvOffset.x;
+						vertexUV0Buffer[(i + 20) * 2 + 1] = -vertexPositionBuffer[(i + 20) * vertexPositionSize + 1] / _frame.height * _uvScale.x + _uvOffset.x;
 						
 						if(_mirrorU)
 						{
@@ -1184,17 +1200,25 @@ namespace RN
 				vertexPositionBuffer[3 * vertexPositionSize + 1] = -_frame.height + _outlineThickness;
 				if(_hasOutline) vertexPositionBuffer[3 * vertexPositionSize + 2] = 0.0f;
 
-				vertexUVBuffer[0 * 2 + 0] = _mirrorU ? 1.0f : 0.0f;
-				vertexUVBuffer[0 * 2 + 1] = _mirrorV ? 1.0f : 0.0f;
+				vertexUVBuffer[0 * 2 + 0] = _uvOffset.x;
+				vertexUVBuffer[0 * 2 + 1] = _uvOffset.y;
+				if(_mirrorU) vertexUVBuffer[0 * 2 + 0] = 1.0f - vertexUVBuffer[0 * 2 + 0];
+				if(_mirrorV) vertexUVBuffer[0 * 2 + 1] = 1.0f - vertexUVBuffer[0 * 2 + 1];
 
-				vertexUVBuffer[1 * 2 + 0] = _mirrorU ? 0.0f : 1.0f;
-				vertexUVBuffer[1 * 2 + 1] = _mirrorV ? 1.0f : 0.0f;
+				vertexUVBuffer[1 * 2 + 0] = _uvScale.x + _uvOffset.x;
+				vertexUVBuffer[1 * 2 + 1] = _uvOffset.y;
+				if(_mirrorU) vertexUVBuffer[1 * 2 + 0] = 1.0f - vertexUVBuffer[1 * 2 + 0];
+				if(_mirrorV) vertexUVBuffer[1 * 2 + 1] = 1.0f - vertexUVBuffer[1 * 2 + 1];
 
-				vertexUVBuffer[2 * 2 + 0] = _mirrorU ? 0.0f : 1.0f;
-				vertexUVBuffer[2 * 2 + 1] = _mirrorV ? 0.0f : 1.0f;
+				vertexUVBuffer[2 * 2 + 0] = _uvScale.x + _uvOffset.x;
+				vertexUVBuffer[2 * 2 + 1] = _uvScale.y + _uvOffset.y;
+				if(_mirrorU) vertexUVBuffer[2 * 2 + 0] = 1.0f - vertexUVBuffer[2 * 2 + 0];
+				if(_mirrorV) vertexUVBuffer[2 * 2 + 1] = 1.0f - vertexUVBuffer[2 * 2 + 1];
 
-				vertexUVBuffer[3 * 2 + 0] = _mirrorU ? 1.0f : 0.0f;
-				vertexUVBuffer[3 * 2 + 1] = _mirrorV ? 0.0f : 1.0f;
+				vertexUVBuffer[3 * 2 + 0] = _uvOffset.x;
+				vertexUVBuffer[3 * 2 + 1] = _uvScale.y + _uvOffset.y;
+				if(_mirrorU) vertexUVBuffer[2 * 2 + 0] = 1.0f - vertexUVBuffer[2 * 2 + 0];
+				if(_mirrorV) vertexUVBuffer[2 * 2 + 1] = 1.0f - vertexUVBuffer[2 * 2 + 1];
 
 				indexBuffer[0] = 0;
 				indexBuffer[1] = 3;
@@ -1223,17 +1247,25 @@ namespace RN
 					vertexPositionBuffer[7 * vertexPositionSize + 1] = -_frame.height + _outlineThickness;
 					vertexPositionBuffer[7 * vertexPositionSize + 2] = 1.0f;
 
-					vertexUVBuffer[4 * 2 + 0] = _mirrorU ? 1.0f : 0.0f;
-					vertexUVBuffer[4 * 2 + 1] = _mirrorV ? 1.0f : 0.0f;
+					vertexUVBuffer[4 * 2 + 0] = _uvOffset.x;
+					vertexUVBuffer[4 * 2 + 1] = _uvOffset.y;
+					if(_mirrorU) vertexUVBuffer[4 * 2 + 0] = 1.0f - vertexUVBuffer[4 * 2 + 0];
+					if(_mirrorV) vertexUVBuffer[4 * 2 + 1] = 1.0f - vertexUVBuffer[4 * 2 + 1];
 
-					vertexUVBuffer[5 * 2 + 0] = _mirrorU ? 0.0f : 1.0f;
-					vertexUVBuffer[5 * 2 + 1] = _mirrorV ? 1.0f : 0.0f;
+					vertexUVBuffer[5 * 2 + 0] = _uvScale.x + _uvOffset.x;
+					vertexUVBuffer[5 * 2 + 1] = _uvOffset.y;
+					if(_mirrorU) vertexUVBuffer[5 * 2 + 0] = 1.0f - vertexUVBuffer[5 * 2 + 0];
+					if(_mirrorV) vertexUVBuffer[5 * 2 + 1] = 1.0f - vertexUVBuffer[5 * 2 + 1];
 
-					vertexUVBuffer[6 * 2 + 0] = _mirrorU ? 0.0f : 1.0f;
-					vertexUVBuffer[6 * 2 + 1] = _mirrorV ? 0.0f : 1.0f;
+					vertexUVBuffer[6 * 2 + 0] = _uvScale.x + _uvOffset.x;
+					vertexUVBuffer[6 * 2 + 1] = _uvScale.y + _uvOffset.y;
+					if(_mirrorU) vertexUVBuffer[6 * 2 + 0] = 1.0f - vertexUVBuffer[6 * 2 + 0];
+					if(_mirrorV) vertexUVBuffer[6 * 2 + 1] = 1.0f - vertexUVBuffer[6 * 2 + 1];
 
-					vertexUVBuffer[7 * 2 + 0] = _mirrorU ? 1.0f : 0.0f;
-					vertexUVBuffer[7 * 2 + 1] = _mirrorV ? 0.0f : 1.0f;
+					vertexUVBuffer[7 * 2 + 0] = _uvOffset.x;
+					vertexUVBuffer[7 * 2 + 1] = _uvScale.y + _uvOffset.y;
+					if(_mirrorU) vertexUVBuffer[7 * 2 + 0] = 1.0f - vertexUVBuffer[7 * 2 + 0];
+					if(_mirrorV) vertexUVBuffer[7 * 2 + 1] = 1.0f - vertexUVBuffer[7 * 2 + 1];
 
 					//Outter vertices of outline
 					vertexPositionBuffer[8 * vertexPositionSize + 0] = 0.0f;
@@ -1252,17 +1284,25 @@ namespace RN
 					vertexPositionBuffer[11 * vertexPositionSize + 1] = -_frame.height;
 					vertexPositionBuffer[11 * vertexPositionSize + 2] = 1.0f;
 					
-					vertexUVBuffer[8 * 2 + 0] = _mirrorU ? 1.0f : 0.0f;
-					vertexUVBuffer[8 * 2 + 1] = _mirrorV ? 1.0f : 0.0f;
+					vertexUVBuffer[8 * 2 + 0] = _uvOffset.x;
+					vertexUVBuffer[8 * 2 + 1] = _uvOffset.y;
+					if(_mirrorU) vertexUVBuffer[8 * 2 + 0] = 1.0f - vertexUVBuffer[8 * 2 + 0];
+					if(_mirrorV) vertexUVBuffer[8 * 2 + 1] = 1.0f - vertexUVBuffer[8 * 2 + 1];
 
-					vertexUVBuffer[9 * 2 + 0] = _mirrorU ? 0.0f : 1.0f;
-					vertexUVBuffer[9 * 2 + 1] = _mirrorV ? 1.0f : 0.0f;
+					vertexUVBuffer[9 * 2 + 0] = _uvScale.x + _uvOffset.x;
+					vertexUVBuffer[9 * 2 + 1] = _uvOffset.y;
+					if(_mirrorU) vertexUVBuffer[9 * 2 + 0] = 1.0f - vertexUVBuffer[9 * 2 + 0];
+					if(_mirrorV) vertexUVBuffer[9 * 2 + 1] = 1.0f - vertexUVBuffer[9 * 2 + 1];
 
-					vertexUVBuffer[10 * 2 + 0] = _mirrorU ? 0.0f : 1.0f;
-					vertexUVBuffer[10 * 2 + 1] = _mirrorV ? 0.0f : 1.0f;
+					vertexUVBuffer[10 * 2 + 0] = _uvScale.x + _uvOffset.x;
+					vertexUVBuffer[10 * 2 + 1] = _uvScale.y + _uvOffset.y;
+					if(_mirrorU) vertexUVBuffer[10 * 2 + 0] = 1.0f - vertexUVBuffer[10 * 2 + 0];
+					if(_mirrorV) vertexUVBuffer[10 * 2 + 1] = 1.0f - vertexUVBuffer[10 * 2 + 1];
 
-					vertexUVBuffer[11 * 2 + 0] = _mirrorU ? 1.0f : 0.0f;
-					vertexUVBuffer[11 * 2 + 1] = _mirrorV ? 0.0f : 1.0f;
+					vertexUVBuffer[11 * 2 + 0] = _uvOffset.x;
+					vertexUVBuffer[11 * 2 + 1] = _uvScale.y + _uvOffset.y;
+					if(_mirrorU) vertexUVBuffer[11 * 2 + 0] = 1.0f - vertexUVBuffer[11 * 2 + 0];
+					if(_mirrorV) vertexUVBuffer[11 * 2 + 1] = 1.0f - vertexUVBuffer[11 * 2 + 1];
 
 					//Top part of the outline
 					indexBuffer[6] = 8; //top left
