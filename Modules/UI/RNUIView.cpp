@@ -1217,8 +1217,8 @@ namespace RN
 
 				vertexUVBuffer[3 * 2 + 0] = _uvOffset.x;
 				vertexUVBuffer[3 * 2 + 1] = _uvScale.y + _uvOffset.y;
-				if(_mirrorU) vertexUVBuffer[2 * 2 + 0] = 1.0f - vertexUVBuffer[2 * 2 + 0];
-				if(_mirrorV) vertexUVBuffer[2 * 2 + 1] = 1.0f - vertexUVBuffer[2 * 2 + 1];
+				if(_mirrorU) vertexUVBuffer[3 * 2 + 0] = 1.0f - vertexUVBuffer[3 * 2 + 0];
+				if(_mirrorV) vertexUVBuffer[3 * 2 + 1] = 1.0f - vertexUVBuffer[3 * 2 + 1];
 
 				indexBuffer[0] = 0;
 				indexBuffer[1] = 3;
