@@ -33,9 +33,11 @@ namespace RN
 		OALAPI OpenALSource *PlaySound(AudioAsset *resource);
 		
 		OALAPI size_t GetFrameTotalSampleCount(float delta); //Only ever call this once per frame!
-		void StartManualUpdate() { _isManualUpdate = true; }
-		void StopManualUpdate() { _isManualUpdate = false; }
+		OALAPI void StartManualUpdate();
+		OALAPI void StopManualUpdate();
 		OALAPI void GetFrameSamples(size_t sampleCount, uint8 *samples);
+		
+		OALAPI void EnableHRTF(bool enabled);
 		
 	private:
 		void ProgressContext(float delta);
@@ -48,6 +50,8 @@ namespace RN
 		bool _isManualUpdate;
 		bool _isLoopback;
 		float _missingTime;
+		
+		bool _wantsHRTF;
 
 		int16 *_outputBufferTemp;
 
