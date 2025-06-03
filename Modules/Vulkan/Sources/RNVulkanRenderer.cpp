@@ -1916,26 +1916,20 @@ namespace RN
 
         	if(renderPass.drawables.size() > 0)
         	{
-				size_t stepSizeIndex = 0;
-				for(size_t drawableOffset = 0; drawableOffset < renderPass.drawables.size(); drawableOffset += renderPass.instanceSteps[stepSizeIndex++])
+				uint32 stepSize = 0;
+				uint32 stepSizeIndex = 0;
+				for(size_t i = 0; i < renderPass.drawables.size(); i+= stepSize)
 				{
-					const uint32 stepSize = renderPass.instanceSteps[stepSizeIndex - 1];
+					stepSize = renderPass.instanceSteps[stepSizeIndex++];
 
-					const auto &spec= renderPass.drawables[drawableOffset]->_cameraSpecifics[_internals->currentDrawableResourceIndex];
-					const VulkanUniformState *uState = spec.uniformState;
-					const VulkanPipelineState *pState = spec.pipelineState;
+					const auto &spec= renderPass.drawables[i]->_cameraSpecifics[_internals->currentDrawableResourceIndex];
+					const VulkanUniformState *uniformState = spec.uniformState;
+					const VulkanPipelineState *pipelineState = spec.pipelineState;
 
-					totalConstantBufferCount += uState->vertexConstantBuffers.size();
-					totalConstantBufferCount += uState->fragmentConstantBuffers.size();
+					totalConstantBufferCount += uniformState->vertexConstantBuffers.size();
+                    totalConstantBufferCount += uniformState->fragmentConstantBuffers.size();
 
-					// Per-instance attribute block (one CB in the descriptor set)
-					if(uState->instanceAttributesBuffer) totalConstantBufferCount += 1;
-
-					Shader *fragmentShader = pState->descriptor.fragmentShader;
-					if(fragmentShader)
-					{
-						totalTextureCount += fragmentShader->GetSignature()->GetTextures()->GetCount();
-					}
+					totalTextureCount += pipelineState->rootSignature->textureCount;
 				}
 
 				_internals->currentDrawableResourceIndex += 1;
@@ -1992,7 +1986,7 @@ namespace RN
 							VulkanUniformState *instanceUniformState = renderPass.drawables[i + instance]->_cameraSpecifics[_internals->currentDrawableResourceIndex].uniformState;
                             VulkanDynamicBufferReference *instanceAttributesBuffer = instanceUniformState->instanceAttributesBuffer;
 							UpdateDynamicBufferReference(instanceAttributesBuffer, instance == 0);
-							FillUniformBuffer(argument,  instanceAttributesBuffer, renderPass.drawables[i + instance]);
+							FillUniformBuffer(argument, instanceAttributesBuffer, renderPass.drawables[i + instance]);
 						}
 					}
 
@@ -2007,10 +2001,8 @@ namespace RN
 							if(instance > 0 && argument->GetMaxInstanceCount() == 1) break;
 
 						    VulkanUniformState *instanceUniformState = renderPass.drawables[i + instance]->_cameraSpecifics[_internals->currentDrawableResourceIndex].uniformState;
-							UpdateDynamicBufferReference(
-									instanceUniformState->vertexConstantBuffers[bufferIndex],
-									instance == 0);
-							FillUniformBuffer(argument,  instanceUniformState->vertexConstantBuffers[bufferIndex], renderPass.drawables[i + instance]);
+							UpdateDynamicBufferReference(instanceUniformState->vertexConstantBuffers[bufferIndex], instance == 0);
+							FillUniformBuffer(argument, instanceUniformState->vertexConstantBuffers[bufferIndex], renderPass.drawables[i + instance]);
 						}
 
                         VulkanDynamicBufferReference *constantBuffer = uniformState->vertexConstantBuffers[bufferIndex];
