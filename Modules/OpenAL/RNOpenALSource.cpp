@@ -313,7 +313,6 @@ namespace RN
 			if(bufferedSamples > CHUNK_FRAMES * 6 && _asset->GetType() != AudioAsset::Type::Decoder)
 			{
 				_asset->PopData(nullptr, _asset->GetBufferedSize() - 2 * CHUNK_FRAMES * _asset->GetBytesPerSample());
-				RNDebug("too much buffered audio: skipping");
 			}
 			else if(bufferedSamples > CHUNK_FRAMES * 2)
 			{
@@ -322,8 +321,6 @@ namespace RN
 			else if(_isBuffering || bufferedSamples < CHUNK_FRAMES)
 			{
 				_isBuffering = true;
-				
-				RNDebug("not enough buffered audio: waiting for more");
 				
 				if(!isPlaying)
 				{
@@ -411,7 +408,6 @@ namespace RN
 					if(state == AL_STOPPED)
 					{
 						alSourcePlay(pair.second.sourceID);
-						RNDebug("source stopped, restarting it");
 					}
 				}
 				
