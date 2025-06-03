@@ -187,6 +187,8 @@ namespace RN
 				host->Downcast<EOSP2PClient>()->MigrateHost(hostProductUserId);
 			}
 		});
+
+		NotificationManager::GetSharedInstance()->PostNotification(kRNHostMigrated, nullptr);
 	}
 
 	EOSLobbyManager *EOSWorld::GetLobbyManager()

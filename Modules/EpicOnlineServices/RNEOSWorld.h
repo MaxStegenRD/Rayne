@@ -33,6 +33,8 @@ typedef struct _tagEOS_Connect_CreateUserCallbackInfo EOS_Connect_CreateUserCall
 typedef struct _tagEOS_Connect_AuthExpirationCallbackInfo EOS_Connect_AuthExpirationCallbackInfo;
 typedef struct _tagEOS_Connect_LoginStatusChangedCallbackInfo EOS_Connect_LoginStatusChangedCallbackInfo;
 
+#define kRNHostMigrated RNCSTR("kRNHostMigrated")
+
 namespace RN
 {
 	enum EOSAuthServiceType
