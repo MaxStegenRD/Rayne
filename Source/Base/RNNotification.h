@@ -26,7 +26,7 @@ namespace RN
 		template<class T>
 		T *GetInfo() const
 		{
-			return _info->Downcast<T>();
+			return _info ? _info->Downcast<T>() : nullptr;
 		}
 
 	private:

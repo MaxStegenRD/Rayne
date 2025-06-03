@@ -19,6 +19,7 @@
 static LPALCLOOPBACKOPENDEVICESOFT alcLoopbackOpenDeviceSOFT = nullptr;
 static LPALCISRENDERFORMATSUPPORTEDSOFT alcIsRenderFormatSupportedSOFT = nullptr;
 static LPALCRENDERSAMPLESSOFT alcRenderSamplesSOFT = nullptr;
+static LPALCRESETDEVICESOFT alcResetDeviceSoft = nullptr;
 
 namespace RN
 {
@@ -27,7 +28,7 @@ namespace RN
 
 	OpenALWorld *OpenALWorld::_sharedInstance = nullptr;
 
-	OpenALOutputDevice::OpenALOutputDevice(const String *outputDeviceName, bool loopback) : _outputDevice(nullptr), _context(nullptr), _isLoopback(loopback), _missingTime(0.0f), _isManualUpdate(false), _outputBufferTemp(nullptr)
+	OpenALOutputDevice::OpenALOutputDevice(const String *outputDeviceName, bool loopback) : _outputDevice(nullptr), _context(nullptr), _isLoopback(loopback), _missingTime(0.0f), _isManualUpdate(true), _outputBufferTemp(nullptr), _wantsHRTF(true)
 	{
 		std::vector<int> attributes;
 		attributes.push_back(ALC_HRTF_SOFT);
@@ -48,6 +49,7 @@ namespace RN
 			if(!alcLoopbackOpenDeviceSOFT) alcLoopbackOpenDeviceSOFT = reinterpret_cast<LPALCLOOPBACKOPENDEVICESOFT>(alcGetProcAddress(NULL, "alcLoopbackOpenDeviceSOFT"));
 			if(!alcIsRenderFormatSupportedSOFT) alcIsRenderFormatSupportedSOFT = reinterpret_cast<LPALCISRENDERFORMATSUPPORTEDSOFT>(alcGetProcAddress(NULL, "alcIsRenderFormatSupportedSOFT"));
 			if(!alcRenderSamplesSOFT) alcRenderSamplesSOFT = reinterpret_cast<LPALCRENDERSAMPLESSOFT>(alcGetProcAddress(NULL, "alcRenderSamplesSOFT"));
+			if(!alcResetDeviceSoft) alcResetDeviceSoft = reinterpret_cast<LPALCRESETDEVICESOFT>(alcGetProcAddress(NULL, "alcResetDeviceSoft"));
 
 			_outputDevice = alcLoopbackOpenDeviceSOFT(outputDeviceName ? outputDeviceName->GetUTF8String() : nullptr);
 			
@@ -92,6 +94,8 @@ namespace RN
 			const ALchar *name = alcGetString(_outputDevice, ALC_HRTF_SPECIFIER_SOFT);
 			RNDebug("HRTF enabled, using " << name);
 		}
+		
+		StopManualUpdate();
 	}
 
 	OpenALOutputDevice::~OpenALOutputDevice()
@@ -104,6 +108,41 @@ namespace RN
 	void OpenALOutputDevice::MakeCurrent()
 	{
 		alcMakeContextCurrent(_context);
+	}
+
+	void OpenALOutputDevice::EnableHRTF(bool enabled)
+	{
+		ALCint attrs[] = { ALC_HRTF_SOFT, enabled ? ALC_TRUE : ALC_FALSE, 0 };
+		alcResetDeviceSoft(_outputDevice, attrs);
+		
+		_wantsHRTF = enabled;
+	}
+
+	void OpenALOutputDevice::StartManualUpdate()
+	{
+		if(!_isManualUpdate || !_isLoopback) return;
+		
+		if(_wantsHRTF)
+		{
+			ALCint attrs[] = { ALC_HRTF_SOFT, ALC_TRUE, 0 };
+			alcResetDeviceSoft(_outputDevice, attrs);
+		}
+		
+		_isManualUpdate = true;
+	}
+
+	void OpenALOutputDevice::StopManualUpdate()
+	{
+		if(_isManualUpdate || !_isLoopback) return;
+		
+		if(_wantsHRTF)
+		{
+			//Using HRTF is quite expensive, even if the samples are just thrown away, so disable it when the samples are not actually used.
+			ALCint attrs[] = { ALC_HRTF_SOFT, ALC_FALSE, 0 };
+			alcResetDeviceSoft(_outputDevice, attrs);
+		}
+		
+		_isManualUpdate = false;
 	}
 
 	size_t OpenALOutputDevice::GetFrameTotalSampleCount(float delta)
@@ -120,7 +159,7 @@ namespace RN
 
 	void OpenALOutputDevice::GetFrameSamples(size_t sampleCount, uint8 *samples)
 	{
-		if(!_isLoopback || !_isManualUpdate) return;
+		if(!_isLoopback || !_isManualUpdate || sampleCount == 0) return;
 
 		size_t offset = 0;
 		size_t remainingSamples = sampleCount;

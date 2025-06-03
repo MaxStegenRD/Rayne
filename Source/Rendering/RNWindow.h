@@ -27,11 +27,12 @@ namespace RN
 		struct SwapChainDescriptor
 		{
 			SwapChainDescriptor(Texture::Format colorFormat = Texture::Format::BGRA_8_SRGB, Texture::Format depthStencilFormat = Texture::Format::Invalid) :
-				colorFormat(colorFormat), depthStencilFormat(depthStencilFormat), bufferCount(4), layerCount(1), vsync(true), wantsFullscreen(false) {}
+				colorFormat(colorFormat), depthStencilFormat(depthStencilFormat), bufferCount(4), layerCount(1), usageHint(Texture::UsageHint::RenderTarget), vsync(true), wantsFullscreen(false) {}
 			Texture::Format colorFormat;
 			Texture::Format depthStencilFormat;
 			uint8 bufferCount;
 			uint8 layerCount;
+			Texture::UsageHint usageHint;
 			bool vsync;
 			bool wantsFullscreen;
 		};

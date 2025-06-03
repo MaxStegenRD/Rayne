@@ -152,6 +152,8 @@ namespace RN
 			_internals->layerPassthroughFb = XR_NULL_HANDLE;
 		}
 
+		delete _internals;
+
 		if(_swapChain)
 		{
 #ifdef XR_USE_GRAPHICS_API_D3D12
@@ -258,7 +260,7 @@ namespace RN
 					_shouldDisplay = (recommendedLayerResolution.recommendedImageDimensions.width > 0 && recommendedLayerResolution.recommendedImageDimensions.height > 0);
 
 					//RNDebug("new recommended resolution: " << recommendedLayerResolution.recommendedImageDimensions.width << " x " << recommendedLayerResolution.recommendedImageDimensions.height);
-					_swapChain->GetSwapChainFramebuffer()->SetSize(RN::Vector2(recommendedLayerResolution.recommendedImageDimensions.width, recommendedLayerResolution.recommendedImageDimensions.height));
+					_swapChain->GetSwapChainFramebuffer()->SetSize(RN::Vector2(std::max(recommendedLayerResolution.recommendedImageDimensions.width, 2), std::max(recommendedLayerResolution.recommendedImageDimensions.height, 2)));
 				}
 			}
 		}

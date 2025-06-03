@@ -98,8 +98,8 @@ namespace RN
 
 		uint32 groups = static_cast<uint32>(deserializer->DecodeInt32());
 
-		_renderGroup = (groups & 0xff);
-		_collisionGroup = (groups >> 8);
+		_renderGroup = (groups & 0xffff);
+		_collisionGroup = (groups >> 16);
 
 		_updatePriority = static_cast<UpdatePriority>(deserializer->DecodeInt32());
 		_renderPriority = deserializer->DecodeInt32();
@@ -127,7 +127,7 @@ namespace RN
 		serializer->EncodeVector3(_scale);
 		serializer->EncodeQuarternion(_rotation);
 
-		serializer->EncodeInt32(_renderGroup | (_collisionGroup << 8));
+		serializer->EncodeInt32(_renderGroup | (_collisionGroup << 16));
 		serializer->EncodeInt32(static_cast<int32>(_updatePriority));
 		serializer->EncodeInt32(_renderPriority);
 		serializer->EncodeInt32(_flags);
@@ -184,7 +184,7 @@ namespace RN
 		DidUpdate(ChangeSet::Tag);
 	}
 
-	void SceneNode::SetRenderGroup(uint8 group)
+	void SceneNode::SetRenderGroup(uint16 group)
 	{
 		_renderGroup = group;
 	}

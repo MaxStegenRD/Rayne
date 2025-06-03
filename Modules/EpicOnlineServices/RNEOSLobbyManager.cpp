@@ -1022,6 +1022,7 @@ namespace RN
 		EOSLobbyManager *lobbyManager = static_cast<EOSLobbyManager *>(Data->ClientData);
 		if(lobbyManager->_audioBeforeSendCallback)
 		{
+			AutoreleasePool pool;
 			lobbyManager->_audioBeforeSendCallback(Data->Buffer->SampleRate, Data->Buffer->Channels, Data->Buffer->FramesCount, Data->Buffer->Frames);
 		}
 	}

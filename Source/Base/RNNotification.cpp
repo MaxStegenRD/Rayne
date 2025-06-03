@@ -11,12 +11,10 @@
 namespace RN
 {
 	Notification::Notification(const String *name, Object *info) :
-		_name(SafeCopy(name)),
-		_info(SafeRetain(info))
+		_name(name),
+		_info(info)
 	{}
 	Notification::~Notification()
 	{
-		SafeRelease(_name);
-		SafeRelease(_info);
 	}
 } // namespace RN

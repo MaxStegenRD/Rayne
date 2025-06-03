@@ -205,11 +205,17 @@ VulkanSwapChain::VulkanSwapChain(const Vector2& size, VulkanRenderer* renderer, 
 		if(_extents.width == extent.width && _extents.height == extent.height)
 			return;
 
-		uint32_t imageCount = std::max(caps.minImageCount, std::min(caps.maxImageCount, static_cast<uint32_t>(_descriptor.bufferCount)));
+		uint32_t imageCount = std::max(caps.minImageCount, static_cast<uint32_t>(_descriptor.bufferCount));
+		if(caps.maxImageCount > 0) imageCount = std::min(caps.maxImageCount, static_cast<uint32_t>(_descriptor.bufferCount)); //if maxImageCount is 0, there is no upper limit!
 
 		assert(caps.supportedUsageFlags & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
 		assert(caps.supportedTransforms & caps.currentTransform);
 		assert(caps.supportedCompositeAlpha & (VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR | VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR));
+
+		if(_descriptor.usageHint & Texture::UsageHint::ShaderRead)
+		{
+			assert(caps.supportedUsageFlags & VK_IMAGE_USAGE_SAMPLED_BIT);
+		}
 
 		VkCompositeAlphaFlagBitsKHR compositeAlpha = (caps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR) ? VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR : VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 
@@ -244,6 +250,11 @@ VulkanSwapChain::VulkanSwapChain(const Vector2& size, VulkanRenderer* renderer, 
 		swapchainInfo.clipped = VK_TRUE;
 		swapchainInfo.oldSwapchain = _swapchain;
 		_swapchain = nullptr;
+
+		if(_descriptor.usageHint & Texture::UsageHint::ShaderRead)
+		{
+			swapchainInfo.imageUsage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+		}
 
 #if RN_PLATFORM_WINDOWS
 		VkSurfaceFullScreenExclusiveInfoEXT exclusiveFullscreenInfo = {};

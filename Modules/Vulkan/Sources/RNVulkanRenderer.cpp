@@ -96,7 +96,13 @@ namespace RN
 		_internals->stateCoordinator.DestroyPipelineCache(GetVulkanDevice(), GetAllocatorCallback());
 
 		_mipMapTextures->Release();
-		//delete _dynamicBufferPool; //TODO: Should probably be deleted, but currently this just crashes.
+
+		for(auto &frameRes : _internals->frameResources)
+			frameRes.finishedCallback();
+		_internals->frameResources.clear();
+
+		delete _dynamicBufferPool;
+
 		vmaDestroyAllocator(_internals->memoryAllocator);
 	}
 
@@ -477,7 +483,7 @@ namespace RN
 				if(renderPass.previousRenderPass && renderPass.previousRenderPass->GetFramebuffer())
 				{
 					Texture *texture = renderPass.previousRenderPass->GetFramebuffer()->GetColorTexture(0);
-					if (texture)
+					if(texture)
 					{
 						VulkanTexture *vulkanTexture = texture->Downcast<VulkanTexture>();
 						if(vulkanTexture->GetCurrentLayout() != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
@@ -1910,18 +1916,26 @@ namespace RN
 
         	if(renderPass.drawables.size() > 0)
         	{
-				uint32 stepSize = 0;
-				uint32 stepSizeIndex = 0;
-				for(size_t i = 0; i < renderPass.drawables.size(); i+= stepSize)
+				size_t stepSizeIndex = 0;
+				for(size_t drawableOffset = 0; drawableOffset < renderPass.drawables.size(); drawableOffset += renderPass.instanceSteps[stepSizeIndex++])
 				{
-					stepSize = renderPass.instanceSteps[stepSizeIndex++];
+					const uint32 stepSize = renderPass.instanceSteps[stepSizeIndex - 1];
 
-					totalConstantBufferCount += renderPass.drawables[i]->_cameraSpecifics[_internals->currentDrawableResourceIndex].uniformState->vertexConstantBuffers.size();
-                    totalConstantBufferCount += renderPass.drawables[i]->_cameraSpecifics[_internals->currentDrawableResourceIndex].uniformState->fragmentConstantBuffers.size();
+					const auto &spec= renderPass.drawables[drawableOffset]->_cameraSpecifics[_internals->currentDrawableResourceIndex];
+					const VulkanUniformState *uState = spec.uniformState;
+					const VulkanPipelineState *pState = spec.pipelineState;
 
-                    const VulkanPipelineState *pipelineState = renderPass.drawables[i]->_cameraSpecifics[_internals->currentDrawableResourceIndex].pipelineState;
+					totalConstantBufferCount += uState->vertexConstantBuffers.size();
+					totalConstantBufferCount += uState->fragmentConstantBuffers.size();
 
-					totalTextureCount += pipelineState->rootSignature->textureCount;
+					// Per-instance attribute block (one CB in the descriptor set)
+					if(uState->instanceAttributesBuffer) totalConstantBufferCount += 1;
+
+					Shader *fragmentShader = pState->descriptor.fragmentShader;
+					if(fragmentShader)
+					{
+						totalTextureCount += fragmentShader->GetSignature()->GetTextures()->GetCount();
+					}
 				}
 
 				_internals->currentDrawableResourceIndex += 1;

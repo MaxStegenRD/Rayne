@@ -54,7 +54,7 @@ namespace RN
 		RNAPI void SetRawAudioData(Data *data, int bytesPerSample, int sampleRate, int channels);
 
 		RNAPI void PushData(const void *bytes, size_t size);
-		RNAPI void PopData(void *bytes, size_t size);
+		RNAPI void PopData(void *bytes, size_t size, bool keepData = false, size_t offset = 0);
 
 		RNAPI bool Decode();
 		RNAPI void Seek(float time);

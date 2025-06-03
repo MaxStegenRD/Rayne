@@ -97,7 +97,7 @@ namespace RN
 		RNAPI void SetFlags(Flags flags);
 		RNAPI void SetTag(Tag tag);
 
-		RNAPI void SetRenderGroup(uint8 group);
+		RNAPI void SetRenderGroup(uint16 group);
 		RNAPI void SetCollisionGroup(uint8 group);
 
 		virtual void SetPosition(const Vector3 &pos);
@@ -155,7 +155,7 @@ namespace RN
 		int32 GetRenderPriority() const { return _renderPriority; }
 		Flags GetFlags() const { return _flags.load(); }
 
-		uint8 GetRenderGroup() const { return _renderGroup; };
+		uint16 GetRenderGroup() const { return _renderGroup; };
 		uint8 GetCollisionGroup() const { return _collisionGroup; };
 
 		RNAPI const Array *GetAttachments() const;
@@ -211,7 +211,7 @@ namespace RN
 		int32 _renderPriority;
 		std::atomic<uint32> _flags;
 
-		uint8 _renderGroup;
+		uint16 _renderGroup;
 		uint8 _collisionGroup;
 
 		uint64 _uid;

@@ -35,8 +35,8 @@ android {
     }
     defaultConfig {
         applicationId "__RN_BUNDLE_ID__"
-        minSdkVersion 29
-        targetSdkVersion 32
+        minSdkVersion __RN_ANDROID_SDK_VERSION_MIN__
+        targetSdkVersion __RN_ANDROID_SDK_VERSION_TARGET__
         versionCode getVersionCodeFromProjectProperty()
         versionName getVersionNameFromProjectProperty()
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
