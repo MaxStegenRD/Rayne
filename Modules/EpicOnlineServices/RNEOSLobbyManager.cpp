@@ -151,7 +151,7 @@ namespace RN
 		//Don't include lobbies with max 1 users in any search results, nobody can join them anyway
 		options.PermissionLevel = maxUsers == 1 ? EOS_ELobbyPermissionLevel::EOS_LPL_INVITEONLY : EOS_ELobbyPermissionLevel::EOS_LPL_PUBLICADVERTISED;
 		options.bPresenceEnabled = false;
-		options.bDisableHostMigration = true; //Host migration is currently not supported with my p2p setup, so disabling it for lobbies should help with event lobbies not disappearing
+		options.bDisableHostMigration = false; //Allow host migration
 		options.BucketId = "Server"; //Top-level filtering criteria, called the Bucket ID, which is specific to your game; often formatted like "GameMode:Region:MapName"
 		if(lobbyIDOverride) options.LobbyId = lobbyIDOverride->GetUTF8String();
 
@@ -361,11 +361,11 @@ namespace RN
 			EOS_LobbyDetails_GetMemberByIndexOptions getMemberOptions {};
 			getMemberOptions.ApiVersion = EOS_LOBBYDETAILS_GETMEMBERBYINDEX_API_LATEST;
 			getMemberOptions.MemberIndex = i;
-			EOS_ProductUserId MemberId = EOS_LobbyDetails_GetMemberByIndex(_lobbyDetails, &getMemberOptions);
+			EOS_ProductUserId memberId = EOS_LobbyDetails_GetMemberByIndex(_lobbyDetails, &getMemberOptions);
 
-			if(MemberId != EOSWorld::GetInstance()->GetUserID())
+			if(memberId != EOSWorld::GetInstance()->GetUserID())
 			{
-				_remotePeers.push_back(MemberId);
+				_remotePeers.push_back(memberId);
 			}
 		}
 	}
@@ -382,9 +382,9 @@ namespace RN
 	{
 		if(!_isConnectedToLobby) return;
 
-		if(_isConnectedLobbyOwner)
+		if(_isConnectedLobbyOwner && _remotePeers.empty())
 		{
-			EOS_Lobby_DestroyLobbyOptions destroyOptions = {0};
+			EOS_Lobby_DestroyLobbyOptions destroyOptions;
 			destroyOptions.ApiVersion = EOS_LOBBY_DESTROYLOBBY_API_LATEST;
 			destroyOptions.LocalUserId = EOSWorld::GetInstance()->GetUserID();
 			destroyOptions.LobbyId = _connectedLobbyID->GetUTF8String();
@@ -955,6 +955,12 @@ namespace RN
 		EOSLobbyManager *lobbyManager = static_cast<EOSLobbyManager *>(Data->ClientData);
 		RNDebug("Lobby member status received for " << Data->TargetUserId << " in lobby " << Data->LobbyId);
 
+		EOS_Lobby_CopyLobbyDetailsHandleOptions copyOptions;
+		copyOptions.ApiVersion = EOS_LOBBY_COPYLOBBYDETAILSHANDLE_API_LATEST;
+		copyOptions.LocalUserId = EOSWorld::GetInstance()->GetUserID();
+		copyOptions.LobbyId = Data->LobbyId;
+		EOS_Lobby_CopyLobbyDetailsHandle(lobbyManager->_lobbyInterfaceHandle, &copyOptions, &lobbyManager->_lobbyDetails);
+
 		switch(Data->CurrentStatus)
 		{
 			case EOS_ELobbyMemberStatus::EOS_LMS_JOINED:
@@ -969,6 +975,13 @@ namespace RN
 				RNDebug("Lobby closed: " << Data->TargetUserId);
 				EOSWorld::GetInstance()->Disconnect();
 				break;
+			case EOS_ELobbyMemberStatus::EOS_LMS_PROMOTED:
+			{
+				RNDebug("Host migrating to: " << Data->TargetUserId);
+				EOSWorld::GetInstance()->MigrateHost(Data->TargetUserId);
+			}
+
+			break;
 			default:
 				break;
 		}
@@ -1022,7 +1035,6 @@ namespace RN
 		EOSLobbyManager *lobbyManager = static_cast<EOSLobbyManager *>(Data->ClientData);
 		if(lobbyManager->_audioBeforeSendCallback)
 		{
-			AutoreleasePool pool;
 			lobbyManager->_audioBeforeSendCallback(Data->Buffer->SampleRate, Data->Buffer->Channels, Data->Buffer->FramesCount, Data->Buffer->Frames);
 		}
 	}

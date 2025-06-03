@@ -13,6 +13,7 @@
 	#include "Android/eos_android.h"
 #endif
 
+#include "RNEOSP2PClient.h"
 #include "eos_auth.h"
 #include "eos_auth_types.h"
 #include "eos_common.h"
@@ -175,6 +176,16 @@ namespace RN
 	{
 		_hosts->Enumerate<EOSHost>([&](EOSHost *host, size_t, bool &) {
 			host->Disconnect();
+		});
+	}
+
+	void EOSWorld::MigrateHost(EOS_ProductUserId hostProductUserId)
+	{
+		_hosts->Enumerate<EOSHost>([&](EOSHost *host, size_t, bool &) {
+			if(host->IsKindOfClass(EOSP2PClient::GetMetaClass()))
+			{
+				host->Downcast<EOSP2PClient>()->MigrateHost(hostProductUserId);
+			}
 		});
 	}
 

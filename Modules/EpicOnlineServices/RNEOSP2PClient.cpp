@@ -140,7 +140,8 @@ namespace RN
 			_clientID = CLIENT_ID_NONE;
 			_isServer = false;
 			HandleDidDisconnect(_clientID, 0); //OnConnectionClosedCallback is not guaranteed to be called when lobby closed, so explicitly call handler here
-		} else
+		}
+		else
 		{
 			RNWarning("Failed closing all connections");
 		}
@@ -176,6 +177,26 @@ namespace RN
 		_peers[internalID]._disconnectDelay = delay;
 		_peers[internalID]._wantsDisconnect = true;
 		Unlock();
+	}
+
+	void EOSP2PClient::MigrateHost(EOS_ProductUserId hostProductUserId)
+	{
+		if(hostProductUserId == EOSWorld::GetInstance()->GetUserID())
+		{
+			_serverClientID = _clientID;
+			_isServer = true;
+			_status = Server;
+			RNDebug("Took over server role.");
+		}
+		else if(_peers.find(hostProductUserId) != _peers.end())
+		{
+			_serverClientID = _peers[hostProductUserId].clientID;
+			RNDebug("Server role was transferred to client " << _serverClientID);
+		}
+		else
+		{
+			RNWarning("Host migrated to " << hostProductUserId << ", but that peer is not known.");
+		}
 	}
 
 	void EOSP2PClient::ForceDisconnect(uint16 reason)
@@ -423,7 +444,7 @@ namespace RN
 						if(packetHeader.packetID == 0 && packetHeader.dataLength == 4)
 						{
 							uint16 remoteClientID = rawData[dataIndex] | rawData[dataIndex + 1] << 8; //Client id of sender
-							uint16 ownClientID = rawData[dataIndex + 2] | rawData[dataIndex + 3] << 8; //Client id sender has assigned to receiver 
+							uint16 ownClientID = rawData[dataIndex + 2] | rawData[dataIndex + 3] << 8; //Client id sender has assigned to receiver
 							dataIndex += 4;
 							RNDebug("Received connect response from " << senderUserID << " with client ID " << remoteClientID << " and own client ID " << ownClientID);
 
@@ -574,10 +595,6 @@ namespace RN
 		client->_idMap.erase(id);
 		client->_peers.erase(Data->RemoteUserId);
 		RNDebug("Peer disconnected. peer id: " << id << " | product ID: " << Data->RemoteUserId);
-		if(client->_peers.empty() && !client->IsServer())
-		{
-			client->_status = Disconnected;
-		}
 
 		client->HandleDidDisconnect(id, static_cast<uint16>(Data->Reason));
 	}

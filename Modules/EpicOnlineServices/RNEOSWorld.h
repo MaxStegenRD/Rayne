@@ -63,6 +63,7 @@ namespace RN
 		EOSAPI void AddHost(EOSHost *host);
 		EOSAPI void RemoveHost(EOSHost *host);
 		EOSAPI void Disconnect();
+		EOSAPI void MigrateHost(EOS_ProductUserId hostProductUserId);
 
 		EOSAPI EOSLobbyManager *GetLobbyManager();
 		EOSAPI EOS_HPlatform GetPlatformHandle() const { return _platformHandle; }
