@@ -17,7 +17,7 @@ namespace RN
 		RNDefineMeta(Label, View)
 
 		Label::Label(const TextAttributes &defaultAttributes) :
-			_attributedText(nullptr), _defaultAttributes(defaultAttributes), _additionalLineHeight(0.0f), _shadowColor(Color::ClearColor()), _verticalAlignment(TextVerticalAlignmentTop), _labelDepthMode(DepthMode::GreaterOrEqual), _textMaterial(nullptr), _shadowMaterial(nullptr), _cursorView(nullptr), _cursorBlinkTimer(0.0f)
+			_attributedText(nullptr), _defaultAttributes(defaultAttributes), _additionalLineHeight(0.0f), _shadowColor(Color::ClearColor()), _verticalAlignment(TextVerticalAlignmentTop), _labelDepthMode(DepthMode::GreaterOrEqual), _textMaterial(nullptr), _shadowMaterial(nullptr), _cursorView(nullptr), _cursorBlinkTimer(0.0f), _currentCursorPosition(0)
 		{
 		}
 		Label::~Label()
