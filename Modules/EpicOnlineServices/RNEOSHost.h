@@ -9,13 +9,12 @@
 #ifndef __RAYNE_EOSHOST_H_
 #define __RAYNE_EOSHOST_H_
 
-#define CLIENT_ID_NONE 0xffff
-
 #include "RNEOS.h"
 #include <queue>
 
 struct EOS_ProductUserIdDetails;
 typedef EOS_ProductUserIdDetails *EOS_ProductUserId;
+constexpr RN::uint16 CLIENT_ID_NONE = std::numeric_limits<RN::uint16>::max();
 
 namespace RN
 {
