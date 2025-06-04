@@ -197,6 +197,8 @@ namespace RN
 		{
 			RNWarning("Host migrated to " << hostProductUserId << ", but that peer is not known.");
 		}
+
+		HandleHostMigration();
 	}
 
 	void EOSP2PClient::ForceDisconnect(uint16 reason)

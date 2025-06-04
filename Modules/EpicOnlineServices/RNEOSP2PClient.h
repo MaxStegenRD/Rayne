@@ -30,7 +30,8 @@ namespace RN
 
 	protected:
 		EOSAPI void Update(float delta) override;
-		void LogPeers() const;
+		EOSAPI void LogPeers() const;
+		EOSAPI virtual void HandleHostMigration(){}
 
 	private:
 		static void OnConnectionRequestCallback(const EOS_P2P_OnIncomingConnectionRequestInfo *Data);
