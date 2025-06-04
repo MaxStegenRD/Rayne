@@ -25,7 +25,7 @@ namespace RN
 	RNDefineMeta(EOSHost, Object)
 
 	EOSHost::EOSHost() :
-		_pingTimer(10.0), _status(Status::Disconnected)
+		_pingTimer(10.0), _status(Disconnected), _clientID(CLIENT_ID_NONE), _serverClientID(CLIENT_ID_NONE), _isServer(false)
 	{
 	}
 
@@ -33,7 +33,7 @@ namespace RN
 	{
 	}
 
-	bool EOSHost::IsPacketInOrder(EOSHost::ProtocolPacketType packetType, uint16 senderID, uint8 packetID, uint8 channel)
+	bool EOSHost::IsPacketInOrder(ProtocolPacketType packetType, EOS_ProductUserId senderID, uint8 packetID, uint8 channel)
 	{
 		EOSWorld *world = EOSWorld::GetInstance();
 		Peer &peer = _peers[senderID];
@@ -41,16 +41,9 @@ namespace RN
 		//Send ack for reliable data. EOS has something like this internally, but does not expose any of it :(
 		if(packetType == ProtocolPacketTypeReliableData)
 		{
-			EOS_P2P_SocketId socketID = {0};
+			EOS_P2P_SocketId socketID = {};
 			socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-			socketID.SocketName[0] = 'F';
-			socketID.SocketName[1] = 'u';
-			socketID.SocketName[2] = 'c';
-			socketID.SocketName[3] = 'k';
-			socketID.SocketName[4] = 'Y';
-			socketID.SocketName[5] = 'e';
-			socketID.SocketName[6] = 'a';
-			socketID.SocketName[7] = 'h';
+			strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
 
 			ProtocolPacketHeader packetHeader;
 			packetHeader.packetType = ProtocolPacketTypeReliableDataAck;
@@ -90,21 +83,14 @@ namespace RN
 		return false;
 	}
 
-	void EOSHost::SendPing(uint16 receiverID, bool isResponse, uint8 responseID)
+	void EOSHost::SendPing(EOS_ProductUserId receiverID, bool isResponse, uint8 responseID)
 	{
 		Lock();
 		EOSWorld *world = EOSWorld::GetInstance();
 
-		EOS_P2P_SocketId socketID = {0};
+		EOS_P2P_SocketId socketID = {};
 		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-		socketID.SocketName[0] = 'F';
-		socketID.SocketName[1] = 'u';
-		socketID.SocketName[2] = 'c';
-		socketID.SocketName[3] = 'k';
-		socketID.SocketName[4] = 'Y';
-		socketID.SocketName[5] = 'e';
-		socketID.SocketName[6] = 'a';
-		socketID.SocketName[7] = 'h';
+		strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
 
 		ProtocolPacketHeader packetHeader;
 		if(isResponse)
@@ -122,11 +108,11 @@ namespace RN
 			_peers[receiverID]._sentPingTime = Clock::now();
 		}
 
-		EOS_P2P_SendPacketOptions sendPacketOptions = {0};
+		EOS_P2P_SendPacketOptions sendPacketOptions = {};
 		sendPacketOptions.ApiVersion = EOS_P2P_SENDPACKET_API_LATEST;
 		sendPacketOptions.Channel = 255;
 		sendPacketOptions.LocalUserId = world->GetUserID();
-		sendPacketOptions.RemoteUserId = _peers[receiverID].internalID;
+		sendPacketOptions.RemoteUserId = receiverID;
 		sendPacketOptions.SocketId = &socketID;
 		sendPacketOptions.Reliability = EOS_EPacketReliability::EOS_PR_UnreliableUnordered;
 		sendPacketOptions.bAllowDelayedDelivery = false;
@@ -136,30 +122,58 @@ namespace RN
 		Unlock();
 	}
 
+	void EOSHost::SendPacket(Data *data, EOS_ProductUserId receiverID, uint32 channel, bool reliable)
+	{
+		Lock();
+		if(_peers[receiverID]._wantsDisconnect)
+		{
+			Unlock();
+			return; //Don't allow sending more data to users that are about to be disconnected.
+		}
+
+		if(_peers.find(receiverID) == _peers.end())
+		{
+			Unlock();
+			RNDebug("Unknown peer " << receiverID);
+			return;
+		}
+
+		if(_peers[receiverID]._scheduledPackets.find(channel) != _peers[receiverID]._scheduledPackets.end())
+		{
+			_peers[receiverID]._scheduledPackets.insert(std::pair(channel, std::queue<Packet>()));
+		}
+
+		_peers[receiverID]._scheduledPackets[channel].push({receiverID, channel, reliable, data->Retain()});
+
+		Unlock();
+	}
+
 	void EOSHost::SendPacket(Data *data, uint16 receiverID, uint32 channel, bool reliable)
 	{
-		if(_peers[receiverID]._wantsDisconnect) return; //Don't allow sending more data to users that are about to be disconnected.
-
 		//Only reliable packets can be split up, unreliable packets need to be small enough to fit a single networking packet
 		RN_DEBUG_ASSERT(data->GetLength() < MAX_PACKET_SIZE || reliable, "Packet too big!");
 
 		if(!reliable && data->GetLength() >= MAX_PACKET_SIZE) return; //Don't send if unreliable packet is too big. Since it is unreliable, not sending it is acceptable.
 
 		Lock();
-		if(_peers.size() == 0 || _peers.find(receiverID) == _peers.end())
+		if(_idMap.find(receiverID) == _idMap.end())
 		{
 			Unlock();
+			RNDebug("Unknown receiver ID " << receiverID);
 			return;
 		}
-
-		if(_peers[receiverID]._scheduledPackets.find(channel) != _peers[receiverID]._scheduledPackets.end())
-		{
-			_peers[receiverID]._scheduledPackets.insert(std::pair<uint32, std::queue<Packet>>(channel, std::queue<Packet>()));
-		}
-
-		_peers[receiverID]._scheduledPackets[channel].push({receiverID, channel, reliable, data->Retain()});
-
+		EOS_ProductUserId internalReceiverID = _idMap[receiverID];
+		SendPacket(data, internalReceiverID, channel, reliable);
 		Unlock();
+	}
+
+	void EOSHost::BroadcastPacket(Data *data, uint32 channel, bool reliable, RN::uint16 excludeClientID)
+	{
+		for(auto peer : _peers)
+		{
+			if(excludeClientID != CLIENT_ID_NONE && peer.second.clientID == excludeClientID) continue;
+			SendPacket(data, peer.first, channel, reliable);
+		}
 	}
 
 	void EOSHost::Update(float delta)
@@ -177,20 +191,13 @@ namespace RN
 			}
 		}
 
-		EOS_P2P_SocketId socketID = {0};
+		EOS_P2P_SocketId socketID = {};
 		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-		socketID.SocketName[0] = 'F';
-		socketID.SocketName[1] = 'u';
-		socketID.SocketName[2] = 'c';
-		socketID.SocketName[3] = 'k';
-		socketID.SocketName[4] = 'Y';
-		socketID.SocketName[5] = 'e';
-		socketID.SocketName[6] = 'a';
-		socketID.SocketName[7] = 'h';
+		strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
 
 		uint32 nextPacketSize = 0;
 		uint8 pingChannel = 255;
-		EOS_P2P_GetNextReceivedPacketSizeOptions nextPacketSizeOptions = {0};
+		EOS_P2P_GetNextReceivedPacketSizeOptions nextPacketSizeOptions = {};
 		nextPacketSizeOptions.ApiVersion = EOS_P2P_GETNEXTRECEIVEDPACKETSIZE_API_LATEST;
 		nextPacketSizeOptions.LocalUserId = world->GetUserID();
 		nextPacketSizeOptions.RequestedChannel = &pingChannel;
@@ -202,19 +209,19 @@ namespace RN
 				continue;
 			}
 
-			EOS_P2P_ReceivePacketOptions receiveOptions = {0};
+			EOS_P2P_ReceivePacketOptions receiveOptions = {};
 			receiveOptions.ApiVersion = EOS_P2P_RECEIVEPACKET_API_LATEST;
 			receiveOptions.LocalUserId = world->GetUserID();
 			receiveOptions.MaxDataSizeBytes = nextPacketSize;
 			receiveOptions.RequestedChannel = &pingChannel;
 
 			EOS_ProductUserId senderUserID;
-			EOS_P2P_SocketId socketID;
+			EOS_P2P_SocketId receivingSocketID;
 			uint8 channel = 0;
 			uint32 bytesWritten = 0;
 
 			uint8 *rawData = new uint8[nextPacketSize];
-			if(EOS_P2P_ReceivePacket(world->GetP2PHandle(), &receiveOptions, &senderUserID, &socketID, &channel, rawData, &bytesWritten) != EOS_EResult::EOS_Success)
+			if(EOS_P2P_ReceivePacket(world->GetP2PHandle(), &receiveOptions, &senderUserID, &receivingSocketID, &channel, rawData, &bytesWritten) != EOS_EResult::EOS_Success)
 			{
 				RNDebug("Failed receiving Data");
 				break;
@@ -228,22 +235,21 @@ namespace RN
 				packetHeader.packetID = rawData[dataIndex + 1];
 				packetHeader.dataLength = rawData[dataIndex + 2] | (rawData[dataIndex + 3] << 8); //These are pings, so this should always be 0!?
 
-				uint16 id = GetUserIDForInternalID(senderUserID);
 				if(packetHeader.packetType == ProtocolPacketTypePingRequest)
 				{
-					SendPing(id, true, packetHeader.packetID);
+					SendPing(senderUserID, true, packetHeader.packetID);
 				}
 				else if(packetHeader.packetType == ProtocolPacketTypePingResponse)
 				{
-					if(_peers[id]._lastPingID - 1 == packetHeader.packetID)
+					if(_peers[senderUserID]._lastPingID - 1 == packetHeader.packetID)
 					{
 						Clock::time_point receivedPingTime = Clock::now();
-						auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(receivedPingTime - _peers[id]._sentPingTime).count();
+						auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(receivedPingTime - _peers[senderUserID]._sentPingTime).count();
 						double timeElapsed = milliseconds / 1000.0;
 
 						//RNDebug("Ping time for " << id << ": " << timeElapsed);
 
-						_peers[id].smoothedRoundtripTime = _peers[id].smoothedRoundtripTime * 0.75 + timeElapsed * 0.25;
+						_peers[senderUserID].smoothedRoundtripTime = _peers[senderUserID].smoothedRoundtripTime * 0.75 + timeElapsed * 0.25;
 					}
 					else
 					{
@@ -302,7 +308,7 @@ namespace RN
 							data->Append(packetData->GetDataInRange(Range(dataOffset, dataLength)));
 							dataOffset += dataLength;
 
-							EOS_P2P_SendPacketOptions sendPacketOptions = {0};
+							EOS_P2P_SendPacketOptions sendPacketOptions = {};
 							sendPacketOptions.ApiVersion = EOS_P2P_SENDPACKET_API_LATEST;
 							sendPacketOptions.Channel = pair.first;
 							sendPacketOptions.LocalUserId = world->GetUserID();
@@ -349,7 +355,7 @@ namespace RN
 							//scheduled_count += 1;
 						}
 
-						EOS_P2P_SendPacketOptions sendPacketOptions = {0};
+						EOS_P2P_SendPacketOptions sendPacketOptions = {};
 						sendPacketOptions.ApiVersion = EOS_P2P_SENDPACKET_API_LATEST;
 						sendPacketOptions.Channel = pair.first;
 						sendPacketOptions.LocalUserId = world->GetUserID();
@@ -373,10 +379,10 @@ namespace RN
 		//if(scheduled_count + sent_count > 0) RNDebug("Did send " << scheduled_count << " scheduled packets as " << sent_count << " packets to " << _peers.size() << " peers.");
 	}
 
-	EOSHost::Peer EOSHost::CreatePeer(uint16 userID, EOS_ProductUserId internalID)
+	EOSHost::Peer EOSHost::CreatePeer(uint16 clientID, EOS_ProductUserId internalID)
 	{
 		Peer peer;
-		peer.userID = userID;
+		peer.clientID = clientID;
 		peer.internalID = internalID;
 		peer.smoothedRoundtripTime = 0.05;
 		peer._lastPingID = 0;
@@ -396,15 +402,9 @@ namespace RN
 
 	uint16 EOSHost::GetUserIDForInternalID(EOS_ProductUserId internalID)
 	{
-		for(auto &pair : _peers)
-		{
-			if(pair.second.internalID == internalID)
-			{
-				return pair.first;
-			}
-		}
-
-		return 0;
+		auto it = _peers.find(internalID);
+		if(it != _peers.end()) return it->second.clientID;
+		return static_cast<uint16>(-1);
 	}
 
 	bool EOSHost::HasReliableDataInTransit()
@@ -422,6 +422,6 @@ namespace RN
 
 	double EOSHost::GetLastRoundtripTime(uint16 peerID)
 	{
-		return _peers[peerID].smoothedRoundtripTime;
+		return _peers[_idMap[peerID]].smoothedRoundtripTime;
 	}
 } // namespace RN

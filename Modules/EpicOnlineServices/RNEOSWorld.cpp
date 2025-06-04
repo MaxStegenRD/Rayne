@@ -13,6 +13,7 @@
 	#include "Android/eos_android.h"
 #endif
 
+#include "RNEOSP2PClient.h"
 #include "eos_auth.h"
 #include "eos_auth_types.h"
 #include "eos_common.h"
@@ -169,6 +170,25 @@ namespace RN
 	void EOSWorld::RemoveHost(EOSHost *host)
 	{
 		_hosts->RemoveObject(host);
+	}
+
+	void EOSWorld::Disconnect()
+	{
+		_hosts->Enumerate<EOSHost>([&](EOSHost *host, size_t, bool &) {
+			host->Disconnect();
+		});
+	}
+
+	void EOSWorld::MigrateHost(EOS_ProductUserId hostProductUserId)
+	{
+		_hosts->Enumerate<EOSHost>([&](EOSHost *host, size_t, bool &) {
+			if(host->IsKindOfClass(EOSP2PClient::GetMetaClass()))
+			{
+				host->Downcast<EOSP2PClient>()->MigrateHost(hostProductUserId);
+			}
+		});
+
+		NotificationManager::GetSharedInstance()->PostNotification(kRNHostMigrated, nullptr);
 	}
 
 	EOSLobbyManager *EOSWorld::GetLobbyManager()
@@ -415,9 +435,9 @@ namespace RN
 					tokenOptions.ApiVersion = EOS_AUTH_COPYIDTOKEN_API_LATEST;
 					tokenOptions.AccountId = Data->SelectedAccountId;
 
-					EOS_Auth_IdToken* token = nullptr;
+					EOS_Auth_IdToken *token = nullptr;
 					EOS_Auth_CopyIdToken(EOS_Platform_GetAuthInterface(eosWorld->GetPlatformHandle()), &tokenOptions, &token);
-				
+
 					EOS_Connect_Credentials connectCredentials = {0};
 					connectCredentials.ApiVersion = EOS_CONNECT_CREDENTIALS_API_LATEST;
 					connectCredentials.Type = EOS_EExternalCredentialType::EOS_ECT_EPIC_ID_TOKEN;

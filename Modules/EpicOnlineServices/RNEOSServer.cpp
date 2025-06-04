@@ -23,28 +23,22 @@ namespace RN
 		_maxConnections(maxConnections)
 	{
 		Lock();
-		_status = Status::Server;
+		_status = Server;
+		_isServer = true;
 
 		EOSWorld *world = EOSWorld::GetInstance();
 
-		EOS_P2P_SocketId socketID = {0};
+		EOS_P2P_SocketId socketID = {};
 		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-		socketID.SocketName[0] = 'F';
-		socketID.SocketName[1] = 'u';
-		socketID.SocketName[2] = 'c';
-		socketID.SocketName[3] = 'k';
-		socketID.SocketName[4] = 'Y';
-		socketID.SocketName[5] = 'e';
-		socketID.SocketName[6] = 'a';
-		socketID.SocketName[7] = 'h';
+		strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
 
-		EOS_P2P_AddNotifyPeerConnectionRequestOptions connectListenerOptions = {0};
+		EOS_P2P_AddNotifyPeerConnectionRequestOptions connectListenerOptions;
 		connectListenerOptions.ApiVersion = EOS_P2P_ADDNOTIFYPEERCONNECTIONREQUEST_API_LATEST;
 		connectListenerOptions.LocalUserId = world->GetUserID();
 		connectListenerOptions.SocketId = &socketID;
 		_connectionRequestNotificationID = EOS_P2P_AddNotifyPeerConnectionRequest(world->GetP2PHandle(), &connectListenerOptions, this, OnConnectionRequestCallback);
 
-		EOS_P2P_AddNotifyPeerConnectionClosedOptions disconnectListenerOptions = {0};
+		EOS_P2P_AddNotifyPeerConnectionClosedOptions disconnectListenerOptions;
 		disconnectListenerOptions.ApiVersion = EOS_P2P_ADDNOTIFYPEERCONNECTIONCLOSED_API_LATEST;
 		disconnectListenerOptions.LocalUserId = world->GetUserID();
 		disconnectListenerOptions.SocketId = &socketID;
@@ -87,12 +81,12 @@ namespace RN
 		EOSWorld *world = EOSWorld::GetInstance();
 
 		uint32 nextPacketSize = 0;
-		EOS_P2P_GetNextReceivedPacketSizeOptions nextPacketSizeOptions = {0};
+		EOS_P2P_GetNextReceivedPacketSizeOptions nextPacketSizeOptions = {};
 		nextPacketSizeOptions.ApiVersion = EOS_P2P_GETNEXTRECEIVEDPACKETSIZE_API_LATEST;
 		nextPacketSizeOptions.LocalUserId = world->GetUserID();
 		while(EOS_P2P_GetNextReceivedPacketSize(world->GetP2PHandle(), &nextPacketSizeOptions, &nextPacketSize) == EOS_EResult::EOS_Success)
 		{
-			EOS_P2P_ReceivePacketOptions receiveOptions = {0};
+			EOS_P2P_ReceivePacketOptions receiveOptions = {};
 			receiveOptions.ApiVersion = EOS_P2P_RECEIVEPACKET_API_LATEST;
 			receiveOptions.LocalUserId = world->GetUserID();
 			receiveOptions.MaxDataSizeBytes = nextPacketSize;
@@ -110,8 +104,8 @@ namespace RN
 				break;
 			}
 
-			uint16 senderID = GetUserIDForInternalID(senderUserID);
-			Peer &peer = _peers[senderID];
+			Peer &peer = _peers[senderUserID];
+			uint16 senderID = peer.clientID;
 
 			if(static_cast<ProtocolPacketType>(rawData[0]) == ProtocolPacketTypeReliableDataMultipart)
 			{
@@ -119,8 +113,8 @@ namespace RN
 				ProtocolPacketHeaderMultipart packetHeader;
 				packetHeader.packetType = static_cast<ProtocolPacketType>(rawData[0]);
 				packetHeader.packetID = rawData[1];
-				packetHeader.dataPart = rawData[2] | (rawData[3] << 8);
-				packetHeader.totalDataParts = rawData[4] | (rawData[5] << 8);
+				packetHeader.dataPart = rawData[2] | rawData[3] << 8;
+				packetHeader.totalDataParts = rawData[4] | rawData[5] << 8;
 
 				//RNDebug("Received multipart data (" << packetHeader.packetID <<  "), part " << packetHeader.dataPart << " of " << packetHeader.totalDataParts);
 
@@ -234,7 +228,7 @@ namespace RN
 						continue;
 					}
 
-					if(!IsPacketInOrder(packetHeader.packetType, senderID, packetHeader.packetID, channel) || _peers[senderID]._wantsDisconnect) //Don't process any more data from a user that is about to be disconnected
+					if(!IsPacketInOrder(packetHeader.packetType, senderUserID, packetHeader.packetID, channel) || _peers[senderUserID]._wantsDisconnect) //Don't process any more data from a user that is about to be disconnected
 					{
 						dataIndex += packetHeader.dataLength + 4;
 						continue;
@@ -261,7 +255,7 @@ namespace RN
 				pair.second._disconnectDelay -= delta;
 				if(pair.second._disconnectDelay < 0.0f)
 				{
-					peersToDisconnect.push_back(pair.first);
+					peersToDisconnect.push_back(pair.second.clientID);
 				}
 			}
 		}
@@ -282,8 +276,9 @@ namespace RN
 	void EOSServer::DisconnectUserDelayed(uint16 userID, uint16 data, float delay)
 	{
 		Lock();
-		_peers[userID]._disconnectDelay = delay;
-		_peers[userID]._wantsDisconnect = true;
+		EOS_ProductUserId internalID = _idMap[userID];
+		_peers[internalID]._disconnectDelay = delay;
+		_peers[internalID]._wantsDisconnect = true;
 		Unlock();
 	}
 
@@ -292,44 +287,30 @@ namespace RN
 		Lock();
 		EOSWorld *world = EOSWorld::GetInstance();
 
-		EOS_P2P_SocketId socketID = {0};
+		EOS_P2P_SocketId socketID = {};
 		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-		socketID.SocketName[0] = 'F';
-		socketID.SocketName[1] = 'u';
-		socketID.SocketName[2] = 'c';
-		socketID.SocketName[3] = 'k';
-		socketID.SocketName[4] = 'Y';
-		socketID.SocketName[5] = 'e';
-		socketID.SocketName[6] = 'a';
-		socketID.SocketName[7] = 'h';
+		strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
 
-		EOS_P2P_CloseConnectionOptions options = {0};
+		EOS_P2P_CloseConnectionOptions options;
 		options.ApiVersion = EOS_P2P_CLOSECONNECTION_API_LATEST;
 		options.LocalUserId = world->GetUserID();
-		options.RemoteUserId = _peers[userID].internalID;
+		options.RemoteUserId = _idMap[userID];
 		options.SocketId = &socketID;
 
 		EOS_P2P_CloseConnection(world->GetP2PHandle(), &options);
 		Unlock();
 	}
 
-	void EOSServer::DisconnectAll()
+	void EOSServer::Disconnect()
 	{
 		Lock();
 		EOSWorld *world = EOSWorld::GetInstance();
 
-		EOS_P2P_SocketId socketID = {0};
+		EOS_P2P_SocketId socketID = {};
 		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-		socketID.SocketName[0] = 'F';
-		socketID.SocketName[1] = 'u';
-		socketID.SocketName[2] = 'c';
-		socketID.SocketName[3] = 'k';
-		socketID.SocketName[4] = 'Y';
-		socketID.SocketName[5] = 'e';
-		socketID.SocketName[6] = 'a';
-		socketID.SocketName[7] = 'h';
+		strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
 
-		EOS_P2P_CloseConnectionsOptions options = {0};
+		EOS_P2P_CloseConnectionsOptions options;
 		options.ApiVersion = EOS_P2P_CLOSECONNECTION_API_LATEST;
 		options.LocalUserId = world->GetUserID();
 		options.SocketId = &socketID;
@@ -343,18 +324,11 @@ namespace RN
 		EOSServer *server = static_cast<EOSServer *>(Data->ClientData);
 		EOSWorld *world = EOSWorld::GetInstance();
 
-		EOS_P2P_SocketId socketID = {0};
+		EOS_P2P_SocketId socketID = {};
 		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-		socketID.SocketName[0] = 'F';
-		socketID.SocketName[1] = 'u';
-		socketID.SocketName[2] = 'c';
-		socketID.SocketName[3] = 'k';
-		socketID.SocketName[4] = 'Y';
-		socketID.SocketName[5] = 'e';
-		socketID.SocketName[6] = 'a';
-		socketID.SocketName[7] = 'h';
+		strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
 
-		EOS_P2P_AcceptConnectionOptions connectionOptions = {0};
+		EOS_P2P_AcceptConnectionOptions connectionOptions;
 		connectionOptions.ApiVersion = EOS_P2P_ACCEPTCONNECTION_API_LATEST;
 		connectionOptions.SocketId = &socketID;
 		connectionOptions.LocalUserId = world->GetUserID();
@@ -363,15 +337,21 @@ namespace RN
 
 		RNDebug("A new client connected");
 		const Peer &peer = server->CreatePeer(server->GetUserID(), Data->RemoteUserId);
-		server->_peers.insert(std::pair<uint16, Peer>(peer.userID, peer));
-
+		server->_peers.insert(std::pair(peer.internalID, peer));
+		server->_idMap[peer.clientID] = peer.internalID;
 
 		ProtocolPacketHeader packetHeader;
 		packetHeader.packetType = ProtocolPacketTypeConnectResponse;
 		packetHeader.packetID = 0;
-		packetHeader.dataLength = 0;
+		packetHeader.dataLength = 4;
 
-		EOS_P2P_SendPacketOptions connectConfirmOptions = {0};
+		RN::Data *packetData = new RN::Data();
+		packetData->Append(&packetHeader, 4);
+		uint16 serverUserID = server->_clientID;
+		packetData->Append(&serverUserID, sizeof(uint16));
+		packetData->Append(&peer.clientID, sizeof(uint16));
+
+		EOS_P2P_SendPacketOptions connectConfirmOptions = {};
 		connectConfirmOptions.ApiVersion = EOS_P2P_SENDPACKET_API_LATEST;
 		connectConfirmOptions.SocketId = &socketID;
 		connectConfirmOptions.LocalUserId = world->GetUserID();
@@ -379,22 +359,23 @@ namespace RN
 		connectConfirmOptions.Channel = 0;
 		connectConfirmOptions.Reliability = EOS_EPacketReliability::EOS_PR_ReliableOrdered;
 		connectConfirmOptions.bAllowDelayedDelivery = true;
-		connectConfirmOptions.DataLengthBytes = sizeof(packetHeader);
-		connectConfirmOptions.Data = &packetHeader;
+		connectConfirmOptions.DataLengthBytes = packetData->GetLength();
+		connectConfirmOptions.Data = packetData->GetBytes();
 
 		EOS_P2P_SendPacket(world->GetP2PHandle(), &connectConfirmOptions);
 
-		server->HandleDidConnect(peer.userID);
+		server->HandleDidConnect(peer.clientID);
 	}
 
 	void EOSServer::OnConnectionClosedCallback(const EOS_P2P_OnRemoteConnectionClosedInfo *Data)
 	{
 		EOSServer *server = static_cast<EOSServer *>(Data->ClientData);
 
-		uint16 id = server->GetUserIDForInternalID(Data->RemoteUserId);
+		uint16 id = server->_peers[Data->RemoteUserId].clientID;
 
 		RNDebug("Client disconnected: " << id);
-		server->_peers.erase(id);
+		server->_idMap.erase(id);
+		server->_peers.erase(Data->RemoteUserId);
 		server->ReleaseUserID(id);
 		server->HandleDidDisconnect(id, static_cast<uint16>(Data->Reason));
 	}

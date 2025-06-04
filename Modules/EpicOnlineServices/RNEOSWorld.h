@@ -10,7 +10,6 @@
 #define __RAYNE_EOSWORLD_H_
 
 #include "RNEOS.h"
-#include "RNEOSClient.h"
 #include "RNEOSLobbyManager.h"
 #include "RNEOSServer.h"
 
@@ -33,6 +32,8 @@ typedef struct _tagEOS_Connect_CreateDeviceIdCallbackInfo EOS_Connect_CreateDevi
 typedef struct _tagEOS_Connect_CreateUserCallbackInfo EOS_Connect_CreateUserCallbackInfo;
 typedef struct _tagEOS_Connect_AuthExpirationCallbackInfo EOS_Connect_AuthExpirationCallbackInfo;
 typedef struct _tagEOS_Connect_LoginStatusChangedCallbackInfo EOS_Connect_LoginStatusChangedCallbackInfo;
+
+#define kRNHostMigrated RNCSTR("kRNHostMigrated")
 
 namespace RN
 {
@@ -63,6 +64,8 @@ namespace RN
 
 		EOSAPI void AddHost(EOSHost *host);
 		EOSAPI void RemoveHost(EOSHost *host);
+		EOSAPI void Disconnect();
+		EOSAPI void MigrateHost(EOS_ProductUserId hostProductUserId);
 
 		EOSAPI EOSLobbyManager *GetLobbyManager();
 		EOSAPI EOS_HPlatform GetPlatformHandle() const { return _platformHandle; }

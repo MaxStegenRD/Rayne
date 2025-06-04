@@ -10,18 +10,8 @@
 #define __RAYNE_EOSLOBBYMANAGER_H_
 
 #include "RNEOS.h"
-
-struct EOS_ProductUserIdDetails;
-typedef struct EOS_ProductUserIdDetails *EOS_ProductUserId;
-
-struct EOS_LobbyHandle;
-typedef struct EOS_LobbyHandle *EOS_HLobby;
-
-struct EOS_LobbySearchHandle;
-typedef struct EOS_LobbySearchHandle *EOS_HLobbySearch;
-
-struct EOS_LobbyDetailsHandle;
-typedef struct EOS_LobbyDetailsHandle *EOS_HLobbyDetails;
+#include "eos_lobby.h"
+#include "eos_p2p.h"
 
 struct EOS_RTCHandle;
 typedef struct EOS_RTCHandle *EOS_HRTC;
@@ -140,13 +130,20 @@ namespace RN
 
 		bool GetIsConnectedToLobby() const { return _isConnectedToLobby; }
 		const RN::String *GetConnectedLobbyID() const { return _connectedLobbyID; }
+		std::vector<EOS_ProductUserId> GetRemoteClientIDs() { return _remotePeers; }
+		EOS_ProductUserId GetLobbyOwnerID();
 
 	private:
 		EOSAPI EOSLobbyManager(EOSWorld *world);
 
+		void RetrievePeers();
+		void AddRemotePeer(EOS_ProductUserId peerID);
+		void RemoveRemotePeer(EOS_ProductUserId peerID);
+
 		static void LobbyOnCreateCallback(const EOS_Lobby_CreateLobbyCallbackInfo *Data);
 		static void LobbyOnJoinCallback(const EOS_Lobby_JoinLobbyCallbackInfo *Data);
 		static void LobbyOnLeaveCallback(const EOS_Lobby_LeaveLobbyCallbackInfo *Data);
+		static void LobbyOnMemberStatusReceived(const EOS_Lobby_LobbyMemberStatusReceivedCallbackInfo *Data);
 		static void LobbyOnDestroyCallback(const EOS_Lobby_DestroyLobbyCallbackInfo *Data);
 		static void LobbyOnKickMemberCallback(const EOS_Lobby_KickMemberCallbackInfo *Data);
 
@@ -158,12 +155,15 @@ namespace RN
 		static void LobbyAudioOnUpdateSendingCallback(const EOS_RTCAudio_UpdateSendingCallbackInfo *Data);
 
 		EOS_HLobby _lobbyInterfaceHandle;
+		EOS_HLobbyDetails _lobbyDetails;
+		std::vector<EOS_ProductUserId> _remotePeers;
 
 		EOS_HRTC _rtcInterfaceHandle;
 		EOS_HRTCAudio _rtcAudioInterfaceHandle;
 
 		EOS_NotificationId _currentAudioBeforeRenderNotificationID;
 		EOS_NotificationId _currentAudioBeforeSendNotificationID;
+		EOS_NotificationId _memberStatusReceivedNotificationID;
 
 		bool _isCreatingLobby;
 		bool _isJoiningLobby;

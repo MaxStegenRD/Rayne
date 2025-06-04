@@ -411,7 +411,7 @@ namespace RN
 					if(state == AL_STOPPED)
 					{
 						alSourcePlay(pair.second.sourceID);
-						RNDebug("source stopped, restarting it");
+                        //RNDebug("source stopped, restarting it");
 					}
 				}
 				
