@@ -233,7 +233,7 @@ namespace RN
 			return;
 		}
 		
-		_mesh->BeginChanges();
+		_mesh->BeginChanges(true);
 		Mesh::Chunk chunk = _mesh->GetChunk();
 
 		Mesh::ElementIterator<Vector3> vertexIterator = chunk.GetIterator<Vector3>(Mesh::VertexAttribute::Feature::Vertices);
