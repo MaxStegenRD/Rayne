@@ -46,11 +46,6 @@ namespace RN
 				return;
 			}
 
-			if(!alcLoopbackOpenDeviceSOFT) alcLoopbackOpenDeviceSOFT = reinterpret_cast<LPALCLOOPBACKOPENDEVICESOFT>(alcGetProcAddress(NULL, "alcLoopbackOpenDeviceSOFT"));
-			if(!alcIsRenderFormatSupportedSOFT) alcIsRenderFormatSupportedSOFT = reinterpret_cast<LPALCISRENDERFORMATSUPPORTEDSOFT>(alcGetProcAddress(NULL, "alcIsRenderFormatSupportedSOFT"));
-			if(!alcRenderSamplesSOFT) alcRenderSamplesSOFT = reinterpret_cast<LPALCRENDERSAMPLESSOFT>(alcGetProcAddress(NULL, "alcRenderSamplesSOFT"));
-			if(!alcResetDeviceSoft) alcResetDeviceSoft = reinterpret_cast<LPALCRESETDEVICESOFT>(alcGetProcAddress(NULL, "alcResetDeviceSoft"));
-
 			_outputDevice = alcLoopbackOpenDeviceSOFT(outputDeviceName ? outputDeviceName->GetUTF8String() : nullptr);
 			
 			//These are required for contexts with a loopback device!
@@ -222,6 +217,11 @@ namespace RN
 	{
 		RN_ASSERT(!_sharedInstance, "There can only be one OpenAL instance at a time!");
 		_sharedInstance = this;
+		
+		if(!alcLoopbackOpenDeviceSOFT) alcLoopbackOpenDeviceSOFT = reinterpret_cast<LPALCLOOPBACKOPENDEVICESOFT>(alcGetProcAddress(NULL, "alcLoopbackOpenDeviceSOFT"));
+		if(!alcIsRenderFormatSupportedSOFT) alcIsRenderFormatSupportedSOFT = reinterpret_cast<LPALCISRENDERFORMATSUPPORTEDSOFT>(alcGetProcAddress(NULL, "alcIsRenderFormatSupportedSOFT"));
+		if(!alcRenderSamplesSOFT) alcRenderSamplesSOFT = reinterpret_cast<LPALCRENDERSAMPLESSOFT>(alcGetProcAddress(NULL, "alcRenderSamplesSOFT"));
+		if(!alcResetDeviceSoft) alcResetDeviceSoft = reinterpret_cast<LPALCRESETDEVICESOFT>(alcGetProcAddress(NULL, "alcResetDeviceSOFT"));
 		
 		OpenALOutputDevice *outputDevice = new OpenALOutputDevice(outputDeviceName);
 		_outputDevices->AddObject(outputDevice->Autorelease());
