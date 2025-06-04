@@ -957,7 +957,8 @@ namespace RN
 
 		EOS_Lobby_CopyLobbyDetailsHandleOptions copyOptions;
 		copyOptions.ApiVersion = EOS_LOBBY_COPYLOBBYDETAILSHANDLE_API_LATEST;
-		copyOptions.LocalUserId = EOSWorld::GetInstance()->GetUserID();
+		EOS_ProductUserId localProductUserID = EOSWorld::GetInstance()->GetUserID();
+		copyOptions.LocalUserId = localProductUserID;
 		copyOptions.LobbyId = Data->LobbyId;
 		EOS_Lobby_CopyLobbyDetailsHandle(lobbyManager->_lobbyInterfaceHandle, &copyOptions, &lobbyManager->_lobbyDetails);
 
@@ -974,6 +975,14 @@ namespace RN
 			case EOS_ELobbyMemberStatus::EOS_LMS_CLOSED:
 				RNDebug("Lobby closed: " << Data->TargetUserId);
 				EOSWorld::GetInstance()->Disconnect();
+				break;
+			case EOS_ELobbyMemberStatus::EOS_LMS_KICKED:
+			case EOS_ELobbyMemberStatus::EOS_LMS_DISCONNECTED:
+				if(Data->TargetUserId == localProductUserID)
+				{
+					RNDebug("Disconnected from lobby");
+					EOSWorld::GetInstance()->Disconnect();
+				}
 				break;
 			case EOS_ELobbyMemberStatus::EOS_LMS_PROMOTED:
 			{
