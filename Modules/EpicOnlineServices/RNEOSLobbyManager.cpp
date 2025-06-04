@@ -709,10 +709,6 @@ namespace RN
 					continue;
 				}
 
-				String *lobbyID = nullptr;
-				uint8 currentPlayerCount = 0;
-				uint8 maxPlayerCount = 0;
-
 				EOSLobbyInfo *lobbyInfo = new EOSLobbyInfo();
 				lobbyInfoArray->AddObject(lobbyInfo->Autorelease());
 
@@ -987,6 +983,7 @@ namespace RN
 			case EOS_ELobbyMemberStatus::EOS_LMS_PROMOTED:
 			{
 				RNDebug("Host migrating to: " << Data->TargetUserId);
+				lobbyManager->_isConnectedLobbyOwner = EOSWorld::GetInstance()->GetUserID() == Data->TargetUserId;
 				EOSWorld::GetInstance()->MigrateHost(Data->TargetUserId);
 			}
 
