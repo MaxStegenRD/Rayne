@@ -68,7 +68,8 @@ namespace RN
 		_vertexAttributes(attributes),
 		_descriptor(attributes),
 		_changeCounter(0),
-		_isStreamed(streamed)
+		_isStreamed(streamed),
+		_skipCPUBuffer(false)
 	{
 		_boundingBox = AABB(Vector3(0.0f), Vector3(0.0f));
 		_boundingSphere = Sphere(_boundingBox);
@@ -196,12 +197,14 @@ namespace RN
 		}
 	}
 
-	void Mesh::BeginChanges()
+	void Mesh::BeginChanges(bool skipCPUBuffer)
 	{
 		if((_changeCounter++) == 0)
 		{
 			changedVertices = false;
 			changedIndices = false;
+			
+			_skipCPUBuffer = skipCPUBuffer;
 		}
 	}
 
@@ -214,6 +217,8 @@ namespace RN
 
 			if(changedVertices)
 				SubmitVertices(Range(0, _verticesSize));
+			
+			_skipCPUBuffer = false;
 		}
 	}
 
@@ -228,6 +233,7 @@ namespace RN
 		{
 			const uint8 *data = static_cast<const uint8 *>(tdata);
 			uint8 *destination = static_cast<uint8 *>(_indicesBufferCPU);
+			if(_skipCPUBuffer) destination = static_cast<uint8 *>(_indicesBuffer->GetBuffer());
 
 			std::copy(data, data + _indicesSize, destination);
 
@@ -243,6 +249,7 @@ namespace RN
 				if(attribute._feature == feature)
 				{
 					uint8 *vertices = static_cast<uint8 *>(_vertexBufferCPU);
+					if(_skipCPUBuffer) vertices = static_cast<uint8 *>(_vertexBuffer->GetBuffer());
 					const uint8 *data = static_cast<const uint8 *>(tdata);
 
 					uint8 *buffer = vertices + attribute._offset;
@@ -282,6 +289,7 @@ namespace RN
 			if(attribute._name && attribute._name->IsEqual(name))
 			{
 				uint8 *vertices = static_cast<uint8 *>(_vertexBufferCPU);
+				if(_skipCPUBuffer) vertices = static_cast<uint8 *>(_vertexBuffer->GetBuffer());
 				const uint8 *data = static_cast<const uint8 *>(tdata);
 
 				uint8 *buffer = vertices + attribute._offset;
@@ -943,9 +951,13 @@ namespace RN
 		if(!_vertexBufferCPU || !_vertexBuffer)
 			return;
 
-		//TODO: Don't copy full range if not needed.
-		void *target = _vertexBuffer->GetBuffer();
-		memcpy(target, _vertexBufferCPU, _verticesSize);
+		if(!_skipCPUBuffer)
+		{
+			//TODO: Don't copy full range if not needed.
+			void *target = _vertexBuffer->GetBuffer();
+			memcpy(target, _vertexBufferCPU, _verticesSize);
+		}
+		
 		_vertexBuffer->FlushRange(range);
 		if(!_isStreamed) _vertexBuffer->UnmapBuffer();
 	}
@@ -955,9 +967,13 @@ namespace RN
 		if(!_indicesBufferCPU || !_indicesBuffer)
 			return;
 
-		//TODO: Don't copy full range if not needed.
-		void *target = _indicesBuffer->GetBuffer();
-		memcpy(target, _indicesBufferCPU, _indicesSize);
+		if(!_skipCPUBuffer)
+		{
+			//TODO: Don't copy full range if not needed.
+			void *target = _indicesBuffer->GetBuffer();
+			memcpy(target, _indicesBufferCPU, _indicesSize);
+		}
+		
 		_indicesBuffer->FlushRange(range);
 		if(!_isStreamed) _indicesBuffer->UnmapBuffer();
 	}

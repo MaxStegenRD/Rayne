@@ -399,14 +399,14 @@ namespace RN
 			void *GetVertexData()
 			{
 				if(!_vertexData)
-					_vertexData = _mesh->_vertexBufferCPU;
+					_vertexData = _mesh->_skipCPUBuffer ? _mesh->_vertexBuffer->GetBuffer() : _mesh->_vertexBufferCPU;
 
 				return _vertexData;
 			}
 			void *GetIndexData()
 			{
 				if(!_indexData)
-					_indexData = _mesh->_indicesBufferCPU;
+					_indexData = _mesh->_skipCPUBuffer ? _mesh->_indicesBuffer->GetBuffer() : _mesh->_indicesBufferCPU;
 
 				return _indexData;
 			}
@@ -434,7 +434,7 @@ namespace RN
 
 		RNAPI static Mesh *WithSphereMesh(float radius, size_t slices, size_t segments, Color color);
 
-		RNAPI void BeginChanges();
+		RNAPI void BeginChanges(bool skipCPUBuffer = false);
 		RNAPI void EndChanges();
 
 		RNAPI void SetDrawMode(DrawMode mode);
@@ -484,7 +484,8 @@ namespace RN
 		void *_vertexBufferCPU;
 		void *_indicesBufferCPU;
 
-		bool _isStreamed; //This means makes the vertex and index buffers use multiple buffers, so that new data can be written to one while the GPU renders another, will also not be unmapped
+		bool _isStreamed; //This makes the vertex and index buffers use multiple buffers, so that new data can be written to one while the GPU renders another, will also not be unmapped
+		bool _skipCPUBuffer; //This in combination with isStreamed will make mesh updates write directly to the gpu buffer and leave the cpu buffer untouched. Makes the mesh changes unavailable to physics and such, but skips an additional copy step
 
 		size_t _vertexPositionsSeparatedSize;
 		size_t _vertexPositionsSeparatedStride;
