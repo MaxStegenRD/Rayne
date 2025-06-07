@@ -22,9 +22,9 @@ namespace RN
 		_maxConnections(maxConnections)
 	{
 		Lock();
-		_isServer = isHost;
+		_isHost = isHost;
 		_clientID = isHost ? 0 : CLIENT_ID_NONE;
-		_serverClientID = isHost ? 0 : CLIENT_ID_NONE;
+		_hostClientID = isHost ? 0 : CLIENT_ID_NONE;
 		_status = isHost ? Server : Disconnected;
 
 		EOSWorld *world = EOSWorld::GetInstance();
@@ -138,7 +138,7 @@ namespace RN
 			_peers.clear();
 			_idMap.clear();
 			_clientID = CLIENT_ID_NONE;
-			_isServer = false;
+			_isHost = false;
 			HandleDidDisconnect(_clientID, 0); //OnConnectionClosedCallback is not guaranteed to be called when lobby closed, so explicitly call handler here
 		}
 		else
@@ -183,15 +183,15 @@ namespace RN
 	{
 		if(hostProductUserId == EOSWorld::GetInstance()->GetUserID())
 		{
-			_serverClientID = _clientID;
-			_isServer = true;
+			_hostClientID = _clientID;
+			_isHost = true;
 			_status = Server;
 			RNDebug("Took over server role.");
 		}
 		else if(_peers.find(hostProductUserId) != _peers.end())
 		{
-			_serverClientID = _peers[hostProductUserId].clientID;
-			RNDebug("Server role was transferred to client " << _serverClientID);
+			_hostClientID = _peers[hostProductUserId].clientID;
+			RNDebug("Server role was transferred to client " << _hostClientID);
 		}
 		else
 		{
@@ -209,7 +209,7 @@ namespace RN
 		_peers.clear();
 		_idMap.clear();
 		_clientID = CLIENT_ID_NONE;
-		_isServer = false;
+		_isHost = false;
 		Unlock();
 
 		HandleDidDisconnect(_clientID, reason);
@@ -462,7 +462,7 @@ namespace RN
 							//Received own client ID from server
 							if(_clientID == CLIENT_ID_NONE && ownClientID != CLIENT_ID_NONE && remoteClientID != CLIENT_ID_NONE)
 							{
-								_serverClientID = remoteClientID;
+								_hostClientID = remoteClientID;
 								AssignClientID(ownClientID); //Broadcasts freshly assigned id to peers
 								_status = Connected;
 							}

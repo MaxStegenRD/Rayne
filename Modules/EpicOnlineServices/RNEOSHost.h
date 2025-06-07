@@ -108,7 +108,7 @@ namespace RN
 		EOSAPI bool HasReliableDataInTransit();
 		EOSAPI double GetLastRoundtripTime(uint16 peerID);
 		EOSAPI virtual void Disconnect() = 0;
-		EOSAPI bool IsServer() { return _isServer; }
+		EOSAPI bool IsServer() { return _isHost; }
 
 	protected:
 		EOSAPI virtual void Update(float delta);
@@ -124,8 +124,8 @@ namespace RN
 		EOSAPI void SendPing(EOS_ProductUserId receiverID, bool isResponse, uint8 responseID);
 
 		uint16 _clientID;
-		uint16 _serverClientID;
-		bool _isServer;
+		uint16 _hostClientID;
+		bool _isHost;
 		Status _status;
 		float _pingTimer;
 
