@@ -19,12 +19,10 @@ namespace RN
 	RNDefineMeta(EOSP2PClient, EOSHost)
 
 	EOSP2PClient::EOSP2PClient(bool isHost, uint16 maxConnections) :
-		_maxConnections(maxConnections)
+		_maxConnections(maxConnections), _isHost(isHost), _hostClientID(isHost? 0 : CLIENT_ID_NONE)
 	{
 		Lock();
-		_isHost = isHost;
 		_clientID = isHost ? 0 : CLIENT_ID_NONE;
-		_hostClientID = isHost ? 0 : CLIENT_ID_NONE;
 		_status = isHost ? Server : Disconnected;
 
 		EOSWorld *world = EOSWorld::GetInstance();
@@ -555,14 +553,14 @@ namespace RN
 		RN::Data *packetData = new RN::Data();
 		packetData->Append(&packetHeader, 4);
 		packetData->Append(&client->_clientID, sizeof(uint16));
-		uint16 remoteClientID = client->IsServer() ? client->GetUnusedClientID() : CLIENT_ID_NONE;
+		uint16 remoteClientID = client->IsHost() ? client->GetUnusedClientID() : CLIENT_ID_NONE;
 		packetData->Append(&remoteClientID, sizeof(uint16));
 
 		const Peer &peer = client->CreatePeer(remoteClientID, Data->RemoteUserId);
 		client->_peers.insert(std::pair(Data->RemoteUserId, peer));
 
 		//If hosting the session, assign a new client user id, else ask for user id by sending connection request
-		if(client->IsServer())
+		if(client->IsHost())
 		{
 			RNDebug("Assigning client id " << peer.clientID);
 			client->_idMap[remoteClientID] = Data->RemoteUserId;

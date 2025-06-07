@@ -27,11 +27,16 @@ namespace RN
 		EOSAPI void DisconnectClient(uint16 clientID, uint16 data);
 		EOSAPI void DisconnectClientDelayed(uint16 clientID, float delay = 1.0f); //Using this, will not immediately force disconnect the user, leaving some time for previously sent data to arrive (like a reason for getting disconnected)
 		EOSAPI void MigrateHost(EOS_ProductUserId hostProductUserId);
+		
+		EOSAPI bool IsHost() { return _isHost; }
 
 	protected:
 		EOSAPI void Update(float delta) override;
 		EOSAPI void LogPeers() const;
 		EOSAPI virtual void HandleHostMigration(){}
+		
+		bool _isHost;
+		uint16 _hostClientID;
 
 	private:
 		static void OnConnectionRequestCallback(const EOS_P2P_OnIncomingConnectionRequestInfo *Data);

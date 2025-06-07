@@ -25,7 +25,7 @@ namespace RN
 	RNDefineMeta(EOSHost, Object)
 
 	EOSHost::EOSHost() :
-		_pingTimer(10.0), _status(Disconnected), _clientID(CLIENT_ID_NONE), _hostClientID(CLIENT_ID_NONE), _isHost(false)
+		_pingTimer(10.0), _status(Disconnected), _clientID(CLIENT_ID_NONE)
 	{
 	}
 
