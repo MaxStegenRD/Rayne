@@ -31,8 +31,7 @@ namespace RN
 			ProtocolPacketTypePingResponse,
 			ProtocolPacketTypeData,
 			ProtocolPacketTypeReliableData,
-			ProtocolPacketTypeReliableDataMultipart,
-			ProtocolPacketTypeReliableDataAck
+			ProtocolPacketTypeReliableDataMultipart
 		};
 
 		struct ProtocolPacketHeader
@@ -70,12 +69,9 @@ namespace RN
 
 			uint8 _packetIDForChannel[256];
 			uint8 _receivedIDForChannel[256];
-			uint8 _lastReliableIDForChannel[256];
 
 			uint8 _lastPingID;
 			Clock::time_point _sentPingTime;
-
-			bool _hasReliableInTransit;
 
 			float _disconnectDelay;
 			bool _wantsDisconnect;
@@ -105,7 +101,6 @@ namespace RN
 		EOSAPI virtual void ReceivedPacket(Data *data, uint32 senderID, uint32 channel) {}
 
 		EOSAPI Status GetStatus() const { return _status; }
-		EOSAPI bool HasReliableDataInTransit();
 		EOSAPI double GetLastRoundtripTime(uint16 peerID);
 		EOSAPI virtual void Disconnect() = 0;
 
