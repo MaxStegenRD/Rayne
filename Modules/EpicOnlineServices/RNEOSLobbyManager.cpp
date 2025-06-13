@@ -152,6 +152,7 @@ namespace RN
 		options.PermissionLevel = maxUsers == 1 ? EOS_ELobbyPermissionLevel::EOS_LPL_INVITEONLY : EOS_ELobbyPermissionLevel::EOS_LPL_PUBLICADVERTISED;
 		options.bPresenceEnabled = false;
 		options.bDisableHostMigration = false; //Allow host migration
+		options.bEnableJoinById = true;
 		options.BucketId = "Server"; //Top-level filtering criteria, called the Bucket ID, which is specific to your game; often formatted like "GameMode:Region:MapName"
 		if(lobbyIDOverride) options.LobbyId = lobbyIDOverride->GetUTF8String();
 

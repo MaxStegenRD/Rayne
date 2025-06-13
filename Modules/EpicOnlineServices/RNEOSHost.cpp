@@ -39,7 +39,7 @@ namespace RN
 		Peer &peer = _peers[senderID];
 
 		//This assumes that less than 127 packets are ever lost at once...
-		if(peer._receivedIDForChannel[channel] < packetID || (peer._receivedIDForChannel[channel] > 127 && packetID < 127))
+		if(packetType == ProtocolPacketTypeReliableData || peer._receivedIDForChannel[channel] < packetID || (peer._receivedIDForChannel[channel] > 127 && packetID < 127))
 		{
 			peer._receivedIDForChannel[channel] = packetID;
 			return true;
