@@ -892,6 +892,15 @@ namespace RN
 					}
 				}
 			}
+			
+			if(lobbyManager->_isVoiceEnabled)
+			{
+				EOS_RTCAudio_SetInputDeviceSettingsOptions audioInputSettings = {};
+				audioInputSettings.ApiVersion = EOS_RTCAUDIO_SETINPUTDEVICESETTINGS_API_LATEST;
+				audioInputSettings.LocalUserId = EOSWorld::GetInstance()->GetUserID();
+				audioInputSettings.bPlatformAEC = EOS_TRUE;
+				EOS_RTCAudio_SetInputDeviceSettings(lobbyManager->_rtcAudioInterfaceHandle, &audioInputSettings, nullptr, nullptr);
+			}
 		}
 		else
 		{
