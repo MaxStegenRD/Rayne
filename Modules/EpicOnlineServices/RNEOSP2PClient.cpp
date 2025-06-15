@@ -18,12 +18,12 @@ namespace RN
 {
 	RNDefineMeta(EOSP2PClient, EOSHost)
 
-	EOSP2PClient::EOSP2PClient(bool isHost, uint16 maxConnections) :
-		_maxConnections(maxConnections), _isHost(isHost), _hostClientID(isHost? 0 : CLIENT_ID_NONE)
+	EOSP2PClient::EOSP2PClient(bool isHost) : _hostClientID(CLIENT_ID_NONE)
 	{
 		Lock();
+		_status = isHost ? Connected : Disconnected;
 		_clientID = isHost ? 0 : CLIENT_ID_NONE;
-		_status = isHost ? Server : Disconnected;
+		_hostClientID = isHost ? 0 : CLIENT_ID_NONE;
 
 		EOSWorld *world = EOSWorld::GetInstance();
 
@@ -85,7 +85,7 @@ namespace RN
 
 		EOS_EResult result = EOS_P2P_SendPacket(world->GetP2PHandle(), &connectionOptions);
 
-		if(result != EOS_EResult::EOS_Success) //TODO only do this when connecting to host failed
+		if(result != EOS_EResult::EOS_Success) //TODO only do this when connecting to host failed, this should usually succeed, even if the peer is not reachable as the sending happens later!
 		{
 			RNDebug("Failed to connect to " << remoteProductUserID);
 			ForceDisconnect(0);
@@ -93,7 +93,7 @@ namespace RN
 			return;
 		}
 
-		//Create peer with unknown user ID. Will be set via connection response
+		//Create peer with unknown user ID. Will be set via connection response. The insert will just quietly fail if there already was a peer with the same product id
 		_peers.insert(std::pair(remoteProductUserID, CreatePeer(CLIENT_ID_NONE, remoteProductUserID)));
 
 		Unlock();
@@ -136,7 +136,7 @@ namespace RN
 			_peers.clear();
 			_idMap.clear();
 			_clientID = CLIENT_ID_NONE;
-			_isHost = false;
+			_hostClientID = CLIENT_ID_NONE;
 			HandleDidDisconnect(_clientID, 0); //OnConnectionClosedCallback is not guaranteed to be called when lobby closed, so explicitly call handler here
 		}
 		else
@@ -179,12 +179,25 @@ namespace RN
 
 	void EOSP2PClient::MigrateHost(EOS_ProductUserId hostProductUserId)
 	{
+		bool isNewClient = false;
+		if(_clientID == CLIENT_ID_NONE)
+		{
+			isNewClient = true;
+			if(hostProductUserId == EOSWorld::GetInstance()->GetUserID())
+			{
+				_clientID = 0; //This is save as 0 is reserved for hosts, though hosts can also have other ids
+			}
+			else
+			{
+				//Don't have a client id yet, but the host changed, so the original host won't provide it. Request it again from the new host.
+				Connect(hostProductUserId);
+			}
+		}
+
 		if(hostProductUserId == EOSWorld::GetInstance()->GetUserID())
 		{
 			_hostClientID = _clientID;
-			_isHost = true;
-			_status = Server;
-			RNDebug("Took over server role.");
+			RNDebug("Took over host role.");
 		}
 		else if(_peers.find(hostProductUserId) != _peers.end())
 		{
@@ -196,7 +209,10 @@ namespace RN
 			RNWarning("Host migrated to " << hostProductUserId << ", but that peer is not known.");
 		}
 
-		HandleHostMigration();
+		if(!isNewClient)
+		{
+			HandleHostMigration();
+		}
 	}
 
 	void EOSP2PClient::ForceDisconnect(uint16 reason)
@@ -207,7 +223,7 @@ namespace RN
 		_peers.clear();
 		_idMap.clear();
 		_clientID = CLIENT_ID_NONE;
-		_isHost = false;
+		_hostClientID = CLIENT_ID_NONE;
 		Unlock();
 
 		HandleDidDisconnect(_clientID, reason);
@@ -215,7 +231,8 @@ namespace RN
 
 	uint16 EOSP2PClient::GetUnusedClientID() const
 	{
-		for(uint16 freeID = 1; freeID < _maxConnections; freeID++)
+		uint16 maxConnections = 255;
+		for(uint16 freeID = 1; freeID < maxConnections; freeID++) //Starting by 1 so nobody but the host can have 0, so now in case of the host getting migrated to a newly joined user that doesn't have an id yet, 0 can safely be picked
 		{
 			if(_idMap.find(freeID) == _idMap.end() && freeID != _clientID)
 			{
@@ -261,6 +278,8 @@ namespace RN
 			sendPacketOptions.Data = packetData->GetBytes();
 
 			EOS_P2P_SendPacket(world->GetP2PHandle(), &sendPacketOptions);
+			
+			packetData->Release();
 		}
 	}
 
@@ -465,6 +484,8 @@ namespace RN
 								_status = Connected;
 							}
 
+							LogPeers();
+
 							//Handle connection after the server client id was set
 							if(didConnect)
 							{
@@ -586,6 +607,8 @@ namespace RN
 		sendPacketOptions.Data = packetData->GetBytes();
 
 		EOS_P2P_SendPacket(world->GetP2PHandle(), &sendPacketOptions);
+		
+		packetData->Release();
 	}
 
 	void EOSP2PClient::OnConnectionClosedCallback(const EOS_P2P_OnRemoteConnectionClosedInfo *Data)

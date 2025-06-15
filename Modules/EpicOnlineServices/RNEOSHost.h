@@ -98,7 +98,7 @@ namespace RN
 
 		EOSAPI void SendPacket(Data *data, uint16 receiverID, uint32 channel = 0, bool reliable = false);
 		EOSAPI void BroadcastPacket(Data *data, uint32 channel = 0, bool reliable = false, uint16 excludeClientID = CLIENT_ID_NONE);
-		EOSAPI virtual void ReceivedPacket(Data *data, uint32 senderID, uint32 channel) {}
+		EOSAPI virtual void ReceivedPacket(Data *data, uint16 senderID, uint32 channel) {}
 
 		EOSAPI Status GetStatus() const { return _status; }
 		EOSAPI double GetLastRoundtripTime(uint16 peerID);
