@@ -231,8 +231,7 @@ namespace RN
 
 	uint16 EOSP2PClient::GetUnusedClientID() const
 	{
-		uint16 maxConnections = 255;
-		for(uint16 freeID = 1; freeID < maxConnections; freeID++) //Starting by 1 so nobody but the host can have 0, so now in case of the host getting migrated to a newly joined user that doesn't have an id yet, 0 can safely be picked
+		for(uint16 freeID = 1; freeID < CLIENT_ID_NONE; freeID++) //Starting by 1 so nobody but the host can have 0, so now in case of the host getting migrated to a newly joined user that doesn't have an id yet, 0 can safely be picked
 		{
 			if(_idMap.find(freeID) == _idMap.end() && freeID != _clientID)
 			{

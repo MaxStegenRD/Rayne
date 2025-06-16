@@ -14,7 +14,7 @@
 
 struct EOS_ProductUserIdDetails;
 typedef EOS_ProductUserIdDetails *EOS_ProductUserId;
-constexpr RN::uint16 CLIENT_ID_NONE = std::numeric_limits<RN::uint16>::max();
+constexpr RN::uint16 CLIENT_ID_NONE = std::numeric_limits<RN::uint8>::max();
 
 namespace RN
 {
