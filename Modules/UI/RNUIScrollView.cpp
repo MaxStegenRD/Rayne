@@ -15,7 +15,7 @@ namespace RN
 		RNDefineMeta(ScrollView, View)
 
 		ScrollView::ScrollView(bool vertical, bool horizontal) :
-			_isScrollEnabled(true), _isScrolling(false), _wasTouched(false), _tapTimer(0.0f), _pixelPerInch(200), _scrollsVertical(vertical), _scrollsHorizontal(horizontal), _isScrollInteraction(false)
+			_isScrollEnabled(true), _isScrolling(false), _wasTouched(false), _tapTimer(0.0f), _pixelPerInch(200), _scrollsVertical(vertical), _scrollsHorizontal(horizontal), _isScrollInteraction(false), _needsNewPreviousPosition(true)
 		{
 			SetClipToBounds(true);
 		}
@@ -28,9 +28,25 @@ namespace RN
 		{
 			_pixelPerInch = pixelPerInch;
 		}
+	
+		void ScrollView::StopScrolling()
+		{
+			_isScrollInteraction = false;
+			_scrollSpeed = RN::Vector2();
+			_previousCursorPosition = RN::Vector2();
+			_isScrolling = true;
+			_needsNewPreviousPosition = true;
+		}
 
 		void ScrollView::Update(float delta, Vector2 cursorPosition, bool touched, Vector2 alternativeScrollSpeed)
 		{
+			if(_needsNewPreviousPosition)
+			{
+				_previousCursorPosition = cursorPosition;
+				_needsNewPreviousPosition = false;
+				return;
+			}
+			
 			Vector2 transformedPosition = ConvertPointFromBase(cursorPosition); //Converts to inside bounds, so reverse that effect below
 			transformedPosition.x += GetBounds().x;
 			transformedPosition.y += GetBounds().y;

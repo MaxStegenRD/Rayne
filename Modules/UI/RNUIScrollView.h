@@ -28,6 +28,8 @@ namespace RN
 
 			bool IsScrolling() const { return _isScrolling; }
 			Vector2 GetScrollSpeed() const { return _scrollSpeed; }
+			
+			void StopScrolling();
 
 			bool IsScrollInteraction() const { return _isScrollInteraction; }
 
@@ -45,6 +47,7 @@ namespace RN
 
 			Vector2 _scrollSpeed;
 			Vector2 _previousCursorPosition;
+			bool _needsNewPreviousPosition;
 
 			RNDeclareMetaAPI(ScrollView, UIAPI)
 		};
