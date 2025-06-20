@@ -356,7 +356,7 @@ namespace RN
 			{
 				//Create peer with unknown user ID. Will be set via connection response
 				RNDebug("Received packet from unknown user " << senderUserID << " (creating peer)");
-				_peers.insert(std::pair(senderUserID, CreatePeer(0xFFFF, senderUserID)));
+				_peers.insert(std::pair(senderUserID, CreatePeer(CLIENT_ID_NONE, senderUserID)));
 			}
 			uint16 senderID = _peers[senderUserID].clientID;
 			Peer &peer = _peers[senderUserID];
