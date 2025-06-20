@@ -335,8 +335,9 @@ namespace RN
 					if(currentCodepoint > 0)
 					{
 						//TODO: To adjsut this correctly, the previous characters attributes are needed...
-						float previousOffset = currentFont->GetOffsetForNextCharacter(currentCodepoint - 1, currentCodepoint) * scaleFactor + currentAttributes->GetKerning();
-						float correctedOffset = currentFont->GetOffsetForNextCharacter(currentCodepoint - 1, -1) * scaleFactor + currentAttributes->GetKerning();
+						int prevCodepoint = _attributedText->GetCharacterAtIndex(lastWhiteSpaceIndex - 1);
+						float previousOffset = currentFont->GetOffsetForNextCharacter(prevCodepoint, currentCodepoint) * scaleFactor + currentAttributes->GetKerning();
+						float correctedOffset = currentFont->GetOffsetForNextCharacter(prevCodepoint, -1) * scaleFactor + currentAttributes->GetKerning();
 						lastWordWidth -= previousOffset - correctedOffset;
 					}
 				}
@@ -394,15 +395,16 @@ namespace RN
 						totalHeight += maxAscent + maxDescent + maxLineOffset + _additionalLineHeight;
 
 						linewidth.push_back(currentWidth);
-						currentWidth = 0.0f;
 						linebreaks.push_back(i);
 
 						lineascent.push_back(maxAscent);
 						linedescent.push_back(maxDescent);
 						lineoffset.push_back(maxLineOffset + _additionalLineHeight);
-						maxAscent = 0.0f;
-						maxDescent = 0.0f;
-						maxLineOffset = 0.0f;
+						
+						currentWidth = offset;
+						maxAscent = characterAscent;
+						maxDescent = characterDescent;
+						maxLineOffset = characterLineOffset;
 					}
 				}
 
@@ -443,7 +445,8 @@ namespace RN
 
 			for(int index = 0; index <= characterCounter; index++)
 			{
-				if(index > 0) characterPositionX += spacings->GetObjectAtIndex<RN::Number>(index - 1)->GetFloatValue();
+				bool isLinebreak = (linebreakIndex < linebreaks.size() && linebreaks[linebreakIndex] == index);
+				if(!isLinebreak && index > 0) characterPositionX += spacings->GetObjectAtIndex<RN::Number>(index - 1)->GetFloatValue();
 
 				const TextAttributes *currentAttributes = _attributedText->GetAttributesAtIndex(index);
 				if(!currentAttributes) currentAttributes = &_defaultAttributes;
@@ -454,7 +457,7 @@ namespace RN
 					break;
 				}
 
-				if(linebreakIndex < linebreaks.size() && linebreaks[linebreakIndex] == index)
+				if(isLinebreak)
 				{
 					characterPositionY -= linedescent[linebreakIndex];
 					characterPositionY -= lineoffset[linebreakIndex];
@@ -553,8 +556,9 @@ namespace RN
 					if(currentCodepoint > 0)
 					{
 						//TODO: To adjsut this correctly, the previous characters attributes are needed...
-						float previousOffset = currentFont->GetOffsetForNextCharacter(currentCodepoint - 1, currentCodepoint) * scaleFactor + currentAttributes->GetKerning();
-						float correctedOffset = currentFont->GetOffsetForNextCharacter(currentCodepoint - 1, -1) * scaleFactor + currentAttributes->GetKerning();
+						int prevCodepoint = _attributedText->GetCharacterAtIndex(lastWhiteSpaceIndex - 1);
+						float previousOffset = currentFont->GetOffsetForNextCharacter(prevCodepoint, currentCodepoint) * scaleFactor + currentAttributes->GetKerning();
+						float correctedOffset = currentFont->GetOffsetForNextCharacter(prevCodepoint, -1) * scaleFactor + currentAttributes->GetKerning();
 						lastWordWidth -= previousOffset - correctedOffset;
 					}
 				}
@@ -612,15 +616,16 @@ namespace RN
 						totalHeight += maxAscent + maxDescent + maxLineOffset + _additionalLineHeight;
 
 						linewidth.push_back(currentWidth);
-						currentWidth = 0.0f;
 						linebreaks.push_back(i);
 
 						lineascent.push_back(maxAscent);
 						linedescent.push_back(maxDescent);
 						lineoffset.push_back(maxLineOffset + _additionalLineHeight);
-						maxAscent = 0.0f;
-						maxDescent = 0.0f;
-						maxLineOffset = 0.0f;
+						
+						currentWidth = offset;
+						maxAscent = characterAscent;
+						maxDescent = characterDescent;
+						maxLineOffset = characterLineOffset;
 					}
 				}
 
@@ -664,7 +669,8 @@ namespace RN
 
 			for(int index = 0; index <= characterCounter; index++)
 			{
-				if(index > 0) characterPositionX += spacings->GetObjectAtIndex<RN::Number>(index - 1)->GetFloatValue();
+				bool isLinebreak = (linebreakIndex < linebreaks.size() && linebreaks[linebreakIndex] == index);
+				if(!isLinebreak && index > 0) characterPositionX += spacings->GetObjectAtIndex<RN::Number>(index - 1)->GetFloatValue();
 
 				const TextAttributes *currentAttributes = _attributedText->GetAttributesAtIndex(index);
 				if(!currentAttributes) currentAttributes = &_defaultAttributes;
@@ -678,7 +684,7 @@ namespace RN
 					closestIndex = index;
 				}
 
-				if(linebreakIndex < linebreaks.size() && linebreaks[linebreakIndex] == index)
+				if(isLinebreak)
 				{
 					characterPositionY -= linedescent[linebreakIndex];
 					characterPositionY -= lineoffset[linebreakIndex];
@@ -770,8 +776,9 @@ namespace RN
 					if(currentCodepoint > 0)
 					{
 						//TODO: To adjsut this correctly, the previous characters attributes are needed...
-						float previousOffset = currentFont->GetOffsetForNextCharacter(currentCodepoint - 1, currentCodepoint) * scaleFactor + currentAttributes->GetKerning();
-						float correctedOffset = currentFont->GetOffsetForNextCharacter(currentCodepoint - 1, -1) * scaleFactor + currentAttributes->GetKerning();
+						int prevCodepoint = _attributedText->GetCharacterAtIndex(lastWhiteSpaceIndex - 1);
+						float previousOffset = currentFont->GetOffsetForNextCharacter(prevCodepoint, currentCodepoint) * scaleFactor + currentAttributes->GetKerning();
+						float correctedOffset = currentFont->GetOffsetForNextCharacter(prevCodepoint, -1) * scaleFactor + currentAttributes->GetKerning();
 						lastWordWidth -= previousOffset - correctedOffset;
 					}
 				}
@@ -828,15 +835,16 @@ namespace RN
 						totalHeight += maxAscent + maxDescent + maxLineOffset + _additionalLineHeight;
 						if(currentWidth > maxWidth) maxWidth = currentWidth;
 
-						currentWidth = 0.0f;
 						linebreaks.push_back(i);
 
 						lineascent.push_back(maxAscent);
 						linedescent.push_back(maxDescent);
 						lineoffset.push_back(maxLineOffset + _additionalLineHeight);
-						maxAscent = 0.0f;
-						maxDescent = 0.0f;
-						maxLineOffset = 0.0f;
+						
+						currentWidth = offset;
+						maxAscent = characterAscent;
+						maxDescent = characterDescent;
+						maxLineOffset = characterLineOffset;
 					}
 				}
 
@@ -944,8 +952,9 @@ namespace RN
 					if(currentCodepoint > 0)
 					{
 						//TODO: To adjsut this correctly, the previous characters attributes are needed...
-						float previousOffset = currentFont->GetOffsetForNextCharacter(currentCodepoint - 1, currentCodepoint) * scaleFactor + currentAttributes->GetKerning();
-						float correctedOffset = currentFont->GetOffsetForNextCharacter(currentCodepoint - 1, -1) * scaleFactor + currentAttributes->GetKerning();
+						int prevCodepoint = _attributedText->GetCharacterAtIndex(lastWhiteSpaceIndex - 1);
+						float previousOffset = currentFont->GetOffsetForNextCharacter(prevCodepoint, currentCodepoint) * scaleFactor + currentAttributes->GetKerning();
+						float correctedOffset = currentFont->GetOffsetForNextCharacter(prevCodepoint, -1) * scaleFactor + currentAttributes->GetKerning();
 						lastWordWidth -= previousOffset - correctedOffset;
 					}
 				}
@@ -1014,15 +1023,16 @@ namespace RN
 						totalHeight += maxAscent + maxDescent + maxLineOffset + _additionalLineHeight;
 
 						linewidth.push_back(currentWidth);
-						currentWidth = 0.0f;
 						linebreaks.push_back(i);
 
 						lineascent.push_back(maxAscent);
 						linedescent.push_back(maxDescent);
 						lineoffset.push_back(maxLineOffset + _additionalLineHeight);
-						maxAscent = 0.0f;
-						maxDescent = 0.0f;
-						maxLineOffset = 0.0f;
+						
+						currentWidth = offset;
+						maxAscent = characterAscent;
+						maxDescent = characterDescent;
+						maxLineOffset = characterLineOffset;
 					}
 				}
 
@@ -1086,13 +1096,14 @@ namespace RN
 				characterPositionX = (GetBounds().width - linewidth[linebreakIndex]) * 0.5f;
 
 			characters->Enumerate<RN::Mesh>([&](RN::Mesh *mesh, size_t index, bool &stop) {
-				if(index > 0) characterPositionX += spacings->GetObjectAtIndex<RN::Number>(index - 1)->GetFloatValue();
+				bool isLinebreak = (linebreakIndex < linebreaks.size() && linebreaks[linebreakIndex] == index);
+				if(!isLinebreak && index > 0) characterPositionX += spacings->GetObjectAtIndex<RN::Number>(index - 1)->GetFloatValue();
 
 				const TextAttributes *currentAttributes = _attributedText->GetAttributesAtIndex(index);
 				if(!currentAttributes) currentAttributes = &_defaultAttributes;
 				float scaleFactor = currentAttributes->GetFontSize() / currentAttributes->GetFont()->GetHeight();
 
-				if(linebreakIndex < linebreaks.size() && linebreaks[linebreakIndex] == index)
+				if(isLinebreak)
 				{
 					characterPositionY -= linedescent[linebreakIndex];
 					characterPositionY -= lineoffset[linebreakIndex];
@@ -1104,13 +1115,11 @@ namespace RN
 						characterPositionX = GetBounds().width - linewidth[linebreakIndex];
 					else if(currentAttributes->GetAlignment() == TextAlignmentCenter)
 						characterPositionX = (GetBounds().width - linewidth[linebreakIndex]) * 0.5f;
-
-					return;
 				}
 
 				if(!mesh->IsKindOfClass(RN::Mesh::GetMetaClass()))
 				{
-					return;
+					return; //This is a null mesh that is meant to be skipped, for example a line break character that was part of the text
 				}
 
 				RN::Mesh::Chunk chunk = mesh->GetChunk();
@@ -1173,6 +1182,16 @@ namespace RN
 			textMesh->SetElementData(RN::Mesh::VertexAttribute::Feature::Indices, indexBuffer);
 
 			textMesh->EndChanges();
+			
+#if RN_BUILD_DEBUG
+			if(vertexOffset != numberOfVertices)
+			{
+				RNDebug("Vertex count missmatch for label with text: " << _attributedText);
+			}
+#endif
+			
+			RN_DEBUG_ASSERT(vertexOffset == numberOfVertices,  "Vert-count mismatch!");
+			RN_DEBUG_ASSERT(indexIndexOffset == numberOfIndices, "Index-count mismatch!");
 
 			delete[] vertexPositionBuffer;
 			delete[] vertexUVBuffer;
