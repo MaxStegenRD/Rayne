@@ -29,7 +29,7 @@ namespace RN
 			bool IsScrolling() const { return _isScrolling; }
 			Vector2 GetScrollSpeed() const { return _scrollSpeed; }
 			
-			void StopScrolling();
+			UIAPI void StopScrolling();
 
 			bool IsScrollInteraction() const { return _isScrollInteraction; }
 
