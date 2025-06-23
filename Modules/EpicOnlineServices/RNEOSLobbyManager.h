@@ -60,6 +60,61 @@ namespace RN
 		RNDeclareMetaAPI(EOSLobbyInfo, EOSAPI)
 	};
 
+	class EOSConnectedLobbyInfo : public Object
+	{
+	public:
+		friend class EOSLobbyManager;
+		
+		enum class Status
+		{
+			Disconnected,
+			Connected,
+			Connecting,
+			Creating
+		};
+		
+		EOSAPI ~EOSConnectedLobbyInfo();
+		
+		Status GetStatus() const { return _status; }
+		
+		std::vector<EOS_ProductUserId> GetRemoteClientIDs() const { return _remotePeers; }
+		EOSAPI EOS_ProductUserId GetLobbyOwnerID() const;
+		
+		String *GetLobbyID() const { return _lobbyID; }
+		
+		EOSAPI void LeaveLobby();
+		EOSAPI void KickFromLobby(EOS_ProductUserId userHandle);
+		EOSAPI void SetLobbyAttributes(Dictionary *attributes);
+		
+		EOSAPI void RetrievePeers();
+		EOSAPI void AddRemotePeer(EOS_ProductUserId peerID);
+		EOSAPI void RemoveRemotePeer(EOS_ProductUserId peerID);
+
+	private:
+		EOSAPI EOSConnectedLobbyInfo();
+		
+		Status _status;
+		int64 _createTimestamp;
+		
+		EOS_HLobbyDetails _lobbyDetails;
+		bool _isHost;
+		
+		String *_lobbyID;
+		String *_lobbyName;
+		String *_lobbyLevel;
+		String *_lobbyVersion;
+		bool _lobbyHasPassword;
+		
+		std::function<void(EOSResult, EOSConnectedLobbyInfo *)> _didJoinLobbyCallback;
+		
+		std::vector<EOS_ProductUserId> _remotePeers;
+		
+		EOS_NotificationId _audioBeforeRenderNotificationID;
+		EOS_NotificationId _audioBeforeSendNotificationID;
+		
+		RNDeclareMetaAPI(EOSConnectedLobbyInfo, EOSAPI)
+	};
+
 	class EOSLobbySearchParameter : public Object
 	{
 	public:
@@ -113,32 +168,32 @@ namespace RN
 	{
 	public:
 		friend class EOSWorld;
+		friend class EOSConnectedLobbyInfo;
 
 		EOSAPI ~EOSLobbyManager();
 
-		EOSAPI void SetGlobalAudioOptions(bool voiceEnabled, bool unmixed, std::function<void(RN::String *eosUserID, RN::uint32 sampleRate, RN::uint32 channels, RN::uint32 framesCount, RN::int16 *frames)> audioReceivedCallback = nullptr, std::function<void(RN::uint32 sampleRate, RN::uint32 channels, RN::uint32 framesCount, RN::int16 *frames)> audioBeforeSendCallback = nullptr);
+		EOSAPI void SetGlobalAudioOptions(bool voiceEnabled, bool unmixed, std::function<void(RN::String *eosUserID, RN::uint32 sampleRate, RN::uint32 channels, RN::uint32 framesCount, RN::int16 *frames, EOSConnectedLobbyInfo *connectedLobbyInfo)> audioReceivedCallback = nullptr, std::function<void(RN::uint32 sampleRate, RN::uint32 channels, RN::uint32 framesCount, RN::int16 *frames, EOSConnectedLobbyInfo *connectedLobbyInfo)> audioBeforeSendCallback = nullptr);
 		EOSAPI void SetLocalPlayerMuted(bool mute);
 		bool GetLocalPlayerMuted() const { return _isLocalPlayerMuted; }
 
-		EOSAPI void CreateLobby(int64 createLobbyTimestamp, String *lobbyName, String *lobbyLevel, uint8 maxUsers, std::function<void(EOSResult)> callback, String *lobbyVersion, bool hasPassword, const String *lobbyIDOverride = nullptr);
+		EOSAPI EOSConnectedLobbyInfo *CreateLobby(int64 createLobbyTimestamp, String *lobbyName, String *lobbyLevel, uint8 maxUsers, std::function<void(EOSResult, EOSConnectedLobbyInfo *)> callback, String *lobbyVersion, bool hasPassword, const String *lobbyIDOverride = nullptr);
+		EOSAPI EOSConnectedLobbyInfo *JoinLobby(EOSLobbyInfo *lobbyInfo, std::function<void(EOSResult, EOSConnectedLobbyInfo *)> callback);
 		EOSAPI void SearchLobby(bool includePrivate, bool includePublic, uint32 maxResults, std::function<void(EOSResult, RN::Array *)> callback, const RN::String *lobbyID = nullptr, RN::Array *searchFilter = nullptr);
-		EOSAPI void JoinLobby(EOSLobbyInfo *lobbyInfo, std::function<void(EOSResult)> callback);
-		EOSAPI void LeaveCurrentLobby();
-		EOSAPI void KickFromCurrentLobby(EOS_ProductUserId userHandle);
-		EOSAPI void SetCurrentLobbyAttributes(Dictionary *attributes);
 		EOSAPI void ResetLobbySearchCallback();
+		
+		std::vector<EOSConnectedLobbyInfo *> GetConnectedLobbies() const { return _connectedLobbies; }
+		EOSAPI size_t GetConnectedLobbyCount() const;
+		EOSAPI size_t GetConnectingLobbyCount() const;
 
-		bool GetIsConnectedToLobby() const { return _isConnectedToLobby; }
-		const RN::String *GetConnectedLobbyID() const { return _connectedLobbyID; }
-		std::vector<EOS_ProductUserId> GetRemoteClientIDs() { return _remotePeers; }
-		EOSAPI EOS_ProductUserId GetLobbyOwnerID();
+		//TODO: Deprecated, remove once grab social lobby is merged into develop
+		bool GetIsConnectedToLobby() const { return _connectedLobbies.size() > 0 && _connectedLobbies.front()->GetStatus() == EOSConnectedLobbyInfo::Status::Connected; }
+		const RN::String *GetConnectedLobbyID() const { return _connectedLobbies.size() > 0 ? _connectedLobbies.front()->GetLobbyID() : nullptr; }
+		void LeaveCurrentLobby() { if(_connectedLobbies.size() > 0) _connectedLobbies.front()->LeaveLobby(); }
+		void KickFromCurrentLobby(EOS_ProductUserId userHandle) { if(_connectedLobbies.size() > 0) _connectedLobbies.front()->KickFromLobby(userHandle); }
+		void SetCurrentLobbyAttributes(Dictionary *attributes) { if(_connectedLobbies.size() > 0) _connectedLobbies.front()->SetLobbyAttributes(attributes); }
 
 	private:
 		EOSAPI EOSLobbyManager(EOSWorld *world);
-
-		void RetrievePeers();
-		void AddRemotePeer(EOS_ProductUserId peerID);
-		void RemoveRemotePeer(EOS_ProductUserId peerID);
 
 		static void LobbyOnCreateCallback(const EOS_Lobby_CreateLobbyCallbackInfo *Data);
 		static void LobbyOnJoinCallback(const EOS_Lobby_JoinLobbyCallbackInfo *Data);
@@ -155,38 +210,20 @@ namespace RN
 		static void LobbyAudioOnUpdateSendingCallback(const EOS_RTCAudio_UpdateSendingCallbackInfo *Data);
 
 		EOS_HLobby _lobbyInterfaceHandle;
-		EOS_HLobbyDetails _lobbyDetails;
-		std::vector<EOS_ProductUserId> _remotePeers;
-
 		EOS_HRTC _rtcInterfaceHandle;
 		EOS_HRTCAudio _rtcAudioInterfaceHandle;
 
-		EOS_NotificationId _currentAudioBeforeRenderNotificationID;
-		EOS_NotificationId _currentAudioBeforeSendNotificationID;
 		EOS_NotificationId _memberStatusReceivedNotificationID;
-
-		bool _isCreatingLobby;
-		bool _isJoiningLobby;
-
-		String *_createLobbyName;
-		String *_createLobbyLevel;
-		String *_createLobbyVersion;
-		int64 _createLobbyTimestamp;
-		bool _createLobbyHasPassword;
-		bool _isConnectedToLobby;
-		String *_connectedLobbyID;
-		bool _isConnectedLobbyOwner;
 
 		bool _isVoiceEnabled;
 		bool _isVoiceUnmixed;
 		bool _isLocalPlayerMuted;
 
 		std::vector<EOSLobbySearch *> _lobbySearches;
+		std::vector<EOSConnectedLobbyInfo *> _connectedLobbies;
 
-		std::function<void(EOSResult)> _didJoinLobbyCallback;
-
-		std::function<void(RN::String *eosUserID, RN::uint32 sampleRate, RN::uint32 channels, RN::uint32 framesCount, RN::int16 *frames)> _audioReceivedCallback;
-		std::function<void(RN::uint32 sampleRate, RN::uint32 channels, RN::uint32 framesCount, RN::int16 *frames)> _audioBeforeSendCallback;
+		std::function<void(RN::String *eosUserID, RN::uint32 sampleRate, RN::uint32 channels, RN::uint32 framesCount, RN::int16 *frames, EOSConnectedLobbyInfo *connectedLobbyInfo)> _audioReceivedCallback;
+		std::function<void(RN::uint32 sampleRate, RN::uint32 channels, RN::uint32 framesCount, RN::int16 *frames, EOSConnectedLobbyInfo *connectedLobbyInfo)> _audioBeforeSendCallback;
 
 		RNDeclareMetaAPI(EOSLobbyManager, EOSAPI)
 	};
