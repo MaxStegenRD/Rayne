@@ -133,11 +133,11 @@ namespace RN
 		{
 			RNDebug("Closed all connections");
 			_status = Disconnected;
+			HandleDidDisconnect(_clientID, 0); //OnConnectionClosedCallback is not guaranteed to be called when lobby closed, so explicitly call handler here
 			_peers.clear();
 			_idMap.clear();
 			_clientID = CLIENT_ID_NONE;
 			_hostClientID = CLIENT_ID_NONE;
-			HandleDidDisconnect(_clientID, 0); //OnConnectionClosedCallback is not guaranteed to be called when lobby closed, so explicitly call handler here
 		}
 		else
 		{

@@ -64,6 +64,7 @@ namespace RN
 
 		EOSAPI void AddHost(EOSHost *host);
 		EOSAPI void RemoveHost(EOSHost *host);
+		const Array *GetAllHosts() const { return _hosts; }
 		EOSAPI void Disconnect();
 		EOSAPI void Disconnect(EOS_ProductUserId productUserId);
 		EOSAPI void MigrateHost(EOS_ProductUserId hostProductUserId);
