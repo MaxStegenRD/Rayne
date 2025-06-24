@@ -70,7 +70,8 @@ namespace RN
 			Disconnected,
 			Connected,
 			Connecting,
-			Creating
+			Creating,
+			Disconnecting
 		};
 		
 		EOSAPI ~EOSConnectedLobbyInfo();

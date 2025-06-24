@@ -102,6 +102,8 @@ namespace RN
 	void EOSConnectedLobbyInfo::LeaveLobby()
 	{
 		if(_status != Status::Connected) return;
+		
+		_status = Status::Disconnecting;
 
 		EOS_HLobby lobbyInterfaceHandle = EOS_Platform_GetLobbyInterface(EOSWorld::GetInstance()->GetPlatformHandle());
 		if(_isHost && _remotePeers.empty())
@@ -780,7 +782,7 @@ namespace RN
 			{
 				lobbyManager->_connectedLobbies.erase(position);
 			}
-			connectedLobbyInfo->Release();
+			SafeRelease(connectedLobbyInfo);
 		}
 	}
 
@@ -1020,7 +1022,7 @@ namespace RN
 			{
 				lobbyManager->_connectedLobbies.erase(position);
 			}
-			connectedLobbyInfo->Release();
+			SafeRelease(connectedLobbyInfo);
 		}
 	}
 
@@ -1033,6 +1035,11 @@ namespace RN
 		{
 			RNDebug("Left lobby successfully");
 		}
+		else if(Data->ResultCode == EOS_EResult::EOS_AlreadyPending)
+		{
+			RNDebug("Already leaving the lobby");
+			return;
+		}
 		else
 		{
 			RNDebug("Failed leaving lobby");
@@ -1040,12 +1047,6 @@ namespace RN
 		
 		connectedLobbyInfo->_status = EOSConnectedLobbyInfo::Status::Disconnected;
 		SafeRelease(connectedLobbyInfo->_lobbyID);
-
-		auto position = std::find(lobbyManager->_connectedLobbies.begin(), lobbyManager->_connectedLobbies.end(), connectedLobbyInfo);
-		if(position != lobbyManager->_connectedLobbies.end())
-		{
-			lobbyManager->_connectedLobbies.erase(position);
-		}
 
 		if(connectedLobbyInfo->_audioBeforeRenderNotificationID != 0)
 		{
@@ -1059,6 +1060,11 @@ namespace RN
 			connectedLobbyInfo->_audioBeforeSendNotificationID = 0;
 		}
 		
+		auto position = std::find(lobbyManager->_connectedLobbies.begin(), lobbyManager->_connectedLobbies.end(), connectedLobbyInfo);
+		if(position != lobbyManager->_connectedLobbies.end())
+		{
+			lobbyManager->_connectedLobbies.erase(position);
+		}
 		SafeRelease(connectedLobbyInfo);
 	}
 
@@ -1072,6 +1078,7 @@ namespace RN
 			if(lobby->_lobbyID->IsEqual(lobbyID))
 			{
 				connectedLobbyInfo = lobby->Retain();
+				break;
 			}
 		}
 		SafeRelease(lobbyID);
@@ -1123,6 +1130,8 @@ namespace RN
 			default:
 				break;
 		}
+		
+		SafeRelease(connectedLobbyInfo);
 	}
 
 	void EOSLobbyManager::LobbyOnDestroyCallback(const EOS_Lobby_DestroyLobbyCallbackInfo *Data)
@@ -1134,6 +1143,11 @@ namespace RN
 		{
 			RNDebug("Destroyed lobby successfully");
 		}
+		else if(Data->ResultCode == EOS_EResult::EOS_AlreadyPending)
+		{
+			RNDebug("Lobby already getting destroyed");
+			return;
+		}
 		else
 		{
 			RNDebug("Failed destroying lobby");
@@ -1141,12 +1155,6 @@ namespace RN
 		
 		connectedLobbyInfo->_status = EOSConnectedLobbyInfo::Status::Disconnected;
 		SafeRelease(connectedLobbyInfo->_lobbyID);
-
-		auto position = std::find(lobbyManager->_connectedLobbies.begin(), lobbyManager->_connectedLobbies.end(), connectedLobbyInfo);
-		if(position != lobbyManager->_connectedLobbies.end())
-		{
-			lobbyManager->_connectedLobbies.erase(position);
-		}
 
 		if(connectedLobbyInfo->_audioBeforeRenderNotificationID != 0)
 		{
@@ -1160,6 +1168,11 @@ namespace RN
 			connectedLobbyInfo->_audioBeforeSendNotificationID = 0;
 		}
 		
+		auto position = std::find(lobbyManager->_connectedLobbies.begin(), lobbyManager->_connectedLobbies.end(), connectedLobbyInfo);
+		if(position != lobbyManager->_connectedLobbies.end())
+		{
+			lobbyManager->_connectedLobbies.erase(position);
+		}
 		SafeRelease(connectedLobbyInfo);
 	}
 
