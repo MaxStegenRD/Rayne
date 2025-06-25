@@ -382,9 +382,9 @@ namespace RN
 	{
 		SceneNode::Update(delta);
 
-		UpdateLifespans(delta);
-		UpdateParticles(delta);
 		SpawnParticles(delta);
+		UpdateParticles(delta);
+		UpdateLifespans(delta);
 
 		if(!_isSorted)
 			UpdateMesh();
