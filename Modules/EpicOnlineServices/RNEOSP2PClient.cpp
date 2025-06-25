@@ -523,7 +523,7 @@ namespace RN
 
 	void EOSP2PClient::Update(float delta)
 	{
-		EOSHost::Update(delta); //Needs to go first as it picks out some packets! TODO: This also handles sending new packets, would reduce some latency if this was done at the end of this method
+		EOSHost::Update(delta); //This sends regular pings and handles sending of scheduled packets
 
 		Lock();
 		if(_status == Disconnected)

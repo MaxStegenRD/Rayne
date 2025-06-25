@@ -227,7 +227,7 @@ namespace RN
 
 	void EOSServer::Update(float delta)
 	{
-		EOSHost::Update(delta);
+		EOSHost::Update(delta); //This sends regular pings and handles sending of scheduled packets
 
 		Lock();
 		
