@@ -217,32 +217,6 @@ namespace RN
 		_hosts->RemoveObjectForKey(host->GetSocketID());
 	}
 
-	void EOSWorld::Disconnect()
-	{
-		_hosts->Enumerate<EOSHost, String>([&](EOSHost *host, const String *socketID, bool &) {
-			host->Disconnect();
-		});
-	}
-
-	void EOSWorld::Disconnect(EOS_ProductUserId productUserId)
-	{
-		_hosts->Enumerate<EOSHost, String>([&](EOSHost *host, const String *socketID, bool &) {
-			host->DisconnectClient(productUserId);
-		});
-	}
-
-	void EOSWorld::MigrateHost(EOS_ProductUserId hostProductUserId)
-	{
-		_hosts->Enumerate<EOSHost, String>([&](EOSHost *host, const String *socketID, bool &) {
-			if(host->IsKindOfClass(EOSP2PClient::GetMetaClass()))
-			{
-				host->Downcast<EOSP2PClient>()->MigrateHost(hostProductUserId);
-			}
-		});
-
-		NotificationManager::GetSharedInstance()->PostNotification(kRNHostMigrated, nullptr);
-	}
-
 	EOSLobbyManager *EOSWorld::GetLobbyManager()
 	{
 		if(!_lobbyManager)

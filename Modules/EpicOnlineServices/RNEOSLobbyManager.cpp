@@ -9,6 +9,8 @@
 #include "RNEOSLobbyManager.h"
 #include "RNEOSWorld.h"
 
+#include "RNEOSP2PClient.h"
+
 #include "eos_common.h"
 #include "eos_platform_prereqs.h"
 #include "eos_sdk.h"
@@ -1094,39 +1096,65 @@ namespace RN
 		switch(Data->CurrentStatus)
 		{
 			case EOS_ELobbyMemberStatus::EOS_LMS_JOINED:
+			{
 				RNDebug("Member joined: " << Data->TargetUserId);
 				connectedLobbyInfo->AddRemotePeer(Data->TargetUserId);
 				break;
+			}
 			case EOS_ELobbyMemberStatus::EOS_LMS_LEFT:
+			{
 				RNDebug("Member left: " << Data->TargetUserId);
 				connectedLobbyInfo->RemoveRemotePeer(Data->TargetUserId);
 				break;
+			}
 			case EOS_ELobbyMemberStatus::EOS_LMS_CLOSED:
+			{
 				RNDebug("Lobby closed: " << Data->TargetUserId);
-				EOSWorld::GetInstance()->Disconnect();
+				if(connectedLobbyInfo->_associatedHost)
+				{
+					connectedLobbyInfo->_associatedHost->Disconnect();
+				}
 				break;
+			}
 			case EOS_ELobbyMemberStatus::EOS_LMS_KICKED:
 			case EOS_ELobbyMemberStatus::EOS_LMS_DISCONNECTED:
+			{
 				RNDebug("Member disconnected from lobby: " << Data->TargetUserId);
 				connectedLobbyInfo->RemoveRemotePeer(Data->TargetUserId);
 				if(Data->TargetUserId == EOSWorld::GetInstance()->GetUserID())
 				{
-					//TODO: Diconnect and MigrateHost need to somehow deal with multiple lobbies
-					EOSWorld::GetInstance()->Disconnect();
+					if(connectedLobbyInfo->_associatedHost)
+					{
+						connectedLobbyInfo->_associatedHost->Disconnect();
+					}
 				}
 				else
 				{
-					EOSWorld::GetInstance()->Disconnect(Data->TargetUserId);
+					if(connectedLobbyInfo->_associatedHost)
+					{
+						connectedLobbyInfo->_associatedHost->DisconnectClient(Data->TargetUserId);
+					}
 				}
 				break;
+			}
 			case EOS_ELobbyMemberStatus::EOS_LMS_PROMOTED:
 			{
 				RNDebug("Host migrating to: " << Data->TargetUserId);
 				connectedLobbyInfo->_isHost = EOSWorld::GetInstance()->GetUserID() == Data->TargetUserId;
-				EOSWorld::GetInstance()->MigrateHost(Data->TargetUserId);
-			}
+				
+				if(connectedLobbyInfo->_associatedHost)
+				{
+					EOSP2PClient *p2pClient = connectedLobbyInfo->_associatedHost->Downcast<EOSP2PClient>();
+					if(p2pClient)
+					{
+						p2pClient->MigrateHost(Data->TargetUserId);
+					}
 
-			break;
+					NotificationManager::GetSharedInstance()->PostNotification(kRNHostMigrated, nullptr);
+				}
+				break;
+			}
+			
 			default:
 				break;
 		}

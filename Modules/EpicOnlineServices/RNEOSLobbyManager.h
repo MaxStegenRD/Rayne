@@ -36,6 +36,7 @@ typedef uint64_t EOS_NotificationId;
 namespace RN
 {
 	class EOSWorld;
+	class EOSHost;
 
 	class EOSLobbyInfo : public Object
 	{
@@ -90,9 +91,13 @@ namespace RN
 		EOSAPI void RetrievePeers();
 		EOSAPI void AddRemotePeer(EOS_ProductUserId peerID);
 		EOSAPI void RemoveRemotePeer(EOS_ProductUserId peerID);
+		
+		EOSAPI void SetAssociatedHost(EOSHost *host) { _associatedHost = host; } //Disconnect, DisconnectClient and MigrateHost will be called on this host if it is set
 
 	private:
 		EOSAPI EOSConnectedLobbyInfo();
+		
+		EOSHost *_associatedHost;
 		
 		Status _status;
 		int64 _createTimestamp;
