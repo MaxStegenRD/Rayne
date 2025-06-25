@@ -64,7 +64,7 @@ namespace RN
 
 		EOSAPI void AddHost(EOSHost *host);
 		EOSAPI void RemoveHost(EOSHost *host);
-		const Array *GetAllHosts() const { return _hosts; }
+		const Dictionary *GetAllHosts() const { return _hosts; }
 		EOSAPI void Disconnect();
 		EOSAPI void Disconnect(EOS_ProductUserId productUserId);
 		EOSAPI void MigrateHost(EOS_ProductUserId hostProductUserId);
@@ -96,7 +96,7 @@ namespace RN
 		void CreateDeviceID();
 
 		static EOSWorld *_instance;
-		Array *_hosts;
+		Dictionary *_hosts;
 
 		std::function<void(std::function<void(String *, const String *, EOSAuthServiceType)>)> _externalLoginCallback;
 

@@ -31,6 +31,7 @@ namespace RN
 		EOSAPI size_t GetNumberOfConnectedUsers() const;
 
 	protected:
+		EOSAPI void ReceivedPacketInternal(uint8 *rawData, uint32 bytesWritten, EOS_ProductUserId senderUserID, uint8 channel) final;
 		EOSAPI virtual void Update(float delta) override;
 
 		uint8 _maxConnections;

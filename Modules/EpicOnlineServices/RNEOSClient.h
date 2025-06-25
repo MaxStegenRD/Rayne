@@ -27,7 +27,7 @@ namespace RN
 		EOSAPI void DisconnectClient(EOS_ProductUserId productUserId) override;
 
 	protected:
-		EOSAPI virtual void Update(float delta) override;
+		EOSAPI void ReceivedPacketInternal(uint8 *rawData, uint32 bytesWritten, EOS_ProductUserId senderUserID, uint8 channel) final;
 
 	private:
 		static void OnConnectionClosedCallback(const EOS_P2P_OnRemoteConnectionClosedInfo *Data);

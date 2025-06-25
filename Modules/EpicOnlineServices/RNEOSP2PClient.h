@@ -19,7 +19,7 @@ namespace RN
 	class EOSP2PClient : public EOSHost
 	{
 	public:
-		EOSAPI EOSP2PClient(bool isHost);
+		EOSAPI EOSP2PClient(bool isHost, String *socketID);
 		EOSAPI ~EOSP2PClient() override;
 
 		EOSAPI void Connect(EOS_ProductUserId remoteProductUserID);
@@ -32,6 +32,7 @@ namespace RN
 		EOSAPI bool IsHost() { return _hostClientID != CLIENT_ID_NONE && _hostClientID == _clientID; }
 
 	protected:
+		EOSAPI void ReceivedPacketInternal(uint8 *rawData, uint32 bytesWritten, EOS_ProductUserId senderUserID, uint8 channel) final;
 		EOSAPI void Update(float delta) override;
 		EOSAPI void LogPeers() const;
 		EOSAPI virtual void HandleHostMigration(){}

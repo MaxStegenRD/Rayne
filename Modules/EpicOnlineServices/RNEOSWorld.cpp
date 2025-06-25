@@ -46,7 +46,7 @@ namespace RN
 	}
 
 	EOSWorld::EOSWorld(String *productName, String *productVersion, String *productID, String *sandboxID, String *deploymentID, String *clientID, String *clientSecret, std::function<void(std::function<void(String *, const String *, EOSAuthServiceType)>)> externalLoginCallback, bool allowFallbackToDeviceID) :
-		_hosts(new Array()), _externalLoginCallback(nullptr), _loginState(LoginStateIsNotLoggedIn), _loggedInUserID(nullptr), _lobbyManager(nullptr), _allowFallbackToDeviceID(allowFallbackToDeviceID)
+		_hosts(new Dictionary()), _externalLoginCallback(nullptr), _loginState(LoginStateIsNotLoggedIn), _loggedInUserID(nullptr), _lobbyManager(nullptr), _allowFallbackToDeviceID(allowFallbackToDeviceID)
 	{
 		RN_ASSERT(!_instance, "There already is an EOSWorld!");
 
@@ -151,8 +151,52 @@ namespace RN
 	void EOSWorld::Update(float delta)
 	{
 		EOS_Platform_Tick(_platformHandle);
+		
+		//Handle all received P2P packets, get them and pass them on to the correct host
+		uint32 nextPacketSize = 0;
+		EOS_P2P_GetNextReceivedPacketSizeOptions nextPacketSizeOptions = {};
+		nextPacketSizeOptions.ApiVersion = EOS_P2P_GETNEXTRECEIVEDPACKETSIZE_API_LATEST;
+		nextPacketSizeOptions.LocalUserId = _loggedInUserID;
+		while(EOS_P2P_GetNextReceivedPacketSize(_p2pInterfaceHandle, &nextPacketSizeOptions, &nextPacketSize) == EOS_EResult::EOS_Success)
+		{
+			if(nextPacketSize < sizeof(EOSHost::ProtocolPacketHeader))
+			{
+				RNDebug("Packet too small, this is not supposed to ever happen...");
+				continue;
+			}
 
-		_hosts->Enumerate<EOSHost>([&](EOSHost *host, size_t index, bool &stop) {
+			EOS_P2P_ReceivePacketOptions receiveOptions = {};
+			receiveOptions.ApiVersion = EOS_P2P_RECEIVEPACKET_API_LATEST;
+			receiveOptions.LocalUserId = _loggedInUserID;
+			receiveOptions.MaxDataSizeBytes = nextPacketSize;
+
+			EOS_ProductUserId senderUserID;
+			EOS_P2P_SocketId socketID;
+			uint8 channel = 0;
+			uint32 bytesWritten = 0;
+
+			uint8 *rawData = new uint8[nextPacketSize];
+
+			if(EOS_P2P_ReceivePacket(_p2pInterfaceHandle, &receiveOptions, &senderUserID, &socketID, &channel, rawData, &bytesWritten) != EOS_EResult::EOS_Success)
+			{
+				RNDebug("Failed receiving Data");
+				delete[] rawData;
+				break;
+			}
+			
+			EOSHost *host = _hosts->GetObjectForKey<EOSHost>(RNSTR(socketID.SocketName));
+			if(!host)
+			{
+				RNDebug("No host found for socket id " << socketID.SocketName);
+				delete[] rawData;
+				continue;
+			}
+			
+			host->ReceivedPacketInternal(rawData, bytesWritten, senderUserID, channel);
+			delete[] rawData;
+		}
+
+		_hosts->Enumerate<EOSHost, String>([&](EOSHost *host, const String *socketID, bool &) {
 			host->Update(delta);
 		});
 	}
@@ -164,31 +208,32 @@ namespace RN
 
 	void EOSWorld::AddHost(EOSHost *host)
 	{
-		_hosts->AddObject(host);
+		RN_ASSERT(!_hosts->GetObjectForKey(host->GetSocketID()), "If multiple hosts are active, they need different socket ids!");
+		_hosts->SetObjectForKey(host, host->GetSocketID());
 	}
 
 	void EOSWorld::RemoveHost(EOSHost *host)
 	{
-		_hosts->RemoveObject(host);
+		_hosts->RemoveObjectForKey(host->GetSocketID());
 	}
 
 	void EOSWorld::Disconnect()
 	{
-		_hosts->Enumerate<EOSHost>([&](EOSHost *host, size_t, bool &) {
+		_hosts->Enumerate<EOSHost, String>([&](EOSHost *host, const String *socketID, bool &) {
 			host->Disconnect();
 		});
 	}
 
 	void EOSWorld::Disconnect(EOS_ProductUserId productUserId)
 	{
-		_hosts->Enumerate<EOSHost>([&](EOSHost *host, size_t, bool &) {
+		_hosts->Enumerate<EOSHost, String>([&](EOSHost *host, const String *socketID, bool &) {
 			host->DisconnectClient(productUserId);
 		});
 	}
 
 	void EOSWorld::MigrateHost(EOS_ProductUserId hostProductUserId)
 	{
-		_hosts->Enumerate<EOSHost>([&](EOSHost *host, size_t, bool &) {
+		_hosts->Enumerate<EOSHost, String>([&](EOSHost *host, const String *socketID, bool &) {
 			if(host->IsKindOfClass(EOSP2PClient::GetMetaClass()))
 			{
 				host->Downcast<EOSP2PClient>()->MigrateHost(hostProductUserId);

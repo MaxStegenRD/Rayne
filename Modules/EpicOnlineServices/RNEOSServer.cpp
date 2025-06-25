@@ -20,7 +20,7 @@ namespace RN
 	RNDefineMeta(EOSServer, EOSHost)
 
 	EOSServer::EOSServer(uint8 maxConnections) :
-		_maxConnections(maxConnections)
+		EOSHost(RNCSTR("FuckYeah")), _maxConnections(maxConnections)
 	{
 		Lock();
 		_status = Server;
@@ -29,7 +29,7 @@ namespace RN
 
 		EOS_P2P_SocketId socketID = {};
 		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-		strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
+		strncpy(socketID.SocketName, _socketID->GetUTF8String(), EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
 
 		EOS_P2P_AddNotifyPeerConnectionRequestOptions connectListenerOptions;
 		connectListenerOptions.ApiVersion = EOS_P2P_ADDNOTIFYPEERCONNECTIONREQUEST_API_LATEST;
@@ -72,180 +72,165 @@ namespace RN
 		_activeUserIDs.erase(userID);
 	}
 
-	void EOSServer::Update(float delta)
+	void EOSServer::ReceivedPacketInternal(uint8 *rawData, uint32 bytesWritten, EOS_ProductUserId senderUserID, uint8 channel)
 	{
-		EOSHost::Update(delta);
-
+		EOSHost::ReceivedPacketInternal(rawData, bytesWritten, senderUserID, channel);
+		if(channel == 255) return; //This is a ping, handled by the Host class
+		
 		Lock();
-		EOSWorld *world = EOSWorld::GetInstance();
+		
+		Peer &peer = _peers[senderUserID];
+		uint8 senderID = peer.clientID;
 
-		uint32 nextPacketSize = 0;
-		EOS_P2P_GetNextReceivedPacketSizeOptions nextPacketSizeOptions = {};
-		nextPacketSizeOptions.ApiVersion = EOS_P2P_GETNEXTRECEIVEDPACKETSIZE_API_LATEST;
-		nextPacketSizeOptions.LocalUserId = world->GetUserID();
-		while(EOS_P2P_GetNextReceivedPacketSize(world->GetP2PHandle(), &nextPacketSizeOptions, &nextPacketSize) == EOS_EResult::EOS_Success)
+		if(static_cast<ProtocolPacketType>(rawData[0]) == ProtocolPacketTypeReliableDataMultipart)
 		{
-			EOS_P2P_ReceivePacketOptions receiveOptions = {};
-			receiveOptions.ApiVersion = EOS_P2P_RECEIVEPACKET_API_LATEST;
-			receiveOptions.LocalUserId = world->GetUserID();
-			receiveOptions.MaxDataSizeBytes = nextPacketSize;
+			//If this is multipart data, wait for all parts before passing them on
+			ProtocolPacketHeaderMultipart packetHeader;
+			packetHeader.packetType = static_cast<ProtocolPacketType>(rawData[0]);
+			packetHeader.packetID = rawData[1];
+			packetHeader.dataPart = rawData[2] | rawData[3] << 8;
+			packetHeader.totalDataParts = rawData[4] | rawData[5] << 8;
 
-			EOS_ProductUserId senderUserID;
-			EOS_P2P_SocketId socketID;
-			uint8 channel = 0;
-			uint32 bytesWritten = 0;
+			//RNDebug("Received multipart data (" << packetHeader.packetID <<  "), part " << packetHeader.dataPart << " of " << packetHeader.totalDataParts);
 
-			uint8 *rawData = new uint8[nextPacketSize];
-
-			if(EOS_P2P_ReceivePacket(world->GetP2PHandle(), &receiveOptions, &senderUserID, &socketID, &channel, rawData, &bytesWritten) != EOS_EResult::EOS_Success)
+			if(peer._multipartPacketTotalParts.count(channel) == 0)
 			{
-				RNDebug("Failed receiving Data");
-				break;
-			}
+				//Received new multipart data!
 
-			Peer &peer = _peers[senderUserID];
-			uint8 senderID = peer.clientID;
-
-			if(static_cast<ProtocolPacketType>(rawData[0]) == ProtocolPacketTypeReliableDataMultipart)
-			{
-				//If this is multipart data, wait for all parts before passing them on
-				ProtocolPacketHeaderMultipart packetHeader;
-				packetHeader.packetType = static_cast<ProtocolPacketType>(rawData[0]);
-				packetHeader.packetID = rawData[1];
-				packetHeader.dataPart = rawData[2] | rawData[3] << 8;
-				packetHeader.totalDataParts = rawData[4] | rawData[5] << 8;
-
-				//RNDebug("Received multipart data (" << packetHeader.packetID <<  "), part " << packetHeader.dataPart << " of " << packetHeader.totalDataParts);
-
-				if(peer._multipartPacketTotalParts.count(channel) == 0)
+				if(packetHeader.dataPart != 0)
 				{
-					//Received new multipart data!
+					//Received new multipart data, but it's missing previous parts!?
+					//TODO: Consider disconnecting user? For now just skip the data. But this case means that something is seriously wrong.
+					//Nothing to clean up here, as no data exists at this point
 
-					if(packetHeader.dataPart != 0)
-					{
-						//Received new multipart data, but it's missing previous parts!?
-						//TODO: Consider disconnecting user? For now just skip the data. But this case means that something is seriously wrong.
-						//Nothing to clean up here, as no data exists at this point
-
-						RNDebug("Received multipart data but it's bad!");
-
-						continue;
-					}
-
-					peer._multipartPacketTotalParts[channel] = packetHeader.totalDataParts;
-					peer._multipartPacketCurrentPart[channel] = packetHeader.dataPart;
-					peer._multipartPacketID[channel] = packetHeader.packetID;
-					peer._multipartPacketData[channel] = new Data();
-				}
-				else
-				{
-					//Received another part of multipart data!
-
-					if(peer._multipartPacketCurrentPart[channel] + 1 != packetHeader.dataPart || peer._multipartPacketTotalParts[channel] != packetHeader.totalDataParts || peer._multipartPacketID[channel] != packetHeader.packetID)
-					{
-						//Received multipart data, but found some inconsistency
-						//TODO: Consider disconnecting user? For now just skip the data. But this case means that something is seriously wrong.
-
-						RNDebug("Received multipart data but it's bad!");
-
-						peer._multipartPacketTotalParts.erase(channel);
-						peer._multipartPacketCurrentPart.erase(channel);
-						peer._multipartPacketID.erase(channel);
-						peer._multipartPacketData[channel]->Release();
-						peer._multipartPacketData.erase(channel);
-
-						continue;
-					}
-
-					peer._multipartPacketCurrentPart[channel] = packetHeader.dataPart;
-				}
-
-				//Append data from the packet without protocol header
-				peer._multipartPacketData[channel]->Append(&rawData[6], bytesWritten - 6);
-
-				if(packetHeader.dataPart + 1 >= packetHeader.totalDataParts)
-				{
-					//RNDebug("Received full multipart data");
-
+					RNDebug("Received multipart data but it's bad!");
 					Unlock();
-					ReceivedPacket(peer._multipartPacketData[channel], senderID, channel);
-					Lock();
+					return;
+				}
+
+				peer._multipartPacketTotalParts[channel] = packetHeader.totalDataParts;
+				peer._multipartPacketCurrentPart[channel] = packetHeader.dataPart;
+				peer._multipartPacketID[channel] = packetHeader.packetID;
+				peer._multipartPacketData[channel] = new Data();
+			}
+			else
+			{
+				//Received another part of multipart data!
+
+				if(peer._multipartPacketCurrentPart[channel] + 1 != packetHeader.dataPart || peer._multipartPacketTotalParts[channel] != packetHeader.totalDataParts || peer._multipartPacketID[channel] != packetHeader.packetID)
+				{
+					//Received multipart data, but found some inconsistency
+					//TODO: Consider disconnecting user? For now just skip the data. But this case means that something is seriously wrong.
+
+					RNDebug("Received multipart data but it's bad!");
 
 					peer._multipartPacketTotalParts.erase(channel);
 					peer._multipartPacketCurrentPart.erase(channel);
 					peer._multipartPacketID.erase(channel);
 					peer._multipartPacketData[channel]->Release();
 					peer._multipartPacketData.erase(channel);
+
+					Unlock();
+					return;
+				}
+
+				peer._multipartPacketCurrentPart[channel] = packetHeader.dataPart;
+			}
+
+			//Append data from the packet without protocol header
+			peer._multipartPacketData[channel]->Append(&rawData[6], bytesWritten - 6);
+
+			if(packetHeader.dataPart + 1 >= packetHeader.totalDataParts)
+			{
+				//RNDebug("Received full multipart data");
+
+				Unlock();
+				ReceivedPacket(peer._multipartPacketData[channel], senderID, channel);
+				Lock();
+
+				peer._multipartPacketTotalParts.erase(channel);
+				peer._multipartPacketCurrentPart.erase(channel);
+				peer._multipartPacketID.erase(channel);
+				peer._multipartPacketData[channel]->Release();
+				peer._multipartPacketData.erase(channel);
+			}
+		}
+		else
+		{
+			if(peer._multipartPacketTotalParts.count(channel) != 0)
+			{
+				if(static_cast<ProtocolPacketType>(rawData[0]) == ProtocolPacketTypeReliableData)
+				{
+					//Got non-multipart reliable data on a channel that got multipart data before that is still incomplete.
+					//TODO: Consider disconnecting user? For now just skip the data. But this case means that something is seriously wrong.
+
+					RNDebug("Received multipart data but it's incomplete!");
+
+					peer._multipartPacketTotalParts.erase(channel);
+					peer._multipartPacketCurrentPart.erase(channel);
+					peer._multipartPacketID.erase(channel);
+					peer._multipartPacketData[channel]->Release();
+					peer._multipartPacketData.erase(channel);
+
+					Unlock();
+					return;
+				}
+				else
+				{
+					//Got out of order unreliable data while still waiting for multipart data. Just ignore and wait for remaining multipart data.
+					Unlock();
+					return;
 				}
 			}
-			else
+
+			size_t dataIndex = 0;
+			while(dataIndex < bytesWritten)
 			{
-				if(peer._multipartPacketTotalParts.count(channel) != 0)
+				ProtocolPacketHeader packetHeader;
+				packetHeader.packetType = static_cast<ProtocolPacketType>(rawData[dataIndex + 0]);
+				packetHeader.packetID = rawData[dataIndex + 1];
+				packetHeader.dataLength = rawData[dataIndex + 2] | (rawData[dataIndex + 3] << 8);
+
+				if(packetHeader.packetType == ProtocolPacketTypeConnectRequest)
 				{
-					if(static_cast<ProtocolPacketType>(rawData[0]) == ProtocolPacketTypeReliableData)
+					if(packetHeader.packetID == 0)
 					{
-						//Got non-multipart reliable data on a channel that got multipart data before that is still incomplete.
-						//TODO: Consider disconnecting user? For now just skip the data. But this case means that something is seriously wrong.
-
-						RNDebug("Received multipart data but it's incomplete!");
-
-						peer._multipartPacketTotalParts.erase(channel);
-						peer._multipartPacketCurrentPart.erase(channel);
-						peer._multipartPacketID.erase(channel);
-						peer._multipartPacketData[channel]->Release();
-						peer._multipartPacketData.erase(channel);
-
-						continue;
+						//This is handled in OnConnectionRequestCallback
+						//TODO: Maybe move some of it here instead to not require delayed delivery for the response
 					}
 					else
 					{
-						//Got out of order unreliable data while still waiting for multipart data. Just ignore and wait for remaining multipart data.
-						continue;
+						RNDebug("Malformed connect request");
 					}
-				}
-
-				size_t dataIndex = 0;
-				while(dataIndex < bytesWritten)
-				{
-					ProtocolPacketHeader packetHeader;
-					packetHeader.packetType = static_cast<ProtocolPacketType>(rawData[dataIndex + 0]);
-					packetHeader.packetID = rawData[dataIndex + 1];
-					packetHeader.dataLength = rawData[dataIndex + 2] | (rawData[dataIndex + 3] << 8);
-
-					if(packetHeader.packetType == ProtocolPacketTypeConnectRequest)
-					{
-						if(packetHeader.packetID == 0)
-						{
-							//This is handled in OnConnectionRequestCallback
-							//TODO: Maybe move some of it here instead to not require delayed delivery for the response
-						}
-						else
-						{
-							RNDebug("Malformed connect request");
-						}
-						dataIndex += packetHeader.dataLength + 4;
-						continue;
-					}
-
-					if(!IsPacketInOrder(packetHeader.packetType, senderUserID, packetHeader.packetID, channel) || _peers[senderUserID]._wantsDisconnect) //Don't process any more data from a user that is about to be disconnected
-					{
-						dataIndex += packetHeader.dataLength + 4;
-						continue;
-					}
-
-					//Get data object from the packet without protocol header
-					Data *data = Data::WithBytes(&rawData[dataIndex + 4], packetHeader.dataLength);
 					dataIndex += packetHeader.dataLength + 4;
-
-					Unlock();
-					ReceivedPacket(data, senderID, channel);
-					Lock();
+					continue;
 				}
+
+				if(!IsPacketInOrder(packetHeader.packetType, senderUserID, packetHeader.packetID, channel) || _peers[senderUserID]._wantsDisconnect) //Don't process any more data from a user that is about to be disconnected
+				{
+					dataIndex += packetHeader.dataLength + 4;
+					continue;
+				}
+
+				//Get data object from the packet without protocol header
+				Data *data = Data::WithBytes(&rawData[dataIndex + 4], packetHeader.dataLength);
+				dataIndex += packetHeader.dataLength + 4;
+
+				Unlock();
+				ReceivedPacket(data, senderID, channel);
+				Lock();
 			}
-
-			delete[] rawData;
 		}
+		
+		Unlock();
+	}
 
+	void EOSServer::Update(float delta)
+	{
+		EOSHost::Update(delta);
+
+		Lock();
+		
 		std::vector<uint8> peersToDisconnect;
 		for(auto &pair : _peers)
 		{
@@ -288,7 +273,7 @@ namespace RN
 
 		EOS_P2P_SocketId socketID = {};
 		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-		strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
+		strncpy(socketID.SocketName, _socketID->GetUTF8String(), EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
 
 		EOS_P2P_CloseConnectionOptions options;
 		options.ApiVersion = EOS_P2P_CLOSECONNECTION_API_LATEST;
@@ -307,7 +292,7 @@ namespace RN
 
 		EOS_P2P_SocketId socketID = {};
 		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-		strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
+		strncpy(socketID.SocketName, _socketID->GetUTF8String(), EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
 
 		EOS_P2P_CloseConnectionsOptions options;
 		options.ApiVersion = EOS_P2P_CLOSECONNECTION_API_LATEST;
@@ -341,7 +326,7 @@ namespace RN
 
 		EOS_P2P_SocketId socketID = {};
 		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-		strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
+		strncpy(socketID.SocketName, server->GetSocketID()->GetUTF8String(), EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
 
 		EOS_P2P_AcceptConnectionOptions connectionOptions;
 		connectionOptions.ApiVersion = EOS_P2P_ACCEPTCONNECTION_API_LATEST;

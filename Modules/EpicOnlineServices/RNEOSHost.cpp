@@ -24,13 +24,16 @@ namespace RN
 {
 	RNDefineMeta(EOSHost, Object)
 
-	EOSHost::EOSHost() :
-		_pingTimer(10.0), _status(Disconnected), _clientID(CLIENT_ID_NONE)
+	EOSHost::EOSHost(RN::String *socketID) :
+		_pingTimer(10.0), _status(Disconnected), _clientID(CLIENT_ID_NONE), _socketID(SafeRetain(socketID))
 	{
+		RN_ASSERT(_socketID, "Socket id needs to be set and needs to be unique per host if there are multiple!");
+		RN_ASSERT(_socketID->GetLength() < EOS_P2P_SOCKETID_SOCKETNAME_SIZE, "Socket ID length needs to be 32 or less!");
 	}
 
 	EOSHost::~EOSHost()
 	{
+		SafeRelease(_socketID);
 	}
 
 	bool EOSHost::IsPacketInOrder(ProtocolPacketType packetType, EOS_ProductUserId senderID, uint8 packetID, uint8 channel)
@@ -55,7 +58,7 @@ namespace RN
 
 		EOS_P2P_SocketId socketID = {};
 		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-		strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
+		strncpy(socketID.SocketName, _socketID->GetUTF8String(), EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
 
 		ProtocolPacketHeader packetHeader;
 		if(isResponse)
@@ -141,57 +144,11 @@ namespace RN
 		}
 	}
 
-	void EOSHost::Update(float delta)
+	void EOSHost::ReceivedPacketInternal(uint8 *rawData, uint32 bytesWritten, EOS_ProductUserId senderUserID, uint8 channel)
 	{
 		Lock();
-		EOSWorld *world = EOSWorld::GetInstance();
-
-		_pingTimer += delta;
-		if(_pingTimer > 5.0)
+		if(channel == 255) //This is a ping!
 		{
-			_pingTimer = 0.0f;
-			for(auto &pair : _peers)
-			{
-				SendPing(pair.first, false, 0);
-			}
-		}
-
-		EOS_P2P_SocketId socketID = {};
-		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-		strncpy(socketID.SocketName, "FuckYeah", EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
-
-		uint32 nextPacketSize = 0;
-		uint8 pingChannel = 255;
-		EOS_P2P_GetNextReceivedPacketSizeOptions nextPacketSizeOptions = {};
-		nextPacketSizeOptions.ApiVersion = EOS_P2P_GETNEXTRECEIVEDPACKETSIZE_API_LATEST;
-		nextPacketSizeOptions.LocalUserId = world->GetUserID();
-		nextPacketSizeOptions.RequestedChannel = &pingChannel;
-		while(EOS_P2P_GetNextReceivedPacketSize(world->GetP2PHandle(), &nextPacketSizeOptions, &nextPacketSize) == EOS_EResult::EOS_Success)
-		{
-			if(nextPacketSize < sizeof(ProtocolPacketHeader))
-			{
-				RNDebug("Packet too small, this is not supposed to ever happen...");
-				continue;
-			}
-
-			EOS_P2P_ReceivePacketOptions receiveOptions = {};
-			receiveOptions.ApiVersion = EOS_P2P_RECEIVEPACKET_API_LATEST;
-			receiveOptions.LocalUserId = world->GetUserID();
-			receiveOptions.MaxDataSizeBytes = nextPacketSize;
-			receiveOptions.RequestedChannel = &pingChannel;
-
-			EOS_ProductUserId senderUserID;
-			EOS_P2P_SocketId receivingSocketID;
-			uint8 channel = 0;
-			uint32 bytesWritten = 0;
-
-			uint8 *rawData = new uint8[nextPacketSize];
-			if(EOS_P2P_ReceivePacket(world->GetP2PHandle(), &receiveOptions, &senderUserID, &receivingSocketID, &channel, rawData, &bytesWritten) != EOS_EResult::EOS_Success)
-			{
-				RNDebug("Failed receiving Data");
-				break;
-			}
-
 			uint16 dataIndex = 0;
 			while(dataIndex < bytesWritten)
 			{
@@ -224,9 +181,28 @@ namespace RN
 
 				dataIndex += packetHeader.dataLength + 4;
 			}
-
-			delete[] rawData;
 		}
+		Unlock();
+	}
+
+	void EOSHost::Update(float delta)
+	{
+		Lock();
+		EOSWorld *world = EOSWorld::GetInstance();
+
+		_pingTimer += delta;
+		if(_pingTimer > 5.0)
+		{
+			_pingTimer = 0.0f;
+			for(auto &pair : _peers)
+			{
+				SendPing(pair.first, false, 0);
+			}
+		}
+		
+		EOS_P2P_SocketId socketID = {};
+		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
+		strncpy(socketID.SocketName, _socketID->GetUTF8String(), EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
 
 		//size_t scheduled_count = 0;
 		//size_t sent_count = 0;

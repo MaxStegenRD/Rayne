@@ -93,7 +93,7 @@ namespace RN
 			Server
 		};
 
-		EOSAPI EOSHost();
+		EOSAPI EOSHost(RN::String *socketID);
 		EOSAPI ~EOSHost() override;
 
 		EOSAPI void SendPacket(Data *data, uint8 receiverID, uint32 channel = 0, bool reliable = false);
@@ -104,9 +104,13 @@ namespace RN
 		EOSAPI double GetLastRoundtripTime(uint8 peerID);
 		EOSAPI virtual void Disconnect() = 0;
 		EOSAPI virtual void DisconnectClient(EOS_ProductUserId productUserId) = 0;
+		
+		const String *GetSocketID() const { return _socketID; }
 
 	protected:
 		EOSAPI virtual void Update(float delta);
+		
+		EOSAPI virtual void ReceivedPacketInternal(uint8 *rawData, uint32 bytesWritten, EOS_ProductUserId senderUserID, uint8 channel);
 
 		EOSAPI Peer CreatePeer(uint8 clientID, EOS_ProductUserId internalID);
 		EOSAPI uint8 GetUserIDForInternalID(EOS_ProductUserId internalID);
@@ -121,6 +125,8 @@ namespace RN
 		uint8 _clientID;
 		Status _status;
 		float _pingTimer;
+		
+		RN::String *_socketID;
 
 		std::map<EOS_ProductUserId, Peer> _peers;
 		std::map<uint8, EOS_ProductUserId> _idMap;
