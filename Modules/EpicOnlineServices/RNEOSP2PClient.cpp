@@ -130,22 +130,26 @@ namespace RN
 		options.LocalUserId = world->GetUserID();
 		options.SocketId = &socketID;
 
+		Retain();
 		if(EOS_P2P_CloseConnections(world->GetP2PHandle(), &options) == EOS_EResult::EOS_Success)
 		{
 			RNDebug("Closed all connections");
 			_status = Disconnected;
+			Unlock();
+			HandleDidDisconnect(_clientID, 0); //OnConnectionClosedCallback is not guaranteed to be called when lobby closed, so explicitly call handler here
+			Lock();
 			_peers.clear();
 			_idMap.clear();
 			_clientID = CLIENT_ID_NONE;
 			_hostClientID = CLIENT_ID_NONE;
 			Unlock();
-			HandleDidDisconnect(_clientID, 0); //OnConnectionClosedCallback is not guaranteed to be called when lobby closed, so explicitly call handler here
 		}
 		else
 		{
 			RNWarning("Failed closing all connections");
 			Unlock();
 		}
+		Release();
 	}
 	
 	void EOSP2PClient::DisconnectClient(EOS_ProductUserId productUserId)
@@ -316,7 +320,7 @@ namespace RN
 		if(channel == 255) return; //This is a ping, handled by the Host class
 		
 		Lock();
-		if(_status == Disconnected)
+		if(_status == Disconnected || _status == Disconnecting)
 		{
 			Unlock();
 			return;
@@ -526,7 +530,7 @@ namespace RN
 		EOSHost::Update(delta); //This sends regular pings and handles sending of scheduled packets
 
 		Lock();
-		if(_status == Disconnected)
+		if(_status == Disconnected || _status == Disconnecting)
 		{
 			Unlock();
 			return;

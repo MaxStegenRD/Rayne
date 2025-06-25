@@ -159,7 +159,7 @@ namespace RN
 		if(channel == 255) return; //This is a ping, handled by the Host class
 		
 		Lock();
-		if(_status == Disconnected)
+		if(_status == Disconnected || _status == Disconnecting)
 		{
 			Unlock();
 			return;
