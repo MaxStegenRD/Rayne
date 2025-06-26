@@ -113,6 +113,10 @@ namespace RN
 		platformOptions.CacheDirectory = nullptr;
 		platformOptions.TickBudgetInMilliseconds = 0; //Do all work, no matter how long
 		platformOptions.RTCOptions = &rtcOptions;
+		
+		//Does not seem to effect the initial login, which it always retries for 30 seconds anyway...
+		//double timeout = 5.0f;
+		//platformOptions.TaskNetworkTimeoutSeconds = &timeout;
 
 		_platformHandle = EOS_Platform_Create(&platformOptions);
 
@@ -152,48 +156,51 @@ namespace RN
 	{
 		EOS_Platform_Tick(_platformHandle);
 		
-		//Handle all received P2P packets, get them and pass them on to the correct host
-		uint32 nextPacketSize = 0;
-		EOS_P2P_GetNextReceivedPacketSizeOptions nextPacketSizeOptions = {};
-		nextPacketSizeOptions.ApiVersion = EOS_P2P_GETNEXTRECEIVEDPACKETSIZE_API_LATEST;
-		nextPacketSizeOptions.LocalUserId = _loggedInUserID;
-		while(EOS_P2P_GetNextReceivedPacketSize(_p2pInterfaceHandle, &nextPacketSizeOptions, &nextPacketSize) == EOS_EResult::EOS_Success)
+		if(_loginState == LoginState::LoginStateIsLoggedIn)
 		{
-			if(nextPacketSize < sizeof(EOSHost::ProtocolPacketHeader))
+			//Handle all received P2P packets, get them and pass them on to the correct host
+			uint32 nextPacketSize = 0;
+			EOS_P2P_GetNextReceivedPacketSizeOptions nextPacketSizeOptions = {};
+			nextPacketSizeOptions.ApiVersion = EOS_P2P_GETNEXTRECEIVEDPACKETSIZE_API_LATEST;
+			nextPacketSizeOptions.LocalUserId = _loggedInUserID;
+			while(EOS_P2P_GetNextReceivedPacketSize(_p2pInterfaceHandle, &nextPacketSizeOptions, &nextPacketSize) == EOS_EResult::EOS_Success)
 			{
-				RNDebug("Packet too small, this is not supposed to ever happen...");
-				continue;
-			}
-
-			EOS_P2P_ReceivePacketOptions receiveOptions = {};
-			receiveOptions.ApiVersion = EOS_P2P_RECEIVEPACKET_API_LATEST;
-			receiveOptions.LocalUserId = _loggedInUserID;
-			receiveOptions.MaxDataSizeBytes = nextPacketSize;
-
-			EOS_ProductUserId senderUserID;
-			EOS_P2P_SocketId socketID;
-			uint8 channel = 0;
-			uint32 bytesWritten = 0;
-
-			uint8 *rawData = new uint8[nextPacketSize];
-
-			if(EOS_P2P_ReceivePacket(_p2pInterfaceHandle, &receiveOptions, &senderUserID, &socketID, &channel, rawData, &bytesWritten) != EOS_EResult::EOS_Success)
-			{
-				RNDebug("Failed receiving Data");
+				if(nextPacketSize < sizeof(EOSHost::ProtocolPacketHeader))
+				{
+					RNDebug("Packet too small, this is not supposed to ever happen...");
+					continue;
+				}
+				
+				EOS_P2P_ReceivePacketOptions receiveOptions = {};
+				receiveOptions.ApiVersion = EOS_P2P_RECEIVEPACKET_API_LATEST;
+				receiveOptions.LocalUserId = _loggedInUserID;
+				receiveOptions.MaxDataSizeBytes = nextPacketSize;
+				
+				EOS_ProductUserId senderUserID;
+				EOS_P2P_SocketId socketID;
+				uint8 channel = 0;
+				uint32 bytesWritten = 0;
+				
+				uint8 *rawData = new uint8[nextPacketSize];
+				
+				if(EOS_P2P_ReceivePacket(_p2pInterfaceHandle, &receiveOptions, &senderUserID, &socketID, &channel, rawData, &bytesWritten) != EOS_EResult::EOS_Success)
+				{
+					RNDebug("Failed receiving Data");
+					delete[] rawData;
+					break;
+				}
+				
+				EOSHost *host = _hosts->GetObjectForKey<EOSHost>(RNSTR(socketID.SocketName));
+				if(!host)
+				{
+					RNDebug("No host found for socket id " << socketID.SocketName);
+					delete[] rawData;
+					continue;
+				}
+				
+				host->ReceivedPacketInternal(rawData, bytesWritten, senderUserID, channel);
 				delete[] rawData;
-				break;
 			}
-			
-			EOSHost *host = _hosts->GetObjectForKey<EOSHost>(RNSTR(socketID.SocketName));
-			if(!host)
-			{
-				RNDebug("No host found for socket id " << socketID.SocketName);
-				delete[] rawData;
-				continue;
-			}
-			
-			host->ReceivedPacketInternal(rawData, bytesWritten, senderUserID, channel);
-			delete[] rawData;
 		}
 
 		_hosts->Enumerate<EOSHost, String>([&](EOSHost *host, const String *socketID, bool &) {
