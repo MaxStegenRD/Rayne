@@ -447,7 +447,7 @@ namespace RN
 
 			if(!_inputDevice)
 			{
-				RNDebug("rayne-openal: Could not open input audio device.");
+				RNError("rayne-openal: Could not open input audio device.");
 			}
 			else
 			{
