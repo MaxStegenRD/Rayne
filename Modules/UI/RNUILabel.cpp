@@ -949,7 +949,7 @@ namespace RN
 					lastWordMaxLineOffset = maxLineOffset;
 					tempMaxLineOffset = 0.0f;
 
-					if(currentCodepoint > 0)
+					if(lastWhiteSpaceIndex > 0)
 					{
 						//TODO: To adjsut this correctly, the previous characters attributes are needed...
 						int prevCodepoint = _attributedText->GetCharacterAtIndex(lastWhiteSpaceIndex - 1);
