@@ -252,13 +252,14 @@ namespace RN
 		RNDebug("ForceDisconnect()");
 		Lock();
 		_status = Disconnected;
+		Unlock();
+		HandleDidDisconnect(_clientID, reason);
+		Lock();
 		_peers.clear();
 		_idMap.clear();
 		_clientID = CLIENT_ID_NONE;
 		_hostClientID = CLIENT_ID_NONE;
 		Unlock();
-
-		HandleDidDisconnect(_clientID, reason);
 	}
 
 	uint8 EOSP2PClient::GetUnusedClientID() const
@@ -271,7 +272,7 @@ namespace RN
 			}
 		}
 
-		return -1;
+		return CLIENT_ID_NONE;
 	}
 
 	void EOSP2PClient::AssignClientID(uint8 clientID)
@@ -290,7 +291,7 @@ namespace RN
 			ProtocolPacketHeader packetHeader;
 			packetHeader.packetType = ProtocolPacketTypeConnectResponse;
 			packetHeader.packetID = 0;
-			packetHeader.dataLength = 4;
+			packetHeader.dataLength = 2;
 
 			Data *packetData = new Data();
 			packetData->Append(&packetHeader, 4);
@@ -464,11 +465,10 @@ namespace RN
 
 				if(packetHeader.packetType == ProtocolPacketTypeConnectResponse)
 				{
-					if(packetHeader.packetID == 0 && packetHeader.dataLength == 4)
+					if(packetHeader.packetID == 0 && packetHeader.dataLength == 2)
 					{
 						uint8 remoteClientID = rawData[dataIndex]; //Client id of sender
 						uint8 ownClientID = rawData[dataIndex + 1]; //Client id sender has assigned to receiver
-						dataIndex += 2;
 						RNDebug("Received connect response from " << senderUserID << " with client ID " << remoteClientID << " and own client ID " << ownClientID);
 
 						//Received remote user ID. Do this first to add peer for client id broadcasting
@@ -500,9 +500,10 @@ namespace RN
 					}
 					else
 					{
-						dataIndex += packetHeader.dataLength;
 						RNDebug("Malformed connect response");
 					}
+					
+					dataIndex += packetHeader.dataLength;
 					continue;
 				}
 
@@ -584,7 +585,7 @@ namespace RN
 		ProtocolPacketHeader packetHeader;
 		packetHeader.packetType = ProtocolPacketTypeConnectResponse;
 		packetHeader.packetID = 0;
-		packetHeader.dataLength = 4;
+		packetHeader.dataLength = 2;
 
 		RN::Data *packetData = new RN::Data();
 		packetData->Append(&packetHeader, 4);
