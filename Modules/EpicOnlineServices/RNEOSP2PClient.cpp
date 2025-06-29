@@ -14,12 +14,14 @@
 #include "eos_p2p_types.h"
 #include "eos_platform_prereqs.h"
 
+constexpr float RN_EOS_CONNECTION_TIMEOUT = 8.0f;
+
 namespace RN
 {
 	RNDefineMeta(EOSP2PClient, EOSHost)
 
 	EOSP2PClient::EOSP2PClient(bool isHost, String *socketID_) :
-		EOSHost(socketID_)
+		EOSHost(socketID_), _connectionTimeout(0.0f)
 	{
 		Lock();
 		_status = isHost ? Connected : Disconnected;
@@ -61,6 +63,7 @@ namespace RN
 		RN_ASSERT(_status != Disconnecting, "Cannot connect in current status." + _status);
 
 		if(_status == Disconnected) _status = Connecting;
+		_connectionTimeout = 0.0f;
 
 		EOSWorld *world = EOSWorld::GetInstance();
 
@@ -89,8 +92,8 @@ namespace RN
 		if(result != EOS_EResult::EOS_Success) //TODO only do this when connecting to host failed, this should usually succeed, even if the peer is not reachable as the sending happens later!
 		{
 			RNDebug("Failed to connect to " << remoteProductUserID);
-			ForceDisconnect(0);
 			Unlock();
+			ForceDisconnect(0);
 			return;
 		}
 
@@ -250,6 +253,7 @@ namespace RN
 	void EOSP2PClient::ForceDisconnect(uint16 reason)
 	{
 		RNDebug("ForceDisconnect()");
+		Retain();
 		Lock();
 		_status = Disconnected;
 		Unlock();
@@ -260,6 +264,7 @@ namespace RN
 		_clientID = CLIENT_ID_NONE;
 		_hostClientID = CLIENT_ID_NONE;
 		Unlock();
+		Release();
 	}
 
 	uint8 EOSP2PClient::GetUnusedClientID() const
@@ -531,6 +536,17 @@ namespace RN
 		EOSHost::Update(delta); //This sends regular pings and handles sending of scheduled packets
 
 		Lock();
+		if(_status == Connecting)
+		{
+			_connectionTimeout += delta;
+			if(_connectionTimeout > RN_EOS_CONNECTION_TIMEOUT) //Give up after some time and shut down the connection
+			{
+				Unlock();
+				Disconnect();
+				Lock();
+			}
+		}
+		
 		if(_status == Disconnected || _status == Disconnecting)
 		{
 			Unlock();

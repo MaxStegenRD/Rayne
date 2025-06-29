@@ -49,6 +49,8 @@ namespace RN
 
 		uint8 GetUnusedClientID() const;
 		void AssignClientID(uint8 clientID);
+		
+		float _connectionTimeout;
 
 		RNDeclareMetaAPI(EOSP2PClient, EOSAPI)
 	};
