@@ -64,7 +64,7 @@ namespace RN
 			}
 		}
 
-		return -1;
+		return CLIENT_ID_NONE;
 	}
 
 	void EOSServer::ReleaseUserID(uint8 userID)
