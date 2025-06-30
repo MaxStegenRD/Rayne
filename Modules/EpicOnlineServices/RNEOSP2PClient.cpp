@@ -21,7 +21,7 @@ namespace RN
 	RNDefineMeta(EOSP2PClient, EOSHost)
 
 	EOSP2PClient::EOSP2PClient(bool isHost, String *socketID_) :
-		EOSHost(socketID_), _connectionTimeout(0.0f)
+		EOSHost(socketID_), _connectionTimeout(0.0f), _lastUsedClientID(0)
 	{
 		Lock();
 		_status = isHost ? Connected : Disconnected;
@@ -267,13 +267,25 @@ namespace RN
 		Release();
 	}
 
-	uint8 EOSP2PClient::GetUnusedClientID() const
+	uint8 EOSP2PClient::GetUnusedClientID()
 	{
-		for(uint8 freeID = 1; freeID < CLIENT_ID_NONE; freeID++) //Starting by 1 so nobody but the host can have 0, so now in case of the host getting migrated to a newly joined user that doesn't have an id yet, 0 can safely be picked
+		_lastUsedClientID += 1;
+		_lastUsedClientID = std::max(_lastUsedClientID, (uint8)1); //Starting by 1 so nobody but the host can have 0, so now in case of the host getting migrated to a newly joined user that doesn't have an id yet, 0 can safely be picked
+		for(; _lastUsedClientID < CLIENT_ID_NONE; _lastUsedClientID++)
 		{
-			if(_idMap.find(freeID) == _idMap.end() && freeID != _clientID)
+			if(_idMap.find(_lastUsedClientID) == _idMap.end() && _lastUsedClientID != _clientID)
 			{
-				return freeID;
+				return _lastUsedClientID;
+			}
+		}
+		
+		//Search again from the beginning before giving up
+		_lastUsedClientID = 1;
+		for(; _lastUsedClientID < CLIENT_ID_NONE; _lastUsedClientID++)
+		{
+			if(_idMap.find(_lastUsedClientID) == _idMap.end() && _lastUsedClientID != _clientID)
+			{
+				return _lastUsedClientID;
 			}
 		}
 

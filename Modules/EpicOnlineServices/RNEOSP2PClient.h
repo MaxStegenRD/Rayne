@@ -46,8 +46,10 @@ namespace RN
 		void ForceDisconnect(uint16 reason);
 		uint64 _connectionRequestNotificationID;
 		uint64 _connectionClosedNotificationID;
+		
+		uint8 _lastUsedClientID;
 
-		uint8 GetUnusedClientID() const;
+		uint8 GetUnusedClientID();
 		void AssignClientID(uint8 clientID);
 		
 		float _connectionTimeout;
