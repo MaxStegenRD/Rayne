@@ -93,7 +93,7 @@ namespace RN
 		{
 			RNDebug("Failed to connect to " << remoteProductUserID);
 			Unlock();
-			ForceDisconnect(0);
+			Disconnect();
 			return;
 		}
 
@@ -110,13 +110,6 @@ namespace RN
 		if(_status == Disconnected || _status == Disconnecting)
 		{
 			Unlock();
-			return;
-		}
-
-		if(_status == Connecting)
-		{
-			Unlock();
-			ForceDisconnect(0);
 			return;
 		}
 
@@ -150,6 +143,7 @@ namespace RN
 		else
 		{
 			RNWarning("Failed closing all connections");
+			ForceDisconnect(0);
 			Unlock();
 		}
 		Release();
