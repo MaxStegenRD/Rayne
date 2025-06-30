@@ -14,7 +14,7 @@
 #include "eos_p2p_types.h"
 #include "eos_platform_prereqs.h"
 
-constexpr float RN_EOS_CONNECTION_TIMEOUT = 8.0f;
+constexpr float RN_EOS_CONNECTION_TIMEOUT = 12.0f;
 
 namespace RN
 {
