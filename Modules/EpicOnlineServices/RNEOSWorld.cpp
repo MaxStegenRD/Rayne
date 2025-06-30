@@ -181,12 +181,11 @@ namespace RN
 				uint8 channel = 0;
 				uint32 bytesWritten = 0;
 				
-				uint8 *rawData = new uint8[nextPacketSize];
+				std::vector<uint8_t> rawData(nextPacketSize);
 				
-				if(EOS_P2P_ReceivePacket(_p2pInterfaceHandle, &receiveOptions, &senderUserID, &socketID, &channel, rawData, &bytesWritten) != EOS_EResult::EOS_Success)
+				if(EOS_P2P_ReceivePacket(_p2pInterfaceHandle, &receiveOptions, &senderUserID, &socketID, &channel, rawData.data(), &bytesWritten) != EOS_EResult::EOS_Success)
 				{
 					RNDebug("Failed receiving Data");
-					delete[] rawData;
 					break;
 				}
 				
@@ -194,12 +193,10 @@ namespace RN
 				if(!host)
 				{
 					RNDebug("No host found for socket id " << socketID.SocketName);
-					delete[] rawData;
 					continue;
 				}
 				
-				host->ReceivedPacketInternal(rawData, bytesWritten, senderUserID, channel);
-				delete[] rawData;
+				host->ReceivedPacketInternal(rawData.data(), bytesWritten, senderUserID, channel);
 			}
 		}
 
