@@ -661,7 +661,7 @@ namespace RN
 	void EOSP2PClient::OnConnectionClosedCallback(const EOS_P2P_OnRemoteConnectionClosedInfo *Data)
 	{
 		EOSP2PClient *client = static_cast<EOSP2PClient *>(Data->ClientData);
-		if(client->_peers.find(Data->RemoteUserId) == _peers.end()) return;
+		if(client->_peers.find(Data->RemoteUserId) == client->_peers.end()) return;
 		
 		uint8 id = client->_peers[Data->RemoteUserId].clientID;
 		client->_idMap.erase(id);
