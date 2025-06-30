@@ -207,8 +207,11 @@ namespace RN
 		RNDebug("Disconnecting client " << clientID << " in " << delay << " seconds");
 		Lock();
 		EOS_ProductUserId internalID = _idMap[clientID];
-		_peers[internalID]._disconnectDelay = delay;
-		_peers[internalID]._wantsDisconnect = true;
+		if(_peers.find(internalID) != _peers.end())
+		{
+			_peers[internalID]._disconnectDelay = delay;
+			_peers[internalID]._wantsDisconnect = true;
+		}
 		Unlock();
 	}
 
@@ -658,6 +661,8 @@ namespace RN
 	void EOSP2PClient::OnConnectionClosedCallback(const EOS_P2P_OnRemoteConnectionClosedInfo *Data)
 	{
 		EOSP2PClient *client = static_cast<EOSP2PClient *>(Data->ClientData);
+		if(client->_peers.find(Data->RemoteUserId) == _peers.end()) return;
+		
 		uint8 id = client->_peers[Data->RemoteUserId].clientID;
 		client->_idMap.erase(id);
 		client->_peers.erase(Data->RemoteUserId);
