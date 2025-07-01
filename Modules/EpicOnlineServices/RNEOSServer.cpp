@@ -55,7 +55,7 @@ namespace RN
 
 	uint8 EOSServer::GetUserID()
 	{
-		for(uint8 freeID = 1; freeID < _maxConnections; freeID++)
+		for(uint8 freeID = 1; freeID < std::min(_maxConnections, CLIENT_ID_RESERVED); freeID++)
 		{
 			if(!_activeUserIDs.count(freeID))
 			{
