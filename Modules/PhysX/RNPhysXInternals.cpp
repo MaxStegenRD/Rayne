@@ -25,7 +25,7 @@ namespace RN
 		}
 
 		// generate contacts for all that were not filtered above
-		pairFlags = physx::PxPairFlag::eCONTACT_DEFAULT | physx::PxPairFlag::eDETECT_CCD_CONTACT | physx::PxPairFlag::eNOTIFY_THRESHOLD_FORCE_FOUND | physx::PxPairFlag::eNOTIFY_THRESHOLD_FORCE_PERSISTS | physx::PxPairFlag::eNOTIFY_CONTACT_POINTS;
+		pairFlags = physx::PxPairFlag::eCONTACT_DEFAULT | physx::PxPairFlag::eDETECT_CCD_CONTACT | physx::PxPairFlag::eDETECT_DISCRETE_CONTACT | physx::PxPairFlag::eNOTIFY_TOUCH_FOUND | physx::PxPairFlag::eNOTIFY_TOUCH_PERSISTS | physx::PxPairFlag::eNOTIFY_CONTACT_POINTS;
 
 		// trigger the contact callback for pairs (A,B) where
 		// the filtermask of A contains the ID of B and vice versa.
@@ -86,10 +86,10 @@ namespace RN
 		{
 			const physx::PxContactPair &contactPair = pairs[i];
 
-			if(contactPair.events & physx::PxPairFlag::eNOTIFY_THRESHOLD_FORCE_FOUND || contactPair.events & physx::PxPairFlag::eNOTIFY_THRESHOLD_FORCE_PERSISTS)
+			if(contactPair.events & physx::PxPairFlag::eNOTIFY_TOUCH_FOUND || contactPair.events & physx::PxPairFlag::eNOTIFY_TOUCH_PERSISTS)
 			{
 				PhysXCollisionObject::ContactState contactState = PhysXCollisionObject::ContactState::Begin;
-				if(contactPair.events & physx::PxPairFlag::eNOTIFY_THRESHOLD_FORCE_PERSISTS)
+				if(contactPair.events & physx::PxPairFlag::eNOTIFY_TOUCH_PERSISTS)
 				{
 					contactState = PhysXCollisionObject::ContactState::Continue;
 				}
