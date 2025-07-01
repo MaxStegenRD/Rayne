@@ -1077,7 +1077,7 @@ namespace RN
 		String *lobbyID = new String(Data->LobbyId);
 		for(auto lobby : lobbyManager->_connectedLobbies)
 		{
-			if(lobby->_lobbyID->IsEqual(lobbyID))
+			if(lobby->_lobbyID && lobby->_lobbyID->IsEqual(lobbyID)) //If the lobbyID is null, the player is likely already in the process of disconnecting
 			{
 				connectedLobbyInfo = lobby->Retain();
 				break;
