@@ -468,7 +468,7 @@ namespace RN
 		return connectedLobbyInfo;
 	}
 
-	void EOSLobbyManager::SearchLobby(bool includePrivate, bool includePublic, uint32 maxResults, std::function<void(EOSResult, RN::Array *)> callback, const RN::String *lobbyID, RN::Array *searchFilter)
+	void EOSLobbyManager::SearchLobby(bool includePrivate, bool includePublic, uint32 maxResults, std::function<void(EOSResult, RN::Array *)> callback, const RN::String *lobbyID, RN::Array *searchFilter, const RN::String *eosUserID)
 	{
 		if(EOSWorld::GetInstance()->GetLoginState() != EOSWorld::LoginStateIsLoggedIn)
 		{
@@ -496,7 +496,14 @@ namespace RN
 			return;
 		}
 
-		if(lobbyID)
+		if(eosUserID)
+		{
+			EOS_LobbySearch_SetTargetUserIdOptions targetUserIDOptions = {0};
+			targetUserIDOptions.ApiVersion = EOS_LOBBYSEARCH_SETTARGETUSERID_API_LATEST;
+			targetUserIDOptions.TargetUserId = EOSWorld::GetInstance()->GetUserIDFromString(eosUserID);
+			EOS_LobbySearch_SetTargetUserId(searchData->handle, &targetUserIDOptions);
+		}
+		else if(lobbyID)
 		{
 			EOS_LobbySearch_SetLobbyIdOptions lobbyIDOptions = {0};
 			lobbyIDOptions.ApiVersion = EOS_LOBBYSEARCH_SETLOBBYID_API_LATEST;

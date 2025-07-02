@@ -184,7 +184,7 @@ namespace RN
 
 		EOSAPI EOSConnectedLobbyInfo *CreateLobby(int64 createLobbyTimestamp, String *lobbyName, String *lobbyLevel, uint8 maxUsers, std::function<void(EOSResult, EOSConnectedLobbyInfo *)> callback, String *lobbyVersion, bool hasPassword, const String *lobbyIDOverride = nullptr);
 		EOSAPI EOSConnectedLobbyInfo *JoinLobby(EOSLobbyInfo *lobbyInfo, std::function<void(EOSResult, EOSConnectedLobbyInfo *)> callback);
-		EOSAPI void SearchLobby(bool includePrivate, bool includePublic, uint32 maxResults, std::function<void(EOSResult, RN::Array *)> callback, const RN::String *lobbyID = nullptr, RN::Array *searchFilter = nullptr);
+		EOSAPI void SearchLobby(bool includePrivate, bool includePublic, uint32 maxResults, std::function<void(EOSResult, RN::Array *)> callback, const RN::String *lobbyID = nullptr, RN::Array *searchFilter = nullptr, const RN::String *eosUserID = nullptr);
 		EOSAPI void ResetLobbySearchCallback();
 		
 		std::vector<EOSConnectedLobbyInfo *> GetConnectedLobbies() const { return _connectedLobbies; }
