@@ -5,6 +5,9 @@
 //  Copyright 2015 by Überpixel. All rights reserved.
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
+
+#include <zlib.h>
+
 #include "../Base/RNBase.h"
 #include <fcntl.h>
 #if RN_PLATFORM_POSIX
@@ -21,8 +24,6 @@
 #include "RNData.h"
 #include "RNSerialization.h"
 #include "RNString.h"
-
-#include <zlib.h>
 
 #define kRNDataIncreaseLength 64
 #define kRNDataReadBufferSize 1024

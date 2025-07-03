@@ -299,7 +299,8 @@ set(INCLUDE_DIRECTORIES
         ${jansson_BINARY_DIR}/include
         ${libpng_SOURCE_DIR}
         ${libpng_BINARY_DIR}
-        ${zlib_SOURCE_DIR})
+        ${zlib_SOURCE_DIR}
+        ${zlib_BINARY_DIR})
 
 set(COMPILE_OPTIONS "")
 set(LINK_LIBRARIES "")
