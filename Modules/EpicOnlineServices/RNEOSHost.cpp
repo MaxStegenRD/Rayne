@@ -346,4 +346,11 @@ namespace RN
 	{
 		return _peers[_idMap[peerID]].smoothedRoundtripTime;
 	}
+
+	bool EOSHost::HasClient(RN::uint8 clientID)
+	{
+		if(_idMap.find(clientID) == _idMap.end()) return false;
+		if(_peers.find(_idMap.at(clientID)) == _peers.end()) return false;
+		return true;
+	}
 } // namespace RN
