@@ -353,4 +353,13 @@ namespace RN
 		if(_peers.find(_idMap.at(clientID)) == _peers.end()) return false;
 		return true;
 	}
+
+	bool EOSHost::HasClient(const RN::String *eosUserIDString)
+	{
+		if(!eosUserIDString) return false;
+
+		EOS_ProductUserId eosID = EOSWorld::GetInstance()->GetUserIDFromString(eosUserIDString);
+		if(_peers.find(eosID) == _peers.end()) return false;
+		return true;
+	}
 } // namespace RN

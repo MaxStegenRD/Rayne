@@ -107,6 +107,7 @@ namespace RN
 		EOSAPI virtual void DisconnectClient(EOS_ProductUserId productUserId) = 0;
 		
 		EOSAPI virtual bool HasClient(RN::uint8 clientID);
+		EOSAPI virtual bool HasClient(const RN::String *eosUserIDString);
 		
 		const String *GetSocketID() const { return _socketID; }
 
