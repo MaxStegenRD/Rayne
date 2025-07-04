@@ -1042,7 +1042,7 @@ namespace RN
 
 		if(Data->ResultCode == EOS_EResult::EOS_Success)
 		{
-			RNDebug("Left lobby successfully");
+			RNInfo("Left lobby successfully");
 		}
 		else if(Data->ResultCode == EOS_EResult::EOS_AlreadyPending)
 		{
@@ -1051,7 +1051,7 @@ namespace RN
 		}
 		else
 		{
-			RNDebug("Failed leaving lobby");
+			RNInfo("Failed leaving lobby");
 		}
 		
 		connectedLobbyInfo->_status = EOSConnectedLobbyInfo::Status::Disconnected;
@@ -1098,7 +1098,7 @@ namespace RN
 			return;
 		}
 		
-		RNDebug("Lobby member status received for " << Data->TargetUserId << " in lobby " << Data->LobbyId);
+		RNDebug("Lobby member status received for " << Data->TargetUserId << " in lobby " << Data->LobbyId << " with status " << (size_t)Data->CurrentStatus);
 
 		switch(Data->CurrentStatus)
 		{
