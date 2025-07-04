@@ -126,26 +126,25 @@ namespace RN
 		options.LocalUserId = world->GetUserID();
 		options.SocketId = &socketID;
 
-		Retain();
 		if(EOS_P2P_CloseConnections(world->GetP2PHandle(), &options) == EOS_EResult::EOS_Success)
 		{
 			RNDebug("Closed all connections");
-			_status = Disconnected;
-			Unlock();
-			HandleDidDisconnect(_clientID, 0); //OnConnectionClosedCallback is not guaranteed to be called when lobby closed, so explicitly call handler here
-			Lock();
-			_peers.clear();
-			_idMap.clear();
-			_clientID = CLIENT_ID_NONE;
-			_hostClientID = CLIENT_ID_NONE;
-			Unlock();
 		}
 		else
 		{
 			RNWarning("Failed closing all connections");
-			ForceDisconnect(0);
-			Unlock();
 		}
+		
+		Retain();
+		_status = Disconnected;
+		Unlock();
+		HandleDidDisconnect(_clientID, 0); //OnConnectionClosedCallback is not guaranteed to be called when lobby closed, so explicitly call handler here
+		Lock();
+		_peers.clear();
+		_idMap.clear();
+		_clientID = CLIENT_ID_NONE;
+		_hostClientID = CLIENT_ID_NONE;
+		Unlock();
 		Release();
 	}
 	
@@ -245,23 +244,6 @@ namespace RN
 		{
 			HandleHostMigration();
 		}
-	}
-
-	void EOSP2PClient::ForceDisconnect(uint16 reason)
-	{
-		RNDebug("ForceDisconnect()");
-		Retain();
-		Lock();
-		_status = Disconnected;
-		Unlock();
-		HandleDidDisconnect(_clientID, reason);
-		Lock();
-		_peers.clear();
-		_idMap.clear();
-		_clientID = CLIENT_ID_NONE;
-		_hostClientID = CLIENT_ID_NONE;
-		Unlock();
-		Release();
 	}
 
 	uint8 EOSP2PClient::GetUnusedClientID()

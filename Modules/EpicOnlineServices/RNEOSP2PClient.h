@@ -43,7 +43,6 @@ namespace RN
 		static void OnConnectionRequestCallback(const EOS_P2P_OnIncomingConnectionRequestInfo *Data);
 		static void OnConnectionClosedCallback(const EOS_P2P_OnRemoteConnectionClosedInfo *Data);
 
-		void ForceDisconnect(uint16 reason);
 		uint64 _connectionRequestNotificationID;
 		uint64 _connectionClosedNotificationID;
 		
