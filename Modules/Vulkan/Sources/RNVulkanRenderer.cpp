@@ -317,8 +317,15 @@ namespace RN
 		_internals->swapChains.clear();
 //		_currentRootSignature = nullptr;
 
-        UpdateFrameFences(); //Releases resources of frames that finished
-        CreateMipMaps();
+		UpdateFrameFences(); //Releases resources of frames that finished
+
+		if(_currentFrame - _completedFrame > 4)
+		{
+			//RNDebug("Too many frames in-flight, ignore this one");
+			return; //Don't submit a new frame if there are already 5 frames in flight
+		}
+
+		CreateMipMaps();
 
 		_currentResourcesCommandBufferLock.Lock();
 		VulkanCommandBuffer *resourcesCommandBuffer = _currentResourcesCommandBuffer;
