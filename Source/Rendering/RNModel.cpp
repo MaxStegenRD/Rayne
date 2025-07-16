@@ -337,10 +337,8 @@ namespace RN
 
 		LODStage *stage = GetLODStage(0);
 
-		for(LODStage::Group &group : stage->_groups)
+		for(Mesh *mesh : stage->_meshes)
 		{
-			Mesh *mesh = group._mesh;
-
 			mesh->CalculateBoundingVolumes();
 			_boundingBox += mesh->GetBoundingBox();
 		}

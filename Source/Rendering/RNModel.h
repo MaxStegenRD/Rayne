@@ -32,84 +32,63 @@ namespace RN
 			friend class Entity;
 
 			LODStage(float distance) :
+				_count(0),
 				_distance(distance)
 			{}
 
 			LODStage(const LODStage *other) :
 				_distance(other->_distance),
-				_groups(other->_groups),
+				_count(other->_count),
 				_index(other->_index)
 			{
-				for(size_t i = 0; i < GetCount(); i++)
+				_meshes.reserve(_count);
+				_materials.reserve(_count);
+				for(size_t i = 0; i < _count; i++)
 				{
-					auto &group = _groups[i];
-					group._material->Autorelease();
-					group._material = group._material->Copy();
+					_meshes.push_back(other->_meshes[i]->Retain());
+					_materials.push_back(other->_materials[i]->Copy());
+				}
+			}
+
+			~LODStage()
+			{
+				for(size_t i = 0; i < _count; i++)
+				{
+					_meshes[i]->Release();
+					_materials[i]->Release();
 				}
 			}
 
 			void AddMesh(Mesh *mesh, Material *material)
 			{
-				_groups.emplace_back(mesh, material);
+				_meshes.push_back(mesh->Retain());
+				_materials.push_back(material->Retain());
+				_count = _meshes.size();
 			}
 
 			void ReplaceMesh(Mesh *mesh, size_t index)
 			{
-				auto &group = _groups[index];
-				group._mesh->Autorelease();
-				group._mesh = mesh->Retain();
+				_meshes[index]->Autorelease();
+				_meshes[index] = mesh->Retain();
 			}
 			void ReplaceMaterial(Material *material, size_t index)
 			{
-				auto &group = _groups[index];
-				group._material->Autorelease();
-				group._material = material->Retain();
+				_materials[index]->Autorelease();
+				_materials[index] = material->Retain();
 			}
 
-			Mesh *GetMeshAtIndex(size_t index) const { return _groups[index]._mesh; }
-			Material *GetMaterialAtIndex(size_t index) const { return _groups[index]._material; }
+			Mesh *GetMeshAtIndex(size_t index) const { return _meshes[index]; }
+			Material *GetMaterialAtIndex(size_t index) const { return _materials[index]; }
 
-			size_t GetCount() const { return _groups.size(); }
+			size_t GetCount() const { return _count; }
 			size_t GetIndex() const { return _index; }
 			float GetDistance() const { return _distance; }
 
 		private:
-			struct Group
-			{
-				Group(Mesh *mesh, Material *material) :
-					_material(material->Retain()),
-					_mesh(mesh->Retain())
-				{}
-
-				Group(const Group &other) :
-					_material(other._material->Retain()),
-					_mesh(other._mesh->Retain())
-				{}
-
-				Group &operator=(const Group &other)
-				{
-					_material->Autorelease();
-					_mesh->Autorelease();
-
-					_material = other._material->Retain();
-					_mesh = other._mesh->Retain();
-
-					return *this;
-				}
-
-				~Group()
-				{
-					_material->Release();
-					_mesh->Release();
-				}
-
-
-				Material *_material;
-				Mesh *_mesh;
-			};
-
+			size_t _count;
 			float _distance;
-			std::vector<Group> _groups;
+			std::vector<Material*> _materials;
+			std::vector<Mesh*> _meshes;
 			size_t _index;
 
 			__RNDeclareMetaInternal(LODStage)
