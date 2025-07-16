@@ -366,7 +366,7 @@ namespace RN
 			_firstFrame = false;
 		}
 
-		_time += _delta;
+		_time.store(_time.load(std::memory_order_relaxed) + _delta, std::memory_order_relaxed);
 
 		_application->WillStep(static_cast<float>(_delta));
 

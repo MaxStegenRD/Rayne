@@ -47,7 +47,7 @@ namespace RN
 
 		RNAPI void SetMaxFPS(uint32 maxFPS);
 
-		double GetTotalTime() const { return _time; }
+		double GetTotalTime() const { return _time.load(std::memory_order_relaxed); }
 		float GetScaleFactor() const { return 1.0f; }
 
 		bool GetWantsToExit() const { return _wantsToExit; }
@@ -153,7 +153,7 @@ namespace RN
 
 		bool _wantsToExit;
 
-		double _time;
+		std::atomic<double> _time;
 		double _delta;
 
 		bool _isActive;
