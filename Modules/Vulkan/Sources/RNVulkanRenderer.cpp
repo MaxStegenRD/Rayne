@@ -77,7 +77,7 @@ namespace RN
 		VkCommandPoolCreateInfo cmdPoolInfo = {};
 		cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		cmdPoolInfo.queueFamilyIndex = device->GetWorkQueue();
-		cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+		cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT | VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
 		RNVulkanValidate(vk::CreateCommandPool(device->GetDevice(), &cmdPoolInfo, nullptr, &_commandPool));
 
 		//Create additional command pool for resource loading
@@ -364,9 +364,8 @@ namespace RN
             submitInfo.signalSemaphoreCount = 1;
             submitInfo.pSignalSemaphores = &resourceUploadsSemaphore;
 
-			std::vector<VkPipelineStageFlags> pipelineStageFlags;
-			pipelineStageFlags.push_back(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-			submitInfo.pWaitDstStageMask = pipelineStageFlags.data();
+			VkPipelineStageFlags pipelineStageFlags[] = {VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT};
+			submitInfo.pWaitDstStageMask = pipelineStageFlags;
 
 			RNVulkanValidate(vk::QueueSubmit(_workQueue, 1, &submitInfo, VK_NULL_HANDLE));
 
@@ -550,11 +549,7 @@ namespace RN
 		submitInfo.signalSemaphoreCount = renderSemaphores.size();
 		submitInfo.pSignalSemaphores = renderSemaphores.data();
 
-		std::vector<VkPipelineStageFlags> pipelineStageFlags;
-		for(int i = 0; i < presentSemaphores.size(); i++)
-		{
-			pipelineStageFlags.push_back(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-		}
+		std::vector<VkPipelineStageFlags> pipelineStageFlags(presentSemaphores.size(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
 		submitInfo.pWaitDstStageMask = pipelineStageFlags.data();
 
 		RNVulkanValidate(vk::QueueSubmit(_workQueue, 1, &submitInfo, _frameFences[_currentFrameFenceIndex]));
