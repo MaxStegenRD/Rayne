@@ -85,11 +85,6 @@ namespace RN
 			RNAPI Properties(const Properties &properties);
 			RNAPI ~Properties();
 
-			uint8 colorWriteMask;
-
-			DepthMode depthMode;
-			bool depthWriteEnabled;
-
 			Color ambientColor;
 			Color diffuseColor;
 			Color specularColor;
@@ -105,22 +100,8 @@ namespace RN
 			Vector2 uiOffset;
 			Color uiOutlineColor;
 
-			//TODO: Changing anything but colors and custom uniforms should only be allowed on creation, but not after already used for rendering as the renderers will only switch the pipeline state if the material was changed and these properties require a new pipeline state
-			bool usePolygonOffset;
-			float polygonOffsetFactor;
-			float polygonOffsetUnits;
-
-			bool useAlphaToCoverage;
 			Vector2 alphaToCoverageClamp;
 			float textureTileFactor;
-			CullMode cullMode;
-
-			BlendOperation blendOperationRGB;
-			BlendOperation blendOperationAlpha;
-			BlendFactor blendFactorSourceRGB;
-			BlendFactor blendFactorDestinationRGB;
-			BlendFactor blendFactorSourceAlpha;
-			BlendFactor blendFactorDestinationAlpha;
 
 			RNAPI void CopyFromProperties(const Properties &properties);
 
@@ -131,6 +112,37 @@ namespace RN
 
 		private:
 			std::map<const size_t, Object *> _customShaderUniforms; //WARNING: The key is the hash of the string, which could potentially have conflicts!
+		};
+		
+		class PipelineProperties
+		{
+			friend Material;
+
+		public:
+			RNAPI PipelineProperties();
+			RNAPI PipelineProperties(const PipelineProperties &properties);
+			RNAPI ~PipelineProperties();
+
+			uint8 colorWriteMask;
+
+			DepthMode depthMode;
+			bool depthWriteEnabled;
+
+			bool usePolygonOffset;
+			float polygonOffsetFactor;
+			float polygonOffsetUnits;
+
+			bool useAlphaToCoverage;
+			CullMode cullMode;
+
+			BlendOperation blendOperationRGB;
+			BlendOperation blendOperationAlpha;
+			BlendFactor blendFactorSourceRGB;
+			BlendFactor blendFactorDestinationRGB;
+			BlendFactor blendFactorSourceAlpha;
+			BlendFactor blendFactorDestinationAlpha;
+
+			RNAPI void CopyFromPipelineProperties(const PipelineProperties &properties);
 		};
 
 		RN_OPTIONS(Override, uint32,
@@ -203,11 +215,6 @@ namespace RN
 		RNAPI Shader *GetFragmentShader(Shader::UsageHint type = Shader::UsageHint::Default) const;
 		RNAPI Shader *GetVertexShader(Shader::UsageHint type = Shader::UsageHint::Default) const;
 
-		uint8 GetColorWriteMask() const { return _properties.colorWriteMask; }
-
-		DepthMode GetDepthMode() const { return _properties.depthMode; }
-		bool GetDepthWriteEnabled() const { return _properties.depthWriteEnabled; }
-
 		const Color &GetAmbientColor() const { return _properties.ambientColor; }
 		const Color &GetDiffuseColor() const { return _properties.diffuseColor; }
 		const Color &GetSpecularColor() const { return _properties.specularColor; }
@@ -218,18 +225,24 @@ namespace RN
 
 		const Array *GetTextures() const { return _textures; }
 		float GetTextureTileFactor() const { return _properties.textureTileFactor; }
-		CullMode GetCullMode() const { return _properties.cullMode; }
-
-		bool GetUsePolygonOffset() const { return _properties.usePolygonOffset; }
-		float GetPolygonOffsetFactor() const { return _properties.polygonOffsetFactor; }
-		float GetPolygonOffsetUnits() const { return _properties.polygonOffsetUnits; }
-
-		bool GetUseAlphaToCoverage() const { return _properties.useAlphaToCoverage; }
 		Vector2 GetAlphaToCoverageClamp() const { return _properties.alphaToCoverageClamp; }
+		
+		uint8 GetColorWriteMask() const { return _pipelineProperties.colorWriteMask; }
+		DepthMode GetDepthMode() const { return _pipelineProperties.depthMode; }
+		bool GetDepthWriteEnabled() const { return _pipelineProperties.depthWriteEnabled; }
+		CullMode GetCullMode() const { return _pipelineProperties.cullMode; }
+
+		bool GetUsePolygonOffset() const { return _pipelineProperties.usePolygonOffset; }
+		float GetPolygonOffsetFactor() const { return _pipelineProperties.polygonOffsetFactor; }
+		float GetPolygonOffsetUnits() const { return _pipelineProperties.polygonOffsetUnits; }
+
+		bool GetUseAlphaToCoverage() const { return _pipelineProperties.useAlphaToCoverage; }
 
 		const Properties &GetProperties() const { return _properties; }
-
 		RNAPI const Properties &GetMergedProperties(Material *overrideMaterial);
+		
+		const PipelineProperties &GetPipelineProperties() const { return _pipelineProperties; }
+		RNAPI const PipelineProperties &GetMergedPipelineProperties(Material *overrideMaterial);
 
 	private:
 		Override _override;
@@ -242,7 +255,11 @@ namespace RN
 		bool _skipRendering;
 
 		Properties _properties;
-		Properties _mergedProperties; //Used as temporary storage for the merged properties, to prevent reallocation, but could be reused between materials too...
+		PipelineProperties _pipelineProperties;
+		
+		//Used as temporary storage for the merged properties, to prevent reallocation, but could be reused between materials too...
+		Properties _mergedProperties;
+		PipelineProperties _mergedPipelineProperties;
 
 		__RNDeclareMetaInternal(Material)
 	};

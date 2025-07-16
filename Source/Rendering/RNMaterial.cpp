@@ -14,7 +14,7 @@ namespace RN
 	RNDefineMeta(Material, Object)
 
 	Material::Properties::Properties() :
-		colorWriteMask(0xf), depthMode(DepthMode::Greater), depthWriteEnabled(true), ambientColor(Color(0.5f, 0.5f, 0.5f, 1.0f)), diffuseColor(Color(1.0f, 1.0f, 1.0f, 1.0f)), specularColor(Color(1.0f, 1.0f, 1.0f, 4.0f)), emissiveColor(Color(0.0f, 0.0f, 0.0f, 0.0f)), usePolygonOffset(false), polygonOffsetFactor(-1.1f), polygonOffsetUnits(-0.1f), useAlphaToCoverage(false), alphaToCoverageClamp(1.0f), textureTileFactor(1.0f), cullMode(CullMode::BackFace), blendOperationRGB(BlendOperation::None), blendOperationAlpha(BlendOperation::None), blendFactorSourceRGB(BlendFactor::SourceAlpha), blendFactorDestinationRGB(BlendFactor::OneMinusSourceAlpha), blendFactorSourceAlpha(BlendFactor::One), blendFactorDestinationAlpha(BlendFactor::One)
+		ambientColor(Color(0.5f, 0.5f, 0.5f, 1.0f)), diffuseColor(Color(1.0f, 1.0f, 1.0f, 1.0f)), specularColor(Color(1.0f, 1.0f, 1.0f, 4.0f)), emissiveColor(Color(0.0f, 0.0f, 0.0f, 0.0f)), alphaToCoverageClamp(1.0f), textureTileFactor(1.0f)
 	{
 	}
 
@@ -33,26 +33,12 @@ namespace RN
 
 	void Material::Properties::CopyFromProperties(const Properties &properties)
 	{
-		colorWriteMask = properties.colorWriteMask;
-		depthMode = properties.depthMode;
-		depthWriteEnabled = properties.depthWriteEnabled;
 		ambientColor = properties.ambientColor;
 		diffuseColor = properties.diffuseColor;
 		specularColor = properties.specularColor;
 		emissiveColor = properties.emissiveColor;
-		usePolygonOffset = properties.usePolygonOffset;
-		polygonOffsetFactor = properties.polygonOffsetFactor;
-		polygonOffsetUnits = properties.polygonOffsetUnits;
-		useAlphaToCoverage = properties.useAlphaToCoverage;
 		alphaToCoverageClamp = properties.alphaToCoverageClamp;
 		textureTileFactor = properties.textureTileFactor;
-		cullMode = properties.cullMode;
-		blendOperationRGB = properties.blendOperationRGB;
-		blendOperationAlpha = properties.blendOperationAlpha;
-		blendFactorSourceRGB = properties.blendFactorSourceRGB;
-		blendFactorDestinationRGB = properties.blendFactorDestinationRGB;
-		blendFactorSourceAlpha = properties.blendFactorSourceAlpha;
-		blendFactorDestinationAlpha = properties.blendFactorDestinationAlpha;
 
 		customMatrix1 = properties.customMatrix1;
 		customMatrix2 = properties.customMatrix2;
@@ -102,6 +88,39 @@ namespace RN
 		return nullptr;
 	}
 
+	Material::PipelineProperties::PipelineProperties() :
+		colorWriteMask(0xf), depthMode(DepthMode::Greater), depthWriteEnabled(true), usePolygonOffset(false), polygonOffsetFactor(-1.1f), polygonOffsetUnits(-0.1f), useAlphaToCoverage(false), cullMode(CullMode::BackFace), blendOperationRGB(BlendOperation::None), blendOperationAlpha(BlendOperation::None), blendFactorSourceRGB(BlendFactor::SourceAlpha), blendFactorDestinationRGB(BlendFactor::OneMinusSourceAlpha), blendFactorSourceAlpha(BlendFactor::One), blendFactorDestinationAlpha(BlendFactor::One)
+	{
+	}
+
+	Material::PipelineProperties::PipelineProperties(const PipelineProperties &properties)
+	{
+		CopyFromPipelineProperties(properties);
+	}
+
+	Material::PipelineProperties::~PipelineProperties()
+	{
+
+	}
+
+	void Material::PipelineProperties::CopyFromPipelineProperties(const PipelineProperties &properties)
+	{
+		colorWriteMask = properties.colorWriteMask;
+		depthMode = properties.depthMode;
+		depthWriteEnabled = properties.depthWriteEnabled;
+		usePolygonOffset = properties.usePolygonOffset;
+		polygonOffsetFactor = properties.polygonOffsetFactor;
+		polygonOffsetUnits = properties.polygonOffsetUnits;
+		useAlphaToCoverage = properties.useAlphaToCoverage;
+		cullMode = properties.cullMode;
+		blendOperationRGB = properties.blendOperationRGB;
+		blendOperationAlpha = properties.blendOperationAlpha;
+		blendFactorSourceRGB = properties.blendFactorSourceRGB;
+		blendFactorDestinationRGB = properties.blendFactorDestinationRGB;
+		blendFactorSourceAlpha = properties.blendFactorSourceAlpha;
+		blendFactorDestinationAlpha = properties.blendFactorDestinationAlpha;
+	}
+
 	Material::Material(Shader *vertexShader, Shader *fragmentShader) :
 		_override(0),
 		_textures(new Array()),
@@ -129,7 +148,8 @@ namespace RN
 		_override(other->_override),
 		_textures(SafeCopy(other->_textures)),
 		_skipRendering(other->_skipRendering),
-		_properties(other->_properties)
+		_properties(other->_properties),
+		_pipelineProperties(other->_pipelineProperties)
 	{
 		for(uint8 i = 0; i < static_cast<uint8>(Shader::UsageHint::COUNT); i++)
 		{
@@ -205,25 +225,25 @@ namespace RN
 
 	void Material::SetColorWriteMask(bool writeRed, bool writeGreen, bool writeBlue, bool writeAlpha)
 	{
-		_properties.colorWriteMask = 0;
+		_pipelineProperties.colorWriteMask = 0;
 
 		if(writeRed)
-			_properties.colorWriteMask |= (1 << 0);
+			_pipelineProperties.colorWriteMask |= (1 << 0);
 		if(writeGreen)
-			_properties.colorWriteMask |= (1 << 1);
+			_pipelineProperties.colorWriteMask |= (1 << 1);
 		if(writeBlue)
-			_properties.colorWriteMask |= (1 << 2);
+			_pipelineProperties.colorWriteMask |= (1 << 2);
 		if(writeAlpha)
-			_properties.colorWriteMask |= (1 << 3);
+			_pipelineProperties.colorWriteMask |= (1 << 3);
 	}
 
 	void Material::SetDepthWriteEnabled(bool depthWrite)
 	{
-		_properties.depthWriteEnabled = depthWrite;
+		_pipelineProperties.depthWriteEnabled = depthWrite;
 	}
 	void Material::SetDepthMode(DepthMode mode)
 	{
-		_properties.depthMode = mode;
+		_pipelineProperties.depthMode = mode;
 	}
 
 	void Material::SetTextureTileFactor(float factor)
@@ -259,19 +279,19 @@ namespace RN
 
 	void Material::SetCullMode(CullMode mode)
 	{
-		_properties.cullMode = mode;
+		_pipelineProperties.cullMode = mode;
 	}
 
 	void Material::SetPolygonOffset(bool enable, float factor, float units)
 	{
-		_properties.usePolygonOffset = enable;
-		_properties.polygonOffsetFactor = -factor;
-		_properties.polygonOffsetUnits = -units;
+		_pipelineProperties.usePolygonOffset = enable;
+		_pipelineProperties.polygonOffsetFactor = -factor;
+		_pipelineProperties.polygonOffsetUnits = -units;
 	}
 
 	void Material::SetAlphaToCoverage(bool enabled, float min, float max)
 	{
-		_properties.useAlphaToCoverage = enabled;
+		_pipelineProperties.useAlphaToCoverage = enabled;
 		_properties.alphaToCoverageClamp.x = min;
 		_properties.alphaToCoverageClamp.y = max;
 	}
@@ -294,20 +314,20 @@ namespace RN
 	void Material::SetBlendOperation(BlendOperation blendOperationRGB, BlendOperation blendOperationAlpha)
 	{
 		RN_ASSERT((blendOperationRGB != BlendOperation::None && blendOperationAlpha != BlendOperation::None) || blendOperationAlpha == blendOperationRGB, "Blend operation None can not be mixed with any of the others.");
-		_properties.blendOperationRGB = blendOperationRGB;
-		_properties.blendOperationAlpha = blendOperationAlpha;
+		_pipelineProperties.blendOperationRGB = blendOperationRGB;
+		_pipelineProperties.blendOperationAlpha = blendOperationAlpha;
 	}
 
 	void Material::SetBlendFactorSource(BlendFactor blendFactorRGB, BlendFactor blendFactorAlpha)
 	{
-		_properties.blendFactorSourceRGB = blendFactorRGB;
-		_properties.blendFactorSourceAlpha = blendFactorAlpha;
+		_pipelineProperties.blendFactorSourceRGB = blendFactorRGB;
+		_pipelineProperties.blendFactorSourceAlpha = blendFactorAlpha;
 	}
 
 	void Material::SetBlendFactorDestination(BlendFactor blendFactorRGB, BlendFactor blendFactorAlpha)
 	{
-		_properties.blendFactorDestinationRGB = blendFactorRGB;
-		_properties.blendFactorDestinationAlpha = blendFactorAlpha;
+		_pipelineProperties.blendFactorDestinationRGB = blendFactorRGB;
+		_pipelineProperties.blendFactorDestinationAlpha = blendFactorAlpha;
 	}
 
 	void Material::SetCustomShaderUniform(const String *name, Value *value)
@@ -349,26 +369,6 @@ namespace RN
 	{
 		if(!overrideMaterial) return _properties;
 
-		if(!(overrideMaterial->GetOverride() & Override::ColorWriteMask) && !(_override & Override::ColorWriteMask))
-		{
-			_mergedProperties.colorWriteMask = overrideMaterial->_properties.colorWriteMask;
-		}
-		else
-		{
-			_mergedProperties.colorWriteMask = _properties.colorWriteMask;
-		}
-
-		if(!(overrideMaterial->GetOverride() & Override::GroupDepth) && !(_override & Override::GroupDepth))
-		{
-			_mergedProperties.depthMode = overrideMaterial->_properties.depthMode;
-			_mergedProperties.depthWriteEnabled = overrideMaterial->_properties.depthWriteEnabled;
-		}
-		else
-		{
-			_mergedProperties.depthMode = _properties.depthMode;
-			_mergedProperties.depthWriteEnabled = _properties.depthWriteEnabled;
-		}
-
 		if(!(overrideMaterial->GetOverride() & Override::GroupColors) && !(_override & Override::GroupColors))
 		{
 			_mergedProperties.ambientColor = overrideMaterial->_properties.ambientColor;
@@ -386,32 +386,11 @@ namespace RN
 
 		if(!(overrideMaterial->GetOverride() & Override::GroupAlphaToCoverage) && !(_override & Override::GroupAlphaToCoverage))
 		{
-			_mergedProperties.useAlphaToCoverage = overrideMaterial->_properties.useAlphaToCoverage;
 			_mergedProperties.alphaToCoverageClamp = overrideMaterial->_properties.alphaToCoverageClamp;
 		}
 		else
 		{
-			_mergedProperties.useAlphaToCoverage = _properties.useAlphaToCoverage;
 			_mergedProperties.alphaToCoverageClamp = _properties.alphaToCoverageClamp;
-		}
-
-		if(!(overrideMaterial->GetOverride() & Override::GroupBlending) && !(_override & Override::GroupBlending))
-		{
-			_mergedProperties.blendOperationRGB = overrideMaterial->_properties.blendOperationRGB;
-			_mergedProperties.blendOperationAlpha = overrideMaterial->_properties.blendOperationAlpha;
-			_mergedProperties.blendFactorSourceRGB = overrideMaterial->_properties.blendFactorSourceRGB;
-			_mergedProperties.blendFactorSourceAlpha = overrideMaterial->_properties.blendFactorSourceAlpha;
-			_mergedProperties.blendFactorDestinationRGB = overrideMaterial->_properties.blendFactorDestinationRGB;
-			_mergedProperties.blendFactorDestinationAlpha = overrideMaterial->_properties.blendFactorDestinationAlpha;
-		}
-		else
-		{
-			_mergedProperties.blendOperationRGB = _properties.blendOperationRGB;
-			_mergedProperties.blendOperationAlpha = _properties.blendOperationAlpha;
-			_mergedProperties.blendFactorSourceRGB = _properties.blendFactorSourceRGB;
-			_mergedProperties.blendFactorSourceAlpha = _properties.blendFactorSourceAlpha;
-			_mergedProperties.blendFactorDestinationRGB = _properties.blendFactorDestinationRGB;
-			_mergedProperties.blendFactorDestinationAlpha = _properties.blendFactorDestinationAlpha;
 		}
 
 		if(!(overrideMaterial->GetOverride() & Override::TextureTileFactor) && !(_override & Override::TextureTileFactor))
@@ -421,28 +400,6 @@ namespace RN
 		else
 		{
 			_mergedProperties.textureTileFactor = _properties.textureTileFactor;
-		}
-
-		if(!(overrideMaterial->GetOverride() & Override::GroupPolygonOffset) && !(_override & Override::GroupPolygonOffset))
-		{
-			_mergedProperties.usePolygonOffset = overrideMaterial->_properties.usePolygonOffset;
-			_mergedProperties.polygonOffsetFactor = overrideMaterial->_properties.polygonOffsetFactor;
-			_mergedProperties.polygonOffsetUnits = overrideMaterial->_properties.polygonOffsetUnits;
-		}
-		else
-		{
-			_mergedProperties.usePolygonOffset = _properties.usePolygonOffset;
-			_mergedProperties.polygonOffsetFactor = _properties.polygonOffsetFactor;
-			_mergedProperties.polygonOffsetUnits = _properties.polygonOffsetUnits;
-		}
-
-		if(!(overrideMaterial->GetOverride() & Override::CullMode) && !(_override & Override::CullMode))
-		{
-			_mergedProperties.cullMode = overrideMaterial->_properties.cullMode;
-		}
-		else
-		{
-			_mergedProperties.cullMode = _properties.cullMode;
 		}
 
 		_mergedProperties.customMatrix1 = _properties.customMatrix1;
@@ -467,5 +424,82 @@ namespace RN
 		}
 
 		return _mergedProperties;
+	}
+
+	const Material::PipelineProperties &Material::GetMergedPipelineProperties(Material *overrideMaterial)
+	{
+		if(!overrideMaterial) return _pipelineProperties;
+
+		if(!(overrideMaterial->GetOverride() & Override::ColorWriteMask) && !(_override & Override::ColorWriteMask))
+		{
+			_mergedPipelineProperties.colorWriteMask = overrideMaterial->_pipelineProperties.colorWriteMask;
+		}
+		else
+		{
+			_mergedPipelineProperties.colorWriteMask = _pipelineProperties.colorWriteMask;
+		}
+
+		if(!(overrideMaterial->GetOverride() & Override::GroupDepth) && !(_override & Override::GroupDepth))
+		{
+			_mergedPipelineProperties.depthMode = overrideMaterial->_pipelineProperties.depthMode;
+			_mergedPipelineProperties.depthWriteEnabled = overrideMaterial->_pipelineProperties.depthWriteEnabled;
+		}
+		else
+		{
+			_mergedPipelineProperties.depthMode = _pipelineProperties.depthMode;
+			_mergedPipelineProperties.depthWriteEnabled = _pipelineProperties.depthWriteEnabled;
+		}
+
+		if(!(overrideMaterial->GetOverride() & Override::GroupAlphaToCoverage) && !(_override & Override::GroupAlphaToCoverage))
+		{
+			_mergedPipelineProperties.useAlphaToCoverage = overrideMaterial->_pipelineProperties.useAlphaToCoverage;
+		}
+		else
+		{
+			_mergedPipelineProperties.useAlphaToCoverage = _pipelineProperties.useAlphaToCoverage;
+		}
+
+		if(!(overrideMaterial->GetOverride() & Override::GroupBlending) && !(_override & Override::GroupBlending))
+		{
+			_mergedPipelineProperties.blendOperationRGB = overrideMaterial->_pipelineProperties.blendOperationRGB;
+			_mergedPipelineProperties.blendOperationAlpha = overrideMaterial->_pipelineProperties.blendOperationAlpha;
+			_mergedPipelineProperties.blendFactorSourceRGB = overrideMaterial->_pipelineProperties.blendFactorSourceRGB;
+			_mergedPipelineProperties.blendFactorSourceAlpha = overrideMaterial->_pipelineProperties.blendFactorSourceAlpha;
+			_mergedPipelineProperties.blendFactorDestinationRGB = overrideMaterial->_pipelineProperties.blendFactorDestinationRGB;
+			_mergedPipelineProperties.blendFactorDestinationAlpha = overrideMaterial->_pipelineProperties.blendFactorDestinationAlpha;
+		}
+		else
+		{
+			_mergedPipelineProperties.blendOperationRGB = _pipelineProperties.blendOperationRGB;
+			_mergedPipelineProperties.blendOperationAlpha = _pipelineProperties.blendOperationAlpha;
+			_mergedPipelineProperties.blendFactorSourceRGB = _pipelineProperties.blendFactorSourceRGB;
+			_mergedPipelineProperties.blendFactorSourceAlpha = _pipelineProperties.blendFactorSourceAlpha;
+			_mergedPipelineProperties.blendFactorDestinationRGB = _pipelineProperties.blendFactorDestinationRGB;
+			_mergedPipelineProperties.blendFactorDestinationAlpha = _pipelineProperties.blendFactorDestinationAlpha;
+		}
+
+		if(!(overrideMaterial->GetOverride() & Override::GroupPolygonOffset) && !(_override & Override::GroupPolygonOffset))
+		{
+			_mergedPipelineProperties.usePolygonOffset = overrideMaterial->_pipelineProperties.usePolygonOffset;
+			_mergedPipelineProperties.polygonOffsetFactor = overrideMaterial->_pipelineProperties.polygonOffsetFactor;
+			_mergedPipelineProperties.polygonOffsetUnits = overrideMaterial->_pipelineProperties.polygonOffsetUnits;
+		}
+		else
+		{
+			_mergedPipelineProperties.usePolygonOffset = _pipelineProperties.usePolygonOffset;
+			_mergedPipelineProperties.polygonOffsetFactor = _pipelineProperties.polygonOffsetFactor;
+			_mergedPipelineProperties.polygonOffsetUnits = _pipelineProperties.polygonOffsetUnits;
+		}
+
+		if(!(overrideMaterial->GetOverride() & Override::CullMode) && !(_override & Override::CullMode))
+		{
+			_mergedPipelineProperties.cullMode = overrideMaterial->_pipelineProperties.cullMode;
+		}
+		else
+		{
+			_mergedPipelineProperties.cullMode = _pipelineProperties.cullMode;
+		}
+
+		return _mergedPipelineProperties;
 	}
 } // namespace RN

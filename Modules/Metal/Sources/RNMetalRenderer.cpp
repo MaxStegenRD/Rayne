@@ -1348,7 +1348,7 @@ namespace RN
 		}
 		
 		MetalRenderPass &renderPass = _internals->renderPasses[_internals->currentRenderPassIndex];
-		Material::Properties mergedMaterialProperties = drawable->material->GetMergedProperties(renderPass.overrideMaterial);
+		Material::PipelineProperties mergedMaterialProperties = drawable->material->GetMergedPipelineProperties(renderPass.overrideMaterial);
 		[encoder setDepthStencilState:_internals->stateCoordinator.GetDepthStencilStateForMaterial(mergedMaterialProperties, _internals->currentRenderState)];
 		[encoder setCullMode:static_cast<MTLCullMode>(mergedMaterialProperties.cullMode)];
 		if(mergedMaterialProperties.usePolygonOffset)

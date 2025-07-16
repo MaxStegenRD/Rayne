@@ -66,7 +66,7 @@ namespace RN
 	struct MetalDepthStencilState
 	{
 		MetalDepthStencilState() = default;
-		MetalDepthStencilState(const Material::Properties &materialProperties, id<MTLDepthStencilState> depthStencilState, MTLPixelFormat depth, MTLPixelFormat stencil) :
+		MetalDepthStencilState(const Material::PipelineProperties &materialProperties, id<MTLDepthStencilState> depthStencilState, MTLPixelFormat depth, MTLPixelFormat stencil) :
 		mode(materialProperties.depthMode),
 		depthWriteEnabled(materialProperties.depthWriteEnabled),
 		depthStencilState(depthStencilState),
@@ -85,7 +85,7 @@ namespace RN
 		MTLPixelFormat depthFormat;
 		MTLPixelFormat stencilFormat;
 		
-		RN_INLINE bool MatchesMaterial(const Material::Properties &materialProperties, MTLPixelFormat depth, MTLPixelFormat stencil) const
+		RN_INLINE bool MatchesMaterial(const Material::PipelineProperties &materialProperties, MTLPixelFormat depth, MTLPixelFormat stencil) const
 		{
 			return (materialProperties.depthMode == mode && materialProperties.depthWriteEnabled == depthWriteEnabled && depth == depthFormat && stencil == stencilFormat);
 		}
@@ -100,14 +100,14 @@ namespace RN
 
 		MTLAPI void SetDevice(id<MTLDevice> device);
 
-		MTLAPI id<MTLDepthStencilState> GetDepthStencilStateForMaterial(const Material::Properties &materialProperties, const MetalRenderingState *renderingState);
+		MTLAPI id<MTLDepthStencilState> GetDepthStencilStateForMaterial(const Material::PipelineProperties &materialProperties, const MetalRenderingState *renderingState);
 		MTLAPI id<MTLSamplerState> GetSamplerStateForSampler(const Shader::ArgumentSampler *samplerDescriptor);
 
 		MTLAPI const MetalRenderingState *GetRenderPipelineState(Material *material, Mesh *mesh, Framebuffer *framebuffer, Shader::UsageHint shaderHint, Material *overrideMaterial);
 
 	private:
 		MTLVertexDescriptor *CreateVertexDescriptorFromMesh(Mesh *mesh, MetalShader *shader);
-		const MetalRenderingState *GetRenderPipelineStateInCollection(MetalRenderingStateCollection *collection, Mesh *mesh, Framebuffer *framebuffer, const Material::Properties &materialProperties);
+		const MetalRenderingState *GetRenderPipelineStateInCollection(MetalRenderingStateCollection *collection, Mesh *mesh, Framebuffer *framebuffer, const Material::PipelineProperties &materialProperties);
 
 		id<MTLDevice> _device;
 

@@ -81,7 +81,7 @@ namespace RN
 	}
 
 
-	id<MTLDepthStencilState> MetalStateCoordinator::GetDepthStencilStateForMaterial(const Material::Properties &materialProperties, const MetalRenderingState *renderingState)
+	id<MTLDepthStencilState> MetalStateCoordinator::GetDepthStencilStateForMaterial(const Material::PipelineProperties &materialProperties, const MetalRenderingState *renderingState)
 	{
 		if(RN_EXPECT_TRUE(_lastDepthStencilState != nullptr) && _lastDepthStencilState->MatchesMaterial(materialProperties, renderingState->depthFormat, renderingState->stencilFormat))
 			return _lastDepthStencilState->depthStencilState;
@@ -219,7 +219,7 @@ namespace RN
 		MetalShader *vertexShader = static_cast<MetalShader *>((overrideMaterial && !(overrideMaterial->GetOverride() & Material::Override::GroupShaders) && !(material->GetOverride() & Material::Override::GroupShaders))? overrideMaterial->GetVertexShader(shaderHint) : material->GetVertexShader(shaderHint));
 		MetalShader *fragmentShader = static_cast<MetalShader *>((overrideMaterial && !(overrideMaterial->GetOverride() & Material::Override::GroupShaders) && !(material->GetOverride() & Material::Override::GroupShaders))? overrideMaterial->GetFragmentShader(shaderHint) : material->GetFragmentShader(shaderHint));
 		
-		Material::Properties materialProperties = material->GetMergedProperties(overrideMaterial);
+		Material::PipelineProperties materialProperties = material->GetMergedPipelineProperties(overrideMaterial);
 
 		for(MetalRenderingStateCollection *collection : _renderingStates)
 		{
@@ -238,7 +238,7 @@ namespace RN
 		return GetRenderPipelineStateInCollection(collection, mesh, framebuffer, materialProperties);
 	}
 
-	const MetalRenderingState *MetalStateCoordinator::GetRenderPipelineStateInCollection(MetalRenderingStateCollection *collection, Mesh *mesh, Framebuffer *framebuffer, const Material::Properties &materialProperties)
+	const MetalRenderingState *MetalStateCoordinator::GetRenderPipelineStateInCollection(MetalRenderingStateCollection *collection, Mesh *mesh, Framebuffer *framebuffer, const Material::PipelineProperties &materialProperties)
 	{
 		MetalFramebuffer *metalFramebuffer = framebuffer->Downcast<MetalFramebuffer>();
 		MTLPixelFormat pixelFormat = metalFramebuffer->GetMetalColorFormat(0);
