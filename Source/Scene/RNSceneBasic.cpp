@@ -52,7 +52,7 @@ namespace RN
 	{
 		ZoneScoped;
 		_nodesToRemove->Release();
-		delete _occlusionDepthBuffer;
+		delete[] _occlusionDepthBuffer;
 	}
 
 	void SceneBasic::Update(float delta)
@@ -165,21 +165,21 @@ namespace RN
 
 	void SceneBasic::RasterizeClipSpaceTriangle(Vector4 A, Vector4 B, Vector4 C)
 	{
+		A /= A.w;
+		B /= B.w;
+		C /= C.w;
 		if(edgeFunction(Vector2(A), Vector2(B), Vector2(C)) < 0) return; //Triangle is facing away, can just skip completely
 
-		A /= A.w;
 		A.x = A.x * 0.5f + 0.5f;
 		A.x *= _occlusionDepthBufferWidth;
 		A.y = A.y * 0.5f + 0.5f;
 		A.y *= _occlusionDepthBufferHeight;
 
-		B /= B.w;
 		B.x = B.x * 0.5f + 0.5f;
 		B.x *= _occlusionDepthBufferWidth;
 		B.y = B.y * 0.5f + 0.5f;
 		B.y *= _occlusionDepthBufferHeight;
 
-		C /= C.w;
 		C.x = C.x * 0.5f + 0.5f;
 		C.x *= _occlusionDepthBufferWidth;
 		C.y = C.y * 0.5f + 0.5f;
@@ -195,12 +195,14 @@ namespace RN
 
 		for(uint16 y = minY; y <= maxY; y++)
 		{
+			float *depthBufferRow = &_occlusionDepthBuffer[_occlusionDepthBufferWidth * (_occlusionDepthBufferHeight - y - 1)];
+			
 			for(uint16 x = minX; x <= maxX; x++)
 			{
 				Vector2 point(x, y);
 
 				float w0 = edgeFunction(Vector2(B), Vector2(C), point);
-				if(w0 < 0) continue;
+				if(w0 <= 0) continue;
 				float w1 = edgeFunction(Vector2(C), Vector2(A), point);
 				if(w1 < 0) continue;
 				float w2 = edgeFunction(Vector2(A), Vector2(B), point);
@@ -210,10 +212,11 @@ namespace RN
 				if(depth <= 1.0f)
 				{
 #if OCCLUSION_VISUALIZE_DEPTH
-					depth *= 10000.0f;
+					depth *= 1000.0f;
 #endif
+					if(depth > depthBufferRow[x])
 					{
-						_occlusionDepthBuffer[_occlusionDepthBufferWidth * (_occlusionDepthBufferHeight - y - 1) + x] = depth;
+						depthBufferRow[x] = depth;
 					}
 				}
 			}
@@ -402,7 +405,7 @@ namespace RN
 		uint16 maxY = std::max(std::min(std::ceil(maxCorners.y) + 1.0f, static_cast<float>(_occlusionDepthBufferHeight - 1)), 0.0f);
 
 #if OCCLUSION_VISUALIZE_DEPTH
-		maxCorners.z *= 10000.0f;
+		maxCorners.z *= 1000.0f;
 #endif
 
 		for(uint16 y = minY; y <= maxY; y++)
@@ -496,7 +499,7 @@ namespace RN
 						ZoneScopedN("Find 30 biggest occluders");
 
 						//Sort occluders by approximated size on the screen
-						std::sort(occluders.begin(), occluders.end(), [](SceneNode *a, SceneNode *b) {
+						std::nth_element(occluders.begin(), occluders.begin() + 30, occluders.end(), [](SceneNode *a, SceneNode *b) {
 							SceneBasicInfo *sceneInfoA = static_cast<SceneBasicInfo *>(a->GetSceneInfo());
 							SceneBasicInfo *sceneInfoB = static_cast<SceneBasicInfo *>(b->GetSceneInfo());
 							return sceneInfoA->occluderSize > sceneInfoB->occluderSize;

@@ -62,7 +62,7 @@ namespace RN
 	public:
 		SceneBasicInfo(Scene *scene);
 
-		size_t occludedFrameCounter;
+		uint16 occludedFrameCounter;
 		float occluderSize;
 		float occluderDistance;
 		bool isActiveOccluder;
