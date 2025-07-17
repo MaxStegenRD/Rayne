@@ -1261,8 +1261,9 @@ namespace RN
 		drawable->AddCameraSepecificsIfNeeded(_internals->currentRenderPassIndex);
 
 		MetalRenderPass &renderPass = _internals->renderPasses[_internals->currentRenderPassIndex];
-
-		if(drawable->_cameraSpecifics[_internals->currentRenderPassIndex].dirty || drawable->_cameraSpecifics[_internals->currentRenderPassIndex].camera != renderPass.camera)
+		MetalDrawable::CameraSpecific &cameraSpecific = drawable->_cameraSpecifics[_internals->currentRenderPassIndex];
+		
+		if(cameraSpecific.dirty || cameraSpecific.camera != renderPass.camera)
 		{
 			_lock.Lock();
 			const MetalRenderingState *state = _internals->stateCoordinator.GetRenderPipelineState(drawable->material, drawable->mesh, renderPass.framebuffer, renderPass.shaderHint, renderPass.overrideMaterial);

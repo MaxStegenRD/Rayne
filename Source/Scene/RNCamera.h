@@ -119,8 +119,8 @@ namespace RN
 		const RN::Array *GetMultiviewCameras() const { return _multiviewCameras; }
 		bool GetIsMultiviewCamera() const { return _isMultiviewCamera; }
 
-		RNAPI void AddRenderNode(RN::SceneNode *node);
-		RNAPI void RemoveRenderNode(RN::SceneNode *node);
+		RNAPI void AddRenderNode(SceneNode *node);
+		RNAPI void RemoveRenderNode(SceneNode *node);
 		RNAPI void TruncateRenderNodes(size_t length);
 		RNAPI void ClearRenderNodes();
 		RNAPI const Array *GetRenderNodes() const { return _renderNodes; }

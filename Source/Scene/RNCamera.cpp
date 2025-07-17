@@ -538,7 +538,7 @@ namespace RN
 		_firstNodeMember = member;
 	}
 
-	void Camera::AddRenderNode(RN::SceneNode *node)
+	void Camera::AddRenderNode(SceneNode *node)
 	{
 		if(!_renderNodes) _renderNodes = new Array();
 
@@ -555,7 +555,7 @@ namespace RN
 		_renderNodes->InsertObjectAtIndex(node, insertIndex);*/
 	}
 
-	void Camera::RemoveRenderNode(RN::SceneNode *node)
+	void Camera::RemoveRenderNode(SceneNode *node)
 	{
 		if(!_renderNodes) return;
 		_renderNodes->RemoveObject(node);
