@@ -405,7 +405,7 @@ if(ANDROID)
     set(LINK_LIBRARIES ${LINK_LIBRARIES} android log)
 endif()
 
-set(LINK_LIBRARIES ${LINK_LIBRARIES} jansson png_static zlibstatic zip)
+set(LINK_LIBRARIES ${LINK_LIBRARIES} jansson zlibstatic png_static zip)
 
 set(TARGET_SOURCES ${RAYNE_SOURCES} ${RAYNE_HEADERS} ${RAYNE_HEADERS_PRIVATE} ${RAYNE_PLATFORM_SOURCES} ${RAYNE_PLATFORM_HEADERS_PRIVATE})
 set(TARGET_HEADERS ${RAYNE_HEADERS})
@@ -416,7 +416,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/RayneConfig.h.in ${CMAKE_CURRENT_BINA
 rayne_add_library(Rayne "${TARGET_SOURCES}" "${TARGET_HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
 
 target_include_directories(Rayne SYSTEM PRIVATE "${INCLUDE_DIRECTORIES}")
-target_link_libraries(Rayne PUBLIC "${LINK_LIBRARIES}")
+target_link_libraries(Rayne PUBLIC ${LINK_LIBRARIES})
 target_compile_definitions(Rayne PRIVATE "${COMPILE_DEFINITIONS}")
 target_compile_options(Rayne PRIVATE ${COMPILE_OPTIONS})
 

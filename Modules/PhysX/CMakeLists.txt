@@ -122,7 +122,8 @@ elseif(APPLE)
     set(RN_PHYSX_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/bin/mac.x86_64)
     set(PHYSX_PATCH_COMMAND sed -i.bak /CMAKE_OSX_ARCHITECTURES/d <SOURCE_DIR>/physx/source/compiler/cmake/mac/CMakeLists.txt
         COMMAND sed -i.bak /arch/d <SOURCE_DIR>/physx/source/compiler/cmake/mac/CMakeLists.txt
-        COMMAND sed -i.bak s/-Werror//g <SOURCE_DIR>/physx/source/compiler/cmake/mac/CMakeLists.txt)
+        COMMAND sed -i.bak s/-Werror//g <SOURCE_DIR>/physx/source/compiler/cmake/mac/CMakeLists.txt
+        COMMAND sed -i.bak s/-msse2//g <SOURCE_DIR>/physx/source/compiler/cmake/mac/CMakeLists.txt)
 elseif(ANDROID)
     set(PHYSX_PATCH_COMMAND ${SED_PATH} -i.bak s/-Werror//g <SOURCE_DIR>/physx/source/compiler/cmake/android/CMakeLists.txt COMMAND ${SED_PATH} -i.bak -e "/PX_FORCE_INLINE Vec4V V4SplatElement(Vec4V a)/ {" -e "n$<SEMICOLON> n$<SEMICOLON> s/\#if .*/\#if 1/" -e "}" <SOURCE_DIR>/physx/source/foundation/include/unix/neon/PsUnixNeonInlineAoS.h)
 
