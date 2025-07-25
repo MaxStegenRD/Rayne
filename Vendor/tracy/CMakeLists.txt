@@ -11,4 +11,4 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(tracy)
 
-target_compile_definitions(TracyClient PUBLIC $<$<CONFIG:RelWithDebInfo>:TRACY_ENABLE>)
+#target_compile_definitions(TracyClient PUBLIC $<$<CONFIG:RelWithDebInfo>:TRACY_ENABLE>)
