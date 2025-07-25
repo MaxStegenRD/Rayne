@@ -1857,10 +1857,12 @@ namespace RN
 		//Check if uniform buffers are the same, the object can't be part of the same instanced draw call if it doesn't share the same buffers (because they are full for example)
 		if(canUseInstancing && _internals->currentInstanceDrawable && vertexConstantBuffersCount == _internals->currentInstanceDrawable->_cameraSpecifics[_internals->currentDrawableResourceIndex].uniformState->vertexConstantBuffers.size() && fragmentConstantBuffersCount == _internals->currentInstanceDrawable->_cameraSpecifics[_internals->currentDrawableResourceIndex].uniformState->fragmentConstantBuffers.size())
 		{
+			auto &instanceCameraSpecifics = _internals->currentInstanceDrawable->_cameraSpecifics[_internals->currentDrawableResourceIndex];
+
 			canUseInstancing = true;
 			for(int i = 0; i < vertexConstantBuffersCount && canUseInstancing; i++)
 			{
-				if(vertexConstantBuffers[i]->dynamicBuffer != _internals->currentInstanceDrawable->_cameraSpecifics[_internals->currentDrawableResourceIndex].uniformState->vertexConstantBuffers[i]->dynamicBuffer)
+				if(vertexConstantBuffers[i]->dynamicBuffer != instanceCameraSpecifics.uniformState->vertexConstantBuffers[i]->dynamicBuffer)
 				{
 					canUseInstancing = false;
 				}
@@ -1868,7 +1870,7 @@ namespace RN
 
 			for(int i = 0; i < fragmentConstantBuffersCount && canUseInstancing; i++)
 			{
-				if(fragmentConstantBuffers[i]->dynamicBuffer != _internals->currentInstanceDrawable->_cameraSpecifics[_internals->currentDrawableResourceIndex].uniformState->fragmentConstantBuffers[i]->dynamicBuffer)
+				if(fragmentConstantBuffers[i]->dynamicBuffer != instanceCameraSpecifics.uniformState->fragmentConstantBuffers[i]->dynamicBuffer)
 				{
 					canUseInstancing = false;
 				}
@@ -1973,11 +1975,13 @@ namespace RN
 					stepSize = renderPass.instanceSteps[stepSizeIndex++];
 
 					VulkanDrawable *drawable = renderPass.drawables[i];
-					const VulkanPipelineState *pipelineState = drawable->_cameraSpecifics[_internals->currentDrawableResourceIndex].pipelineState;
+					VulkanDrawable::CameraSpecific &cameraSpecific = drawable->_cameraSpecifics[_internals->currentDrawableResourceIndex];
 
-					VkDescriptorSet descriptorSet = drawable->_cameraSpecifics[_internals->currentDrawableResourceIndex].descriptorSet->GetActiveDescriptorSet();
+					const VulkanPipelineState *pipelineState = cameraSpecific.pipelineState;
 
-					VulkanUniformState *uniformState = drawable->_cameraSpecifics[_internals->currentDrawableResourceIndex].uniformState;
+					VkDescriptorSet descriptorSet = cameraSpecific.descriptorSet->GetActiveDescriptorSet();
+
+					VulkanUniformState *uniformState = cameraSpecific.uniformState;
 					if(uniformState->instanceAttributesBuffer)
 					{
                         //These are not actually part of the descripter sets, but filling them with data here anyway
@@ -2159,11 +2163,12 @@ namespace RN
 
 	void VulkanRenderer::RenderDrawable(VkCommandBuffer commandBuffer, VulkanDrawable *drawable, uint32 instanceCount)
 	{
-		const VulkanPipelineState *pipelineState = drawable->_cameraSpecifics[_internals->currentDrawableResourceIndex].pipelineState;
-        const VulkanUniformState *uniformState = drawable->_cameraSpecifics[_internals->currentDrawableResourceIndex].uniformState;
+		VulkanDrawable::CameraSpecific &cameraSpecific = drawable->_cameraSpecifics[_internals->currentDrawableResourceIndex];
+		const VulkanPipelineState *pipelineState = cameraSpecific.pipelineState;
+        const VulkanUniformState *uniformState = cameraSpecific.uniformState;
 		const VulkanRootSignature *rootSignature = pipelineState->rootSignature;
 
-		VkDescriptorSet descriptorSet = drawable->_cameraSpecifics[_internals->currentDrawableResourceIndex].descriptorSet->GetActiveDescriptorSet();
+		VkDescriptorSet descriptorSet = cameraSpecific.descriptorSet->GetActiveDescriptorSet();
 		vk::CmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rootSignature->pipelineLayout, 0, 1, &descriptorSet, 0, NULL);
 		vk::CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineState->state);
 
