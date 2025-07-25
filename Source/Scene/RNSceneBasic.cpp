@@ -476,6 +476,8 @@ namespace RN
 					while(nodeMember)
 					{
 						SceneNode *node = nodeMember->Get();
+						if(node->GetRenderPriority() >= SceneNode::RenderPriority::RenderSky) break;
+
 						if(node->HasFlags(SceneNode::Flags::Occluder) && node->CanRender(renderer, camera))
 						{
 							SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo *>(node->GetSceneInfo());
