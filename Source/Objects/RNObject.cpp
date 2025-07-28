@@ -14,6 +14,24 @@
 #include "RNString.h"
 #include <string>
 
+#if RN_BUILD_DEBUG
+	#include <iomanip>
+	#if RN_PLATFORM_WINDOWS
+		#include <dbghelp.h>
+		#pragma comment(lib, "dbghelp.lib")
+	#elif RN_PLATFORM_POSIX
+		#if RN_PLATFORM_ANDROID || RN_PLATFORM_IOS
+			#include <dlfcn.h>
+			#include <unwind.h>
+		#else
+			#include <execinfo.h>
+		#endif
+		#include <cstdlib>
+		#include <cxxabi.h>
+		#include <dlfcn.h>
+	#endif
+#endif
+
 #if RN_ZOMBIE_ALLOCATION
 	#define AssertZombieInteraction()                                                                                                                                                                 \
 		do {                                                                                                                                                                                          \
@@ -97,31 +115,51 @@ namespace RN
 		return reinterpret_cast<Object::MetaType *>(__kRNObjectMetaClass);
 	}
 
+#if RN_BUILD_DEBUG
+	Object *Object::Retain_debug(const char *file, int line, const char *func)
+#else
 	Object *Object::Retain()
+#endif
 	{
 		AssertZombieInteraction();
 
 #if RN_BUILD_DEBUG
-		if(_isTracked) WillChangeReferenceCount(_refCount.load(std::memory_order_relaxed) + 1);
+		if(_isTracked)
+		{
+			WillChangeReferenceCount(_refCount.load(std::memory_order_relaxed) + 1);
+			RefcountDebugGraph::GetSharedInstance().AddRefcountDebugInfo(this, RefcountDebugGraph::RefcountCallEvent::Retain, file, line, func, _refCount.load(std::memory_order_relaxed) + 1);
+		}
 #endif
 
 		_refCount.fetch_add(1, std::memory_order_relaxed); // RMW pairs with relaxed memory ordering
 		return this;
 	}
+
+#if RN_BUILD_DEBUG
+	const Object *Object::Retain_debug(const char *file, int line, const char *func) const
+#else
 	const Object *Object::Retain() const
+#endif
 	{
 		AssertZombieInteraction();
 
 #if RN_BUILD_DEBUG
-		if(_isTracked) WillChangeReferenceCount(_refCount.load(std::memory_order_relaxed) + 1);
+		if(_isTracked)
+		{
+			WillChangeReferenceCount(_refCount.load(std::memory_order_relaxed) + 1);
+			RefcountDebugGraph::GetSharedInstance().AddRefcountDebugInfo(this, RefcountDebugGraph::RefcountCallEvent::Retain, file, line, func, _refCount.load(std::memory_order_relaxed) + 1);
+		}
 #endif
 
 		_refCount.fetch_add(1, std::memory_order_relaxed); // RMW pairs with relaxed memory ordering
 		return this;
 	}
 
-
+#if RN_BUILD_DEBUG
+	void Object::Release_debug(const char *file, int line, const char *func) const
+#else
 	void Object::Release() const
+#endif
 	{
 #if RN_ZOMBIE_ALLOCATION
 		if(_isZombie)
@@ -136,7 +174,11 @@ namespace RN
 #if RN_BUILD_DEBUG
 		RN_ASSERT(_refCount.load(std::memory_order_relaxed) > _autoreleaseCounter.load(std::memory_order_relaxed), "Object is in too many autorelease pools and will be over released!");
 
-		if(_isTracked) WillChangeReferenceCount(_refCount.load(std::memory_order_relaxed) - 1);
+		if(_isTracked)
+		{
+			WillChangeReferenceCount(_refCount.load(std::memory_order_relaxed) - 1);
+			RefcountDebugGraph::GetSharedInstance().AddRefcountDebugInfo(this, RefcountDebugGraph::RefcountCallEvent::Release, file, line, func, _refCount.load(std::memory_order_relaxed) - 1);
+		}
 #endif
 
 		// If this is the last reference this thread has, which it very well might be,
@@ -158,12 +200,20 @@ namespace RN
 		}
 	}
 
+#if RN_BUILD_DEBUG
+	Object *Object::Autorelease_debug(const char *file, int line, const char *func)
+#else
 	Object *Object::Autorelease()
+#endif
 	{
 		AssertZombieInteraction();
 
 #if RN_BUILD_DEBUG
-		if(_isTracked) WillChangeAutoreleaseCount(_autoreleaseCounter.load(std::memory_order_relaxed) + 1);
+		if(_isTracked)
+		{
+			WillChangeAutoreleaseCount(_autoreleaseCounter.load(std::memory_order_relaxed) + 1);
+			RefcountDebugGraph::GetSharedInstance().AddRefcountDebugInfo(this, RefcountDebugGraph::RefcountCallEvent::Autorelease, file, line, func, _refCount.load(std::memory_order_relaxed));
+		}
 #endif
 
 		AutoreleasePool *pool = AutoreleasePool::GetCurrentPool();
@@ -180,12 +230,21 @@ namespace RN
 		pool->AddObject(this);
 		return this;
 	}
+
+#if RN_BUILD_DEBUG
+	const Object *Object::Autorelease_debug(const char *file, int line, const char *func) const
+#else
 	const Object *Object::Autorelease() const
+#endif
 	{
 		AssertZombieInteraction();
 
 #if RN_BUILD_DEBUG
-		if(_isTracked) WillChangeAutoreleaseCount(_autoreleaseCounter.load(std::memory_order_relaxed) + 1);
+		if(_isTracked)
+		{
+			WillChangeAutoreleaseCount(_autoreleaseCounter.load(std::memory_order_relaxed) + 1);
+			RefcountDebugGraph::GetSharedInstance().AddRefcountDebugInfo(this, RefcountDebugGraph::RefcountCallEvent::Autorelease, file, line, func, _refCount.load(std::memory_order_relaxed));
+		}
 #endif
 
 		AutoreleasePool *pool = AutoreleasePool::GetCurrentPool();
@@ -549,4 +608,517 @@ namespace RN
 	{
 		throw InconsistencyException(RNSTR("GetValueForKey() with undefined key '" << key << "'"));
 	}
+
+#if RN_BUILD_DEBUG
+	std::string RefcountDebugGraph::CaptureStackTrace()
+	{
+		constexpr int kMaxFrames = 32;
+		constexpr int kSkip = 2; // Skip CaptureStackTrace and its caller
+
+		std::ostringstream out;
+
+	#if RN_PLATFORM_WINDOWS
+		void *frames[kMaxFrames] = {};
+		USHORT count = CaptureStackBackTrace(kSkip, kMaxFrames, frames, nullptr);
+		for(USHORT i = 0; i < count; ++i)
+			out << frames[i] << "\n";
+
+	#elif RN_PLATFORM_LINUX || RN_PLATFORM_MAC_OS
+		void *frames[kMaxFrames] = {};
+		int count = backtrace(frames, kMaxFrames);
+		if(count <= kSkip)
+			return "<no stack>";
+		for(int i = kSkip; i < count; ++i)
+			out << frames[i] << "\n";
+
+	#elif RN_PLATFORM_ANDROID || RN_PLATFORM_IOS
+		struct BacktraceState
+		{
+			void **current;
+			void **end;
+			int skip;
+		};
+
+		auto unwindCallback = [](_Unwind_Context *ctx, void *arg) -> _Unwind_Reason_Code {
+			auto *state = static_cast<BacktraceState *>(arg);
+			uintptr_t pc = _Unwind_GetIP(ctx);
+			if(pc)
+			{
+				if(state->skip > 0)
+				{
+					--state->skip;
+				}
+				else if(state->current < state->end)
+				{
+					*state->current++ = reinterpret_cast<void *>(pc);
+				}
+			}
+			return _URC_NO_REASON;
+		};
+
+		void *buffer[kMaxFrames];
+		BacktraceState state = {buffer, buffer + kMaxFrames, kSkip};
+		_Unwind_Backtrace(unwindCallback, &state);
+		int captured = state.current - buffer;
+		for(int i = 0; i < captured; ++i)
+			out << buffer[i] << "\n";
+
+	#else
+		out << "<stack capture unsupported>\n";
+	#endif
+
+		return out.str();
+	}
+
+	void RefcountDebugGraph::DumpAll(const std::string &filePath, bool onlyStillLive)
+	{
+		std::lock_guard<std::mutex> lk(_mu);
+		std::ofstream file(filePath + "/ref_trace.html");
+
+		// escape HTML attributes
+		auto escapeAttr = [](const std::string &s) {
+			std::string r;
+			r.reserve(s.size());
+			for(char c : s)
+			{
+				switch(c)
+				{
+					case '&':
+						r += "&amp;";
+						break;
+					case '"':
+						r += "&quot;";
+						break;
+					case '\'':
+						r += "&#39;";
+						break;
+					case '<':
+						r += "&lt;";
+						break;
+					case '>':
+						r += "&gt;";
+						break;
+					default:
+						r += c;
+						break;
+				}
+			}
+			return r;
+		};
+
+		// 0) match retain→(autorelease)→release per-object, per-caller-class
+		auto temp = _refcountDebugMap;
+		if(onlyStillLive)
+		{
+			for(auto it = temp.begin(); it != temp.end();)
+			{
+				auto &events = it->second.events;
+				if(events.empty() || events.back().afterRefCount == 0)
+					it = temp.erase(it);
+				else
+					++it;
+			}
+		}
+
+		std::unordered_map<const Object *, std::vector<char>> matchedMap;
+		auto extractClass = [](const char *func) {
+			std::string f(func);
+			if(auto p = f.find('('); p != f.npos) f.resize(p);
+			if(auto p = f.rfind("::"); p != f.npos) f.resize(p);
+			if(auto p = f.rfind("::"); p != f.npos) f = f.substr(p + 2);
+			return f;
+		};
+
+		for(auto &pr : temp)
+		{
+			auto &events = pr.second.events;
+			std::vector<char> matched(events.size(), 0);
+			std::vector<size_t> retains;
+			std::vector<std::pair<size_t, size_t>> autoStack;
+
+			for(size_t i = 0; i < events.size(); ++i)
+			{
+				auto &e = events[i];
+				std::string cls = extractClass(e.func);
+				switch(e.type)
+				{
+					case RefcountCallEvent::Retain:
+						retains.push_back(i);
+						break;
+					case RefcountCallEvent::Autorelease:
+						for(auto it = retains.rbegin(); it != retains.rend(); ++it)
+						{
+							if(extractClass(events[*it].func) == cls)
+							{
+								retains.erase(std::next(it).base());
+								autoStack.emplace_back(*it, i);
+								break;
+							}
+						}
+						break;
+					case RefcountCallEvent::Release:
+						if(cls == "AutoreleasePool" && !autoStack.empty())
+						{
+							auto [ridx, ar] = autoStack.back();
+							autoStack.pop_back();
+							matched[ridx] = matched[ar] = matched[i] = 1;
+						}
+						else
+						{
+							for(auto it = retains.rbegin(); it != retains.rend(); ++it)
+							{
+								if(extractClass(events[*it].func) == cls)
+								{
+									matched[*it] = matched[i] = 1;
+									retains.erase(std::next(it).base());
+									break;
+								}
+							}
+						}
+						break;
+				}
+			}
+			matchedMap.emplace(pr.first, std::move(matched));
+		}
+
+		// 1) group by class + full sequence, collecting object IDs
+		using Seq = std::vector<std::string>;
+		std::unordered_map<std::string, std::map<Seq, std::vector<std::string>>> byClass;
+		struct Snip
+		{
+			std::string html;
+		};
+		std::unordered_map<std::string, Snip> snippets;
+		std::unordered_map<std::string, std::string> eventClass, displayLabel;
+		std::unordered_map<std::string, std::map<Seq, std::vector<char>>> matchedMask;
+
+		for(auto const &pr : temp)
+		{
+			auto const &info = pr.second;
+			auto const &events = info.events;
+			auto const &mask = matchedMap.at(pr.first);
+
+			Seq seq;
+			seq.reserve(events.size());
+			std::vector<char> seqM;
+			seqM.reserve(events.size());
+			for(size_t i = 0; i < events.size(); ++i)
+			{
+				auto &e = events[i];
+				// file:line
+				std::string path(e.file);
+				if(auto p = path.find_last_of("/\\"); p != path.npos)
+					path = path.substr(p + 1);
+				// fn
+				std::string fn(e.func);
+				if(auto p = fn.find('('); p != fn.npos) fn.resize(p);
+				if(auto c = fn.find_last_of(':'); c != fn.npos) fn = fn.substr(c + 1);
+
+				std::ostringstream lbl;
+				lbl << fn << "(" << e.afterRefCount << ")@" << path << ":" << e.line;
+				std::string L = lbl.str();
+				const char *T =
+				(e.type == RefcountCallEvent::Retain)  ? "retain|" :
+				(e.type == RefcountCallEvent::Release) ? "release|" :
+														 "autorelease|";
+				std::string key = std::string(T) + L;
+
+				if(!eventClass.count(key))
+				{
+					eventClass[key] =
+					(e.type == RefcountCallEvent::Retain)  ? "retain" :
+					(e.type == RefcountCallEvent::Release) ? "release" :
+															 "autorelease";
+				}
+				displayLabel.emplace(key, L);
+
+				seq.push_back(key);
+				seqM.push_back(mask[i]);
+
+				if(!snippets.count(key))
+				{
+					std::istringstream in(e.stackTrace);
+					std::string addr;
+					std::ostringstream out;
+	#if RN_PLATFORM_WINDOWS
+					HANDLE p = GetCurrentProcess();
+					SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
+					SymInitialize(p, nullptr, TRUE);
+					while(std::getline(in, addr))
+					{
+						uintptr_t v = std::stoull(addr, nullptr, 16);
+						DWORD64 a = (DWORD64)v;
+						alignas(SYMBOL_INFO) char buf[sizeof(SYMBOL_INFO) + 256];
+						auto sym = reinterpret_cast<PSYMBOL_INFO>(buf);
+						sym->SizeOfStruct = sizeof(SYMBOL_INFO);
+						sym->MaxNameLen = 255;
+						if(SymFromAddr(p, a, nullptr, sym))
+							out << "  at " << sym->Name << " [0x" << std::hex << sym->Address << std::dec << "]\n";
+						else
+							out << "  at [0x" << std::hex << a << std::dec << "]\n";
+					}
+	#elif RN_PLATFORM_POSIX
+					while(std::getline(in, addr))
+					{
+						uintptr_t v = std::stoull(addr, nullptr, 16);
+						Dl_info di {};
+						if(dladdr((void *)v, &di) && di.dli_sname)
+						{
+							int st = 0;
+							char *d = abi::__cxa_demangle(di.dli_sname, nullptr, nullptr, &st);
+							out << "  at " << (st == 0 ? d : di.dli_sname) << " [0x" << std::hex << v << std::dec << "]\n";
+							if(d) std::free(d);
+						}
+						else
+						{
+							out << "  at [0x" << std::hex << v << std::dec << "]\n";
+						}
+					}
+	#else
+					out << "<stack unsupported>\n";
+	#endif
+					std::ostringstream ss;
+					ss << "<pre><code>" << out.str() << "\n</code></pre>";
+					snippets[key] = {ss.str()};
+				}
+			}
+
+			byClass[info.className][seq].push_back(info.object);
+
+			auto &mm = matchedMask[info.className][seq];
+			if(mm.empty())
+				mm = seqM;
+			else
+			{
+				for(size_t i = 0, n = std::min(mm.size(), seqM.size()); i < n; ++i)
+					mm[i] = mm[i] && seqM[i];
+			}
+		}
+
+		// 2) assign IDs
+		std::unordered_map<std::string, std::string> eventID;
+		size_t eid = 0;
+		for(auto const &c : byClass)
+			for(auto const &s : c.second)
+				for(auto const &k : s.first)
+					if(!eventID.count(k))
+						eventID[k] = "EV" + std::to_string(eid++);
+
+		// 3) emit HTML+CSS+JS
+		file << R"(<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Ref Trace</title>
+<style>
+ body{font:14px sans-serif;margin:0;padding:0}
+ #viewer{position:fixed;right:0;top:0;bottom:0;width:40%;padding:10px;
+  background:#fff;border-left:2px solid #ccc;overflow:auto;display:none;
+  z-index:1000;box-shadow:-2px 0 5px rgba(0,0,0,0.1)}
+ #closeBtn{cursor:pointer;color:#c00;float:right;font-size:1.2em}
+ #code{white-space:pre-wrap;font-family:monospace}
+ .row{display: flex;align-items: center;padding: 8px;border-bottom: 1px solid #eee;width: max-content;min-width: 100%;background-clip: padding-box;box-sizing: border-box;}
+ .row[data-final-count="0"] { /* dead rows hidden when .hide-dead */ }
+ .row:not([data-final-count="0"]) {background-color: #abf7b1;}
+ .node{position:relative;padding:4px 8px;margin-right:24px;
+  background:#f5f5f5;border:1px solid #888;border-radius:4px;
+  cursor:pointer;white-space:nowrap;font-size:0.9em}
+ .node::after{content:'→';position:absolute;right:-16px;top:50%;
+  transform:translateY(-50%);color:#555}
+ .node:last-child::after{content:''}
+ .node.class{background:#cce5ff;border-color:#339;font-weight:bold}
+ .node.class .id{font-size:0.8em;color:#555;margin-left:6px}
+ .node.retain{background:#e0ffe0;border-color:#080}
+ .node.release{background:#ffe0e0;border-color:#800}
+ .node.autorelease{background:#e0f0ff;border-color:#008}
+ .node.event.matched{opacity:0.35}
+ .hide-matched .row > .node.event.matched { display: none; }
+ .hide-matched .row > .node.event.matched.first-visible { display: block; }
+ .hide-dead .row[data-final-count="0"]{display:none}
+ .node.event.selected{outline:2px solid #06c}
+ .count{margin-left:4px;color:#c33;font-weight:bold}
+ #toolbar {position:fixed;top:0;left:0;right:0;background:#fafafa;
+  padding:8px 12px;border-bottom:1px solid #ddd;z-index:1000;}
+ #toolbar button{padding:6px 10px;border:1px solid #888;
+  background:#fff;border-radius:4px;cursor:pointer}
+ .seq-group{background:#fff8e1;border-color:#caa74a}
+ .hidden-by-collapse{display:none!important}
+ #content{padding-top:48px;}
+</style>
+</head><body>
+<div id="viewer"><span id="closeBtn">✖</span><div id="code"></div></div>
+<div id="content"><h1>Reference‑Count Sequences</h1>
+<div id="toolbar">
+  <button id="btnPrev">◀ Prev</button>
+  <button id="btnNext">Next ▶</button>
+  <button id="btnToggleMatched">Hide matched</button>
+  <button id="btnToggleAlive">Show only alive</button>
+  <button id="btnToggleOrder">Show newest first</button>
+  <button id="btnToggleCollapse">Collapse repeats</button>
+</div>
+)";
+
+		// 4) render rows, tagging final count
+		for(auto const &c : byClass)
+		{
+			for(auto const &p : c.second)
+			{
+				const auto &seq = p.first;
+				const auto &objs = p.second;
+				const auto &mask = matchedMask[c.first].at(seq);
+				int cnt = (int)objs.size();
+				// final count = last event’s afterRefCount
+				const auto &lastKey = seq.back();
+				int finalCount = std::stoi(displayLabel[lastKey].substr(
+				displayLabel[lastKey].find('(') + 1));
+
+				file << "<div class=\"row\" data-final-count=\"" << finalCount << "\">\n"
+					 << "  <div class=\"node class\">" << c.first;
+				if(cnt == 1)
+				{
+					file << "<span class=\"id\">@" << objs[0] << "</span>";
+				}
+				else
+				{
+					file << "<span class=\"count\">×" << cnt << "</span>";
+				}
+				file << "</div>\n";
+
+				for(size_t i = 0; i < seq.size(); ++i)
+				{
+					const auto &k = seq[i];
+					bool m = (i < mask.size() && mask[i]);
+					file << "<div class=\"node event " << eventClass[k]
+						 << (m ? " matched" : "")
+						 << "\" id=\"" << eventID[k]
+						 << "\" data-snippet=\"" << escapeAttr(snippets[k].html)
+						 << "\">" << displayLabel[k] << "</div>\n";
+				}
+				file << "</div>\n\n";
+			}
+		}
+
+		// 5) JS for popup, nav, toggles, collapse, first-visible
+		file << R"(</div><script>
+ // popup
+ document.getElementById('closeBtn').onclick = ()=>document.getElementById('viewer').style.display='none';
+ document.addEventListener('click', e => {
+  const el = e.target.closest('.node.event');
+  if (!el || !el.dataset.snippet) return;
+  document.getElementById('code').innerHTML = el.dataset.snippet;
+  document.getElementById('viewer').style.display = 'block';
+ });
+
+ // collect all events
+ function allEvs() {
+   return Array.from(document.querySelectorAll('.node.event'));
+ }
+
+ let nav = [], idx = 0;
+ function rebuildNav() {
+   nav = allEvs().filter(n => !n.classList.contains('matched'));
+   idx = 0;
+   if (nav.length) select(0);
+ }
+
+ function select(i) {
+   if (nav[idx]) nav[idx].classList.remove('selected');
+   idx = i;
+   nav[idx].classList.add('selected');
+   nav[idx].scrollIntoView({behavior:'smooth',block:'center'});
+ }
+
+ // show first/matched event marker
+ function updateFirstVisible() {
+   document.querySelectorAll('.row').forEach(row => {
+	 const evs = Array.from(row.querySelectorAll('.node.event.matched'));
+	 evs.forEach(n => n.classList.remove('first-visible'));
+	 if (row.classList.contains('newest-first')) {
+	   if (evs.length) evs[0].classList.add('first-visible');
+	 } else {
+	   if (evs.length) evs[evs.length-1].classList.add('first-visible');
+	 }
+   });
+ }
+
+ document.getElementById('btnNext').onclick = ()=>{ if(idx+1<nav.length) select(idx+1); };
+ document.getElementById('btnPrev').onclick = ()=>{ if(idx>0) select(idx-1); };
+
+ // toggles
+ const btnM = document.getElementById('btnToggleMatched'),
+	   btnA = document.getElementById('btnToggleAlive'),
+	   btnO = document.getElementById('btnToggleOrder'),
+	   btnC = document.getElementById('btnToggleCollapse');
+ let collapse=false, oldest=true;
+
+ btnM.onclick = ()=> {
+   document.body.classList.toggle('hide-matched');
+   btnM.textContent = document.body.classList.contains('hide-matched') ? 'Show matched' : 'Hide matched';
+   if (collapse) collapseAll();
+   updateFirstVisible();
+   rebuildNav();
+ };
+ btnA.onclick = ()=> {
+   document.body.classList.toggle('hide-dead');
+   btnA.textContent = document.body.classList.contains('hide-dead') ? 'Show all' : 'Show only alive';
+   rebuildNav();
+ };
+ btnO.onclick = ()=> {
+   document.querySelectorAll('.row').forEach(r => {
+	 if (collapse) clearRow(r);
+	 const evs = Array.from(r.querySelectorAll('.node.event'));
+	 for (let i = evs.length-1; i >= 0; --i) r.appendChild(evs[i]);
+	 if (oldest) r.classList.add('newest-first');
+	 else      r.classList.remove('newest-first');
+   });
+   oldest = !oldest;
+   document.body.classList.toggle('newest-first');
+   btnO.textContent = oldest ? 'Show newest first' : 'Show oldest first';
+   if (collapse) collapseAll();
+   updateFirstVisible();
+   rebuildNav();
+ };
+
+ function clearRow(r) {
+   r.querySelectorAll('.seq-group').forEach(g=>g.remove());
+   r.querySelectorAll('.hidden-by-collapse').forEach(n=>n.classList.remove('hidden-by-collapse'));
+ }
+ function collapseRow(r) {
+   const evs = Array.from(r.querySelectorAll('.node.event')).filter(n=>n.style.display!=='none');
+   const keys = evs.map(n=>n.id+'|'+(n.classList.contains('matched')?'m':'u'));
+   let i=0,n=keys.length;
+   while (i<n) {
+	 let bl=0,br=1;
+	 for (let L=2; i+2*L<=n && L<8; ++L) {
+	   let rep=1,j=i+L;
+	   while (j+L<=n && keys.slice(i,i+L).join()===keys.slice(j,j+L).join()) { rep++; j+=L; }
+	   if (rep>1 && L*rep>bl*br) { bl=L; br=rep; }
+	 }
+	 if (bl>1 && br>1) {
+	   const first = evs[i], grp = document.createElement('div');
+	   grp.className='node seq-group'; grp.setAttribute('data-expanded','0');
+	   const labs = evs.slice(i,i+bl).map(x=>x.textContent);
+	   const s = labs.length<=3 ? labs.join(' → ') : labs.slice(0,2).join(' → ')+' … '+labs[labs.length-1];
+	   grp.textContent='['+s+'] ×'+br; grp._nodes=[];
+	   for (let k=0;k<bl*br;++k) {
+		 evs[i+k].classList.add('hidden-by-collapse');
+		 grp._nodes.push(evs[i+k]);
+	   }
+	   r.insertBefore(grp, first);
+	   i += bl*br;
+	 } else i++;
+   }
+ }
+ function collapseAll() {
+   document.querySelectorAll('.row').forEach(r=>{ clearRow(r); collapseRow(r); });
+ }
+ btnC.onclick = ()=> {
+   collapse = !collapse;
+   if (collapse) { collapseAll(); btnC.textContent='Expand repeats'; }
+   else          { document.querySelectorAll('.row').forEach(clearRow); btnC.textContent='Collapse repeats'; }
+ };
+
+ // initial setup
+ updateFirstVisible();
+ rebuildNav();
+</script></body></html>)";
+	}
+#endif
 } // namespace RN

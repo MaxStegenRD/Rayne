@@ -15,6 +15,8 @@
 #include "RNCatalogue.h"
 #include "RNKVO.h"
 
+#include <source_location>
+
 #define RN_ZOMBIE_ALLOCATION 0
 
 namespace RN
@@ -27,11 +29,40 @@ namespace RN
 	public:
 		friend class AutoreleasePool;
 
+#ifdef RN_BUILD_DEBUG
+		RNAPI Object *Retain_debug(const char* file, int line, const char* func);
+		RNAPI const Object *Retain_debug(const char* file, int line, const char* func) const;
+		RNAPI void Release_debug(const char* file, int line, const char* func) const;
+		RNAPI Object *Autorelease_debug(const char* file, int line, const char* func);
+		RNAPI const Object *Autorelease_debug(const char* file, int line, const char* func) const;
+		
+		RN_INLINE Object *Retain(const std::source_location &loc = std::source_location::current())
+		{
+			return Retain_debug(loc.file_name(), loc.line(), loc.function_name());
+		}
+		RN_INLINE const Object *Retain(const std::source_location &loc = std::source_location::current()) const
+		{
+			return Retain_debug(loc.file_name(), loc.line(), loc.function_name());
+		}
+		RN_INLINE void Release(const std::source_location &loc = std::source_location::current()) const
+		{
+			Release_debug(loc.file_name(), loc.line(), loc.function_name());
+		}
+		RN_INLINE Object *Autorelease(const std::source_location &loc = std::source_location::current())
+		{
+			return Autorelease_debug(loc.file_name(), loc.line(), loc.function_name());
+		}
+		RN_INLINE const Object *Autorelease(const std::source_location &loc = std::source_location::current()) const
+		{
+			return Autorelease_debug(loc.file_name(), loc.line(), loc.function_name());
+		}
+#else
 		RNAPI Object *Retain();
 		RNAPI const Object *Retain() const;
 		RNAPI void Release() const;
 		RNAPI Object *Autorelease();
 		RNAPI const Object *Autorelease() const;
+#endif
 
 		RNAPI virtual const String *GetDescription() const;
 
@@ -213,6 +244,30 @@ namespace RN
 		{}                                                                               \
 	};
 
+#ifdef RN_BUILD_DEBUG
+#define __RNDeclareMetaPublic(cls)                              \
+public:                                                         \
+RN_INLINE cls *Retain(const std::source_location &loc = std::source_location::current())                                               \
+	{                                                           \
+		return static_cast<cls *>(Object::Retain(loc));            \
+	}                                                           \
+	RN_INLINE const cls *Retain(const std::source_location &loc = std::source_location::current()) const                                   \
+	{                                                           \
+		return static_cast<const cls *>(Object::Retain(loc));      \
+	}                                                           \
+	RN_INLINE cls *Autorelease(const std::source_location &loc = std::source_location::current())                                          \
+	{                                                           \
+		return static_cast<cls *>(Object::Autorelease(loc));       \
+	}                                                           \
+	RN_INLINE const cls *Autorelease(const std::source_location &loc = std::source_location::current()) const                              \
+	{                                                           \
+		return static_cast<const cls *>(Object::Autorelease(loc)); \
+	}                                                           \
+	RN_INLINE cls *Copy() const                                           \
+	{                                                           \
+		return static_cast<cls *>(Object::Copy());              \
+	}
+#else
 #define __RNDeclareMetaPublic(cls)                              \
 public:                                                         \
 	cls *Retain()                                               \
@@ -235,6 +290,7 @@ public:                                                         \
 	{                                                           \
 		return static_cast<cls *>(Object::Copy());              \
 	}
+#endif
 
 
 #define __RNDeclareMetaInternal(cls) \
@@ -320,6 +376,41 @@ public:                                                         \
 	}                                                                                                                                                                                     \
 	RN_REGISTER_INITIALIZER(cls##Init, cls::GetMetaClass(); cls::InitialWakeUp(cls::GetMetaClass()))
 
+#ifdef RN_BUILD_DEBUG
+	template<class T>
+	static void SafeRelease(T *&object, const std::source_location &loc = std::source_location::current())
+	{
+		if(object)
+		{
+			object->Release(loc);
+			object = nullptr;
+		}
+	}
+
+	template<class T>
+	static void SafeRelease(T &object, const std::source_location &loc = std::source_location::current())
+	{
+		static_assert(std::is_base_of<ObservableProperty, T>::value, "T must be of type ObservableProperty");
+
+		if(object)
+		{
+			object->Release(loc);
+			object = nullptr;
+		}
+	}
+
+	template<class T>
+	static T *SafeRetain(T *object, const std::source_location &loc = std::source_location::current())
+	{
+		return object ? static_cast<T *>(object->Retain(loc)) : nullptr;
+	}
+
+	template<class T>
+	static const T *SafeRetain(const T *object, const std::source_location &loc = std::source_location::current())
+	{
+		return object ? static_cast<const T *>(object->Retain(loc)) : nullptr;
+	}
+#else
 	template<class T>
 	static void SafeRelease(T *&object)
 	{
@@ -353,6 +444,7 @@ public:                                                         \
 	{
 		return object ? static_cast<const T *>(object->Retain()) : nullptr;
 	}
+#endif
 
 	template<class T>
 	static T *SafeCopy(const T *object)
@@ -537,6 +629,61 @@ public:                                                         \
 	private:
 		mutable T *_reference;
 	};
+
+#if RN_BUILD_DEBUG
+	class RefcountDebugGraph
+	{
+	public:
+		struct RefcountCallEvent
+		{
+			enum Type { Retain, Release, Autorelease } type;
+			const char* file;
+			int line;
+			const char* func;
+			int afterRefCount;
+			std::string stackTrace;
+		};
+
+		struct RefcountDebugInfo
+		{
+			std::string className;
+			std::string object;
+			std::vector<RefcountCallEvent> events;
+		};
+
+		static RefcountDebugGraph& GetSharedInstance()
+		{
+			static RefcountDebugGraph inst;
+			return inst;
+		}
+
+		void AddRefcountDebugInfo(const Object* obj, RefcountCallEvent::Type type, const char* file, int line, const char* func, int afterRefCount)
+		{
+			std::lock_guard<std::mutex> lk(_mu);
+
+			auto [it, inserted] = _refcountDebugMap.try_emplace(obj, RefcountDebugInfo{});
+
+			if(inserted)
+			{
+				it->second.className = obj->GetClass()->GetFullname();
+				it->second.object = std::to_string(reinterpret_cast<uintptr_t>(obj));
+			}
+
+			RefcountCallEvent event{type, file, line, func, afterRefCount};
+			event.stackTrace = CaptureStackTrace();
+			it->second.events.push_back(std::move(event));
+		}
+
+		void DumpAll(const std::string &filePath, bool onlyStillLive = false);
+
+	private:
+		RefcountDebugGraph() = default;
+		std::string CaptureStackTrace();
+
+		std::mutex _mu;
+		std::unordered_map<const Object*, RefcountDebugInfo> _refcountDebugMap;
+	};
+#endif
 
 #define RNObjectClass(name)                \
 	using name##Ref = RN::StrongRef<name>; \
