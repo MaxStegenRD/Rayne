@@ -490,14 +490,17 @@ namespace RN
 		}
 #endif
 #if RN_PLATFORM_ANDROID
+		int ident;
 		int events;
 		android_poll_source *source;
 
 		// Poll all pending events.
-		if(ALooper_pollAll(0, NULL, &events, (void **)&source) >= 0)
+		while((ident = ALooper_pollOnce(0, nullptr, &events, reinterpret_cast<void**>(&source))) >= 0)
 		{
-			// Process each polled events
-			if(source != NULL) source->process(_androidApp, source);
+			if(source != nullptr)
+			{
+				source->process(_androidApp, source);
+			}
 		}
 
 		if(_androidApp && _androidApp->destroyRequested) _wantsToExit = true;

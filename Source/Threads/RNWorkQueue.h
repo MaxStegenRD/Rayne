@@ -48,9 +48,9 @@ namespace RN
 		RNAPI void PerformSynchronousBarrier(Function &&function);
 
 		template<class F>
-		std::future<typename std::result_of<F()>::type> PerformWithFuture(F &&f)
+		std::future<std::invoke_result_t<F>> PerformWithFuture(F &&f)
 		{
-			typedef typename std::result_of<F()>::type resultType;
+			using resultType = std::invoke_result_t<F>;
 
 			std::promise<resultType> promise;
 			std::future<resultType> result(promise.get_future());
@@ -70,9 +70,9 @@ namespace RN
 		}
 
 		template<class F>
-		std::future<typename std::result_of<F()>::type> PerformBarrierWithFuture(F &&f)
+		std::future<std::invoke_result_t<F>> PerformBarrierWithFuture(F &&f)
 		{
-			typedef typename std::result_of<F()>::type resultType;
+			using resultType = std::invoke_result_t<F>;
 
 			std::promise<resultType> promise;
 			std::future<resultType> result(promise.get_future());
