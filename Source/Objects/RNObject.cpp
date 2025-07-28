@@ -911,7 +911,7 @@ namespace RN
  body{font:14px sans-serif;margin:0;padding:0}
  #viewer{position:fixed;right:0;top:0;bottom:0;width:40%;padding:10px;
   background:#fff;border-left:2px solid #ccc;overflow:auto;display:none;
-  z-index:1000;box-shadow:-2px 0 5px rgba(0,0,0,0.1)}
+  z-index:2000;box-shadow:-2px 0 5px rgba(0,0,0,0.1)}
  #closeBtn{cursor:pointer;color:#c00;float:right;font-size:1.2em}
  #code{white-space:pre-wrap;font-family:monospace}
  .row{display: flex;align-items: center;padding: 8px;border-bottom: 1px solid #eee;width: max-content;min-width: 100%;background-clip: padding-box;box-sizing: border-box;}
