@@ -29,7 +29,7 @@ namespace RN
 	public:
 		friend class AutoreleasePool;
 
-#ifdef RN_BUILD_DEBUG
+#if RN_BUILD_DEBUG
 		RNAPI Object *Retain_debug(const char* file, int line, const char* func);
 		RNAPI const Object *Retain_debug(const char* file, int line, const char* func) const;
 		RNAPI void Release_debug(const char* file, int line, const char* func) const;
@@ -244,7 +244,7 @@ namespace RN
 		{}                                                                               \
 	};
 
-#ifdef RN_BUILD_DEBUG
+#if RN_BUILD_DEBUG
 #define __RNDeclareMetaPublic(cls)                              \
 public:                                                         \
 RN_INLINE cls *Retain(const std::source_location &loc = std::source_location::current())                                               \
@@ -376,7 +376,7 @@ public:                                                         \
 	}                                                                                                                                                                                     \
 	RN_REGISTER_INITIALIZER(cls##Init, cls::GetMetaClass(); cls::InitialWakeUp(cls::GetMetaClass()))
 
-#ifdef RN_BUILD_DEBUG
+#if RN_BUILD_DEBUG
 	template<class T>
 	static void SafeRelease(T *&object, const std::source_location &loc = std::source_location::current())
 	{
