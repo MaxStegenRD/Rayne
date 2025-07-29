@@ -29,6 +29,7 @@ namespace RN
 	{
 	public:
 		bool operator==(const ShadowVolumeEdge &other);
+		bool operator!=(const ShadowVolumeEdge &other);
 
 		Vector3 position[2];
 		unsigned int counter[2];
