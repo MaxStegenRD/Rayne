@@ -64,7 +64,7 @@ namespace RN
 
 	Object::~Object()
 	{
-		if(!std::uncaught_exception())
+		if(std::uncaught_exceptions() == 0)
 			RN_ASSERT(_refCount.load(std::memory_order_relaxed) <= 1, "refCount must be <= 1 upon destructor call. Use object->Unlock(); instead of delete object;");
 
 		for(auto &pair : _associatedObjects)

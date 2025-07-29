@@ -141,7 +141,7 @@ namespace RN
 		std::vector<VkFormat> resolveFormats;
 		VkRenderPass renderPass;
 
-		RN_INLINE bool operator==(const VulkanRenderPassState &descriptor)
+		RN_INLINE bool operator==(const VulkanRenderPassState &descriptor) const
 		{
 			if(imageFormats.size() != descriptor.imageFormats.size()) return false;
 			if(resolveFormats.size() != descriptor.resolveFormats.size()) return false;

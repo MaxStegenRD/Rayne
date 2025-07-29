@@ -674,7 +674,7 @@ public:                                                         \
 			it->second.events.push_back(std::move(event));
 		}
 
-		void DumpAll(const std::string &filePath, bool onlyStillLive = false);
+		RNAPI void DumpAll(const std::string &filePath, bool onlyStillLive = false);
 
 	private:
 		RefcountDebugGraph() = default;

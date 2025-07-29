@@ -30,6 +30,11 @@ namespace RN
 		return false;
 	}
 
+	bool ShadowVolumeEdge::operator!=(const ShadowVolumeEdge &other)
+	{
+		return !(*this == other);
+	}
+
 	ShadowVolume::ShadowVolume() :
 		_faceCount(0), _edgeCount(0), _faces(nullptr), _edges(nullptr)
 	{
