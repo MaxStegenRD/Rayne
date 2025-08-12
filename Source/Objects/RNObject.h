@@ -549,11 +549,13 @@ public:                                                         \
 	private:
 		void Assign(T *value)
 		{
-			if(_value)
-				_value->Release();
+			T *temp = _value;
 
 			if((_value = value))
 				_value->Retain();
+			
+			if(temp)
+				temp->Release();
 		}
 
 		T *_value;
