@@ -14,7 +14,7 @@
 #include "RNString.h"
 #include <string>
 
-#if RN_BUILD_DEBUG
+#if RN_BUILD_DEBUG || RN_BUILD_DEBUG_REFCOUNT
 	#include <iomanip>
 	#if RN_PLATFORM_WINDOWS
 		#include <dbghelp.h>
@@ -55,7 +55,7 @@ namespace RN
 		_isZombie(false),
 #endif
 		_refCount(1)
-#if RN_BUILD_DEBUG
+#if RN_BUILD_DEBUG || RN_BUILD_DEBUG_REFCOUNT
 		,
 		_autoreleaseCounter(0),
 		_isTracked(false)
@@ -115,7 +115,7 @@ namespace RN
 		return reinterpret_cast<Object::MetaType *>(__kRNObjectMetaClass);
 	}
 
-#if RN_BUILD_DEBUG
+#if RN_BUILD_DEBUG || RN_BUILD_DEBUG_REFCOUNT
 	Object *Object::Retain_debug(const char *file, int line, const char *func)
 #else
 	Object *Object::Retain()
@@ -123,7 +123,7 @@ namespace RN
 	{
 		AssertZombieInteraction();
 
-#if RN_BUILD_DEBUG
+#if RN_BUILD_DEBUG || RN_BUILD_DEBUG_REFCOUNT
 		if(_isTracked)
 		{
 			WillChangeReferenceCount(_refCount.load(std::memory_order_relaxed) + 1);
@@ -135,7 +135,7 @@ namespace RN
 		return this;
 	}
 
-#if RN_BUILD_DEBUG
+#if RN_BUILD_DEBUG || RN_BUILD_DEBUG_REFCOUNT
 	const Object *Object::Retain_debug(const char *file, int line, const char *func) const
 #else
 	const Object *Object::Retain() const
@@ -143,7 +143,7 @@ namespace RN
 	{
 		AssertZombieInteraction();
 
-#if RN_BUILD_DEBUG
+#if RN_BUILD_DEBUG || RN_BUILD_DEBUG_REFCOUNT
 		if(_isTracked)
 		{
 			WillChangeReferenceCount(_refCount.load(std::memory_order_relaxed) + 1);
@@ -155,7 +155,7 @@ namespace RN
 		return this;
 	}
 
-#if RN_BUILD_DEBUG
+#if RN_BUILD_DEBUG || RN_BUILD_DEBUG_REFCOUNT
 	void Object::Release_debug(const char *file, int line, const char *func) const
 #else
 	void Object::Release() const
@@ -171,7 +171,7 @@ namespace RN
 		}
 #endif
 
-#if RN_BUILD_DEBUG
+#if RN_BUILD_DEBUG || RN_BUILD_DEBUG_REFCOUNT
 		RN_ASSERT(_refCount.load(std::memory_order_relaxed) > _autoreleaseCounter.load(std::memory_order_relaxed), "Object is in too many autorelease pools and will be over released!");
 
 		if(_isTracked)
@@ -200,7 +200,7 @@ namespace RN
 		}
 	}
 
-#if RN_BUILD_DEBUG
+#if RN_BUILD_DEBUG || RN_BUILD_DEBUG_REFCOUNT
 	Object *Object::Autorelease_debug(const char *file, int line, const char *func)
 #else
 	Object *Object::Autorelease()
@@ -208,7 +208,7 @@ namespace RN
 	{
 		AssertZombieInteraction();
 
-#if RN_BUILD_DEBUG
+#if RN_BUILD_DEBUG || RN_BUILD_DEBUG_REFCOUNT
 		if(_isTracked)
 		{
 			WillChangeAutoreleaseCount(_autoreleaseCounter.load(std::memory_order_relaxed) + 1);
@@ -231,7 +231,7 @@ namespace RN
 		return this;
 	}
 
-#if RN_BUILD_DEBUG
+#if RN_BUILD_DEBUG || RN_BUILD_DEBUG_REFCOUNT
 	const Object *Object::Autorelease_debug(const char *file, int line, const char *func) const
 #else
 	const Object *Object::Autorelease() const
@@ -239,7 +239,7 @@ namespace RN
 	{
 		AssertZombieInteraction();
 
-#if RN_BUILD_DEBUG
+#if RN_BUILD_DEBUG || RN_BUILD_DEBUG_REFCOUNT
 		if(_isTracked)
 		{
 			WillChangeAutoreleaseCount(_autoreleaseCounter.load(std::memory_order_relaxed) + 1);
@@ -271,7 +271,7 @@ namespace RN
 		return GetClass()->ConstructWithCopy(const_cast<Object *>(this));
 	}
 
-#if RN_BUILD_DEBUG
+#if RN_BUILD_DEBUG || RN_BUILD_DEBUG_REFCOUNT
 	void Object::StartReferenceTracking()
 	{
 		_isTracked = true;
@@ -609,7 +609,7 @@ namespace RN
 		throw InconsistencyException(RNSTR("GetValueForKey() with undefined key '" << key << "'"));
 	}
 
-#if RN_BUILD_DEBUG
+#if RN_BUILD_DEBUG || RN_BUILD_DEBUG_REFCOUNT
 	std::string RefcountDebugGraph::CaptureStackTrace()
 	{
 		constexpr int kMaxFrames = 32;

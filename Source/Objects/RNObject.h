@@ -29,7 +29,7 @@ namespace RN
 	public:
 		friend class AutoreleasePool;
 
-#if RN_BUILD_DEBUG
+#if RN_BUILD_DEBUG || RN_BUILD_DEBUG_REFCOUNT
 		RNAPI Object *Retain_debug(const char* file, int line, const char* func);
 		RNAPI const Object *Retain_debug(const char* file, int line, const char* func) const;
 		RNAPI void Release_debug(const char* file, int line, const char* func) const;
@@ -74,7 +74,7 @@ namespace RN
 
 		RNAPI virtual void Serialize(Serializer *serializer) const;
 
-#if RN_BUILD_DEBUG
+#if RN_BUILD_DEBUG || RN_BUILD_DEBUG_REFCOUNT
 		RNAPI void StartReferenceTracking();
 		RNAPI void StopReferenceTracking();
 
@@ -216,7 +216,7 @@ namespace RN
 #endif
 		mutable std::atomic<size_t> _refCount;
 
-#if RN_BUILD_DEBUG
+#if RN_BUILD_DEBUG || RN_BUILD_DEBUG_REFCOUNT
 		mutable std::atomic<size_t> _autoreleaseCounter;
 		mutable bool _isTracked;
 #endif
@@ -244,7 +244,7 @@ namespace RN
 		{}                                                                               \
 	};
 
-#if RN_BUILD_DEBUG
+#if RN_BUILD_DEBUG || RN_BUILD_DEBUG_REFCOUNT
 #define __RNDeclareMetaPublic(cls)                              \
 public:                                                         \
 RN_INLINE cls *Retain(const std::source_location &loc = std::source_location::current())                                               \
@@ -376,7 +376,7 @@ public:                                                         \
 	}                                                                                                                                                                                     \
 	RN_REGISTER_INITIALIZER(cls##Init, cls::GetMetaClass(); cls::InitialWakeUp(cls::GetMetaClass()))
 
-#if RN_BUILD_DEBUG
+#if RN_BUILD_DEBUG || RN_BUILD_DEBUG_REFCOUNT
 	template<class T>
 	static void SafeRelease(T *&object, const std::source_location &loc = std::source_location::current())
 	{
@@ -630,7 +630,7 @@ public:                                                         \
 		mutable T *_reference;
 	};
 
-#if RN_BUILD_DEBUG
+#if RN_BUILD_DEBUG || RN_BUILD_DEBUG_REFCOUNT
 	class RefcountDebugGraph
 	{
 	public:

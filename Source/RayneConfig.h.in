@@ -84,6 +84,10 @@
 #define RN_BUILD_RELEASE 0
 #endif
 
+#if !defined(RN_BUILD_DEBUG_REFCOUNT)
+#define RN_BUILD_DEBUG_REFCOUNT 0
+#endif
+
 #if !defined(NDEBUG) && RN_BUILD_RELEASE
 #define NDEBUG 1
 #endif
