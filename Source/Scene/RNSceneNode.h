@@ -161,7 +161,7 @@ namespace RN
 		RNAPI const Array *GetAttachments() const;
 		RNAPI const Array *GetChildren() const;
 
-		void Traverse(const std::function<void(SceneNode *)> &callback);
+		RNAPI void Traverse(const std::function<void(SceneNode *)> &callback);
 
 		RNAPI Matrix GetWorldTransform() const;
 		RNAPI Matrix GetInverseWorldTransform() const;
