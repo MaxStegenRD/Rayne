@@ -563,6 +563,7 @@ namespace RN
 
 	void Camera::TruncateRenderNodes(size_t length)
 	{
+		if(!_renderNodes) return;
 		while(_renderNodes->GetCount() > length)
 		{
 			_renderNodes->RemoveObjectAtIndex(length);
