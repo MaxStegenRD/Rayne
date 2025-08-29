@@ -87,6 +87,7 @@ namespace RN
 		EOSAPI void LeaveLobby();
 		EOSAPI void KickFromLobby(EOS_ProductUserId userHandle);
 		EOSAPI void SetLobbyAttributes(Dictionary *attributes);
+		EOSAPI void SetLobbyMaxPlayers(size_t playerCount);
 		
 		EOSAPI void RetrievePeers();
 		EOSAPI void AddRemotePeer(EOS_ProductUserId peerID);

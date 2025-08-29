@@ -235,6 +235,42 @@ namespace RN
 		EOS_Lobby_UpdateLobby(lobbyInterfaceHandle, &updateLobbyOptions, this, EOSLobbyManager::LobbyOnUpdateCallback);
 	}
 
+	void EOSConnectedLobbyInfo::SetLobbyMaxPlayers(size_t playerCount)
+	{
+		//Can only edit a lobby if connected to it and the owner
+		if(_status != Status::Connected || !_isHost) return;
+
+		EOS_Lobby_UpdateLobbyModificationOptions modificationOptions = {0};
+		modificationOptions.ApiVersion = EOS_LOBBY_UPDATELOBBYMODIFICATION_API_LATEST;
+		modificationOptions.LobbyId = _lobbyID->GetUTF8String();
+		modificationOptions.LocalUserId = EOSWorld::GetInstance()->GetUserID();
+
+		EOS_HLobby lobbyInterfaceHandle = EOS_Platform_GetLobbyInterface(EOSWorld::GetInstance()->GetPlatformHandle());
+		
+		EOS_HLobbyModification modificationHandle;
+		if(EOS_Lobby_UpdateLobbyModification(lobbyInterfaceHandle, &modificationOptions, &modificationHandle) != EOS_EResult::EOS_Success)
+		{
+			RNDebug("Failed creating EOS Lobby modification handle");
+			return;
+		}
+
+		EOS_LobbyModification_SetMaxMembersOptions maxMembersOptions = {0};
+		maxMembersOptions.ApiVersion = EOS_LOBBYMODIFICATION_SETMAXMEMBERS_API_LATEST;
+		maxMembersOptions.MaxMembers = static_cast<uint32_t>(playerCount);
+		EOS_LobbyModification_SetMaxMembers(modificationHandle, &maxMembersOptions);
+		
+		EOS_LobbyModification_SetPermissionLevelOptions permissionLevelOptions = {0};
+		permissionLevelOptions.ApiVersion = EOS_LOBBYMODIFICATION_SETPERMISSIONLEVEL_API_LATEST;
+		permissionLevelOptions.PermissionLevel = playerCount == 1 ? EOS_ELobbyPermissionLevel::EOS_LPL_INVITEONLY : EOS_ELobbyPermissionLevel::EOS_LPL_PUBLICADVERTISED;
+		EOS_LobbyModification_SetPermissionLevel(modificationHandle, &permissionLevelOptions);
+
+		EOS_Lobby_UpdateLobbyOptions updateLobbyOptions = {0};
+		updateLobbyOptions.ApiVersion = EOS_LOBBY_UPDATELOBBY_API_LATEST;
+		updateLobbyOptions.LobbyModificationHandle = modificationHandle;
+
+		EOS_Lobby_UpdateLobby(lobbyInterfaceHandle, &updateLobbyOptions, this, EOSLobbyManager::LobbyOnUpdateCallback);
+	}
+
 	EOS_ProductUserId EOSConnectedLobbyInfo::GetLobbyOwnerID() const
 	{
 		RN_ASSERT(_status == Status::Connected, "Cannot query owner of lobby: not connected to any lobby.");
