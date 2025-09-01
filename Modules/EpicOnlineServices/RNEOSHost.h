@@ -108,6 +108,7 @@ namespace RN
 		
 		EOSAPI virtual bool HasClient(RN::uint8 clientID);
 		EOSAPI virtual bool HasClient(const RN::String *eosUserIDString);
+		EOSAPI const RN::String *GetEOSUserIDStringForClient(RN::uint8 clientID) const;
 		
 		const String *GetSocketID() const { return _socketID; }
 

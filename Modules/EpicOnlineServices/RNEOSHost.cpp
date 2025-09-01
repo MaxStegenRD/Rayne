@@ -362,4 +362,11 @@ namespace RN
 		if(_peers.find(eosID) == _peers.end()) return false;
 		return true;
 	}
+
+	const RN::String *EOSHost::GetEOSUserIDStringForClient(RN::uint8 clientID) const
+	{
+		auto it = _idMap.find(clientID);
+		if(it == _idMap.end()) return nullptr;
+		return EOSWorld::GetInstance()->GetUserIDString(it->second);
+	}
 } // namespace RN
