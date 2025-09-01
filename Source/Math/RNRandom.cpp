@@ -187,6 +187,8 @@ namespace RN
 		{
 			RN_ASSERT(min >= GetMin(), "");
 			RN_ASSERT(max <= GetMax(), "");
+			
+			if(min == max) return min;
 
 			while(1)
 			{
