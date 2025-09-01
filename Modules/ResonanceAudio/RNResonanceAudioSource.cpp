@@ -50,6 +50,7 @@ namespace RN
 	void ResonanceAudioSource::SetAudioAsset(AudioAsset *asset)
 	{
 		_sampler->SetAudioAsset(asset);
+		_currentTime = 0.0f;
 	}
 
 	void ResonanceAudioSource::SetRepeat(bool repeat)
@@ -87,6 +88,10 @@ namespace RN
 	void ResonanceAudioSource::Play()
 	{
 		_isPlaying = true;
+		if(_sampler->GetAsset() && _currentTime >= _sampler->GetTotalTime())
+		{
+			_currentTime = 0.0f;
+		}
 	}
 
 	void ResonanceAudioSource::Stop()

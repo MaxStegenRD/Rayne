@@ -50,7 +50,7 @@ namespace RN
 
 		_audioAPI = vraudio::CreateResonanceAudioApi(_audioSystem->_channelCount, _audioSystem->_frameSize, _audioSystem->_sampleRate);
 		_audioAPI->SetMasterVolume(1.0f);
-		_audioAPI->EnableRoomEffects(true);
+		_audioAPI->EnableRoomEffects(false);
 
 		_sharedFrameData = new float[_audioSystem->_frameSize * _audioSystem->_channelCount];
 		_instance = this;
@@ -166,6 +166,8 @@ namespace RN
 
 	void ResonanceAudioWorld::Update(float delta)
 	{
+		SceneAttachment::Update(delta);
+		
 		//Update listener position
 		if(_listener)
 		{
