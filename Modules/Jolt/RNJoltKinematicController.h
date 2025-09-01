@@ -40,6 +40,8 @@ namespace RN
 
 		JTAPI void SetCollisionFilter(uint32 group, uint32 mask) override;
 		JTAPI Vector3 GetFeetOffset() const;
+		
+		JoltShape *GetShape() const { return _shape; }
 
 		SceneNode *GetObjectBelow() const { return _objectBelow; }
 		bool GetIsFalling() const { return _isFalling; }

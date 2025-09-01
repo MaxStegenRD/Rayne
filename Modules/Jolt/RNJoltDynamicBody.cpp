@@ -16,7 +16,7 @@ namespace RN
 
 	JoltDynamicBody::JoltDynamicBody(JoltShape *shape, float mass) :
 		_shape(shape->Retain()),
-		_actor(nullptr)
+		_actor(nullptr), _isKinematic(false)
 	{
 		JoltWorld *world = JoltWorld::GetSharedInstance();
 		JPH::PhysicsSystem *physics = world->GetJoltInstance();
@@ -227,19 +227,25 @@ namespace RN
 
 	void JoltDynamicBody::SetEnableKinematic(bool enable)
 	{
-		//_actor->setRigidBodyFlag(Jolt::PxRigidBodyFlag::eKINEMATIC, enable);
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		JPH::EMotionType motionType = enable ? JPH::EMotionType::Kinematic : JPH::EMotionType::Dynamic;
+		bodyInterface.SetMotionType(*_actor, motionType, JPH::EActivation::DontActivate);
+		_isKinematic = enable;
 	}
 
 	bool JoltDynamicBody::GetIsKinematic() const
 	{
-		return false; //_actor->getRigidBodyFlags() & Jolt::PxRigidBodyFlag::eKINEMATIC;
+		return _isKinematic;
 	}
 
-	void JoltDynamicBody::SetKinematicTarget(const Vector3 &position, const Quaternion &rotation)
+	void JoltDynamicBody::SetKinematicTarget(const Vector3 &position, const Quaternion &rotation, float delta)
 	{
-		/*RN::Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
 		Quaternion targetRotation = rotation * _rotationOffset;
-		_actor->setKinematicTarget(Jolt::PxTransform(position.x - positionOffset.x, position.y - positionOffset.y, position.z - positionOffset.z, Jolt::PxQuat(targetRotation.x, targetRotation.y, targetRotation.z, targetRotation.w)));*/
+		bodyInterface.MoveKinematic(*_actor, JPH::RVec3Arg(position.x - positionOffset.x, position.y - positionOffset.y, position.z - positionOffset.z), JPH::QuatArg(targetRotation.x, targetRotation.y, targetRotation.z, targetRotation.w), delta);
 	}
 
 	/*	void JoltDynamicBody::AccelerateToTarget(const Vector3 &position, const Quaternion &rotation, float delta)

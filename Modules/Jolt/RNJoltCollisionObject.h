@@ -49,6 +49,8 @@ namespace RN
 		JTAPI virtual void SetPositionOffset(RN::Vector3 offset);
 		JTAPI virtual void SetRotationOffset(RN::Quaternion offset);
 
+		Vector3 GetPositionOffset() const { return _positionOffset; }
+
 		uint32 GetCollisionFilterGroup() const { return _collisionFilterGroup; }
 		uint32 GetCollisionFilterMask() const { return _collisionFilterMask; }
 

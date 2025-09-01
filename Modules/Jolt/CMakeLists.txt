@@ -38,7 +38,7 @@ set(OBJECT_LAYER_BITS 16)
 FetchContent_Declare(
         JoltPhysics
         GIT_REPOSITORY "https://github.com/jrouwe/JoltPhysics.git"
-        GIT_TAG "v5.2.0"
+        GIT_TAG "v5.3.0"
         SOURCE_SUBDIR "Build"
 )
 FetchContent_MakeAvailable(JoltPhysics)

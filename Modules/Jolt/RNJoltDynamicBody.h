@@ -53,7 +53,7 @@ namespace RN
 		JTAPI void LockMovement(uint32 lockFlags);
 		JTAPI void SetSolverIterationCount(uint32 positionIterations, uint32 velocityIterations);
 
-		JTAPI void SetKinematicTarget(const Vector3 &position, const Quaternion &rotation);
+		JTAPI void SetKinematicTarget(const Vector3 &position, const Quaternion &rotation, float delta);
 		//JTAPI void AccelerateToTarget(const Vector3 &position, const Quaternion &rotation, float delta);
 
 		JTAPI void AddForce(const Vector3 &force);
@@ -88,6 +88,7 @@ namespace RN
 	private:
 		JoltShape *_shape;
 		JPH::BodyID *_actor;
+		bool _isKinematic;
 
 		RNDeclareMetaAPI(JoltDynamicBody, JTAPI)
 	};
