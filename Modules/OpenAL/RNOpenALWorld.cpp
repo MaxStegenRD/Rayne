@@ -115,7 +115,7 @@ namespace RN
 
 	void OpenALOutputDevice::StartManualUpdate()
 	{
-		if(!_isManualUpdate || !_isLoopback) return;
+		if(_isManualUpdate || !_isLoopback) return;
 		
 		if(_wantsHRTF)
 		{
@@ -128,7 +128,7 @@ namespace RN
 
 	void OpenALOutputDevice::StopManualUpdate()
 	{
-		if(_isManualUpdate || !_isLoopback) return;
+		if(!_isManualUpdate || !_isLoopback) return;
 		
 		if(_wantsHRTF)
 		{
