@@ -113,6 +113,7 @@ namespace RN
 			return;
 		}
 		_status = Disconnecting;
+		Retain();
 		Unlock();
 
 		EOSWorld *world = EOSWorld::GetInstance();
@@ -137,45 +138,20 @@ namespace RN
 
 		Lock();
 		uint8 localClientID = _clientID;
+
+		_status = Disconnected;
 		Unlock();
 
-		Retain();
-		if(Thread::GetCurrentThread() == Thread::GetMainThread())
-		{
-			Lock();
-			_status = Disconnected;
-			Unlock();
+		HandleDidDisconnect(localClientID, 0);
 
-			HandleDidDisconnect(localClientID, 0);
+		Lock();
+		_peers.clear();
+		_idMap.clear();
+		_clientID = CLIENT_ID_NONE;
+		_hostClientID = CLIENT_ID_NONE;
+		Unlock();
 
-			Lock();
-			_peers.clear();
-			_idMap.clear();
-			_clientID = CLIENT_ID_NONE;
-			_hostClientID = CLIENT_ID_NONE;
-			Unlock();
-
-			Release();
-		}
-		else
-		{
-			WorkQueue::GetMainQueue()->Perform([this, localClientID]() {
-				Lock();
-				_status = Disconnected;
-				Unlock();
-
-				HandleDidDisconnect(localClientID, 0);
-
-				Lock();
-				_peers.clear();
-				_idMap.clear();
-				_clientID = CLIENT_ID_NONE;
-				_hostClientID = CLIENT_ID_NONE;
-				Unlock();
-
-				Release();
-			});
-		}
+		Release();
 	}
 	
 	void EOSP2PClient::DisconnectClient(EOS_ProductUserId productUserId)
@@ -556,6 +532,7 @@ namespace RN
 	{
 		EOSHost::Update(delta); //This sends regular pings and handles sending of scheduled packets
 
+		Retain();
 		Lock();
 		if(_status == Connecting)
 		{
@@ -571,6 +548,7 @@ namespace RN
 		if(_status == Disconnected || _status == Disconnecting)
 		{
 			Unlock();
+			Release();
 			return;
 		}
 
@@ -593,6 +571,7 @@ namespace RN
 		}
 
 		Unlock();
+		Release();
 	}
 
 	void EOSP2PClient::LogPeers() const
