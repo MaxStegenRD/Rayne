@@ -317,18 +317,22 @@ namespace RN
 
 				for(int i = 0; i < hit.getNbAnyHits(); i++)
 				{
+					const physx::PxSweepHit &currentHit = hit.getAnyHit(i);
+
 					PhysXContactInfo contact;
-					contact.distance = hit.getAnyHit(i).distance;
-					contact.normal = Vector3(hit.getAnyHit(i).normal.x, hit.getAnyHit(i).normal.y, hit.getAnyHit(i).normal.z);
-					contact.position = Vector3(hit.getAnyHit(i).position.x, hit.getAnyHit(i).position.y, hit.getAnyHit(i).position.z);
+					contact.distance = currentHit.distance;
+					contact.normal = Vector3(currentHit.normal.x, currentHit.normal.y, currentHit.normal.z);
+					contact.position = Vector3(currentHit.position.x, currentHit.position.y, currentHit.position.z);
 					contact.node = nullptr;
-					PhysXCollisionObject *attachment = static_cast<PhysXCollisionObject *>(hit.getAnyHit(i).actor->userData);
+					PhysXCollisionObject *attachment = static_cast<PhysXCollisionObject *>(currentHit.actor->userData);
 					contact.collisionObject = attachment;
 					if(attachment)
 					{
 						contact.node = attachment->GetParent();
 						if(contact.node) contact.node->Retain()->Autorelease();
 					}
+					contact.shapeSelf = tempShape;
+					contact.shapeOther = currentHit.shape ? static_cast<RN::PhysXShape *>(currentHit.shape->userData) : nullptr;
 					contactInfo.push_back(contact);
 				}
 			}
@@ -347,18 +351,22 @@ namespace RN
 
 			for(int i = 0; i < hit.getNbAnyHits(); i++)
 			{
+				const physx::PxSweepHit &currentHit = hit.getAnyHit(i);
+
 				PhysXContactInfo contact;
-				contact.distance = hit.getAnyHit(i).distance;
-				contact.normal = Vector3(hit.getAnyHit(i).normal.x, hit.getAnyHit(i).normal.y, hit.getAnyHit(i).normal.z);
-				contact.position = Vector3(hit.getAnyHit(i).position.x, hit.getAnyHit(i).position.y, hit.getAnyHit(i).position.z);
+				contact.distance = currentHit.distance;
+				contact.normal = Vector3(currentHit.normal.x, currentHit.normal.y, currentHit.normal.z);
+				contact.position = Vector3(currentHit.position.x, currentHit.position.y, currentHit.position.z);
 				contact.node = nullptr;
-				PhysXCollisionObject *attachment = static_cast<PhysXCollisionObject *>(hit.getAnyHit(i).actor->userData);
+				PhysXCollisionObject *attachment = static_cast<PhysXCollisionObject *>(currentHit.actor->userData);
 				contact.collisionObject = attachment;
 				if(attachment)
 				{
 					contact.node = attachment->GetParent();
 					if(contact.node) contact.node->Retain()->Autorelease();
 				}
+				contact.shapeSelf = _shape;
+				contact.shapeOther = currentHit.shape ? static_cast<RN::PhysXShape *>(currentHit.shape->userData) : nullptr;
 				contactInfo.push_back(contact);
 			}
 		}

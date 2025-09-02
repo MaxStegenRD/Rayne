@@ -97,6 +97,9 @@ namespace RN
 				PhysXCollisionObject *objectA = static_cast<PhysXCollisionObject *>(pairHeader.actors[0]->userData);
 				PhysXCollisionObject *objectB = static_cast<PhysXCollisionObject *>(pairHeader.actors[1]->userData);
 
+				PhysXShape *shapeA = contactPair.shapes[0] ? static_cast<PhysXShape *>(contactPair.shapes[0]->userData) : nullptr;
+				PhysXShape *shapeB = contactPair.shapes[1] ? static_cast<PhysXShape *>(contactPair.shapes[1]->userData) : nullptr;
+
 				physx::PxContactPairPoint contactPoint;
 				int nbPoints = contactPair.extractContacts(&contactPoint, 1);
 
@@ -111,6 +114,10 @@ namespace RN
 
 						contactInfo.normal = RN::Vector3(contactPoint.normal.x, contactPoint.normal.y, contactPoint.normal.z);
 						contactInfo.position = RN::Vector3(contactPoint.position.x, contactPoint.position.y, contactPoint.position.z);
+
+						contactInfo.shapeSelf = shapeA;
+						contactInfo.shapeOther = shapeB;
+
 						objectA->_contactCallback(objectB, contactInfo, contactState);
 						SafeRelease(contactInfo.node);
 					}
@@ -123,6 +130,10 @@ namespace RN
 						contactInfo.collisionObject = objectA;
 						contactInfo.normal = -RN::Vector3(contactPoint.normal.x, contactPoint.normal.y, contactPoint.normal.z);
 						contactInfo.position = RN::Vector3(contactPoint.position.x, contactPoint.position.y, contactPoint.position.z);
+
+						contactInfo.shapeSelf = shapeB;
+						contactInfo.shapeOther = shapeA;
+
 						objectB->_contactCallback(objectA, contactInfo, contactState);
 						SafeRelease(contactInfo.node);
 					}
@@ -143,6 +154,12 @@ namespace RN
 			contactInfo.collisionObject = objectB;
 			contactInfo.normal = RN::Vector3(hit.worldNormal.x, hit.worldNormal.y, hit.worldNormal.z);
 			contactInfo.position = RN::Vector3(hit.worldPos.x, hit.worldPos.y, hit.worldPos.z);
+
+			physx::PxShape *shape = nullptr;
+			hit.controller->getActor()->getShapes(&shape, 1);
+			contactInfo.shapeSelf = shape ? static_cast<PhysXShape *>(shape->userData) : nullptr;
+			contactInfo.shapeOther = hit.shape ? static_cast<PhysXShape *>(hit.shape->userData) : nullptr;
+
 			objectA->_contactCallback(objectB, contactInfo, PhysXCollisionObject::ContactState::Begin);
 			SafeRelease(contactInfo.node);
 		}
