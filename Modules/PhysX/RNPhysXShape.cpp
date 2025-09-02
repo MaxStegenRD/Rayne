@@ -22,12 +22,15 @@ namespace RN
 	RNDefineMeta(PhysXCompoundShape, PhysXShape)
 
 	PhysXShape::PhysXShape() :
-		_shape(nullptr), _material(nullptr)
+		_shape(nullptr), _material(nullptr), _collisionFilterGroup(0), _collisionFilterMask(0)
 	{}
 
 	PhysXShape::PhysXShape(physx::PxShape *shape) :
-		_shape(shape), _material(nullptr)
-	{}
+		_shape(shape), _material(nullptr), _collisionFilterGroup(0), _collisionFilterMask(0)
+	{
+		if(_shape)
+			_shape->userData = this;
+	}
 
 	PhysXShape::~PhysXShape()
 	{
@@ -40,12 +43,51 @@ namespace RN
 		_shape->setLocalPose(physx::PxTransform(physx::PxVec3(positionOffset.x, positionOffset.y, positionOffset.z), physx::PxQuat(rotationOffset.x, rotationOffset.y, rotationOffset.z, rotationOffset.w)));
 	}
 
+	void PhysXShape::SetCollisionFilter(uint32 group, uint32 mask)
+	{
+		_collisionFilterGroup = group;
+		_collisionFilterMask = mask;
+
+		if(_shape)
+		{
+			physx::PxFilterData filterData;
+			filterData.word0 = group;
+			filterData.word1 = mask;
+			filterData.word2 = 0;
+			filterData.word3 = 0;
+
+			_shape->setSimulationFilterData(filterData);
+			_shape->setQueryFilterData(filterData);
+		}
+	}
+
+	uint32 PhysXShape::GetCollisionFilterGroup() const
+	{
+		return _collisionFilterGroup;
+	}
+
+	uint32 PhysXShape::GetCollisionFilterMask() const
+	{
+		return _collisionFilterMask;
+	}
+
+	void PhysXShape::SetLinkedObject(Object *obj)
+	{
+		_linkedObject = obj;
+	}
+
+	Object *PhysXShape::GetLinkedObject() const
+	{
+		return _linkedObject.Load();
+	}
+
 
 	PhysXSphereShape::PhysXSphereShape(float radius, PhysXMaterial *material)
 	{
 		_material = material->Retain();
 		physx::PxPhysics *physics = PhysXWorld::GetSharedInstance()->GetPhysXInstance();
 		_shape = physics->createShape(physx::PxSphereGeometry(radius), *material->GetPhysXMaterial(), true);
+		_shape->userData = this;
 	}
 
 	PhysXSphereShape *PhysXSphereShape::WithRadius(float radius, PhysXMaterial *material)
@@ -60,6 +102,7 @@ namespace RN
 		_material = material->Retain();
 		physx::PxPhysics *physics = PhysXWorld::GetSharedInstance()->GetPhysXInstance();
 		_shape = physics->createShape(physx::PxBoxGeometry(halfExtents.x, halfExtents.y, halfExtents.z), *material->GetPhysXMaterial(), true);
+		_shape->userData = this;
 	}
 
 	PhysXBoxShape *PhysXBoxShape::WithHalfExtents(const Vector3 &halfExtents, PhysXMaterial *material)
@@ -74,6 +117,7 @@ namespace RN
 		_material = material->Retain();
 		physx::PxPhysics *physics = PhysXWorld::GetSharedInstance()->GetPhysXInstance();
 		_shape = physics->createShape(physx::PxCapsuleGeometry(radius, height * 0.5f), *material->GetPhysXMaterial(), true);
+		_shape->userData = this;
 	}
 
 	PhysXCapsuleShape *PhysXCapsuleShape::WithRadius(float radius, float height, PhysXMaterial *material)
@@ -88,6 +132,7 @@ namespace RN
 		_material = material->Retain();
 		physx::PxPhysics *physics = PhysXWorld::GetSharedInstance()->GetPhysXInstance();
 		_shape = physics->createShape(physx::PxPlaneGeometry(), *material->GetPhysXMaterial(), true);
+		_shape->userData = this;
 	}
 
 	PhysXStaticPlaneShape *PhysXStaticPlaneShape::WithMaterial(PhysXMaterial *material)
@@ -140,6 +185,7 @@ namespace RN
 
 		_material = material->Retain();
 		_shape = shape;
+		_shape->userData = this;
 	}
 
 	PhysXTriangleMeshShape *PhysXTriangleMeshShape::WithMesh(Mesh *mesh, PhysXMaterial *material, Vector3 scale, bool wantsDoubleSided)
@@ -180,6 +226,7 @@ namespace RN
 
 		_material = material->Retain();
 		_shape = shape;
+		_shape->userData = this;
 	}
 
 	PhysXConvexHullShape *PhysXConvexHullShape::WithMesh(Mesh *mesh, PhysXMaterial *material, Vector3 scale)
@@ -247,5 +294,21 @@ namespace RN
 	{
 		PhysXCompoundShape *shape = new PhysXCompoundShape(model, material, scale, useTriangleMesh, wantsDoubleSided);
 		return shape->Autorelease();
+	}
+
+	void PhysXCompoundShape::SetCollisionFilter(uint32 group, uint32 mask)
+	{
+		PhysXShape::SetCollisionFilter(group, mask);
+
+		for(PhysXShape *shape : _shapes)
+			shape->SetCollisionFilter(group, mask);
+	}
+
+	void PhysXCompoundShape::SetLinkedObject(Object *obj)
+	{
+		PhysXShape::SetLinkedObject(obj);
+
+		for(PhysXShape *shape : _shapes)
+			shape->SetLinkedObject(obj);
 	}
 } // namespace RN

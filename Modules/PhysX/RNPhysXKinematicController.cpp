@@ -113,6 +113,8 @@ namespace RN
 		if(hit.getNbTouches() == 0)
 			return contacts;
 
+		RN::PhysXShape *shapeSelf = static_cast<RN::PhysXShape *>(shape->userData);
+
 		for(uint32 i = 0; i < hit.nbTouches; i++)
 		{
 			physx::PxSweepHit currentHit = hit.touches[i];
@@ -134,6 +136,9 @@ namespace RN
 					if(contact.node) contact.node->Retain()->Autorelease();
 				}
 			}
+
+			contact.shapeSelf = shapeSelf;
+			contact.shapeOther = currentHit.shape ? static_cast<RN::PhysXShape *>(currentHit.shape->userData) : nullptr;
 
 			contacts.push_back(contact);
 		}
@@ -183,6 +188,10 @@ namespace RN
 				if(contact.node) contact.node->Retain()->Autorelease();
 			}
 		}
+
+		contact.shapeSelf = static_cast<RN::PhysXShape *>(shape->userData);
+		contact.shapeOther = closestHit.shape ? static_cast<RN::PhysXShape *>(closestHit.shape->userData) : nullptr;
+
 		return contact;
 	}
 
@@ -226,6 +235,10 @@ namespace RN
 				if(contact.node) contact.node->Retain()->Autorelease();
 			}
 		}
+
+		contact.shapeSelf = static_cast<RN::PhysXShape *>(shape->userData);
+		contact.shapeOther = closestHit.shape ? static_cast<RN::PhysXShape *>(closestHit.shape->userData) : nullptr;
+
 		return contact;
 	}
 
@@ -253,6 +266,8 @@ namespace RN
 		if(hit.getNbAnyHits() == 0)
 			return contacts;
 
+		RN::PhysXShape *shapeSelf = static_cast<RN::PhysXShape *>(shape->userData);
+
 		for(uint32 i = 0; i < hit.getNbAnyHits(); i++)
 		{
 			physx::PxOverlapHit currentHit = hit.getAnyHit(i);
@@ -274,6 +289,9 @@ namespace RN
 					if(contact.node) contact.node->Retain()->Autorelease();
 				}
 			}
+
+			contact.shapeSelf = shapeSelf;
+			contact.shapeOther = currentHit.shape ? static_cast<RN::PhysXShape *>(currentHit.shape->userData) : nullptr;
 
 			contacts.push_back(contact);
 		}
