@@ -112,8 +112,8 @@ namespace RN
 			Unlock();
 			return;
 		}
-
 		_status = Disconnecting;
+		Unlock();
 
 		EOSWorld *world = EOSWorld::GetInstance();
 
@@ -134,18 +134,48 @@ namespace RN
 		{
 			RNWarning("Failed closing all connections");
 		}
-		
-		Retain();
-		_status = Disconnected;
-		Unlock();
-		HandleDidDisconnect(_clientID, 0); //OnConnectionClosedCallback is not guaranteed to be called when lobby closed, so explicitly call handler here
+
 		Lock();
-		_peers.clear();
-		_idMap.clear();
-		_clientID = CLIENT_ID_NONE;
-		_hostClientID = CLIENT_ID_NONE;
+		uint8 localClientID = _clientID;
 		Unlock();
-		Release();
+
+		Retain();
+		if(Thread::GetCurrentThread() == Thread::GetMainThread())
+		{
+			Lock();
+			_status = Disconnected;
+			Unlock();
+
+			HandleDidDisconnect(localClientID, 0);
+
+			Lock();
+			_peers.clear();
+			_idMap.clear();
+			_clientID = CLIENT_ID_NONE;
+			_hostClientID = CLIENT_ID_NONE;
+			Unlock();
+
+			Release();
+		}
+		else
+		{
+			WorkQueue::GetMainQueue()->Perform([this, localClientID]() {
+				Lock();
+				_status = Disconnected;
+				Unlock();
+
+				HandleDidDisconnect(localClientID, 0);
+
+				Lock();
+				_peers.clear();
+				_idMap.clear();
+				_clientID = CLIENT_ID_NONE;
+				_hostClientID = CLIENT_ID_NONE;
+				Unlock();
+
+				Release();
+			});
+		}
 	}
 	
 	void EOSP2PClient::DisconnectClient(EOS_ProductUserId productUserId)
