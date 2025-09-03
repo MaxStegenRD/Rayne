@@ -23,7 +23,7 @@ namespace RN
 
 	ResonanceAudioSampler::~ResonanceAudioSampler()
 	{
-		_asset->Release();
+		SafeRelease(_asset);
 	}
 
 	void ResonanceAudioSampler::SetAudioAsset(AudioAsset *asset)
