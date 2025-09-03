@@ -52,6 +52,12 @@ namespace RN
 	{
 	public:
 		friend class ResonanceAudioSource;
+		enum MicrophonePermissionState
+		{
+			MicrophonePermissionStateAuthorized,
+			MicrophonePermissionStateNotDetermined,
+			MicrophonePermissionStateForbidden
+		};
 
 		RAAPI static ResonanceAudioWorld *GetInstance();
 
@@ -72,6 +78,9 @@ namespace RN
 
 		RAAPI void SetInputBuffer(AudioAsset *inputBuffer);
 		//RAAPI void SetCustomWriteCallback(const std::function<void (double)> &customWriteCallback);
+
+		RAAPI static void RequestMicrophonePermission();
+		RAAPI static MicrophonePermissionState GetMicrophonePermissionState();
 
 	protected:
 		void Update(float delta) override;

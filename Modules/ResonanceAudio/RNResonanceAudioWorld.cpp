@@ -12,6 +12,10 @@
 #include <api/resonance_audio_api.h>
 #include <platforms/common/room_effects_utils.h>
 
+#if RN_PLATFORM_MAC_OS
+	#include <AVFoundation/AVFoundation.h>
+#endif
+
 namespace RN
 {
 	RNDefineMeta(ResonanceAudioWorld, SceneAttachment)
@@ -264,4 +268,185 @@ namespace RN
 	{
 		_customWriteCallback = customWriteCallback;
 	}*/
+
+	void ResonanceAudioWorld::RequestMicrophonePermission()
+	{
+		MicrophonePermissionState permissionState = GetMicrophonePermissionState();
+		if(permissionState == MicrophonePermissionStateNotDetermined)
+		{
+#if RN_PLATFORM_MAC_OS
+			if(@available(macOS 10.14, *))
+			{
+				[AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio
+										 completionHandler:^(BOOL granted) {
+										 /* if(granted)
+					 {
+						_inputDevice = alcCaptureOpenDevice(inputDeviceName?inputDeviceName->GetUTF8String():nullptr, 48000, AL_FORMAT_MONO16, 480);
+					 }*/
+										 }];
+			}
+#elif RN_PLATFORM_ANDROID
+			android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
+			JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
+
+			/*JNIEnv* env = nullptr;
+			bool isNewEnv = false;
+
+			switch(app->activity->vm->GetEnv((void**)&env, RN_JNI_VERSION_1_6))
+			{
+				case JNI_OK:
+					break;
+
+				case JNI_EDETACHED:
+				{
+					jint attachresult = app->activity->vm->AttachCurrentThread(&env, nullptr);
+					if(attachresult == JNI_ERR)
+					{
+						RNDebug("error attaching java env to thread.");
+						return;
+					}
+
+					isNewEnv = true;
+					break;
+				}
+
+				case JNI_EVERSION:
+					RNDebug("wrong jni version (should be 1.6)");
+					return;
+			}*/
+
+			//Check for and clear any pending jni exceptions that would prevent the previous code from working
+			jboolean flag = env->ExceptionCheck();
+			if(flag)
+			{
+				env->ExceptionDescribe();
+				env->ExceptionClear();
+			}
+
+			jclass activityClass = env->FindClass("android/app/NativeActivity");
+			jmethodID getClassLoaderMethod = env->GetMethodID(activityClass, "getClassLoader", "()Ljava/lang/ClassLoader;");
+			jobject classLoaderObject = env->CallObjectMethod(app->activity->clazz, getClassLoaderMethod);
+			jclass classLoaderClass = env->FindClass("java/lang/ClassLoader");
+			jmethodID loadClassMethod = env->GetMethodID(classLoaderClass, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;");
+
+			jstring activityCompatClassName = env->NewStringUTF("androidx.core.app.ActivityCompat");
+			jclass activityCompatClass = reinterpret_cast<jclass>(env->CallObjectMethod(classLoaderObject, loadClassMethod, activityCompatClassName));
+			env->DeleteLocalRef(activityCompatClassName);
+
+			jobjectArray permissions = (jobjectArray)env->NewObjectArray(1, env->FindClass("java/lang/String"), env->NewStringUTF(""));
+			env->SetObjectArrayElement(permissions, 0, env->NewStringUTF("android.permission.RECORD_AUDIO"));
+
+			jint requestCode = 1;
+			jmethodID requestPermissionsMethod = env->GetStaticMethodID(activityCompatClass, "requestPermissions", "(Landroid/app/Activity;[Ljava/lang/String;I)V");
+			env->CallStaticVoidMethod(activityCompatClass, requestPermissionsMethod, app->activity->clazz, permissions, requestCode);
+
+			env->DeleteLocalRef(permissions);
+
+			/*if(isNewEnv)
+			{
+				app->activity->vm->DetachCurrentThread();
+			}*/
+#endif
+		}
+	}
+
+	ResonanceAudioWorld::MicrophonePermissionState ResonanceAudioWorld::GetMicrophonePermissionState()
+	{
+#if RN_PLATFORM_MAC_OS
+		// Request permission to access the microphone.
+		if(@available(macOS 10.14, *))
+		{
+			switch([AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeAudio])
+			{
+				case AVAuthorizationStatusAuthorized:
+				{
+					return MicrophonePermissionStateAuthorized;
+				}
+				case AVAuthorizationStatusNotDetermined:
+				{
+					return MicrophonePermissionStateNotDetermined;
+				}
+				case AVAuthorizationStatusDenied:
+				case AVAuthorizationStatusRestricted:
+					return MicrophonePermissionStateForbidden;
+			}
+		}
+		else
+		{
+			// Fallback on earlier versions
+			return MicrophonePermissionStateAuthorized;
+		}
+#elif RN_PLATFORM_ANDROID
+		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
+		JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
+
+		/*JNIEnv* env = nullptr;
+			bool isNewEnv = false;
+
+			switch(app->activity->vm->GetEnv((void**)&env, RN_JNI_VERSION_1_6))
+			{
+				case JNI_OK:
+					break;
+
+				case JNI_EDETACHED:
+				{
+					jint attachresult = app->activity->vm->AttachCurrentThread(&env, nullptr);
+					if(attachresult == JNI_ERR)
+					{
+						RNDebug("error attaching java env to threat");
+						return MicrophonePermissionStateNotDetermined;
+					}
+
+					isNewEnv = true;
+					break;
+				}
+
+				case JNI_EVERSION:
+					RNDebug("wrong jni version (should be 1.6)");
+					return MicrophonePermissionStateNotDetermined;
+			}*/
+
+		//Check for and clear any pending jni exceptions that would prevent the previous code from working
+		jboolean flag = env->ExceptionCheck();
+		if(flag)
+		{
+			env->ExceptionDescribe();
+			env->ExceptionClear();
+		}
+
+		jclass activityClass = env->FindClass("android/app/NativeActivity");
+		jmethodID getClassLoaderMethod = env->GetMethodID(activityClass, "getClassLoader", "()Ljava/lang/ClassLoader;");
+		jobject classLoaderObject = env->CallObjectMethod(app->activity->clazz, getClassLoaderMethod);
+		jclass classLoaderClass = env->FindClass("java/lang/ClassLoader");
+		jmethodID loadClassMethod = env->GetMethodID(classLoaderClass, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;");
+
+		jstring contextCompatClassName = env->NewStringUTF("androidx.core.content.ContextCompat");
+		jclass contextCompatClass = reinterpret_cast<jclass>(env->CallObjectMethod(classLoaderObject, loadClassMethod, contextCompatClassName));
+		env->DeleteLocalRef(contextCompatClassName);
+
+		jmethodID checkSelfPermissionMethod = env->GetStaticMethodID(contextCompatClass, "checkSelfPermission", "(Landroid/content/Context;Ljava/lang/String;)I");
+		jstring permissionName = env->NewStringUTF("android.permission.RECORD_AUDIO");
+		int returnValue = env->CallStaticIntMethod(contextCompatClass, checkSelfPermissionMethod, app->activity->clazz, permissionName);
+		env->DeleteLocalRef(permissionName);
+
+		/*if(isNewEnv)
+			{
+				app->activity->vm->DetachCurrentThread();
+			}*/
+
+		//Permission not granted
+		if(returnValue == -1)
+		{
+			return MicrophonePermissionStateNotDetermined;
+		}
+		//Permission granted
+		else if(returnValue == 0)
+		{
+			return MicrophonePermissionStateAuthorized;
+		}
+#else
+		return MicrophonePermissionStateAuthorized;
+#endif
+		return MicrophonePermissionStateForbidden;
+	}
 } // namespace RN
