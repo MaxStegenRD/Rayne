@@ -282,6 +282,9 @@ namespace RN
 		RNDebug("Was assigned client ID " << clientID);
 		_clientID = clientID;
 
+		// Notify the client that we have our own ID now
+		HandleDidConnect(clientID);
+
 		//Let peers know
 		EOSWorld *world = EOSWorld::GetInstance();
 		EOS_P2P_SocketId socketID = {};
