@@ -268,9 +268,9 @@ namespace RN
 
 		//Snap to the pixel grid
 		pos /= pixelsize;
-		pos.x = floorf(pos.x);
-		pos.y = floorf(pos.y);
-		pos.z = floorf(pos.z);
+		pos.x = roundf(pos.x);
+		pos.y = roundf(pos.y);
+		pos.z = roundf(pos.z);
 		pos *= pixelsize;
 
 		//Transform back and place the camera there
