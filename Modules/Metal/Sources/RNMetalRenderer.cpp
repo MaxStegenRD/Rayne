@@ -356,7 +356,8 @@ namespace RN
 					_currentMultiviewLayer = index;
 					_currentMultiviewFallbackRenderPass = camera->GetRenderPass();
 
-					SubmitCamera(multiviewCamera, std::move(function));
+					RN::Function submission = RN::MakeFunction([&function](){ function(); });
+					SubmitCamera(multiviewCamera, std::move(submission));
 
 					_currentMultiviewLayer = 0;
 					_currentMultiviewFallbackRenderPass = nullptr;
