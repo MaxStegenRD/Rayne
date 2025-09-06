@@ -29,7 +29,7 @@ namespace RN
 				   StoreDepthStencil = (1 << 5),
 				   Defaults = ClearDepthStencil | StoreColor);
 
-		RNAPI RenderPass();
+		RNAPI RenderPass(bool isSubpass = false);
 		RNAPI ~RenderPass();
 
 		RNAPI void SetFramebuffer(Framebuffer *framebuffer);
@@ -38,12 +38,23 @@ namespace RN
 		RNAPI void SetClearColor(const Color &color);
 		RNAPI void SetClearDepthStencil(float depth, uint8 stencil);
 
+		RNAPI void SetSubpassWritesDepthStencil(bool writesDepthStencil);
+		RNAPI void SetSubpassReadDepthStencilAttachment(bool depthStencilAttachment);
+		RNAPI void SetSubpassWritesColorAttachments(std::vector<uint32> colorAttachments);
+		RNAPI void SetSubpassReadColorAttachments(std::vector<uint32> colorAttachments);
+
 		RNAPI Framebuffer *GetFramebuffer() const;
 		Flags GetFlags() const { return _flags; }
 		RNAPI Rect GetFrame() const;
 		const Color &GetClearColor() const { return _clearColor; }
 		float GetClearDepth() const { return _clearDepth; }
 		uint8 GetClearStencil() const { return _clearStencil; }
+
+		bool GetIsSubpass() const { return _isSubpass; }
+		const std::vector<uint32> &GetSubpassWritesColorAttachments() const { return _subpassWritesColorAttachments; }
+		const std::vector<uint32> &GetSubpassReadColorAttachments() const { return _subpassReadColorAttachments; }
+		bool GetSubpassWritesDepthStencil() const { return _subpassWritesDepthStencil; }
+		bool GetSubpassReadDepthStencilAttachment() const { return _subpassReadDepthStencilAttachment; }
 
 		RNAPI void AddRenderPass(RenderPass *renderPass) const;
 		RNAPI void RemoveRenderPass(RenderPass *renderPass) const;
@@ -57,6 +68,12 @@ namespace RN
 		Color _clearColor;
 		float _clearDepth;
 		uint8 _clearStencil;
+		bool _isSubpass;
+
+		bool _subpassWritesDepthStencil;
+		bool _subpassReadDepthStencilAttachment;
+		std::vector<uint32> _subpassWritesColorAttachments;
+		std::vector<uint32> _subpassReadColorAttachments;
 
 		Array *_nextRenderPasses;
 
