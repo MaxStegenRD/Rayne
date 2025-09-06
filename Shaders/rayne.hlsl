@@ -188,7 +188,7 @@ float getDirectionalShadowFactor(int light, float3 position, matrix shadowMatric
 	if(mapToUse < 3)
 		return getShadowPCF2x2(projectedPosition[mapToUse].xywz, shadowInfo);
 	else
-		return getShadowPCF4x4(projectedPosition[mapToUse].xywz, shadowInfo);
+		return getShadowPCF(projectedPosition[mapToUse].xywz, shadowInfo);
 }
 #endif
 
