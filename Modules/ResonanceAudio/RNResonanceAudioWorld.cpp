@@ -31,6 +31,7 @@ namespace RN
 	void ResonanceAudioWorld::AudioCallback(void *outputBuffer, const void *inputBuffer, unsigned int frameSize, unsigned int status)
 	{
 		AutoreleasePool pool;
+		_instance->_audioSourcesLock.Lock();
 		for(ResonanceAudioSource *source : _instance->_audioSources)
 		{
 			if(source->IsPositional()) source->Update();
@@ -57,6 +58,7 @@ namespace RN
 				}
 			}
 		}
+		_instance->_audioSourcesLock.Unlock();
 
 		for(int i = 0; i < frameSize; i++)
 		{
@@ -102,16 +104,20 @@ namespace RN
 
 	void ResonanceAudioWorld::AddAudioSource(ResonanceAudioSource *source)
 	{
+		_audioSourcesLock.Lock();
 		_audioSources.push_back(source);
+		_audioSourcesLock.Unlock();
 	}
 
 	void ResonanceAudioWorld::RemoveAudioSource(ResonanceAudioSource *source)
 	{
+		_audioSourcesLock.Lock();
 		auto iterator = std::find(_audioSources.begin(), _audioSources.end(), source);
 		if(iterator != _audioSources.end())
 		{
 			_audioSources.erase(iterator);
 		}
+		_audioSourcesLock.Unlock();
 	}
 
 	void ResonanceAudioWorld::SetSimpleRoomEnabled(bool enabled)

@@ -100,6 +100,7 @@ namespace RN
 
 		float *_sharedFrameData;
 
+		Lockable _audioSourcesLock;
 		std::vector<ResonanceAudioSource *> _audioSources;
 
 		std::function<void(Vector3, Vector3, float &)> _raycastCallback;
