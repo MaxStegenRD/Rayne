@@ -98,6 +98,12 @@ namespace RN
 		Mesh::Chunk chunk = mesh->GetTrianglesChunk();
 		Mesh::ElementIterator<Vector3> iterator = chunk.GetIterator<Vector3>(Mesh::VertexAttribute::Feature::Vertices);
 		size_t triangleCount = mesh->GetIndicesCount() / 3;
+
+		const float minAreaSq = 1e-12f;   // skip near-zero area tris
+		const float maxAspect  = 1e4f;    // skip extremely skinny tris
+		
+		size_t badTriangleCount = 0;
+
 		for(size_t i = 0; i < triangleCount; i++)
 		{
 			const Vector3 &posA = *iterator++;
@@ -108,11 +114,47 @@ namespace RN
 				iterator++;
 			}
 
-			triangles.push_back(JPH::Triangle(JPH::Float3(posA.x * scale.x, posA.y * scale.y, posA.z * scale.z), JPH::Float3(posB.x * scale.x, posB.y * scale.y, posB.z * scale.z), JPH::Float3(posC.x * scale.x, posC.y * scale.y, posC.z * scale.z)));
+			JPH::Vec3 v0(posA.x * scale.x, posA.y * scale.y, posA.z * scale.z);
+			JPH::Vec3 v1(posB.x * scale.x, posB.y * scale.y, posB.z * scale.z);
+			JPH::Vec3 v2(posC.x * scale.x, posC.y * scale.y, posC.z * scale.z);
+
+			// Compute area (squared) using cross product
+			JPH::Vec3 cross = (v1 - v0).Cross(v2 - v0);
+			float areaSq = cross.LengthSq() * 0.25f;
+
+			if(areaSq < minAreaSq)
+			{
+				// Degenerate / zero-area triangle, skip it
+				badTriangleCount += 1;
+				continue;
+			}
+
+			// Optional: check aspect ratio
+			float l0 = (v1 - v0).LengthSq();
+			float l1 = (v2 - v1).LengthSq();
+			float l2 = (v0 - v2).LengthSq();
+
+			float minL = std::min({l0, l1, l2});
+			float maxL = std::max({l0, l1, l2});
+
+			if(minL < 1e-12f || maxL / minL > maxAspect)
+			{
+				// Too skinny, skip it
+				badTriangleCount += 1;
+				continue;
+			}
+
+			// Passed filters → keep triangle
+			triangles.push_back(JPH::Triangle(JPH::Float3(v0.GetX(), v0.GetY(), v0.GetZ()),
+											  JPH::Float3(v1.GetX(), v1.GetY(), v1.GetZ()),
+											  JPH::Float3(v2.GetX(), v2.GetY(), v2.GetZ())));
 		}
+		
+		//RN_DEBUG_ASSERT(badTriangleCount < triangleCount / 10, "More than 10% invalid triangles!");
 
 		JPH::PhysicsMaterialList materials;
 		if(material) materials.push_back(material->GetJoltMaterial());
+
 		JPH::MeshShapeSettings settings(triangles, materials);
 		JPH::Shape::ShapeResult result = settings.Create();
 
