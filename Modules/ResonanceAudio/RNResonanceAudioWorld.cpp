@@ -8,6 +8,7 @@
 
 #include "RNResonanceAudioWorld.h"
 #include "RNResonanceAudioInternals.h"
+#include "RNResonanceAudioSampler.h"
 
 #include <api/resonance_audio_api.h>
 #include <platforms/common/room_effects_utils.h>
@@ -32,13 +33,37 @@ namespace RN
 		AutoreleasePool pool;
 		for(ResonanceAudioSource *source : _instance->_audioSources)
 		{
-			source->Update();
+			if(source->IsPositional()) source->Update();
 		}
 
 		float *floatOutputBuffer = static_cast<float *>(outputBuffer);
 		if(!_instance->_audioAPI->FillInterleavedOutputBuffer(2, frameSize, floatOutputBuffer))
 		{
 			//RNDebug("Shit. " << frameSize);
+		}
+
+		for(ResonanceAudioSource *source : _instance->_audioSources)
+		{
+			if(!source->IsPositional() && source->IsPlaying() && source->GetSampler() && source->GetSampler()->GetAsset())
+			{
+				float *frameData = nullptr;
+				source->Update(frameSize / 48000.0f, frameSize, &frameData, 2);
+				for(int i = 0; i < frameSize; i++)
+				{
+					for(int j = 0; j < 2; j++)
+					{
+						floatOutputBuffer[i * 2 + j] += frameData[i * 2 + j] * source->GetVolume();
+					}
+				}
+			}
+		}
+
+		for(int i = 0; i < frameSize; i++)
+		{
+			for(int j = 0; j < 2; j++)
+			{
+				floatOutputBuffer[i * 2 + j] = tanh(floatOutputBuffer[i * 2 + j]);
+			}
 		}
 	}
 

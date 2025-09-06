@@ -20,7 +20,7 @@ namespace RN
 	public:
 		friend class ResonanceAudioWorld;
 
-		RAAPI ResonanceAudioSource(AudioAsset *asset = nullptr, bool wantsIndirectSound = true);
+		RAAPI ResonanceAudioSource(AudioAsset *asset = nullptr, bool wantsIndirectSound = true, bool isPositional = true);
 		RAAPI ~ResonanceAudioSource() override;
 
 		RAAPI void Play();
@@ -39,9 +39,11 @@ namespace RN
 		RAAPI void SetTimeOfFlight(bool tof);
 		RAAPI void SetReverb(bool reverb);
 
-		RAAPI void Update(double frameLength, uint32 sampleCount, float **outputBuffer);
+		RAAPI void Update(double frameLength, uint32 sampleCount, float **outputBuffer, uint8 channelCount = 1);
 		void Update();
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
+
+		bool IsPositional() const { return _isPositional; }
 
 		bool IsPlaying() const { return _isPlaying; }
 		bool IsRepeating() const { return _isRepeating; }
@@ -49,7 +51,10 @@ namespace RN
 		bool HasReverb() const { return _hasReverb; }
 		RAAPI bool HasEnded() const;
 
+		RAAPI float GetVolume() const { return _volume; }
+
 		RN::Vector2 GetRange() const { return _minMaxRange; }
+		ResonanceAudioSampler *GetSampler() const { return _sampler; }
 
 	private:
 		uint8 _channel;
@@ -58,6 +63,7 @@ namespace RN
 		int _sourceID;
 
 		bool _wantsIndirectSound;
+		bool _isPositional;
 
 		bool _isPlaying;
 		bool _isRepeating;
@@ -65,7 +71,7 @@ namespace RN
 		bool _hasTimeOfFlight;
 		bool _hasReverb;
 
-		float _gain;
+		float _volume;
 		float _pitch;
 
 		RN::Vector2 _minMaxRange;

@@ -16,17 +16,18 @@ namespace RN
 {
 	RNDefineMeta(ResonanceAudioSource, SceneNode)
 
-	ResonanceAudioSource::ResonanceAudioSource(AudioAsset *asset, bool wantsIndirectSound) :
+	ResonanceAudioSource::ResonanceAudioSource(AudioAsset *asset, bool wantsIndirectSound, bool isPositional) :
 		_channel(0),
 		_sampler(new ResonanceAudioSampler(asset)),
 		_sourceID(vraudio::ResonanceAudioApi::kInvalidSourceId),
 		_wantsIndirectSound(wantsIndirectSound),
+		_isPositional(isPositional),
 		_isPlaying(false),
 		_isRepeating(false),
 		//		_isSelfdestructing(false),
 		_hasTimeOfFlight(true),
 		_hasReverb(true),
-		_gain(1.0f),
+		_volume(1.0f),
 		_pitch(1.0f),
 		_minMaxRange(RN::Vector2(0.2f, 200.0f)),
 		_currentTime(0.0f)
@@ -35,15 +36,18 @@ namespace RN
 
 		ResonanceAudioWorld::_instance->AddAudioSource(this);
 
-		//TODO: Make quality adjustable
-		_sourceID = ResonanceAudioWorld::_instance->_audioAPI->CreateSoundObjectSource(vraudio::RenderingMode::kBinauralHighQuality);
-		ResonanceAudioWorld::_instance->_audioAPI->SetSourceDistanceModel(_sourceID, vraudio::DistanceRolloffModel::kLinear, 1.0f, 20.0f);
+		if(_isPositional)
+		{
+			//TODO: Make quality adjustable
+			_sourceID = ResonanceAudioWorld::_instance->_audioAPI->CreateSoundObjectSource(vraudio::RenderingMode::kBinauralHighQuality);
+			ResonanceAudioWorld::_instance->_audioAPI->SetSourceDistanceModel(_sourceID, vraudio::DistanceRolloffModel::kLinear, 1.0f, 20.0f);
+		}
 	}
 
 	ResonanceAudioSource::~ResonanceAudioSource()
 	{
 		ResonanceAudioWorld::_instance->RemoveAudioSource(this);
-		ResonanceAudioWorld::_instance->_audioAPI->DestroySource(_sourceID);
+		if(_isPositional) ResonanceAudioWorld::_instance->_audioAPI->DestroySource(_sourceID);
 		_sampler->Release();
 	}
 
@@ -61,6 +65,7 @@ namespace RN
 
 	void ResonanceAudioSource::SetDistanceAttenuation(float attentuation)
 	{
+		if(!_isPositional) return;
 		ResonanceAudioWorld::_instance->_audioAPI->SetSourceDistanceAttenuation(_sourceID, attentuation);
 	}
 
@@ -71,6 +76,8 @@ namespace RN
 
 	void ResonanceAudioSource::SetVolume(float volume)
 	{
+		_volume = volume;
+		if(!_isPositional) return;
 		ResonanceAudioWorld::_instance->_audioAPI->SetSourceVolume(_sourceID, volume);
 	}
 
@@ -109,7 +116,7 @@ namespace RN
 		return (_currentTime >= _sampler->GetTotalTime());
 	}
 
-	void ResonanceAudioSource::Update(double frameLength, uint32 sampleCount, float **outputBuffer)
+	void ResonanceAudioSource::Update(double frameLength, uint32 sampleCount, float **outputBuffer, uint8 channelCount)
 	{
 		AudioAsset *asset = _sampler->GetAsset();
 		if(!asset)
@@ -147,7 +154,10 @@ namespace RN
 		double localTime = _currentTime;
 		for(int i = 0; i < sampleCount; i++)
 		{
-			ResonanceAudioWorld::_instance->_sharedFrameData[i] = _sampler->GetSample(localTime, _channel);
+			for(int j = 0; j < channelCount; j++)
+			{
+				ResonanceAudioWorld::_instance->_sharedFrameData[i * channelCount + j] = _sampler->GetSample(localTime, j + _channel);
+			}
 			localTime += sampleLength * _pitch;
 		}
 
@@ -158,8 +168,8 @@ namespace RN
 	void ResonanceAudioSource::Update()
 	{
 		float *newBuffer;
-		Update(960.0f / 48000.0f, 960, &newBuffer);
-		ResonanceAudioWorld::_instance->_audioAPI->SetInterleavedBuffer(_sourceID, newBuffer, 1, 960);
+		Update(960.0f / 48000.0f, 960, &newBuffer, 1);
+		if(_isPositional) ResonanceAudioWorld::_instance->_audioAPI->SetInterleavedBuffer(_sourceID, newBuffer, 1, 960);
 	}
 
 	void ResonanceAudioSource::DidUpdate(SceneNode::ChangeSet changeSet)
