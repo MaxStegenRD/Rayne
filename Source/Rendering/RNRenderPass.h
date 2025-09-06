@@ -51,17 +51,25 @@ namespace RN
 		uint8 GetClearStencil() const { return _clearStencil; }
 
 		bool GetIsSubpass() const { return _isSubpass; }
+		bool GetIsRoot() const { return _isRoot; }
 		const std::vector<uint32> &GetSubpassWritesColorAttachments() const { return _subpassWritesColorAttachments; }
 		const std::vector<uint32> &GetSubpassReadColorAttachments() const { return _subpassReadColorAttachments; }
 		bool GetSubpassWritesDepthStencil() const { return _subpassWritesDepthStencil; }
 		bool GetSubpassReadDepthStencilAttachment() const { return _subpassReadDepthStencilAttachment; }
+		bool GetSubpassReadColorAttachment(uint32 index) const { return std::find(_subpassReadColorAttachments.begin(), _subpassReadColorAttachments.end(), index) != _subpassReadColorAttachments.end(); }
+		bool GetSubpassWritesColorAttachment(uint32 index) const { return std::find(_subpassWritesColorAttachments.begin(), _subpassWritesColorAttachments.end(), index) != _subpassWritesColorAttachments.end(); }
+		bool GetSubpassFirstColorWriteAttachment(uint32 index) const { return std::find(_subpassFirstColorWriteAttachment.begin(), _subpassFirstColorWriteAttachment.end(), index) != _subpassFirstColorWriteAttachment.end(); }
+		bool GetSubpassFirstDepthStencilWrite() const { return _subpassFirstDepthStencilWrite; }
 
-		RNAPI void AddRenderPass(RenderPass *renderPass) const;
-		RNAPI void RemoveRenderPass(RenderPass *renderPass) const;
-		RNAPI void RemoveAllRenderPasses() const;
+		RNAPI void AddRenderPass(RenderPass *renderPass);
+		RNAPI void RemoveRenderPass(RenderPass *renderPass);
+		RNAPI void RemoveAllRenderPasses();
 		const Array *GetNextRenderPasses() const { return _nextRenderPasses; }
+		RNAPI void UpdateSubpassChain();
 
 	private:
+		RNAPI void UpdateSubpassChain(std::vector<uint32> &loadedColorTargets, bool &loadedDepthStencil);
+	
 		Flags _flags;
 		Rect _frame;
 		Framebuffer *_framebuffer;
@@ -69,11 +77,14 @@ namespace RN
 		float _clearDepth;
 		uint8 _clearStencil;
 		bool _isSubpass;
+		bool _isRoot;
 
 		bool _subpassWritesDepthStencil;
 		bool _subpassReadDepthStencilAttachment;
 		std::vector<uint32> _subpassWritesColorAttachments;
 		std::vector<uint32> _subpassReadColorAttachments;
+		std::vector<uint32> _subpassFirstColorWriteAttachment;
+		bool _subpassFirstDepthStencilWrite;
 
 		Array *_nextRenderPasses;
 

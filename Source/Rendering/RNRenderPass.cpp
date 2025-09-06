@@ -14,7 +14,7 @@ namespace RN
 	RNDefineMeta(RenderPass, Object)
 
 	RenderPass::RenderPass(bool isSubpass) :
-		_flags(Flags::Defaults), _framebuffer(nullptr), _clearDepth(0.0f), _clearStencil(0), _nextRenderPasses(new Array()), _isSubpass(isSubpass), _subpassWritesDepthStencil(false), _subpassReadDepthStencilAttachment(false)
+		_flags(Flags::Defaults), _framebuffer(nullptr), _clearDepth(0.0f), _clearStencil(0), _nextRenderPasses(new Array()), _isSubpass(isSubpass), _isRoot(false), _subpassWritesDepthStencil(false), _subpassReadDepthStencilAttachment(false)
 	{
 	}
 
@@ -107,7 +107,7 @@ namespace RN
 		RN_ASSERT(_isSubpass, "Cannot set subpass writes color attachments for non-subpass");
 		std::sort(colorAttachments.begin(), colorAttachments.end());
 		bool hasDuplicates = std::adjacent_find(colorAttachments.begin(), colorAttachments.end()) != colorAttachments.end();
-		RN_ASSERT(hasDuplicates, "Cannot set duplicate color write attachments");
+		RN_ASSERT(!hasDuplicates, "Cannot set duplicate color write attachments");
 		std::vector<uint32> intersection;
 		std::set_intersection(colorAttachments.begin(), colorAttachments.end(), _subpassReadColorAttachments.begin(), _subpassReadColorAttachments.end(), std::back_inserter(intersection));
 		RN_ASSERT(intersection.empty(), "Subpass can not read and write the same color attachment");
@@ -119,26 +119,87 @@ namespace RN
 		RN_ASSERT(_isSubpass, "Cannot set subpass read color attachments for non-subpass");
 		std::sort(colorAttachments.begin(), colorAttachments.end());
 		bool hasDuplicates = std::adjacent_find(colorAttachments.begin(), colorAttachments.end()) != colorAttachments.end();
-		RN_ASSERT(hasDuplicates, "Cannot set duplicate color read attachments");
+		RN_ASSERT(!hasDuplicates, "Cannot set duplicate color read attachments");
 		std::vector<uint32> intersection;
 		std::set_intersection(colorAttachments.begin(), colorAttachments.end(), _subpassWritesColorAttachments.begin(), _subpassWritesColorAttachments.end(), std::back_inserter(intersection));
 		RN_ASSERT(intersection.empty(), "Subpass can not read and write the same color attachment");
 		_subpassReadColorAttachments = colorAttachments;
 	}
 	
+	void RenderPass::UpdateSubpassChain(std::vector<uint32> &loadedColorTargets, bool &loadedDepthStencil)
+	{
+		GetNextRenderPasses()->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
+			if(nextPass->GetIsSubpass())
+			{
+				nextPass->_flags = _flags;
+				nextPass->_clearDepth = _clearDepth;
+				nextPass->_clearStencil = _clearStencil;
+				nextPass->_clearColor = _clearColor;
+				nextPass->_subpassFirstDepthStencilWrite = false;
+				nextPass->_subpassFirstColorWriteAttachment.clear();
 
-	void RenderPass::AddRenderPass(RenderPass *renderPass) const
+				for(uint32 attachment : nextPass->GetSubpassWritesColorAttachments())
+				{
+					if(std::find(loadedColorTargets.begin(), loadedColorTargets.end(), attachment) == loadedColorTargets.end())
+					{
+						nextPass->_subpassFirstColorWriteAttachment.push_back(attachment);
+						loadedColorTargets.push_back(attachment);
+					}
+				}
+
+				if(!loadedDepthStencil)
+				{
+					if(nextPass->_subpassWritesDepthStencil)
+					{
+						nextPass->_subpassFirstDepthStencilWrite = true;
+						loadedDepthStencil = true;
+					}
+				}
+
+				nextPass->UpdateSubpassChain(loadedColorTargets, loadedDepthStencil);
+			}
+		});
+	}
+
+	void RenderPass::AddRenderPass(RenderPass *renderPass)
 	{
 		_nextRenderPasses->AddObject(renderPass);
+
+		_isRoot = false;
+		if(renderPass->GetIsSubpass() && !_isSubpass)
+		{
+			_isRoot = true;
+
+			//Subpasses inherit the root pass's flags, clear depth, and clear stencil
+			UpdateSubpassChain();
+		}
 	}
 
-	void RenderPass::RemoveRenderPass(RenderPass *renderPass) const
+	void RenderPass::RemoveRenderPass(RenderPass *renderPass)
 	{
 		_nextRenderPasses->RemoveObject(renderPass);
+
+		_isRoot = false;
+		_nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
+			if(nextPass->GetIsSubpass() && !_isSubpass)
+			{
+				_isRoot = true;
+				stop = true;
+			}
+		});
 	}
 
-	void RenderPass::RemoveAllRenderPasses() const
+	void RenderPass::RemoveAllRenderPasses()
 	{
 		_nextRenderPasses->RemoveAllObjects();
+		_isRoot = false;
+	}
+
+	void RenderPass::UpdateSubpassChain()
+	{
+		if(!_isRoot) return; // only meaningful for roots
+		std::vector<uint32> loadedColorTargets;
+		bool loadedDepthStencil = false;
+		UpdateSubpassChain(loadedColorTargets, loadedDepthStencil);
 	}
 } // namespace RN

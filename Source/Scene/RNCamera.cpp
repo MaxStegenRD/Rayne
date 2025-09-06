@@ -106,6 +106,8 @@ namespace RN
 	// Setter
 	void Camera::SetRenderPass(RenderPass *renderPass)
 	{
+		RN_ASSERT(!renderPass->GetIsSubpass(), "Subpass render passes have to be inside a root renderpass that is not a sub pass");
+		
 		SafeRelease(_renderPass);
 		_renderPass = renderPass->Retain();
 	}
