@@ -332,7 +332,14 @@ namespace RN
 			{
 				if(isSubpass)
 				{
-					[colorAttachment setStoreAction: (writesThisColor || (renderPassFlags & RenderPass::Flags::StoreColor)) ? MTLStoreActionStore : MTLStoreActionDontCare];
+					if(renderPassFlags & RenderPass::Flags::StoreColor || !renderPass->GetSubpassLastColorWriteAttachment(counter))
+					{
+						[colorAttachment setStoreAction:MTLStoreActionStore];
+					}
+					else
+					{
+						[colorAttachment setStoreAction:MTLStoreActionDontCare];
+					}
 				}
 				else if(renderPassFlags & RenderPass::Flags::StoreColor)
 				{
@@ -433,7 +440,14 @@ namespace RN
 				{
 					if(isSubpass)
 					{
-						[depthAttachment setStoreAction:((renderPass->GetSubpassWritesDepthStencil() || (renderPassFlags & RenderPass::Flags::StoreDepthStencil)) ? MTLStoreActionStore : MTLStoreActionDontCare)];
+						if(renderPassFlags & RenderPass::Flags::StoreDepthStencil || !renderPass->GetSubpassLastDepthStencilWrite())
+						{
+							[depthAttachment setStoreAction:MTLStoreActionStore];
+						}
+						else
+						{
+							[depthAttachment setStoreAction:MTLStoreActionDontCare];
+						}
 					}
 					else if(renderPass->GetFlags() & RenderPass::Flags::StoreDepthStencil)
 					{
@@ -520,7 +534,14 @@ namespace RN
 				{
 					if(isSubpass)
 					{
-						[stencilAttachment setStoreAction:((renderPass->GetSubpassWritesDepthStencil() || (renderPassFlags & RenderPass::Flags::StoreDepthStencil)) ? MTLStoreActionStore : MTLStoreActionDontCare)];
+						if(renderPassFlags & RenderPass::Flags::StoreDepthStencil || !renderPass->GetSubpassLastDepthStencilWrite())
+						{
+							[stencilAttachment setStoreAction:MTLStoreActionStore];
+						}
+						else
+						{
+							[stencilAttachment setStoreAction:MTLStoreActionDontCare];
+						}
 					}
 					else if(renderPassFlags & RenderPass::Flags::StoreDepthStencil)
 					{
