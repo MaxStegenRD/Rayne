@@ -59,7 +59,9 @@ namespace RN
 		bool GetSubpassReadColorAttachment(uint32 index) const { return std::find(_subpassReadColorAttachments.begin(), _subpassReadColorAttachments.end(), index) != _subpassReadColorAttachments.end(); }
 		bool GetSubpassWritesColorAttachment(uint32 index) const { return std::find(_subpassWritesColorAttachments.begin(), _subpassWritesColorAttachments.end(), index) != _subpassWritesColorAttachments.end(); }
 		bool GetSubpassFirstColorWriteAttachment(uint32 index) const { return std::find(_subpassFirstColorWriteAttachment.begin(), _subpassFirstColorWriteAttachment.end(), index) != _subpassFirstColorWriteAttachment.end(); }
+		bool GetSubpassLastColorWriteAttachment(uint32 index) const { return std::find(_subpassLastColorWriteAttachment.begin(), _subpassLastColorWriteAttachment.end(), index) != _subpassLastColorWriteAttachment.end(); }
 		bool GetSubpassFirstDepthStencilWrite() const { return _subpassFirstDepthStencilWrite; }
+		bool GetSubpassLastDepthStencilWrite() const { return _subpassLastDepthStencilWrite; }
 
 		RNAPI void AddRenderPass(RenderPass *renderPass);
 		RNAPI void RemoveRenderPass(RenderPass *renderPass);
@@ -68,7 +70,8 @@ namespace RN
 		RNAPI void UpdateSubpassChain();
 
 	private:
-		RNAPI void UpdateSubpassChain(std::vector<uint32> &loadedColorTargets, bool &loadedDepthStencil);
+		RNAPI void UpdateSubpassChain(std::vector<uint32> &loadedColorTargets, bool &loadedDepthStencil,
+			std::unordered_map<uint32, RenderPass*> &lastColorWriter, RenderPass *lastDepthStencilWriter);
 	
 		Flags _flags;
 		Rect _frame;
@@ -84,7 +87,9 @@ namespace RN
 		std::vector<uint32> _subpassWritesColorAttachments;
 		std::vector<uint32> _subpassReadColorAttachments;
 		std::vector<uint32> _subpassFirstColorWriteAttachment;
+		std::vector<uint32> _subpassLastColorWriteAttachment;
 		bool _subpassFirstDepthStencilWrite;
+		bool _subpassLastDepthStencilWrite;
 
 		Array *_nextRenderPasses;
 

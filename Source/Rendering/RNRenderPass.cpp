@@ -126,7 +126,8 @@ namespace RN
 		_subpassReadColorAttachments = colorAttachments;
 	}
 	
-	void RenderPass::UpdateSubpassChain(std::vector<uint32> &loadedColorTargets, bool &loadedDepthStencil)
+	void RenderPass::UpdateSubpassChain(std::vector<uint32> &loadedColorTargets, bool &loadedDepthStencil,
+		std::unordered_map<uint32, RenderPass*> &lastColorWriter, RenderPass *lastDepthStencilWriter)
 	{
 		GetNextRenderPasses()->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
 			if(nextPass->GetIsSubpass())
@@ -137,6 +138,8 @@ namespace RN
 				nextPass->_clearColor = _clearColor;
 				nextPass->_subpassFirstDepthStencilWrite = false;
 				nextPass->_subpassFirstColorWriteAttachment.clear();
+				nextPass->_subpassLastDepthStencilWrite = false;
+				nextPass->_subpassLastColorWriteAttachment.clear();
 
 				for(uint32 attachment : nextPass->GetSubpassWritesColorAttachments())
 				{
@@ -145,6 +148,8 @@ namespace RN
 						nextPass->_subpassFirstColorWriteAttachment.push_back(attachment);
 						loadedColorTargets.push_back(attachment);
 					}
+
+					lastColorWriter[attachment] = nextPass;
 				}
 
 				if(!loadedDepthStencil)
@@ -156,9 +161,27 @@ namespace RN
 					}
 				}
 
-				nextPass->UpdateSubpassChain(loadedColorTargets, loadedDepthStencil);
+				if(nextPass->_subpassWritesDepthStencil)
+				{
+					lastDepthStencilWriter = nextPass;
+				}
+
+				nextPass->UpdateSubpassChain(loadedColorTargets, loadedDepthStencil, lastColorWriter, lastDepthStencilWriter);
 			}
 		});
+
+		for(auto &[attachment, writer] : lastColorWriter)
+		{
+			if(writer == this)
+			{
+				_subpassLastColorWriteAttachment.push_back(attachment);
+			}
+		}
+
+		if(lastDepthStencilWriter == this)
+		{
+			_subpassLastDepthStencilWrite = true;
+		}
 	}
 
 	void RenderPass::AddRenderPass(RenderPass *renderPass)
@@ -169,9 +192,6 @@ namespace RN
 		if(renderPass->GetIsSubpass() && !_isSubpass)
 		{
 			_isRoot = true;
-
-			//Subpasses inherit the root pass's flags, clear depth, and clear stencil
-			UpdateSubpassChain();
 		}
 	}
 
@@ -200,6 +220,8 @@ namespace RN
 		if(!_isRoot) return; // only meaningful for roots
 		std::vector<uint32> loadedColorTargets;
 		bool loadedDepthStencil = false;
-		UpdateSubpassChain(loadedColorTargets, loadedDepthStencil);
+		std::unordered_map<uint32, RenderPass*> lastColorWriter;
+		RenderPass *lastDepthStencilWriter = nullptr;
+		UpdateSubpassChain(loadedColorTargets, loadedDepthStencil, lastColorWriter, lastDepthStencilWriter);
 	}
 } // namespace RN
