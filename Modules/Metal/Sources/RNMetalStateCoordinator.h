@@ -21,7 +21,13 @@ namespace RN
 			[state release];
 		}
 
-		MTLPixelFormat pixelFormat;
+		bool operator==(const MetalRenderingState &other) const
+		{
+			bool isEqual = (depthFormat == other.depthFormat && stencilFormat == other.stencilFormat && sampleCount == other.sampleCount && wantsAlphaToCoverage == other.wantsAlphaToCoverage && colorWriteMask == other.colorWriteMask && blendOperationRGB == other.blendOperationRGB && blendOperationAlpha == other.blendOperationAlpha && blendFactorSourceRGB == other.blendFactorSourceRGB && blendFactorSourceAlpha == other.blendFactorSourceAlpha && blendFactorDestinationRGB == other.blendFactorDestinationRGB && blendFactorDestinationAlpha == other.blendFactorDestinationAlpha && pixelFormats == other.pixelFormats);
+			return isEqual;
+		}
+
+		std::vector<MTLPixelFormat> pixelFormats;
 		MTLPixelFormat depthFormat;
 		MTLPixelFormat stencilFormat;
 		uint8 sampleCount;
@@ -103,11 +109,11 @@ namespace RN
 		MTLAPI id<MTLDepthStencilState> GetDepthStencilStateForMaterial(const Material::PipelineProperties &materialProperties, const MetalRenderingState *renderingState);
 		MTLAPI id<MTLSamplerState> GetSamplerStateForSampler(const Shader::ArgumentSampler *samplerDescriptor);
 
-		MTLAPI const MetalRenderingState *GetRenderPipelineState(Material *material, Mesh *mesh, Framebuffer *framebuffer, Shader::UsageHint shaderHint, Material *overrideMaterial);
+		MTLAPI const MetalRenderingState *GetRenderPipelineState(Material *material, Mesh *mesh, Framebuffer *framebuffer, Shader::UsageHint shaderHint, Material *overrideMaterial, RenderPass *renderPass);
 
 	private:
 		MTLVertexDescriptor *CreateVertexDescriptorFromMesh(Mesh *mesh, MetalShader *shader);
-		const MetalRenderingState *GetRenderPipelineStateInCollection(MetalRenderingStateCollection *collection, Mesh *mesh, Framebuffer *framebuffer, const Material::PipelineProperties &materialProperties);
+		const MetalRenderingState *GetRenderPipelineStateInCollection(MetalRenderingStateCollection *collection, Mesh *mesh, Framebuffer *framebuffer, const Material::PipelineProperties &materialProperties, RenderPass *renderPass);
 
 		id<MTLDevice> _device;
 

@@ -212,7 +212,7 @@ namespace RN
 		return sampler;
 	}
 
-	const MetalRenderingState *MetalStateCoordinator::GetRenderPipelineState(Material *material, Mesh *mesh, Framebuffer *framebuffer, Shader::UsageHint shaderHint, Material *overrideMaterial)
+	const MetalRenderingState *MetalStateCoordinator::GetRenderPipelineState(Material *material, Mesh *mesh, Framebuffer *framebuffer, Shader::UsageHint shaderHint, Material *overrideMaterial, RenderPass *renderPass)
 	{
 		const Mesh::VertexDescriptor &descriptor = mesh->GetVertexDescriptor();
 
@@ -227,7 +227,7 @@ namespace RN
 			{
 				if(collection->fragmentShader->IsEqual(fragmentShader) && collection->vertexShader->IsEqual(vertexShader))
 				{
-					return GetRenderPipelineStateInCollection(collection, mesh, framebuffer, materialProperties);
+					return GetRenderPipelineStateInCollection(collection, mesh, framebuffer, materialProperties, renderPass);
 				}
 			}
 		}
@@ -235,21 +235,29 @@ namespace RN
 		MetalRenderingStateCollection *collection = new MetalRenderingStateCollection(descriptor, vertexShader, fragmentShader);
 		_renderingStates.push_back(collection);
 
-		return GetRenderPipelineStateInCollection(collection, mesh, framebuffer, materialProperties);
+		return GetRenderPipelineStateInCollection(collection, mesh, framebuffer, materialProperties, renderPass);
 	}
 
-	const MetalRenderingState *MetalStateCoordinator::GetRenderPipelineStateInCollection(MetalRenderingStateCollection *collection, Mesh *mesh, Framebuffer *framebuffer, const Material::PipelineProperties &materialProperties)
+	const MetalRenderingState *MetalStateCoordinator::GetRenderPipelineStateInCollection(MetalRenderingStateCollection *collection, Mesh *mesh, Framebuffer *framebuffer, const Material::PipelineProperties &materialProperties, RenderPass *renderPass)
 	{
 		MetalFramebuffer *metalFramebuffer = framebuffer->Downcast<MetalFramebuffer>();
-		MTLPixelFormat pixelFormat = metalFramebuffer->GetMetalColorFormat(0);
+		std::vector<MTLPixelFormat> pixelFormats;
+		for(uint32 i = 0; i < metalFramebuffer->GetColorTargetCount(); i++)
+		{
+			if(!renderPass->GetSubpassReadColorAttachment(i) && !renderPass->GetSubpassWritesColorAttachment(i))
+			{
+				continue;
+			}
+
+			pixelFormats.push_back(metalFramebuffer->GetMetalColorFormat(i));
+		}
 		MTLPixelFormat depthFormat = metalFramebuffer->GetMetalDepthFormat();
 		MTLPixelFormat stencilFormat = metalFramebuffer->GetMetalStencilFormat();
 		uint8 sampleCount = metalFramebuffer->GetSampleCount();
 		
 		for(const MetalRenderingState *state : collection->states)
 		{
-			//TODO: This might still be missing some things!?
-			if(state->pixelFormat == pixelFormat && state->depthFormat == depthFormat && state->stencilFormat == stencilFormat && state->sampleCount == sampleCount && state->wantsAlphaToCoverage == materialProperties.useAlphaToCoverage && state->colorWriteMask == materialProperties.colorWriteMask && state->blendOperationRGB == materialProperties.blendOperationRGB && state->blendOperationAlpha == materialProperties.blendOperationAlpha && state->blendFactorSourceRGB == materialProperties.blendFactorSourceRGB && state->blendFactorSourceAlpha == materialProperties.blendFactorSourceAlpha && state->blendFactorDestinationRGB == materialProperties.blendFactorDestinationRGB && state->blendFactorDestinationAlpha == materialProperties.blendFactorDestinationAlpha)
+			if(state->pixelFormats == pixelFormats && state->depthFormat == depthFormat && state->stencilFormat == stencilFormat && state->sampleCount == sampleCount && state->wantsAlphaToCoverage == materialProperties.useAlphaToCoverage && state->colorWriteMask == materialProperties.colorWriteMask && state->blendOperationRGB == materialProperties.blendOperationRGB && state->blendOperationAlpha == materialProperties.blendOperationAlpha && state->blendFactorSourceRGB == materialProperties.blendFactorSourceRGB && state->blendFactorSourceAlpha == materialProperties.blendFactorSourceAlpha && state->blendFactorDestinationRGB == materialProperties.blendFactorDestinationRGB && state->blendFactorDestinationAlpha == materialProperties.blendFactorDestinationAlpha)
 				return state;
 		}
 
@@ -260,23 +268,37 @@ namespace RN
 		pipelineStateDescriptor.fragmentFunction = static_cast<id>(collection->fragmentShader->_shader);
 		pipelineStateDescriptor.vertexDescriptor = vertexDescriptor;
 		pipelineStateDescriptor.sampleCount = sampleCount;
-		pipelineStateDescriptor.colorAttachments[0].pixelFormat = pixelFormat; //TODO: Set correct pixel format for each framebuffer texture...
-		pipelineStateDescriptor.colorAttachments[0].writeMask = 0;
-		if(materialProperties.colorWriteMask & (1 << 0)) pipelineStateDescriptor.colorAttachments[0].writeMask |= MTLColorWriteMaskRed;
-		if(materialProperties.colorWriteMask & (1 << 1)) pipelineStateDescriptor.colorAttachments[0].writeMask |= MTLColorWriteMaskGreen;
-		if(materialProperties.colorWriteMask & (1 << 2)) pipelineStateDescriptor.colorAttachments[0].writeMask |= MTLColorWriteMaskBlue;
-		if(materialProperties.colorWriteMask & (1 << 3)) pipelineStateDescriptor.colorAttachments[0].writeMask |= MTLColorWriteMaskAlpha;
-		pipelineStateDescriptor.colorAttachments[0].blendingEnabled = false;
-		if(pixelFormat != MTLPixelFormatInvalid && materialProperties.blendOperationRGB != BlendOperation::None && materialProperties.blendOperationAlpha != BlendOperation::None)
+
+		int attachmentCounter = 0;
+		pipelineStateDescriptor.colorAttachments[0].pixelFormat = MTLPixelFormatInvalid;
+		for(uint32 targetCounter = 0; targetCounter < metalFramebuffer->GetColorTargetCount(); targetCounter++)
 		{
-			pipelineStateDescriptor.colorAttachments[0].blendingEnabled = true;
-			pipelineStateDescriptor.colorAttachments[0].rgbBlendOperation = static_cast<MTLBlendOperation>(materialProperties.blendOperationRGB);
-			pipelineStateDescriptor.colorAttachments[0].sourceRGBBlendFactor = static_cast<MTLBlendFactor>(materialProperties.blendFactorSourceRGB);
-			pipelineStateDescriptor.colorAttachments[0].destinationRGBBlendFactor = static_cast<MTLBlendFactor>(materialProperties.blendFactorDestinationRGB);
-			pipelineStateDescriptor.colorAttachments[0].alphaBlendOperation = static_cast<MTLBlendOperation>(materialProperties.blendOperationAlpha);
-			pipelineStateDescriptor.colorAttachments[0].sourceAlphaBlendFactor = static_cast<MTLBlendFactor>(materialProperties.blendFactorSourceAlpha);
-			pipelineStateDescriptor.colorAttachments[0].destinationAlphaBlendFactor = static_cast<MTLBlendFactor>(materialProperties.blendFactorDestinationAlpha);
+			if(!renderPass->GetSubpassReadColorAttachment(targetCounter) && !renderPass->GetSubpassWritesColorAttachment(targetCounter))
+			{
+				continue;
+			}
+
+			MTLPixelFormat pixelFormat = metalFramebuffer->GetMetalColorFormat(targetCounter);
+			pipelineStateDescriptor.colorAttachments[attachmentCounter].pixelFormat = pixelFormat;
+			pipelineStateDescriptor.colorAttachments[attachmentCounter].writeMask = 0;
+			if(materialProperties.colorWriteMask & (1 << 0)) pipelineStateDescriptor.colorAttachments[attachmentCounter].writeMask |= MTLColorWriteMaskRed;
+			if(materialProperties.colorWriteMask & (1 << 1)) pipelineStateDescriptor.colorAttachments[attachmentCounter].writeMask |= MTLColorWriteMaskGreen;
+			if(materialProperties.colorWriteMask & (1 << 2)) pipelineStateDescriptor.colorAttachments[attachmentCounter].writeMask |= MTLColorWriteMaskBlue;
+			if(materialProperties.colorWriteMask & (1 << 3)) pipelineStateDescriptor.colorAttachments[attachmentCounter].writeMask |= MTLColorWriteMaskAlpha;
+			pipelineStateDescriptor.colorAttachments[attachmentCounter].blendingEnabled = false;
+			if(pixelFormat != MTLPixelFormatInvalid && materialProperties.blendOperationRGB != BlendOperation::None && materialProperties.blendOperationAlpha != BlendOperation::None)
+			{
+				pipelineStateDescriptor.colorAttachments[attachmentCounter].blendingEnabled = true;
+				pipelineStateDescriptor.colorAttachments[attachmentCounter].rgbBlendOperation = static_cast<MTLBlendOperation>(materialProperties.blendOperationRGB);
+				pipelineStateDescriptor.colorAttachments[attachmentCounter].sourceRGBBlendFactor = static_cast<MTLBlendFactor>(materialProperties.blendFactorSourceRGB);
+				pipelineStateDescriptor.colorAttachments[attachmentCounter].destinationRGBBlendFactor = static_cast<MTLBlendFactor>(materialProperties.blendFactorDestinationRGB);
+				pipelineStateDescriptor.colorAttachments[attachmentCounter].alphaBlendOperation = static_cast<MTLBlendOperation>(materialProperties.blendOperationAlpha);
+				pipelineStateDescriptor.colorAttachments[attachmentCounter].sourceAlphaBlendFactor = static_cast<MTLBlendFactor>(materialProperties.blendFactorSourceAlpha);
+				pipelineStateDescriptor.colorAttachments[attachmentCounter].destinationAlphaBlendFactor = static_cast<MTLBlendFactor>(materialProperties.blendFactorDestinationAlpha);
+			}
+			attachmentCounter += 1;
 		}
+
 		pipelineStateDescriptor.depthAttachmentPixelFormat = depthFormat;
 		pipelineStateDescriptor.stencilAttachmentPixelFormat = stencilFormat;
 		pipelineStateDescriptor.alphaToCoverageEnabled = materialProperties.useAlphaToCoverage;
@@ -312,7 +334,7 @@ namespace RN
 		// Create the rendering state
 		MetalRenderingState *state = new MetalRenderingState();
 		state->state = pipelineState;
-		state->pixelFormat = pixelFormat;
+		state->pixelFormats = pixelFormats;
 		state->depthFormat = depthFormat;
 		state->stencilFormat = stencilFormat;
 		state->sampleCount = sampleCount;

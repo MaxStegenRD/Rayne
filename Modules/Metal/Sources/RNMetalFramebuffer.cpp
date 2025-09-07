@@ -245,10 +245,27 @@ namespace RN
 		//There does not appear to be a way to only clear part of the framebuffer...
 		const Color &clearColor = renderPass->GetClearColor();
 		MTLRenderPassDescriptor *descriptor = [[MTLRenderPassDescriptor alloc] init];
+		bool isSubpass = renderPass->GetIsSubpass();
+		RenderPass::Flags renderPassFlags = renderPass->GetFlags();
 
 		int counter = 0;
+		int attachmentCounter = 0;
 		for(MetalTargetView *metalTarget : _colorTargets)
 		{
+			bool readsThisColor = true;
+			bool writesThisColor = true;
+			if(isSubpass)
+			{
+				readsThisColor = renderPass->GetSubpassReadColorAttachment(counter);
+				writesThisColor = renderPass->GetSubpassWritesColorAttachment(counter);
+			}
+
+			if(!readsThisColor && !writesThisColor)
+			{
+				counter += 1;
+				continue;
+			}
+
 			const TargetView &target = metalTarget->targetView;
 			id<MTLTexture> texture = nil;
 			if(!target.texture)
@@ -261,13 +278,36 @@ namespace RN
 				texture = static_cast<id<MTLTexture>>(static_cast<MetalTexture *>(target.texture)->__GetUnderlyingTexture());
 			}
 
-			MTLRenderPassColorAttachmentDescriptor *colorAttachment = [[descriptor colorAttachments] objectAtIndexedSubscript:counter];
+			MTLRenderPassColorAttachmentDescriptor *colorAttachment = [[descriptor colorAttachments] objectAtIndexedSubscript:attachmentCounter];
 			[colorAttachment setTexture:texture];
-			if(renderPass->GetFlags() & RenderPass::Flags::ClearColor)
+			
+			if(isSubpass)
+			{
+				if(renderPass->GetSubpassFirstColorWriteAttachment(counter))
+				{
+					if(renderPassFlags & RenderPass::Flags::ClearColor)
+					{
+						[colorAttachment setLoadAction:MTLLoadActionClear];
+					}
+					else if(renderPassFlags & RenderPass::Flags::LoadColor)
+					{
+						[colorAttachment setLoadAction:MTLLoadActionLoad];
+					}
+					else
+					{
+						[colorAttachment setLoadAction:MTLLoadActionDontCare];
+					}
+				}
+				else
+				{
+					[colorAttachment setLoadAction: MTLLoadActionLoad];
+				}
+			}
+			else if(renderPassFlags & RenderPass::Flags::ClearColor)
 			{
 				[colorAttachment setLoadAction:MTLLoadActionClear];
 			}
-			else if(renderPass->GetFlags() & RenderPass::Flags::LoadColor)
+			else if(renderPassFlags & RenderPass::Flags::LoadColor)
 			{
 				[colorAttachment setLoadAction:MTLLoadActionLoad];
 			}
@@ -290,7 +330,11 @@ namespace RN
 			}
 			else
 			{
-				if(renderPass->GetFlags() & RenderPass::Flags::StoreColor)
+				if(isSubpass)
+				{
+					[colorAttachment setStoreAction: (writesThisColor || (renderPassFlags & RenderPass::Flags::StoreColor)) ? MTLStoreActionStore : MTLStoreActionDontCare];
+				}
+				else if(renderPassFlags & RenderPass::Flags::StoreColor)
 				{
 					[colorAttachment setStoreAction:MTLStoreActionStore];
 				}
@@ -311,10 +355,11 @@ namespace RN
 			}
 			[colorAttachment setLevel:metalTarget->targetView.mipmap];
 			
+			attachmentCounter += 1;
 			counter += 1;
 		}
 
-		if(_depthStencilTarget)
+		if(_depthStencilTarget && (!isSubpass || renderPass->GetSubpassReadDepthStencilAttachment() || renderPass->GetSubpassWritesDepthStencil()))
 		{
 			id<MTLTexture> depthStencilTexture = nil;
 			if(!_depthStencilTarget->targetView.texture)
@@ -336,12 +381,35 @@ namespace RN
 			{
 				MTLRenderPassDepthAttachmentDescriptor *depthAttachment = [descriptor depthAttachment];
 				[depthAttachment setTexture:depthStencilTexture];
-				if(renderPass->GetFlags() & RenderPass::Flags::ClearDepthStencil)
+				if(isSubpass)
+				{
+					if(renderPass->GetSubpassFirstDepthStencilWrite())
+					{
+						if(renderPassFlags & RenderPass::Flags::ClearDepthStencil)
+						{
+							[depthAttachment setLoadAction:MTLLoadActionClear];
+							[depthAttachment setClearDepth:renderPass->GetClearDepth()];
+						}
+						else if(renderPassFlags & RenderPass::Flags::LoadDepthStencil)
+						{
+							[depthAttachment setLoadAction:MTLLoadActionLoad];
+						}
+						else
+						{
+							[depthAttachment setLoadAction:MTLLoadActionDontCare];
+						}
+					}
+					else
+					{
+						[depthAttachment setLoadAction: MTLLoadActionLoad];
+					}
+				}
+				else if(renderPassFlags & RenderPass::Flags::ClearDepthStencil)
 				{
 					[depthAttachment setLoadAction:MTLLoadActionClear];
 					[depthAttachment setClearDepth:renderPass->GetClearDepth()];
 				}
-				else if(renderPass->GetFlags() & RenderPass::Flags::LoadDepthStencil)
+				else if(renderPassFlags & RenderPass::Flags::LoadDepthStencil)
 				{
 					[depthAttachment setLoadAction:MTLLoadActionLoad];
 				}
@@ -363,7 +431,11 @@ namespace RN
 				}
 				else
 				{
-					if(renderPass->GetFlags() & RenderPass::Flags::StoreDepthStencil)
+					if(isSubpass)
+					{
+						[depthAttachment setStoreAction:((renderPass->GetSubpassWritesDepthStencil() || (renderPassFlags & RenderPass::Flags::StoreDepthStencil)) ? MTLStoreActionStore : MTLStoreActionDontCare)];
+					}
+					else if(renderPass->GetFlags() & RenderPass::Flags::StoreDepthStencil)
 					{
 						[depthAttachment setStoreAction:MTLStoreActionStore];
 					}
@@ -395,12 +467,35 @@ namespace RN
 				MTLRenderPassStencilAttachmentDescriptor *stencilAttachment = [descriptor stencilAttachment];
 				[stencilAttachment setTexture:depthStencilTexture];
 				
-				if(renderPass->GetFlags() & RenderPass::Flags::ClearDepthStencil)
+				if(isSubpass)
+				{
+					if(renderPass->GetSubpassFirstDepthStencilWrite())
+					{
+						if(renderPassFlags & RenderPass::Flags::ClearDepthStencil)
+						{
+							[stencilAttachment setLoadAction:MTLLoadActionClear];
+							[stencilAttachment setClearStencil:renderPass->GetClearStencil()];
+						}
+						else if(renderPassFlags & RenderPass::Flags::LoadDepthStencil)
+						{
+							[stencilAttachment setLoadAction:MTLLoadActionLoad];
+						}
+						else
+						{
+							[stencilAttachment setLoadAction:MTLLoadActionDontCare];
+						}
+					}
+					else
+					{
+						[stencilAttachment setLoadAction: MTLLoadActionLoad];
+					}
+				}
+				else if(renderPassFlags & RenderPass::Flags::ClearDepthStencil)
 				{
 					[stencilAttachment setLoadAction:MTLLoadActionClear];
 					[stencilAttachment setClearStencil:renderPass->GetClearStencil()];
 				}
-				else if(renderPass->GetFlags() & RenderPass::Flags::LoadDepthStencil)
+				else if(renderPassFlags & RenderPass::Flags::LoadDepthStencil)
 				{
 					[stencilAttachment setLoadAction:MTLLoadActionLoad];
 				}
@@ -423,7 +518,11 @@ namespace RN
 				}
 				else
 				{
-					if(renderPass->GetFlags() & RenderPass::Flags::StoreDepthStencil)
+					if(isSubpass)
+					{
+						[stencilAttachment setStoreAction:((renderPass->GetSubpassWritesDepthStencil() || (renderPassFlags & RenderPass::Flags::StoreDepthStencil)) ? MTLStoreActionStore : MTLStoreActionDontCare)];
+					}
+					else if(renderPassFlags & RenderPass::Flags::StoreDepthStencil)
 					{
 						[stencilAttachment setStoreAction:MTLStoreActionStore];
 					}

@@ -41,6 +41,7 @@ namespace RN
 		MetalSwapChain *GetSwapChain() const { return _swapChain; }
 
 		MTLRenderPassDescriptor *GetRenderPassDescriptor(RenderPass *renderPass, MetalFramebuffer *resolveFramebuffer, uint8 multiviewLayer, uint8 multiviewCount) const;
+		MTLAPI uint32 GetColorTargetCount() const { return _colorTargets.size(); }
 		MTLAPI MTLPixelFormat GetMetalColorFormat(uint8 texture) const;
 		MTLAPI MTLPixelFormat GetMetalDepthFormat() const;
 		MTLAPI MTLPixelFormat GetMetalStencilFormat() const;

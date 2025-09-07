@@ -155,13 +155,20 @@ namespace RN
 					_internals->currentRenderPassIndex += 1;
 					continue;
 				}
+
+				// Skip creating a Metal render encoder for root/container passes
+				if(renderPass.renderPass && renderPass.renderPass->GetIsRoot())
+				{
+					_internals->currentRenderPassIndex += 1;
+					continue;
+				}
 				
 				_internals->currentRenderState = nullptr; //This is a property of the encoder and needs to be set to nullptr here to force setting it again.
 				MTLRenderPassDescriptor *descriptor = renderPass.framebuffer->GetRenderPassDescriptor(renderPass.renderPass, renderPass.resolveFramebuffer, renderPass.multiviewLayer, 0);
 				_internals->commandEncoder = [_internals->commandBuffer renderCommandEncoderWithDescriptor:descriptor];
 				[descriptor release];
 				
-				Rect cameraRect = renderPass.renderPass->GetFrame();
+				Rect cameraRect = renderPass.frameRect;
 				if(cameraRect.width < 0.5f || cameraRect.height < 0.5f)
 				{
 					Vector2 framebufferSize = renderPass.framebuffer->GetSize();
@@ -369,6 +376,9 @@ namespace RN
 		
 		RenderPass *cameraRenderPass = _currentMultiviewFallbackRenderPass? _currentMultiviewFallbackRenderPass : camera->GetRenderPass();
 		
+		// Ensure subpass clearing plan is computed for root containers
+		if(cameraRenderPass->GetIsRoot()) cameraRenderPass->UpdateSubpassChain();
+
 		// Set up
 		MetalRenderPass renderPass;
 		renderPass.type = MetalRenderPass::Type::Default;
@@ -406,6 +416,7 @@ namespace RN
 		renderPass.cameraTag = camera->GetTag();
 
 		Framebuffer *framebuffer = cameraRenderPass->GetFramebuffer();
+		renderPass.frameRect = cameraRenderPass->GetFrame();
 		MetalSwapChain *newSwapChain = nullptr;
 		newSwapChain = framebuffer->Downcast<MetalFramebuffer>()->GetSwapChain();
 		renderPass.framebuffer = framebuffer->Downcast<MetalFramebuffer>();
@@ -445,6 +456,9 @@ namespace RN
 	void MetalRenderer::SubmitRenderPass(RenderPass *renderPass, MetalRenderPass &previousRenderPass, Function &&function)
 	{
 		ZoneScoped;
+
+		if(renderPass->GetIsRoot()) renderPass->UpdateSubpassChain();
+
 		// Set up
 		MetalRenderPass metalRenderPass;
 		metalRenderPass.type = MetalRenderPass::Type::Default;
@@ -508,10 +522,21 @@ namespace RN
 		metalRenderPass.directionalShadowDepthTexture = nullptr;
 		metalRenderPass.multiviewLayer = previousRenderPass.multiviewLayer;
 		
-		Framebuffer *framebuffer = renderPass->GetFramebuffer();
+		Framebuffer *framebuffer = nullptr;
+		if(renderPass->GetIsSubpass())
+		{
+			// Subpass inherits root framebuffer
+			framebuffer = previousRenderPass.framebuffer;
+			metalRenderPass.frameRect = previousRenderPass.frameRect; // inherit root frame rect through the chain
+		}
+		else
+		{
+			framebuffer = renderPass->GetFramebuffer();
+			metalRenderPass.frameRect = renderPass->GetFrame();
+		}
 		MetalSwapChain *newSwapChain = nullptr;
-		newSwapChain = framebuffer->Downcast<MetalFramebuffer>()->GetSwapChain();
-		metalRenderPass.framebuffer = framebuffer->Downcast<MetalFramebuffer>();
+		newSwapChain = framebuffer? framebuffer->Downcast<MetalFramebuffer>()->GetSwapChain() : nullptr;
+		metalRenderPass.framebuffer = framebuffer? framebuffer->Downcast<MetalFramebuffer>() : nullptr;
 		
 		if(newSwapChain)
 		{
@@ -551,7 +576,7 @@ namespace RN
 				}
 				SubmitDrawable(_defaultPostProcessingDrawable);
 			}
-			else
+			else if(!renderPass->GetIsRoot())
 			{
 				// Create drawables
 				function();
@@ -1267,7 +1292,7 @@ namespace RN
 		if(cameraSpecific.dirty || cameraSpecific.camera != renderPass.camera)
 		{
 			_lock.Lock();
-			const MetalRenderingState *state = _internals->stateCoordinator.GetRenderPipelineState(drawable->material, drawable->mesh, renderPass.framebuffer, renderPass.shaderHint, renderPass.overrideMaterial);
+			const MetalRenderingState *state = _internals->stateCoordinator.GetRenderPipelineState(drawable->material, drawable->mesh, renderPass.framebuffer, renderPass.shaderHint, renderPass.overrideMaterial, renderPass.renderPass);
 			_lock.Unlock();
 
 			drawable->UpdateRenderingState(_internals->currentRenderPassIndex, renderPass.camera, this, state); //This will also reserve memory in a uniform buffer.

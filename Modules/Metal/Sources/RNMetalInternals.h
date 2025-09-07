@@ -207,6 +207,7 @@ namespace RN
 		int32 cameraTag;
 		
 		uint8 multiviewLayer;
+		Rect frameRect;
 
 		std::vector<uint32> instanceSteps; //number of drawables in the drawables list that use the same pipeline state and can all be rendered with the same draw call as result
 		std::vector<MetalDrawable *> drawables;
