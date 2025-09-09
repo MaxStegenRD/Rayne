@@ -115,7 +115,8 @@ namespace RN
 				   ShaderRead = (1 << 0),
 				   ShaderWrite = (1 << 1),
 				   RenderTarget = (1 << 2),
-				   Subsampled = (1 << 3));
+				   InputAttachment = (1 << 3),
+				   Subsampled = (1 << 4));
 
 		struct Descriptor
 		{
