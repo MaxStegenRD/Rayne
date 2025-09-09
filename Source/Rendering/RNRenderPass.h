@@ -38,6 +38,9 @@ namespace RN
 		RNAPI void SetClearColor(const Color &color);
 		RNAPI void SetClearDepthStencil(float depth, uint8 stencil);
 
+		// Filtering control: which scene node render groups this pass accepts
+		RNAPI void SetRenderGroupMask(uint16 mask);
+
 		RNAPI void SetSubpassWritesDepthStencilAttachment(bool writesDepthStencil);
 		RNAPI void SetSubpassReadsDepthStencilAttachment(bool depthStencilAttachment);
 		RNAPI void SetSubpassWritesColorAttachments(std::vector<uint32> colorAttachments);
@@ -49,6 +52,7 @@ namespace RN
 		const Color &GetClearColor() const { return _clearColor; }
 		float GetClearDepth() const { return _clearDepth; }
 		uint8 GetClearStencil() const { return _clearStencil; }
+		uint16 GetRenderGroupMask() const { return _renderGroupMask; }
 
 		bool GetIsSubpass() const { return _isSubpass; }
 		bool GetIsRoot() const { return _isRoot; }
@@ -81,6 +85,7 @@ namespace RN
 		uint8 _clearStencil;
 		bool _isSubpass;
 		bool _isRoot;
+		uint16 _renderGroupMask;
 
 		bool _subpassWritesDepthStencil;
 		bool _subpassReadDepthStencilAttachment;

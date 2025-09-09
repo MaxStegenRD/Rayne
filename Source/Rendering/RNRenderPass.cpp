@@ -14,7 +14,7 @@ namespace RN
 	RNDefineMeta(RenderPass, Object)
 
 	RenderPass::RenderPass(bool isSubpass) :
-		_flags(Flags::Defaults), _framebuffer(nullptr), _clearDepth(0.0f), _clearStencil(0), _nextRenderPasses(new Array()), _isSubpass(isSubpass), _isRoot(false), _subpassWritesDepthStencil(false), _subpassReadDepthStencilAttachment(false)
+		_flags(Flags::Defaults), _framebuffer(nullptr), _clearDepth(0.0f), _clearStencil(0), _nextRenderPasses(new Array()), _isSubpass(isSubpass), _isRoot(false), _renderGroupMask(0xffff), _subpassWritesDepthStencil(false), _subpassReadDepthStencilAttachment(false)
 	{
 	}
 
@@ -54,6 +54,11 @@ namespace RN
 		RN_ASSERT(!_isSubpass, "Cannot set clear depth stencil for subpass");
 		_clearDepth = depth;
 		_clearStencil = stencil;
+	}
+
+	void RenderPass::SetRenderGroupMask(uint16 mask)
+	{
+		_renderGroupMask = mask;
 	}
 
 	//Getter

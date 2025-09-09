@@ -37,6 +37,7 @@ namespace RN
 			mesh = nullptr;
 			material = nullptr;
 			skeleton = nullptr;
+			renderGroup = 0xffff;
 		}
 		virtual ~Drawable()
 		{}
@@ -73,6 +74,7 @@ namespace RN
 			{
 				modelMatrix = node->GetWorldTransform();
 				inverseModelMatrix = node->GetInverseWorldTransform();
+				renderGroup = node->GetRenderGroup();
 			}
 		}
 		virtual void MakeDirty() {}
@@ -83,6 +85,7 @@ namespace RN
 		Skeleton *skeleton; //Can just store the matrices instead to lose dependency on the skeleton for multithreading!
 		Matrix modelMatrix;
 		Matrix inverseModelMatrix;
+		uint16 renderGroup;
 	};
 
 	class RendererDescriptor;
