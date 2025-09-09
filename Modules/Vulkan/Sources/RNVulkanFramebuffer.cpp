@@ -282,7 +282,7 @@ namespace RN
 		return _sampleCount;
 	}
 
-	void VulkanFramebuffer::PrepareAsRendertargetForFrame(VulkanFramebuffer *resolveFramebuffer, RenderPass::Flags flags, uint8 multiviewLayer, uint8 multiviewCount)
+	void VulkanFramebuffer::PrepareAsRendertargetForFrame(VulkanFramebuffer *resolveFramebuffer, RenderPass::Flags flags, uint8 multiviewLayer, uint8 multiviewCount, const VulkanRenderPass *renderPass)
 	{
 		//Check if there is already a cached variant for this framebuffer
 		uint8 swapchainImageIndex = 0;
@@ -313,7 +313,7 @@ namespace RN
 		uint8 counter = 0;
 		for(const VulkanFramebufferVariant &variant : _framebufferVariants)
 		{
-			if(variant.resolveFramebuffer == resolveFramebuffer && variant.renderPassFlags == flags && variant.multiviewLayer == multiviewLayer && variant.multiviewCount == multiviewCount && variant.swapchainImageIndex == swapchainImageIndex && variant.resolveSwapchainImageIndex == resolveSwapchainImageIndex && variant.fragmentDensitySwapchainImageIndex == fragmentDensitySwapchainImageIndex)
+			if(variant.resolveFramebuffer == resolveFramebuffer && variant.renderPassFlags == flags && variant.multiviewLayer == multiviewLayer && variant.multiviewCount == multiviewCount && variant.swapchainImageIndex == swapchainImageIndex && variant.resolveSwapchainImageIndex == resolveSwapchainImageIndex && variant.fragmentDensitySwapchainImageIndex == fragmentDensitySwapchainImageIndex && variant.subpassSignature == renderPass->subpassSignature)
 			{
 				_currentVariantIndex = counter;
 				return;
@@ -330,9 +330,10 @@ namespace RN
 		newVariant.swapchainImageIndex = 0;
 		newVariant.resolveSwapchainImageIndex = 0;
 		newVariant.fragmentDensitySwapchainImageIndex = 0;
-
+		newVariant.subpassSignature = renderPass->subpassSignature;
+		
 		VkDevice device = _renderer->GetVulkanDevice()->GetDevice();
-		newVariant.renderPass = _renderer->GetVulkanRenderPass(this, resolveFramebuffer, flags, multiviewCount);
+		newVariant.renderPass = _renderer->GetVulkanRenderPass(renderPass);
 
 		if(_colorTargets.size() > 0)
 		{

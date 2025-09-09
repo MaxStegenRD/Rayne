@@ -248,7 +248,7 @@ namespace RN
             }
         }
 
-		if(descriptor.usageHint & Texture::UsageHint::RenderTarget)
+		if(descriptor.usageHint & Texture::UsageHint::RenderTarget || descriptor.usageHint & Texture::UsageHint::InputAttachment)
 		{
 			bool depth = VkFormatIsDepthFormat(format);
 			bool stencil = VkFormatIsStencilFormat(format);
@@ -262,10 +262,15 @@ namespace RN
 			{
 				flags |= VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
 			}
-            else
-            {
-                flags |= VK_IMAGE_USAGE_SAMPLED_BIT;
-            }
+			else if(descriptor.usageHint & Texture::UsageHint::RenderTarget)
+			{
+				flags |= VK_IMAGE_USAGE_SAMPLED_BIT;
+			}
+			
+			if(descriptor.usageHint & Texture::UsageHint::InputAttachment)
+			{
+				flags |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+			}
 		}
 		else
 		{

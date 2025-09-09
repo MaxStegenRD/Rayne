@@ -92,7 +92,8 @@ namespace RN
 		VKAPI void UpdateDynamicBufferReference(VulkanDynamicBufferReference *reference, bool align);
 
 	private:
-		void SubmitRenderPass(RenderPass *renderPass, VulkanRenderPass &previousRenderPass, Function &&function);
+		void SubmitRenderPass(RenderPass *renderPass, VulkanRenderPass &previousRenderPass);
+		void SubmitRenderPassDrawables(VulkanRenderPass &renderPass, Function &function);
 		void UpdateDescriptorSets();
 		void RenderDrawable(VkCommandBuffer commandBuffer, VulkanDrawable *drawable, uint32 instanceCount);
 		void FillUniformBuffer(Shader::ArgumentBuffer *argumentBuffer, VulkanDynamicBufferReference *dynamicBufferReference, VulkanDrawable *drawable);
@@ -100,7 +101,7 @@ namespace RN
 		void RenderAPIRenderPass(VulkanCommandBuffer *commandBuffer, const VulkanRenderPass &renderPass);
 
 		void SetupRendertargets(VkCommandBuffer commandBuffer, const VulkanRenderPass &renderpass);
-		VkRenderPass GetVulkanRenderPass(VulkanFramebuffer *framebuffer, VulkanFramebuffer *resolveFramebuffer, RenderPass::Flags flags, uint8 multiviewCount);
+		VkRenderPass GetVulkanRenderPass(const VulkanRenderPass *renderPass);
 
 		void CreateVulkanCommandBuffers(size_t count, std::vector<VkCommandBuffer> &buffers);
 		VkCommandBuffer CreateVulkanCommandBuffer();

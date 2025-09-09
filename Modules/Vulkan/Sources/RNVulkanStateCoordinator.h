@@ -19,6 +19,7 @@ namespace RN
 	class VulkanDynamicBufferReference;
 	class VulkanShader;
 	class VulkanDevice;
+	class VulkanRenderPass;
 
 	struct VulkanUniformState
 	{
@@ -61,6 +62,7 @@ namespace RN
 		Array *samplers;
 
 		uint8 textureCount;
+		uint8 subpassInputCount;
 		uint8 constantBufferCount;
 
 		VkDescriptorSetLayout descriptorSetLayout;
@@ -74,6 +76,8 @@ namespace RN
 		uint8 sampleCount;
 		//uint8 sampleQuality;
 		VkRenderPass renderPass;
+		uint32 subpassIndex;
+		uint8 colorAttachmentCount;
 		VkFormat depthStencilFormat;
 		
 		uint8 colorWriteMask;
@@ -137,6 +141,7 @@ namespace RN
 		RenderPass::Flags flags;
 		uint8 multiviewCount;
 		bool hasFragmentDensityMap;
+		uint64 subpassSignature; // compact hash of per-subpass read/write masks
 		std::vector<VkFormat> imageFormats;
 		std::vector<VkFormat> resolveFormats;
 		VkRenderPass renderPass;
@@ -147,6 +152,7 @@ namespace RN
 			if(resolveFormats.size() != descriptor.resolveFormats.size()) return false;
 			if(flags != descriptor.flags) return false;
 			if(multiviewCount != descriptor.multiviewCount) return false;
+			if(subpassSignature != descriptor.subpassSignature) return false;
 
 			for(int i = 0; i < imageFormats.size(); i++)
 			{
@@ -169,9 +175,9 @@ namespace RN
 		~VulkanStateCoordinator();
 
 		const VulkanRootSignature *GetRootSignature(const VulkanPipelineStateDescriptor &pipelineDescriptor);
-		const VulkanPipelineState *GetRenderPipelineState(Material *material, Mesh *mesh, VulkanFramebuffer *framebuffer, VulkanFramebuffer *resolveFramebuffer, Shader::UsageHint shaderHint, Material *overrideMaterial, RenderPass::Flags flags, uint8 multiviewCount);
+		const VulkanPipelineState *GetRenderPipelineState(Material *material, Mesh *mesh, Shader::UsageHint shaderHint, Material *overrideMaterial, const VulkanRenderPass *rootVulkanPass, uint32 subpassIndex);
 		VulkanUniformState *GetUniformStateForPipelineState(const VulkanPipelineState *pipelineState);
-		VulkanRenderPassState *GetRenderPassState(const VulkanFramebuffer *framebuffer, const VulkanFramebuffer *resolveFramebuffer, RenderPass::Flags flags, uint8 multiviewCount);
+		VulkanRenderPassState *GetRenderPassState(const VulkanRenderPass *rootVulkanPass);
 
 		void LoadPipelineCache(uint64 buildNumber, VulkanDevice *device, VkAllocationCallbacks *allocatorCallbacks);
 		void SavePipelineCache(uint64 buildNumber, VulkanDevice *device);

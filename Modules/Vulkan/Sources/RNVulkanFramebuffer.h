@@ -15,6 +15,7 @@
 
 namespace RN
 {
+	class VulkanRenderPass;
 	class VulkanFramebuffer : public Framebuffer
 	{
 	public:
@@ -34,6 +35,7 @@ namespace RN
 			RenderPass::Flags renderPassFlags;
 			uint8 multiviewLayer;
 			uint8 multiviewCount;
+			uint64 subpassSignature;
 
 			uint8 swapchainImageIndex;
 			uint8 resolveSwapchainImageIndex;
@@ -62,7 +64,7 @@ namespace RN
 		VKAPI void DidUpdateSwapChain(Vector2 size, uint8 layerCount, Texture::Format colorFormat, Texture::Format depthStencilFormat, Texture::Format fragmentDensityFormat);
 
 	private:
-		void PrepareAsRendertargetForFrame(VulkanFramebuffer *resolveFramebuffer, RenderPass::Flags flags, uint8 multiviewLayer, uint8 multiviewCount);
+		void PrepareAsRendertargetForFrame(VulkanFramebuffer *resolveFramebuffer, RenderPass::Flags flags, uint8 multiviewLayer, uint8 multiviewCount, const VulkanRenderPass *renderPass);
 		void SetAsRendertarget(VkCommandBuffer commandBuffer, VulkanFramebuffer *resolveFramebuffer, const Color &clearColor, float depth, uint8 stencil) const;
 
 		VulkanRenderer *_renderer;

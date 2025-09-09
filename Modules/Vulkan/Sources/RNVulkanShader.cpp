@@ -69,6 +69,7 @@ namespace RN
 		Array *specificReflectionSamplers = new Array();
 
 		Array *buffersArray = new Array();
+		Array *subpassInputsArray = new Array();
 		Array *samplersArray = new Array();
 		Array *texturesArray = new Array();
 
@@ -212,6 +213,28 @@ namespace RN
 			{
 				instanceAttributes->Release();
 			}
+		}
+
+		for(auto &resource : resources.subpass_inputs)
+		{
+			String *name = RNSTR(resource.name);
+			uint8 materialTextureIndex = 0;
+
+			//TODO: Move this into the shader base class
+			if(name->HasPrefix(RNCSTR("colorInput")))
+			{
+				String *indexString = name->GetSubstring(Range(10, name->GetLength() - 10));
+				materialTextureIndex = std::stoi(indexString->GetUTF8String());
+			}
+			else if(name->HasPrefix(RNCSTR("depthInput")))
+			{
+				String *indexString = name->GetSubstring(Range(10, name->GetLength() - 10));
+				materialTextureIndex = std::stoi(indexString->GetUTF8String()) + 128;
+			}
+
+			uint32 binding = reflector.get_decoration(resource.id, spv::DecorationBinding);
+			ArgumentTexture *argumentTexture = new ArgumentTexture(name, binding, materialTextureIndex);
+			subpassInputsArray->AddObject(argumentTexture->Autorelease());
 		}
 
 		for(auto &resource : resources.separate_images)
@@ -483,7 +506,7 @@ namespace RN
 			}
 		}
 
-		Signature *signature = new Signature(buffersArray->Autorelease(), samplersArray->Autorelease(), texturesArray->Autorelease());
+		Signature *signature = new Signature(buffersArray->Autorelease(), samplersArray->Autorelease(), texturesArray->Autorelease(), subpassInputsArray->Autorelease());
 		Shader::SetSignature(signature->Autorelease());
 	}
 

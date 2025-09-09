@@ -39,10 +39,13 @@ namespace RN
 				VkDescriptorPoolSize textureBufferPoolSize = {};
 				textureBufferPoolSize.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 				textureBufferPoolSize.descriptorCount = 10000;
+				VkDescriptorPoolSize inputAttachmentPoolSize = {};
+				inputAttachmentPoolSize.type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+				inputAttachmentPoolSize.descriptorCount = 5000;
 				VkDescriptorPoolSize samplerBufferPoolSize = {};
 				samplerBufferPoolSize.type = VK_DESCRIPTOR_TYPE_SAMPLER;
 				samplerBufferPoolSize.descriptorCount = 10000;
-				std::vector<VkDescriptorPoolSize> poolSizes = { uniformBufferPoolSize, storageBufferPoolSize, samplerBufferPoolSize, textureBufferPoolSize };
+				std::vector<VkDescriptorPoolSize> poolSizes = { uniformBufferPoolSize, storageBufferPoolSize, samplerBufferPoolSize, textureBufferPoolSize, inputAttachmentPoolSize };
 
 				VkDescriptorPoolCreateInfo descriptorPoolInfo = {};
 				descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -228,6 +231,9 @@ namespace RN
 		RenderPass *renderPass;
 		RenderPass *previousRenderPass;
 
+		std::vector<VulkanRenderPass> subpasses;
+		uint64 subpassSignature;
+
 		VulkanFramebuffer *framebuffer;
 		VulkanFramebuffer *resolveFramebuffer;
 		Shader::UsageHint shaderHint;
@@ -302,6 +308,7 @@ namespace RN
 
 		const VulkanPipelineState *currentPipelineState;
 		VulkanDrawable *currentInstanceDrawable;
+		uint32 currentSubpassIndex;
 
 		VmaAllocator memoryAllocator;
 		VulkanDescriptorPool descriptorPool;

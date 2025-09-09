@@ -252,6 +252,7 @@ namespace RN
 
 		uint8 textureCount = 0;
 		uint8 constantBufferCount = 0;
+		uint8 subpassInputCount = 0;
 
 		if(vertexShaderSignature)
 		{
@@ -260,18 +261,24 @@ namespace RN
 				bindingType.push_back(argument->GetType() == Shader::ArgumentBuffer::Type::UniformBuffer? 0 : 1);
 			});
 
-			vertexShaderSignature->GetSamplers()->Enumerate<Shader::Argument>([&](Shader::Argument *argument, size_t index, bool &stop){
+			vertexShaderSignature->GetSubpassInputs()->Enumerate<Shader::Argument>([&](Shader::Argument *argument, size_t index, bool &stop){
 				bindingIndex.push_back(argument->GetIndex());
 				bindingType.push_back(2);
 			});
 
-			vertexShaderSignature->GetTextures()->Enumerate<Shader::Argument>([&](Shader::Argument *argument, size_t index, bool &stop){
+			vertexShaderSignature->GetSamplers()->Enumerate<Shader::Argument>([&](Shader::Argument *argument, size_t index, bool &stop){
 				bindingIndex.push_back(argument->GetIndex());
 				bindingType.push_back(3);
 			});
 
+			vertexShaderSignature->GetTextures()->Enumerate<Shader::Argument>([&](Shader::Argument *argument, size_t index, bool &stop){
+				bindingIndex.push_back(argument->GetIndex());
+				bindingType.push_back(4);
+			});
+
 			textureCount += vertexShaderSignature->GetTextures()->GetCount();
 			constantBufferCount += vertexShaderSignature->GetBuffers()->GetCount();
+			subpassInputCount += vertexShaderSignature->GetSubpassInputs()->GetCount();
 
 			samplerArray->AddObjectsFromArray(vertexShaderSignature->GetSamplers());
 		}
@@ -279,21 +286,27 @@ namespace RN
 		{
 			fragmentShaderSignature->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *argument, size_t index, bool &stop){
 				bindingIndex.push_back(argument->GetIndex());
-				bindingType.push_back(argument->GetType() == Shader::ArgumentBuffer::Type::UniformBuffer? 4 : 5);
+				bindingType.push_back(argument->GetType() == Shader::ArgumentBuffer::Type::UniformBuffer? 5 : 6);
 			});
 
-			fragmentShaderSignature->GetSamplers()->Enumerate<Shader::Argument>([&](Shader::Argument *argument, size_t index, bool &stop){
-				bindingIndex.push_back(argument->GetIndex());
-				bindingType.push_back(6);
-			});
-
-			fragmentShaderSignature->GetTextures()->Enumerate<Shader::Argument>([&](Shader::Argument *argument, size_t index, bool &stop){
+			fragmentShaderSignature->GetSubpassInputs()->Enumerate<Shader::Argument>([&](Shader::Argument *argument, size_t index, bool &stop){
 				bindingIndex.push_back(argument->GetIndex());
 				bindingType.push_back(7);
 			});
 
+			fragmentShaderSignature->GetSamplers()->Enumerate<Shader::Argument>([&](Shader::Argument *argument, size_t index, bool &stop){
+				bindingIndex.push_back(argument->GetIndex());
+				bindingType.push_back(8);
+			});
+
+			fragmentShaderSignature->GetTextures()->Enumerate<Shader::Argument>([&](Shader::Argument *argument, size_t index, bool &stop){
+				bindingIndex.push_back(argument->GetIndex());
+				bindingType.push_back(9);
+			});
+
 			textureCount += fragmentShaderSignature->GetTextures()->GetCount();
 			constantBufferCount += fragmentShaderSignature->GetBuffers()->GetCount();
+			subpassInputCount += fragmentShaderSignature->GetSubpassInputs()->GetCount();
 
 			samplerArray->AddObjectsFromArray(fragmentShaderSignature->GetSamplers());
 		}
@@ -327,6 +340,7 @@ namespace RN
 		signature->bindingType = bindingType;
 		signature->samplers = samplerArray->Retain();
 		signature->textureCount = textureCount;
+		signature->subpassInputCount = subpassInputCount;
 		signature->constantBufferCount = constantBufferCount;
 
 		std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings;
@@ -362,6 +376,16 @@ namespace RN
 				setImageLayoutBinding.descriptorCount = 1;
 				setLayoutBindings.push_back(setImageLayoutBinding);
 			});
+
+			//Vertex shader subpass inputs
+			signature->GetSubpassInputs()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *texture, size_t index, bool &stop){
+				VkDescriptorSetLayoutBinding setInputAttachmentLayoutBinding = {};
+				setInputAttachmentLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+				setInputAttachmentLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+				setInputAttachmentLayoutBinding.binding = texture->GetIndex();
+				setInputAttachmentLayoutBinding.descriptorCount = 1;
+				setLayoutBindings.push_back(setInputAttachmentLayoutBinding);
+			});
 		}
 
 		if(fragmentShader)
@@ -386,6 +410,16 @@ namespace RN
 				setImageLayoutBinding.binding = texture->GetIndex();
 				setImageLayoutBinding.descriptorCount = 1;
 				setLayoutBindings.push_back(setImageLayoutBinding);
+			});
+
+			//Fragment shader subpass inputs
+			signature->GetSubpassInputs()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *texture, size_t index, bool &stop){
+				VkDescriptorSetLayoutBinding setInputAttachmentLayoutBinding = {};
+				setInputAttachmentLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+				setInputAttachmentLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+				setInputAttachmentLayoutBinding.binding = texture->GetIndex();
+				setInputAttachmentLayoutBinding.descriptorCount = 1;
+				setLayoutBindings.push_back(setInputAttachmentLayoutBinding);
 			});
 		}
 
@@ -509,15 +543,17 @@ namespace RN
 		return signature;
 	}
 
-	const VulkanPipelineState *VulkanStateCoordinator::GetRenderPipelineState(Material *material, Mesh *mesh, VulkanFramebuffer *framebuffer, VulkanFramebuffer *resolveFramebuffer, Shader::UsageHint shaderHint, Material *overrideMaterial, RenderPass::Flags flags, uint8 multiviewCount)
+	const VulkanPipelineState *VulkanStateCoordinator::GetRenderPipelineState(Material *material, Mesh *mesh, Shader::UsageHint shaderHint, Material *overrideMaterial, const VulkanRenderPass *rootVulkanPass, uint32 subpassIndex)
 	{
+		const VulkanFramebuffer *framebuffer = rootVulkanPass->framebuffer;
+
 		const Mesh::VertexDescriptor &descriptor = mesh->GetVertexDescriptor();
 		const Material::PipelineProperties &mergedMaterialProperties = material->GetMergedPipelineProperties(overrideMaterial);
 		VulkanPipelineStateDescriptor pipelineDescriptor;
 		pipelineDescriptor.depthStencilFormat = (framebuffer->_depthStencilTarget) ? framebuffer->_depthStencilTarget->vulkanTargetViewDescriptor.format : VK_FORMAT_UNDEFINED;
 		pipelineDescriptor.sampleCount = framebuffer->GetSampleCount();
-		//pipelineDescriptor.sampleQuality = 0;//(framebuffer->_colorTargets.size() > 0 && !framebuffer->GetSwapChain()) ? framebuffer->_colorTargets[0]->targetView.texture->GetDescriptor().sampleQuality : 0;
-		pipelineDescriptor.renderPass = GetRenderPassState(framebuffer, resolveFramebuffer, flags, multiviewCount)->renderPass;
+		//pipelineDescriptor.sampleQuality = 0;//(framebuffer->_colorTargets.size() > 0 && !framebuffer->GetSwapChain()) ? framebuffer->_colorTargets[0]->targetView texture->GetDescriptor().sampleQuality : 0;
+		pipelineDescriptor.renderPass = GetRenderPassState(rootVulkanPass)->renderPass;
 		pipelineDescriptor.shaderHint = shaderHint;
 		pipelineDescriptor.vertexShader = (overrideMaterial && !(overrideMaterial->GetOverride() & Material::Override::GroupShaders) && !(material->GetOverride() & Material::Override::GroupShaders))? overrideMaterial->GetVertexShader(pipelineDescriptor.shaderHint) : material->GetVertexShader(pipelineDescriptor.shaderHint);
 		pipelineDescriptor.fragmentShader = (overrideMaterial && !(overrideMaterial->GetOverride() & Material::Override::GroupShaders) && !(material->GetOverride() & Material::Override::GroupShaders)) ? overrideMaterial->GetFragmentShader(pipelineDescriptor.shaderHint) : material->GetFragmentShader(pipelineDescriptor.shaderHint);
@@ -535,7 +571,20 @@ namespace RN
         pipelineDescriptor.blendFactorDestinationRGB = mergedMaterialProperties.blendFactorDestinationRGB;
         pipelineDescriptor.blendFactorSourceAlpha = mergedMaterialProperties.blendFactorSourceAlpha;
         pipelineDescriptor.blendFactorDestinationAlpha = mergedMaterialProperties.blendFactorDestinationAlpha;
-		//TODO: Support all override flags and all the relevant material properties
+	//TODO: Support all override flags and all the relevant material properties
+
+		pipelineDescriptor.subpassIndex = subpassIndex;
+		// Determine color attachment count for this subpass to match pipeline color blend state
+		{
+			uint32 totalColorAttachments = framebuffer->_swapChain ? 1 : static_cast<uint32>(framebuffer->_colorTargets.size());
+			uint32 countForPipeline = totalColorAttachments;
+			if(rootVulkanPass && rootVulkanPass->subpasses.size() > 0 && subpassIndex < rootVulkanPass->subpasses.size())
+			{
+				RenderPass *rp = rootVulkanPass->subpasses[subpassIndex].renderPass;
+				countForPipeline = rp->GetSubpassWritesColorAttachments().size();
+			}
+			pipelineDescriptor.colorAttachmentCount = static_cast<uint8>(countForPipeline);
+		}
 
 		for(VulkanPipelineStateCollection *collection : _renderingStates)
 		{
@@ -564,7 +613,7 @@ namespace RN
 		{
 			if(state->descriptor.renderPass == descriptor.renderPass && state->descriptor.depthStencilFormat == descriptor.depthStencilFormat && rootSignature->pipelineLayout == state->rootSignature->pipelineLayout)
 			{
-				if(state->descriptor.sampleCount == descriptor.sampleCount && state->descriptor.colorWriteMask == descriptor.colorWriteMask && state->descriptor.depthWriteEnabled == descriptor.depthWriteEnabled && state->descriptor.depthMode == descriptor.depthMode && state->descriptor.cullMode == descriptor.cullMode && state->descriptor.usePolygonOffset == descriptor.usePolygonOffset && state->descriptor.polygonOffsetFactor == descriptor.polygonOffsetFactor && state->descriptor.polygonOffsetUnits == descriptor.polygonOffsetUnits && state->descriptor.useAlphaToCoverage == descriptor.useAlphaToCoverage && state->descriptor.blendOperationRGB == descriptor.blendOperationRGB && state->descriptor.blendOperationAlpha == descriptor.blendOperationAlpha && state->descriptor.blendFactorSourceRGB == descriptor.blendFactorSourceRGB && state->descriptor.blendFactorSourceAlpha == descriptor.blendFactorSourceAlpha && state->descriptor.blendFactorDestinationRGB == descriptor.blendFactorDestinationRGB && state->descriptor.blendFactorDestinationAlpha == descriptor.blendFactorDestinationAlpha)
+				if(state->descriptor.sampleCount == descriptor.sampleCount && state->descriptor.colorWriteMask == descriptor.colorWriteMask && state->descriptor.depthWriteEnabled == descriptor.depthWriteEnabled && state->descriptor.depthMode == descriptor.depthMode && state->descriptor.cullMode == descriptor.cullMode && state->descriptor.usePolygonOffset == descriptor.usePolygonOffset && state->descriptor.polygonOffsetFactor == descriptor.polygonOffsetFactor && state->descriptor.polygonOffsetUnits == descriptor.polygonOffsetUnits && state->descriptor.useAlphaToCoverage == descriptor.useAlphaToCoverage && state->descriptor.blendOperationRGB == descriptor.blendOperationRGB && state->descriptor.blendOperationAlpha == descriptor.blendOperationAlpha && state->descriptor.blendFactorSourceRGB == descriptor.blendFactorSourceRGB && state->descriptor.blendFactorSourceAlpha == descriptor.blendFactorSourceAlpha && state->descriptor.blendFactorDestinationRGB == descriptor.blendFactorDestinationRGB && state->descriptor.blendFactorDestinationAlpha == descriptor.blendFactorDestinationAlpha && state->descriptor.subpassIndex == descriptor.subpassIndex && state->descriptor.colorAttachmentCount == descriptor.colorAttachmentCount)
 				{
 					return state;
 				}
@@ -694,8 +743,18 @@ namespace RN
 		VkPipelineColorBlendStateCreateInfo colorBlendState = {};
 		colorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 		colorBlendState.pNext = NULL;
-		colorBlendState.attachmentCount = 1;
-		colorBlendState.pAttachments = &blendAttachmentState;
+		std::vector<VkPipelineColorBlendAttachmentState> blendAttachmentStates;
+		if(descriptor.colorAttachmentCount > 0)
+		{
+			blendAttachmentStates.resize(descriptor.colorAttachmentCount, blendAttachmentState);
+			colorBlendState.attachmentCount = descriptor.colorAttachmentCount;
+			colorBlendState.pAttachments = blendAttachmentStates.data();
+		}
+		else
+		{
+			colorBlendState.attachmentCount = 0;
+			colorBlendState.pAttachments = nullptr;
+		}
 
 		VkPipelineDepthStencilStateCreateInfo depthStencilState = {};
 		depthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
@@ -743,6 +802,11 @@ namespace RN
 					break;
 			}
 
+			if(descriptor.subpassIndex > 0)
+			{
+				depthStencilState.depthCompareOp = VK_COMPARE_OP_EQUAL;
+			}
+
 
 			depthStencilState.back.compareOp = VK_COMPARE_OP_ALWAYS;
 			depthStencilState.front = depthStencilState.back;
@@ -781,6 +845,7 @@ namespace RN
 		pipelineCreateInfo.pNext = NULL;
 		pipelineCreateInfo.layout = rootSignature->pipelineLayout;
 		pipelineCreateInfo.renderPass = descriptor.renderPass;
+		pipelineCreateInfo.subpass = descriptor.subpassIndex;
 		pipelineCreateInfo.flags = 0;
 		pipelineCreateInfo.pVertexInputState = &vertexInputState;
 		pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
@@ -916,8 +981,13 @@ namespace RN
 		return state;
 	}
 
-	VulkanRenderPassState *VulkanStateCoordinator::GetRenderPassState(const VulkanFramebuffer *framebuffer, const VulkanFramebuffer *resolveFramebuffer, RenderPass::Flags flags, uint8 multiviewCount)
+	VulkanRenderPassState *VulkanStateCoordinator::GetRenderPassState(const VulkanRenderPass *rootVulkanPass)
 	{
+		const VulkanFramebuffer *framebuffer = rootVulkanPass->framebuffer;
+		const VulkanFramebuffer *resolveFramebuffer = rootVulkanPass->resolveFramebuffer;
+		RenderPass::Flags flags = rootVulkanPass->renderPass->GetFlags();
+		uint8 multiviewCount = rootVulkanPass->multiviewCameraInfo.size();
+
 		//TODO: Maybe handle swapchain case better...
 		RN_ASSERT(!resolveFramebuffer || framebuffer->_colorTargets.size() <= resolveFramebuffer->_colorTargets.size(), "Resolve framebuffer needs a target for each target in the framebuffer!");
 
@@ -949,6 +1019,8 @@ namespace RN
 			renderPassState.imageFormats.push_back(fragmentDensityFramebuffer->_fragmentDensityTargets[0]->vulkanTargetViewDescriptor.format);
 		}
 
+		renderPassState.subpassSignature = rootVulkanPass->subpassSignature;
+
 		for(VulkanRenderPassState *state : _renderPassStates)
 		{
 			if((*state) == renderPassState) return state;
@@ -960,16 +1032,7 @@ namespace RN
 		state->resolveFormats = renderPassState.resolveFormats;
 		state->multiviewCount = renderPassState.multiviewCount;
 		state->hasFragmentDensityMap = renderPassState.hasFragmentDensityMap;
-
-		VkSubpassDescription subpass = {};
-		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpass.flags = 0;
-		subpass.inputAttachmentCount = 0;
-		subpass.pInputAttachments = nullptr;
-		subpass.pResolveAttachments = nullptr;
-		subpass.pDepthStencilAttachment = nullptr;
-		subpass.preserveAttachmentCount = 0;
-		subpass.pPreserveAttachments = nullptr;
+		state->subpassSignature = renderPassState.subpassSignature;
 
 		std::vector<VkAttachmentDescription> attachments;
 		std::vector<VkAttachmentReference> colorAttachmentRefs;
@@ -990,7 +1053,7 @@ namespace RN
 			if(flags & RenderPass::Flags::ClearColor) attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 			else if(flags & RenderPass::Flags::LoadColor) attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 			else attachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-			if(flags & RenderPass::Flags::StoreColor) attachment.storeOp = resolveFramebuffer?VK_ATTACHMENT_STORE_OP_DONT_CARE:VK_ATTACHMENT_STORE_OP_STORE;
+			if(flags & RenderPass::Flags::StoreColor) attachment.storeOp = resolveFramebuffer? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
 			else attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 			attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 			attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -1017,13 +1080,13 @@ namespace RN
 				resolveAttachment.flags = 0;
 				resolveAttachment.samples = static_cast<VkSampleCountFlagBits>(resolveFramebuffer->_sampleCount);
 				resolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-				resolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+				resolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 				if(flags & RenderPass::Flags::StoreColor) resolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 				else resolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 				resolveAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 				resolveAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-				resolveAttachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-				resolveAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+				resolveAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+				resolveAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; //TODO: Maybe could be VK_IMAGE_LAYOUT_PRESENT_SRC_KHR?
 				attachments.push_back(resolveAttachment);
 			}
 
@@ -1032,6 +1095,15 @@ namespace RN
 			if(framebuffer->_swapChain || (resolveFramebuffer && resolveFramebuffer->_swapChain)) break;
 		}
 
+		VkSubpassDescription subpass = {};
+		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpass.flags = 0;
+		subpass.inputAttachmentCount = 0;
+		subpass.pInputAttachments = nullptr;
+		subpass.pResolveAttachments = nullptr;
+		subpass.pDepthStencilAttachment = nullptr;
+		subpass.preserveAttachmentCount = 0;
+		subpass.pPreserveAttachments = nullptr;
 		subpass.colorAttachmentCount = colorAttachmentRefs.size();
 		subpass.pColorAttachments = colorAttachmentRefs.data();
 
@@ -1079,7 +1151,7 @@ namespace RN
 			attachment.format = fragmentDensityFramebuffer->_fragmentDensityTargets[0]->vulkanTargetViewDescriptor.format;
 			attachment.flags = 0;
 			attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-			attachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+			attachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; //This is ok for fragment density maps
 			attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 			attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 			attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -1088,15 +1160,186 @@ namespace RN
 			attachments.push_back(attachment);
 		}
 
+		// Build subpass array (explicit or default)
+		std::vector<VkSubpassDescription> multiSubpasses;
+		std::vector<VkSubpassDependency> subpassDependencies;
+		std::vector<std::vector<VkAttachmentReference>> perSubpassColorRefs;
+		std::vector<std::vector<uint32>> perSubpassColorIndices; // map pColorAttachments order to color index
+		std::vector<std::vector<VkAttachmentReference>> perSubpassInputRefs;
+		std::vector<std::vector<VkAttachmentReference>> perSubpassResolveRefs;
+		std::vector<VkAttachmentReference> perSubpassDepthRefs;
+		std::vector<std::vector<uint32>> perSubpassPreserveAttachments;
+
+		if(rootVulkanPass && rootVulkanPass->subpasses.size() > 0)
+		{
+			perSubpassColorRefs.resize(rootVulkanPass->subpasses.size());
+			perSubpassColorIndices.resize(rootVulkanPass->subpasses.size());
+			perSubpassInputRefs.resize(rootVulkanPass->subpasses.size());
+			perSubpassResolveRefs.resize(rootVulkanPass->subpasses.size());
+			perSubpassDepthRefs.resize(rootVulkanPass->subpasses.size());
+			perSubpassPreserveAttachments.resize(rootVulkanPass->subpasses.size());
+
+			for(size_t si = 0; si < rootVulkanPass->subpasses.size(); si++)
+			{
+				RenderPass *rp = rootVulkanPass->subpasses[si].renderPass;
+
+				VkSubpassDescription sp = {};
+				sp.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+				for(uint32 ci = 0; ci < colorAttachmentRefs.size(); ci++)
+				{
+					if(rp->GetSubpassWritesColorAttachment(ci))
+					{
+						perSubpassColorRefs[si].push_back({ colorAttachmentRefs[ci].attachment, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
+						perSubpassColorIndices[si].push_back(ci);
+					}
+				}
+				sp.colorAttachmentCount = perSubpassColorRefs[si].size();
+				sp.pColorAttachments = (sp.colorAttachmentCount > 0)? perSubpassColorRefs[si].data() : nullptr;
+
+				for(uint32 ci = 0; ci < colorAttachmentRefs.size(); ci++)
+				{
+					if(rp->GetSubpassReadColorAttachment(ci))
+					{
+						perSubpassInputRefs[si].push_back({ colorAttachmentRefs[ci].attachment, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+					}
+				}
+
+				if(framebuffer->_depthStencilTarget)
+				{
+					if(rp->GetSubpassWritesDepthStencil())
+					{
+						perSubpassDepthRefs[si] = { static_cast<uint32>(attachments.size() - (fragmentDensityFramebuffer->_fragmentDensityTargets.size() > 0? 1 : 0) - 1), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
+						sp.pDepthStencilAttachment = &perSubpassDepthRefs[si];
+					}
+					else if(rp->GetSubpassReadDepthStencilAttachment())
+					{
+						// Keep depth bound for depth testing but in read-only layout
+						perSubpassDepthRefs[si] = { static_cast<uint32>(attachments.size() - (fragmentDensityFramebuffer->_fragmentDensityTargets.size() > 0? 1 : 0) - 1), VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL };
+						sp.pDepthStencilAttachment = &perSubpassDepthRefs[si];
+						// Also expose as input attachment if shader wants to sample depth
+						perSubpassInputRefs[si].push_back({ static_cast<uint32>(attachments.size() - (fragmentDensityFramebuffer->_fragmentDensityTargets.size() > 0? 1 : 0) - 1), VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL });
+					}
+				}
+
+				sp.inputAttachmentCount = perSubpassInputRefs[si].size();
+				sp.pInputAttachments = (sp.inputAttachmentCount > 0)? perSubpassInputRefs[si].data() : nullptr;
+
+				// Preserve attachments that are not used in this subpass but needed later (color and depth)
+				std::vector<uint32> preserveAttachments;
+				// Color attachments
+				for(uint32 ci = 0; ci < colorAttachmentRefs.size(); ci++)
+				{
+					bool used = rp->GetSubpassWritesColorAttachment(ci) || rp->GetSubpassReadColorAttachment(ci);
+					if(!used)
+					{
+						// Check if any future subpass uses this attachment
+						for(size_t next = si + 1; next < rootVulkanPass->subpasses.size(); next++)
+						{
+							RenderPass *rpNext = rootVulkanPass->subpasses[next].renderPass;
+							if(rpNext->GetSubpassWritesColorAttachment(ci) || rpNext->GetSubpassReadColorAttachment(ci))
+							{
+								preserveAttachments.push_back(colorAttachmentRefs[ci].attachment);
+								break;
+							}
+						}
+					}
+				}
+				// Depth attachment
+				if(framebuffer->_depthStencilTarget)
+				{
+					bool usesDepth = rp->GetSubpassWritesDepthStencil() || rp->GetSubpassReadDepthStencilAttachment();
+					if(!usesDepth)
+					{
+						for(size_t next = si + 1; next < rootVulkanPass->subpasses.size(); next++)
+						{
+							RenderPass *rpNext = rootVulkanPass->subpasses[next].renderPass;
+							if(rpNext->GetSubpassWritesDepthStencil() || rpNext->GetSubpassReadDepthStencilAttachment())
+							{
+								preserveAttachments.push_back(depthReference.attachment);
+								break;
+							}
+						}
+					}
+				}
+
+				perSubpassPreserveAttachments.push_back(preserveAttachments);
+				sp.preserveAttachmentCount = preserveAttachments.size();
+				sp.pPreserveAttachments = (preserveAttachments.size() > 0)? perSubpassPreserveAttachments.back().data() : nullptr;
+
+				// Resolve attachments only on last writer subpasses
+				if(resolveFramebuffer && sp.colorAttachmentCount > 0)
+				{
+					RenderPass *rp = rootVulkanPass->subpasses[si].renderPass;
+					perSubpassResolveRefs[si].reserve(perSubpassColorRefs[si].size());
+					bool anyLast = false;
+					for(size_t k = 0; k < perSubpassColorIndices[si].size(); ++k)
+					{
+						uint32 ci = perSubpassColorIndices[si][k];
+						if(rp->GetSubpassLastColorWriteAttachment(ci))
+						{
+							perSubpassResolveRefs[si].push_back({ resolveAttachmentRefs[ci].attachment, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
+							anyLast = true;
+						}
+						else
+						{
+							perSubpassResolveRefs[si].push_back({ VK_ATTACHMENT_UNUSED, VK_IMAGE_LAYOUT_UNDEFINED });
+						}
+					}
+					sp.pResolveAttachments = anyLast ? perSubpassResolveRefs[si].data() : nullptr;
+				}
+
+				multiSubpasses.push_back(sp);
+
+				if(si == 0)
+				{
+					VkSubpassDependency dep = {};
+					dep.srcSubpass = 0;
+					dep.dstSubpass = 0;
+					dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+					dep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+					dep.srcAccessMask = 0;
+					dep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+					dep.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+					if(multiviewCount > 1)
+					{
+						dep.dependencyFlags = static_cast<VkDependencyFlags>(dep.dependencyFlags | VK_DEPENDENCY_VIEW_LOCAL_BIT);
+					}
+					subpassDependencies.push_back(dep);
+				}
+				if(si + 1 < rootVulkanPass->subpasses.size())
+				{
+					VkSubpassDependency dep = {};
+					dep.srcSubpass = si;
+					dep.dstSubpass = si + 1;
+					dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+					dep.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+					dep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+					dep.dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+					dep.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+					if(multiviewCount > 1)
+					{
+						dep.dependencyFlags = static_cast<VkDependencyFlags>(dep.dependencyFlags | VK_DEPENDENCY_VIEW_LOCAL_BIT);
+					}
+					subpassDependencies.push_back(dep);
+				}
+			}
+		}
+		else
+		{
+			// No explicit subpasses: use default single subpass
+			multiSubpasses.push_back(subpass);
+		}
+
 		VkRenderPassCreateInfo renderPassInfo = {};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 		renderPassInfo.pNext = nullptr;
 		renderPassInfo.attachmentCount = attachments.size();
 		renderPassInfo.pAttachments = attachments.data();
-		renderPassInfo.subpassCount = 1;
-		renderPassInfo.pSubpasses = &subpass;
-		renderPassInfo.dependencyCount = 0;
-		renderPassInfo.pDependencies = nullptr;
+		renderPassInfo.subpassCount = multiSubpasses.size();
+		renderPassInfo.pSubpasses = multiSubpasses.data();
+		renderPassInfo.dependencyCount = subpassDependencies.size();
+		renderPassInfo.pDependencies = (subpassDependencies.size() > 0)? subpassDependencies.data() : nullptr;
 
 		//Multiview stuff
 		uint32 viewMask = 0;
@@ -1112,8 +1355,13 @@ namespace RN
 		VkRenderPassMultiviewCreateInfoKHR multiviewPassInfo = {};
 		multiviewPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO;
 		multiviewPassInfo.pNext = nullptr;
-		multiviewPassInfo.subpassCount = 1;
-		multiviewPassInfo.pViewMasks = &viewMask;
+		std::vector<uint32> perSubpassViewMasks;
+		if(multiviewCount > 1)
+		{
+			perSubpassViewMasks.resize(std::max<size_t>(1, multiSubpasses.size()), viewMask);
+			multiviewPassInfo.subpassCount = static_cast<uint32>(perSubpassViewMasks.size());
+			multiviewPassInfo.pViewMasks = perSubpassViewMasks.data();
+		}
 		multiviewPassInfo.dependencyCount = 0;
 		multiviewPassInfo.correlationMaskCount = 1;
 		multiviewPassInfo.pCorrelationMasks = &correlationMask;
