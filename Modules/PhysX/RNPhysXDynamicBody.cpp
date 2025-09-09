@@ -243,6 +243,16 @@ namespace RN
 		_actor->setKinematicTarget(physx::PxTransform(position.x - positionOffset.x, position.y - positionOffset.y, position.z - positionOffset.z, physx::PxQuat(targetRotation.x, targetRotation.y, targetRotation.z, targetRotation.w)));
 	}
 
+	void PhysXDynamicBody::SetSimulationDisabled(bool disabled)
+	{
+		_actor->setActorFlag(physx::PxActorFlag::eDISABLE_SIMULATION, disabled);
+	}
+
+	bool PhysXDynamicBody::GetIsSimulationDisabled() const
+	{
+		return _actor->getActorFlags() & physx::PxActorFlag::eDISABLE_SIMULATION;
+	}
+
 	void PhysXDynamicBody::AccelerateToTarget(const Vector3 &position, const Quaternion &rotation, float delta)
 	{
 		//Linear velocity
@@ -424,7 +434,7 @@ namespace RN
 			RN::Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
 			Vector3 position = GetWorldPosition() - positionOffset;
 			Quaternion rotation = GetWorldRotation() * _rotationOffset;
-			_actor->setGlobalPose(physx::PxTransform(physx::PxVec3(position.x, position.y, position.z), physx::PxQuat(rotation.x, rotation.y, rotation.z, rotation.w)));
+			_actor->setGlobalPose(physx::PxTransform(physx::PxVec3(position.x, position.y, position.z), physx::PxQuat(rotation.x, rotation.y, rotation.z, rotation.w)), false);
 		}
 
 		if(changeSet & SceneNode::ChangeSet::Attachments)
@@ -434,7 +444,7 @@ namespace RN
 				RN::Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
 				Vector3 position = GetWorldPosition() - positionOffset;
 				Quaternion rotation = GetWorldRotation() * _rotationOffset;
-				_actor->setGlobalPose(physx::PxTransform(physx::PxVec3(position.x, position.y, position.z), physx::PxQuat(rotation.x, rotation.y, rotation.z, rotation.w)));
+				_actor->setGlobalPose(physx::PxTransform(physx::PxVec3(position.x, position.y, position.z), physx::PxQuat(rotation.x, rotation.y, rotation.z, rotation.w)), false);
 			}
 
 			_owner = GetParent();
