@@ -626,11 +626,12 @@ namespace RN
 	}
 
 
-	Shader::Signature::Signature(Array *buffers, Array *samplers, Array *textures)
+	Shader::Signature::Signature(Array *buffers, Array *samplers, Array *textures, Array *subpassInputs)
 	{
 		_buffers = SafeRetain(buffers);
 		_samplers = SafeRetain(samplers);
 		_textures = SafeRetain(textures);
+		_subpassInputs = SafeRetain(subpassInputs);
 	}
 
 	Shader::Signature::~Signature()
@@ -638,6 +639,7 @@ namespace RN
 		SafeRelease(_buffers);
 		SafeRelease(_samplers);
 		SafeRelease(_textures);
+		SafeRelease(_subpassInputs);
 	}
 
 

@@ -283,18 +283,20 @@ namespace RN
 		class Signature : public Object
 		{
 		public:
-			RNAPI Signature(Array *buffers, Array *samplers, Array *textures);
+			RNAPI Signature(Array *buffers, Array *samplers, Array *textures, Array *subpassInputs);
 			RNAPI virtual ~Signature();
 
 			const Array *GetBuffers() const { return _buffers; }
 			const Array *GetSamplers() const { return _samplers; }
 			const Array *GetTextures() const { return _textures; }
+			const Array *GetSubpassInputs() const { return _subpassInputs; }
 
 		private:
 			Array *_buffers;
 			Array *_samplers;
 			Array *_textures;
-
+			Array *_subpassInputs;
+			
 			__RNDeclareMetaInternal(Signature)
 		};
 
