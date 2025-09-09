@@ -282,8 +282,13 @@ namespace RN
 		return _sampleCount;
 	}
 
-	void VulkanFramebuffer::PrepareAsRendertargetForFrame(VulkanFramebuffer *resolveFramebuffer, RenderPass::Flags flags, uint8 multiviewLayer, uint8 multiviewCount, const VulkanRenderPass *renderPass)
+	void VulkanFramebuffer::PrepareAsRendertargetForFrame(const VulkanRenderPass *renderPass)
 	{
+		VulkanFramebuffer *resolveFramebuffer = renderPass->resolveFramebuffer;
+		RenderPass::Flags flags = renderPass->renderPass->GetFlags();
+		uint8 multiviewCount = renderPass->multiviewCameraInfo.size();
+		uint8 multiviewLayer = renderPass->multiviewLayer;
+
 		//Check if there is already a cached variant for this framebuffer
 		uint8 swapchainImageIndex = 0;
 		uint8 resolveSwapchainImageIndex = 0;

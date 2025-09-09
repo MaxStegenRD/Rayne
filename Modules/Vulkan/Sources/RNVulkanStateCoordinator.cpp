@@ -571,9 +571,9 @@ namespace RN
         pipelineDescriptor.blendFactorDestinationRGB = mergedMaterialProperties.blendFactorDestinationRGB;
         pipelineDescriptor.blendFactorSourceAlpha = mergedMaterialProperties.blendFactorSourceAlpha;
         pipelineDescriptor.blendFactorDestinationAlpha = mergedMaterialProperties.blendFactorDestinationAlpha;
-	//TODO: Support all override flags and all the relevant material properties
 
 		pipelineDescriptor.subpassIndex = subpassIndex;
+		
 		// Determine color attachment count for this subpass to match pipeline color blend state
 		{
 			uint32 totalColorAttachments = framebuffer->_swapChain ? 1 : static_cast<uint32>(framebuffer->_colorTargets.size());

@@ -142,10 +142,8 @@ namespace RN
 
 		void AddCameraSpecificsIfNeeded(size_t cameraID)
 		{
-			while(_cameraSpecifics.size() <= cameraID)
-			{
-				_cameraSpecifics.push_back({ nullptr, nullptr, true, nullptr });
-			}
+			if(_cameraSpecifics.size() > cameraID) return;
+			_cameraSpecifics.resize(cameraID + 1, { nullptr, nullptr, true, nullptr });
 		}
 
 		void UpdateRenderingState(size_t cameraID, Camera *camera, const VulkanPipelineState *pipelineState, VulkanUniformState *uniformState)
@@ -231,6 +229,9 @@ namespace RN
 		RenderPass *renderPass;
 		RenderPass *previousRenderPass;
 
+		const VulkanPipelineState *currentPipelineState;
+		VulkanDrawable *currentInstanceDrawable;
+
 		std::vector<VulkanRenderPass> subpasses;
 		uint64 subpassSignature;
 
@@ -306,9 +307,7 @@ namespace RN
 
 		size_t totalDescriptorTables;
 
-		const VulkanPipelineState *currentPipelineState;
-		VulkanDrawable *currentInstanceDrawable;
-		uint32 currentSubpassIndex;
+		uint32 currentSubpassIndex; //TODO: Remove this
 
 		VmaAllocator memoryAllocator;
 		VulkanDescriptorPool descriptorPool;
