@@ -38,10 +38,10 @@ namespace RN
 		RNAPI void SetClearColor(const Color &color);
 		RNAPI void SetClearDepthStencil(float depth, uint8 stencil);
 
-		RNAPI void SetSubpassWritesDepthStencil(bool writesDepthStencil);
-		RNAPI void SetSubpassReadDepthStencilAttachment(bool depthStencilAttachment);
+		RNAPI void SetSubpassWritesDepthStencilAttachment(bool writesDepthStencil);
+		RNAPI void SetSubpassReadsDepthStencilAttachment(bool depthStencilAttachment);
 		RNAPI void SetSubpassWritesColorAttachments(std::vector<uint32> colorAttachments);
-		RNAPI void SetSubpassReadColorAttachments(std::vector<uint32> colorAttachments);
+		RNAPI void SetSubpassReadsColorAttachments(std::vector<uint32> colorAttachments);
 
 		RNAPI Framebuffer *GetFramebuffer() const;
 		Flags GetFlags() const { return _flags; }

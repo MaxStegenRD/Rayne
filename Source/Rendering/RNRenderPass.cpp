@@ -88,14 +88,14 @@ namespace RN
 		return windowFrame;
 	}
 
-	void RenderPass::SetSubpassWritesDepthStencil(bool writesDepthStencil)
+	void RenderPass::SetSubpassWritesDepthStencilAttachment(bool writesDepthStencil)
 	{
 		RN_ASSERT(_isSubpass, "Cannot set subpass writes depth stencil for non-subpass");
 		RN_ASSERT(_subpassReadDepthStencilAttachment != writesDepthStencil, "Cannot set subpass writes depth stencil to the same value");
 		_subpassWritesDepthStencil = writesDepthStencil;
 	}
 
-	void RenderPass::SetSubpassReadDepthStencilAttachment(bool depthStencilAttachment)
+	void RenderPass::SetSubpassReadsDepthStencilAttachment(bool depthStencilAttachment)
 	{
 		RN_ASSERT(_isSubpass, "Cannot set subpass read depth stencil attachment for non-subpass");
 		RN_ASSERT(_subpassWritesDepthStencil != depthStencilAttachment, "Cannot set subpass read depth stencil attachment to the same value");
@@ -114,7 +114,7 @@ namespace RN
 		_subpassWritesColorAttachments = colorAttachments;
 	}
 	
-	void RenderPass::SetSubpassReadColorAttachments(std::vector<uint32> colorAttachments)
+	void RenderPass::SetSubpassReadsColorAttachments(std::vector<uint32> colorAttachments)
 	{
 		RN_ASSERT(_isSubpass, "Cannot set subpass read color attachments for non-subpass");
 		std::sort(colorAttachments.begin(), colorAttachments.end());
@@ -186,6 +186,8 @@ namespace RN
 
 	void RenderPass::AddRenderPass(RenderPass *renderPass)
 	{
+		RN_ASSERT((!_isRoot && !_isSubpass && !renderPass->_isSubpass) || _nextRenderPasses->GetCount() == 0, "Subpasses must be a flat hierarchy");
+		
 		_nextRenderPasses->AddObject(renderPass);
 
 		_isRoot = false;
@@ -218,6 +220,7 @@ namespace RN
 	void RenderPass::UpdateSubpassChain()
 	{
 		if(!_isRoot) return; // only meaningful for roots
+	
 		std::vector<uint32> loadedColorTargets;
 		bool loadedDepthStencil = false;
 		std::unordered_map<uint32, RenderPass*> lastColorWriter;
