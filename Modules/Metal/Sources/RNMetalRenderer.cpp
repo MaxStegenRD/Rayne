@@ -377,7 +377,7 @@ namespace RN
 		RenderPass *cameraRenderPass = _currentMultiviewFallbackRenderPass? _currentMultiviewFallbackRenderPass : camera->GetRenderPass();
 		
 		// Ensure subpass clearing plan is computed for root containers
-		if(cameraRenderPass->GetIsRoot()) cameraRenderPass->UpdateSubpassChain();
+		cameraRenderPass->UpdateSubpassChain();
 
 		// Set up
 		MetalRenderPass renderPass;
@@ -457,7 +457,7 @@ namespace RN
 	{
 		ZoneScoped;
 
-		if(renderPass->GetIsRoot()) renderPass->UpdateSubpassChain();
+		renderPass->UpdateSubpassChain();
 
 		// Set up
 		MetalRenderPass metalRenderPass;

@@ -184,7 +184,7 @@ namespace RN
 			}
 		}
 
-		Signature *signature = new Signature(buffersArray->Autorelease(), samplersArray->Autorelease(), texturesArray->Autorelease());
+		Signature *signature = new Signature(buffersArray->Autorelease(), samplersArray->Autorelease(), texturesArray->Autorelease(), nullptr);
 		SetSignature(signature->Autorelease());
 	}
 
