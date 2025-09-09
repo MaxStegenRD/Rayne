@@ -43,6 +43,26 @@ namespace RN
 		_shape->setLocalPose(physx::PxTransform(physx::PxVec3(positionOffset.x, positionOffset.y, positionOffset.z), physx::PxQuat(rotationOffset.x, rotationOffset.y, rotationOffset.z, rotationOffset.w)));
 	}
 
+	void PhysXShape::SetIsSimulationShape(bool enabled)
+	{
+		_shape->setFlag(physx::PxShapeFlag::eSIMULATION_SHAPE, enabled);
+	}
+
+	bool PhysXShape::GetIsSimulationShape() const
+	{
+		return _shape->getFlags() & physx::PxShapeFlag::eSIMULATION_SHAPE;
+	}
+
+	void PhysXShape::SetIsSceneQueryShape(bool enabled)
+	{
+		_shape->setFlag(physx::PxShapeFlag::eSCENE_QUERY_SHAPE, enabled);
+	}
+
+	bool PhysXShape::GetIsSceneQueryShape() const
+	{
+		return _shape->getFlags() & physx::PxShapeFlag::eSCENE_QUERY_SHAPE;
+	}
+
 	void PhysXShape::SetCollisionFilter(uint32 group, uint32 mask)
 	{
 		_collisionFilterGroup = group;
@@ -294,6 +314,28 @@ namespace RN
 	{
 		PhysXCompoundShape *shape = new PhysXCompoundShape(model, material, scale, useTriangleMesh, wantsDoubleSided);
 		return shape->Autorelease();
+	}
+
+	void PhysXCompoundShape::SetIsSimulationShape(bool enabled)
+	{
+		for(PhysXShape *shape : _shapes)
+			shape->SetIsSimulationShape(enabled);
+	}
+
+	bool PhysXCompoundShape::GetIsSimulationShape() const
+	{
+		return std::any_of(_shapes.begin(), _shapes.end(), [](const PhysXShape *shape) { return shape->GetIsSimulationShape(); });
+	}
+
+	void PhysXCompoundShape::SetIsSceneQueryShape(bool enabled)
+	{
+		for(PhysXShape *shape : _shapes)
+			shape->SetIsSceneQueryShape(enabled);
+	}
+
+	bool PhysXCompoundShape::GetIsSceneQueryShape() const
+	{
+		return std::any_of(_shapes.begin(), _shapes.end(), [](const PhysXShape *shape) { return shape->GetIsSceneQueryShape(); });
 	}
 
 	void PhysXCompoundShape::SetCollisionFilter(uint32 group, uint32 mask)
