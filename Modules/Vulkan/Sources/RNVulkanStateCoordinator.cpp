@@ -802,12 +802,6 @@ namespace RN
 					break;
 			}
 
-			if(descriptor.subpassIndex > 0)
-			{
-				depthStencilState.depthCompareOp = VK_COMPARE_OP_EQUAL;
-			}
-
-
 			depthStencilState.back.compareOp = VK_COMPARE_OP_ALWAYS;
 			depthStencilState.front = depthStencilState.back;
 		}
