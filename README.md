@@ -2,11 +2,10 @@
 
 # Rayne
 ## About
-Rayne is a game engine for Windows, macOS, Linux and Android (and iOS shouldn't be missing much) written in C++. It currently has rendering implementations for D3D12, Vulkan and Metal.
+Rayne is a game engine for Windows, macOS, Linux and Android (and iOS shouldn't be missing much) written in C++. It currently has rendering implementations for Vulkan and Metal.
 
 Most functionality (like physics, path finding and UI) is added with optional modules. Not all included modules are fully working, some may not build at all. Modules can be found in the *Modules* directory.
 Some of the working modules are:
-* D3D12 (Not maintained anymore, will eventually be removed. Use Vulkan instead.)
 * Vulkan
 * Metal
 * UI
