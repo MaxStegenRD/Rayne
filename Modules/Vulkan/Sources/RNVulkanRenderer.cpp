@@ -639,12 +639,7 @@ namespace RN
 		renderpass.framebuffer->SetAsRendertarget(commandBuffer, renderpass.resolveFramebuffer, renderpass.renderPass->GetClearColor(), renderpass.renderPass->GetClearDepth(), renderpass.renderPass->GetClearStencil());
 
 		//Setup viewport and scissor rect
-		Rect cameraRect = renderpass.renderPass->GetFrame();
-		if(renderpass.resolveFramebuffer)
-		{
-			if(cameraRect.width > renderpass.resolveFramebuffer->_size.x) cameraRect.width = renderpass.resolveFramebuffer->_size.x;
-			if(cameraRect.height > renderpass.resolveFramebuffer->_size.y) cameraRect.height = renderpass.resolveFramebuffer->_size.y;
-		}
+		Rect cameraRect = renderpass.cameraViewport;
 
 		// Update dynamic viewport state
 		VkViewport viewport = {};
@@ -832,6 +827,23 @@ namespace RN
 		size_t newDrawableResourceIndex = _internals->currentDrawableResourceIndex;
 		_internals->currentRenderPassIndex = previousRenderPassIndex;
 		_internals->currentDrawableResourceIndex = previousDrawableResourceIndex;
+
+		for(size_t i = previousRenderPassIndex; i < _internals->renderPasses.size(); i++)
+		{
+			//Calculate viewport size
+			VulkanRenderPass &renderpass = _internals->renderPasses[i];
+			renderpass.cameraViewport = renderpass.renderPass->GetFrame();
+			if(renderpass.resolveFramebuffer)
+			{
+				if(renderpass.cameraViewport.width > renderpass.resolveFramebuffer->_size.x) renderpass.cameraViewport.width = renderpass.resolveFramebuffer->_size.x;
+				if(renderpass.cameraViewport.height > renderpass.resolveFramebuffer->_size.y) renderpass.cameraViewport.height = renderpass.resolveFramebuffer->_size.y;
+			}
+
+			for(VulkanRenderPass &subpass : renderpass.subpasses)
+			{
+				subpass.cameraViewport = renderpass.cameraViewport;
+			}
+		}
 
 		// Run once to submit all scene nodes; SubmitDrawable will route to all matching passes
 		function();
@@ -1532,6 +1544,12 @@ namespace RN
 				case Shader::UniformDescriptor::Identifier::CameraTag:
 				{
 					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.cameraTag, descriptor->GetSize());
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::CameraViewport:
+				{
+					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.cameraViewport.x, descriptor->GetSize());
 					break;
 				}
 
