@@ -391,8 +391,20 @@ namespace RN
 		renderPass.drawables.clear();
 		renderPass.framebuffer = nullptr;
 
-		renderPass.shaderHint = camera->GetShaderHint();
-		renderPass.overrideMaterial = camera->GetMaterial();
+		if(cameraRenderPass->GetShaderHint() == Shader::UsageHint::Multiview)
+		{
+			renderPass.shaderHint = Shader::UsageHint::Default;
+		}
+		else if(cameraRenderPass->GetShaderHint() == Shader::UsageHint::DepthMultiview)
+		{
+			renderPass.shaderHint = Shader::UsageHint::Depth;
+		}
+		else
+		{
+			renderPass.shaderHint = cameraRenderPass->GetShaderHint();
+		}
+
+		renderPass.overrideMaterial = cameraRenderPass->GetOverrideMaterial();
 		renderPass.resolveFramebuffer = nullptr;
 
 		renderPass.camera = camera;
@@ -449,8 +461,8 @@ namespace RN
 		
 		const Array *nextRenderPasses = cameraRenderPass->GetNextRenderPasses();
 		nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
-				SubmitRenderPass(nextPass, renderPass, std::forward<Function>(function));
-			});
+			SubmitRenderPass(nextPass, renderPass, std::forward<Function>(function));
+		});
 	}
 	
 	void MetalRenderer::SubmitRenderPass(RenderPass *renderPass, MetalRenderPass &previousRenderPass, Function &&function)
@@ -477,7 +489,7 @@ namespace RN
 		if(!apiStage)
 		{
 			metalRenderPass.type = MetalRenderPass::Type::Default;
-			metalRenderPass.overrideMaterial = ppStage? ppStage->GetMaterial() : nullptr;
+			metalRenderPass.overrideMaterial = ppStage? ppStage->GetMaterial() : renderPass->GetOverrideMaterial();
 		}
 		else
 		{
@@ -509,7 +521,19 @@ namespace RN
 			}
 		}
 		
-		metalRenderPass.shaderHint = Shader::UsageHint::Default;
+		//This forces passes to not use multiview
+		if(renderPass->GetShaderHint() == Shader::UsageHint::Multiview)
+		{
+			metalRenderPass.shaderHint = Shader::UsageHint::Default;
+		}
+		else if(renderPass->GetShaderHint() == Shader::UsageHint::DepthMultiview)
+		{
+			metalRenderPass.shaderHint = Shader::UsageHint::Depth;
+		}
+		else
+		{
+			metalRenderPass.shaderHint = renderPass->GetShaderHint();
+		}
 		
 		metalRenderPass.viewPosition = previousRenderPass.viewPosition;
 		metalRenderPass.viewMatrix = previousRenderPass.viewMatrix;
