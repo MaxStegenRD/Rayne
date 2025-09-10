@@ -269,6 +269,21 @@ namespace RN
 		pipelineStateDescriptor.vertexDescriptor = vertexDescriptor;
 		pipelineStateDescriptor.sampleCount = sampleCount;
 
+		switch(mesh->GetDrawMode())
+		{
+			case DrawMode::Point:
+				pipelineStateDescriptor.inputPrimitiveTopology = MTLPrimitiveTopologyClassPoint;
+				break;
+			case DrawMode::Line:
+			case DrawMode::LineStrip:
+				pipelineStateDescriptor.inputPrimitiveTopology = MTLPrimitiveTopologyClassLine;
+				break;
+			case DrawMode::Triangle:
+			case DrawMode::TriangleStrip:
+				pipelineStateDescriptor.inputPrimitiveTopology = MTLPrimitiveTopologyClassTriangle;
+				break;
+		}
+
 		int attachmentCounter = 0;
 		pipelineStateDescriptor.colorAttachments[0].pixelFormat = MTLPixelFormatInvalid;
 		for(uint32 targetCounter = 0; targetCounter < metalFramebuffer->GetColorTargetCount(); targetCounter++)

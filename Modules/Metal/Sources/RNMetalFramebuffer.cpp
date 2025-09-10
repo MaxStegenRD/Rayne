@@ -245,6 +245,8 @@ namespace RN
 		//There does not appear to be a way to only clear part of the framebuffer...
 		const Color &clearColor = renderPass->GetClearColor();
 		MTLRenderPassDescriptor *descriptor = [[MTLRenderPassDescriptor alloc] init];
+		descriptor.renderTargetArrayLength = (multiviewCount > 0) ? multiviewCount : 1;
+		
 		bool isSubpass = renderPass->GetIsSubpass();
 		RenderPass::Flags renderPassFlags = renderPass->GetFlags();
 
