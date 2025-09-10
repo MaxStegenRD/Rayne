@@ -31,7 +31,7 @@ def removePermutations(directory, pattern):
 
 def main():
     if len(sys.argv) < 4:
-        print('Specify shader json file followed by requested formats as comma separated list with no spaces (dxil,cso,spirv,metal_macos,metal_ios,metal_ios_sim,metal_visionos,metal_visionos_sim), output directory path [and optional resource folder relative path] as parameters')
+        print('Specify shader json file followed by requested formats as comma separated list with no spaces (spirv,metal_macos,metal_ios,metal_ios_sim,metal_visionos,metal_visionos_sim), output directory path [and optional resource folder relative path] as parameters')
         return
 
     with open(sys.argv[1], 'r') as sourceJsonData:
@@ -62,19 +62,12 @@ def main():
     destinationJson = list()
 
     shaderConductorCmdPath = os.path.dirname(sys.argv[0])
-    supportedFormats = ['dxil', 'cso', 'spirv', 'metal_macos', 'metal_ios', 'metal_ios_sim', 'metal_visionos', 'metal_visionos_sim']
+    supportedFormats = ['spirv', 'metal_macos', 'metal_ios', 'metal_ios_sim', 'metal_visionos', 'metal_visionos_sim']
     shaderConductorExectutableName = 'ShaderConductorCmd'
     if platform.system() == 'Darwin':
         supportedFormats = ['spirv', 'metal_macos', 'metal_ios', 'metal_ios_sim', 'metal_visionos', 'metal_visionos_sim']
     elif platform.system() == 'Windows':
-        preprocessHLSLPath = os.path.join(shaderConductorCmdPath, 'preprocessForHLSL.py')
         shaderConductorExectutableName = 'ShaderConductorCmd.exe'
-        fxcCmdPath = 'C:/Program Files (x86)/Windows Kits/10/bin/x64/fxc.exe'
-        fxcSearchPath = pathlib.Path(os.path.join(shaderConductorCmdPath, 'C:/Program Files (x86)/Windows Kits/10/'))
-        for path in fxcSearchPath.glob('**/x64/fxc.exe'):
-            print(path)
-            fxcCmdPath = path
-            break
     elif platform.system() == 'Linux':
         supportedFormats = ['spirv', 'metal_macos', 'metal_ios', 'metal_ios_sim', 'metal_visionos', 'metal_visionos_sim']
     else:
@@ -105,10 +98,6 @@ def main():
         filePath, extension = os.path.splitext(sourceFile)
         filePath, fileName = os.path.split(filePath)
         sourceFile = os.path.join(jsonDirectory, sourceFile)
-
-        if 'cso' in outFormats:
-            hlslFile = os.path.join(outDirName, fileName + '.hlsl')
-            subprocess.call([pythonExecutable, preprocessHLSLPath, sourceFile, hlslFile])
 
         for shader in shaders:
             if not 'name' in shader or not 'type' in shader:
@@ -216,13 +205,7 @@ def main():
 
             for outFormat in outFormats:
                 outFileFormat = outFormat
-                if outFormat == 'dxil':
-                    compilerOutFormat = 'dxil'
-                    destinationShaderFile['file~d3d12'] = resourceRelativePath + '/' + fileName + '.' + shaderType + '.' + outFormat
-                elif outFormat == 'cso':
-                    compilerOutFormat = 'cso'
-                    destinationShaderFile['file~d3d12'] = resourceRelativePath + '/' + fileName + '.' + shaderType + '.' + outFormat
-                elif outFormat == 'spirv':
+                if outFormat == 'spirv':
                     compilerOutFormat = 'spirv'
                     destinationShaderFile['file~vulkan'] = resourceRelativePath + '/' + fileName + '.' + shaderType + '.' + outFormat
                 elif outFormat == 'metal_macos' or outFormat == 'metal_ios' or outFormat == 'metal_ios_sim' or outFormat == 'metal_visionos' or outFormat == 'metal_visionos_sim':
@@ -248,15 +231,9 @@ def main():
                     permutation = permutationDict["parameters"]
                     permutationOutFile = os.path.join(outDirName, fileName + '.' + shaderType + '.' + str(permutationDict["identifier"]) + '.' + outFileFormat)
 
-                    if outFormat == 'cso':
-                        parameterList = [fxcCmdPath, '-I', '.', '-Fo', permutationOutFile, '-E', entryName, '-T', shaderType + '_5_1', hlslFile]
-                    else:
-                        parameterList = [shaderConductorCmdPath, '-I', sourceFile, '-O', permutationOutFile, '--minorshadermodel', '2', '-E', entryName, '-S', shaderType, '-T', compilerOutFormat]
+                    parameterList = [shaderConductorCmdPath, '-I', sourceFile, '-O', permutationOutFile, '--minorshadermodel', '2', '-E', entryName, '-S', shaderType, '-T', compilerOutFormat]
 
-                    if outFormat == 'dxil' or outFormat == 'cso':
-                        parameterList.append("-DRN_RENDERER_D3D12=1")
-                        permutation = [p.replace('RN_USE_MULTIVIEW', '__RN_USE_MULTIVIEW__') for p in permutation] #exclude multiview stuff for d3d12 without effecting the permutation index for now
-                    elif outFormat == 'spirv':
+                    if outFormat == 'spirv':
                         if "has_16bit" in shader and shader["has_16bit"] == True:
                             parameterList.append("--16bittypes")
                             parameterList.append("true")
