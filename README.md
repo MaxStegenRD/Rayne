@@ -10,13 +10,13 @@ Some of the working modules are:
 * Metal
 * UI
 * OpenAL
+* Resonance Audio
 * Ogg
 * PhysX
+* Jolt
 * OpenXR
-* Oculus (Requires the Oculus SDK to be downloaded and copied into the module folder!) - Only works with D3D12! - Outdated, use OpenXR instead.
-* Oculus Mobile (Requires the Oculus Mobile SDK to be downloaded and copied into the module folder!) - Only works with Vulkan! - Outdated, use OpenXR instead.
-* OpenVR - Outdated, use OpenXR instead.
 * ENet
+* Epic Online Services
 * Recast
 * Assimp
 
