@@ -455,10 +455,29 @@ namespace RN
                 //Set textures layout for reading for render targets that are used in this frame
                 for(VulkanTexture *vulkanTexture : renderPass.renderTargetsUsedInShader)
                 {
-                    if(vulkanTexture->GetCurrentLayout() == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) continue; //Nothing to do if the layout is already correct
+                    const Texture::Format format = vulkanTexture->GetDescriptor().format;
+                    VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                    VkImageLayout targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                    if(format == Texture::Format::Depth_24_Stencil_8 || format == Texture::Format::Depth_32F_Stencil_8)
+                    {
+                        aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+                        targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+                    }
+                    else if(format == Texture::Format::Depth_16I || format == Texture::Format::Depth_24I || format == Texture::Format::Depth_32F)
+                    {
+                        aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+                        targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+                    }
+                    else if(format == Texture::Format::Stencil_8)
+                    {
+                        aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
+                        targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+                    }
 
-                    VulkanTexture::SetImageLayout(commandBuffer, vulkanTexture->GetVulkanImage(), 0, vulkanTexture->GetDescriptor().mipMaps, 0, vulkanTexture->GetDescriptor().depth, VK_IMAGE_ASPECT_COLOR_BIT, vulkanTexture->GetCurrentLayout(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VulkanTexture::BarrierIntent::ShaderSource);
-                    vulkanTexture->SetCurrentLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                    if(vulkanTexture->GetCurrentLayout() == targetLayout) continue; //Nothing to do if the layout is already correct
+
+                    VulkanTexture::SetImageLayout(commandBuffer, vulkanTexture->GetVulkanImage(), 0, vulkanTexture->GetDescriptor().mipMaps, 0, vulkanTexture->GetDescriptor().depth, aspectMask, vulkanTexture->GetCurrentLayout(), targetLayout, VulkanTexture::BarrierIntent::ShaderSource);
+                    vulkanTexture->SetCurrentLayout(targetLayout);
                 }
 
 				//Set previous framebuffer texture layout for reading
@@ -536,13 +555,31 @@ namespace RN
 				}
 
 				//Set textures layout for writing for render targets that are used in this frame
-				//TODO: This should also support depth/stencil attachments, currently only correct for color attachments!
 				for(VulkanTexture *vulkanTexture : renderPass.renderTargetsUsedInShader)
 				{
-					if(vulkanTexture->GetCurrentLayout() == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) continue; //Nothing to do if the layout is already correct
+					const Texture::Format format = vulkanTexture->GetDescriptor().format;
+					VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+					VkImageLayout targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+					if(format == Texture::Format::Depth_24_Stencil_8 || format == Texture::Format::Depth_32F_Stencil_8)
+					{
+						aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+						targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+					}
+					else if(format == Texture::Format::Depth_16I || format == Texture::Format::Depth_24I || format == Texture::Format::Depth_32F)
+					{
+						aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+						targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+					}
+					else if(format == Texture::Format::Stencil_8)
+					{
+						aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
+						targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+					}
 
-					VulkanTexture::SetImageLayout(commandBuffer, vulkanTexture->GetVulkanImage(), 0, vulkanTexture->GetDescriptor().mipMaps, 0, vulkanTexture->GetDescriptor().depth, VK_IMAGE_ASPECT_COLOR_BIT, vulkanTexture->GetCurrentLayout(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VulkanTexture::BarrierIntent::RenderTarget);
-					vulkanTexture->SetCurrentLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+					if(vulkanTexture->GetCurrentLayout() == targetLayout) continue; //Nothing to do if the layout is already correct
+
+					VulkanTexture::SetImageLayout(commandBuffer, vulkanTexture->GetVulkanImage(), 0, vulkanTexture->GetDescriptor().mipMaps, 0, vulkanTexture->GetDescriptor().depth, aspectMask, vulkanTexture->GetCurrentLayout(), targetLayout, VulkanTexture::BarrierIntent::RenderTarget);
+					vulkanTexture->SetCurrentLayout(targetLayout);
 				}
 
 				//Set previous framebuffer texture layout for writing
