@@ -111,10 +111,6 @@ namespace RN
 		_internals->GetVulkanGraphicsRequirementsKHR = nullptr;
 #endif
 
-#if XR_USE_GRAPHICS_API_D3D12
-		_internals->GetD3D12GraphicsRequirementsKHR = nullptr;
-#endif
-
 #if XR_USE_GRAPHICS_API_METAL
 		_internals->GetMetalGraphicsRequirementsKHR = nullptr;
 #endif
@@ -172,11 +168,6 @@ namespace RN
 
 		platformSpecificInstanceCreateInfo = reinterpret_cast<XrBaseInStructure *>(&instanceCreateInfo);
 		_mainThreadID = gettid();
-#endif
-
-#ifdef XR_USE_GRAPHICS_API_D3D12
-		extensions.push_back(XR_KHR_D3D12_ENABLE_EXTENSION_NAME);
-		_supportsD3D12 = true; //TODO: Only set to true if actually available!?
 #endif
 
 #ifdef XR_USE_GRAPHICS_API_VULKAN
@@ -379,15 +370,6 @@ namespace RN
 			}
 
 			if(!XR_SUCCEEDED(xrGetInstanceProcAddr(_internals->instance, "xrGetVulkanGraphicsRequirementsKHR", (PFN_xrVoidFunction *)(&_internals->GetVulkanGraphicsRequirementsKHR))))
-			{
-			}
-		}
-#endif
-
-#if XR_USE_GRAPHICS_API_D3D12
-		if(_supportsD3D12)
-		{
-			if(!XR_SUCCEEDED(xrGetInstanceProcAddr(_internals->instance, "xrGetD3D12GraphicsRequirementsKHR", (PFN_xrVoidFunction *)(&_internals->GetD3D12GraphicsRequirementsKHR))))
 			{
 			}
 		}
@@ -1454,30 +1436,6 @@ namespace RN
 			vulkanGraphicsBinding.queueIndex = 0; //There should be only one queue at the moment, so it's index should be 0...
 
 			sessionCreateInfo.next = &vulkanGraphicsBinding;
-		}
-#endif
-
-#ifdef XR_USE_GRAPHICS_API_D3D12
-		XrGraphicsBindingD3D12KHR d3d12GraphicsBinding;
-		d3d12GraphicsBinding.type = XR_TYPE_GRAPHICS_BINDING_D3D12_KHR;
-		d3d12GraphicsBinding.next = nullptr;
-
-		if(Renderer::GetActiveRenderer()->GetDescriptor()->GetAPI()->IsEqual(RNCSTR("D3D12")))
-		{
-			D3D12Renderer *renderer = Renderer::GetActiveRenderer()->Downcast<D3D12Renderer>();
-
-			XrGraphicsRequirementsD3D12KHR graphicsRequirements;
-			graphicsRequirements.type = XR_TYPE_GRAPHICS_REQUIREMENTS_D3D12_KHR;
-			graphicsRequirements.next = nullptr;
-			if(!XR_SUCCEEDED(_internals->GetD3D12GraphicsRequirementsKHR(_internals->instance, _internals->systemID, &graphicsRequirements)))
-			{
-				RN_ASSERT(false, "Failed fetching d3d12 graphics requirements");
-			}
-
-			d3d12GraphicsBinding.device = renderer->GetD3D12Device()->GetDevice();
-			d3d12GraphicsBinding.queue = renderer->GetCommandQueue();
-
-			sessionCreateInfo.next = &d3d12GraphicsBinding;
 		}
 #endif
 

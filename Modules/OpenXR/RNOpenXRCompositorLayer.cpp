@@ -34,12 +34,6 @@ namespace RN
 				_swapChain = new OpenXRVulkanSwapChain(window, this, tempDescriptor, resolution, supportFoveation);
 			}
 #endif
-#ifdef XR_USE_GRAPHICS_API_D3D12
-			if(Renderer::GetActiveRenderer()->GetDescriptor()->GetAPI()->IsEqual(RNCSTR("D3D12")))
-			{
-				_swapChain = new OpenXRD3D12SwapChain(window, tempDescriptor, resolution);
-			}
-#endif
 #ifdef XR_USE_GRAPHICS_API_METAL
 			if(Renderer::GetActiveRenderer()->GetDescriptor()->GetAPI()->IsEqual(RNCSTR("Metal")))
 			{
@@ -156,15 +150,6 @@ namespace RN
 
 		if(_swapChain)
 		{
-#ifdef XR_USE_GRAPHICS_API_D3D12
-			if(_swapChain->_swapChainType == OpenXRSwapChain::SwapChainType::D3D12)
-			{
-				OpenXRD3D12SwapChain *swapChain = static_cast<OpenXRD3D12SwapChain *>(_swapChain);
-				swapChain->Release();
-				_swapChain = nullptr;
-			}
-#endif
-
 #ifdef XR_USE_GRAPHICS_API_VULKAN
 			if(_swapChain->_swapChainType == OpenXRSwapChain::SwapChainType::Vulkan)
 			{

@@ -25,7 +25,6 @@ namespace RN
 		enum SwapChainType
 		{
 			Metal,
-			D3D12,
 			Vulkan
 		};
 

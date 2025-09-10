@@ -15,12 +15,6 @@
 	#include "RNOpenXRVulkanSwapChain.h"
 #endif
 
-#if XR_USE_GRAPHICS_API_D3D12
-	#include "RNOpenXRD3D12SwapChain.h"
-	#include <RND3D12Renderer.h>
-	#include <initguid.h>
-#endif
-
 #if XR_USE_GRAPHICS_API_METAL
 	#include "RNOpenXRMetalSwapChain.h"
 #endif
@@ -90,10 +84,6 @@ namespace RN
 		PFN_xrGetVulkanDeviceExtensionsKHR GetVulkanDeviceExtensionsKHR;
 		PFN_xrGetVulkanGraphicsDeviceKHR GetVulkanGraphicsDeviceKHR;
 		PFN_xrGetVulkanGraphicsRequirementsKHR GetVulkanGraphicsRequirementsKHR;
-#endif
-
-#if XR_USE_GRAPHICS_API_D3D12
-		PFN_xrGetD3D12GraphicsRequirementsKHR GetD3D12GraphicsRequirementsKHR;
 #endif
 
 #if XR_USE_GRAPHICS_API_METAL

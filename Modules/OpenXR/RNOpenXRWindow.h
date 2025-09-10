@@ -18,13 +18,11 @@ namespace RN
 	class OpenXRCompositorLayer;
 	class OpenXRSwapChain;
 	class OpenXRVulkanSwapChain;
-	class OpenXRD3D12SwapChain;
 	class OpenXRMetalSwapChain;
 	struct OpenXRWindowInternals;
 	class OpenXRWindow : public VRWindow
 	{
 		friend OpenXRVulkanSwapChain;
-		friend OpenXRD3D12SwapChain;
 		friend OpenXRMetalSwapChain;
 		friend OpenXRCompositorLayer;
 
@@ -113,7 +111,6 @@ namespace RN
 		bool _hasVisibility;
 		bool _hasInputFocus;
 
-		bool _supportsD3D12;
 		bool _supportsVulkan;
 		bool _supportsMetal;
 
