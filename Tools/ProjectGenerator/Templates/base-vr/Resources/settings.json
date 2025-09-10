@@ -5,6 +5,6 @@
 	},
 
 	"RNRenderer": {
-		"identifier": "net.uberpixel.rendering.d3d12"
+		"identifier": "net.uberpixel.rendering.vulkan"
 	}
 }

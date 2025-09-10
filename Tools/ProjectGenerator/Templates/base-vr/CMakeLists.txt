@@ -122,10 +122,6 @@ if(NOT APPLE AND ${RN_BUILD_VULKAN_MODULE})
 	rayne_use_modules(__TMP_APPLICATION_TARGET__ RayneVulkan)
 endif()
 
-if(MSVC AND ${RN_BUILD_D3D12_MODULE})
-	rayne_use_modules(__TMP_APPLICATION_TARGET__ RayneD3D12)
-endif()
-
 if(APPLE AND ${RN_BUILD_METAL_MODULE})
 	rayne_use_modules(__TMP_APPLICATION_TARGET__ RayneMetal)
 endif()

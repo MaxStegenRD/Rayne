@@ -6,7 +6,6 @@
 	],
 	"RNModules":
 	[
-		"Modules/RayneD3D12",
 		"Modules/RayneMetal",
 		"Modules/RayneVulkan",
 		"Modules/RayneOpenVR"
