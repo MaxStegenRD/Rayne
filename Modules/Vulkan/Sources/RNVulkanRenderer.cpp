@@ -761,8 +761,8 @@ namespace RN
 
 		renderPass.resolveFramebuffer = nullptr;
 
-		renderPass.shaderHint = camera->GetShaderHint();
-		renderPass.overrideMaterial = camera->GetMaterial();
+		renderPass.shaderHint = cameraRenderPass->GetShaderHint();
+		renderPass.overrideMaterial = cameraRenderPass->GetOverrideMaterial();
 
         renderPass.cameraInfo.camera = camera;
 
@@ -868,7 +868,6 @@ namespace RN
 			vulkanRenderPass.cameraInfo = previousRenderPass.cameraInfo;
 			vulkanRenderPass.multiviewCameraInfo = previousRenderPass.multiviewCameraInfo;
 			vulkanRenderPass.multiviewLayer = previousRenderPass.multiviewLayer;
-			vulkanRenderPass.shaderHint = previousRenderPass.shaderHint;
 		}
 		else
 		{
@@ -885,7 +884,8 @@ namespace RN
 		vulkanRenderPass.framebuffer = nullptr;
 		vulkanRenderPass.resolveFramebuffer = nullptr;
 
-		vulkanRenderPass.overrideMaterial = ppStage ? ppStage->GetMaterial() : nullptr;
+		vulkanRenderPass.shaderHint = renderPass->GetShaderHint();
+		vulkanRenderPass.overrideMaterial = ppStage ? ppStage->GetMaterial() : renderPass->GetOverrideMaterial();
 
 		if(!apiStage)
 		{
@@ -1910,13 +1910,13 @@ namespace RN
 		warmupRenderPass.previousRenderPass = nullptr;
 		warmupRenderPass.framebuffer = vulkanFramebuffer;
 		warmupRenderPass.resolveFramebuffer = resolveFramebuffer;
-		warmupRenderPass.shaderHint = camera->GetShaderHint();
-		warmupRenderPass.overrideMaterial = camera->GetMaterial();
+		warmupRenderPass.shaderHint = renderPass->GetShaderHint();
+		warmupRenderPass.overrideMaterial = renderPass->GetOverrideMaterial();
 		warmupRenderPass.multiviewLayer = 0;
 		warmupRenderPass.subpasses.clear();
 
 		//TODO: Support subpasses
-		_internals->stateCoordinator.GetRenderPipelineState(material, mesh, camera->GetShaderHint(), camera->GetMaterial(), &warmupRenderPass, 0);
+		_internals->stateCoordinator.GetRenderPipelineState(material, mesh, warmupRenderPass.shaderHint, warmupRenderPass.overrideMaterial, &warmupRenderPass, 0);
 	}
 
 	void VulkanRenderer::SubmitDrawable(Drawable *tdrawable)
