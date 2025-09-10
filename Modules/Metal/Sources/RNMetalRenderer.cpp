@@ -990,6 +990,12 @@ namespace RN
 					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.cameraTag, descriptor->GetSize());
 					break;
 				}
+
+				case Shader::UniformDescriptor::Identifier::CameraViewport:
+				{
+					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.frameRect.x, descriptor->GetSize());
+					break;
+				}
 					
 				case Shader::UniformDescriptor::Identifier::CameraAmbientColor:
 				{

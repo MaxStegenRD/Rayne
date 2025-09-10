@@ -205,7 +205,6 @@ namespace RN
 		Vector2 cameraClipDistance;
 		Vector2 cameraFogDistance;
 		int32 cameraTag;
-		Rect cameraViewport;
 		
 		uint8 multiviewLayer;
 		Rect frameRect;
