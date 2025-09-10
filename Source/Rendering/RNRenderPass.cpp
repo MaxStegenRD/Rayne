@@ -14,7 +14,7 @@ namespace RN
 	RNDefineMeta(RenderPass, Object)
 
 	RenderPass::RenderPass(bool isSubpass) :
-		_flags(Flags::Defaults), _framebuffer(nullptr), _clearDepth(0.0f), _clearStencil(0), _nextRenderPasses(new Array()), _isSubpass(isSubpass), _isRoot(false), _renderGroupMask(0xffff), _subpassWritesDepthStencil(false), _subpassReadDepthStencilAttachment(false), _shaderHint(Shader::UsageHint::Default), _overrideMaterial(nullptr)
+		_flags(Flags::Defaults), _framebuffer(nullptr), _clearDepth(0.0f), _clearStencil(0), _nextRenderPasses(new Array()), _isSubpass(isSubpass), _isRoot(false), _renderGroupMask(0xffff), _subpassWritesDepthStencil(false), _subpassReadDepthStencilAttachment(false), _shaderHint(Shader::UsageHint::Default), _overrideMaterial(nullptr), _subpassNeedToStoreDepthStencil(false), _subpassLastDepthStencilWrite(false), _subpassFirstDepthStencilWrite(false), _subpassIndex(0)
 	{
 	}
 
@@ -144,7 +144,7 @@ namespace RN
 	}
 	
 	void RenderPass::UpdateSubpassChain(std::vector<uint32> &loadedColorTargets, bool &loadedDepthStencil,
-		std::unordered_map<uint32, RenderPass*> &lastColorWriter, RenderPass *lastDepthStencilWriter)
+		std::unordered_map<uint32, RenderPass*> &lastColorWriter, std::unordered_map<uint32, RenderPass*> &lastColorReader, RenderPass *lastDepthStencilWriter, RenderPass *lastDepthStencilReader, size_t subpassIndex)
 	{
 		GetNextRenderPasses()->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
 			if(nextPass->GetIsSubpass())
@@ -154,9 +154,12 @@ namespace RN
 				nextPass->_clearStencil = _clearStencil;
 				nextPass->_clearColor = _clearColor;
 				nextPass->_subpassFirstDepthStencilWrite = false;
+				nextPass->_subpassNeedToStoreDepthStencil = false;
+				nextPass->_subpassNeedToStoreColorAttachment.clear();
 				nextPass->_subpassFirstColorWriteAttachment.clear();
 				nextPass->_subpassLastDepthStencilWrite = false;
 				nextPass->_subpassLastColorWriteAttachment.clear();
+				nextPass->_subpassIndex = subpassIndex;
 
 				for(uint32 attachment : nextPass->GetSubpassWritesColorAttachments())
 				{
@@ -167,6 +170,11 @@ namespace RN
 					}
 
 					lastColorWriter[attachment] = nextPass;
+				}
+
+				for(uint32 attachment : nextPass->GetSubpassReadColorAttachments())
+				{
+					lastColorReader[attachment] = nextPass;
 				}
 
 				if(!loadedDepthStencil)
@@ -183,7 +191,12 @@ namespace RN
 					lastDepthStencilWriter = nextPass;
 				}
 
-				nextPass->UpdateSubpassChain(loadedColorTargets, loadedDepthStencil, lastColorWriter, lastDepthStencilWriter);
+				if(nextPass->_subpassReadDepthStencilAttachment)
+				{
+					lastDepthStencilReader = nextPass;
+				}
+
+				nextPass->UpdateSubpassChain(loadedColorTargets, loadedDepthStencil, lastColorWriter, lastColorReader, lastDepthStencilWriter, lastDepthStencilReader, subpassIndex + 1);
 			}
 		});
 
@@ -192,12 +205,22 @@ namespace RN
 			if(writer == this)
 			{
 				_subpassLastColorWriteAttachment.push_back(attachment);
+
+				if(lastColorReader.contains(attachment) && lastColorReader.at(attachment)->_subpassIndex > subpassIndex)
+				{
+					_subpassNeedToStoreColorAttachment.push_back(attachment);
+				}
 			}
 		}
 
 		if(lastDepthStencilWriter == this)
 		{
 			_subpassLastDepthStencilWrite = true;
+
+			if(lastDepthStencilReader && lastDepthStencilReader->_subpassIndex > subpassIndex)
+			{
+				_subpassNeedToStoreDepthStencil = true;
+			}
 		}
 	}
 
@@ -241,7 +264,9 @@ namespace RN
 		std::vector<uint32> loadedColorTargets;
 		bool loadedDepthStencil = false;
 		std::unordered_map<uint32, RenderPass*> lastColorWriter;
+		std::unordered_map<uint32, RenderPass*> lastColorReader;
 		RenderPass *lastDepthStencilWriter = nullptr;
-		UpdateSubpassChain(loadedColorTargets, loadedDepthStencil, lastColorWriter, lastDepthStencilWriter);
+		RenderPass *lastDepthStencilReader = nullptr;
+		UpdateSubpassChain(loadedColorTargets, loadedDepthStencil, lastColorWriter, lastColorReader, lastDepthStencilWriter, lastDepthStencilReader, 0);
 	}
 } // namespace RN
