@@ -97,6 +97,7 @@ namespace RN
 				CameraClipDistance,
 				CameraFogDistance,
 				CameraTag,
+				CameraViewport,
 
 				AmbientColor,
 				DiffuseColor,
