@@ -13,7 +13,6 @@
 #include "../Base/RNBase.h"
 #include "../Math/RNPlane.h"
 #include "../Math/RNRect.h"
-#include "../Rendering/RNMaterial.h"
 #include "../Rendering/RNRenderPass.h"
 #include "RNSceneNode.h"
 
@@ -60,8 +59,6 @@ namespace RN
 
 		RNAPI void SetRenderPass(RenderPass *renderPass);
 		RNAPI void SetFlags(Flags flags);
-		RNAPI void SetShaderHint(Shader::UsageHint hint);
-		RNAPI void SetMaterial(Material *material);
 		//		RNAPI void SetLightManager(LightManager *lightManager);
 		RNAPI void SetLODCamera(Camera *camera);
 		RNAPI void SetPriority(int32 priority);
@@ -96,9 +93,7 @@ namespace RN
 		RNAPI float GetFrustumRadius();
 
 		RenderPass *GetRenderPass() const { return _renderPass; }
-		Material *GetMaterial() const { return _material; }
 		Flags GetFlags() const { return _flags; }
-		Shader::UsageHint GetShaderHint() const { return _shaderHint; }
 		Camera *GetLODCamera() const { return _lodCamera ? _lodCamera : const_cast<Camera *>(this); }
 		//		LightManager *GetLightManager();
 		int32 GetPriority() const { return _priority; }
@@ -177,7 +172,6 @@ namespace RN
 
 		Plane _customNearClipPlane;
 		//		LightManager *_lightManager;
-		Shader::UsageHint _shaderHint;
 
 		Matrix _projectionMatrix;
 		Matrix _inverseProjectionMatrix;
@@ -192,7 +186,6 @@ namespace RN
 		bool _prefersLightManager;
 
 		RenderPass *_renderPass;
-		Material *_material;
 		Camera *_lodCamera;
 
 		Array *_multiviewCameras;

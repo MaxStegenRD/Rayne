@@ -311,10 +311,10 @@ namespace RN
 		enum UsageHint
 		{
 			Default,
-			Depth,
-			Instancing,
 			Multiview,
+			Depth,
 			DepthMultiview,
+			Instancing,
 
 			COUNT
 		};

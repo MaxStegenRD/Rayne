@@ -14,6 +14,7 @@
 #include "../Math/RNRect.h"
 #include "../Objects/RNArray.h"
 #include "RNFramebuffer.h"
+#include "RNMaterial.h"
 
 namespace RN
 {
@@ -38,8 +39,10 @@ namespace RN
 		RNAPI void SetClearColor(const Color &color);
 		RNAPI void SetClearDepthStencil(float depth, uint8 stencil);
 
-		// Filtering control: which scene node render groups this pass accepts
 		RNAPI void SetRenderGroupMask(uint16 mask);
+
+		RNAPI void SetShaderHint(Shader::UsageHint hint);
+		RNAPI void SetOverrideMaterial(Material *material);
 
 		RNAPI void SetSubpassWritesDepthStencilAttachment(bool writesDepthStencil);
 		RNAPI void SetSubpassReadsDepthStencilAttachment(bool depthStencilAttachment);
@@ -53,6 +56,9 @@ namespace RN
 		float GetClearDepth() const { return _clearDepth; }
 		uint8 GetClearStencil() const { return _clearStencil; }
 		uint16 GetRenderGroupMask() const { return _renderGroupMask; }
+
+		Shader::UsageHint GetShaderHint() const { return _shaderHint; }
+		Material *GetOverrideMaterial() const { return _overrideMaterial; }
 
 		bool GetIsSubpass() const { return _isSubpass; }
 		bool GetIsRoot() const { return _isRoot; }
@@ -86,6 +92,9 @@ namespace RN
 		bool _isSubpass;
 		bool _isRoot;
 		uint16 _renderGroupMask;
+
+		Shader::UsageHint _shaderHint;
+		Material *_overrideMaterial;
 
 		bool _subpassWritesDepthStencil;
 		bool _subpassReadDepthStencilAttachment;

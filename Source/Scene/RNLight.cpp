@@ -209,15 +209,15 @@ namespace RN
 
 			if(_multiviewShadowParentCamera)
 			{
-				_multiviewShadowParentCamera->GetMaterial()->SetPolygonOffset(parameter.splits[parameter.splits.size() - 1].biasFactor, parameter.splits[parameter.splits.size() - 1].biasUnits);
+				_multiviewShadowParentCamera->GetRenderPass()->GetOverrideMaterial()->SetPolygonOffset(parameter.splits[parameter.splits.size() - 1].biasFactor, parameter.splits[parameter.splits.size() - 1].biasUnits);
 				_shadowDepthCameras.Enumerate<Camera>([&](Camera *camera, size_t index, bool &stop) {
-					camera->GetMaterial()->SetPolygonOffset(parameter.splits[parameter.splits.size() - 1].biasFactor, parameter.splits[parameter.splits.size() - 1].biasUnits);
+					camera->GetRenderPass()->GetOverrideMaterial()->SetPolygonOffset(parameter.splits[parameter.splits.size() - 1].biasFactor, parameter.splits[parameter.splits.size() - 1].biasUnits);
 				});
 			}
 			else
 			{
 				_shadowDepthCameras.Enumerate<Camera>([&](Camera *camera, size_t index, bool &stop) {
-					camera->GetMaterial()->SetPolygonOffset(parameter.splits[index].biasFactor, parameter.splits[index].biasUnits);
+					camera->GetRenderPass()->GetOverrideMaterial()->SetPolygonOffset(parameter.splits[index].biasFactor, parameter.splits[index].biasUnits);
 				});
 			}
 
@@ -279,8 +279,8 @@ namespace RN
 			_multiviewShadowParentCamera->GetRenderPass()->SetFlags(RenderPass::Flags::ClearDepthStencil | RenderPass::Flags::StoreDepthStencil);
 			_multiviewShadowParentCamera->SetFlags(Camera::Flags::Orthogonal | Camera::Flags::RenderEarly);
 			_multiviewShadowParentCamera->SceneNode::SetUpdatePriority(SceneNode::UpdatePriority::UpdateLate);
-			_multiviewShadowParentCamera->SetMaterial(multiviewDepthMaterial);
-			_multiviewShadowParentCamera->SetShaderHint(Shader::UsageHint::DepthMultiview);
+			_multiviewShadowParentCamera->GetRenderPass()->SetOverrideMaterial(multiviewDepthMaterial);
+			_multiviewShadowParentCamera->GetRenderPass()->SetShaderHint(Shader::UsageHint::DepthMultiview);
 			_multiviewShadowParentCamera->SetLODCamera(_shadowTarget);
 			_multiviewShadowParentCamera->SetClipNear(_shadowParameter.clipNear);
 			_multiviewShadowParentCamera->SetClipFar(_shadowParameter.clipFar);
@@ -315,8 +315,8 @@ namespace RN
 			tempcam->GetRenderPass()->SetFramebuffer(framebuffer);
 			tempcam->SetFlags(Camera::Flags::Orthogonal | Camera::Flags::RenderEarly);
 			tempcam->SceneNode::SetUpdatePriority(SceneNode::UpdatePriority::UpdateLate);
-			tempcam->SetMaterial(depthMaterial);
-			tempcam->SetShaderHint(Shader::UsageHint::Depth);
+			tempcam->GetRenderPass()->SetOverrideMaterial(depthMaterial);
+			tempcam->GetRenderPass()->SetShaderHint(Shader::UsageHint::Depth);
 			tempcam->SetLODCamera(_shadowTarget);
 			tempcam->SetClipNear(_shadowParameter.clipNear);
 			tempcam->SetClipFar(_shadowParameter.clipFar);

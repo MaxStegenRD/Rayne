@@ -14,13 +14,14 @@ namespace RN
 	RNDefineMeta(RenderPass, Object)
 
 	RenderPass::RenderPass(bool isSubpass) :
-		_flags(Flags::Defaults), _framebuffer(nullptr), _clearDepth(0.0f), _clearStencil(0), _nextRenderPasses(new Array()), _isSubpass(isSubpass), _isRoot(false), _renderGroupMask(0xffff), _subpassWritesDepthStencil(false), _subpassReadDepthStencilAttachment(false)
+		_flags(Flags::Defaults), _framebuffer(nullptr), _clearDepth(0.0f), _clearStencil(0), _nextRenderPasses(new Array()), _isSubpass(isSubpass), _isRoot(false), _renderGroupMask(0xffff), _subpassWritesDepthStencil(false), _subpassReadDepthStencilAttachment(false), _shaderHint(Shader::UsageHint::Default), _overrideMaterial(nullptr)
 	{
 	}
 
 	RenderPass::~RenderPass()
 	{
 		SafeRelease(_framebuffer);
+		SafeRelease(_overrideMaterial);
 	}
 
 	// Setter
@@ -59,6 +60,17 @@ namespace RN
 	void RenderPass::SetRenderGroupMask(uint16 mask)
 	{
 		_renderGroupMask = mask;
+	}
+
+	void RenderPass::SetShaderHint(Shader::UsageHint hint)
+	{
+		_shaderHint = hint;
+	}
+
+	void RenderPass::SetOverrideMaterial(Material *material)
+	{
+		SafeRelease(_overrideMaterial);
+		_overrideMaterial = SafeRetain(material);
 	}
 
 	//Getter

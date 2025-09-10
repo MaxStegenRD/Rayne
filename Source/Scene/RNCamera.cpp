@@ -44,7 +44,6 @@ namespace RN
 	Camera::~Camera()
 	{
 		SafeRelease(_renderPass);
-		SafeRelease(_material);
 
 		SafeRelease(_multiviewCameras);
 		SafeRelease(_renderNodes);
@@ -80,10 +79,7 @@ namespace RN
 		_dirtyFrustum = true;
 		_hasCustomNearClipPlane = false;
 
-		_shaderHint = Shader::UsageHint::Default;
 		_prefersLightManager = false;
-
-		_material = nullptr;
 
 		_priority = 0;
 		_lodCamera = nullptr;
@@ -115,17 +111,6 @@ namespace RN
 	void Camera::SetFlags(Flags flags)
 	{
 		_flags = flags;
-	}
-
-	void Camera::SetShaderHint(Shader::UsageHint hint)
-	{
-		_shaderHint = hint;
-	}
-
-	void Camera::SetMaterial(Material *material)
-	{
-		SafeRelease(_material);
-		_material = SafeRetain(material);
 	}
 
 	void Camera::SetLODCamera(Camera *camera)
