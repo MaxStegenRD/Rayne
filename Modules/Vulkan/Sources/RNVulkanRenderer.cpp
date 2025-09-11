@@ -1863,51 +1863,62 @@ namespace RN
 	void VulkanRenderer::SubmitLight(const Light *light)
 	{
 		_lock.Lock();
-		VulkanRenderPass &renderPass = _internals->renderPasses[_internals->currentRenderPassIndex];
-		renderPass.directionalShadowMatrices.clear();
+		// Distribute the light to all passes belonging to the current camera range
+		size_t startIndex = _internals->currentRenderPassIndex;
+		size_t originalIndex = _internals->currentRenderPassIndex;
 		_lock.Unlock();
 
-		if(light->GetType() == Light::Type::DirectionalLight)
+		for(size_t pi = startIndex; pi < _internals->renderPasses.size(); pi++)
 		{
-            renderPass.directionalLights.push_back(VulkanDirectionalLight{ light->GetForward(), 0.0f, light->GetFinalColor() });
+			VulkanRenderPass &renderPass = _internals->renderPasses[pi];
+			// Only real draw passes
+			if(renderPass.type != VulkanRenderPass::Type::Default && renderPass.type != VulkanRenderPass::Type::Convert) continue;
 
-			//TODO: Allow more lights with shadows or prevent multiple light with shadows overwriting each other
-			if(light->HasShadows())
+			if(light->GetType() == Light::Type::DirectionalLight)
 			{
-				bool isShadowCamera = false;
-				light->GetShadowDepthCameras()->Enumerate<Camera>([&](Camera *camera, size_t index, bool &stop) {
-					if (renderPass.framebuffer == camera->GetRenderPass()->GetFramebuffer())
-					{
-						stop = true;
-						isShadowCamera = true;
-					}
-				});
+				renderPass.directionalLights.push_back(VulkanDirectionalLight{ light->GetForward(), 0.0f, light->GetFinalColor() });
 
-				if(!isShadowCamera)
+				if(light->HasShadows())
 				{
-					renderPass.directionalShadowDepthTexture = light->GetShadowDepthTexture()->Downcast<VulkanTexture>();
+					bool isShadowCamera = false;
+					light->GetShadowDepthCameras()->Enumerate<Camera>([&](Camera *camera, size_t index, bool &stop) {
+						if (renderPass.framebuffer == camera->GetRenderPass()->GetFramebuffer())
+						{
+							stop = true;
+							isShadowCamera = true;
+						}
+					});
+
+					if(!isShadowCamera)
+					{
+						renderPass.directionalShadowDepthTexture = light->GetShadowDepthTexture()->Downcast<VulkanTexture>();
+					}
+
+					renderPass.directionalShadowMatrices.clear();
+					light->GetShadowDepthCameras()->Enumerate<Camera>([&](Camera *camera, size_t index, bool &stop) {
+						Matrix clipSpaceCorrectionMatrix;
+						clipSpaceCorrectionMatrix.m[5] = 1.0f;
+						Matrix shadowMatrix = clipSpaceCorrectionMatrix * camera->GetProjectionMatrix();
+						shadowMatrix = shadowMatrix * camera->GetWorldTransform().GetInverse();
+						renderPass.directionalShadowMatrices.push_back(shadowMatrix);
+					});
+
+					renderPass.directionalShadowInfo = Vector2(1.0f / light->GetShadowParameters().resolution);
 				}
-				
-				light->GetShadowDepthCameras()->Enumerate<Camera>([&](Camera *camera, size_t index, bool &stop) {
-					Matrix clipSpaceCorrectionMatrix;
-					clipSpaceCorrectionMatrix.m[5] = 1.0f;
-					Matrix shadowMatrix = clipSpaceCorrectionMatrix * camera->GetProjectionMatrix();
-
-					shadowMatrix = shadowMatrix * camera->GetWorldTransform().GetInverse();
-					renderPass.directionalShadowMatrices.push_back(shadowMatrix);
-				});
-
-				renderPass.directionalShadowInfo = Vector2(1.0f / light->GetShadowParameters().resolution);
+			}
+			else if(light->GetType() == Light::Type::PointLight)
+			{
+				renderPass.pointLights.push_back(VulkanPointLight{ light->GetWorldPosition(), light->GetRange(), light->GetFinalColor() });
+			}
+			else if(light->GetType() == Light::Type::SpotLight)
+			{
+				renderPass.spotLights.push_back(VulkanSpotLight{ light->GetWorldPosition(), light->GetRange(), light->GetForward(), light->GetAngleCos(), light->GetFinalColor() });
 			}
 		}
-		else if(light->GetType() == Light::Type::PointLight)
-		{
-            renderPass.pointLights.push_back(VulkanPointLight{ light->GetWorldPosition(), light->GetRange(), light->GetFinalColor() });
-		}
-		else if(light->GetType() == Light::Type::SpotLight)
-		{
-            renderPass.spotLights.push_back(VulkanSpotLight{ light->GetWorldPosition(), light->GetRange(), light->GetForward(), light->GetAngleCos(), light->GetFinalColor() });
-		}
+
+		_lock.Lock();
+		_internals->currentRenderPassIndex = originalIndex;
+		_lock.Unlock();
 	}
 
 	void VulkanRenderer::WarmupDrawable(Mesh *mesh, Material *material, Camera *camera)
