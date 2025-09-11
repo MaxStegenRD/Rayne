@@ -8,7 +8,7 @@
 	[
 		"Modules/RayneMetal",
 		"Modules/RayneVulkan",
-		"Modules/RayneOpenVR"
+		"Modules/RayneOpenXR"
 	],
 	"RNPreferredTextureFileExtension~macos": "dds",
 	"RNPreferredTextureFileExtension~windows": "dds",

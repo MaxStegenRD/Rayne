@@ -336,7 +336,7 @@ namespace __TMP__
 				_vrDebugWindow = RN::Renderer::GetActiveRenderer()->CreateAWindow(RN::Vector2(1920, 1080), RN::Screen::GetMainScreen());
 			}
 
-			_vrCamera = new RN::VRCamera(_vrWindow, monitorPass, _msaa, _vrDebugWindow);
+			_vrCamera = new RN::VRCamera(_vrWindow, monitorPass, _msaa, _vrDebugWindow, false);
 
 			_vrCamera->SetClipFar(10000.0f);
 			
