@@ -12,7 +12,7 @@ namespace RN
 {
 	RNDefineMeta(VRCamera, SceneNode)
 
-	VRCamera::VRCamera(VRWindow *window, RenderPass *previewRenderPass, uint8 msaaSampleCount, Window *debugWindow) :
+	VRCamera::VRCamera(VRWindow *window, RenderPass *previewRenderPass, uint8 msaaSampleCount, Window *debugWindow, bool supportInputAttachments) :
 		_window(window ? window->Retain() : nullptr),
 		_debugWindow(debugWindow ? debugWindow->Retain() : nullptr),
 		_head(new Camera()),
@@ -20,7 +20,8 @@ namespace RN
 		_msaaSampleCount(msaaSampleCount),
 		_eye {nullptr, nullptr},
 		_didUpdateVRWindow(false),
-		_hiddenAreaEntity {nullptr, nullptr}
+		_hiddenAreaEntity {nullptr, nullptr},
+		_supportInputAttachments(supportInputAttachments)
 	{
 		SetUpdatePriority(SceneNode::UpdatePriority::UpdateEarly);
 		AddChild(_head);
@@ -149,11 +150,13 @@ namespace RN
 		if(_msaaSampleCount > 1)
 		{
 			Texture::Descriptor msaaColorTextureDescriptor = Texture::Descriptor::With2DRenderTargetFormatAndMSAA(colorFormat, windowSize.x, windowSize.y, _msaaSampleCount, 0, true);
+			if(_supportInputAttachments) msaaColorTextureDescriptor.usageHint |= Texture::UsageHint::InputAttachment;
 			msaaColorTextureDescriptor.depth = layerCount;
 			msaaColorTextureDescriptor.type = layerCount > 1 ? Texture::Type::Type2DArray : Texture::Type::Type2D;
 			Texture *msaaTexture = Texture::WithDescriptor(msaaColorTextureDescriptor);
 
 			Texture::Descriptor msaaDepthTextureDescriptor = Texture::Descriptor::With2DRenderTargetFormatAndMSAA(depthFormat, windowSize.x, windowSize.y, _msaaSampleCount, 0, true);
+			if(_supportInputAttachments) msaaDepthTextureDescriptor.usageHint |= Texture::UsageHint::InputAttachment;
 			msaaDepthTextureDescriptor.depth = layerCount;
 			msaaDepthTextureDescriptor.type = layerCount > 1 ? Texture::Type::Type2DArray : Texture::Type::Type2D;
 			Texture *msaaDepthTexture = Texture::WithDescriptor(msaaDepthTextureDescriptor);
@@ -167,6 +170,7 @@ namespace RN
 		if(_msaaSampleCount <= 1 && (!_window || _window->GetSwapChainDescriptor().depthStencilFormat == Texture::Format::Invalid || _debugWindow))
 		{
 			Texture::Descriptor depthTextureDescriptor = Texture::Descriptor::With2DRenderTargetFormat(depthFormat, windowSize.x, windowSize.y, true);
+			if(_supportInputAttachments) depthTextureDescriptor.usageHint |= Texture::UsageHint::InputAttachment;
 			depthTextureDescriptor.depth = layerCount;
 			depthTextureDescriptor.type = layerCount > 1 ? Texture::Type::Type2DArray : Texture::Type::Type2D;
 

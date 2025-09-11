@@ -19,7 +19,7 @@ namespace RN
 	class VRCamera : public SceneNode
 	{
 	public:
-		RNVRAPI VRCamera(VRWindow *window, RenderPass *previewRenderPass = nullptr, uint8 msaaSampleCount = 4, Window *debugWindow = nullptr);
+		RNVRAPI VRCamera(VRWindow *window, RenderPass *previewRenderPass = nullptr, uint8 msaaSampleCount = 4, Window *debugWindow = nullptr, bool supportInputAttachments = false);
 		RNVRAPI ~VRCamera();
 
 		RNVRAPI void SetupCameras();
@@ -55,6 +55,7 @@ namespace RN
 		Entity *_hiddenAreaEntity[2];
 		RenderPass *_previewRenderPass;
 		uint8 _msaaSampleCount;
+		bool _supportInputAttachments;
 		bool _didUpdateVRWindow;
 
 		Vector3 _originPositionOffset;
