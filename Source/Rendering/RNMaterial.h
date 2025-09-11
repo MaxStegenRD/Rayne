@@ -146,16 +146,17 @@ namespace RN
 		};
 
 		RN_OPTIONS(Override, uint32,
-				   GroupDepth = (1 << 0),
-				   GroupColors = (1 << 1),
-				   GroupPolygonOffset = (1 << 2),
-				   GroupShaders = (1 << 3),
-				   GroupAlphaToCoverage = (1 << 4),
-				   GroupBlending = (1 << 5),
-				   TextureTileFactor = (1 << 6),
-				   CullMode = (1 << 7),
-				   ColorWriteMask = (1 << 8),
-				   CustomUniforms = (1 << 9),
+				   DepthWrite = (1 << 0),
+				   GroupDepth = (1 << 1),
+				   GroupColors = (1 << 2),
+				   GroupPolygonOffset = (1 << 3),
+				   GroupShaders = (1 << 4),
+				   GroupAlphaToCoverage = (1 << 5),
+				   GroupBlending = (1 << 6),
+				   TextureTileFactor = (1 << 7),
+				   CullMode = (1 << 8),
+				   ColorWriteMask = (1 << 9),
+				   CustomUniforms = (1 << 10),
 
 				   DefaultDepth = (0xffffffff & ~(GroupPolygonOffset | ColorWriteMask | CustomUniforms)));
 

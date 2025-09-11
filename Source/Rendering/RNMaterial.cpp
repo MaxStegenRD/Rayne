@@ -439,15 +439,22 @@ namespace RN
 			_mergedPipelineProperties.colorWriteMask = _pipelineProperties.colorWriteMask;
 		}
 
-		if(!(overrideMaterial->GetOverride() & Override::GroupDepth) && !(_override & Override::GroupDepth))
+		if(!(overrideMaterial->GetOverride() & Override::DepthWrite) && !(_override & Override::DepthWrite))
 		{
-			_mergedPipelineProperties.depthMode = overrideMaterial->_pipelineProperties.depthMode;
 			_mergedPipelineProperties.depthWriteEnabled = overrideMaterial->_pipelineProperties.depthWriteEnabled;
 		}
 		else
 		{
-			_mergedPipelineProperties.depthMode = _pipelineProperties.depthMode;
 			_mergedPipelineProperties.depthWriteEnabled = _pipelineProperties.depthWriteEnabled;
+		}
+
+		if(!(overrideMaterial->GetOverride() & Override::GroupDepth) && !(_override & Override::GroupDepth))
+		{
+			_mergedPipelineProperties.depthMode = overrideMaterial->_pipelineProperties.depthMode;
+		}
+		else
+		{
+			_mergedPipelineProperties.depthMode = _pipelineProperties.depthMode;
 		}
 
 		if(!(overrideMaterial->GetOverride() & Override::GroupAlphaToCoverage) && !(_override & Override::GroupAlphaToCoverage))
