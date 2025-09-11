@@ -2327,9 +2327,6 @@ namespace RN
 									stop = true;
 									return;
 								}
-
-								//Add render targets to list of textures that needs to be transitioned for this render pass
-								rootRenderPass.renderTargetsUsedInShader.push_back(framebufferTexture);
 							}
 							else
 							{
@@ -2352,9 +2349,6 @@ namespace RN
 									stop = true;
 									return;
 								}
-
-								//Add render targets to list of textures that needs to be transitioned for this render pass
-								rootRenderPass.renderTargetsUsedInShader.push_back(framebufferTexture);
 							}
 
 							VkDescriptorImageInfo inputAttachmentDescriptorInfo = {};
