@@ -224,6 +224,7 @@ namespace RN
 
 	void VulkanFramebuffer::SetColorTarget(const TargetView &target, uint32 index)
 	{
+		//This requirement should not be removed as swap chains can change their resolution at any time, but any other attachment could not be updated from here to match.
 		RN_ASSERT(!_swapChain, "A swap chain framebuffer can not have additional color targets!");
 		RN_ASSERT(target.texture, "The color target needs a texture!");
 
@@ -379,6 +380,14 @@ namespace RN
 							RNVulkanValidate(vk::CreateImageView(device, &imageViewCreateInfo, _renderer->GetAllocatorCallback(), &imageView));
 						}
 						newVariant.attachments.push_back(imageView);
+
+						// When resolving to a swapchain we only expose the first color/resolve pair
+						// to match the render pass attachment list, which is limited to a single
+						// color attachment in that case.
+						if(resolveFramebuffer && resolveFramebuffer->_swapChain)
+						{
+							break;
+						}
 					}
 
 					counter += 1;
