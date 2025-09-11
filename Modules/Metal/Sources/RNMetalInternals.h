@@ -211,6 +211,8 @@ namespace RN
 
 		std::vector<uint32> instanceSteps; //number of drawables in the drawables list that use the same pipeline state and can all be rendered with the same draw call as result
 		std::vector<MetalDrawable *> drawables;
+		const MetalRenderingState *currentPipelineState;
+		const MetalDrawable *currentInstanceDrawable;
 
 		std::vector<MetalPointLight> pointLights;
 		std::vector<MetalSpotLight> spotLights;
@@ -237,7 +239,6 @@ namespace RN
 
 		size_t currentRenderPassIndex;
 		const MetalRenderingState *currentRenderState;
-		const MetalDrawable *currentInstanceDrawable;
 	};
 
 	struct MetalWindowInternals

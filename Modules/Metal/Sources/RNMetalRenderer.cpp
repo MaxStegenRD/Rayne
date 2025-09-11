@@ -450,22 +450,21 @@ namespace RN
 			}
 		}
 
-		_internals->currentRenderPassIndex = _internals->renderPasses.size();
+		size_t previousRenderPassIndex = _internals->renderPasses.size();
+		_internals->currentRenderPassIndex = previousRenderPassIndex;
 		_internals->renderPasses.push_back(renderPass);
-
-		_internals->currentRenderState = nullptr; //This is used when submitting drawables to make lists of drawables to instance and needs to be reset per render pass
-		_internals->currentInstanceDrawable = nullptr;
-		
-		// Create drawables
-		function();
 		
 		const Array *nextRenderPasses = cameraRenderPass->GetNextRenderPasses();
 		nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
-			SubmitRenderPass(nextPass, renderPass, std::forward<Function>(function));
+			SubmitRenderPass(nextPass, renderPass);
 		});
+
+		// Now distribute drawables across the newly created passes for this camera
+		_internals->currentRenderPassIndex = previousRenderPassIndex;
+		function();
 	}
 	
-	void MetalRenderer::SubmitRenderPass(RenderPass *renderPass, MetalRenderPass &previousRenderPass, Function &&function)
+	void MetalRenderer::SubmitRenderPass(RenderPass *renderPass, MetalRenderPass &previousRenderPass)
 	{
 		ZoneScoped;
 
@@ -482,7 +481,6 @@ namespace RN
 		metalRenderPass.resolveFramebuffer = nullptr;
 		
 		_internals->currentRenderState = nullptr; //This is used when submitting drawables to make lists of drawables to instance and needs to be reset per render pass
-		_internals->currentInstanceDrawable = nullptr;
 		
 		PostProcessingAPIStage *apiStage = renderPass->Downcast<PostProcessingAPIStage>();
 		PostProcessingStage *ppStage = renderPass->Downcast<PostProcessingStage>();
@@ -545,6 +543,7 @@ namespace RN
 		metalRenderPass.projectionViewMatrix = previousRenderPass.projectionViewMatrix;
 		metalRenderPass.directionalShadowDepthTexture = nullptr;
 		metalRenderPass.multiviewLayer = previousRenderPass.multiviewLayer;
+		metalRenderPass.camera = previousRenderPass.camera;
 		
 		Framebuffer *framebuffer = nullptr;
 		if(renderPass->GetIsSubpass())
@@ -600,11 +599,6 @@ namespace RN
 				}
 				SubmitDrawable(_defaultPostProcessingDrawable);
 			}
-			else if(!renderPass->GetIsRoot())
-			{
-				// Create drawables
-				function();
-			}
 		}
 		else
 		{
@@ -613,7 +607,7 @@ namespace RN
 		
 		const Array *nextRenderPasses = renderPass->GetNextRenderPasses();
 		nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop){
-				SubmitRenderPass(nextPass, metalRenderPass, std::forward<Function>(function));
+				SubmitRenderPass(nextPass, metalRenderPass);
 			});
 	}
 
@@ -1286,99 +1280,124 @@ namespace RN
 	void MetalRenderer::SubmitLight(const Light *light)
 	{
 		ZoneScoped;
-		//TODO: Limit number of lights somehow!? Currently it is just limited by what the shader supports
-		MetalRenderPass &renderPass = _internals->renderPasses[_internals->currentRenderPassIndex];
-		if(light->GetType() == Light::Type::DirectionalLight)
-		{
-			renderPass.directionalLights.push_back(MetalDirectionalLight{light->GetForward(), 0.0f, light->GetFinalColor()});
+		// Distribute the light to all passes of the current camera
+		size_t startIndex = _internals->currentRenderPassIndex;
+		size_t originalIndex = _internals->currentRenderPassIndex;
 
-			//TODO: Allow more lights with shadows or prevent multiple light with shadows overwriting each other
-			if(light->HasShadows())
+		for(size_t pi = startIndex; pi < _internals->renderPasses.size(); pi++)
+		{
+			MetalRenderPass &renderPass = _internals->renderPasses[pi];
+			// Only apply to real draw passes
+			if(renderPass.type != MetalRenderPass::Type::Default && renderPass.type != MetalRenderPass::Type::Convert) continue;
+
+			if(light->GetType() == Light::Type::DirectionalLight)
 			{
-				renderPass.directionalShadowDepthTexture = light->GetShadowDepthTexture()->Downcast<MetalTexture>();
-				renderPass.directionalShadowMatrices = light->GetShadowMatrices();
-				renderPass.directionalShadowInfo = Vector2(1.0f / light->GetShadowParameters().resolution);
+				renderPass.directionalLights.push_back(MetalDirectionalLight{light->GetForward(), 0.0f, light->GetFinalColor()});
+
+				// Attach shadow texture/matrices to all non-shadow-camera passes
+				if(light->HasShadows())
+				{
+					bool isShadowCamera = false;
+					light->GetShadowDepthCameras()->Enumerate<Camera>([&](Camera *camera, size_t index, bool &stop) {
+						Framebuffer *shadowFB = camera->GetRenderPass()->GetFramebuffer();
+						if(renderPass.framebuffer == shadowFB)
+						{
+							isShadowCamera = true;
+							stop = true;
+						}
+					});
+
+					if(!isShadowCamera)
+					{
+						renderPass.directionalShadowDepthTexture = light->GetShadowDepthTexture()->Downcast<MetalTexture>();
+						renderPass.directionalShadowMatrices = light->GetShadowMatrices();
+						renderPass.directionalShadowInfo = Vector2(1.0f / light->GetShadowParameters().resolution);
+					}
+				}
+			}
+			else if(light->GetType() == Light::Type::PointLight)
+			{
+				renderPass.pointLights.push_back(MetalPointLight{light->GetWorldPosition(), light->GetRange(), light->GetFinalColor()});
+			}
+			else if(light->GetType() == Light::Type::SpotLight)
+			{
+				renderPass.spotLights.push_back(MetalSpotLight{light->GetWorldPosition(), light->GetRange(), light->GetForward(), light->GetAngleCos(), light->GetFinalColor()});
 			}
 		}
-		else if(light->GetType() == Light::Type::PointLight)
-		{
-			renderPass.pointLights.push_back(MetalPointLight{light->GetWorldPosition(), light->GetRange(), light->GetFinalColor()});
-		}
-		else if(light->GetType() == Light::Type::SpotLight)
-		{
-			renderPass.spotLights.push_back(MetalSpotLight{light->GetWorldPosition(), light->GetRange(), light->GetForward(), light->GetAngleCos(), light->GetFinalColor()});
-		}
+
+		_internals->currentRenderPassIndex = originalIndex;
 	}
 
 	void MetalRenderer::SubmitDrawable(Drawable *tdrawable)
 	{
 		ZoneScoped;
 		MetalDrawable *drawable = static_cast<MetalDrawable *>(tdrawable);
-		drawable->AddCameraSepecificsIfNeeded(_internals->currentRenderPassIndex);
 
-		MetalRenderPass &renderPass = _internals->renderPasses[_internals->currentRenderPassIndex];
-		MetalDrawable::CameraSpecific &cameraSpecific = drawable->_cameraSpecifics[_internals->currentRenderPassIndex];
-		
-		if(cameraSpecific.dirty || cameraSpecific.camera != renderPass.camera)
+		// Distribute across all relevant passes created for the current camera
+		size_t startIndex = _internals->currentRenderPassIndex;
+		size_t originalIndex = _internals->currentRenderPassIndex;
+		for(size_t pi = startIndex; pi < _internals->renderPasses.size(); pi++)
 		{
+			MetalRenderPass &pass = _internals->renderPasses[pi];
+			// Only accept real draw passes
+			if(pass.type != MetalRenderPass::Type::Default && pass.type != MetalRenderPass::Type::Convert) continue;
+			// Filter by render group mask
+			if((drawable->renderGroup & pass.renderPass->GetRenderGroupMask()) == 0) continue;
+
+			// Ensure camera-specific storage aligns with this pass index
+			_internals->currentRenderPassIndex = pi;
+			drawable->AddCameraSepecificsIfNeeded(_internals->currentRenderPassIndex);
+			MetalDrawable::CameraSpecific &cameraSpecific = drawable->_cameraSpecifics[_internals->currentRenderPassIndex];
+
+			if(cameraSpecific.dirty || cameraSpecific.camera != pass.camera)
+			{
+				_lock.Lock();
+				const MetalRenderingState *state = _internals->stateCoordinator.GetRenderPipelineState(drawable->material, drawable->mesh, pass.framebuffer, pass.shaderHint, pass.overrideMaterial, pass.renderPass);
+				_lock.Unlock();
+
+				drawable->UpdateRenderingState(_internals->currentRenderPassIndex, pass.camera, this, state);
+			}
+
+			bool canUseInstancing = drawable->material->GetVertexShader()->GetHasInstancing() && drawable->material->GetFragmentShader()->GetHasInstancing();
+
+			if(canUseInstancing && pass.currentInstanceDrawable && drawable->_cameraSpecifics[_internals->currentRenderPassIndex].vertexShaderUniformBuffers.size() == pass.currentInstanceDrawable->_cameraSpecifics[_internals->currentRenderPassIndex].vertexShaderUniformBuffers.size() && drawable->_cameraSpecifics[_internals->currentRenderPassIndex].fragmentShaderUniformBuffers.size() == pass.currentInstanceDrawable->_cameraSpecifics[_internals->currentRenderPassIndex].fragmentShaderUniformBuffers.size())
+			{
+				canUseInstancing = true;
+				for(int i = 0; i < drawable->_cameraSpecifics[_internals->currentRenderPassIndex].vertexShaderUniformBuffers.size() && canUseInstancing; i++)
+				{
+					if(drawable->_cameraSpecifics[_internals->currentRenderPassIndex].vertexShaderUniformBuffers[i]->uniformBuffer != pass.currentInstanceDrawable->_cameraSpecifics[_internals->currentRenderPassIndex].vertexShaderUniformBuffers[i]->uniformBuffer)
+					{
+						canUseInstancing = false;
+					}
+				}
+
+				for(int i = 0; i < drawable->_cameraSpecifics[_internals->currentRenderPassIndex].fragmentShaderUniformBuffers.size() && canUseInstancing; i++)
+				{
+					if(drawable->_cameraSpecifics[_internals->currentRenderPassIndex].fragmentShaderUniformBuffers[i]->uniformBuffer != pass.currentInstanceDrawable->_cameraSpecifics[_internals->currentRenderPassIndex].fragmentShaderUniformBuffers[i]->uniformBuffer)
+					{
+						canUseInstancing = false;
+					}
+				}
+			}
+
+			if(canUseInstancing && pass.currentPipelineState == cameraSpecific.pipelineState && pass.currentInstanceDrawable && drawable->mesh == pass.currentInstanceDrawable->mesh && drawable->material->GetTextures()->IsEqual(pass.currentInstanceDrawable->material->GetTextures()))
+			{
+				pass.instanceSteps.back() += 1;
+			}
+			else
+			{
+				pass.currentPipelineState = cameraSpecific.pipelineState;
+				pass.currentInstanceDrawable = drawable;
+				pass.instanceSteps.push_back(1);
+			}
+
 			_lock.Lock();
-			const MetalRenderingState *state = _internals->stateCoordinator.GetRenderPipelineState(drawable->material, drawable->mesh, renderPass.framebuffer, renderPass.shaderHint, renderPass.overrideMaterial, renderPass.renderPass);
+			pass.drawables.push_back(drawable);
 			_lock.Unlock();
-
-			drawable->UpdateRenderingState(_internals->currentRenderPassIndex, renderPass.camera, this, state); //This will also reserve memory in a uniform buffer.
-		}
-		
-		//Vertex and fragment shaders need to explicitly be marked to support instancing in the shader library json
-		bool canUseInstancing = drawable->material->GetVertexShader()->GetHasInstancing() && drawable->material->GetFragmentShader()->GetHasInstancing();
-		
-		//Check if uniform buffers are the same, the object can't be part of the same instanced draw call if it doesn't share the same buffers (because they are full for example)
-		if(canUseInstancing && _internals->currentInstanceDrawable && drawable->_cameraSpecifics[_internals->currentRenderPassIndex].vertexShaderUniformBuffers.size() == _internals->currentInstanceDrawable->_cameraSpecifics[_internals->currentRenderPassIndex].vertexShaderUniformBuffers.size() && drawable->_cameraSpecifics[_internals->currentRenderPassIndex].fragmentShaderUniformBuffers.size() == _internals->currentInstanceDrawable->_cameraSpecifics[_internals->currentRenderPassIndex].fragmentShaderUniformBuffers.size())
-		{
-			canUseInstancing = true;
-			for(int i = 0; i < drawable->_cameraSpecifics[_internals->currentRenderPassIndex].vertexShaderUniformBuffers.size() && canUseInstancing; i++)
-			{
-				if(drawable->_cameraSpecifics[_internals->currentRenderPassIndex].vertexShaderUniformBuffers[i]->uniformBuffer != _internals->currentInstanceDrawable->_cameraSpecifics[_internals->currentRenderPassIndex].vertexShaderUniformBuffers[i]->uniformBuffer)
-				{
-					canUseInstancing = false;
-				}
-			}
-			
-			for(int i = 0; i < drawable->_cameraSpecifics[_internals->currentRenderPassIndex].fragmentShaderUniformBuffers.size() && canUseInstancing; i++)
-			{
-				if(drawable->_cameraSpecifics[_internals->currentRenderPassIndex].fragmentShaderUniformBuffers[i]->uniformBuffer != _internals->currentInstanceDrawable->_cameraSpecifics[_internals->currentRenderPassIndex].fragmentShaderUniformBuffers[i]->uniformBuffer)
-				{
-					canUseInstancing = false;
-				}
-			}
-			
-			//Comparing two identical things below, so just removing for now...
-			/*if(canUseInstancing)
-			{
-				//depth testing and polygon offset are setup as part of the draw call and objects can only be instanced correctly if these are the same
-				Material::Properties previousMergedMaterialProperties = drawable->material->GetMergedProperties(renderPass.overrideMaterial);
-				Material::Properties mergedMaterialProperties = drawable->material->GetMergedProperties(renderPass.overrideMaterial);
-				
-				if(mergedMaterialProperties.depthMode != previousMergedMaterialProperties.depthMode || mergedMaterialProperties.depthWriteEnabled != previousMergedMaterialProperties.depthWriteEnabled || mergedMaterialProperties.usePolygonOffset != previousMergedMaterialProperties.usePolygonOffset || (mergedMaterialProperties.usePolygonOffset && (mergedMaterialProperties.polygonOffsetUnits != previousMergedMaterialProperties.polygonOffsetUnits || mergedMaterialProperties.polygonOffsetFactor != previousMergedMaterialProperties.polygonOffsetFactor)))
-				{
-					canUseInstancing = false;
-				}
-			}*/
-		}
-		
-		if(_internals->currentRenderState == drawable->_cameraSpecifics[_internals->currentRenderPassIndex].pipelineState && drawable->mesh == _internals->currentInstanceDrawable->mesh && drawable->material->GetTextures()->IsEqual(_internals->currentInstanceDrawable->material->GetTextures()) && canUseInstancing)
-		{
-			renderPass.instanceSteps.back() += 1; //Increase counter if the rendering state is the same
-		}
-		else
-		{
-			_internals->currentRenderState = drawable->_cameraSpecifics[_internals->currentRenderPassIndex].pipelineState;
-			_internals->currentInstanceDrawable = drawable;
-			renderPass.instanceSteps.push_back(1); //Add new entry if the rendering state changed
 		}
 
-		_lock.Lock();
-		renderPass.drawables.push_back(drawable);
-		_lock.Unlock();
+		// Restore original index
+		_internals->currentRenderPassIndex = originalIndex;
 	}
 
 	void MetalRenderer::RenderDrawable(MetalDrawable *drawable, uint32 instanceCount)

@@ -74,7 +74,7 @@ namespace RN
 		MTLAPI id GetCommandQueue() const;
 
 	protected:
-		void SubmitRenderPass(RenderPass *renderPass, MetalRenderPass &previousRenderPass, Function &&function);
+		void SubmitRenderPass(RenderPass *renderPass, MetalRenderPass &previousRenderPass);
 		void RenderDrawable(MetalDrawable *drawable, uint32 instanceCount);
 		void RenderAPIRenderPass(const MetalRenderPass &renderPass);
 		void FillUniformBuffer(Shader::ArgumentBuffer *argument, MetalUniformBufferReference *uniformBufferReference, MetalDrawable *drawable, const Material::Properties &materialProperties);
