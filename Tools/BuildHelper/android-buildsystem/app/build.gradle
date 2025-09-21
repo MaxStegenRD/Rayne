@@ -45,6 +45,14 @@ android {
                 arguments = getCmakeArgumentsFromProjectProperty()
                 arguments.add("-DANDROID_STL=c++_shared")
                 arguments.add("-DANDROID_ASSETS_DIRECTORIES='"+"${sourceSets.main.assets.srcDirs}".toString()+"'")
+                
+                // Tell Clang to emit full .eh_frame CFI in each object
+                arguments.add("-DCMAKE_C_FLAGS=-funwind-tables -fasynchronous-unwind-tables")
+                arguments.add("-DCMAKE_CXX_FLAGS=-funwind-tables -fasynchronous-unwind-tables")
+
+                // Tell lld to build the .eh_frame_hdr lookup table
+                arguments.add("-DCMAKE_SHARED_LINKER_FLAGS=-Wl,--eh-frame-hdr")
+                arguments.add("-DCMAKE_EXE_LINKER_FLAGS=-Wl,--eh-frame-hdr")
 
                 cppFlags ""
                 targets __RN_CMAKE_TARGETS__
