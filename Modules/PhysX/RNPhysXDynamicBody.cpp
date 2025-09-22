@@ -17,7 +17,8 @@ namespace RN
 
 	PhysXDynamicBody::PhysXDynamicBody(PhysXShape *shape, float mass) :
 		_shape(shape->Retain()),
-		_actor(nullptr)
+		_actor(nullptr),
+		_detachTransform(false)
 	{
 		physx::PxPhysics *physics = PhysXWorld::GetSharedInstance()->GetPhysXInstance();
 		_actor = physics->createRigidDynamic(physx::PxTransform(physx::PxIdentity));
@@ -226,6 +227,11 @@ namespace RN
 		_rigidBody->applyImpulse(btVector3(impulse.x, impulse.y, impulse.z), btVector3(origin.x, origin.y, origin.z));
 	}*/
 
+	void PhysXDynamicBody::ApplyForceAtGlobalPoint(const Vector3 &force, const Vector3 &point)
+	{
+		physx::PxRigidBodyExt::addForceAtPos(*_actor, physx::PxVec3(force.x, force.y, force.z), physx::PxVec3(point.x, point.y, point.z), physx::PxForceMode::eFORCE);
+	}
+
 	void PhysXDynamicBody::SetEnableKinematic(bool enable)
 	{
 		_actor->setRigidBodyFlag(physx::PxRigidBodyFlag::eKINEMATIC, enable);
@@ -429,7 +435,7 @@ namespace RN
 	{
 		PhysXCollisionObject::DidUpdate(changeSet);
 
-		if(changeSet & SceneNode::ChangeSet::Position)
+		if(changeSet & SceneNode::ChangeSet::Position && !_detachTransform)
 		{
 			RN::Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
 			Vector3 position = GetWorldPosition() - positionOffset;
@@ -462,7 +468,7 @@ namespace RN
 
 	void PhysXDynamicBody::UpdatePosition()
 	{
-		if(!_owner)
+		if(!_owner || _detachTransform)
 		{
 			return;
 		}
@@ -472,5 +478,10 @@ namespace RN
 		RN::Vector3 positionOffset = rotation.GetRotatedVector(_positionOffset);
 		SetWorldPosition(Vector3(transform.p.x, transform.p.y, transform.p.z) + positionOffset);
 		SetWorldRotation(rotation);
+	}
+
+	void PhysXDynamicBody::SetDetachTransform(bool detach)
+	{
+		_detachTransform = detach;
 	}
 } // namespace RN
