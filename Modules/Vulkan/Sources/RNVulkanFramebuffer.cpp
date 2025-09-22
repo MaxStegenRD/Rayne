@@ -367,26 +367,24 @@ namespace RN
 					//TODO: Add some error handling for wrong target counts for msaa
 					if(resolveFramebuffer)
 					{
-						VkImageView imageView;
 						if(resolveFramebuffer->_swapChain)
 						{
-							newVariant.resolveSwapchainImageIndex = resolveFramebuffer->_swapChain->GetFrameIndex();
-							const VkImageViewCreateInfo &imageViewCreateInfo = VkImageViewCreateInfoWithMultiviewPatch(resolveFramebuffer->_colorTargets[newVariant.resolveSwapchainImageIndex]->vulkanTargetViewDescriptor, multiviewLayer, multiviewCount);
-							RNVulkanValidate(vk::CreateImageView(device, &imageViewCreateInfo, _renderer->GetAllocatorCallback(), &imageView));
+							// Only provide a resolve image view for color attachment 0 when resolving to swapchain
+							if(counter == 0)
+							{
+								newVariant.resolveSwapchainImageIndex = resolveFramebuffer->_swapChain->GetFrameIndex();
+								const VkImageViewCreateInfo &imageViewCreateInfo = VkImageViewCreateInfoWithMultiviewPatch(resolveFramebuffer->_colorTargets[newVariant.resolveSwapchainImageIndex]->vulkanTargetViewDescriptor, multiviewLayer, multiviewCount);
+								VkImageView imageView;
+								RNVulkanValidate(vk::CreateImageView(device, &imageViewCreateInfo, _renderer->GetAllocatorCallback(), &imageView));
+								newVariant.attachments.push_back(imageView);
+							}
 						}
 						else
 						{
 							const VkImageViewCreateInfo &imageViewCreateInfo = VkImageViewCreateInfoWithMultiviewPatch(resolveFramebuffer->_colorTargets[counter]->vulkanTargetViewDescriptor, multiviewLayer, multiviewCount);
+							VkImageView imageView;
 							RNVulkanValidate(vk::CreateImageView(device, &imageViewCreateInfo, _renderer->GetAllocatorCallback(), &imageView));
-						}
-						newVariant.attachments.push_back(imageView);
-
-						// When resolving to a swapchain we only expose the first color/resolve pair
-						// to match the render pass attachment list, which is limited to a single
-						// color attachment in that case.
-						if(resolveFramebuffer && resolveFramebuffer->_swapChain)
-						{
-							break;
+							newVariant.attachments.push_back(imageView);
 						}
 					}
 
@@ -436,8 +434,9 @@ namespace RN
 	void VulkanFramebuffer::SetAsRendertarget(VkCommandBuffer commandBuffer, VulkanFramebuffer *resolveFramebuffer, const Color &clearColor, float depth, uint8 stencil) const
 	{
 		uint16 numberOfClearColors = _colorTargets.size();
-		if(_swapChain || (resolveFramebuffer && resolveFramebuffer->_swapChain)) numberOfClearColors = 1;
-		if(resolveFramebuffer) numberOfClearColors *= 2;
+		if(_swapChain) numberOfClearColors = 1;
+		if((resolveFramebuffer && resolveFramebuffer->_swapChain)) numberOfClearColors += 1;
+		else if(resolveFramebuffer) numberOfClearColors *= 2;
 		numberOfClearColors += _depthStencilTarget? 1 : 0;
 
 		std::vector<VkClearValue> clearColors;
@@ -452,12 +451,22 @@ namespace RN
 
 			if(resolveFramebuffer)
 			{
-				clearColors.push_back(clearValue);
+				if(resolveFramebuffer->_swapChain)
+				{
+					// Only add one resolve clear (for color[0]) when resolving to swapchain
+					if(counter == 0)
+					{
+						clearColors.push_back(clearValue);
+					}
+				}
+				else
+				{
+					// One clear per color attachment
+					clearColors.push_back(clearValue);
+				}
 			}
 
 			counter += 1;
-
-			if(_swapChain || (resolveFramebuffer && resolveFramebuffer->_swapChain)) break;
 		}
 
 		if(_depthStencilTarget)

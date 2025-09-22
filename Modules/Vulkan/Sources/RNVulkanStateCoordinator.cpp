@@ -1032,6 +1032,42 @@ namespace RN
 		std::vector<VkAttachmentReference> colorAttachmentRefs;
 		std::vector<VkAttachmentReference> resolveAttachmentRefs;
 
+		// Determine first/last usage of each color attachment across subpasses to choose appropriate initial/final layouts
+		uint32 numColorAttachments = static_cast<uint32>(framebuffer->_colorTargets.size());
+		std::vector<bool> colorFirstUseIsRead(numColorAttachments, false);
+		std::vector<bool> colorLastUseIsRead(numColorAttachments, false);
+		if(rootVulkanPass && rootVulkanPass->subpasses.size() > 0 && numColorAttachments > 0)
+		{
+			for(uint32 ci = 0; ci < numColorAttachments; ++ci)
+			{
+				for(size_t si = 0; si < rootVulkanPass->subpasses.size(); ++si)
+				{
+					RenderPass *rp = rootVulkanPass->subpasses[si].renderPass;
+					bool writes = rp->GetSubpassWritesColorAttachment(ci);
+					bool reads = rp->GetSubpassReadColorAttachment(ci);
+					if(writes || reads)
+					{
+						// If both read and write in same subpass, treat as write
+						colorFirstUseIsRead[ci] = (reads && !writes);
+						break;
+					}
+				}
+
+				for(int si = static_cast<int>(rootVulkanPass->subpasses.size()) - 1; si >= 0; --si)
+				{
+					RenderPass *rp = rootVulkanPass->subpasses[si].renderPass;
+					bool writes = rp->GetSubpassWritesColorAttachment(ci);
+					bool reads = rp->GetSubpassReadColorAttachment(ci);
+					if(writes || reads)
+					{
+						// If both read and write in same subpass, treat as write
+						colorLastUseIsRead[ci] = (reads && !writes);
+						break;
+					}
+				}
+			}
+		}
+
 		uint32 counter = 0;
 		for(VulkanFramebuffer::VulkanTargetView *targetView : framebuffer->_colorTargets)
 		{
@@ -1051,42 +1087,72 @@ namespace RN
 			else attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 			attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 			attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-			attachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-			attachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			if(rootVulkanPass && rootVulkanPass->subpasses.size() > 0)
+			{
+				attachment.initialLayout = colorFirstUseIsRead[counter]? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+				attachment.finalLayout = colorLastUseIsRead[counter]? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			}
+			else
+			{
+				attachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+				attachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			}
 			attachments.push_back(attachment);
 
 			if(resolveFramebuffer)
 			{
 				VkAttachmentReference resolveReference = {};
-				resolveReference.attachment = attachments.size();
-				resolveReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-				resolveAttachmentRefs.push_back(resolveReference);
-
-				VkAttachmentDescription resolveAttachment = {};
 				if(resolveFramebuffer->_swapChain)
 				{
-					resolveAttachment.format = resolveFramebuffer->_colorTargets[0]->vulkanTargetViewDescriptor.format;
+					// Only color attachment 0 resolves to the swapchain. Other color attachments are not resolved.
+					if(counter == 0)
+					{
+						resolveReference.attachment = attachments.size();
+						resolveReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+						// Create a single resolve attachment for color[0]
+						VkAttachmentDescription resolveAttachment = {};
+						resolveAttachment.format = resolveFramebuffer->_colorTargets[0]->vulkanTargetViewDescriptor.format;
+						resolveAttachment.flags = 0;
+						resolveAttachment.samples = static_cast<VkSampleCountFlagBits>(resolveFramebuffer->_sampleCount);
+						resolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+						resolveAttachment.storeOp = (flags & RenderPass::Flags::StoreColor)? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE;
+						resolveAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+						resolveAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+						resolveAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+						resolveAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; // Could be PRESENT for swapchain
+						attachments.push_back(resolveAttachment);
+					}
+					else
+					{
+						// No resolve attachment for non-zero color indices when resolving to swapchain
+						resolveReference.attachment = VK_ATTACHMENT_UNUSED;
+						resolveReference.layout = VK_IMAGE_LAYOUT_UNDEFINED;
+					}
 				}
 				else
 				{
+					// Resolve to an offscreen framebuffer: create a resolve per color attachment
+					resolveReference.attachment = attachments.size();
+					resolveReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+					VkAttachmentDescription resolveAttachment = {};
 					resolveAttachment.format = resolveFramebuffer->_colorTargets[counter]->vulkanTargetViewDescriptor.format;
+					resolveAttachment.flags = 0;
+					resolveAttachment.samples = static_cast<VkSampleCountFlagBits>(resolveFramebuffer->_sampleCount);
+					resolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+					resolveAttachment.storeOp = (flags & RenderPass::Flags::StoreColor)? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE;
+					resolveAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+					resolveAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+					resolveAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+					resolveAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+					attachments.push_back(resolveAttachment);
 				}
-				resolveAttachment.flags = 0;
-				resolveAttachment.samples = static_cast<VkSampleCountFlagBits>(resolveFramebuffer->_sampleCount);
-				resolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-				resolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-				if(flags & RenderPass::Flags::StoreColor) resolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-				else resolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-				resolveAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-				resolveAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-				resolveAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-				resolveAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; //TODO: Maybe could be VK_IMAGE_LAYOUT_PRESENT_SRC_KHR?
-				attachments.push_back(resolveAttachment);
+
+				resolveAttachmentRefs.push_back(resolveReference);
 			}
 
 			counter += 1;
-
-			if(framebuffer->_swapChain || (resolveFramebuffer && resolveFramebuffer->_swapChain)) break;
+			if(framebuffer->_swapChain) break; //Swapchain only has one color attachment
 		}
 
 		VkSubpassDescription subpass = {};
@@ -1123,8 +1189,43 @@ namespace RN
 			else attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 			attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 			attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-			attachment.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-			attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+			// Choose initial/final layouts based on depth usage across subpasses (read-only vs write)
+			if(rootVulkanPass && rootVulkanPass->subpasses.size() > 0)
+			{
+				bool depthFirstIsReadOnly = false;
+				bool depthLastIsReadOnly = false;
+				for(size_t si = 0; si < rootVulkanPass->subpasses.size(); ++si)
+				{
+					RenderPass *rp = rootVulkanPass->subpasses[si].renderPass;
+					bool writes = rp->GetSubpassWritesDepthStencil();
+					bool reads = rp->GetSubpassReadDepthStencilAttachment();
+					if(writes || reads)
+					{
+						depthFirstIsReadOnly = (reads && !writes);
+						break;
+					}
+				}
+				
+				for(int si = static_cast<int>(rootVulkanPass->subpasses.size()) - 1; si >= 0; --si)
+				{
+					RenderPass *rp = rootVulkanPass->subpasses[si].renderPass;
+					bool writes = rp->GetSubpassWritesDepthStencil();
+					bool reads = rp->GetSubpassReadDepthStencilAttachment();
+					if(writes || reads)
+					{
+						depthLastIsReadOnly = (reads && !writes);
+						break;
+					}
+				}
+
+				attachment.initialLayout = depthFirstIsReadOnly? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+				attachment.finalLayout = depthLastIsReadOnly? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+			}
+			else
+			{
+				attachment.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+				attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+			}
 			attachments.push_back(attachment);
 
 			subpass.pDepthStencilAttachment = &depthReference;
@@ -1187,32 +1288,28 @@ namespace RN
 						perSubpassColorRefs[si].push_back({ colorAttachmentRefs[ci].attachment, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
 						perSubpassColorIndices[si].push_back(ci);
 					}
-				}
-				sp.colorAttachmentCount = perSubpassColorRefs[si].size();
-				sp.pColorAttachments = (sp.colorAttachmentCount > 0)? perSubpassColorRefs[si].data() : nullptr;
-
-				for(uint32 ci = 0; ci < colorAttachmentRefs.size(); ci++)
-				{
-					if(rp->GetSubpassReadColorAttachment(ci))
+					else if(rp->GetSubpassReadColorAttachment(ci))
 					{
 						perSubpassInputRefs[si].push_back({ colorAttachmentRefs[ci].attachment, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
 					}
 				}
+				sp.colorAttachmentCount = perSubpassColorRefs[si].size();
+				sp.pColorAttachments = (sp.colorAttachmentCount > 0)? perSubpassColorRefs[si].data() : nullptr;
 
 				if(framebuffer->_depthStencilTarget)
 				{
 					if(rp->GetSubpassWritesDepthStencil())
 					{
-						perSubpassDepthRefs[si] = { static_cast<uint32>(attachments.size() - (fragmentDensityFramebuffer->_fragmentDensityTargets.size() > 0? 1 : 0) - 1), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
+						perSubpassDepthRefs[si] = { depthReference.attachment, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
 						sp.pDepthStencilAttachment = &perSubpassDepthRefs[si];
 					}
 					else if(rp->GetSubpassReadDepthStencilAttachment())
 					{
 						// Keep depth bound for depth testing but in read-only layout
-						perSubpassDepthRefs[si] = { static_cast<uint32>(attachments.size() - (fragmentDensityFramebuffer->_fragmentDensityTargets.size() > 0? 1 : 0) - 1), VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL };
+						perSubpassDepthRefs[si] = { depthReference.attachment, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL };
 						sp.pDepthStencilAttachment = &perSubpassDepthRefs[si];
 						// Also expose as input attachment if shader wants to sample depth
-						perSubpassInputRefs[si].push_back({ static_cast<uint32>(attachments.size() - (fragmentDensityFramebuffer->_fragmentDensityTargets.size() > 0? 1 : 0) - 1), VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL });
+						perSubpassInputRefs[si].push_back({ depthReference.attachment, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL });
 					}
 				}
 
@@ -1285,31 +1382,15 @@ namespace RN
 
 				multiSubpasses.push_back(sp);
 
-				if(si == 0)
+				if(si > 0)
 				{
 					VkSubpassDependency dep = {};
-					dep.srcSubpass = 0;
-					dep.dstSubpass = 0;
-					dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-					dep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-					dep.srcAccessMask = 0;
-					dep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
-					dep.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-					if(multiviewCount > 1)
-					{
-						dep.dependencyFlags = static_cast<VkDependencyFlags>(dep.dependencyFlags | VK_DEPENDENCY_VIEW_LOCAL_BIT);
-					}
-					subpassDependencies.push_back(dep);
-				}
-				if(si + 1 < rootVulkanPass->subpasses.size())
-				{
-					VkSubpassDependency dep = {};
-					dep.srcSubpass = si;
-					dep.dstSubpass = si + 1;
-					dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+					dep.srcSubpass = si - 1;
+					dep.dstSubpass = si;
+					dep.srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
 					dep.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-					dep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-					dep.dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+					dep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_INPUT_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+					dep.dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 					dep.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 					if(multiviewCount > 1)
 					{

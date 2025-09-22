@@ -497,6 +497,101 @@ namespace RN
 
 				if(renderPass.subpasses.size() > 0)
 				{
+					//Determine first/last usage of each color attachment across subpasses to choose appropriate initial/final layouts
+					uint32 numColorAttachments = static_cast<uint32>(renderPass.renderPass->GetFramebuffer()->Downcast<VulkanFramebuffer>()->_colorTargets.size());
+					std::vector<bool> colorFirstUseIsRead(numColorAttachments, false);
+					std::vector<bool> colorLastUseIsRead(numColorAttachments, false);
+					if(numColorAttachments > 0)
+					{
+						for(uint32 ci = 0; ci < numColorAttachments; ++ci)
+						{
+							for(size_t si = 0; si < renderPass.subpasses.size(); ++si)
+							{
+								RenderPass *rp = renderPass.subpasses[si].renderPass;
+								bool writes = rp->GetSubpassWritesColorAttachment(ci);
+								bool reads = rp->GetSubpassReadColorAttachment(ci);
+								if(writes || reads)
+								{
+									// If both read and write in same subpass, treat as write
+									colorFirstUseIsRead[ci] = (reads && !writes);
+									break;
+								}
+							}
+
+							for(int si = static_cast<int>(renderPass.subpasses.size()) - 1; si >= 0; --si)
+							{
+								RenderPass *rp = renderPass.subpasses[si].renderPass;
+								bool writes = rp->GetSubpassWritesColorAttachment(ci);
+								bool reads = rp->GetSubpassReadColorAttachment(ci);
+								if(writes || reads)
+								{
+									// If both read and write in same subpass, treat as write
+									colorLastUseIsRead[ci] = (reads && !writes);
+									break;
+								}
+							}
+						}
+					}
+
+					for(uint32 ci = 0; ci < numColorAttachments; ++ci)
+					{
+						Texture *t = renderPass.renderPass->GetFramebuffer()->GetColorTexture(ci);
+						if(!t) continue;
+
+						VulkanTexture *vulkanTexture = t->Downcast<VulkanTexture>();
+						VkImageLayout initialLayout = colorFirstUseIsRead[ci]? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+						VkImageLayout targetLayout = colorLastUseIsRead[ci]? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+						if(vulkanTexture->GetCurrentLayout() != initialLayout)
+						{
+							VulkanTexture::SetImageLayout(commandBuffer, vulkanTexture->GetVulkanImage(), 0, vulkanTexture->GetDescriptor().mipMaps, 0, vulkanTexture->GetDescriptor().depth, VK_IMAGE_ASPECT_COLOR_BIT, vulkanTexture->GetCurrentLayout(), initialLayout, colorFirstUseIsRead[ci] ? VulkanTexture::BarrierIntent::ShaderSource : VulkanTexture::BarrierIntent::RenderTarget);
+							vulkanTexture->SetCurrentLayout(initialLayout);
+						}
+					}
+
+					if(renderPass.renderPass->GetFramebuffer()->GetDepthStencilTexture())
+					{
+						bool depthFirstIsReadOnly = false;
+						bool depthLastIsReadOnly = false;
+						for(size_t si = 0; si < renderPass.subpasses.size(); ++si)
+						{
+							RenderPass *rp = renderPass.subpasses[si].renderPass;
+							bool writes = rp->GetSubpassWritesDepthStencil();
+							bool reads = rp->GetSubpassReadDepthStencilAttachment();
+							if(writes || reads)
+							{
+								depthFirstIsReadOnly = (reads && !writes);
+								break;
+							}
+						}
+						
+						for(int si = static_cast<int>(renderPass.subpasses.size()) - 1; si >= 0; --si)
+						{
+							RenderPass *rp = renderPass.subpasses[si].renderPass;
+							bool writes = rp->GetSubpassWritesDepthStencil();
+							bool reads = rp->GetSubpassReadDepthStencilAttachment();
+							if(writes || reads)
+							{
+								depthLastIsReadOnly = (reads && !writes);
+								break;
+							}
+						}
+
+						Texture *t = renderPass.renderPass->GetFramebuffer()->GetDepthStencilTexture();
+						if(t)
+						{
+							VulkanTexture *vulkanTexture = t->Downcast<VulkanTexture>();
+							VkImageLayout initialLayout = depthFirstIsReadOnly? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+							VkImageLayout targetLayout = depthLastIsReadOnly? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+							if(vulkanTexture->GetCurrentLayout() != initialLayout)
+							{
+								VulkanTexture::SetImageLayout(commandBuffer, vulkanTexture->GetVulkanImage(), 0, vulkanTexture->GetDescriptor().mipMaps, 0, vulkanTexture->GetDescriptor().depth, VK_IMAGE_ASPECT_DEPTH_BIT, vulkanTexture->GetCurrentLayout(), initialLayout, depthFirstIsReadOnly ? VulkanTexture::BarrierIntent::ShaderSource : VulkanTexture::BarrierIntent::RenderTarget);
+								vulkanTexture->SetCurrentLayout(initialLayout);
+							}
+						}
+					}
+
 					SetupRendertargets(commandBuffer, renderPass);
 
 					uint32 counter = 0;
@@ -546,6 +641,73 @@ namespace RN
 				}
 
 				vk::CmdEndRenderPass(commandBuffer);
+
+				// Update tracked layouts for attachments to match final layouts of this render pass
+				{
+					VulkanFramebuffer *fb = renderPass.framebuffer;
+					if(fb)
+					{
+						// Determine last usage (read-only vs write) for each color attachment
+						std::vector<bool> colorLastIsReadOnly;
+						// Determine number of color attachments
+						for(uint32 i = 0; ; ++i)
+						{
+							Texture *t = fb->GetColorTexture(i);
+							if(!t) break;
+							colorLastIsReadOnly.push_back(false);
+						}
+
+						if(renderPass.subpasses.size() > 0)
+						{
+							for(uint32 ci = 0; ci < colorLastIsReadOnly.size(); ++ci)
+							{
+								for(int si = static_cast<int>(renderPass.subpasses.size()) - 1; si >= 0; --si)
+								{
+									RenderPass *rp = renderPass.subpasses[si].renderPass;
+									bool writes = rp->GetSubpassWritesColorAttachment(ci);
+									bool reads = rp->GetSubpassReadColorAttachment(ci);
+									if(writes || reads)
+									{
+										colorLastIsReadOnly[ci] = (reads && !writes);
+										break;
+									}
+								}
+							}
+						}
+
+						for(uint32 ci = 0; ci < colorLastIsReadOnly.size(); ++ci)
+						{
+							Texture *t = fb->GetColorTexture(ci);
+							if(!t) continue;
+							VulkanTexture *vt = t->Downcast<VulkanTexture>();
+							vt->SetCurrentLayout(colorLastIsReadOnly[ci]? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+						}
+
+						// Depth-stencil
+						Texture *dt = fb->GetDepthStencilTexture();
+						if(dt)
+						{
+							bool depthLastIsReadOnly = false;
+							if(renderPass.subpasses.size() > 0)
+							{
+								for(int si = static_cast<int>(renderPass.subpasses.size()) - 1; si >= 0; --si)
+								{
+									RenderPass *rp = renderPass.subpasses[si].renderPass;
+									bool writes = rp->GetSubpassWritesDepthStencil();
+									bool reads = rp->GetSubpassReadDepthStencilAttachment();
+									if(writes || reads)
+									{
+										depthLastIsReadOnly = (reads && !writes);
+										break;
+									}
+								}
+							}
+
+							VulkanTexture *dvt = dt->Downcast<VulkanTexture>();
+							dvt->SetCurrentLayout(depthLastIsReadOnly? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+						}
+					}
+				}
 
 				//Set shadow depth texture layout for writing
 				if(renderPass.directionalShadowDepthTexture)
@@ -2407,6 +2569,11 @@ namespace RN
 								else
 								{
 									VulkanFramebuffer *framebuffer = static_cast<VulkanFramebuffer*>(textureObject);
+									// Prevent binding the current framebuffer as a sampled texture
+									if(rootFramebuffer && framebuffer == rootFramebuffer)
+									{
+										return; // skip this texture argument
+									}
 									size_t textureIndex = 0;
 									if(framebuffer->GetSwapChain()) textureIndex = framebuffer->GetSwapChain()->GetFrameIndex();
 									materialTexture = framebuffer->GetColorTexture(textureIndex)->Downcast<VulkanTexture>();

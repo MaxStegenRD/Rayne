@@ -738,7 +738,7 @@ namespace RN
 		imageMemoryBarrier.subresourceRange.aspectMask = aspectMask;
 		imageMemoryBarrier.subresourceRange.baseMipLevel = baseMipmap;
 		imageMemoryBarrier.subresourceRange.levelCount = mipmapCount;
-        imageMemoryBarrier.subresourceRange.baseArrayLayer = baseLayer;
+		imageMemoryBarrier.subresourceRange.baseArrayLayer = baseLayer;
 		imageMemoryBarrier.subresourceRange.layerCount = layerCount;
 
 		imageMemoryBarrier.srcAccessMask = 0;
@@ -750,7 +750,8 @@ namespace RN
 		if(intent == BarrierIntent::ShaderSource)
 		{
 			srcStageFlags = VK_PIPELINE_STAGE_TRANSFER_BIT;
-			destStageFlags = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+			// Textures may be read in multiple shader stages; include both common graphics stages
+			destStageFlags = static_cast<VkPipelineStageFlags>(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 		}
 
 		if(intent == BarrierIntent::CopySource)
@@ -796,6 +797,25 @@ namespace RN
 		{
 			srcStageFlags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 			destStageFlags = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		}
+
+		// Ensure src stage covers src access implied by old layout
+		if(fromLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+		{
+			srcStageFlags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		}
+		else if(fromLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+		{
+			srcStageFlags = static_cast<VkPipelineStageFlags>(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
+		}
+		else if(fromLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+		{
+			// Cover common shader stages that read
+			srcStageFlags = static_cast<VkPipelineStageFlags>(srcStageFlags | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT);
+		}
+		else if(fromLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL || fromLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+		{
+			srcStageFlags = VK_PIPELINE_STAGE_TRANSFER_BIT;
 		}
 
 		// Source layouts (old)
