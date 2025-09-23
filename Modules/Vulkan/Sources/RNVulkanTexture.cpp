@@ -870,10 +870,9 @@ namespace RN
 			imageMemoryBarrier.dstAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
 		// New layout is shader read (sampler, input attachment)
-		// Make sure any writes to the image have been finished
+		// Ensure subsequent shader reads are synchronized
 		if(toLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
 		{
-			imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; //Used to be |=
 			imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 		}
 
