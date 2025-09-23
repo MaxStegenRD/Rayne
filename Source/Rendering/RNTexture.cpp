@@ -222,7 +222,9 @@ namespace RN
 			ColorChannel(Format::RGBA_8, true, true, true, true)
 			ColorChannel(Format::BGRA_8, true, true, true, true)
 			ColorChannel(Format::RGB_10_A_2, true, true, true, true)
+			
 			ColorChannel(Format::BGR_10_A_2, true, true, true, true)
+			ColorChannel(Format::B_10_GR_11_UF, true, true, true, false)
 
 			ColorChannel(Format::R_8, true, false, false, false)
 			ColorChannel(Format::RG_8, true, true, false, false)

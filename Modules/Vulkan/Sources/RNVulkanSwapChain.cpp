@@ -31,6 +31,8 @@ namespace RN
 			return VK_FORMAT_A2R10G10B10_UNORM_PACK32;
 		case Texture::Format::BGR_10_A_2:
 			return VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+		case Texture::Format::B_10_GR_11_UF:
+			return VK_FORMAT_B10G11R11_UFLOAT_PACK32;
 		default:
 			return VK_FORMAT_UNDEFINED;
 		}
@@ -52,6 +54,8 @@ namespace RN
 			return Texture::Format::RGB_10_A_2;
 		case VK_FORMAT_A2B10G10R10_UNORM_PACK32:
 			return Texture::Format::BGR_10_A_2;
+		case VK_FORMAT_B10G11R11_UFLOAT_PACK32:
+			return Texture::Format::B_10_GR_11_UF;
 		default:
 			return Texture::Format::Invalid;
 		}
@@ -164,6 +168,10 @@ VulkanSwapChain::VulkanSwapChain(const Vector2& size, VulkanRenderer* renderer, 
 				fallbackFormat = format;
 			}
 			else if ((format.format == VK_FORMAT_A2R10G10B10_UNORM_PACK32 || format.format == VK_FORMAT_A2B10G10R10_UNORM_PACK32) && (_descriptor.colorFormat == Texture::Format::RGB_10_A_2 || _descriptor.colorFormat == Texture::Format::BGR_10_A_2))
+			{
+				fallbackFormat = format;
+			}
+			else if ((format.format == VK_FORMAT_B10G11R11_UFLOAT_PACK32) && (_descriptor.colorFormat == Texture::Format::B_10_GR_11_UF))
 			{
 				fallbackFormat = format;
 			}

@@ -51,6 +51,8 @@ namespace RN
 				return VK_FORMAT_A2R10G10B10_UNORM_PACK32;
 			case Texture::Format::BGR_10_A_2:
 				return VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+			case Texture::Format::B_10_GR_11_UF:
+				return VK_FORMAT_B10G11R11_UFLOAT_PACK32;
 			case Texture::Format::R_8:
 				return VK_FORMAT_R8_UNORM;
 			case Texture::Format::RG_8:

@@ -33,6 +33,8 @@ namespace RN
 			BGRA_8,
 			RGB_10_A_2,
 			BGR_10_A_2,
+			
+			B_10_GR_11_UF,
 
 			R_8,
 			RG_8,
