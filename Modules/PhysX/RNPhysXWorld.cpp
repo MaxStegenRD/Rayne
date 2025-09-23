@@ -31,8 +31,9 @@ namespace RN
 		if(pvdServerIP)
 		{
 			_pvd = physx::PxCreatePvd(*_foundation);
-			physx::PxPvdTransport *transport = physx::PxDefaultPvdSocketTransportCreate(pvdServerIP->GetUTF8String(), 5425, 100); //First parameter is ip of system running the physx visual debugger
-			_pvd->connect(*transport, physx::PxPvdInstrumentationFlag::eALL);
+			physx::PxPvdTransport *transport = physx::PxDefaultPvdSocketTransportCreate(pvdServerIP->GetUTF8String(), 5425, 1000); //First parameter is ip of system running the physx visual debugger
+			const bool connected = _pvd->connect(*transport, physx::PxPvdInstrumentationFlag::eALL);
+			RNDebug("PVD connected: " << connected);
 		}
 
 		bool recordMemoryAllocations = true;
@@ -194,6 +195,8 @@ namespace RN
 		hit.distance = -1.0f;
 		hit.node = nullptr;
 		hit.collisionObject = nullptr;
+		hit.shapeSelf = nullptr;
+		hit.shapeOther = nullptr;
 
 		Vector3 diff = to - from;
 		float distance = diff.GetLength();
@@ -224,6 +227,11 @@ namespace RN
 					hit.node = hit.collisionObject->GetParent();
 					if(hit.node) hit.node->Retain()->Autorelease();
 				}
+			}
+
+			if(callback.block.shape)
+			{
+				hit.shapeOther = static_cast<PhysXShape *>(callback.block.shape->userData);
 			}
 		}
 
@@ -273,7 +281,10 @@ namespace RN
 						if(hit.node) hit.node->Retain()->Autorelease();
 					}
 				}
-				
+
+				hit.shapeSelf = nullptr;
+				hit.shapeOther = callback.touches[i].shape ? static_cast<PhysXShape *>(callback.touches[i].shape->userData) : nullptr;
+
 				results.push_back(hit);
 			}
 		}
@@ -287,6 +298,8 @@ namespace RN
 		hit.distance = -1.0f;
 		hit.node = nullptr;
 		hit.collisionObject = nullptr;
+		hit.shapeSelf = shape;
+		hit.shapeOther = nullptr;
 
 		Vector3 diff = to - from;
 		float distance = diff.GetLength();
@@ -321,6 +334,11 @@ namespace RN
 						hit.node = hit.collisionObject->GetParent();
 						if(hit.node) hit.node->Retain()->Autorelease();
 					}
+				}
+
+				if(callback.block.shape)
+				{
+					hit.shapeOther = static_cast<PhysXShape *>(callback.block.shape->userData);
 				}
 			}
 		}
@@ -369,6 +387,9 @@ namespace RN
 						}
 					}
 
+					hit.shapeSelf = shape;
+					hit.shapeOther = callback.touches[i].shape ? static_cast<PhysXShape *>(callback.touches[i].shape->userData) : nullptr;
+
 					results.push_back(hit);
 				}
 			}
@@ -399,6 +420,9 @@ namespace RN
 								if(hit.node) hit.node->Retain()->Autorelease();
 							}
 						}
+
+						hit.shapeSelf = tempShape;
+						hit.shapeOther = callback.touches[i].shape ? static_cast<PhysXShape *>(callback.touches[i].shape->userData) : nullptr;
 
 						results.push_back(hit);
 					}

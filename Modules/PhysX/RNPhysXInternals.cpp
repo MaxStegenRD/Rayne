@@ -86,6 +86,8 @@ namespace RN
 		{
 			const physx::PxContactPair &contactPair = pairs[i];
 
+			contactPair.flags;
+
 			if(contactPair.events & physx::PxPairFlag::eNOTIFY_TOUCH_FOUND || contactPair.events & physx::PxPairFlag::eNOTIFY_TOUCH_PERSISTS)
 			{
 				PhysXCollisionObject::ContactState contactState = PhysXCollisionObject::ContactState::Begin;
@@ -94,35 +96,46 @@ namespace RN
 					contactState = PhysXCollisionObject::ContactState::Continue;
 				}
 
-				PhysXCollisionObject *objectA = static_cast<PhysXCollisionObject *>(pairHeader.actors[0]->userData);
-				PhysXCollisionObject *objectB = static_cast<PhysXCollisionObject *>(pairHeader.actors[1]->userData);
+				PhysXCollisionObject *objectA = !pairHeader.flags.isSet(physx::PxContactPairHeaderFlag::eREMOVED_ACTOR_0) && pairHeader.actors[0] ? static_cast<PhysXCollisionObject *>(pairHeader.actors[0]->userData) : nullptr;
+				PhysXCollisionObject *objectB = !pairHeader.flags.isSet(physx::PxContactPairHeaderFlag::eREMOVED_ACTOR_1) && pairHeader.actors[1] ? static_cast<PhysXCollisionObject *>(pairHeader.actors[1]->userData) : nullptr;
+
+				PhysXShape *shapeA = !contactPair.flags.isSet(physx::PxContactPairFlag::eREMOVED_SHAPE_0) && contactPair.shapes[0] ? static_cast<PhysXShape *>(contactPair.shapes[0]->userData) : nullptr;
+				PhysXShape *shapeB = !contactPair.flags.isSet(physx::PxContactPairFlag::eREMOVED_SHAPE_1) && contactPair.shapes[1] ? static_cast<PhysXShape *>(contactPair.shapes[1]->userData) : nullptr;
 
 				physx::PxContactPairPoint contactPoint;
 				int nbPoints = contactPair.extractContacts(&contactPoint, 1);
 
 				if(nbPoints > 0)
 				{
-					if(objectA->_contactCallback)
+					if(objectA && objectA->_contactCallback)
 					{
 						PhysXContactInfo contactInfo;
 						contactInfo.distance = contactPoint.separation;
-						contactInfo.node = SafeRetain(objectB->GetParent());
+						contactInfo.node = objectB ? SafeRetain(objectB->GetParent()) : nullptr;
 						contactInfo.collisionObject = objectB;
 
 						contactInfo.normal = RN::Vector3(contactPoint.normal.x, contactPoint.normal.y, contactPoint.normal.z);
 						contactInfo.position = RN::Vector3(contactPoint.position.x, contactPoint.position.y, contactPoint.position.z);
+
+						contactInfo.shapeSelf = shapeA;
+						contactInfo.shapeOther = shapeB;
+
 						objectA->_contactCallback(objectB, contactInfo, contactState);
 						SafeRelease(contactInfo.node);
 					}
 
-					if(objectB->_contactCallback)
+					if(objectB && objectB->_contactCallback)
 					{
 						PhysXContactInfo contactInfo;
 						contactInfo.distance = contactPoint.separation;
-						contactInfo.node = SafeRetain(objectA->GetParent());
+						contactInfo.node = objectA ? SafeRetain(objectA->GetParent()) : nullptr;
 						contactInfo.collisionObject = objectA;
 						contactInfo.normal = -RN::Vector3(contactPoint.normal.x, contactPoint.normal.y, contactPoint.normal.z);
 						contactInfo.position = RN::Vector3(contactPoint.position.x, contactPoint.position.y, contactPoint.position.z);
+
+						contactInfo.shapeSelf = shapeB;
+						contactInfo.shapeOther = shapeA;
+
 						objectB->_contactCallback(objectA, contactInfo, contactState);
 						SafeRelease(contactInfo.node);
 					}
@@ -143,6 +156,12 @@ namespace RN
 			contactInfo.collisionObject = objectB;
 			contactInfo.normal = RN::Vector3(hit.worldNormal.x, hit.worldNormal.y, hit.worldNormal.z);
 			contactInfo.position = RN::Vector3(hit.worldPos.x, hit.worldPos.y, hit.worldPos.z);
+
+			physx::PxShape *shape = nullptr;
+			hit.controller->getActor()->getShapes(&shape, 1);
+			contactInfo.shapeSelf = shape ? static_cast<PhysXShape *>(shape->userData) : nullptr;
+			contactInfo.shapeOther = hit.shape ? static_cast<PhysXShape *>(hit.shape->userData) : nullptr;
+
 			objectA->_contactCallback(objectB, contactInfo, PhysXCollisionObject::ContactState::Begin);
 			SafeRelease(contactInfo.node);
 		}

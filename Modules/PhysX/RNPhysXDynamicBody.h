@@ -66,6 +66,8 @@ namespace RN
 		PXAPI void ApplyImpulse(const Vector3 &impulse);
 		//		PXAPI void ApplyImpulse(const Vector3 &impulse, const Vector3 &origin);
 
+		PXAPI void ApplyForceAtGlobalPoint(const Vector3 &force, const Vector3 &point);
+
 		PXAPI float GetMass() const;
 
 		PXAPI Vector3 GetLinearVelocity() const;
@@ -76,11 +78,16 @@ namespace RN
 
 		PXAPI bool GetIsKinematic() const;
 
+		PXAPI void SetSimulationDisabled(bool disabled);
+		PXAPI bool GetIsSimulationDisabled() const;
+
 		PXAPI bool SweepTest(std::vector<PhysXContactInfo> &contactInfo, const Vector3 &direction, const Vector3 &offsetPosition = Vector3(), const Quaternion &offsetRotation = Quaternion(), float inflation = 0.0f) const;
 		PXAPI Quaternion RotationSweepTest(std::vector<PhysXContactInfo> &contactInfo, const Quaternion &targetRoation, float stepSize, float sweepSize, const Vector3 &offsetPosition = Vector3(), const Quaternion &offsetRotation = Quaternion()) const;
 
 		PXAPI physx::PxRigidDynamic *GetPhysXActor() const { return _actor; }
 		PXAPI PhysXShape *GetShape() const { return _shape; }
+
+		PXAPI void SetDetachTransform(bool detach);
 
 	protected:
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
@@ -89,6 +96,8 @@ namespace RN
 	private:
 		PhysXShape *_shape;
 		physx::PxRigidDynamic *_actor;
+
+		bool _detachTransform;
 
 		RNDeclareMetaAPI(PhysXDynamicBody, PXAPI)
 	};

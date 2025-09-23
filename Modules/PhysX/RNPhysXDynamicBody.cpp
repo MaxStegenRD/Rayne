@@ -17,7 +17,8 @@ namespace RN
 
 	PhysXDynamicBody::PhysXDynamicBody(PhysXShape *shape, float mass) :
 		_shape(shape->Retain()),
-		_actor(nullptr)
+		_actor(nullptr),
+		_detachTransform(false)
 	{
 		physx::PxPhysics *physics = PhysXWorld::GetSharedInstance()->GetPhysXInstance();
 		_actor = physics->createRigidDynamic(physx::PxTransform(physx::PxIdentity));
@@ -226,6 +227,11 @@ namespace RN
 		_rigidBody->applyImpulse(btVector3(impulse.x, impulse.y, impulse.z), btVector3(origin.x, origin.y, origin.z));
 	}*/
 
+	void PhysXDynamicBody::ApplyForceAtGlobalPoint(const Vector3 &force, const Vector3 &point)
+	{
+		physx::PxRigidBodyExt::addForceAtPos(*_actor, physx::PxVec3(force.x, force.y, force.z), physx::PxVec3(point.x, point.y, point.z), physx::PxForceMode::eFORCE);
+	}
+
 	void PhysXDynamicBody::SetEnableKinematic(bool enable)
 	{
 		_actor->setRigidBodyFlag(physx::PxRigidBodyFlag::eKINEMATIC, enable);
@@ -241,6 +247,16 @@ namespace RN
 		RN::Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
 		Quaternion targetRotation = rotation * _rotationOffset;
 		_actor->setKinematicTarget(physx::PxTransform(position.x - positionOffset.x, position.y - positionOffset.y, position.z - positionOffset.z, physx::PxQuat(targetRotation.x, targetRotation.y, targetRotation.z, targetRotation.w)));
+	}
+
+	void PhysXDynamicBody::SetSimulationDisabled(bool disabled)
+	{
+		_actor->setActorFlag(physx::PxActorFlag::eDISABLE_SIMULATION, disabled);
+	}
+
+	bool PhysXDynamicBody::GetIsSimulationDisabled() const
+	{
+		return _actor->getActorFlags() & physx::PxActorFlag::eDISABLE_SIMULATION;
 	}
 
 	void PhysXDynamicBody::AccelerateToTarget(const Vector3 &position, const Quaternion &rotation, float delta)
@@ -317,18 +333,22 @@ namespace RN
 
 				for(int i = 0; i < hit.getNbAnyHits(); i++)
 				{
+					const physx::PxSweepHit &currentHit = hit.getAnyHit(i);
+
 					PhysXContactInfo contact;
-					contact.distance = hit.getAnyHit(i).distance;
-					contact.normal = Vector3(hit.getAnyHit(i).normal.x, hit.getAnyHit(i).normal.y, hit.getAnyHit(i).normal.z);
-					contact.position = Vector3(hit.getAnyHit(i).position.x, hit.getAnyHit(i).position.y, hit.getAnyHit(i).position.z);
+					contact.distance = currentHit.distance;
+					contact.normal = Vector3(currentHit.normal.x, currentHit.normal.y, currentHit.normal.z);
+					contact.position = Vector3(currentHit.position.x, currentHit.position.y, currentHit.position.z);
 					contact.node = nullptr;
-					PhysXCollisionObject *attachment = static_cast<PhysXCollisionObject *>(hit.getAnyHit(i).actor->userData);
+					PhysXCollisionObject *attachment = static_cast<PhysXCollisionObject *>(currentHit.actor->userData);
 					contact.collisionObject = attachment;
 					if(attachment)
 					{
 						contact.node = attachment->GetParent();
 						if(contact.node) contact.node->Retain()->Autorelease();
 					}
+					contact.shapeSelf = tempShape;
+					contact.shapeOther = currentHit.shape ? static_cast<RN::PhysXShape *>(currentHit.shape->userData) : nullptr;
 					contactInfo.push_back(contact);
 				}
 			}
@@ -347,18 +367,22 @@ namespace RN
 
 			for(int i = 0; i < hit.getNbAnyHits(); i++)
 			{
+				const physx::PxSweepHit &currentHit = hit.getAnyHit(i);
+
 				PhysXContactInfo contact;
-				contact.distance = hit.getAnyHit(i).distance;
-				contact.normal = Vector3(hit.getAnyHit(i).normal.x, hit.getAnyHit(i).normal.y, hit.getAnyHit(i).normal.z);
-				contact.position = Vector3(hit.getAnyHit(i).position.x, hit.getAnyHit(i).position.y, hit.getAnyHit(i).position.z);
+				contact.distance = currentHit.distance;
+				contact.normal = Vector3(currentHit.normal.x, currentHit.normal.y, currentHit.normal.z);
+				contact.position = Vector3(currentHit.position.x, currentHit.position.y, currentHit.position.z);
 				contact.node = nullptr;
-				PhysXCollisionObject *attachment = static_cast<PhysXCollisionObject *>(hit.getAnyHit(i).actor->userData);
+				PhysXCollisionObject *attachment = static_cast<PhysXCollisionObject *>(currentHit.actor->userData);
 				contact.collisionObject = attachment;
 				if(attachment)
 				{
 					contact.node = attachment->GetParent();
 					if(contact.node) contact.node->Retain()->Autorelease();
 				}
+				contact.shapeSelf = _shape;
+				contact.shapeOther = currentHit.shape ? static_cast<RN::PhysXShape *>(currentHit.shape->userData) : nullptr;
 				contactInfo.push_back(contact);
 			}
 		}
@@ -411,12 +435,12 @@ namespace RN
 	{
 		PhysXCollisionObject::DidUpdate(changeSet);
 
-		if(changeSet & SceneNode::ChangeSet::Position)
+		if(changeSet & SceneNode::ChangeSet::Position && !_detachTransform)
 		{
 			RN::Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
 			Vector3 position = GetWorldPosition() - positionOffset;
 			Quaternion rotation = GetWorldRotation() * _rotationOffset;
-			_actor->setGlobalPose(physx::PxTransform(physx::PxVec3(position.x, position.y, position.z), physx::PxQuat(rotation.x, rotation.y, rotation.z, rotation.w)));
+			_actor->setGlobalPose(physx::PxTransform(physx::PxVec3(position.x, position.y, position.z), physx::PxQuat(rotation.x, rotation.y, rotation.z, rotation.w)), false);
 		}
 
 		if(changeSet & SceneNode::ChangeSet::Attachments)
@@ -426,7 +450,7 @@ namespace RN
 				RN::Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
 				Vector3 position = GetWorldPosition() - positionOffset;
 				Quaternion rotation = GetWorldRotation() * _rotationOffset;
-				_actor->setGlobalPose(physx::PxTransform(physx::PxVec3(position.x, position.y, position.z), physx::PxQuat(rotation.x, rotation.y, rotation.z, rotation.w)));
+				_actor->setGlobalPose(physx::PxTransform(physx::PxVec3(position.x, position.y, position.z), physx::PxQuat(rotation.x, rotation.y, rotation.z, rotation.w)), false);
 			}
 
 			_owner = GetParent();
@@ -444,7 +468,7 @@ namespace RN
 
 	void PhysXDynamicBody::UpdatePosition()
 	{
-		if(!_owner)
+		if(!_owner || _detachTransform)
 		{
 			return;
 		}
@@ -454,5 +478,10 @@ namespace RN
 		RN::Vector3 positionOffset = rotation.GetRotatedVector(_positionOffset);
 		SetWorldPosition(Vector3(transform.p.x, transform.p.y, transform.p.z) + positionOffset);
 		SetWorldRotation(rotation);
+	}
+
+	void PhysXDynamicBody::SetDetachTransform(bool detach)
+	{
+		_detachTransform = detach;
 	}
 } // namespace RN

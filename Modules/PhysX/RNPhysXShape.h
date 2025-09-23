@@ -32,12 +32,29 @@ namespace RN
 		PXAPI physx::PxShape *GetPhysXShape() const { return _shape; }
 		PXAPI void SetPose(RN::Vector3 positionOffset, RN::Quaternion rotationOffset);
 
+		PXAPI virtual void SetIsSimulationShape(bool enabled);
+		PXAPI virtual bool GetIsSimulationShape() const;
+
+		PXAPI virtual void SetIsSceneQueryShape(bool enabled);
+		PXAPI virtual bool GetIsSceneQueryShape() const;
+
+		PXAPI virtual void SetCollisionFilter(uint32 group, uint32 mask);
+		PXAPI uint32 GetCollisionFilterGroup() const;
+		PXAPI uint32 GetCollisionFilterMask() const;
+
+		PXAPI virtual void SetLinkedObject(Object *obj);
+		PXAPI Object *GetLinkedObject() const;
+
 	protected:
 		PhysXShape();
 		~PhysXShape() override;
 
 		physx::PxShape *_shape;
 		PhysXMaterial *_material;
+		WeakRef<Object> _linkedObject;
+
+		uint32 _collisionFilterGroup;
+		uint32 _collisionFilterMask;
 
 		RNDeclareMetaAPI(PhysXShape, PXAPI)
 	};
@@ -114,6 +131,16 @@ namespace RN
 		PXAPI PhysXCompoundShape(Model *model, PhysXMaterial *material, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided = false);
 		PXAPI PhysXCompoundShape(const Array *meshes, PhysXMaterial *material, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided = false);
 		PXAPI ~PhysXCompoundShape();
+
+		PXAPI void SetIsSimulationShape(bool enabled) override;
+		PXAPI bool GetIsSimulationShape() const override;
+
+		PXAPI void SetIsSceneQueryShape(bool enabled) override;
+		PXAPI bool GetIsSceneQueryShape() const override;
+
+		PXAPI void SetCollisionFilter(uint32 group, uint32 mask) override;
+
+		PXAPI void SetLinkedObject(Object *obj) override;
 
 		PXAPI void AddChild(Mesh *mesh, PhysXMaterial *material, const RN::Vector3 &position, const RN::Quaternion &rotation, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided = false);
 		PXAPI void AddChild(PhysXShape *shape, const RN::Vector3 &position, const RN::Quaternion &rotation);

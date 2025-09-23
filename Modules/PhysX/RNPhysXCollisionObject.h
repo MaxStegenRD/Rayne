@@ -15,6 +15,7 @@ namespace RN
 {
 	class PhysXWorld;
 	class PhysXCollisionObject;
+	class PhysXShape;
 
 	struct PhysXContactInfo
 	{
@@ -23,6 +24,9 @@ namespace RN
 		Vector3 position;
 		Vector3 normal;
 		float distance;
+
+		PhysXShape *shapeSelf;
+		PhysXShape *shapeOther;
 	};
 
 	class PhysXCollisionObject : public SceneNodeAttachment
