@@ -262,6 +262,16 @@ namespace RN
 		//TODO: Update renderpass once all changes have been made
 	}
 
+	uint32 VulkanFramebuffer::GetColorTargetCount() const
+	{
+		if(_swapChain)
+		{
+			return 1;
+		}
+
+		return _colorTargets.size();
+	}
+
 	Texture *VulkanFramebuffer::GetColorTexture(uint32 index) const
 	{
 		if(index >= _colorTargets.size())

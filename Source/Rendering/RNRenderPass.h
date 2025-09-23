@@ -74,6 +74,10 @@ namespace RN
 		bool GetSubpassFirstDepthStencilWrite() const { return _subpassFirstDepthStencilWrite; }
 		bool GetSubpassLastDepthStencilWrite() const { return _subpassLastDepthStencilWrite; }
 		bool GetSubpassNeedToStoreDepthStencil() const { return _subpassNeedToStoreDepthStencil; }
+		bool GetSubpassFirstUseIsRead(uint32 index) const { return (index < _subpassFirstUseIsRead.size())? _subpassFirstUseIsRead[index] : false; }
+		bool GetSubpassLastUseIsRead(uint32 index) const { return (index < _subpassLastUseIsRead.size())? _subpassLastUseIsRead[index] : false; }
+		bool GetSubpassFirstDepthStencilUseIsRead() const { return _depthFirstUseIsRead; }
+		bool GetSubpassLastDepthStencilUseIsRead() const { return _depthLastUseIsRead; }
 
 		RNAPI void AddRenderPass(RenderPass *renderPass);
 		RNAPI void RemoveRenderPass(RenderPass *renderPass);
@@ -82,8 +86,6 @@ namespace RN
 		RNAPI void UpdateSubpassChain();
 
 	private:
-		RNAPI void UpdateSubpassChain(std::vector<uint32> &loadedColorTargets, bool &loadedDepthStencil,
-			std::unordered_map<uint32, RenderPass*> &lastColorWriter, std::unordered_map<uint32, RenderPass*> &lastColorReader, RenderPass *lastDepthStencilWriter, RenderPass *lastDepthStencilReader, size_t subpassIndex);
 	
 		Flags _flags;
 		Rect _frame;
@@ -108,6 +110,10 @@ namespace RN
 		bool _subpassFirstDepthStencilWrite;
 		bool _subpassLastDepthStencilWrite;
 		bool _subpassNeedToStoreDepthStencil;
+		std::vector<bool> _subpassFirstUseIsRead;
+		std::vector<bool> _subpassLastUseIsRead;
+		bool _depthFirstUseIsRead;
+		bool _depthLastUseIsRead;
 		size_t _subpassIndex;
 
 		Array *_nextRenderPasses;

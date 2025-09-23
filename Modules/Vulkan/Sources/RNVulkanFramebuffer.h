@@ -54,6 +54,7 @@ namespace RN
 		VKAPI void SetColorTarget(const TargetView &target, uint32 index = 0) final;
 		VKAPI void SetDepthStencilTarget(const TargetView &target) final;
 
+		VKAPI uint32 GetColorTargetCount() const final;
 		VKAPI Texture *GetColorTexture(uint32 index = 0) const final;
 		VKAPI Texture *GetDepthStencilTexture() const final;
 		VKAPI uint8 GetSampleCount() const final;

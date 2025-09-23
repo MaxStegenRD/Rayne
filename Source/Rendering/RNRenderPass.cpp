@@ -13,8 +13,8 @@ namespace RN
 {
 	RNDefineMeta(RenderPass, Object)
 
-	RenderPass::RenderPass(bool isSubpass) :
-		_flags(Flags::Defaults), _framebuffer(nullptr), _clearDepth(0.0f), _clearStencil(0), _nextRenderPasses(new Array()), _isSubpass(isSubpass), _isRoot(false), _renderGroupMask(0xffff), _subpassWritesDepthStencil(false), _subpassReadDepthStencilAttachment(false), _shaderHint(Shader::UsageHint::Default), _overrideMaterial(nullptr), _subpassNeedToStoreDepthStencil(false), _subpassLastDepthStencilWrite(false), _subpassFirstDepthStencilWrite(false), _subpassIndex(0)
+    RenderPass::RenderPass(bool isSubpass) :
+        _flags(Flags::Defaults), _framebuffer(nullptr), _clearDepth(0.0f), _clearStencil(0), _nextRenderPasses(new Array()), _isSubpass(isSubpass), _isRoot(false), _renderGroupMask(0xffff), _subpassWritesDepthStencil(false), _subpassReadDepthStencilAttachment(false), _shaderHint(Shader::UsageHint::Default), _overrideMaterial(nullptr), _subpassNeedToStoreDepthStencil(false), _subpassLastDepthStencilWrite(false), _subpassFirstDepthStencilWrite(false), _depthFirstUseIsRead(false), _depthLastUseIsRead(false), _subpassIndex(0)
 	{
 	}
 
@@ -143,86 +143,7 @@ namespace RN
 		_subpassReadColorAttachments = colorAttachments;
 	}
 	
-	void RenderPass::UpdateSubpassChain(std::vector<uint32> &loadedColorTargets, bool &loadedDepthStencil,
-		std::unordered_map<uint32, RenderPass*> &lastColorWriter, std::unordered_map<uint32, RenderPass*> &lastColorReader, RenderPass *lastDepthStencilWriter, RenderPass *lastDepthStencilReader, size_t subpassIndex)
-	{
-		GetNextRenderPasses()->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
-			if(nextPass->GetIsSubpass())
-			{
-				nextPass->_flags = _flags;
-				nextPass->_clearDepth = _clearDepth;
-				nextPass->_clearStencil = _clearStencil;
-				nextPass->_clearColor = _clearColor;
-				nextPass->_subpassFirstDepthStencilWrite = false;
-				nextPass->_subpassNeedToStoreDepthStencil = false;
-				nextPass->_subpassNeedToStoreColorAttachment.clear();
-				nextPass->_subpassFirstColorWriteAttachment.clear();
-				nextPass->_subpassLastDepthStencilWrite = false;
-				nextPass->_subpassLastColorWriteAttachment.clear();
-				nextPass->_subpassIndex = subpassIndex;
-
-				for(uint32 attachment : nextPass->GetSubpassWritesColorAttachments())
-				{
-					if(std::find(loadedColorTargets.begin(), loadedColorTargets.end(), attachment) == loadedColorTargets.end())
-					{
-						nextPass->_subpassFirstColorWriteAttachment.push_back(attachment);
-						loadedColorTargets.push_back(attachment);
-					}
-
-					lastColorWriter[attachment] = nextPass;
-				}
-
-				for(uint32 attachment : nextPass->GetSubpassReadColorAttachments())
-				{
-					lastColorReader[attachment] = nextPass;
-				}
-
-				if(!loadedDepthStencil)
-				{
-					if(nextPass->_subpassWritesDepthStencil)
-					{
-						nextPass->_subpassFirstDepthStencilWrite = true;
-						loadedDepthStencil = true;
-					}
-				}
-
-				if(nextPass->_subpassWritesDepthStencil)
-				{
-					lastDepthStencilWriter = nextPass;
-				}
-
-				if(nextPass->_subpassReadDepthStencilAttachment)
-				{
-					lastDepthStencilReader = nextPass;
-				}
-
-				nextPass->UpdateSubpassChain(loadedColorTargets, loadedDepthStencil, lastColorWriter, lastColorReader, lastDepthStencilWriter, lastDepthStencilReader, subpassIndex + 1);
-			}
-		});
-
-		for(auto &[attachment, writer] : lastColorWriter)
-		{
-			if(writer == this)
-			{
-				_subpassLastColorWriteAttachment.push_back(attachment);
-
-				if(lastColorReader.contains(attachment) && lastColorReader.at(attachment)->_subpassIndex > subpassIndex)
-				{
-					_subpassNeedToStoreColorAttachment.push_back(attachment);
-				}
-			}
-		}
-
-		if(lastDepthStencilWriter == this)
-		{
-			_subpassLastDepthStencilWrite = true;
-
-			if(lastDepthStencilReader && lastDepthStencilReader->_subpassIndex > subpassIndex)
-			{
-				_subpassNeedToStoreDepthStencil = true;
-			}
-		}
-	}
+    
 
 	void RenderPass::AddRenderPass(RenderPass *renderPass)
 	{
@@ -261,12 +182,151 @@ namespace RN
 	{
 		if(!_isRoot) return; // only meaningful for roots
 	
-		std::vector<uint32> loadedColorTargets;
-		bool loadedDepthStencil = false;
-		std::unordered_map<uint32, RenderPass*> lastColorWriter;
-		std::unordered_map<uint32, RenderPass*> lastColorReader;
-		RenderPass *lastDepthStencilWriter = nullptr;
-		RenderPass *lastDepthStencilReader = nullptr;
-		UpdateSubpassChain(loadedColorTargets, loadedDepthStencil, lastColorWriter, lastColorReader, lastDepthStencilWriter, lastDepthStencilReader, 0);
+        // Collect complete subpass chain (in order)
+        std::vector<RenderPass*> subpasses;
+        std::function<void(RenderPass*)> collect = [&](RenderPass *node){
+            node->GetNextRenderPasses()->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
+                if(nextPass->GetIsSubpass())
+                {
+                    subpasses.push_back(nextPass);
+                    collect(nextPass);
+                }
+            });
+        };
+        collect(this);
+
+        // Prepare root-level aggregation containers sized to framebuffer
+        Framebuffer *fb = GetFramebuffer();
+        uint32 numColorAttachments = fb ? fb->GetColorTargetCount() : 0;
+
+        _subpassFirstUseIsRead.assign(numColorAttachments, false);
+        _subpassLastUseIsRead.assign(numColorAttachments, false);
+
+        // Compute first/last for color
+        for(uint32 ci = 0; ci < numColorAttachments; ++ci)
+        {
+            for(size_t si = 0; si < subpasses.size(); ++si)
+            {
+                RenderPass *rp = subpasses[si];
+                bool writes = rp->GetSubpassWritesColorAttachment(ci);
+                bool reads = rp->GetSubpassReadColorAttachment(ci);
+                if(writes || reads)
+                {
+                    _subpassFirstUseIsRead[ci] = (reads && !writes);
+                    break;
+                }
+            }
+
+            for(int si = static_cast<int>(subpasses.size()) - 1; si >= 0; --si)
+            {
+                RenderPass *rp = subpasses[si];
+                bool writes = rp->GetSubpassWritesColorAttachment(ci);
+                bool reads = rp->GetSubpassReadColorAttachment(ci);
+                if(writes || reads)
+                {
+                    _subpassLastUseIsRead[ci] = (reads && !writes);
+                    break;
+                }
+            }
+        }
+
+        // Compute first/last for depth-stencil
+        _depthFirstUseIsRead = false;
+        _depthLastUseIsRead = false;
+        if(fb && fb->GetDepthStencilTexture())
+        {
+            for(size_t si = 0; si < subpasses.size(); ++si)
+            {
+                RenderPass *rp = subpasses[si];
+                bool writes = rp->GetSubpassWritesDepthStencil();
+                bool reads = rp->GetSubpassReadDepthStencilAttachment();
+                if(writes || reads)
+                {
+                    _depthFirstUseIsRead = (reads && !writes);
+                    break;
+                }
+            }
+
+            for(int si = static_cast<int>(subpasses.size()) - 1; si >= 0; --si)
+            {
+                RenderPass *rp = subpasses[si];
+                bool writes = rp->GetSubpassWritesDepthStencil();
+                bool reads = rp->GetSubpassReadDepthStencilAttachment();
+                if(writes || reads)
+                {
+                    _depthLastUseIsRead = (reads && !writes);
+                    break;
+                }
+            }
+        }
+
+        // Now compute per-subpass write/store info
+        std::vector<uint32> loadedColorTargets;
+        bool loadedDepthStencil = false;
+        std::unordered_map<uint32, RenderPass*> lastColorWriter;
+        std::unordered_map<uint32, RenderPass*> lastColorReader;
+        RenderPass *lastDepthStencilWriter = nullptr;
+        RenderPass *lastDepthStencilReader = nullptr;
+
+        size_t index = 0;
+        for(RenderPass *rp : subpasses)
+        {
+            rp->_flags = _flags;
+            rp->_clearDepth = _clearDepth;
+            rp->_clearStencil = _clearStencil;
+            rp->_clearColor = _clearColor;
+            rp->_subpassFirstDepthStencilWrite = false;
+            rp->_subpassNeedToStoreDepthStencil = false;
+            rp->_subpassNeedToStoreColorAttachment.clear();
+            rp->_subpassFirstColorWriteAttachment.clear();
+            rp->_subpassLastDepthStencilWrite = false;
+            rp->_subpassLastColorWriteAttachment.clear();
+            rp->_subpassIndex = index++;
+
+            for(uint32 attachment : rp->GetSubpassWritesColorAttachments())
+            {
+                if(std::find(loadedColorTargets.begin(), loadedColorTargets.end(), attachment) == loadedColorTargets.end())
+                {
+                    rp->_subpassFirstColorWriteAttachment.push_back(attachment);
+                    loadedColorTargets.push_back(attachment);
+                }
+                lastColorWriter[attachment] = rp;
+            }
+
+            for(uint32 attachment : rp->GetSubpassReadColorAttachments())
+            {
+                lastColorReader[attachment] = rp;
+            }
+
+            if(!loadedDepthStencil && rp->_subpassWritesDepthStencil)
+            {
+                rp->_subpassFirstDepthStencilWrite = true;
+                loadedDepthStencil = true;
+            }
+
+            if(rp->_subpassWritesDepthStencil) lastDepthStencilWriter = rp;
+            if(rp->_subpassReadDepthStencilAttachment) lastDepthStencilReader = rp;
+        }
+
+        for(auto &[attachment, writer] : lastColorWriter)
+        {
+            if(writer)
+            {
+                writer->_subpassLastColorWriteAttachment.push_back(attachment);
+                if(lastColorReader.contains(attachment) && lastColorReader.at(attachment)->_subpassIndex > writer->_subpassIndex)
+                {
+                    writer->_subpassNeedToStoreColorAttachment.push_back(attachment);
+                }
+            }
+        }
+
+        if(lastDepthStencilWriter)
+        {
+            lastDepthStencilWriter->_subpassLastDepthStencilWrite = true;
+            if(lastDepthStencilReader && lastDepthStencilReader->_subpassIndex > lastDepthStencilWriter->_subpassIndex)
+            {
+                lastDepthStencilWriter->_subpassNeedToStoreDepthStencil = true;
+            }
+        }
 	}
 } // namespace RN

@@ -40,6 +40,7 @@ namespace RN
 		const Vector2 &GetSize() const { return _size; }
 		RNAPI virtual void SetSize(Vector2 size) { _size = size; }
 
+		RNAPI virtual uint32 GetColorTargetCount() const = 0;
 		RNAPI virtual Texture *GetColorTexture(uint32 index = 0) const = 0;
 		RNAPI virtual Texture *GetDepthStencilTexture() const = 0;
 		RNAPI virtual uint8 GetSampleCount() const = 0;

@@ -218,6 +218,16 @@ namespace RN
 		_depthStencilTarget = newTarget;
 	}
 
+	uint32 MetalFramebuffer::GetColorTargetCount() const
+	{
+		if(_swapChain)
+		{
+			return 1;
+		}
+
+		return _colorTargets.size();
+	}
+
 	Texture *MetalFramebuffer::GetColorTexture(uint32 index) const
 	{
 		if(index >= _colorTargets.size())
