@@ -906,15 +906,16 @@ namespace RN
 						_currentMultiviewLayer = i;
 						_currentMultiviewCount = increment;
 
+						RN::Function submission = RN::MakeFunction([&function](){ function(); });
 						if(increment == 1)
 						{
 							_currentMultiviewFallbackRenderPass = camera->GetRenderPass();
-							SubmitCamera(multiviewCameras->GetObjectAtIndex<Camera>(i), std::move(function));
+							SubmitCamera(multiviewCameras->GetObjectAtIndex<Camera>(i), std::move(submission));
 							_currentMultiviewFallbackRenderPass = nullptr;
 						}
 						else
 						{
-							SubmitCamera(camera, std::move(function));
+							SubmitCamera(camera, std::move(submission));
 						}
 
 						_currentMultiviewLayer = 0;
@@ -935,7 +936,8 @@ namespace RN
 					_currentMultiviewCount = 1;
 					_currentMultiviewFallbackRenderPass = camera->GetRenderPass();
 
-					SubmitCamera(multiviewCamera, std::move(function));
+					RN::Function submission = RN::MakeFunction([&function](){ function(); });
+					SubmitCamera(multiviewCamera, std::move(submission));
 
 					_currentMultiviewLayer = 0;
 					_currentMultiviewCount = 0;
@@ -1167,44 +1169,6 @@ namespace RN
 		nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
 			SubmitRenderPass(nextPass, _internals->renderPasses[_internals->currentRenderPassIndex]);
 		});
-	}
-
-	void VulkanRenderer::SubmitRenderPassDrawables(VulkanRenderPass &renderPass, Function &function)
-	{
-		ZoneScoped;
-
-		if(!renderPass.renderPass->GetIsSubpass()) _internals->currentSubpassIndex = 0;
-
-		PostProcessingStage *ppStage = renderPass.renderPass->Downcast<PostProcessingStage>();
-		if(ppStage || renderPass.type == VulkanRenderPass::Type::Convert)
-		{
-			//Submit fullscreen quad drawable
-			if(!_defaultPostProcessingDrawable)
-			{
-				Mesh *planeMesh = Mesh::WithTexturedPlane(Quaternion::WithEulerAngle(Vector3(0.0f, -90.0f, 0.0f)), Vector3(0.0f), Vector2(1.0f, 1.0f));
-				Material *planeMaterial = Material::WithShaders(GetDefaultShader(Shader::Type::Vertex, nullptr), GetDefaultShader(Shader::Type::Fragment, nullptr));
-
-				_lock.Lock();
-				_defaultPostProcessingDrawable = static_cast<VulkanDrawable*>(CreateDrawable());
-				_defaultPostProcessingDrawable->mesh = planeMesh->Retain();
-				_defaultPostProcessingDrawable->material = planeMaterial->Retain();
-				_lock.Unlock();
-			}
-
-			SubmitDrawable(_defaultPostProcessingDrawable);
-		}
-		else
-		{
-			// Create drawables
-			function();
-		}
-
-		size_t numberOfDrawables = renderPass.drawables.size();
-		_internals->totalDrawableCount += numberOfDrawables;
-		_internals->currentDrawableResourceIndex += 1;
-
-		if(renderPass.renderPass->GetIsSubpass()) _internals->currentSubpassIndex += 1;
-		else _internals->currentRenderPassIndex += 1;
 	}
 
 	bool VulkanRenderer::SupportsTextureFormat(const String *format) const
