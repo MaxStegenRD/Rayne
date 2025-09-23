@@ -314,6 +314,8 @@ namespace RN
 			Multiview,
 			Depth,
 			DepthMultiview,
+			ShadowDepth,
+			ShadowDepthMultiview,
 			Instancing,
 
 			COUNT

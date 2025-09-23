@@ -399,6 +399,10 @@ namespace RN
 		{
 			renderPass.shaderHint = Shader::UsageHint::Depth;
 		}
+		else if(cameraRenderPass->GetShaderHint() == Shader::UsageHint::ShadowDepthMultiview)
+		{
+			renderPass.shaderHint = Shader::UsageHint::ShadowDepth;
+		}
 		else
 		{
 			renderPass.shaderHint = cameraRenderPass->GetShaderHint();
@@ -527,6 +531,10 @@ namespace RN
 		else if(renderPass->GetShaderHint() == Shader::UsageHint::DepthMultiview)
 		{
 			metalRenderPass.shaderHint = Shader::UsageHint::Depth;
+		}
+		else if(renderPass->GetShaderHint() == Shader::UsageHint::ShadowDepthMultiview)
+		{
+			metalRenderPass.shaderHint = Shader::UsageHint::ShadowDepth;
 		}
 		else
 		{

@@ -280,7 +280,7 @@ namespace RN
 			_multiviewShadowParentCamera->SetFlags(Camera::Flags::Orthogonal | Camera::Flags::RenderEarly);
 			_multiviewShadowParentCamera->SceneNode::SetUpdatePriority(SceneNode::UpdatePriority::UpdateLate);
 			_multiviewShadowParentCamera->GetRenderPass()->SetOverrideMaterial(multiviewDepthMaterial);
-			_multiviewShadowParentCamera->GetRenderPass()->SetShaderHint(Shader::UsageHint::DepthMultiview);
+			_multiviewShadowParentCamera->GetRenderPass()->SetShaderHint(Shader::UsageHint::ShadowDepthMultiview);
 			_multiviewShadowParentCamera->SetLODCamera(_shadowTarget);
 			_multiviewShadowParentCamera->SetClipNear(_shadowParameter.clipNear);
 			_multiviewShadowParentCamera->SetClipFar(_shadowParameter.clipFar);

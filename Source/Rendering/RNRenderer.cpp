@@ -58,7 +58,7 @@ namespace RN
 	{
 		Shader::Options *realOptions = options ? options->Copy() : Shader::Options::WithNone()->Retain();
 
-		if(hint == Shader::UsageHint::Multiview || hint == Shader::UsageHint::DepthMultiview)
+		if(hint == Shader::UsageHint::Multiview || hint == Shader::UsageHint::DepthMultiview || hint == Shader::UsageHint::ShadowDepthMultiview)
 		{
 			realOptions->EnableMultiview();
 		}
@@ -67,7 +67,7 @@ namespace RN
 		Shader *shader = nullptr;
 		if(type == Shader::Type::Vertex)
 		{
-			if(hint == Shader::UsageHint::Depth)
+			if(hint == Shader::UsageHint::Depth || hint == Shader::UsageHint::ShadowDepth)
 			{
 				shader = shaderLibrary->GetShaderWithName(RNCSTR("depth_vertex"), realOptions);
 			}
@@ -93,7 +93,7 @@ namespace RN
 		}
 		else if(type == Shader::Type::Fragment)
 		{
-			if(hint == Shader::UsageHint::Depth)
+			if(hint == Shader::UsageHint::Depth || hint == Shader::UsageHint::ShadowDepth)
 			{
 				shader = shaderLibrary->GetShaderWithName(RNCSTR("depth_fragment"), realOptions);
 			}

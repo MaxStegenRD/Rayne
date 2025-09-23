@@ -530,6 +530,10 @@ namespace RN
 				material->SetFragmentShader(renderer->GetDefaultShader(Shader::Type::Fragment, shaderOptions, Shader::UsageHint::Multiview), Shader::UsageHint::Multiview);
 				material->SetVertexShader(renderer->GetDefaultShader(Shader::Type::Vertex, shaderOptions, Shader::UsageHint::DepthMultiview), Shader::UsageHint::DepthMultiview);
 				material->SetFragmentShader(renderer->GetDefaultShader(Shader::Type::Fragment, shaderOptions, Shader::UsageHint::DepthMultiview), Shader::UsageHint::DepthMultiview);
+				material->SetVertexShader(renderer->GetDefaultShader(Shader::Type::Vertex, shaderOptions, Shader::UsageHint::ShadowDepth), Shader::UsageHint::ShadowDepth);
+				material->SetFragmentShader(renderer->GetDefaultShader(Shader::Type::Fragment, shaderOptions, Shader::UsageHint::ShadowDepth), Shader::UsageHint::ShadowDepth);
+				material->SetVertexShader(renderer->GetDefaultShader(Shader::Type::Vertex, shaderOptions, Shader::UsageHint::ShadowDepthMultiview), Shader::UsageHint::ShadowDepthMultiview);
+				material->SetFragmentShader(renderer->GetDefaultShader(Shader::Type::Fragment, shaderOptions, Shader::UsageHint::ShadowDepthMultiview), Shader::UsageHint::ShadowDepthMultiview);
 			}
 
 			stage->AddMesh(mesh, material->Autorelease());
