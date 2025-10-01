@@ -20,7 +20,7 @@ namespace RN
 		physx::PxPhysics *physics = PhysXWorld::GetSharedInstance()->GetPhysXInstance();
 		_material = physics->createMaterial(staticFriction, dynamicFriction, restitution);
 		_material->setFrictionCombineMode(physx::PxCombineMode::Enum::eMULTIPLY);
-		//_material->setRestitutionCombineMode(PxCombineMode::Enum combMode);
+		_material->setRestitutionCombineMode(physx::PxCombineMode::Enum::eMAX);
 		_material->setFlag(physx::PxMaterialFlag::eIMPROVED_PATCH_FRICTION, true);
 	}
 
