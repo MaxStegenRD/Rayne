@@ -18,7 +18,8 @@ namespace RN
 	PhysXDynamicBody::PhysXDynamicBody(PhysXShape *shape, float mass) :
 		_shape(shape->Retain()),
 		_actor(nullptr),
-		_detachTransform(false)
+		_detachTransform(false),
+		_effectedByGravity(true)
 	{
 		physx::PxPhysics *physics = PhysXWorld::GetSharedInstance()->GetPhysXInstance();
 		_actor = physics->createRigidDynamic(physx::PxTransform(physx::PxIdentity));
@@ -188,6 +189,9 @@ namespace RN
 
 	void PhysXDynamicBody::SetEnableGravity(bool enable)
 	{
+		if(_effectedByGravity == enable) return;
+		
+		_effectedByGravity = enable;
 		_actor->setActorFlag(physx::PxActorFlag::eDISABLE_GRAVITY, !enable);
 	}
 
@@ -198,8 +202,16 @@ namespace RN
 
 	void PhysXDynamicBody::ApplyForce(const Vector3 &force)
 	{
+		if(GetIsKinematic()) return;
 		_actor->addForce(physx::PxVec3(force.x, force.y, force.z));
 	}
+
+	void PhysXDynamicBody::ApplyAcceleration(const Vector3 &acceleration)
+	{
+		if(GetIsKinematic()) return;
+		_actor->addForce(physx::PxVec3(acceleration.x, acceleration.y, acceleration.z), physx::PxForceMode::eACCELERATION);
+	}
+
 	/*	void PhysXDynamicBody::ApplyForce(const Vector3 &force, const Vector3 &origin)
 	{
 		_rigidBody->applyForce(btVector3(force.x, force.y, force.z), btVector3(origin.x, origin.y, origin.z));
