@@ -19,14 +19,14 @@ namespace RN
 
 	struct PhysXContactInfo
 	{
-		SceneNode *node;
-		PhysXCollisionObject *collisionObject;
+		SceneNode *node = nullptr;
+		PhysXCollisionObject *collisionObject = nullptr;
 		Vector3 position;
 		Vector3 normal;
-		float distance;
+		float distance = -1.0f;
 
-		PhysXShape *shapeSelf;
-		PhysXShape *shapeOther;
+		PhysXShape *shapeSelf = nullptr;
+		PhysXShape *shapeOther = nullptr;
 	};
 
 	class PhysXCollisionObject : public SceneNodeAttachment

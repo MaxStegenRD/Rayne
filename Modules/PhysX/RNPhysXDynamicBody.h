@@ -58,6 +58,7 @@ namespace RN
 		PXAPI void AccelerateToTarget(const Vector3 &position, const Quaternion &rotation, float delta);
 
 		PXAPI void ApplyForce(const Vector3 &force);
+		PXAPI void ApplyAcceleration(const Vector3 &acceleration);
 		//		PXAPI void ApplyForce(const Vector3 &force, const Vector3 &origin);
 		PXAPI void ClearForces();
 
@@ -98,6 +99,7 @@ namespace RN
 		physx::PxRigidDynamic *_actor;
 
 		bool _detachTransform;
+		bool _effectedByGravity;
 
 		RNDeclareMetaAPI(PhysXDynamicBody, PXAPI)
 	};
