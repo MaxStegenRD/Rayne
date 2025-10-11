@@ -100,6 +100,7 @@ namespace RN
 		Array *buffersArray = new Array();
 		Array *samplersArray = new Array();
 		Array *texturesArray = new Array();
+		Array *subpassInputsArray = new Array();
 
 		for(MTLArgument *argument in arguments)
 		{
@@ -126,6 +127,7 @@ namespace RN
 				{
 					String *name = RNSTR([[argument name] UTF8String]);
 					uint8 materialTextureIndex = 0;
+					bool isSubpassInput = false;
 					
 					//TODO: Move this into the shader base class
 					if(name->IsEqual(RNCSTR("directionalShadowTexture")))
@@ -137,9 +139,23 @@ namespace RN
 						String *indexString = name->GetSubstring(Range(7, name->GetLength() - 7));
 						materialTextureIndex = std::stoi(indexString->GetUTF8String());
 					}
+					else if(name->HasPrefix(RNCSTR("colorInput")))
+					{
+						String *indexString = name->GetSubstring(Range(10, name->GetLength() - 10));
+						materialTextureIndex = std::stoi(indexString->GetUTF8String());
+						isSubpassInput = true;
+					}
+					else if(name->HasPrefix(RNCSTR("depthInput")))
+					{
+						String *indexString = name->GetSubstring(Range(10, name->GetLength() - 10));
+						materialTextureIndex = std::stoi(indexString->GetUTF8String()) + 128;
+						isSubpassInput = true;
+					}
 					
 					ArgumentTexture *argumentTexture = new ArgumentTexture(name, static_cast<uint32>([argument index]), materialTextureIndex);
-					texturesArray->AddObject(argumentTexture->Autorelease());
+					
+					if(isSubpassInput) subpassInputsArray->AddObject(argumentTexture->Autorelease());
+					else texturesArray->AddObject(argumentTexture->Autorelease());
 
 					break;
 				}
@@ -184,7 +200,7 @@ namespace RN
 			}
 		}
 
-		Signature *signature = new Signature(buffersArray->Autorelease(), samplersArray->Autorelease(), texturesArray->Autorelease(), nullptr);
+		Signature *signature = new Signature(buffersArray->Autorelease(), samplersArray->Autorelease(), texturesArray->Autorelease(), subpassInputsArray->Autorelease());
 		SetSignature(signature->Autorelease());
 	}
 

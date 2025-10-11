@@ -327,7 +327,7 @@ namespace RN
 			{
 				[colorAttachment setLoadAction:MTLLoadActionDontCare];
 			}
-			if(resolveFramebuffer)
+			if(resolveFramebuffer && (!resolveFramebuffer->GetSwapChain() || counter == 0)) //If resolveframebuffer is backed by a swapchain, only the first attachment will be resolved into it
 			{
 				[colorAttachment setStoreAction:MTLStoreActionMultisampleResolve];
 				
@@ -344,7 +344,7 @@ namespace RN
 			{
 				if(isSubpass)
 				{
-					if(renderPassFlags & RenderPass::Flags::StoreColor || !renderPass->GetSubpassLastColorWriteAttachment(counter) || !renderPass->GetSubpassNeedToStoreColorAttachment(counter))
+					if(renderPassFlags & RenderPass::Flags::StoreColor || !renderPass->GetSubpassLastColorWriteAttachment(counter) || renderPass->GetSubpassNeedToStoreColorAttachment(counter))
 					{
 						[colorAttachment setStoreAction:MTLStoreActionStore];
 					}
@@ -452,7 +452,7 @@ namespace RN
 				{
 					if(isSubpass)
 					{
-						if(renderPassFlags & RenderPass::Flags::StoreDepthStencil || !renderPass->GetSubpassLastDepthStencilWrite() || !renderPass->GetSubpassNeedToStoreDepthStencil())
+						if(renderPassFlags & RenderPass::Flags::StoreDepthStencil || !renderPass->GetSubpassLastDepthStencilWrite() || renderPass->GetSubpassNeedToStoreDepthStencil())
 						{
 							[depthAttachment setStoreAction:MTLStoreActionStore];
 						}
@@ -546,7 +546,7 @@ namespace RN
 				{
 					if(isSubpass)
 					{
-						if(renderPassFlags & RenderPass::Flags::StoreDepthStencil || !renderPass->GetSubpassLastDepthStencilWrite() || !renderPass->GetSubpassNeedToStoreDepthStencil())
+						if(renderPassFlags & RenderPass::Flags::StoreDepthStencil || !renderPass->GetSubpassLastDepthStencilWrite() || renderPass->GetSubpassNeedToStoreDepthStencil())
 						{
 							[stencilAttachment setStoreAction:MTLStoreActionStore];
 						}
@@ -620,9 +620,10 @@ namespace RN
 	
 	MTLPixelFormat MetalFramebuffer::GetMetalColorFormat(uint8 texture) const
 	{
-		if(_colorTargets.size() > 0)//texture)
+		if(_swapChain) texture = 0;
+		if(_colorTargets.size() > texture)
 		{
-			return _colorTargets[/*texture*/0]->pixelFormat;
+			return _colorTargets[texture]->pixelFormat;
 		}
 		
 		return MTLPixelFormatInvalid;

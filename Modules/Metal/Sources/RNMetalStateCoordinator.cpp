@@ -321,7 +321,9 @@ namespace RN
 		id<MTLRenderPipelineState> pipelineState = nil;
 		if(collection->vertexShader->GetSignature() && collection->fragmentShader->GetSignature())
 		{
-			pipelineState = [_device newRenderPipelineStateWithDescriptor:pipelineStateDescriptor error:NULL];
+			NSError *error = nil;
+			pipelineState = [_device newRenderPipelineStateWithDescriptor:pipelineStateDescriptor error:&error];
+			RN_ASSERT(!error, "PipelineState creation failed with error: %s", error.localizedDescription.UTF8String);
 		}
 		else
 		{

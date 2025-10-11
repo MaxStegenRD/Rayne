@@ -1519,6 +1519,45 @@ namespace RN
 				}
 			}
 		});
+		
+		metalFragmentShader->GetSignature()->GetSubpassInputs()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop){
+			uint8 materialTextureIndex = argument->GetMaterialTextureIndex();
+			bool isDepthInput = materialTextureIndex >= 128;
+			materialTextureIndex = isDepthInput ? materialTextureIndex - 128 : materialTextureIndex;
+			
+			if(!renderPass.framebuffer)
+			{
+				[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
+				return;
+			}
+			
+			if(!isDepthInput)
+			{
+				//Skip unused color attachments in the assignment to match vulkan subpass behavior
+				for(uint8 i = materialTextureIndex; i < renderPass.framebuffer->GetColorTargetCount(); i++)
+				{
+					if(!renderPass.renderPass->GetSubpassReadColorAttachment(i))
+					{
+						materialTextureIndex += 1;
+					}
+					else
+					{
+						break;
+					}
+				}
+			}
+			
+			Texture *texture = isDepthInput ? renderPass.framebuffer->GetDepthStencilTexture() : renderPass.framebuffer->GetColorTexture(materialTextureIndex);
+			MetalTexture *framebufferTexture = texture ? texture->Downcast<MetalTexture>() : nullptr;
+			
+			if(!framebufferTexture)
+			{
+				[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
+				return;
+			}
+			
+			[encoder setFragmentTexture:(id<MTLTexture>)framebufferTexture->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
+		});
 
 		//Set samplers
 		size_t count = 0;
