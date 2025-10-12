@@ -10,6 +10,7 @@
 #define __RAYNE_SCENEBASIC_H__
 
 #include "RNScene.h"
+#include "RNOcclusionCuller.h"
 
 namespace RN
 {
@@ -36,14 +37,9 @@ namespace RN
 		RNAPI void MakeDrawablesDirty();
 
 		//Should probably be private, but this makes it easy to visualize
-		RN::uint16 _occlusionDepthBufferWidth;
-		RN::uint16 _occlusionDepthBufferHeight;
-		float *_occlusionDepthBuffer;
+		OcclusionCuller *_occlusionCuller;
 
 	private:
-		void RasterizeClipSpaceTriangle(Vector4 A, Vector4 B, Vector4 C);
-		void RasterizeMesh(const Matrix &matModelViewProj, Mesh *mesh);
-		bool TestBoundingBox(const Matrix &matViewProj, const AABB &aabb, const Vector2 &screenPixelSize);
 
 		IntrusiveList<SceneNode> _updateNodes[4];
 		IntrusiveList<SceneNode> _renderNodes;
