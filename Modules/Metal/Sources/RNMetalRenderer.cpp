@@ -1475,6 +1475,19 @@ namespace RN
 					[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
 				}
 			}
+			else if(argument->GetMaterialTextureIndex() == Shader::ArgumentTexture::IndexFramebufferTexture && renderPass.previousRenderPass && renderPass.previousRenderPass->GetFramebuffer())
+			{
+				MetalSwapChain *swapChain = renderPass.previousRenderPass->GetFramebuffer()->Downcast<MetalFramebuffer>()->GetSwapChain();
+				if(swapChain)
+				{
+					[encoder setFragmentTexture:swapChain->GetMetalColorTexture() atIndex:argument->GetIndex()];
+				}
+				else
+				{
+					MetalTexture *colorBuffer = renderPass.previousRenderPass->GetFramebuffer()->GetColorTexture()->Downcast<MetalTexture>();
+					[encoder setFragmentTexture:(id<MTLTexture>)colorBuffer->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
+				}
+			}
 			else
 			{
 				uint8 materialTextureIndex = argument->GetMaterialTextureIndex();
@@ -1498,24 +1511,7 @@ namespace RN
 				}
 				else
 				{
-					//TODO: handle post processing texture better
-					if(materialTextureIndex == textures->GetCount() && renderPass.previousRenderPass && renderPass.previousRenderPass->GetFramebuffer())
-					{
-						MetalSwapChain *swapChain = renderPass.previousRenderPass->GetFramebuffer()->Downcast<MetalFramebuffer>()->GetSwapChain();
-						if(swapChain)
-						{
-							[encoder setFragmentTexture:swapChain->GetMetalColorTexture() atIndex:argument->GetIndex()];
-						}
-						else
-						{
-							MetalTexture *colorBuffer = renderPass.previousRenderPass->GetFramebuffer()->GetColorTexture()->Downcast<MetalTexture>();
-							[encoder setFragmentTexture:(id<MTLTexture>)colorBuffer->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
-						}
-					}
-					else
-					{
-						[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
-					}
+					[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
 				}
 			}
 		});
