@@ -553,6 +553,14 @@ namespace RN
 		metalRenderPass.multiviewLayer = previousRenderPass.multiviewLayer;
 		metalRenderPass.camera = previousRenderPass.camera;
 		
+		metalRenderPass.cameraAmbientColor = previousRenderPass.cameraAmbientColor;
+		
+		metalRenderPass.cameraClipDistance = previousRenderPass.cameraClipDistance;
+		metalRenderPass.cameraFogDistance = previousRenderPass.cameraFogDistance;
+		metalRenderPass.cameraFogColor0 = previousRenderPass.cameraFogColor0;
+		metalRenderPass.cameraFogColor1 = previousRenderPass.cameraFogColor1;
+		metalRenderPass.cameraTag = previousRenderPass.cameraTag;
+		
 		Framebuffer *framebuffer = nullptr;
 		if(renderPass->GetIsSubpass())
 		{
