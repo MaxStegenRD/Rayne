@@ -40,7 +40,8 @@ namespace RN
 			UpdateEarliest,
 			UpdateEarly,
 			UpdateNormal,
-			UpdateLate
+			UpdateLate,
+			UpdateNever //Update will never be called for these
 		};
 
 		enum RenderPriority : int32

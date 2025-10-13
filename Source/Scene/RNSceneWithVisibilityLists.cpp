@@ -219,7 +219,10 @@ namespace RN
 			_lights.PushBack(light->_lightSceneEntry);
 		}
 
-		_updateNodes[static_cast<size_t>(node->GetUpdatePriority())].PushBack(node->_sceneUpdateEntry);
+		if(node->GetUpdatePriority() != SceneNode::UpdatePriority::UpdateNever)
+		{
+			_updateNodes[static_cast<size_t>(node->GetUpdatePriority())].PushBack(node->_sceneUpdateEntry);
+		}
 
 		node->Retain();
 		SceneWithVisibilityListsInfo *sceneInfo = new SceneWithVisibilityListsInfo(this);
@@ -247,7 +250,10 @@ namespace RN
 			_lights.Erase(light->_lightSceneEntry);
 		}
 
-		_updateNodes[static_cast<size_t>(node->GetUpdatePriority())].Erase(node->_sceneUpdateEntry);
+		if(node->GetUpdatePriority() != SceneNode::UpdatePriority::UpdateNever)
+		{
+			_updateNodes[static_cast<size_t>(node->GetUpdatePriority())].Erase(node->_sceneUpdateEntry);
+		}
 
 		SceneWithVisibilityListsInfo *sceneInfo = node->GetSceneInfo()->Downcast<SceneWithVisibilityListsInfo>();
 		for(Volume *volume : sceneInfo->volumes)

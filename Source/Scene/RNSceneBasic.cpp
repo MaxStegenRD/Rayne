@@ -146,7 +146,10 @@ namespace RN
 				RemoveRenderNode(node);
 			}
 
-			_updateNodes[static_cast<size_t>(node->GetUpdatePriority())].Erase(node->_sceneUpdateEntry);
+			if(node->GetUpdatePriority() != SceneNode::UpdatePriority::UpdateNever)
+			{
+				_updateNodes[static_cast<size_t>(node->GetUpdatePriority())].Erase(node->_sceneUpdateEntry);
+			}
 
 			node->UpdateSceneInfo(nullptr);
 			node->_scheduledForRemovalFromScene = false; //Make sure it can be added and removed again, if the object doesn't actually get deleted here!
@@ -570,7 +573,10 @@ namespace RN
 		//Lock to prevent race condition of multiple threads adding nodes at the same time
 		Lock();
 		//PushFront to prevent race condition with scene iterating over the nodes.
-		_updateNodes[static_cast<size_t>(node->GetUpdatePriority())].PushFront(node->_sceneUpdateEntry);
+		if(node->GetUpdatePriority() != SceneNode::UpdatePriority::UpdateNever)
+		{
+			_updateNodes[static_cast<size_t>(node->GetUpdatePriority())].PushFront(node->_sceneUpdateEntry);
+		}
 		Unlock();
 	}
 
