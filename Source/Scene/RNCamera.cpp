@@ -376,12 +376,12 @@ namespace RN
 		_frustumCenter = _frustumCenter * 0.5f;
 		_frustumRadius = _frustumCenter.GetDistance(vmax);
 
-		frustums._frustumLeft = Plane::WithTriangle(pos1, pos2, pos3, 1.0f, -_frustumPlaneOffsets[2]);
-		frustums._frustumRight = Plane::WithTriangle(pos4, pos5, pos6, -1.0f, _frustumPlaneOffsets[3]);
-		frustums._frustumTop = Plane::WithTriangle(pos1, pos2, pos5, -1.0f, _frustumPlaneOffsets[0]);
-		frustums._frustumBottom = Plane::WithTriangle(pos4, pos3, pos6, 1.0f, -_frustumPlaneOffsets[1]);
-		frustums._frustumNear = Plane::WithPositionNormal(position + direction * std::min(_clipNear, _clipFar), -direction);
-		frustums._frustumFar = Plane::WithPositionNormal(position + direction * std::max(_clipNear, _clipFar), direction);
+		frustums._frustumLeft = Plane::WithTriangle(pos1, pos2, pos3, -1.0f, -_frustumPlaneOffsets[2]);
+		frustums._frustumRight = Plane::WithTriangle(pos4, pos5, pos6, 1.0f, _frustumPlaneOffsets[3]);
+		frustums._frustumTop = Plane::WithTriangle(pos1, pos2, pos5, 1.0f, _frustumPlaneOffsets[0]);
+		frustums._frustumBottom = Plane::WithTriangle(pos4, pos3, pos6, -1.0f, -_frustumPlaneOffsets[1]);
+		frustums._frustumNear = Plane::WithPositionNormal(position + direction * std::min(_clipNear, _clipFar), direction);
+		frustums._frustumFar = Plane::WithPositionNormal(position + direction * std::max(_clipNear, _clipFar), -direction);
 	}
 
 	Vector3 Camera::__ToWorld(const Vector3 &dir)
@@ -390,7 +390,7 @@ namespace RN
 
 		Vector4 ndcPos(dir.x, dir.y, dir.z, 1.0f);
 
-		Vector4 vec = _inverseViewMatrix * _inverseProjectionMatrix * ndcPos;
+		Vector4 vec = _inverseViewMatrix * (_inverseProjectionMatrix * ndcPos);
 		vec /= vec.w;
 
 		return Vector3(vec);
@@ -448,22 +448,22 @@ namespace RN
 		if(_flags & Flags::UseSimpleCulling)
 			return true;
 
-		if(frustums._frustumLeft.GetDistance(position) > radius)
+		if(frustums._frustumLeft.GetDistance(position) < -radius)
 			return false;
 
-		if(frustums._frustumRight.GetDistance(position) > radius)
+		if(frustums._frustumRight.GetDistance(position) < -radius)
 			return false;
 
-		if(frustums._frustumTop.GetDistance(position) > radius)
+		if(frustums._frustumTop.GetDistance(position) < -radius)
 			return false;
 
-		if(frustums._frustumBottom.GetDistance(position) > radius)
+		if(frustums._frustumBottom.GetDistance(position) < -radius)
 			return false;
 
-		if(frustums._frustumNear.GetDistance(position) > radius)
+		if(frustums._frustumNear.GetDistance(position) < -radius)
 			return false;
 
-		if(frustums._frustumFar.GetDistance(position) > radius)
+		if(frustums._frustumFar.GetDistance(position) < -radius)
 			return false;
 
 		return true;
@@ -479,24 +479,21 @@ namespace RN
 	{
 		UpdateFrustum();
 
-		/*		Plane *planes = &_frustumLeft;
-				Plane *absPlanes = &_absFrustumLeft;
+		for(int i = 0; i < 6; ++i)
+		{
+			const Plane &plane = (&frustums._frustumLeft)[i];
 
-				Vector3 position = aabb.Position();
+			//Pick the corner most in direction of the plane normal
+			Vector3 positive;
+			positive.x = (plane.GetNormal().x >= 0) ? (aabb.position.x + aabb.maxExtend.x) : (aabb.position.x + aabb.minExtend.x);
+			positive.y = (plane.GetNormal().y >= 0) ? (aabb.position.y + aabb.maxExtend.y) : (aabb.position.y + aabb.minExtend.y);
+			positive.z = (plane.GetNormal().z >= 0) ? (aabb.position.z + aabb.maxExtend.z) : (aabb.position.z + aabb.minExtend.z);
 
-				for(int i=0; i<6; i++)
-				{
-					const Plane &plane = planes[i];
-					const Plane &absPlane = absPlanes[i];
-
-					float d = position.Dot(plane.normal);
-					float r = aabb.width.Dot(absPlane.normal);
-
-					float dpr = d + r + plane.d;
-
-					if(Math::IsNegative(dpr))
-						return false;
-				}*/
+			if(plane.GetDistance(positive) <= 0.0f)
+			{
+				return false;
+			}
+		}
 
 		return true;
 	}
