@@ -100,6 +100,7 @@
 #include "Scene/RNScene.h"
 #include "Scene/RNSceneAttachment.h"
 #include "Scene/RNSceneBasic.h"
+#include "Scene/RNSceneQuadtree.h"
 #include "Scene/RNSceneManager.h"
 #include "Scene/RNSceneNode.h"
 #include "Scene/RNSceneNodeAttachment.h"

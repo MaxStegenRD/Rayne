@@ -97,6 +97,7 @@ set(RAYNE_SOURCES
     Scene/RNScene.cpp
     Scene/RNSceneBasic.cpp
     Scene/RNOcclusionCuller.cpp
+    Scene/RNSceneQuadtree.cpp
 	Scene/RNSceneWithVisibilityLists.cpp
     Scene/RNSceneAttachment.cpp
     Scene/RNSceneManager.cpp
@@ -220,6 +221,7 @@ set(RAYNE_HEADERS
     Scene/RNScene.h
     Scene/RNSceneBasic.h
     Scene/RNOcclusionCuller.h
+    Scene/RNSceneQuadtree.h
 	Scene/RNSceneWithVisibilityLists.h
     Scene/RNSceneAttachment.h
     Scene/RNSceneManager.h
