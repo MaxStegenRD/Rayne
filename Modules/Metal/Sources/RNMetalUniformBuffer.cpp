@@ -51,8 +51,11 @@ namespace RN
 	
 	size_t MetalUniformBuffer::Allocate(size_t size, bool align)
 	{
-		//Align offset when allocating the next buffer (if it is supposed to be aligned)
-		if(align) _offsetToFreeData += kRNUniformBufferAlignement - (_offsetToFreeData % kRNUniformBufferAlignement);
+		// Align offset when allocating the next buffer (if it is supposed to be aligned)
+		if(align && (_offsetToFreeData % kRNUniformBufferAlignement) != 0)
+		{
+			_offsetToFreeData += (kRNUniformBufferAlignement - (_offsetToFreeData % kRNUniformBufferAlignement));
+		}
 		
 		int availableSize = static_cast<int>(_totalSize) - static_cast<int>(_offsetToFreeData);
 		if(availableSize < static_cast<int>(size))
@@ -66,7 +69,11 @@ namespace RN
 
 	size_t MetalUniformBuffer::Reserve(size_t size)
 	{
-		size_t alignedSize = size + kRNUniformBufferAlignement - (size % kRNUniformBufferAlignement);
+		size_t alignedSize = size;
+		if(size % kRNUniformBufferAlignement != 0)
+		{
+			alignedSize += (kRNUniformBufferAlignement - (size % kRNUniformBufferAlignement));
+		}
 		
 		int availableSize = static_cast<int>(_totalSize) - static_cast<int>(_sizeReserved);
 		if(availableSize < static_cast<int>(alignedSize))
@@ -157,8 +164,12 @@ namespace RN
 			size_t requiredSize = 0;
 			size_t lastIndexToRemove = 0;
 			_newReferences->Enumerate<MetalUniformBufferReference>([&](MetalUniformBufferReference *reference, uint32 index, bool &stop){
-				//Not all will actually need alignment if instancing is used, but better to overallocate here
-				size_t sizeToAdd = reference->size + kRNUniformBufferAlignement - (reference->size % kRNUniformBufferAlignement);
+				// Not all will actually need alignment if instancing is used; still align sizes conservatively
+				size_t sizeToAdd = reference->size;
+				if(reference->size % kRNUniformBufferAlignement != 0)
+				{
+					sizeToAdd += (kRNUniformBufferAlignement - (reference->size % kRNUniformBufferAlignement));
+				}
 				if(requiredSize + sizeToAdd <= kRNMaximumUniformBufferSize)
 				{
 					requiredSize += sizeToAdd;
