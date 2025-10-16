@@ -1535,7 +1535,7 @@ namespace RN
 				return;
 			}
 			
-			if(!isDepthInput)
+			if(!isDepthInput && renderPass.renderPass->GetIsSubpass())
 			{
 				//Skip unused color attachments in the assignment to match vulkan subpass behavior
 				for(uint8 i = materialTextureIndex; i < renderPass.framebuffer->GetColorTargetCount(); i++)
