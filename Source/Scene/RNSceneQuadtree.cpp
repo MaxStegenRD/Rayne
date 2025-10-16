@@ -82,12 +82,12 @@ namespace RN
 		}
 	}
 
-    SceneQuadtree::~SceneQuadtree()
-    {
-        ZoneScoped;
-        _nodesToRemove->Release();
-        delete _occlusionCuller;
-    }
+	SceneQuadtree::~SceneQuadtree()
+	{
+		ZoneScoped;
+		_nodesToRemove->Release();
+		delete _occlusionCuller;
+	}
 
 	void SceneQuadtree::Update(float delta)
 	{
@@ -568,10 +568,10 @@ namespace RN
 		}
 	}
 
-	uint32 SceneQuadtree::FindTreeNode(const AABB& box, bool isInserting)
+	uint32 SceneQuadtree::FindTreeNode(const AABB& box, bool isInserting, uint8 maxDepth)
 	{
 		uint32 nodeIndex = 0; // root
-		while(true)
+		while(maxDepth > 0)
 		{
 			TreeNode &n = _treeNodes[nodeIndex];
 			if(isInserting)
@@ -597,6 +597,16 @@ namespace RN
 				return nodeIndex; // leaf
 			}
 
+			//Early-out if the object it relatively large compared to the node
+			const Vector3 wmin = box.position + box.minExtend;
+			const Vector3 wmax = box.position + box.maxExtend;
+			const Vector3 half = (wmax - wmin) * 0.5f;
+			const float rObj = std::sqrt(half.x*half.x + half.y*half.y + half.z*half.z);
+			const float nodeSizeX = n.bounds.maxExtend.x - n.bounds.minExtend.x;
+			const float nodeSizeZ = n.bounds.maxExtend.z - n.bounds.minExtend.z;
+			const float rNode = 0.5f * std::sqrt(nodeSizeX*nodeSizeX + nodeSizeZ*nodeSizeZ);
+			if(rObj >= 0.4f * rNode) return nodeIndex;
+
 			bool found = false;
 			for(int i = 0; i < 4; ++i)
 			{
@@ -613,7 +623,11 @@ namespace RN
 			{
 				return nodeIndex; //No more child node found that the objects fully fits into
 			}
+
+			maxDepth -= 1;
 		}
+
+		return nodeIndex;
 	}
 
 	void SceneQuadtree::AddRenderNode(SceneNode *node)
@@ -622,9 +636,9 @@ namespace RN
 
 		Lock();
 		
-		uint32 n = FindTreeNode(node->GetBoundingBox(), true);
-		_treeNodes[n].objects.push_back(node);
 		SceneQuadtreeInfo *sceneInfo = static_cast<SceneQuadtreeInfo*>(node->GetSceneInfo());
+		uint32 n = FindTreeNode(node->GetBoundingBox(), true, sceneInfo->maxDepth);
+		_treeNodes[n].objects.push_back(node);
 		sceneInfo->quadtreeNodeIndex = n;
 
 		Unlock();
@@ -649,7 +663,7 @@ namespace RN
 		sceneInfo->quadtreeNodeIndex = UINT32_MAX;
 	}
 
-	void SceneQuadtree::AddNode(SceneNode *node)
+	void SceneQuadtree::AddNode(SceneNode *node, uint8 maxDepth)
 	{
 		ZoneScoped;
 		//Remove from deletion list if scheduled for deletion if the scene didn't change.
@@ -680,6 +694,7 @@ namespace RN
 
 		node->Retain();
 		SceneQuadtreeInfo *sceneInfo = new SceneQuadtreeInfo(this);
+		sceneInfo->maxDepth = maxDepth;
 		node->UpdateSceneInfo(sceneInfo);
 		sceneInfo->Release();
 
@@ -706,6 +721,11 @@ namespace RN
 			_updateNodes[static_cast<size_t>(node->GetUpdatePriority())].PushFront(node->_sceneUpdateEntry);
 		}
 		Unlock();
+	}
+
+	void SceneQuadtree::AddNode(SceneNode *node)
+	{
+		AddNode(node, UINT8_MAX);
 	}
 
 	void SceneQuadtree::RemoveNode(SceneNode *node)

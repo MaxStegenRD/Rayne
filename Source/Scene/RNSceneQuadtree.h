@@ -19,6 +19,7 @@ namespace RN
 	public:
 		RNAPI ~SceneQuadtree();
 
+		RNAPI void AddNode(SceneNode *node, uint8 maxDepth);
 		RNAPI void AddNode(SceneNode *node) override;
 		RNAPI void RemoveNode(SceneNode *node) override;
 
@@ -29,7 +30,7 @@ namespace RN
 		RNAPI void Render(Renderer *renderer) override;
 
 		RNAPI void TraverseTree(RN::Camera *camera, std::vector<SceneNode *> &sceneNodesToRender);
-		RNAPI uint32 FindTreeNode(const AABB& box, bool isInserting);
+		RNAPI uint32 FindTreeNode(const AABB& box, bool isInserting, uint8 maxDepth = UINT8_MAX);
 
 		RNAPI void FlushAdditionQueue();
 		RNAPI void FlushDeletionQueue();
@@ -95,6 +96,7 @@ namespace RN
 		bool isVisibleOccluder;
 
 		uint32 quadtreeNodeIndex;
+		uint8 maxDepth;
 
 		__RNDeclareMetaInternal(SceneQuadtreeInfo)
 	};
