@@ -39,6 +39,8 @@ namespace RN
 		ZoneScoped;
 		_occlusionCuller = new OcclusionCuller(40, 40);
 
+		worldBounds.minExtend.y = 0.0f;
+		worldBounds.maxExtend.y = 0.0f;
 		Vector3 boundsSize = worldBounds.maxExtend - worldBounds.minExtend;
 		float maxBoundsSize = std::max(boundsSize.x, boundsSize.z);
 		int treeDepth = std::ceil(std::log2(maxBoundsSize / minNodeSize));
@@ -54,7 +56,7 @@ namespace RN
 		_treeNodes.resize(nodeCount);
 
 		AABB rootBounds(worldBounds.minExtend, worldBounds.minExtend + Vector3(maxBoundsSize, boundsSize.y, maxBoundsSize));
-		_treeNodes[0] = { rootBounds, UINT32_MAX, {} };
+		_treeNodes[0] = { rootBounds, UINT32_MAX, 0, {} };
 
 		for(int level = 0; level < treeDepth; level++)
 		{
@@ -72,10 +74,10 @@ namespace RN
 
 				// Compute children bounds
 				Vector3 parentMidPoint = (n.bounds.minExtend + n.bounds.maxExtend) * 0.5f;
-				_treeNodes[firstChild + 0] = { AABB(n.bounds.minExtend, Vector3(parentMidPoint.x, n.bounds.maxExtend.y, parentMidPoint.z)), UINT32_MAX, {}};
-				_treeNodes[firstChild + 1] = { AABB(Vector3(parentMidPoint.x, n.bounds.minExtend.y, n.bounds.minExtend.z), Vector3(n.bounds.maxExtend.x, n.bounds.maxExtend.y, parentMidPoint.z)), UINT32_MAX, {}};
-				_treeNodes[firstChild + 2] = { AABB(Vector3(n.bounds.minExtend.x, n.bounds.minExtend.y, parentMidPoint.z), Vector3(parentMidPoint.x, n.bounds.maxExtend.y, n.bounds.maxExtend.z)), UINT32_MAX, {}};
-				_treeNodes[firstChild + 3] = { AABB(Vector3(parentMidPoint.x, n.bounds.minExtend.y, parentMidPoint.z), n.bounds.maxExtend), UINT32_MAX, {}};
+				_treeNodes[firstChild + 0] = { AABB(n.bounds.minExtend, Vector3(parentMidPoint.x, n.bounds.maxExtend.y, parentMidPoint.z)), UINT32_MAX, 0, {}};
+				_treeNodes[firstChild + 1] = { AABB(Vector3(parentMidPoint.x, n.bounds.minExtend.y, n.bounds.minExtend.z), Vector3(n.bounds.maxExtend.x, n.bounds.maxExtend.y, parentMidPoint.z)), UINT32_MAX, 0, {}};
+				_treeNodes[firstChild + 2] = { AABB(Vector3(n.bounds.minExtend.x, n.bounds.minExtend.y, parentMidPoint.z), Vector3(parentMidPoint.x, n.bounds.maxExtend.y, n.bounds.maxExtend.z)), UINT32_MAX, 0, {}};
+				_treeNodes[firstChild + 3] = { AABB(Vector3(parentMidPoint.x, n.bounds.minExtend.y, parentMidPoint.z), n.bounds.maxExtend), UINT32_MAX, 0, {}};
 			}
 		}
 	}
@@ -509,10 +511,13 @@ namespace RN
 	{
 		ZoneScoped;
 		
-		float fovY = camera->GetFOV() * RN::k::DegToRad;
-		float aspect = camera->GetAspectRatio();
-		float fovX = 2.0f * std::atan(std::tan(0.5f * fovY) * aspect);
-		float fovFactor = 1.0f / std::tan(0.5f * fovX);
+		RN::Camera *lodCamera = camera;
+		if(camera->GetLODCamera()) lodCamera = camera->GetLODCamera();
+
+		const Vector3 cameraPosition = lodCamera->GetWorldPosition();
+		const Vector3 cameraRight = lodCamera->GetRight();
+		const Vector3 cameraForward = lodCamera->GetForward();
+		const float fovFactor = lodCamera->GetProjectionMatrix().m[0];
 		
 		std::vector<uint32> stack;
 		stack.reserve(128);
@@ -524,7 +529,7 @@ namespace RN
 			stack.pop_back();
 			const TreeNode& node = _treeNodes[i];
 
-			if(!camera->InFrustum(node.bounds)) continue;
+			if(node.numberOfObjects == 0 || !lodCamera->InFrustum(node.bounds)) continue;
 
 			//Visit all objects that are inside this node
 			for(SceneNode *object : node.objects)
@@ -538,18 +543,22 @@ namespace RN
 				sceneNodesToRender.push_back(object);
 			}
 
-			//Very roughly approximate the size on the screen
-			Vector3 boundsSize = node.bounds.maxExtend - node.bounds.minExtend;
-			float s = 0.5f * std::sqrt(boundsSize.x*boundsSize.x + boundsSize.z*boundsSize.z);
-			Vector3 boundsCenter = (node.bounds.minExtend + node.bounds.maxExtend) * 0.5f;
-			float d = camera->GetWorldPosition().GetDistance(boundsCenter);
-			if(d <= 0.0f) d = 0.001f;
+			//Node center and half extents in world (AABB built with absolute min/max)
+			const Vector3 center = (node.bounds.minExtend + node.bounds.maxExtend) * 0.5f;
+			const Vector3 half = (node.bounds.maxExtend - node.bounds.minExtend) * 0.5f;
+
+			//Depth = view-space z (along camera forward)
+			const Vector3 v = center - cameraPosition;
+			const float zView = v.GetLength();// std::max(v.GetDotProduct(cameraForward), 0.001f);
+
+			//Horizontal radius
+			const float sX = std::sqrt(half.x * half.x + half.z * half.z);
 			
 			//Projected radius in NDC (half-range is 1.0)
-			float ndcRadiusX = (s / d) * fovFactor;
+			float ndcRadiusX = (sX / zView) * fovFactor;
 
 			//Push children
-			if(node.firstChild != UINT32_MAX && ndcRadiusX > 0.1f)
+			if(node.firstChild != UINT32_MAX && ndcRadiusX > 0.2f)
 			{
 				for(int childIndex = 0; childIndex < 4; ++childIndex)
 				{
@@ -559,12 +568,30 @@ namespace RN
 		}
 	}
 
-	uint32 SceneQuadtree::FindTreeNode(const AABB& box) const
+	uint32 SceneQuadtree::FindTreeNode(const AABB& box, bool isInserting)
 	{
 		uint32 nodeIndex = 0; // root
 		while(true)
 		{
-			const TreeNode &n = _treeNodes[nodeIndex];
+			TreeNode &n = _treeNodes[nodeIndex];
+			if(isInserting)
+			{
+				//Adjust the bounds to fit the new object vertically
+				if(n.numberOfObjects == 0)
+				{
+					n.bounds.minExtend.y = box.minExtend.y + box.position.y;
+					n.bounds.maxExtend.y = box.maxExtend.y + box.position.y;
+				}
+				else
+				{
+					n.bounds.minExtend.y = std::min(n.bounds.minExtend.y, box.minExtend.y + box.position.y);
+					n.bounds.maxExtend.y = std::max(n.bounds.maxExtend.y, box.maxExtend.y + box.position.y);
+				}
+
+				//Increase number of objects as moving down the tree when inserting something
+				n.numberOfObjects += 1;
+			}
+
 			if(n.firstChild == UINT32_MAX)
 			{
 				return nodeIndex; // leaf
@@ -595,7 +622,7 @@ namespace RN
 
 		Lock();
 		
-		uint32 n = FindTreeNode(node->GetBoundingBox());
+		uint32 n = FindTreeNode(node->GetBoundingBox(), true);
 		_treeNodes[n].objects.push_back(node);
 		SceneQuadtreeInfo *sceneInfo = static_cast<SceneQuadtreeInfo*>(node->GetSceneInfo());
 		sceneInfo->quadtreeNodeIndex = n;

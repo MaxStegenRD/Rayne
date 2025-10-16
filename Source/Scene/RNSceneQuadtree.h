@@ -29,7 +29,7 @@ namespace RN
 		RNAPI void Render(Renderer *renderer) override;
 
 		RNAPI void TraverseTree(RN::Camera *camera, std::vector<SceneNode *> &sceneNodesToRender);
-		RNAPI uint32 FindTreeNode(const AABB& box) const;
+		RNAPI uint32 FindTreeNode(const AABB& box, bool isInserting);
 
 		RNAPI void FlushAdditionQueue();
 		RNAPI void FlushDeletionQueue();
@@ -48,15 +48,26 @@ namespace RN
 		public:
 			bool Contains(const AABB& box) const
 			{
-				return bounds.Contains(box.minExtend + box.position) && bounds.Contains(box.maxExtend + box.position);
+				return Contains(box.minExtend + box.position) && Contains(box.maxExtend + box.position);
 			}
 			bool Contains(const Vector3& position) const
 			{
-				return bounds.Contains(position);
+				//Check if the position is inside the bounds, ignoring the y bounds
+				if(position.x - bounds.position.x > bounds.maxExtend.x)
+					return false;
+				if(position.x - bounds.position.x < bounds.minExtend.x)
+					return false;
+				if(position.z - bounds.position.z > bounds.maxExtend.z)
+					return false;
+				if(position.z - bounds.position.z < bounds.minExtend.z)
+					return false;
+				
+				return true;
 			}
 
 			AABB bounds;
 			uint32 firstChild = UINT32_MAX;
+			uint32 numberOfObjects = 0;
 			std::vector<SceneNode *> objects;
 		};
 		std::vector<TreeNode> _treeNodes;
