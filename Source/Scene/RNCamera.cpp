@@ -359,22 +359,37 @@ namespace RN
 		Vector3 pos4 = __ToWorld(Vector3(1.0f, -1.0f, 1.0));
 		Vector3 pos5 = __ToWorld(Vector3(1.0f, 1.0f, 0.0));
 		Vector3 pos6 = __ToWorld(Vector3(1.0f, -1.0f, 0.0));
+		Vector3 pos7 = __ToWorld(Vector3(1.0f, 1.0f, 1.0f));
+		Vector3 pos8 = __ToWorld(Vector3(-1.0f, -1.0f, 1.0f));
 
 		const Vector3 &position = GetWorldPosition();
 		Vector3 direction = GetWorldRotation().GetRotatedVector(Vector3(0.0, 0.0, -1.0));
 
-		Vector3 vmax;
-		Vector3 vmin;
-		vmax.x = std::max(pos1.x, std::max(pos4.x, std::max(pos2.x, std::max(pos3.x, std::max(pos5.x, pos6.x)))));
-		vmax.y = std::max(pos1.y, std::max(pos4.y, std::max(pos2.y, std::max(pos3.y, std::max(pos5.y, pos6.y)))));
-		vmax.z = std::max(pos1.z, std::max(pos4.z, std::max(pos2.z, std::max(pos3.z, std::max(pos5.z, pos6.z)))));
-		vmin.x = std::min(pos1.x, std::min(pos4.x, std::min(pos2.x, std::min(pos3.x, std::min(pos5.x, pos6.x)))));
-		vmin.y = std::min(pos1.y, std::min(pos4.y, std::min(pos2.y, std::min(pos3.y, std::min(pos5.y, pos6.y)))));
-		vmin.z = std::min(pos1.z, std::min(pos4.z, std::min(pos2.z, std::min(pos3.z, std::min(pos5.z, pos6.z)))));
-
-		_frustumCenter = vmax + vmin;
-		_frustumCenter = _frustumCenter * 0.5f;
-		_frustumRadius = _frustumCenter.GetDistance(vmax);
+		// Tighter sphere via farthest corner pair among 8 corners
+		Vector3 corners[8] = { pos1, pos2, pos3, pos4, pos5, pos6, pos7, pos8 };
+		float maxDist2 = 0.0f;
+		Vector3 bestA = corners[0], bestB = corners[0];
+		for(int i = 0; i < 8; ++i)
+		{
+			for(int j = i + 1; j < 8; ++j)
+			{
+				float d2 = corners[i].GetSquaredDistance(corners[j]);
+				if(d2 > maxDist2)
+				{
+					maxDist2 = d2;
+					bestA = corners[i];
+					bestB = corners[j];
+				}
+			}
+		}
+		_frustumCenter = (bestA + bestB) * 0.5f;
+		float radius = 0.0f;
+		for(int i = 0; i < 8; ++i)
+		{
+			float d = _frustumCenter.GetDistance(corners[i]);
+			if(d > radius) radius = d;
+		}
+		_frustumRadius = radius;
 
 		frustums._frustumLeft = Plane::WithTriangle(pos1, pos2, pos3, -1.0f, -_frustumPlaneOffsets[2]);
 		frustums._frustumRight = Plane::WithTriangle(pos4, pos5, pos6, 1.0f, _frustumPlaneOffsets[3]);
@@ -478,6 +493,18 @@ namespace RN
 	bool Camera::InFrustum(const AABB &aabb)
 	{
 		UpdateFrustum();
+
+		// Early-out: camera-centered sphere intersection
+		const Vector3 mn = aabb.position + aabb.minExtend;
+		const Vector3 mx = aabb.position + aabb.maxExtend;
+		const float nx = std::max(mn.x, std::min(_frustumCenter.x, mx.x));
+		const float ny = std::max(mn.y, std::min(_frustumCenter.y, mx.y));
+		const float nz = std::max(mn.z, std::min(_frustumCenter.z, mx.z));
+		const float dx = _frustumCenter.x - nx;
+		const float dy = _frustumCenter.y - ny;
+		const float dz = _frustumCenter.z - nz;
+		const float dist2 = dx*dx + dy*dy + dz*dz;
+		if(dist2 > _frustumRadius*_frustumRadius) return false;
 
 		for(int i = 0; i < 6; ++i)
 		{
