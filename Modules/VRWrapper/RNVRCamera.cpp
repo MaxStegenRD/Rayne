@@ -52,7 +52,7 @@ namespace RN
 			_debugWindow->Show();
 		}
 
-		_head->AddFlags(Camera::Flags::UseSimpleCulling);
+		//_head->AddFlags(Camera::Flags::UseSimpleCulling);
 		_head->GetRenderPass()->SetShaderHint(Shader::UsageHint::Multiview);
 		_head->SetFOV(110.0f);
 
