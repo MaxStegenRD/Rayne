@@ -138,4 +138,12 @@ namespace RN
 			_vrWindow->BeginFrame(delta);
 		}
 	}
+
+	void VRApplication::DidUpdate(float delta)
+	{
+		if(_vrWindow)
+		{
+			_vrWindow->UpdateLate();
+		}
+	}
 } // namespace RN

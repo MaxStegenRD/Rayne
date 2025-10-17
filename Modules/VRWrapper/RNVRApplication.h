@@ -35,6 +35,7 @@ namespace RN
 		virtual void DidFinishLaunching(Kernel *kernel) override;
 
 		virtual void WillStep(float delta) override;
+		virtual void DidUpdate(float delta) override;
 
 		VRWindow *GetVRWindow() const { return _vrWindow; }
 

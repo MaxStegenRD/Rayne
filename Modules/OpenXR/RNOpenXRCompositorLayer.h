@@ -42,7 +42,6 @@ namespace RN
 	private:
 		void SetSessionActive(bool active);
 		void UpdateForCurrentFrame();
-		void UpdateDynamicResolution();
 
 		OpenXRCompositorLayerInternals *_internals;
 

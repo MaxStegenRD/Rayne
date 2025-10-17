@@ -65,6 +65,7 @@ namespace RN
 
 		OXRAPI void BeginFrame(float delta) final;
 		OXRAPI void Update(float delta, float near, float far) final;
+		OXRAPI void UpdateLate() final;
 
 		OXRAPI VRWindow::DeviceType GetDeviceType() const final;
 		OXRAPI String *GetRuntimeName() const final { return _runtimeName; }

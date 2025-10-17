@@ -28,6 +28,7 @@ namespace RN
 		RNAPI virtual void WillExit();
 
 		RNAPI virtual void WillStep(float delta);
+		RNAPI virtual void DidUpdate(float delta);
 		RNAPI virtual void DidStep(float delta);
 
 		RNAPI virtual void WillBecomeActive();

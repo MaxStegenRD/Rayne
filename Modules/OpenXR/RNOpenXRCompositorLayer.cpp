@@ -215,10 +215,7 @@ namespace RN
 			_internals->layerQuad.size.width = _scale.x;
 			_internals->layerQuad.size.height = _scale.y;
 		}
-	}
 
-	void OpenXRCompositorLayer::UpdateDynamicResolution()
-	{
 		if(_window->_supportsDynamicResolution && _type != TypePassthrough && _window->_deviceType != VRWindow::DeviceType::PicoVR) //Don't use dynamic resolution on pico as it adjusts resolution before it goes up with gpu levels...
 		{
 			XrRecommendedLayerResolutionGetInfoMETA recommendedLayerResolutionGetInfo;

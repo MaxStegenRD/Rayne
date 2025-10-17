@@ -1979,14 +1979,6 @@ namespace RN
 			_hmdTrackingState.mode = VRHMDTrackingState::Mode::Rendering;
 		}
 
-		_layersUnderlay->Enumerate<OpenXRCompositorLayer>([](OpenXRCompositorLayer *layer, size_t index, bool &stop) {
-			layer->UpdateDynamicResolution();
-		});
-		_mainLayer->UpdateDynamicResolution();
-		_layersOverlay->Enumerate<OpenXRCompositorLayer>([](OpenXRCompositorLayer *layer, size_t index, bool &stop) {
-			layer->UpdateDynamicResolution();
-		});
-
 		//This is fine on android too, but is spamming too much into the logs on quest
 #if !RN_PLATFORM_ANDROID
 		XrPath leftHandUserPath;
@@ -2402,6 +2394,17 @@ namespace RN
 			}
 		}
 		*/
+	}
+
+	void OpenXRWindow::UpdateLate()
+	{
+		_layersUnderlay->Enumerate<OpenXRCompositorLayer>([](OpenXRCompositorLayer *layer, size_t index, bool &stop) {
+			layer->UpdateForCurrentFrame();
+		});
+		_mainLayer->UpdateForCurrentFrame();
+		_layersOverlay->Enumerate<OpenXRCompositorLayer>([](OpenXRCompositorLayer *layer, size_t index, bool &stop) {
+			layer->UpdateForCurrentFrame();
+		});
 	}
 
 	const String *OpenXRWindow::GetHMDInfoDescription() const

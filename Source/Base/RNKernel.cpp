@@ -397,6 +397,8 @@ namespace RN
 		_sceneManager->Update(static_cast<float>(_delta));
 		END_TASK();
 
+		_application->DidUpdate(static_cast<float>(_delta));
+
 		if(_renderer)
 		{
 			_renderer->Render([&] {

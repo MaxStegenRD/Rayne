@@ -81,7 +81,8 @@ namespace RN
 
 		RNVRAPI virtual void BeginFrame(float delta) {}
 		RNVRAPI virtual void Update(float delta, float near, float far) = 0;
-
+		RNVRAPI virtual void UpdateLate() {}
+		
 		RNVRAPI virtual bool InitializePassthrough(bool startRunning) { return false; } //returns false if passthrough is not supported or failed initializing
 		RNVRAPI virtual void SetPassthroughActive(bool active) {}
 

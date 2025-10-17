@@ -44,6 +44,8 @@ namespace RN
 
 	void Application::WillStep(float delta)
 	{}
+	void Application::DidUpdate(float delta)
+	{}
 	void Application::DidStep(float delta)
 	{
 #if RN_PLATFORM_WINDOWS && !RN_BUILD_DEBUG
