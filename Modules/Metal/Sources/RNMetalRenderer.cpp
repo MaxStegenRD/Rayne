@@ -1538,15 +1538,17 @@ namespace RN
 			if(!isDepthInput && renderPass.renderPass->GetIsSubpass())
 			{
 				//Skip unused color attachments in the assignment to match vulkan subpass behavior
-				for(uint8 i = materialTextureIndex; i < renderPass.framebuffer->GetColorTargetCount(); i++)
+				uint8 targetIndex = materialTextureIndex;
+				for(uint8 i = 0; i < renderPass.framebuffer->GetColorTargetCount(); i++)
 				{
-					if(!renderPass.renderPass->GetSubpassReadColorAttachment(i))
+					if(renderPass.renderPass->GetSubpassReadColorAttachment(i))
 					{
-						materialTextureIndex += 1;
-					}
-					else
-					{
-						break;
+						if(targetIndex == 0)
+						{
+							materialTextureIndex = i;
+							break;
+						}
+						targetIndex -= 1;
 					}
 				}
 			}
