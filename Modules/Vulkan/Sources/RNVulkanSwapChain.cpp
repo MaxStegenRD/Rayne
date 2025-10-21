@@ -206,7 +206,7 @@ VulkanSwapChain::VulkanSwapChain(const Vector2& size, VulkanRenderer* renderer, 
 			return;
 
 		uint32_t imageCount = std::max(caps.minImageCount, static_cast<uint32_t>(_descriptor.bufferCount));
-		if(caps.maxImageCount > 0) imageCount = std::min(caps.maxImageCount, static_cast<uint32_t>(_descriptor.bufferCount)); //if maxImageCount is 0, there is no upper limit!
+		if(caps.maxImageCount > 0) imageCount = std::min(caps.maxImageCount, imageCount); //if maxImageCount is 0, there is no upper limit!
 
 		assert(caps.supportedUsageFlags & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
 		assert(caps.supportedTransforms & caps.currentTransform);
