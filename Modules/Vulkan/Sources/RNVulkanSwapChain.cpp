@@ -210,11 +210,8 @@ VulkanSwapChain::VulkanSwapChain(const Vector2& size, VulkanRenderer* renderer, 
 		extent.width = std::max(caps.minImageExtent.width, std::min(caps.maxImageExtent.width, extent.width));
 		extent.height = std::max(caps.minImageExtent.height, std::min(caps.maxImageExtent.height, extent.height));
 
-		if(_extents.width == extent.width && _extents.height == extent.height)
-			return;
-
 		uint32_t imageCount = std::max(caps.minImageCount, static_cast<uint32_t>(_descriptor.bufferCount));
-		if(caps.maxImageCount > 0) imageCount = std::min(caps.maxImageCount, static_cast<uint32_t>(_descriptor.bufferCount)); //if maxImageCount is 0, there is no upper limit!
+		if(caps.maxImageCount > 0) imageCount = std::min(caps.maxImageCount, imageCount); //if maxImageCount is 0, there is no upper limit!
 
 		assert(caps.supportedUsageFlags & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
 		assert(caps.supportedTransforms & caps.currentTransform);
