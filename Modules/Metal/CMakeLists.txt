@@ -21,6 +21,7 @@ set(SOURCES
         Sources/RNMetalDevice.cpp
         Sources/RNMetalFramebuffer.cpp
         Sources/RNMetalGPUBuffer.cpp
+        Sources/RNMetalDynamicGPUBuffer.cpp
         Sources/RNMetalInternals.cpp
         Sources/RNMetalRenderer.cpp
         Sources/RNMetalRendererDescriptor.cpp
@@ -52,6 +53,7 @@ set(HEADERS
         Sources/RNMetalDevice.h
         Sources/RNMetalFramebuffer.h
         Sources/RNMetalGPUBuffer.h
+        Sources/RNMetalDynamicGPUBuffer.h
         Sources/RNMetalInternals.h
         Sources/RNMetalRenderer.h
         Sources/RNMetalRendererDescriptor.h

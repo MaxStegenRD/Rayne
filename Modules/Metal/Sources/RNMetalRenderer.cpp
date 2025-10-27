@@ -11,6 +11,7 @@
 #include "RNMetalInternals.h"
 #include "RNMetalShaderLibrary.h"
 #include "RNMetalGPUBuffer.h"
+#include "RNMetalDynamicGPUBuffer.h"
 #include "RNMetalTexture.h"
 #include "RNMetalUniformBuffer.h"
 #include "RNMetalDevice.h"
@@ -658,10 +659,14 @@ namespace RN
 	{
 		ZoneScoped;
 		MTLResourceOptions resourceOptions = MetalResourceOptionsFromOptions(accessOptions);
-		id<MTLBuffer> buffer = [_internals->device newBufferWithLength:length options:resourceOptions];
-		if(!buffer)
-			return nullptr;
+		if(streameable)
+		{
+			// Use a small dynamic wrapper that rotates underlying MTLBuffers per FlushRange
+			return (new MetalDynamicGPUBuffer(_internals->device, length, resourceOptions));
+		}
 
+		id<MTLBuffer> buffer = [_internals->device newBufferWithLength:length options:resourceOptions];
+		if(!buffer) return nullptr;
 		return (new MetalGPUBuffer(buffer));
 	}
 	

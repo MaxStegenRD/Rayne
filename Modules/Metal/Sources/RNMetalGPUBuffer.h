@@ -20,18 +20,19 @@ namespace RN
 	public:
 		friend class MetalRenderer;
 
-		MTLAPI void *GetBuffer() final;
-		MTLAPI void UnmapBuffer() final;
-		MTLAPI void InvalidateRange(const Range &range) final;
-		MTLAPI void FlushRange(const Range &range) final;
-		MTLAPI size_t GetLength() const final;
-
-	private:
+		MTLAPI void *GetBuffer() override;
+		MTLAPI void UnmapBuffer() override;
+		MTLAPI void InvalidateRange(const Range &range) override;
+		MTLAPI void FlushRange(const Range &range) override;
+		MTLAPI size_t GetLength() const override;
+		
+	protected:
 		MetalGPUBuffer(void *data);
 		~MetalGPUBuffer() override;
 
-		void *_buffer;
+		void *_buffer; //The active buffer used for rendering
 
+	private:
 		RNDeclareMetaAPI(MetalGPUBuffer, MTLAPI)
 	};
 }
