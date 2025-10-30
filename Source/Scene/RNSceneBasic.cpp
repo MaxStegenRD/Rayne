@@ -15,6 +15,7 @@
 #include "../Scene/RNEntity.h"
 #include "../Threads/RNWorkGroup.h"
 #include "../Threads/RNWorkQueue.h"
+#include "../Scene/RNLightManager.h"
 
 #define kRNSceneUpdateBatchSize 8192 //1024
 #define kRNSceneRenderBatchSize 32
@@ -461,13 +462,22 @@ namespace RN
 
 					//Submit lights first
 					IntrusiveList<Light>::Member *lightMember = _lights.GetHead();
+					std::vector<Light *> visibleLights;
 					while(lightMember)
 					{
 						Light *light = lightMember->Get();
 						if(light->CanRender(renderer, camera))
+						{
+							visibleLights.push_back(light);
 							light->Render(renderer, camera);
+						}
 
 						lightMember = lightMember->GetNext();
+					}
+
+					if(LightManager *lm = camera->GetLightManager())
+					{
+						lm->BuildForCamera(camera, visibleLights);
 					}
 
 					//Submit all drawables for rendering

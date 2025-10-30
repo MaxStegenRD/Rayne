@@ -13,6 +13,7 @@
 #include "RNVulkanStateCoordinator.h"
 #include "RNVulkanRenderer.h"
 #include "RNVulkanSwapChain.h"
+#include "../../../Source/Scene/RNLightManager.h"
 
 #include <vk_mem_alloc.h>
 
@@ -213,6 +214,7 @@ namespace RN
 		Matrix inverseProjectionMatrix;
 		Matrix projectionViewMatrix;
 		Matrix inverseProjectionViewMatrix;
+		LightManager *lightManager;
 	};
 
 	struct VulkanRenderPass

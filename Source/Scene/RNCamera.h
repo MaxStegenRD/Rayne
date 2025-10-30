@@ -20,6 +20,7 @@ namespace RN
 {
 	class Window;
 	class Light;
+	class LightManager;
 	class Camera : public SceneNode
 	{
 	public:
@@ -59,7 +60,6 @@ namespace RN
 
 		RNAPI void SetRenderPass(RenderPass *renderPass);
 		RNAPI void SetFlags(Flags flags);
-		//		RNAPI void SetLightManager(LightManager *lightManager);
 		RNAPI void SetLODCamera(Camera *camera);
 		RNAPI void SetPriority(int32 priority);
 		RNAPI void SetFOV(float fov);
@@ -80,6 +80,8 @@ namespace RN
 		RNAPI void AddMultiviewCamera(RN::Camera *camera);
 		RNAPI void RemoveMultiviewCamera(RN::Camera *camera);
 
+		RNAPI void CreateLightManager();
+
 		RNAPI void Update(float delta) override;
 		RNAPI void PostUpdate();
 
@@ -95,7 +97,7 @@ namespace RN
 		RenderPass *GetRenderPass() const { return _renderPass; }
 		Flags GetFlags() const { return _flags; }
 		Camera *GetLODCamera() const { return _lodCamera ? _lodCamera : const_cast<Camera *>(this); }
-		//		LightManager *GetLightManager();
+		LightManager *GetLightManager() const { return _lightManager; }
 		int32 GetPriority() const { return _priority; }
 		float GetFOV() const { return _fov; }
 		float GetAspectRatio() const { return _aspect; }
@@ -171,7 +173,7 @@ namespace RN
 		Color _ambient;
 
 		Plane _customNearClipPlane;
-		//		LightManager *_lightManager;
+		LightManager *_lightManager;
 
 		Matrix _projectionMatrix;
 		Matrix _inverseProjectionMatrix;
@@ -182,8 +184,6 @@ namespace RN
 		float _orthoRight;
 		float _orthoTop;
 		float _orthoBottom;
-
-		bool _prefersLightManager;
 
 		RenderPass *_renderPass;
 		Camera *_lodCamera;

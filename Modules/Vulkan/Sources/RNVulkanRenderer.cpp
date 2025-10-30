@@ -798,6 +798,8 @@ namespace RN
 						cameraInfo.inverseProjectionMatrix = multiviewCamera->GetInverseProjectionMatrix();
 						cameraInfo.projectionViewMatrix = cameraInfo.projectionMatrix * cameraInfo.viewMatrix;
 
+						cameraInfo.lightManager = multiviewCamera->GetLightManager();
+
 						renderPass.multiviewCameraInfo.push_back(cameraInfo);
 					});
 				}
@@ -881,6 +883,7 @@ namespace RN
 		renderPass.cameraInfo.inverseProjectionMatrix = camera->GetInverseProjectionMatrix();
 
 		renderPass.cameraInfo.projectionViewMatrix = renderPass.cameraInfo.projectionMatrix * renderPass.cameraInfo.viewMatrix;
+		renderPass.cameraInfo.lightManager = camera->GetLightManager();
 		renderPass.directionalShadowDepthTexture = nullptr;
 
 		renderPass.cameraAmbientColor = camera->GetAmbientColor();
@@ -948,6 +951,21 @@ namespace RN
 			{
 				subpass.cameraViewport = renderpass.cameraViewport;
 			}
+		}
+
+		//Advance light manager buffers if there is a light manager
+		if(camera->GetLightManager())
+		{
+			LightManager *lightManager = camera->GetLightManager();
+			VulkanDynamicGPUBuffer *pointLightBuffer = lightManager->GetPointLightBuffer()->Downcast<VulkanDynamicGPUBuffer>();
+			VulkanDynamicGPUBuffer *spotLightBuffer = lightManager->GetSpotLightBuffer()->Downcast<VulkanDynamicGPUBuffer>();
+			VulkanDynamicGPUBuffer *clusterRecordsBuffer = lightManager->GetClusterRecordsBuffer()->Downcast<VulkanDynamicGPUBuffer>();
+			VulkanDynamicGPUBuffer *clusterIndexBuffer = lightManager->GetClusterIndexBuffer()->Downcast<VulkanDynamicGPUBuffer>();
+
+			pointLightBuffer->Advance(_currentFrame, _completedFrame, false);
+			spotLightBuffer->Advance(_currentFrame, _completedFrame, false);
+			clusterRecordsBuffer->Advance(_currentFrame, _completedFrame, false);
+			clusterIndexBuffer->Advance(_currentFrame, _completedFrame, false);
 		}
 
 		// Run once to submit all scene nodes; SubmitDrawable will route to all matching passes
@@ -2155,6 +2173,8 @@ namespace RN
 		
 							totalConstantBufferCount += uniformState->vertexConstantBuffers.size();
 							totalConstantBufferCount += uniformState->fragmentConstantBuffers.size();
+
+							if(renderPass.cameraInfo.lightManager) totalConstantBufferCount += 4;
 		
 							totalTextureCount += pipelineState->rootSignature->textureCount;
 							totalSubpassInputCount += pipelineState->rootSignature->subpassInputCount;
@@ -2179,6 +2199,8 @@ namespace RN
 
 						totalConstantBufferCount += uniformState->vertexConstantBuffers.size();
 						totalConstantBufferCount += uniformState->fragmentConstantBuffers.size();
+
+						if(renderPass.cameraInfo.lightManager) totalConstantBufferCount += 4;
 
 						totalTextureCount += pipelineState->rootSignature->textureCount;
 					}
@@ -2324,6 +2346,89 @@ namespace RN
 						writeConstantDescriptorSet.descriptorCount = 1;
 
 						writeDescriptorSets.push_back(writeConstantDescriptorSet);
+					}
+
+					// Bind LightManager buffers by semantic for forward rendering
+					if(renderPass.cameraInfo.lightManager)
+					{
+						const Shader::Signature *signature = pipelineState->descriptor.fragmentShader ? pipelineState->descriptor.fragmentShader->GetSignature() : nullptr;
+						if(signature)
+						{
+							signature->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *argument, size_t index, bool &stop) {
+								VkDescriptorBufferInfo bufferInfo = {};
+								VkWriteDescriptorSet write = {};
+								write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+								write.pNext = NULL;
+								write.dstSet = descriptorSet;
+								write.dstBinding = argument->GetIndex();
+								write.descriptorCount = 1;
+
+								switch(argument->GetSemantic())
+								{
+									case Shader::ArgumentBuffer::Semantic::LightClusterPointLights:
+									{
+										GPUBuffer *pointlightBuffer = renderPass.cameraInfo.lightManager->GetPointLightBuffer();
+										if(pointlightBuffer)
+										{
+											bufferInfo.buffer = pointlightBuffer->Downcast<VulkanDynamicGPUBuffer>()->GetVulkanBuffer();
+											bufferInfo.offset = 0;
+											bufferInfo.range = pointlightBuffer->GetLength();
+											constantBufferDescriptorInfoArray.push_back(bufferInfo);
+											write.pBufferInfo = &constantBufferDescriptorInfoArray.back();
+											write.descriptorType = (argument->GetType() == Shader::ArgumentBuffer::Type::UniformBuffer)? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+											writeDescriptorSets.push_back(write);
+										}
+										break;
+									}
+									case Shader::ArgumentBuffer::Semantic::LightClusterSpotLights:
+									{
+										GPUBuffer *spotlightBuffer = renderPass.cameraInfo.lightManager->GetSpotLightBuffer();
+										if(spotlightBuffer)
+										{
+											bufferInfo.buffer = spotlightBuffer->Downcast<VulkanDynamicGPUBuffer>()->GetVulkanBuffer();
+											bufferInfo.offset = 0;
+											bufferInfo.range = spotlightBuffer->GetLength();
+											constantBufferDescriptorInfoArray.push_back(bufferInfo);
+											write.pBufferInfo = &constantBufferDescriptorInfoArray.back();
+											write.descriptorType = (argument->GetType() == Shader::ArgumentBuffer::Type::UniformBuffer)? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+											writeDescriptorSets.push_back(write);
+										}
+										break;
+									}
+									case Shader::ArgumentBuffer::Semantic::LightClusterRecords:
+									{
+										GPUBuffer *clusterRecordsBuffer = renderPass.cameraInfo.lightManager->GetClusterRecordsBuffer();
+										if(clusterRecordsBuffer)
+										{
+											bufferInfo.buffer = clusterRecordsBuffer->Downcast<VulkanDynamicGPUBuffer>()->GetVulkanBuffer();
+											bufferInfo.offset = 0;
+											bufferInfo.range = clusterRecordsBuffer->GetLength();
+											constantBufferDescriptorInfoArray.push_back(bufferInfo);
+											write.pBufferInfo = &constantBufferDescriptorInfoArray.back();
+											write.descriptorType = (argument->GetType() == Shader::ArgumentBuffer::Type::UniformBuffer)? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+											writeDescriptorSets.push_back(write);
+										}
+										break;
+									}
+									case Shader::ArgumentBuffer::Semantic::LightClusterIndices:
+									{
+										GPUBuffer *clusterIndexBuffer = renderPass.cameraInfo.lightManager->GetClusterIndexBuffer();
+										if(clusterIndexBuffer)
+										{
+											bufferInfo.buffer = clusterIndexBuffer->Downcast<VulkanDynamicGPUBuffer>()->GetVulkanBuffer();
+											bufferInfo.offset = 0;
+											bufferInfo.range = clusterIndexBuffer->GetLength();
+											constantBufferDescriptorInfoArray.push_back(bufferInfo);
+											write.pBufferInfo = &constantBufferDescriptorInfoArray.back();
+											write.descriptorType = (argument->GetType() == Shader::ArgumentBuffer::Type::UniformBuffer)? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+											writeDescriptorSets.push_back(write);
+										}
+										break;
+									}
+									default: break;
+								}
+							});
+						}
 					}
 
 					//TODO: Support vertex shader textures

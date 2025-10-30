@@ -8,6 +8,7 @@
 
 #import <Metal/Metal.h>
 #include "RNMetalRenderer.h"
+#include "../../../Source/Scene/RNLightManager.h"
 #include "RNMetalInternals.h"
 #include "RNMetalShaderLibrary.h"
 #include "RNMetalGPUBuffer.h"
@@ -1470,6 +1471,46 @@ namespace RN
 			{
 				MetalGPUBuffer *buffer = static_cast<MetalGPUBuffer *>(uniformBufferReference->uniformBuffer->GetActiveBuffer());
 				[encoder setFragmentBuffer:(id <MTLBuffer>)buffer->_buffer offset:uniformBufferReference->offset atIndex:uniformBufferReference->shaderResourceIndex];
+			}
+
+			// Bind LightManager buffers (reflected) by semantic
+			if(renderPass.shaderHint == Shader::UsageHint::Default && metalFragmentShader && renderPass.camera)
+			{
+				LightManager *lightManager = renderPass.camera->GetLightManager();
+				if(lightManager)
+				{
+					metalFragmentShader->GetSignature()->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *arg, size_t index, bool &stop) {
+						uint32 bindIndex = arg->GetIndex();
+						switch(arg->GetSemantic())
+						{
+							case Shader::ArgumentBuffer::Semantic::LightClusterPointLights:
+							{
+								GPUBuffer *pl = lightManager->GetPointLightBuffer();
+								if(pl) [encoder setFragmentBuffer:(id<MTLBuffer>)static_cast<MetalGPUBuffer *>(pl)->_buffer offset:0 atIndex:bindIndex];
+								break;
+							}
+							case Shader::ArgumentBuffer::Semantic::LightClusterSpotLights:
+							{
+								GPUBuffer *sl = lightManager->GetSpotLightBuffer();
+								if(sl) [encoder setFragmentBuffer:(id<MTLBuffer>)static_cast<MetalGPUBuffer *>(sl)->_buffer offset:0 atIndex:bindIndex];
+								break;
+							}
+							case Shader::ArgumentBuffer::Semantic::LightClusterRecords:
+							{
+								GPUBuffer *cr = lightManager->GetClusterRecordsBuffer();
+								if(cr) [encoder setFragmentBuffer:(id<MTLBuffer>)static_cast<MetalGPUBuffer *>(cr)->_buffer offset:0 atIndex:bindIndex];
+								break;
+							}
+							case Shader::ArgumentBuffer::Semantic::LightClusterIndices:
+							{
+								GPUBuffer *ci = lightManager->GetClusterIndexBuffer();
+								if(ci) [encoder setFragmentBuffer:(id<MTLBuffer>)static_cast<MetalGPUBuffer *>(ci)->_buffer offset:0 atIndex:bindIndex];
+								break;
+							}
+							default: break;
+						}
+					});
+				}
 			}
 		}
 

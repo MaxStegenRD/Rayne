@@ -10,6 +10,7 @@
 #include "../Rendering/RNRenderer.h"
 #include "../Rendering/RNWindow.h"
 #include "RNLight.h"
+#include "RNLightManager.h"
 
 namespace RN
 {
@@ -48,11 +49,7 @@ namespace RN
 		SafeRelease(_multiviewCameras);
 		SafeRelease(_renderNodes);
 
-		/*		if(_lightManager)
-		{
-			_lightManager->camera = nullptr;
-			_lightManager->Unlock();
-		}*/
+		SafeRelease(_lightManager);
 	}
 
 
@@ -79,15 +76,11 @@ namespace RN
 		_dirtyFrustum = true;
 		_hasCustomNearClipPlane = false;
 
-		_prefersLightManager = false;
-
 		_priority = 0;
 		_lodCamera = nullptr;
 
 		_multiviewCameras = nullptr;
 		_isMultiviewCamera = false;
-
-		_prefersLightManager = true;
 
 		_frustumPlaneOffsets[0] = 0.0f;
 		_frustumPlaneOffsets[1] = 0.0f;
@@ -97,6 +90,8 @@ namespace RN
 		_firstNodeMember = nullptr;
 
 		_renderNodes = nullptr;
+
+		_lightManager = nullptr;
 	}
 
 	// Setter
@@ -171,24 +166,6 @@ namespace RN
 		_customNearClipPlane = clipPlane;
 		_hasCustomNearClipPlane = enabled;
 	}
-
-	/*	void Camera::SetLightManager(LightManager *lightManager)
-	{
-		RN_ASSERT(!lightManager || !lightManager->camera, "The LightManager can't be attached to another camera!");
-
-		if(_lightManager)
-		{
-			_lightManager->camera = nullptr;
-			_lightManager->Unlock();
-		}
-
-		_prefersLightManager = false;
-
-		_lightManager = SafeRetain(lightManager);
-
-		if(_lightManager)
-			_lightManager->camera = this;
-	}*/
 
 	void Camera::SetOrthogonalFrustum(float top, float bottom, float left, float right)
 	{
@@ -430,16 +407,11 @@ namespace RN
 		return Vector3(vec);
 	}
 
-	/*	LightManager *Camera::GetLightManager()
+	void Camera::CreateLightManager()
 	{
-		if(!_lightManager && _prefersLightManager)
-		{
-			SetLightManager(LightManager::CreateDefaultLightManager());
-			_lightManager->Unlock(); // SetLightManager() retains the light manager, and CreateDefaultLightManager() delegates the ownership to the caller
-		}
-
-		return _lightManager;
-	}*/
+		if(_lightManager) return;
+		_lightManager = new LightManager();
+	}
 
 	const Vector3 &Camera::GetFrustumCenter()
 	{

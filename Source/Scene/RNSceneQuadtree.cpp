@@ -15,6 +15,7 @@
 #include "../Scene/RNEntity.h"
 #include "../Threads/RNWorkGroup.h"
 #include "../Threads/RNWorkQueue.h"
+#include "../Scene/RNLightManager.h"
 
 #define kRNSceneUpdateBatchSize 8192 //1024
 #define kRNSceneRenderBatchSize 32
@@ -80,6 +81,25 @@ namespace RN
 				_treeNodes[firstChild + 3] = { AABB(Vector3(parentMidPoint.x, n.bounds.minExtend.y, parentMidPoint.z), n.bounds.maxExtend), UINT32_MAX, 0, {}};
 			}
 		}
+		
+/*		for(int i = 0; i < nodeCount; i++)
+		{
+			if(_treeNodes[i].firstChild == UINT32_MAX)
+			{
+				Mesh *cube = Mesh::WithColoredCube(Vector3(1.0f, 1.0f, 1.0f), RN::Color::Green());
+				Model *model = new Model(cube);
+				Material *mat = model->GetLODStage(0)->GetMaterialAtIndex(0);
+				mat->SetDepthWriteEnabled(false);
+				mat->SetDepthMode(RN::DepthMode::Greater);
+				mat->SetCullMode(RN::CullMode::None);
+				
+				Entity *box = new Entity(model);
+				box->SetRenderPriority(SceneNode::RenderLate);
+				box->SetWorldScale(Vector3(1.0f, 1.0f, 1.0f));
+				box->SetWorldPosition((_treeNodes[i].bounds.minExtend + _treeNodes[i].bounds.maxExtend) * 0.5f);
+				AddNode(box->Autorelease());
+			}
+		}*/
 	}
 
 	SceneQuadtree::~SceneQuadtree()
@@ -481,13 +501,22 @@ namespace RN
 
 					//Submit lights first
 					IntrusiveList<Light>::Member *lightMember = _lights.GetHead();
+					std::vector<Light *> visibleLights;
 					while(lightMember)
 					{
 						Light *light = lightMember->Get();
 						if(light->CanRender(renderer, camera))
+						{
+							visibleLights.push_back(light);
 							light->Render(renderer, camera);
+						}
 
 						lightMember = lightMember->GetNext();
+					}
+
+					if(LightManager *lm = camera->GetLightManager())
+					{
+						lm->BuildForCamera(camera, visibleLights);
 					}
 
 					//Submit all drawables for rendering
@@ -523,6 +552,7 @@ namespace RN
 		stack.reserve(128);
 		stack.push_back(0);
 
+		int counter = 0;
 		while(!stack.empty())
 		{
 			uint32 i = stack.back();
@@ -530,6 +560,8 @@ namespace RN
 			const TreeNode& node = _treeNodes[i];
 
 			if(node.numberOfObjects == 0 || !lodCamera->InFrustum(node.bounds)) continue;
+			
+			counter += 1;
 
 			//Visit all objects that are inside this node
 			for(SceneNode *object : node.objects)
@@ -565,6 +597,11 @@ namespace RN
 					stack.push_back(node.firstChild + childIndex);
 				}
 			}
+		}
+		
+		if(!(camera->GetFlags() & Camera::Flags::Orthogonal))
+		{
+			RNDebug("Visited " << counter << " nodes, clip far: " << camera->GetClipFar() << ", cameraPos: " << cameraPosition << ", camerRot: " << camera->GetWorldEulerAngle() << ", objects to render: " << sceneNodesToRender.size());
 		}
 	}
 

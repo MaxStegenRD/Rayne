@@ -11,6 +11,7 @@
 #include "../Objects/RNAutoreleasePool.h"
 #include "../Threads/RNWorkGroup.h"
 #include "../Threads/RNWorkQueue.h"
+#include "../Scene/RNLightManager.h"
 
 #define kRNSceneUpdateBatchSize 64
 
@@ -143,14 +144,21 @@ namespace RN
 				Vector3 cameraPosition = camera->GetWorldPosition();
 
 				IntrusiveList<Light>::Member *lightMember = _lights.GetHead();
+				std::vector<Light *> visibleLights;
 				while(lightMember)
 				{
 					Light *light = lightMember->Get();
 					if(light->CanRender(renderer, camera))
 					{
+						visibleLights.push_back(light);
 						light->Render(renderer, camera);
 					}
 					lightMember = lightMember->GetNext();
+				}
+
+				if(LightManager *lm = camera->GetLightManager())
+				{
+					lm->BuildForCamera(camera, visibleLights);
 				}
 
 				const Volume *volume = nullptr;
