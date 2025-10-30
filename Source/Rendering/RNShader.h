@@ -180,6 +180,14 @@ namespace RN
 		class ArgumentBuffer : public Argument
 		{
 		public:
+			enum class Semantic
+			{
+				None,
+				LightClusterPointLights,
+				LightClusterSpotLights,
+				LightClusterRecords,
+				LightClusterIndices
+			};
 			enum class Type
 			{
 				UniformBuffer,
@@ -193,6 +201,8 @@ namespace RN
 			size_t GetTotalUniformSize() const { return _totalUniformSize; }
 			const Array *GetUniformDescriptors() const { return _uniformDescriptors; }
 			Type GetType() const { return _type; }
+			void SetSemantic(Semantic semantic) { _semantic = semantic; }
+			Semantic GetSemantic() const { return _semantic; }
 
 			size_t GetMaxInstanceCount() const { return _maxInstanceCount; }
 
@@ -200,6 +210,7 @@ namespace RN
 			Array *_uniformDescriptors;
 			size_t _totalUniformSize;
 			Type _type;
+			Semantic _semantic;
 
 			size_t _maxInstanceCount; //If this buffer contains per instance uniform data, it just contains an array of a struct, this is the number of elements of that array. 1 otherwise. 0 if this a storage buffer as they don't have any tight size limits and can be indexed more freely.
 

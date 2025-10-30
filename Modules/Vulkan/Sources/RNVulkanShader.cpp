@@ -300,97 +300,93 @@ namespace RN
 			unsigned memberCount = type.member_types.size();
 
 			//TODO: This is a bit of a hack to get the struct inside an instanced uniform buffer / structuredbuffer in the hlsl shader, should change to work more generally
-            if(memberCount != 1) continue;
-			type = reflector.get_type(type.member_types[0]);
-            memberCount = type.member_types.size();
-
-			for(size_t index = 0; index < memberCount; index++)
+			if(memberCount == 1)
 			{
-				size_t offset = reflector.type_struct_member_offset(type, index);
+				type = reflector.get_type(type.member_types[0]);
+				memberCount = type.member_types.size();
 
-                const std::string &memberName = reflector.get_member_name(type.self, index);
-                String *name = RNSTR(memberName);
-
-                if(name->GetLength() == 0) break;
-
-                spirv_cross::SPIRType spirvUniformType = reflector.get_type(type.member_types[index]);
-
-				//Set array element count to the real number, but default to 1 for all cases
-				size_t arrayElementCount = 1;
-				if(spirvUniformType.array.size() == 1) //There are more than one, if it is multidimensional, but only support 1 dimension for now
+				for(size_t index = 0; index < memberCount; index++)
 				{
-					arrayElementCount = spirvUniformType.array[0];
-				}
+					size_t offset = reflector.type_struct_member_offset(type, index);
 
-				PrimitiveType uniformType = PrimitiveType::Invalid;
-				if(spirvUniformType.basetype == spirv_cross::SPIRType::BaseType::Float)
-				{
-					if(spirvUniformType.columns == 1)
-					{
-						if(spirvUniformType.vecsize == 1) uniformType = PrimitiveType::Float;
-						else if(spirvUniformType.vecsize == 2) uniformType = PrimitiveType::Vector2;
-						else if(spirvUniformType.vecsize == 3) uniformType = PrimitiveType::Vector3;
-						else if(spirvUniformType.vecsize == 4) uniformType = PrimitiveType::Vector4;
-					}
-					else
-					{
-						if(spirvUniformType.vecsize == 2) uniformType = PrimitiveType::Matrix2x2;
-						if(spirvUniformType.vecsize == 3) uniformType = PrimitiveType::Matrix3x3;
-						if(spirvUniformType.vecsize == 4) uniformType = PrimitiveType::Matrix4x4;
-					}
-				}
-				else if(spirvUniformType.basetype == spirv_cross::SPIRType::BaseType::Half)
-				{
-					if(spirvUniformType.columns == 1)
-					{
-						if(spirvUniformType.vecsize == 1) uniformType = PrimitiveType::Half;
-						else if(spirvUniformType.vecsize == 2) uniformType = PrimitiveType::HalfVector2;
-						else if(spirvUniformType.vecsize == 3) uniformType = PrimitiveType::HalfVector3;
-						else if(spirvUniformType.vecsize == 4) uniformType = PrimitiveType::HalfVector4;
-					}
-				}
-				else if(spirvUniformType.columns == 1 && spirvUniformType.vecsize == 1)
-				{
-					if(spirvUniformType.basetype == spirv_cross::SPIRType::BaseType::Int)
-					{
-						uniformType = PrimitiveType::Int32;
-					}
-					else if(spirvUniformType.basetype == spirv_cross::SPIRType::BaseType::UInt)
-					{
-						uniformType = PrimitiveType::Uint32;
-					}
-					else if(spirvUniformType.basetype == spirv_cross::SPIRType::BaseType::Short)
-					{
-						uniformType = PrimitiveType::Int16;
-					}
-					else if(spirvUniformType.basetype == spirv_cross::SPIRType::BaseType::UShort)
-					{
-						uniformType = PrimitiveType::Uint16;
-					}
-					else if(spirvUniformType.basetype == spirv_cross::SPIRType::BaseType::SByte)
-					{
-						uniformType = PrimitiveType::Int8;
-					}
-					else if(spirvUniformType.basetype == spirv_cross::SPIRType::BaseType::UByte)
-					{
-						uniformType = PrimitiveType::Uint8;
-					}
-				}
+					const std::string &memberName = reflector.get_member_name(type.self, index);
+					String *name = RNSTR(memberName);
 
-				UniformDescriptor *descriptor = new UniformDescriptor(name, uniformType, offset, arrayElementCount);
-				uniformDescriptors->AddObject(descriptor->Autorelease());
+					if(name->GetLength() == 0) break;
+
+					spirv_cross::SPIRType spirvUniformType = reflector.get_type(type.member_types[index]);
+
+					//Set array element count to the real number, but default to 1 for all cases
+					size_t arrayElementCount = 1;
+					if(spirvUniformType.array.size() == 1) //There are more than one, if it is multidimensional, but only support 1 dimension for now
+					{
+						arrayElementCount = spirvUniformType.array[0];
+					}
+
+					PrimitiveType uniformType = PrimitiveType::Invalid;
+					if(spirvUniformType.basetype == spirv_cross::SPIRType::BaseType::Float)
+					{
+						if(spirvUniformType.columns == 1)
+						{
+							if(spirvUniformType.vecsize == 1) uniformType = PrimitiveType::Float;
+							else if(spirvUniformType.vecsize == 2) uniformType = PrimitiveType::Vector2;
+							else if(spirvUniformType.vecsize == 3) uniformType = PrimitiveType::Vector3;
+							else if(spirvUniformType.vecsize == 4) uniformType = PrimitiveType::Vector4;
+						}
+						else
+						{
+							if(spirvUniformType.vecsize == 2) uniformType = PrimitiveType::Matrix2x2;
+							if(spirvUniformType.vecsize == 3) uniformType = PrimitiveType::Matrix3x3;
+							if(spirvUniformType.vecsize == 4) uniformType = PrimitiveType::Matrix4x4;
+						}
+					}
+					else if(spirvUniformType.basetype == spirv_cross::SPIRType::BaseType::Half)
+					{
+						if(spirvUniformType.columns == 1)
+						{
+							if(spirvUniformType.vecsize == 1) uniformType = PrimitiveType::Half;
+							else if(spirvUniformType.vecsize == 2) uniformType = PrimitiveType::HalfVector2;
+							else if(spirvUniformType.vecsize == 3) uniformType = PrimitiveType::HalfVector3;
+							else if(spirvUniformType.vecsize == 4) uniformType = PrimitiveType::HalfVector4;
+						}
+					}
+					else if(spirvUniformType.columns == 1 && spirvUniformType.vecsize == 1)
+					{
+						if(spirvUniformType.basetype == spirv_cross::SPIRType::BaseType::Int)
+						{
+							uniformType = PrimitiveType::Int32;
+						}
+						else if(spirvUniformType.basetype == spirv_cross::SPIRType::BaseType::UInt)
+						{
+							uniformType = PrimitiveType::Uint32;
+						}
+						else if(spirvUniformType.basetype == spirv_cross::SPIRType::BaseType::Short)
+						{
+							uniformType = PrimitiveType::Int16;
+						}
+						else if(spirvUniformType.basetype == spirv_cross::SPIRType::BaseType::UShort)
+						{
+							uniformType = PrimitiveType::Uint16;
+						}
+						else if(spirvUniformType.basetype == spirv_cross::SPIRType::BaseType::SByte)
+						{
+							uniformType = PrimitiveType::Int8;
+						}
+						else if(spirvUniformType.basetype == spirv_cross::SPIRType::BaseType::UByte)
+						{
+							uniformType = PrimitiveType::Uint8;
+						}
+					}
+
+					UniformDescriptor *descriptor = new UniformDescriptor(name, uniformType, offset, arrayElementCount);
+					uniformDescriptors->AddObject(descriptor->Autorelease());
+				}
 			}
 
-			if(uniformDescriptors->GetCount() > 0)
-			{
-				uint32 binding = reflector.get_decoration(resource.id, spv::DecorationBinding);
-				ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR(resource.name), binding, uniformDescriptors->Autorelease(), ArgumentBuffer::Type::StorageBuffer, 0);
-				buffersArray->AddObject(argumentBuffer->Autorelease());
-			}
-			else
-			{
-				uniformDescriptors->Release();
-			}
+			// Always create an argument buffer (even if unstructured/empty like ByteAddressBuffer)
+			uint32 binding = reflector.get_decoration(resource.id, spv::DecorationBinding);
+			ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR(resource.name), binding, uniformDescriptors->Autorelease(), ArgumentBuffer::Type::StorageBuffer, 0);
+			buffersArray->AddObject(argumentBuffer->Autorelease());
 		}
 
 		for(auto &resource : resources.uniform_buffers)
@@ -398,9 +394,17 @@ namespace RN
 			Array *uniformDescriptors = new Array();
 			size_t maxInstanceCount = 1;
 
+			if(resource.name == "type_lightClusterPointLights" || resource.name == "type_lightClusterSpotLights" || resource.name == "type_lightClusterRecords" || resource.name == "type_lightClusterIndices")
+			{
+				uint32 binding = reflector.get_decoration(resource.id, spv::DecorationBinding);
+				ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR(resource.name.substr(5)), binding, uniformDescriptors->Autorelease(), ArgumentBuffer::Type::UniformBuffer, maxInstanceCount);
+				buffersArray->AddObject(argumentBuffer->Autorelease());
+				continue;
+			}
+
 			spirv_cross::SPIRType type = reflector.get_type(resource.base_type_id);
 			unsigned memberCount = type.member_types.size();
-            size_t index = 0;
+			size_t index = 0;
 			while(index < memberCount)
 			{
 				size_t offset = reflector.type_struct_member_offset(type, index);
@@ -409,10 +413,10 @@ namespace RN
 				String *name = RNSTR(memberName);
 
 				if(name->GetLength() == 0)
-                {
-                    index++;
-                    break;
-                }
+				{
+					index++;
+					break;
+				}
 
 				spirv_cross::SPIRType spirvUniformType = reflector.get_type(type.member_types[index]);
 
@@ -491,7 +495,7 @@ namespace RN
 				UniformDescriptor *descriptor = new UniformDescriptor(name, uniformType, offset, arrayElementCount);
 				uniformDescriptors->AddObject(descriptor->Autorelease());
 
-                index++;
+				index++;
 			}
 
 			if(uniformDescriptors->GetCount() > 0)

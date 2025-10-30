@@ -119,6 +119,12 @@ namespace RN
 						ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR([[argument name] UTF8String]), static_cast<uint32>([argument index]), uniformDescriptors, numberOfElements > 0? ArgumentBuffer::Type::StorageBuffer : ArgumentBuffer::Type::UniformBuffer, numberOfElements > 0? 0 : 1);
 						buffersArray->AddObject(argumentBuffer->Autorelease());
 					}
+					else
+					{
+						// No reflected members: treat as raw/storage buffer (e.g., ByteAddressBuffer)
+						ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR([[argument name] UTF8String]), static_cast<uint32>([argument index]), uniformDescriptors, ArgumentBuffer::Type::StorageBuffer, 0);
+						buffersArray->AddObject(argumentBuffer->Autorelease());
+					}
 					
 					break;
 				}

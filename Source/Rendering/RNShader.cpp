@@ -569,7 +569,7 @@ namespace RN
 	}
 
 	Shader::ArgumentBuffer::ArgumentBuffer(String *name, uint32 index, Array *uniformDescriptors, Type type, size_t maxInstanceCount) :
-		Argument(name, index), _totalUniformSize(0), _type(type), _maxInstanceCount(maxInstanceCount)
+		Argument(name, index), _totalUniformSize(0), _type(type), _semantic(Semantic::None), _maxInstanceCount(maxInstanceCount)
 	{
 		_uniformDescriptors = SafeRetain(uniformDescriptors);
 
@@ -577,6 +577,15 @@ namespace RN
 		{
 			Shader::UniformDescriptor *lastDescriptor = _uniformDescriptors->GetLastObject<Shader::UniformDescriptor>();
 			_totalUniformSize = lastDescriptor->GetOffset() + lastDescriptor->GetSize();
+		}
+
+		// Assign semantics based on common engine-wide names
+		if(_name)
+		{
+			if(_name->IsEqual(RNCSTR("lightClusterPointLights"))) _semantic = Shader::ArgumentBuffer::Semantic::LightClusterPointLights;
+			else if(_name->IsEqual(RNCSTR("lightClusterSpotLights"))) _semantic = Shader::ArgumentBuffer::Semantic::LightClusterSpotLights;
+			else if(_name->IsEqual(RNCSTR("lightClusterRecords"))) _semantic = Shader::ArgumentBuffer::Semantic::LightClusterRecords;
+			else if(_name->IsEqual(RNCSTR("lightClusterIndices"))) _semantic = Shader::ArgumentBuffer::Semantic::LightClusterIndices;
 		}
 	}
 
