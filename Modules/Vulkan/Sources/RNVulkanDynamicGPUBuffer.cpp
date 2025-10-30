@@ -38,7 +38,7 @@ namespace RN
 
 	void VulkanDynamicGPUBuffer::FlushRange(const Range &range)
 	{
-		_buffers[_bufferIndex]->FlushRange(range);
+		_buffers[_hostBufferIndex]->FlushRange(range);
 
 		VulkanRenderer *realRenderer = Renderer::GetActiveRenderer()->Downcast<VulkanRenderer>();
 		Advance(realRenderer->_currentFrame, realRenderer->_completedFrame, false);
