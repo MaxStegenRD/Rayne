@@ -14,30 +14,30 @@ namespace RN
 {
 	RNDefineMeta(LightManager, Object)
 
-    LightManager::LightManager() :
-        _pointLightBuffer(nullptr),
-        _spotLightBuffer(nullptr),
-        _clusterIndexBuffer(nullptr),
-        _clusterRecordsBuffer(nullptr),
-        _lastViewportWidth(0.0f),
-        _lastViewportHeight(0.0f),
-        _lastProjA(0.0f),
-        _lastProjB(0.0f),
-        _lastClipNear(0.0f),
+	LightManager::LightManager() :
+		_pointLightBuffer(nullptr),
+		_spotLightBuffer(nullptr),
+		_clusterIndexBuffer(nullptr),
+		_clusterRecordsBuffer(nullptr),
+		_lastViewportWidth(0.0f),
+		_lastViewportHeight(0.0f),
+		_lastProjA(0.0f),
+		_lastProjB(0.0f),
+		_lastClipNear(0.0f),
 		_lastClipFar(0.0f),
 		_maxLightsPerCluster(255)
 	{
-        SetClusterGridInfo(24, 12, 12, 0.7f);
+		SetClusterGridInfo(24, 12, 12, 0.7f);
 		_grid.zFirstSliceDepth = 3.0f;
 	}
 
-    LightManager::~LightManager()
-    {
-        SafeRelease(_pointLightBuffer);
-        SafeRelease(_spotLightBuffer);
-        SafeRelease(_clusterIndexBuffer);
-        SafeRelease(_clusterRecordsBuffer);
-    }
+	LightManager::~LightManager()
+	{
+		SafeRelease(_pointLightBuffer);
+		SafeRelease(_spotLightBuffer);
+		SafeRelease(_clusterIndexBuffer);
+		SafeRelease(_clusterRecordsBuffer);
+	}
 
 	void LightManager::SetClusterGridInfo(uint32 x, uint32 y, uint32 z, float zLogFactor)
 	{
@@ -50,23 +50,24 @@ namespace RN
 		PreallocateBuffers(256, 128, 16, 8);
 	}
 
-    void LightManager::PreallocateBuffers(uint32 pointEstimate, uint32 spotEstimate, uint16 pointPerClusterEstimate, uint16 spotPerClusterEstimate)
+	void LightManager::PreallocateBuffers(uint32 pointEstimate, uint32 spotEstimate, uint16 pointPerClusterEstimate, uint16 spotPerClusterEstimate)
 	{
 		uint32 clusterCount = ComputeClusterCount();
-        pointPerClusterEstimate = std::max<uint16_t>(1, std::min<uint16_t>(pointPerClusterEstimate, _maxLightsPerCluster));
-        spotPerClusterEstimate = std::max<uint16_t>(1, std::min<uint16_t>(spotPerClusterEstimate, _maxLightsPerCluster));
+		pointPerClusterEstimate = std::max<uint16_t>(1, std::min<uint16_t>(pointPerClusterEstimate, _maxLightsPerCluster));
+		spotPerClusterEstimate = std::max<uint16_t>(1, std::min<uint16_t>(spotPerClusterEstimate, _maxLightsPerCluster));
 
-        // Metal requires uniform buffers to be at least as large as the declared array sizes in HLSL
-        const uint32 kLightsPointMax = 256; // must match Base.hlsl
-        const uint32 kLightsSpotMax  = 256; // must match Base.hlsl
+		// Metal requires uniform buffers to be at least as large as the declared array sizes in HLSL
+		const uint32 kLightsPointMax = 256; // must match Base.hlsl
+		const uint32 kLightsSpotMax  = 256; // must match Base.hlsl
 
-        size_t pointBytes = std::max<size_t>(pointEstimate, kLightsPointMax) * sizeof(PointLightPacked);
-        size_t spotBytes  = std::max<size_t>(spotEstimate,  kLightsSpotMax)  * sizeof(SpotLightPacked);
+		size_t pointBytes = std::max<size_t>(pointEstimate, kLightsPointMax) * sizeof(PointLightPacked);
+		size_t spotBytes  = std::max<size_t>(spotEstimate,  kLightsSpotMax)  * sizeof(SpotLightPacked);
 		size_t indexBytes = clusterCount * (pointPerClusterEstimate + spotPerClusterEstimate) * sizeof(uint16);
-        size_t headerBytes = sizeof(ClusterGridInfo); // expected 48 bytes
-        // Records buffer must match shader-declared maximum array size
-        const uint32 kLightClustersMax = 3456; // must match Base.hlsl LIGHT_CLUSTERS_MAX
-        size_t recordsBytes = headerBytes + static_cast<size_t>(kLightClustersMax) * sizeof(ClusterRecord);
+		size_t headerBytes = sizeof(ClusterGridInfo); // expected 48 bytes
+
+		// Records buffer must match shader-declared maximum array size
+		const uint32 kLightClusterRecordsMax = 4000;
+		size_t recordsBytes = headerBytes + static_cast<size_t>(kLightClusterRecordsMax) * sizeof(ClusterRecord);
 
 		if(!_pointLightBuffer || _pointLightBuffer->GetLength() < pointBytes)
 		{
@@ -83,7 +84,7 @@ namespace RN
 			SafeRelease(_clusterIndexBuffer);
 			_clusterIndexBuffer = Renderer::GetActiveRenderer()->CreateBufferWithLength(indexBytes, GPUResource::UsageOptions::Uniform, GPUResource::AccessOptions::WriteOnly, true);
 		}
-        if(!_clusterRecordsBuffer || _clusterRecordsBuffer->GetLength() < recordsBytes)
+		if(!_clusterRecordsBuffer || _clusterRecordsBuffer->GetLength() < recordsBytes)
 		{
 			SafeRelease(_clusterRecordsBuffer);
 			_clusterRecordsBuffer = Renderer::GetActiveRenderer()->CreateBufferWithLength(recordsBytes, GPUResource::UsageOptions::Uniform, GPUResource::AccessOptions::WriteOnly, true);
@@ -124,8 +125,8 @@ namespace RN
 	{
 		_packedPointLights.clear();
 		_packedSpotLights.clear();
-        _clusterLightIndices.clear();
-        _clusterRecords.clear();
+		_clusterLightIndices.clear();
+		_clusterRecords.clear();
 	}
 
 	void LightManager::PackLights(const std::vector<Light *> &lights)
@@ -262,21 +263,21 @@ namespace RN
 		uint32 tilesX = _grid.clustersX;
 		uint32 tilesY = _grid.clustersY;
 
-        auto screenToCluster = [&](float ndcX, float ndcY, uint32 &cx, uint32 &cy)
-        {
-            // Map NDC [-1,1] to pixel coords with bottom-left origin to match shader formula
-            float sx = (ndcX * 0.5f + 0.5f) * framebufferSize.x; // [0..W]
-            float syBottomLeft = (ndcY * 0.5f + 0.5f) * framebufferSize.y; // [0..H], y up from bottom
-            cx = std::clamp(uint32(sx * tilesX / std::max(1.0f, framebufferSize.x)), 0u, tilesX - 1u);
-            cy = std::clamp(uint32(syBottomLeft * tilesY / std::max(1.0f, framebufferSize.y)), 0u, tilesY - 1u);
-        };
+		auto screenToCluster = [&](float ndcX, float ndcY, uint32 &cx, uint32 &cy)
+		{
+			// Map NDC [-1,1] to pixel coords with bottom-left origin to match shader formula
+			float sx = (ndcX * 0.5f + 0.5f) * framebufferSize.x; // [0..W]
+			float syBottomLeft = (ndcY * 0.5f + 0.5f) * framebufferSize.y; // [0..H], y up from bottom
+			cx = std::clamp(uint32(sx * tilesX / std::max(1.0f, framebufferSize.x)), 0u, tilesX - 1u);
+			cy = std::clamp(uint32(syBottomLeft * tilesY / std::max(1.0f, framebufferSize.y)), 0u, tilesY - 1u);
+		};
 
 		// Collect per-cluster indices, then flatten once
 		std::vector<std::vector<uint16_t>> perClusterPoints(clusterCount);
 		std::vector<std::vector<uint16_t>> perClusterSpots(clusterCount);
 		_clusterLightIndices.clear();
 
-        // Second pass: actually fill using separate write cursors
+		// Second pass: actually fill using separate write cursors
 		for(uint32 li = 0; li < _packedPointLights.size(); ++li)
 		{
 			const PointLightPacked &pl = _packedPointLights[li];
@@ -307,10 +308,10 @@ namespace RN
 				{
 					float centerNdcXv = centerCSv.x / centerCSv.w;
 					float centerNdcYv = centerCSv.y / centerCSv.w;
-                    float denom = std::max(depthv*depthv - range*range, 1e-6f);
-                    float rSil = range / std::sqrt(denom);
-                    float rNdcXv = std::abs(projs[vi].m[0]) * rSil;
-                    float rNdcYv = std::abs(projs[vi].m[5]) * rSil;
+					float denom = std::max(depthv*depthv - range*range, 1e-6f);
+					float rSil = range / std::sqrt(denom);
+					float rNdcXv = std::abs(projs[vi].m[0]) * rSil;
+					float rNdcYv = std::abs(projs[vi].m[5]) * rSil;
 					float ndcMinXv = std::max(-1.0f, centerNdcXv - rNdcXv);
 					float ndcMaxXv = std::min( 1.0f, centerNdcXv + rNdcXv);
 					float ndcMinYv = std::max(-1.0f, centerNdcYv - rNdcYv);
@@ -431,22 +432,27 @@ namespace RN
 			}
 		}
 
-		// Build records and flatten indices contiguously per cluster
-		_clusterRecords.resize(clusterCount);
+		// Build per-cluster counts and offsets
+		std::vector<uint8_t> perPointCounts(clusterCount, 0);
+		std::vector<uint8_t> perSpotCounts(clusterCount, 0);
+		std::vector<uint32_t> perOffsets(clusterCount, 0);
 		uint32 totalCount = 0;
 		for(uint32 i = 0; i < clusterCount; ++i)
 		{
-			uint8 pcount = static_cast<uint8>(std::min<size_t>(perClusterPoints[i].size(), _maxLightsPerCluster));
-			uint8 scount = static_cast<uint8>(static_cast<uint8>(std::min<size_t>(perClusterSpots[i].size(), _maxLightsPerCluster)));
-			_clusterRecords[i] = { totalCount, pcount, scount, 0 };
+			uint8_t pcount = static_cast<uint8_t>(std::min<size_t>(perClusterPoints[i].size(), _maxLightsPerCluster));
+			uint8_t scount = static_cast<uint8_t>(std::min<size_t>(perClusterSpots[i].size(),  _maxLightsPerCluster));
+			perOffsets[i] = totalCount;
+			perPointCounts[i] = pcount;
+			perSpotCounts[i] = scount;
 			totalCount += static_cast<uint32>(pcount) + static_cast<uint32>(scount);
 		}
 
+		// Flatten indices in cluster order
 		_clusterLightIndices.assign(totalCount, 0);
 		for(uint32 i = 0, offset = 0; i < clusterCount; ++i)
 		{
-			const uint8 pcount = _clusterRecords[i].pointCount;
-			const uint8 scount = _clusterRecords[i].spotCount;
+			const uint8_t pcount = perPointCounts[i];
+			const uint8_t scount = perSpotCounts[i];
 			if(pcount)
 			{
 				memcpy(_clusterLightIndices.data() + offset, perClusterPoints[i].data(), static_cast<size_t>(pcount) * sizeof(uint16_t));
@@ -458,45 +464,79 @@ namespace RN
 				offset += scount;
 			}
 		}
+
+		// Pack records for groups of 6 clusters: 1 base offset + 6 pairs of counts
+		uint32 groupCount = (clusterCount + 5u) / 6u;
+		_clusterRecords.resize(groupCount);
+		for(uint32 g = 0; g < groupCount; ++g)
+		{
+			uint32 base = g * 6u;
+			ClusterRecord rec{};
+			rec.offset = (base < clusterCount) ? perOffsets[base] : 0u;
+			auto packPair = [&](uint32 idxInGroup) -> uint32 {
+				uint32 ci = base + idxInGroup;
+				uint32 p = (ci < clusterCount) ? perPointCounts[ci] : 0u;
+				uint32 s = (ci < clusterCount) ? perSpotCounts[ci] : 0u;
+				return (p & 0xffu) | ((s & 0xffu) << 8);
+			};
+			rec.counts01 = packPair(0) | (packPair(1) << 16);
+			rec.counts23 = packPair(2) | (packPair(3) << 16);
+			rec.counts45 = packPair(4) | (packPair(5) << 16);
+			_clusterRecords[g] = rec;
+		}
 	}
 
 	void LightManager::UploadBuffers()
 	{
-        const uint32 kLightsPointMax = 256; // must match Base.hlsl
-        const uint32 kLightsSpotMax  = 256; // must match Base.hlsl
-        size_t pointBytes = std::max<size_t>(_packedPointLights.size(), kLightsPointMax) * sizeof(PointLightPacked);
-        size_t spotBytes = std::max<size_t>(_packedSpotLights.size(),  kLightsSpotMax)  * sizeof(SpotLightPacked);
+		const uint32 kLightsPointMax = 256; // must match Base.hlsl
+		const uint32 kLightsSpotMax  = 256; // must match Base.hlsl
+		size_t pointBytes = std::max<size_t>(_packedPointLights.size(), kLightsPointMax) * sizeof(PointLightPacked);
+		size_t spotBytes = std::max<size_t>(_packedSpotLights.size(),  kLightsSpotMax)  * sizeof(SpotLightPacked);
 		size_t indexBytes = _clusterLightIndices.size() * sizeof(uint16);
 		size_t headerBytes = sizeof(ClusterGridInfo);
-        size_t recordsBytes = _clusterRecords.size() * sizeof(ClusterRecord);
+		size_t recordsBytes = _clusterRecords.size() * sizeof(ClusterRecord);
 
 		// Ensure buffers are large enough using unified preallocation path
-        uint16_t maxPointPerCluster = 1;
-        uint16_t maxSpotPerCluster = 1;
+		uint16_t maxPointPerCluster = 1;
+		uint16_t maxSpotPerCluster = 1;
 		for(const ClusterRecord &rec : _clusterRecords)
 		{
-			if(rec.pointCount > maxPointPerCluster) maxPointPerCluster = rec.pointCount;
-			if(rec.spotCount > maxSpotPerCluster)   maxSpotPerCluster = rec.spotCount;
+			uint32 pairs[6] = {
+				rec.counts01 & 0xffffu,
+				rec.counts01 >> 16,
+				rec.counts23 & 0xffffu,
+				rec.counts23 >> 16,
+				rec.counts45 & 0xffffu,
+				rec.counts45 >> 16
+			};
+			for(int j = 0; j < 6; ++j)
+			{
+				uint16_t pair = static_cast<uint16_t>(pairs[j]);
+				uint16_t p = static_cast<uint16_t>(pair & 0xffu);
+				uint16_t s = static_cast<uint16_t>((pair >> 8) & 0xffu);
+				if(p > maxPointPerCluster) maxPointPerCluster = p;
+				if(s > maxSpotPerCluster)  maxSpotPerCluster = s;
+			}
 		}
-        maxPointPerCluster = std::max<uint16_t>(1, std::min<uint16_t>(maxPointPerCluster, _maxLightsPerCluster));
-        maxSpotPerCluster = std::max<uint16_t>(1, std::min<uint16_t>(maxSpotPerCluster, _maxLightsPerCluster));
+		maxPointPerCluster = std::max<uint16_t>(1, std::min<uint16_t>(maxPointPerCluster, _maxLightsPerCluster));
+		maxSpotPerCluster = std::max<uint16_t>(1, std::min<uint16_t>(maxSpotPerCluster, _maxLightsPerCluster));
 		
 		PreallocateBuffers(static_cast<uint32>(_packedPointLights.size()), static_cast<uint32>(_packedSpotLights.size()), maxPointPerCluster, maxSpotPerCluster);
 
-        if(pointBytes > 0)
+		if(pointBytes > 0)
 		{
 			void *dst = _pointLightBuffer->GetBuffer();
-            // Copy actual lights first; leave the rest undefined
-            size_t used = _packedPointLights.size() * sizeof(PointLightPacked);
-            if(used > 0) memcpy(dst, _packedPointLights.data(), used);
+			// Copy actual lights first; leave the rest undefined
+			size_t used = _packedPointLights.size() * sizeof(PointLightPacked);
+			if(used > 0) memcpy(dst, _packedPointLights.data(), used);
 			_pointLightBuffer->FlushRange(Range(0, pointBytes));
 		}
 
-        if(spotBytes > 0)
+		if(spotBytes > 0)
 		{
 			void *dst = _spotLightBuffer->GetBuffer();
-            size_t used = _packedSpotLights.size() * sizeof(SpotLightPacked);
-            if(used > 0) memcpy(dst, _packedSpotLights.data(), used);
+			size_t used = _packedSpotLights.size() * sizeof(SpotLightPacked);
+			if(used > 0) memcpy(dst, _packedSpotLights.data(), used);
 			_spotLightBuffer->FlushRange(Range(0, spotBytes));
 		}
 
@@ -507,7 +547,7 @@ namespace RN
 			_clusterIndexBuffer->FlushRange(Range(0, indexBytes));
 		}
 
-        if(recordsBytes > 0)
+		if(recordsBytes > 0)
 		{
 			void *dst = _clusterRecordsBuffer->GetBuffer();
 			// Write header
