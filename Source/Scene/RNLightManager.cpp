@@ -14,7 +14,7 @@ namespace RN
 {
 	RNDefineMeta(LightManager, Object)
 
-	LightManager::LightManager() :
+	LightManager::LightManager(uint32 x, uint32 y, uint32 z, float zLogFactor) :
 		_pointLightBuffer(nullptr),
 		_spotLightBuffer(nullptr),
 		_clusterIndexBuffer(nullptr),
@@ -27,7 +27,7 @@ namespace RN
 		_lastClipFar(0.0f),
 		_maxLightsPerCluster(255)
 	{
-		SetClusterGridInfo(24, 12, 12, 0.7f);
+		SetClusterGridInfo(x, y, z, zLogFactor);
 		_grid.zFirstSliceDepth = 3.0f;
 	}
 

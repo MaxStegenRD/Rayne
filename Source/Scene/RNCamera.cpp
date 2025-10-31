@@ -410,7 +410,13 @@ namespace RN
 	void Camera::CreateLightManager()
 	{
 		if(_lightManager) return;
-		_lightManager = new LightManager();
+
+		Rect frame = _renderPass->GetFrame();
+		uint32 clustersX = frame.width / 64;
+		uint32 clustersY = frame.height / 64;
+		uint32 clustersZ = std::min((4000 * 6) / (clustersX * clustersY), 32u);
+		float zLogFactor = 0.7f;
+		_lightManager = new LightManager(clustersX, clustersY, clustersZ, zLogFactor);
 	}
 
 	const Vector3 &Camera::GetFrustumCenter()

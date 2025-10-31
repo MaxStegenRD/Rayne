@@ -60,10 +60,10 @@ namespace RN
 			float projB;
 		};
 
-		RNAPI LightManager();
+		RNAPI LightManager(uint32 x, uint32 y, uint32 z, float zLogFactor = 0.7f);
 		RNAPI ~LightManager() override;
 
-		RNAPI void SetClusterGridInfo(uint32 x, uint32 y, uint32 z, float zLogFactor = 0.0f);
+		RNAPI void SetClusterGridInfo(uint32 x, uint32 y, uint32 z, float zLogFactor = 0.5f);
 		RNAPI void SetZLogFactor(float zLogFactor);
 		RNAPI void SetZFirstSliceDepth(float meters);
 		RNAPI const ClusterGridInfo &GetClusterGridInfo() const { return _grid; }
