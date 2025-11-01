@@ -195,18 +195,14 @@ namespace RN
 		// Collect view/projection for parent camera
 		const Array *mv = camera->GetMultiviewCameras();
 
-		// Parent/head view & proj for stereo-margin path and optional per-eye union
+		// Parent/head view & proj; collect per-eye matrices when multiview is present
 		Matrix parentView = camera->GetViewMatrix();
 		Matrix parentProj = camera->GetProjectionMatrix();
 		std::vector<Matrix> views;
 		std::vector<Matrix> projs;
 		std::vector<Matrix> viewProjs;
-		bool useStereoMargin = (mv && mv->GetCount() > 0);
-		float ipdVSx = 0.0f;
-		float ipdVSy = 0.0f;
-		if(useStereoMargin)
+		if(mv && mv->GetCount() > 0)
 		{
-			// Measure max per-eye offset in parent view space (half-IPD along X, optional Y)
 			for(size_t i = 0; i < mv->GetCount(); ++i)
 			{
 				Camera *eye = mv->GetObjectAtIndex<Camera>(i);
@@ -217,14 +213,9 @@ namespace RN
 				views.push_back(v);
 				projs.push_back(p);
 				viewProjs.push_back(p * v);
-				Vector4 eyeVS = parentView * Vector4(eye->GetWorldPosition(), 1.0f);
-				ipdVSx = std::max(ipdVSx, std::abs(eyeVS.x));
-				ipdVSy = std::max(ipdVSy, std::abs(eyeVS.y));
 			}
 		}
-
-		// Always have at least one entry (parent) to unify code path
-		if(views.empty())
+		else
 		{
 			views.push_back(parentView);
 			projs.push_back(parentProj);
