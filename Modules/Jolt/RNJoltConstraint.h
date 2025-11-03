@@ -12,121 +12,94 @@
 #include "RNJolt.h"
 #include "RNJoltDynamicBody.h"
 
-/*namespace Jolt
+namespace JPH
 {
-	class PxJoint;
-	class PxD6JointDrive;
+    class Constraint;
 }
 
 namespace RN
 {
-	class JoltConstraint : public Object
-	{
-	public:
-		JoltConstraint(Jolt::PxJoint *shape);
-		JTAPI Jolt::PxJoint *GetJoltConstraint() const { return _constraint; }
-		JTAPI void SetMassScale(float scale1, float scale2);
-		JTAPI void SetInertiaScale(float scale1, float scale2);
-		JTAPI void SetInverseMassScale(float scale1, float scale2);
-		JTAPI void SetInverseInertiaScale(float scale1, float scale2);
-		
-		JTAPI Vector3 GetPositionOffset(size_t bodyIndex);
-		JTAPI Quaternion GetRotationOffset(size_t bodyIndex);
-		
-		JTAPI void SetBreakForce(float force, float torque);
-		JTAPI bool IsBroken() const;
-			
-	protected:
-		JoltConstraint();
-		~JoltConstraint() override;
+    class JoltConstraint : public Object
+    {
+    public:
+        JTAPI JPH::Constraint *GetJoltConstraint() const { return _constraint; }
+        JTAPI void SetEnabled(bool enabled);
 
-		Jolt::PxJoint *_constraint;
-			
-		RNDeclareMetaAPI(JoltConstraint, JTAPI)
-	};
-		
-	class JoltFixedConstraint : public JoltConstraint
-	{
-	public:
-		JTAPI JoltFixedConstraint(JoltDynamicBody *body1, const Vector3 &offset1, const Quaternion &rotation1, JoltDynamicBody *body2, const Vector3 &offset2, const Quaternion &rotation2);
-			
-		JTAPI static JoltFixedConstraint *WithBodiesAndOffsets(JoltDynamicBody *body1, const Vector3 &offset1, const Quaternion &rotation1, JoltDynamicBody *body2, const Vector3 &offset2, const Quaternion &rotation2);
-			
-		RNDeclareMetaAPI(JoltFixedConstraint, JTAPI)
-	};
+    protected:
+        JoltConstraint();
+        ~JoltConstraint() override;
 
-	class JoltRevoluteConstraint : public JoltConstraint
-	{
-	public:
-		JTAPI JoltRevoluteConstraint(JoltDynamicBody *body1, const Vector3 &offset1, const Quaternion &rotation1, JoltDynamicBody *body2, const Vector3 &offset2, const Quaternion &rotation2);
-			
-		JTAPI static JoltRevoluteConstraint *WithBodiesAndOffsets(JoltDynamicBody *body1, const Vector3 &offset1, const Quaternion &rotation1, JoltDynamicBody *body2, const Vector3 &offset2, const Quaternion &rotation2);
-			
-		RNDeclareMetaAPI(JoltRevoluteConstraint, JTAPI)
-	};
+        void SetConstraint(JPH::Constraint *constraint);
 
-	class JoltD6Drive : public Object
-	{
-	friend class JoltD6Constraint;
-	public:
-		JTAPI JoltD6Drive(float stiffness, float damping, float forceLimit, bool isAcceleration);
-		JTAPI ~JoltD6Drive();
-		
-		JTAPI void SetStiffness(float stiffness);
-		JTAPI void SetDamping(float damping);
-		
-	private:
-		Jolt::PxD6JointDrive *_drive;
-		RNDeclareMetaAPI(JoltD6Drive, JTAPI)
-	};
+        JPH::Constraint *_constraint;
 
-	class JoltD6Constraint : public JoltConstraint
-	{
-	public:
-		enum MotionAxis
-		{
-			motionLinearX,
-			motionLinearY,
-			motionLinearZ,
-			motionAngularX,
-			motionAngularY,
-			motionAngularZ
-		};
-		
-		enum DriveAxis
-		{
-			DriveLinearX,
-			DriveLinearY,
-			DriveLinearZ,
-			DriveTwist,
-			DriveSpin,
-			DriveSlerp
-		};
-		
-		enum MotionType
-		{
-			Locked,
-			Limited,
-			Free
-		};
-		
-		JTAPI JoltD6Constraint(JoltDynamicBody *body1, const Vector3 &offset1, const Quaternion &rotation1, JoltDynamicBody *body2, const Vector3 &offset2, const Quaternion &rotation2);
-		JTAPI ~JoltD6Constraint();
-		
-		JTAPI void SetMotion(MotionAxis axis, MotionType type);
-		JTAPI void SetLinearLimit(Vector3 lowerLimit, Vector3 upperLimit, float stiffness, float damping);
-		JTAPI void SetAngularLimit(Vector3 lowerLimit, Vector3 upperLimit, float stiffness, float damping);
-		JTAPI void SetDrive(DriveAxis axis, JoltD6Drive *drive);
-		JTAPI void SetDrivePosition(Vector3 position, Quaternion rotation);
-		JTAPI void SetDriveVelocity(Vector3 linear, Vector3 angular);
-			
-		JTAPI static JoltD6Constraint *WithBodiesAndOffsets(JoltDynamicBody *body1, const Vector3 &offset1, const Quaternion &rotation1, JoltDynamicBody *body2, const Vector3 &offset2, const Quaternion &rotation2);
-		
-	private:
-		JoltD6Drive *_drive[6];
-			
-		RNDeclareMetaAPI(JoltD6Constraint, JTAPI)
-	};
-}*/
+        RNDeclareMetaAPI(JoltConstraint, JTAPI)
+    };
+
+    class JoltPointConstraint : public JoltConstraint
+    {
+    public:
+        JTAPI JoltPointConstraint(JoltDynamicBody *body1, const Vector3 &localAnchor1, JoltDynamicBody *body2, const Vector3 &localAnchor2);
+        JTAPI static JoltPointConstraint *WithBodiesAndOffsets(JoltDynamicBody *body1, const Vector3 &localAnchor1, JoltDynamicBody *body2, const Vector3 &localAnchor2);
+
+        RNDeclareMetaAPI(JoltPointConstraint, JTAPI)
+    };
+
+    class JoltFixedConstraint : public JoltConstraint
+    {
+    public:
+        JTAPI JoltFixedConstraint(JoltDynamicBody *body1, const Vector3 &localAnchor1, const Quaternion &localRot1, JoltDynamicBody *body2, const Vector3 &localAnchor2, const Quaternion &localRot2);
+        JTAPI static JoltFixedConstraint *WithBodiesAndOffsets(JoltDynamicBody *body1, const Vector3 &localAnchor1, const Quaternion &localRot1, JoltDynamicBody *body2, const Vector3 &localAnchor2, const Quaternion &localRot2);
+
+        RNDeclareMetaAPI(JoltFixedConstraint, JTAPI)
+    };
+
+    class JoltDistanceConstraint : public JoltConstraint
+    {
+    public:
+        JTAPI JoltDistanceConstraint(JoltDynamicBody *body1, const Vector3 &localAnchor1, JoltDynamicBody *body2, const Vector3 &localAnchor2, float minDistance, float maxDistance);
+        JTAPI static JoltDistanceConstraint *WithBodiesAndOffsets(JoltDynamicBody *body1, const Vector3 &localAnchor1, JoltDynamicBody *body2, const Vector3 &localAnchor2, float minDistance, float maxDistance);
+
+        RNDeclareMetaAPI(JoltDistanceConstraint, JTAPI)
+    };
+
+    class JoltSixDOFConstraint : public JoltConstraint
+    {
+    public:
+        enum class Axis
+        {
+            TranslationX,
+            TranslationY,
+            TranslationZ,
+            RotationX,
+            RotationY,
+            RotationZ
+        };
+
+        JTAPI JoltSixDOFConstraint(JoltDynamicBody *body1, const Vector3 &localAnchor1, const Quaternion &localRot1,
+                                   JoltDynamicBody *body2, const Vector3 &localAnchor2, const Quaternion &localRot2);
+        JTAPI static JoltSixDOFConstraint *WithBodiesAndOffsets(JoltDynamicBody *body1, const Vector3 &localAnchor1, const Quaternion &localRot1,
+                                                                JoltDynamicBody *body2, const Vector3 &localAnchor2, const Quaternion &localRot2);
+
+        JTAPI void SetMotorState(Axis axis, int state); // 0=Off,1=Velocity,2=Position
+        JTAPI void SetTargetPositionCS(const Vector3 &p_cs);
+        JTAPI void SetTargetVelocityCS(const Vector3 &v_cs);
+        JTAPI void SetTargetAngularVelocityCS(const Vector3 &w_cs);
+        JTAPI void SetTargetOrientationCS(const Quaternion &q_cs);
+        JTAPI void SetTargetOrientationBS(const Quaternion &q_bs);
+
+        JTAPI void SetLinearMotorParams(float frequency, float damping, float maxForce);
+        JTAPI void SetAngularMotorParams(float frequency, float damping, float maxTorque);
+
+        // Limits and springs/friction wrappers
+        JTAPI void SetTranslationLimits(const Vector3 &limitMin, const Vector3 &limitMax);
+        JTAPI void SetRotationLimits(const Vector3 &limitMin, const Vector3 &limitMax);
+        JTAPI void SetTranslationSpringParams(float frequency, float damping); // apply to X/Y/Z
+        JTAPI void SetTranslationSpringParamsAxis(Axis axis, float frequency, float damping); // axis must be TranslationX/Y/Z
+        JTAPI void SetMaxFriction(Axis axis, float maxFriction);
+
+        RNDeclareMetaAPI(JoltSixDOFConstraint, JTAPI)
+    };
+} // namespace RN
 
 #endif /* defined(__RAYNE_JOLTCONSTRAINT_H_) */

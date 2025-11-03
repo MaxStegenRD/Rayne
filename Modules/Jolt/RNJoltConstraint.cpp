@@ -5,216 +5,335 @@
 //  Copyright 2023 by Überpixel. All rights reserved.
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
-
 #include "RNJoltConstraint.h"
 #include "RNJoltInternals.h"
 #include "RNJoltWorld.h"
-/*
+
+#include <Jolt/Physics/Constraints/PointConstraint.h>
+#include <Jolt/Physics/Constraints/FixedConstraint.h>
+#include <Jolt/Physics/Constraints/DistanceConstraint.h>
+#include <Jolt/Physics/Constraints/SixDOFConstraint.h>
+#include <Jolt/Physics/Constraints/MotorSettings.h>
+#include <Jolt/Physics/Constraints/SpringSettings.h>
+
 namespace RN
 {
 	RNDefineMeta(JoltConstraint, Object)
+	RNDefineMeta(JoltPointConstraint, JoltConstraint)
 	RNDefineMeta(JoltFixedConstraint, JoltConstraint)
-	RNDefineMeta(JoltRevoluteConstraint, JoltConstraint)
-	RNDefineMeta(JoltD6Constraint, JoltConstraint)
-	RNDefineMeta(JoltD6Drive, Object)
-		
-	JoltConstraint::JoltConstraint() :
-		_constraint(nullptr)
-	{}
-		
-	JoltConstraint::JoltConstraint(Jolt::PxJoint *constraint) :
-		_constraint(constraint)
-	{}
-		
+	RNDefineMeta(JoltDistanceConstraint, JoltConstraint)
+	RNDefineMeta(JoltSixDOFConstraint, JoltConstraint)
+
+	JoltConstraint::JoltConstraint() : _constraint(nullptr)
+	{
+	}
+
 	JoltConstraint::~JoltConstraint()
 	{
-		_constraint->release();
-	}
-
-	void JoltConstraint::SetMassScale(float scale1, float scale2)
-	{
-		_constraint->setInvMassScale0(1.0f / scale1);
-		_constraint->setInvMassScale1(1.0f / scale2);
-	}
-
-	void JoltConstraint::SetInertiaScale(float scale1, float scale2)
-	{
-		_constraint->setInvInertiaScale0(1.0f / scale1);
-		_constraint->setInvInertiaScale1(1.0f / scale2);
-	}
-
-	void JoltConstraint::SetInverseMassScale(float scale1, float scale2)
-	{
-		_constraint->setInvMassScale0(scale1);
-		_constraint->setInvMassScale1(scale2);
-	}
-
-	void JoltConstraint::SetInverseInertiaScale(float scale1, float scale2)
-	{
-		_constraint->setInvInertiaScale0(scale1);
-		_constraint->setInvInertiaScale1(scale2);
-	}
-
-	Vector3 JoltConstraint::GetPositionOffset(size_t bodyIndex)
-	{
-		RN_ASSERT(bodyIndex < 2, "bodyIndex needs to be 0 or 1!");
-		const Jolt::PxTransform &transform = _constraint->getLocalPose(static_cast<Jolt::PxJointActorIndex::Enum>(bodyIndex));
-		return Vector3(transform.p.x, transform.p.y, transform.p.z);
-	}
-
-	Quaternion JoltConstraint::GetRotationOffset(size_t bodyIndex)
-	{
-		RN_ASSERT(bodyIndex < 2, "bodyIndex needs to be 0 or 1!");
-		const Jolt::PxTransform &transform = _constraint->getLocalPose(static_cast<Jolt::PxJointActorIndex::Enum>(bodyIndex));
-		return Quaternion(transform.q.x, transform.q.y, transform.q.z, transform.q.w);
-	}
-
-	void JoltConstraint::SetBreakForce(float force, float torque)
-	{
-		_constraint->setBreakForce(force, torque);
-	}
-
-	bool JoltConstraint::IsBroken() const
-	{
-		return (_constraint->getConstraintFlags() & Jolt::PxConstraintFlag::eBROKEN);
-	}
-		
-	JoltFixedConstraint::JoltFixedConstraint(JoltDynamicBody *body1, const Vector3 &offset1, const Quaternion &rotation1, JoltDynamicBody *body2, const Vector3 &offset2, const Quaternion &rotation2)
-	{
-		Jolt::PxFixedJoint *joint = Jolt::PxFixedJointCreate(*JoltWorld::GetSharedInstance()->GetJoltInstance(),
-			body1?body1->GetJoltActor():nullptr, Jolt::PxTransform(Jolt::PxVec3(offset1.x, offset1.y, offset1.z), Jolt::PxQuat(rotation1.x, rotation1.y, rotation1.z, rotation1.w)),
-			body2?body2->GetJoltActor():nullptr, Jolt::PxTransform(Jolt::PxVec3(offset2.x, offset2.y, offset2.z), Jolt::PxQuat(rotation2.x, rotation2.y, rotation2.z, rotation2.w)));
-		
-//		joint->setConstraintFlag(Jolt::PxConstraintFlag::Enum::ePROJECTION, true);
-		
-		_constraint = joint;
-		RN_ASSERT(_constraint, "Probably missconfigured constraint");
-	}
-		
-	JoltFixedConstraint *JoltFixedConstraint::WithBodiesAndOffsets(JoltDynamicBody *body1, const Vector3 &offset1, const Quaternion &rotation1, JoltDynamicBody *body2, const Vector3 &offset2, const Quaternion &rotation2)
-	{
-		JoltFixedConstraint *constraint = new JoltFixedConstraint(body1, offset1, rotation1, body2, offset2, rotation2);
-		return constraint->Autorelease();
-	}
-
-	
-	JoltRevoluteConstraint::JoltRevoluteConstraint(JoltDynamicBody *body1, const Vector3 &offset1, const Quaternion &rotation1, JoltDynamicBody *body2, const Vector3 &offset2, const Quaternion &rotation2)
-	{
-		Jolt::PxRevoluteJoint *joint = Jolt::PxRevoluteJointCreate(*JoltWorld::GetSharedInstance()->GetJoltInstance(),
-			body1->GetJoltActor(), Jolt::PxTransform(Jolt::PxVec3(offset1.x, offset1.y, offset1.z), Jolt::PxQuat(rotation1.x, rotation1.y, rotation1.z, rotation1.w)),
-			body2->GetJoltActor(), Jolt::PxTransform(Jolt::PxVec3(offset2.x, offset2.y, offset2.z), Jolt::PxQuat(rotation2.x, rotation2.y, rotation2.z, rotation2.w)));
-		
-		_constraint = joint;
-		RN_ASSERT(_constraint, "Probably missconfigured constraint");
-	}
-		
-	JoltRevoluteConstraint *JoltRevoluteConstraint::WithBodiesAndOffsets(JoltDynamicBody *body1, const Vector3 &offset1, const Quaternion &rotation1, JoltDynamicBody *body2, const Vector3 &offset2, const Quaternion &rotation2)
-	{
-		JoltRevoluteConstraint *constraint = new JoltRevoluteConstraint(body1, offset1, rotation1, body2, offset2, rotation2);
-		return constraint->Autorelease();
-	}
-
-
-	JoltD6Constraint::JoltD6Constraint(JoltDynamicBody *body1, const Vector3 &offset1, const Quaternion &rotation1, JoltDynamicBody *body2, const Vector3 &offset2, const Quaternion &rotation2)
-	{
-		Jolt::PxD6Joint *joint = Jolt::PxD6JointCreate(*JoltWorld::GetSharedInstance()->GetJoltInstance(),
-			body1->GetJoltActor(), Jolt::PxTransform(Jolt::PxVec3(offset1.x, offset1.y, offset1.z), Jolt::PxQuat(rotation1.x, rotation1.y, rotation1.z, rotation1.w)),
-			body2->GetJoltActor(), Jolt::PxTransform(Jolt::PxVec3(offset2.x, offset2.y, offset2.z), Jolt::PxQuat(rotation2.x, rotation2.y, rotation2.z, rotation2.w)));
-		
-		for(int i = 0; i < 6; i++)
+		if(_constraint)
 		{
-			_drive[i] = nullptr;
-		}
-		
-//		joint->setConstraintFlag(Jolt::PxConstraintFlag::Enum::ePROJECTION, true);
-		
-		_constraint = joint;
-		RN_ASSERT(_constraint, "Probably missconfigured constraint");
-	}
-
-	JoltD6Constraint::~JoltD6Constraint()
-	{
-		for(int i = 0; i < 6; i++)
-		{
-			SafeRelease(_drive[i]);
+			JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+			physics->RemoveConstraint(_constraint);
+			delete _constraint;
+			_constraint = nullptr;
 		}
 	}
 
-	void JoltD6Constraint::SetMotion(MotionAxis axis, MotionType type)
+	void JoltConstraint::SetConstraint(JPH::Constraint *constraint)
 	{
-		Jolt::PxD6Axis::Enum pxAxis = static_cast<Jolt::PxD6Axis::Enum>(axis);
-		Jolt::PxD6Motion::Enum pxMotion = static_cast<Jolt::PxD6Motion::Enum>(type);
-		Jolt::PxD6Joint *joint = static_cast<Jolt::PxD6Joint *>(_constraint);
-		joint->setMotion(pxAxis, pxMotion);
+		if(_constraint == constraint) return;
+		if(_constraint)
+		{
+			JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+			physics->RemoveConstraint(_constraint);
+			delete _constraint;
+		}
+		_constraint = constraint;
+		if(_constraint)
+		{
+			JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+			physics->AddConstraint(_constraint);
+		}
 	}
 
-	void JoltD6Constraint::SetLinearLimit(Vector3 lowerLimit, Vector3 upperLimit, float stiffness, float damping)
+	void JoltConstraint::SetEnabled(bool enabled)
 	{
-		Jolt::PxD6Joint *joint = static_cast<Jolt::PxD6Joint *>(_constraint);
-		joint->setLinearLimit(Jolt::PxD6Axis::Enum::eX, Jolt::PxJointLinearLimitPair(lowerLimit.x, upperLimit.x, Jolt::PxSpring(stiffness, damping)));
-		joint->setLinearLimit(Jolt::PxD6Axis::Enum::eY, Jolt::PxJointLinearLimitPair(lowerLimit.y, upperLimit.y, Jolt::PxSpring(stiffness, damping)));
-		joint->setLinearLimit(Jolt::PxD6Axis::Enum::eZ, Jolt::PxJointLinearLimitPair(lowerLimit.z, upperLimit.z, Jolt::PxSpring(stiffness, damping)));
+		if(_constraint) _constraint->SetEnabled(enabled);
 	}
 
-	void JoltD6Constraint::SetAngularLimit(Vector3 lowerLimit, Vector3 upperLimit, float stiffness, float damping)
+	JoltPointConstraint::JoltPointConstraint(JoltDynamicBody *body1, const Vector3 &localAnchor1, JoltDynamicBody *body2, const Vector3 &localAnchor2)
 	{
-		Jolt::PxD6Joint *joint = static_cast<Jolt::PxD6Joint *>(_constraint);
-		joint->setTwistLimit(Jolt::PxJointAngularLimitPair(lowerLimit.x, upperLimit.x, Jolt::PxSpring(stiffness, damping)));
-		joint->setPyramidSwingLimit(Jolt::PxJointLimitPyramid(lowerLimit.y, upperLimit.y, lowerLimit.z, upperLimit.z, Jolt::PxSpring(stiffness, damping)));
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		const JPH::BodyLockInterface &lockInterface = physics->GetBodyLockInterface();
+
+		JPH::Body *b1 = nullptr;
+		JPH::Body *b2 = nullptr;
+		{
+			JPH::BodyLockRead lock1(lockInterface, *body1->GetJoltActor());
+			if(lock1.Succeeded()) b1 = const_cast<JPH::Body*>(&lock1.GetBody());
+		}
+		{
+			JPH::BodyLockRead lock2(lockInterface, *body2->GetJoltActor());
+			if(lock2.Succeeded()) b2 = const_cast<JPH::Body*>(&lock2.GetBody());
+		}
+
+		RN_ASSERT(b1 && b2, "Invalid bodies for constraint creation");
+
+		JPH::PointConstraintSettings settings;
+		settings.mPoint1 = JPH::Vec3(localAnchor1.x, localAnchor1.y, localAnchor1.z);
+		settings.mPoint2 = JPH::Vec3(localAnchor2.x, localAnchor2.y, localAnchor2.z);
+		SetConstraint(settings.Create(*b1, *b2));
 	}
-		
-	JoltD6Constraint *JoltD6Constraint::WithBodiesAndOffsets(JoltDynamicBody *body1, const Vector3 &offset1, const Quaternion &rotation1, JoltDynamicBody *body2, const Vector3 &offset2, const Quaternion &rotation2)
+
+	JoltPointConstraint *JoltPointConstraint::WithBodiesAndOffsets(JoltDynamicBody *body1, const Vector3 &localAnchor1, JoltDynamicBody *body2, const Vector3 &localAnchor2)
 	{
-		JoltD6Constraint *constraint = new JoltD6Constraint(body1, offset1, rotation1, body2, offset2, rotation2);
+		JoltPointConstraint *constraint = new JoltPointConstraint(body1, localAnchor1, body2, localAnchor2);
 		return constraint->Autorelease();
 	}
 
-	void JoltD6Constraint::SetDrive(DriveAxis axis, JoltD6Drive *drive)
+	JoltFixedConstraint::JoltFixedConstraint(JoltDynamicBody *body1, const Vector3 &localAnchor1, const Quaternion &localRot1, JoltDynamicBody *body2, const Vector3 &localAnchor2, const Quaternion &localRot2)
 	{
-		SafeRelease(_drive[static_cast<int>(axis)]);
-		
-		Jolt::PxD6Joint *d6Joint = static_cast<Jolt::PxD6Joint*>(_constraint);
-		Jolt::PxD6JointDrive *jointdrive = drive?drive->_drive:nullptr;
-		
-		bool isValid = jointdrive->isValid();
-		if(!isValid)
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		const JPH::BodyLockInterface &lockInterface = physics->GetBodyLockInterface();
+
+		JPH::Body *b1 = nullptr;
+		JPH::Body *b2 = nullptr;
 		{
-			RNDebug("Invalid Jolt D6 constraint drive configuration.");
+			JPH::BodyLockRead lock1(lockInterface, *body1->GetJoltActor());
+			if(lock1.Succeeded()) b1 = const_cast<JPH::Body*>(&lock1.GetBody());
 		}
-		
-		d6Joint->setDrive(static_cast<Jolt::PxD6Drive::Enum>(axis), *jointdrive);
-		_drive[static_cast<int>(axis)] = SafeRetain(drive);
+		{
+			JPH::BodyLockRead lock2(lockInterface, *body2->GetJoltActor());
+			if(lock2.Succeeded()) b2 = const_cast<JPH::Body*>(&lock2.GetBody());
+		}
+
+		RN_ASSERT(b1 && b2, "Invalid bodies for constraint creation");
+
+		JPH::FixedConstraintSettings settings;
+		settings.mAutoDetectPoint = false;
+		settings.mPoint1 = JPH::Vec3(localAnchor1.x, localAnchor1.y, localAnchor1.z);
+		settings.mPoint2 = JPH::Vec3(localAnchor2.x, localAnchor2.y, localAnchor2.z);
+		settings.mAxisX1 = JPH::Vec3(1.0f, 0.0f, 0.0f);
+		settings.mAxisY1 = JPH::Vec3(0.0f, 1.0f, 0.0f);
+		settings.mAxisX2 = JPH::Vec3(1.0f, 0.0f, 0.0f);
+		settings.mAxisY2 = JPH::Vec3(0.0f, 1.0f, 0.0f);
+		SetConstraint(settings.Create(*b1, *b2));
 	}
 
-	void JoltD6Constraint::SetDrivePosition(Vector3 position, Quaternion rotation)
+	JoltFixedConstraint *JoltFixedConstraint::WithBodiesAndOffsets(JoltDynamicBody *body1, const Vector3 &localAnchor1, const Quaternion &localRot1, JoltDynamicBody *body2, const Vector3 &localAnchor2, const Quaternion &localRot2)
 	{
-		Jolt::PxD6Joint *d6Joint = static_cast<Jolt::PxD6Joint*>(_constraint);
-		d6Joint->setDrivePosition(Jolt::PxTransform(Jolt::PxVec3(position.x, position.y, position.z), Jolt::PxQuat(rotation.x, rotation.y, rotation.z, rotation.w)));
+		JoltFixedConstraint *constraint = new JoltFixedConstraint(body1, localAnchor1, localRot1, body2, localAnchor2, localRot2);
+		return constraint->Autorelease();
 	}
 
-	void JoltD6Constraint::SetDriveVelocity(Vector3 linear, Vector3 angular)
+	JoltDistanceConstraint::JoltDistanceConstraint(JoltDynamicBody *body1, const Vector3 &localAnchor1, JoltDynamicBody *body2, const Vector3 &localAnchor2, float minDistance, float maxDistance)
 	{
-		Jolt::PxD6Joint *d6Joint = static_cast<Jolt::PxD6Joint*>(_constraint);
-		d6Joint->setDriveVelocity(Jolt::PxVec3(linear.x, linear.y, linear.z), Jolt::PxVec3(angular.x, angular.y, angular.z));
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		const JPH::BodyLockInterface &lockInterface = physics->GetBodyLockInterface();
+
+		JPH::Body *b1 = nullptr;
+		JPH::Body *b2 = nullptr;
+		{
+			JPH::BodyLockRead lock1(lockInterface, *body1->GetJoltActor());
+			if(lock1.Succeeded()) b1 = const_cast<JPH::Body*>(&lock1.GetBody());
+		}
+		{
+			JPH::BodyLockRead lock2(lockInterface, *body2->GetJoltActor());
+			if(lock2.Succeeded()) b2 = const_cast<JPH::Body*>(&lock2.GetBody());
+		}
+
+		RN_ASSERT(b1 && b2, "Invalid bodies for constraint creation");
+
+		JPH::DistanceConstraintSettings settings;
+		settings.mPoint1 = JPH::Vec3(localAnchor1.x, localAnchor1.y, localAnchor1.z);
+		settings.mPoint2 = JPH::Vec3(localAnchor2.x, localAnchor2.y, localAnchor2.z);
+		settings.mMinDistance = minDistance;
+		settings.mMaxDistance = maxDistance;
+		SetConstraint(settings.Create(*b1, *b2));
 	}
 
-	JoltD6Drive::JoltD6Drive(float stiffness, float damping, float forceLimit, bool isAcceleration)
+	JoltDistanceConstraint *JoltDistanceConstraint::WithBodiesAndOffsets(JoltDynamicBody *body1, const Vector3 &localAnchor1, JoltDynamicBody *body2, const Vector3 &localAnchor2, float minDistance, float maxDistance)
 	{
-		_drive = new Jolt::PxD6JointDrive(stiffness, damping, forceLimit, isAcceleration);
+		JoltDistanceConstraint *constraint = new JoltDistanceConstraint(body1, localAnchor1, body2, localAnchor2, minDistance, maxDistance);
+		return constraint->Autorelease();
 	}
 
-	JoltD6Drive::~JoltD6Drive()
+	static JPH::Quat ToJoltQuat(const Quaternion &q)
 	{
-		delete _drive;
+		return JPH::Quat(q.x, q.y, q.z, q.w);
 	}
-	
-	void JoltD6Drive::SetStiffness(float stiffness)
+	static JPH::Vec3 ToJoltVec3(const Vector3 &v)
 	{
-		_drive->stiffness = stiffness;
+		return JPH::Vec3(v.x, v.y, v.z);
 	}
 
-	void JoltD6Drive::SetDamping(float damping)
+	JoltSixDOFConstraint::JoltSixDOFConstraint(JoltDynamicBody *body1, const Vector3 &localAnchor1, const Quaternion &localRot1, JoltDynamicBody *body2, const Vector3 &localAnchor2, const Quaternion &localRot2)
 	{
-		_drive->damping = damping;
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		const JPH::BodyLockInterface &lockInterface = physics->GetBodyLockInterface();
+
+		JPH::Body *b1 = nullptr;
+		JPH::Body *b2 = nullptr;
+		{
+			JPH::BodyLockRead lock1(lockInterface, *body1->GetJoltActor());
+			if(lock1.Succeeded()) b1 = const_cast<JPH::Body*>(&lock1.GetBody());
+		}
+		{
+			JPH::BodyLockRead lock2(lockInterface, *body2->GetJoltActor());
+			if(lock2.Succeeded()) b2 = const_cast<JPH::Body*>(&lock2.GetBody());
+		}
+		RN_ASSERT(b1 && b2, "Invalid bodies for constraint creation");
+
+		JPH::SixDOFConstraintSettings settings;
+		settings.mSpace = JPH::EConstraintSpace::LocalToBodyCOM;
+		settings.mPosition1 = JPH::RVec3(localAnchor1.x, localAnchor1.y, localAnchor1.z);
+		settings.mAxisX1 = ToJoltVec3(localRot1.GetRotatedVector(Vector3(1.0f, 0.0f, 0.0f)));
+		settings.mAxisY1 = ToJoltVec3(localRot1.GetRotatedVector(Vector3(0.0f, 1.0f, 0.0f)));
+		settings.mPosition2 = JPH::RVec3(localAnchor2.x, localAnchor2.y, localAnchor2.z);
+		settings.mAxisX2 = ToJoltVec3(localRot2.GetRotatedVector(Vector3(1.0f, 0.0f, 0.0f)));
+		settings.mAxisY2 = ToJoltVec3(localRot2.GetRotatedVector(Vector3(0.0f, 1.0f, 0.0f)));
+
+		// Allow all DOFs; motors will drive to targets each tick
+		settings.MakeFreeAxis(JPH::SixDOFConstraintSettings::TranslationX);
+		settings.MakeFreeAxis(JPH::SixDOFConstraintSettings::TranslationY);
+		settings.MakeFreeAxis(JPH::SixDOFConstraintSettings::TranslationZ);
+		settings.MakeFreeAxis(JPH::SixDOFConstraintSettings::RotationX);
+		settings.MakeFreeAxis(JPH::SixDOFConstraintSettings::RotationY);
+		settings.MakeFreeAxis(JPH::SixDOFConstraintSettings::RotationZ);
+
+		SetConstraint(settings.Create(*b1, *b2));
+
+		// Default motor params
+		SetLinearMotorParams(30.0f, 6.0f, 5000.0f);
+		SetAngularMotorParams(40.0f, 8.0f, 2000.0f);
+
+		// Enable motors (position)
+		SetMotorState(Axis::TranslationX, 2);
+		SetMotorState(Axis::TranslationY, 2);
+		SetMotorState(Axis::TranslationZ, 2);
+		SetMotorState(Axis::RotationX, 2);
+		SetMotorState(Axis::RotationY, 2);
+		SetMotorState(Axis::RotationZ, 2);
 	}
-}*/
+
+	JoltSixDOFConstraint *JoltSixDOFConstraint::WithBodiesAndOffsets(JoltDynamicBody *body1, const Vector3 &localAnchor1, const Quaternion &localRot1, JoltDynamicBody *body2, const Vector3 &localAnchor2, const Quaternion &localRot2)
+	{
+		JoltSixDOFConstraint *c = new JoltSixDOFConstraint(body1, localAnchor1, localRot1, body2, localAnchor2, localRot2);
+		return c->Autorelease();
+	}
+
+	void JoltSixDOFConstraint::SetMotorState(Axis axis, int state)
+	{
+		if(!_constraint) return;
+		JPH::SixDOFConstraint *six = static_cast<JPH::SixDOFConstraint *>(_constraint);
+		JPH::EMotorState s = JPH::EMotorState::Off;
+		if(state == 1) s = JPH::EMotorState::Velocity; else if(state == 2) s = JPH::EMotorState::Position;
+		six->SetMotorState(static_cast<JPH::SixDOFConstraintSettings::EAxis>(static_cast<int>(axis)), s);
+	}
+
+	void JoltSixDOFConstraint::SetTargetPositionCS(const Vector3 &p_cs)
+	{
+		if(!_constraint) return;
+		JPH::SixDOFConstraint *six = static_cast<JPH::SixDOFConstraint *>(_constraint);
+		six->SetTargetPositionCS(ToJoltVec3(p_cs));
+	}
+	void JoltSixDOFConstraint::SetTargetVelocityCS(const Vector3 &v_cs)
+	{
+		if(!_constraint) return;
+		JPH::SixDOFConstraint *six = static_cast<JPH::SixDOFConstraint *>(_constraint);
+		six->SetTargetVelocityCS(ToJoltVec3(v_cs));
+	}
+	void JoltSixDOFConstraint::SetTargetAngularVelocityCS(const Vector3 &w_cs)
+	{
+		if(!_constraint) return;
+		JPH::SixDOFConstraint *six = static_cast<JPH::SixDOFConstraint *>(_constraint);
+		six->SetTargetAngularVelocityCS(ToJoltVec3(w_cs));
+	}
+	void JoltSixDOFConstraint::SetTargetOrientationCS(const Quaternion &q_cs)
+	{
+		if(!_constraint) return;
+		JPH::SixDOFConstraint *six = static_cast<JPH::SixDOFConstraint *>(_constraint);
+		six->SetTargetOrientationCS(ToJoltQuat(q_cs));
+	}
+	void JoltSixDOFConstraint::SetTargetOrientationBS(const Quaternion &q_bs)
+	{
+		if(!_constraint) return;
+		JPH::SixDOFConstraint *six = static_cast<JPH::SixDOFConstraint *>(_constraint);
+		six->SetTargetOrientationBS(ToJoltQuat(q_bs));
+	}
+
+	void JoltSixDOFConstraint::SetLinearMotorParams(float frequency, float damping, float maxForce)
+	{
+		if(!_constraint) return;
+		JPH::SixDOFConstraint *six = static_cast<JPH::SixDOFConstraint *>(_constraint);
+		for(int a = 0; a < 3; ++a)
+		{
+			JPH::MotorSettings &m = six->GetMotorSettings(static_cast<JPH::SixDOFConstraint::EAxis>(a));
+			m.mSpringSettings.mMode = JPH::ESpringMode::FrequencyAndDamping;
+			m.mSpringSettings.mFrequency = frequency;
+			m.mSpringSettings.mDamping = damping;
+			m.SetForceLimit(maxForce);
+		}
+	}
+	void JoltSixDOFConstraint::SetAngularMotorParams(float frequency, float damping, float maxTorque)
+	{
+		if(!_constraint) return;
+		JPH::SixDOFConstraint *six = static_cast<JPH::SixDOFConstraint *>(_constraint);
+		for(int a = 3; a < 6; ++a)
+		{
+			JPH::MotorSettings &m = six->GetMotorSettings(static_cast<JPH::SixDOFConstraint::EAxis>(a));
+			m.mSpringSettings.mMode = JPH::ESpringMode::FrequencyAndDamping;
+			m.mSpringSettings.mFrequency = frequency;
+			m.mSpringSettings.mDamping = damping;
+			m.SetTorqueLimit(maxTorque);
+		}
+	}
+
+	void JoltSixDOFConstraint::SetTranslationLimits(const Vector3 &limitMin, const Vector3 &limitMax)
+	{
+		if(!_constraint) return;
+		JPH::SixDOFConstraint *six = static_cast<JPH::SixDOFConstraint *>(_constraint);
+		six->SetTranslationLimits(JPH::Vec3(limitMin.x, limitMin.y, limitMin.z), JPH::Vec3(limitMax.x, limitMax.y, limitMax.z));
+	}
+
+	void JoltSixDOFConstraint::SetRotationLimits(const Vector3 &limitMin, const Vector3 &limitMax)
+	{
+		if(!_constraint) return;
+		JPH::SixDOFConstraint *six = static_cast<JPH::SixDOFConstraint *>(_constraint);
+		six->SetRotationLimits(JPH::Vec3(limitMin.x, limitMin.y, limitMin.z), JPH::Vec3(limitMax.x, limitMax.y, limitMax.z));
+	}
+
+	void JoltSixDOFConstraint::SetTranslationSpringParams(float frequency, float damping)
+	{
+		if(!_constraint) return;
+		JPH::SixDOFConstraint *six = static_cast<JPH::SixDOFConstraint *>(_constraint);
+		JPH::SpringSettings s;
+		s.mMode = JPH::ESpringMode::FrequencyAndDamping;
+		s.mFrequency = frequency;
+		s.mDamping = damping;
+		for(int a = 0; a < 3; ++a)
+		{
+			six->SetLimitsSpringSettings(static_cast<JPH::SixDOFConstraint::EAxis>(a), s);
+		}
+	}
+
+	void JoltSixDOFConstraint::SetTranslationSpringParamsAxis(Axis axis, float frequency, float damping)
+	{
+		if(!_constraint) return;
+		int a = static_cast<int>(axis);
+		if(a < 0 || a > 2) return; // only translation axes support spring limits
+		JPH::SixDOFConstraint *six = static_cast<JPH::SixDOFConstraint *>(_constraint);
+		JPH::SpringSettings s;
+		s.mMode = JPH::ESpringMode::FrequencyAndDamping;
+		s.mFrequency = frequency;
+		s.mDamping = damping;
+		six->SetLimitsSpringSettings(static_cast<JPH::SixDOFConstraint::EAxis>(a), s);
+	}
+
+	void JoltSixDOFConstraint::SetMaxFriction(Axis axis, float maxFriction)
+	{
+		if(!_constraint) return;
+		JPH::SixDOFConstraint *six = static_cast<JPH::SixDOFConstraint *>(_constraint);
+		six->SetMaxFriction(static_cast<JPH::SixDOFConstraint::EAxis>(static_cast<int>(axis)), maxFriction);
+	}
+}
