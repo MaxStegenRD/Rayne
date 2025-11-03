@@ -158,13 +158,45 @@ namespace RN
 		virtual void OnContactAdded(const JPH::Body &inBody1, const JPH::Body &inBody2, const JPH::ContactManifold &inManifold, JPH::ContactSettings &ioSettings) override
 		{
 			AutoreleasePool pool;
-//			RNDebug("A contact was added");
+			// Forward to RN callback if present
+			JoltCollisionObject *co1 = reinterpret_cast<JoltCollisionObject *>(inBody1.GetUserData());
+			JoltCollisionObject *co2 = reinterpret_cast<JoltCollisionObject *>(inBody2.GetUserData());
+			JoltContactInfo info1{};
+			JoltContactInfo info2{};
+			info1.node = co2 ? co2->GetParent() : nullptr;
+			info1.collisionObject = co2;
+			info1.distance = 0.0f;
+			info1.position = Vector3();
+			info1.normal = Vector3();
+			info2.node = co1 ? co1->GetParent() : nullptr;
+			info2.collisionObject = co1;
+			info2.distance = 0.0f;
+			info2.position = Vector3();
+			info2.normal = Vector3();
+			if(co1) co1->NotifyContact(info1);
+			if(co2) co2->NotifyContact(info2);
 		}
 
 		virtual void OnContactPersisted(const JPH::Body &inBody1, const JPH::Body &inBody2, const JPH::ContactManifold &inManifold, JPH::ContactSettings &ioSettings) override
 		{
 			AutoreleasePool pool;
-//			RNDebug("A contact was persisted");
+			// Forward to RN callback if present
+			JoltCollisionObject *co1 = reinterpret_cast<JoltCollisionObject *>(inBody1.GetUserData());
+			JoltCollisionObject *co2 = reinterpret_cast<JoltCollisionObject *>(inBody2.GetUserData());
+			JoltContactInfo info1{};
+			JoltContactInfo info2{};
+			info1.node = co2 ? co2->GetParent() : nullptr;
+			info1.collisionObject = co2;
+			info1.distance = 0.0f;
+			info1.position = Vector3();
+			info1.normal = Vector3();
+			info2.node = co1 ? co1->GetParent() : nullptr;
+			info2.collisionObject = co1;
+			info2.distance = 0.0f;
+			info2.position = Vector3();
+			info2.normal = Vector3();
+			if(co1) co1->NotifyContact(info1);
+			if(co2) co2->NotifyContact(info2);
 		}
 
 		virtual void OnContactRemoved(const JPH::SubShapeIDPair &inSubShapePair) override

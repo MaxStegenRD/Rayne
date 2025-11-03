@@ -37,6 +37,14 @@ namespace RN
 		_contactCallback = std::move(callback);
 	}
 
+	void JoltCollisionObject::NotifyContact(const JoltContactInfo &info)
+	{
+		if(_contactCallback)
+		{
+			_contactCallback(this, info);
+		}
+	}
+
 	void JoltCollisionObject::SetPositionOffset(RN::Vector3 offset)
 	{
 		_positionOffset = offset;
