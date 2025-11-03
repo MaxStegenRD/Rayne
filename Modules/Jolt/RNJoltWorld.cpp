@@ -87,28 +87,16 @@ namespace RN
 	{
 		SceneAttachment::Update(delta);
 
-		/*		if(_paused)
+		if(_paused)
 			return;
 		
 		if(delta > 0.1f || delta < k::EpsilonFloat)
 			return;
 		
+		// Step physics
 		_isSimulating = true;
 		_physicsSystem->Update(delta, _substeps, _internals->tempAllocator, _internals->jobSystem); //This waits for all jobs to finish! Maybe it can be split up into simulate and finish like with physx (wait here for all jobs, but start them in WillUpdate)
-		_isSimulating = false;*/
-
-		/*
-		Jolt::PxU32 actorCount = 0;
-		Jolt::PxActor **actors = _scene->getActiveActors(actorCount);
-		for(int i = 0; i < actorCount; i++)
-		{
-			void *userData = actors[i]->userData;
-			if(userData)
-			{
-				JoltCollisionObject *collisionObject = static_cast<JoltCollisionObject*>(userData);
-				collisionObject->UpdatePosition();
-			}
-		}*/
+		_isSimulating = false;
 
 		JPH::BodyIDVector bodyIDs;
 		_physicsSystem->GetActiveBodies(JPH::EBodyType::RigidBody, bodyIDs);
@@ -125,17 +113,6 @@ namespace RN
 		SceneAttachment::WillUpdate(delta);
 
 		//_physicsSystem->OptimizeBroadPhase();
-
-		if(_paused)
-			return;
-
-		if(delta > 0.1f || delta < k::EpsilonFloat)
-			return;
-
-		//Physics update after adding lots of objects needs to happen before doing any scene queries to prevent the quadtree from having issues...
-		_isSimulating = true;
-		_physicsSystem->Update(delta, _substeps, _internals->tempAllocator, _internals->jobSystem); //This waits for all jobs to finish! Maybe it can be split up into simulate and finish like with physx (wait here for all jobs, but start them in WillUpdate)
-		_isSimulating = false;
 	}
 
 
