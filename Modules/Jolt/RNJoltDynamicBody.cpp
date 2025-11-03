@@ -9,6 +9,7 @@
 #include "RNJoltDynamicBody.h"
 #include "RNJoltInternals.h"
 #include "RNJoltWorld.h"
+#include <Jolt/Physics/Body/AllowedDOFs.h>
 
 namespace RN
 {
@@ -70,9 +71,22 @@ namespace RN
 	void JoltDynamicBody::SetMass(float mass)
 	{
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		const JPH::BodyLockInterface &lockInterface = physics->GetBodyLockInterface();
+		JPH::BodyLockWrite lock(lockInterface, *_actor);
+		if(!lock.Succeeded()) return;
+		JPH::Body &body = lock.GetBody();
+		JPH::MotionProperties *mp = body.GetMotionProperties();
+		if(!mp) return; // static/kinematic
 
-		//TODO: Need to recreate the body!? There doesn't appear to be a way to update the mass
+		// Preserve current DOF locks
+		JPH::EAllowedDOFs allowed = mp->GetAllowedDOFs();
+
+		// Compute mass properties from shape and scale to target mass
+		JPH::MassProperties props = _shape->GetJoltShape()->GetMassProperties();
+		props.ScaleToMass(mass);
+
+		// Apply new mass properties
+		mp->SetMassProperties(allowed, props);
 	}
 
 	float JoltDynamicBody::GetMass() const
@@ -144,6 +158,23 @@ namespace RN
 			bodyInterface.DeactivateBody(*_actor);
 	}
 
+	void JoltDynamicBody::SetAllowSleeping(bool allow)
+	{
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		const JPH::BodyLockInterface &lockInterface = physics->GetBodyLockInterface();
+		{
+			JPH::BodyLockWrite lock(lockInterface, *_actor);
+			if(!lock.Succeeded()) return;
+
+			JPH::Body &body = lock.GetBody();
+			body.SetAllowSleeping(allow);
+		}
+		if(!allow)
+		{
+			physics->GetBodyInterface().ActivateBody(*_actor);
+		}
+	}
+
 	bool JoltDynamicBody::GetIsSleeping() const
 	{
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
@@ -154,7 +185,35 @@ namespace RN
 
 	void JoltDynamicBody::LockMovement(RN::uint32 lockFlags)
 	{
-		//_actor->setRigidDynamicLockFlags(static_cast<Jolt::PxRigidDynamicLockFlags>(lockFlags));
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		const JPH::BodyLockInterface &lockInterface = physics->GetBodyLockInterface();
+		JPH::BodyLockWrite lock(lockInterface, *_actor);
+		if(!lock.Succeeded()) return;
+
+		JPH::Body &body = lock.GetBody();
+		JPH::MotionProperties *mp = body.GetMotionProperties();
+		if(!mp) return;
+
+		// Build allowed DOFs: start with all DOFs enabled
+		JPH::EAllowedDOFs allowed = JPH::EAllowedDOFs::All;
+
+		// Linear locks
+		if(lockFlags & LockAxis::LockAxisLinearX) allowed = static_cast<JPH::EAllowedDOFs>(uint32(allowed) & ~uint32(JPH::EAllowedDOFs::TranslationX));
+		if(lockFlags & LockAxis::LockAxisLinearY) allowed = static_cast<JPH::EAllowedDOFs>(uint32(allowed) & ~uint32(JPH::EAllowedDOFs::TranslationY));
+		if(lockFlags & LockAxis::LockAxisLinearZ) allowed = static_cast<JPH::EAllowedDOFs>(uint32(allowed) & ~uint32(JPH::EAllowedDOFs::TranslationZ));
+
+		// Angular locks
+		if(lockFlags & LockAxis::LockAxisAngularX) allowed = static_cast<JPH::EAllowedDOFs>(uint32(allowed) & ~uint32(JPH::EAllowedDOFs::RotationX));
+		if(lockFlags & LockAxis::LockAxisAngularY) allowed = static_cast<JPH::EAllowedDOFs>(uint32(allowed) & ~uint32(JPH::EAllowedDOFs::RotationY));
+		if(lockFlags & LockAxis::LockAxisAngularZ) allowed = static_cast<JPH::EAllowedDOFs>(uint32(allowed) & ~uint32(JPH::EAllowedDOFs::RotationZ));
+
+		// Recompute mass properties for current mass
+		float invMass = mp->GetInverseMassUnchecked();
+		if(invMass <= 0.0f) return; // static/kinematic
+		float mass = 1.0f / invMass;
+		JPH::MassProperties massProps = _shape->GetJoltShape()->GetMassProperties();
+		massProps.ScaleToMass(mass);
+		mp->SetMassProperties(allowed, massProps);
 	}
 
 	void JoltDynamicBody::SetEnableCCD(bool enable)
@@ -164,12 +223,28 @@ namespace RN
 
 	void JoltDynamicBody::SetEnableGravity(bool enable)
 	{
-		//_actor->setActorFlag(Jolt::PxActorFlag::eDISABLE_GRAVITY, !enable);
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		bodyInterface.SetGravityFactor(*_actor, enable ? 1.0f : 0.0f);
 	}
 
 	void JoltDynamicBody::SetSolverIterationCount(uint32 positionIterations, uint32 velocityIterations)
 	{
 		//_actor->setSolverIterationCounts(positionIterations, velocityIterations);
+	}
+
+	void JoltDynamicBody::SetFriction(float friction)
+	{
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		bodyInterface.SetFriction(*_actor, friction);
+	}
+
+	void JoltDynamicBody::SetRestitution(float restitution)
+	{
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		bodyInterface.SetRestitution(*_actor, restitution);
 	}
 
 	void JoltDynamicBody::AddForce(const Vector3 &force)

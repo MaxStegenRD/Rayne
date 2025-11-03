@@ -53,6 +53,9 @@ namespace RN
 		JTAPI void LockMovement(uint32 lockFlags);
 		JTAPI void SetSolverIterationCount(uint32 positionIterations, uint32 velocityIterations);
 
+		JTAPI void SetFriction(float friction);
+		JTAPI void SetRestitution(float restitution);
+
 		JTAPI void SetKinematicTarget(const Vector3 &position, const Quaternion &rotation, float delta);
 		//JTAPI void AccelerateToTarget(const Vector3 &position, const Quaternion &rotation, float delta);
 
@@ -71,6 +74,7 @@ namespace RN
 		JTAPI Vector3 GetAngularVelocity() const;
 
 		JTAPI void SetEnableSleeping(bool enable);
+		JTAPI void SetAllowSleeping(bool allow);
 		JTAPI bool GetIsSleeping() const;
 
 		JTAPI bool GetIsKinematic() const;
