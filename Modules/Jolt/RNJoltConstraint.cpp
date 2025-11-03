@@ -32,10 +32,12 @@ namespace RN
 	{
 		if(_constraint)
 		{
-			JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-			physics->RemoveConstraint(_constraint);
-			delete _constraint;
-			_constraint = nullptr;
+			//Remove from physics system which will also release the constraint
+			if(JoltWorld *world = JoltWorld::GetSharedInstance())
+			{
+				_constraint->SetEnabled(false);
+				world->GetJoltInstance()->RemoveConstraint(_constraint);
+			}
 		}
 	}
 
@@ -46,7 +48,7 @@ namespace RN
 		{
 			JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 			physics->RemoveConstraint(_constraint);
-			delete _constraint;
+			_constraint = nullptr;
 		}
 		_constraint = constraint;
 		if(_constraint)
