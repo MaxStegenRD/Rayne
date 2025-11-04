@@ -9,6 +9,7 @@
 #include "RNJoltInternals.h"
 #include "RNJoltWorld.h"
 
+#include <Jolt/Physics/Constraints/Constraint.h>
 #include <Jolt/Physics/Constraints/PointConstraint.h>
 #include <Jolt/Physics/Constraints/FixedConstraint.h>
 #include <Jolt/Physics/Constraints/DistanceConstraint.h>
@@ -26,6 +27,13 @@ namespace RN
 
 	JoltConstraint::JoltConstraint() : _constraint(nullptr)
 	{
+	}
+
+	void JoltConstraint::SetSolverIterationCount(uint32 positionIterations, uint32 velocityIterations)
+	{
+		if(!_constraint) return;
+		if(velocityIterations > 0) _constraint->SetNumVelocityStepsOverride(velocityIterations);
+		if(positionIterations > 0) _constraint->SetNumPositionStepsOverride(positionIterations);
 	}
 
 	JoltConstraint::~JoltConstraint()

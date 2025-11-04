@@ -10,6 +10,7 @@
 #include "RNJoltInternals.h"
 #include "RNJoltWorld.h"
 #include <Jolt/Physics/Body/AllowedDOFs.h>
+#include <Jolt/Physics/Body/MotionProperties.h>
 
 namespace RN
 {
@@ -113,16 +114,27 @@ namespace RN
 
 	void JoltDynamicBody::SetDamping(float linear, float angular)
 	{
-		//TODO:: No idea how to do this!?
-
-		/*_actor->setLinearDamping(linear);
-		_actor->setAngularDamping(angular);
-		_actor->setMaxAngularVelocity(PX_MAX_F32);*/
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		const JPH::BodyLockInterface &lockInterface = physics->GetBodyLockInterface();
+		JPH::BodyLockWrite lock(lockInterface, *_actor);
+		if(!lock.Succeeded()) return;
+		JPH::Body &body = lock.GetBody();
+		JPH::MotionProperties *mp = body.GetMotionProperties();
+		if(!mp) return; // static/kinematic
+		mp->SetLinearDamping(linear);
+		mp->SetAngularDamping(angular);
 	}
 
 	void JoltDynamicBody::SetMaxAngularVelocity(float max)
 	{
-		//_actor->setMaxAngularVelocity(max);
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		const JPH::BodyLockInterface &lockInterface = physics->GetBodyLockInterface();
+		JPH::BodyLockWrite lock(lockInterface, *_actor);
+		if(!lock.Succeeded()) return;
+		JPH::Body &body = lock.GetBody();
+		JPH::MotionProperties *mp = body.GetMotionProperties();
+		if(!mp) return; // static/kinematic
+		mp->SetMaxAngularVelocity(max);
 	}
 
 	void JoltDynamicBody::SetMaxDepenetrationVelocity(float max)
@@ -226,11 +238,6 @@ namespace RN
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 		bodyInterface.SetGravityFactor(*_actor, enable ? 1.0f : 0.0f);
-	}
-
-	void JoltDynamicBody::SetSolverIterationCount(uint32 positionIterations, uint32 velocityIterations)
-	{
-		//_actor->setSolverIterationCounts(positionIterations, velocityIterations);
 	}
 
 	void JoltDynamicBody::SetFriction(float friction)

@@ -24,6 +24,7 @@ namespace RN
 	public:
 		JTAPI JPH::Constraint *GetJoltConstraint() const { return _constraint; }
 		JTAPI void SetEnabled(bool enabled);
+		JTAPI void SetSolverIterationCount(uint32 positionIterations, uint32 velocityIterations); //0 resets to the default
 
 	protected:
 		JoltConstraint();

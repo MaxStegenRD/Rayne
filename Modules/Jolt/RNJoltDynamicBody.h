@@ -51,7 +51,6 @@ namespace RN
 		JTAPI void SetEnableGravity(bool enable);
 		JTAPI void SetEnableKinematic(bool enable);
 		JTAPI void LockMovement(uint32 lockFlags);
-		JTAPI void SetSolverIterationCount(uint32 positionIterations, uint32 velocityIterations);
 
 		JTAPI void SetFriction(float friction);
 		JTAPI void SetRestitution(float restitution);
