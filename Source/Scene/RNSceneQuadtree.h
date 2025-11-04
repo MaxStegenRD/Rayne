@@ -23,6 +23,8 @@ namespace RN
 		RNAPI void AddNode(SceneNode *node) override;
 		RNAPI void RemoveNode(SceneNode *node) override;
 
+		RNAPI void RelocateNodeIfNeeded(SceneNode *node);
+
 	protected:
 		RNAPI SceneQuadtree(AABB worldBounds, float minNodeSize = 8.0f);
 

@@ -700,6 +700,38 @@ namespace RN
 		sceneInfo->quadtreeNodeIndex = UINT32_MAX;
 	}
 
+	void SceneQuadtree::RelocateNodeIfNeeded(SceneNode *node)
+	{
+		SceneQuadtreeInfo *sceneInfo = static_cast<SceneQuadtreeInfo*>(node->GetSceneInfo());
+		if(!sceneInfo) return;
+		uint32 nodeIndex = sceneInfo->quadtreeNodeIndex;
+		if(nodeIndex == UINT32_MAX) return; // Not a render node in the quadtree
+
+		const AABB &box = node->GetBoundingBox();
+		// Fast path: still contained in current leaf in XZ
+		if(_treeNodes[nodeIndex].Contains(box)) return;
+
+		// Reinsert into the correct leaf
+		Lock();
+		// Refresh current index in case another thread already moved it
+		uint32 currentIndex = sceneInfo->quadtreeNodeIndex;
+		if(currentIndex != UINT32_MAX)
+		{
+			auto &list = _treeNodes[currentIndex].objects;
+			auto it = std::find(list.begin(), list.end(), node);
+			if(it != list.end())
+			{
+				*it = list.back();
+				list.pop_back();
+			}
+		}
+
+		uint32 newIndex = FindTreeNode(box, false, sceneInfo->maxDepth);
+		_treeNodes[newIndex].objects.push_back(node);
+		sceneInfo->quadtreeNodeIndex = newIndex;
+		Unlock();
+	}
+
 	void SceneQuadtree::AddNode(SceneNode *node, uint8 maxDepth)
 	{
 		ZoneScoped;
