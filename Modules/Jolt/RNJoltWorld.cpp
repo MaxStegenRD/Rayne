@@ -100,11 +100,28 @@ namespace RN
 
 		JPH::BodyIDVector bodyIDs;
 		_physicsSystem->GetActiveBodies(JPH::EBodyType::RigidBody, bodyIDs);
-		for(JPH::BodyID bodyID : bodyIDs)
+		if(GetParent() && GetParent()->IsKindOfClass(SceneQuadtree::GetMetaClass()))
 		{
-			uint64 userData = _physicsSystem->GetBodyInterface().GetUserData(bodyID);
-			JoltCollisionObject *collisionObject = reinterpret_cast<JoltCollisionObject *>(userData);
-			if(collisionObject) collisionObject->UpdatePosition();
+			SceneQuadtree *quadtree = static_cast<SceneQuadtree *>(GetParent());
+			for(JPH::BodyID bodyID : bodyIDs)
+			{
+				uint64 userData = _physicsSystem->GetBodyInterface().GetUserData(bodyID);
+				JoltCollisionObject *collisionObject = reinterpret_cast<JoltCollisionObject *>(userData);
+				if(collisionObject)
+				{
+					collisionObject->UpdatePosition();
+					quadtree->RelocateNodeIfNeeded(collisionObject->GetParent());
+				}
+			}
+		}
+		else
+		{
+			for(JPH::BodyID bodyID : bodyIDs)
+			{
+				uint64 userData = _physicsSystem->GetBodyInterface().GetUserData(bodyID);
+				JoltCollisionObject *collisionObject = reinterpret_cast<JoltCollisionObject *>(userData);
+				if(collisionObject) collisionObject->UpdatePosition();
+			}
 		}
 	}
 
