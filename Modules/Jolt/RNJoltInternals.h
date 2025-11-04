@@ -11,6 +11,7 @@
 
 #include "RNJolt.h"
 #include "RNJoltKinematicController.h"
+#include "RNJoltCollisionObject.h"
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Core/Factory.h>
@@ -173,8 +174,8 @@ namespace RN
 			info2.distance = 0.0f;
 			info2.position = Vector3();
 			info2.normal = Vector3();
-			if(co1) co1->NotifyContact(info1);
-			if(co2) co2->NotifyContact(info2);
+			if(co1) co1->NotifyContact(info1, JoltCollisionObject::ContactState::Begin);
+			if(co2) co2->NotifyContact(info2, JoltCollisionObject::ContactState::Begin);
 		}
 
 		virtual void OnContactPersisted(const JPH::Body &inBody1, const JPH::Body &inBody2, const JPH::ContactManifold &inManifold, JPH::ContactSettings &ioSettings) override
@@ -195,8 +196,8 @@ namespace RN
 			info2.distance = 0.0f;
 			info2.position = Vector3();
 			info2.normal = Vector3();
-			if(co1) co1->NotifyContact(info1);
-			if(co2) co2->NotifyContact(info2);
+			if(co1) co1->NotifyContact(info1, JoltCollisionObject::ContactState::Continue);
+			if(co2) co2->NotifyContact(info2, JoltCollisionObject::ContactState::Continue);
 		}
 
 		virtual void OnContactRemoved(const JPH::SubShapeIDPair &inSubShapePair) override

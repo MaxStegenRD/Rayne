@@ -45,10 +45,10 @@ namespace RN
 		JTAPI virtual void UpdatePosition() = 0;
 
 		JTAPI virtual void SetCollisionFilter(uint32 group, uint32 mask);
-		JTAPI void SetContactCallback(std::function<void(JoltCollisionObject *, const JoltContactInfo &)> &&callback);
+		JTAPI void SetContactCallback(std::function<void(JoltCollisionObject *, const JoltContactInfo &, ContactState)> &&callback);
 		JTAPI virtual void SetPositionOffset(RN::Vector3 offset);
 		JTAPI virtual void SetRotationOffset(RN::Quaternion offset);
-		JTAPI void NotifyContact(const JoltContactInfo &info);
+		JTAPI void NotifyContact(const JoltContactInfo &info, ContactState state);
 
 		Vector3 GetPositionOffset() const { return _positionOffset; }
 
@@ -67,7 +67,7 @@ namespace RN
 		SceneNode *_owner;
 
 	private:
-		std::function<void(JoltCollisionObject *, const JoltContactInfo &)> _contactCallback;
+		std::function<void(JoltCollisionObject *, const JoltContactInfo &, ContactState)> _contactCallback;
 
 		RNDeclareMetaAPI(JoltCollisionObject, JTAPI)
 	};
