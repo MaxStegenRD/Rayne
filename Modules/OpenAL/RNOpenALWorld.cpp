@@ -178,6 +178,7 @@ namespace RN
 	void OpenALOutputDevice::ProgressContext(float delta)
 	{
 		if(!_isLoopback || _isManualUpdate) return;
+		if(delta > 15.0f) return; //Do lose some time if delta is too big.
 		
 		//Don't lose any time!
 		delta += _missingTime;
