@@ -57,7 +57,9 @@ namespace RN
 		JTAPI void PrepareLoadingLevel();
 		JTAPI void FinalizeLoadingLevel();
 		bool IsLoadingLevel() const { return _isLoadingLevel; }
-		void AddBodyForLoadingLevel(JPH::Body *body);
+		JTAPI void AddBodyForLoadingLevel(JPH::Body *body);
+
+		JTAPI void EnumerateActiveCollisionObjects(const std::function<void(JoltCollisionObject *)> &callback);
 
 		static JoltWorld *GetSharedInstance() { return _sharedInstance; }
 

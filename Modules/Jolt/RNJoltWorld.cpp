@@ -125,6 +125,18 @@ namespace RN
 		}
 	}
 
+	void JoltWorld::EnumerateActiveCollisionObjects(const std::function<void(JoltCollisionObject *)> &callback)
+	{
+		JPH::BodyIDVector bodyIDs;
+		_physicsSystem->GetActiveBodies(JPH::EBodyType::RigidBody, bodyIDs);
+		for(JPH::BodyID bodyID : bodyIDs)
+		{
+			uint64 userData = _physicsSystem->GetBodyInterface().GetUserData(bodyID);
+			JoltCollisionObject *collisionObject = reinterpret_cast<JoltCollisionObject *>(userData);
+			if(collisionObject) callback(collisionObject);
+		}
+	}
+
 	void JoltWorld::WillUpdate(float delta)
 	{
 		SceneAttachment::WillUpdate(delta);
