@@ -946,6 +946,74 @@ namespace RN
 		return mesh->Autorelease();
 	}
 
+	Mesh *Mesh::WithCylinderMesh(float radius, float height, size_t slices, Color color)
+	{
+		Mesh *mesh = new Mesh({VertexAttribute(VertexAttribute::Feature::Vertices, PrimitiveType::Vector3),
+							   VertexAttribute(VertexAttribute::Feature::Normals, PrimitiveType::Vector3),
+							   VertexAttribute(VertexAttribute::Feature::Color0, PrimitiveType::Vector4),
+							   VertexAttribute(VertexAttribute::Feature::Indices, PrimitiveType::Uint16)},
+							  2 * slices, slices * 6);
+		
+		mesh->BeginChanges();
+		Chunk chunk = mesh->GetChunk();
+		
+		ElementIterator<Vector3> vertices = chunk.GetIterator<Vector3>(VertexAttribute::Feature::Vertices);
+		ElementIterator<Vector3> normals = chunk.GetIterator<Vector3>(VertexAttribute::Feature::Normals);
+		ElementIterator<Vector4> colors = chunk.GetIterator<Vector4>(VertexAttribute::Feature::Color0);
+		ElementIterator<uint16> indices = chunk.GetIterator<uint16>(VertexAttribute::Feature::Indices);
+		
+		// Bottom ring
+		{
+			float y = -0.5f * height;
+			for(size_t slice = 0; slice < slices; slice++)
+			{
+				float angle = 2.0f * k::Pi * static_cast<float>(slice) / static_cast<float>(slices);
+				float x = sin(angle);
+				float z = cos(angle);
+				
+				*vertices++ = Vector3(x * radius, y, z * radius);
+				*normals++ = Vector3(x, 0.0f, z).GetNormalized();
+				*colors++ = Vector4(color.r, color.g, color.b, color.a);
+			}
+		}
+		
+		// Top ring
+		{
+			float y = 0.5f * height;
+			for(size_t slice = 0; slice < slices; slice++)
+			{
+				float angle = 2.0f * k::Pi * static_cast<float>(slice) / static_cast<float>(slices);
+				float x = sin(angle);
+				float z = cos(angle);
+				
+				*vertices++ = Vector3(x * radius, y, z * radius);
+				*normals++ = Vector3(x, 0.0f, z).GetNormalized();
+				*colors++ = Vector4(color.r, color.g, color.b, color.a);
+			}
+		}
+		
+		// Side quads (with wrap-around)
+		for(size_t j = 0; j < slices; j++)
+		{
+			size_t next = (j + 1) % slices;
+			
+			uint16 b0 = static_cast<uint16>(j);
+			uint16 b1 = static_cast<uint16>(next);
+			uint16 t0 = static_cast<uint16>(slices + j);
+			uint16 t1 = static_cast<uint16>(slices + next);
+			
+			*indices++ = b0; *indices++ = t1; *indices++ = b1;
+			*indices++ = b0; *indices++ = t0; *indices++ = t1;
+		}
+		
+		//TODO:Make this less ugly... these variables should get set when changing things with the iterator or something
+		mesh->changedVertices = true;
+		mesh->changedIndices = true;
+		mesh->EndChanges();
+		
+		return mesh->Autorelease();
+	}
+	
 	void Mesh::SubmitVertices(const Range &range)
 	{
 		if(!_vertexBufferCPU || !_vertexBuffer)
