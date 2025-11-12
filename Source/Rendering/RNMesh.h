@@ -433,6 +433,7 @@ namespace RN
 		RNAPI static Mesh *WithTexturedDome(float radius, size_t slices, size_t segments);
 
 		RNAPI static Mesh *WithSphereMesh(float radius, size_t slices, size_t segments, Color color);
+		RNAPI static Mesh *WithCylinderMesh(float radius, float height, size_t slices, Color color);
 
 		RNAPI void BeginChanges(bool skipCPUBuffer = false);
 		RNAPI void EndChanges();
