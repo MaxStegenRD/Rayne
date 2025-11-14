@@ -56,6 +56,7 @@ namespace RN
 		//These as well as the body creation should all be called on the same thread!
 		JTAPI void PrepareLoadingLevel();
 		JTAPI void FinalizeLoadingLevel();
+		JTAPI void OptimizeBroadPhase();
 		bool IsLoadingLevel() const { return _isLoadingLevel; }
 		JTAPI void AddBodyForLoadingLevel(JPH::Body *body);
 

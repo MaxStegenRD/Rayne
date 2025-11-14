@@ -140,8 +140,11 @@ namespace RN
 	void JoltWorld::WillUpdate(float delta)
 	{
 		SceneAttachment::WillUpdate(delta);
+	}
 
-		//_physicsSystem->OptimizeBroadPhase();
+	void JoltWorld::OptimizeBroadPhase()
+	{
+		_physicsSystem->OptimizeBroadPhase();
 	}
 
 
