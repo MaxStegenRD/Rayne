@@ -31,6 +31,9 @@ namespace RN
 
 		JTAPI void SetCollisionFilter(uint32 group, uint32 mask) override;
 
+		JTAPI void SetFriction(float friction);
+		JTAPI void SetRestitution(float restitution);
+
 		JTAPI JPH::BodyID *GetJoltActor() const { return _actor; }
 
 	protected:

@@ -72,6 +72,20 @@ namespace RN
 		JoltWorld::GetSharedInstance()->GetJoltInstance()->GetBodyInterface().SetObjectLayer(*_actor, JoltWorld::GetSharedInstance()->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 0));
 	}
 
+	void JoltStaticBody::SetFriction(float friction)
+	{
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		bodyInterface.SetFriction(*_actor, friction);
+	}
+
+	void JoltStaticBody::SetRestitution(float restitution)
+	{
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		bodyInterface.SetRestitution(*_actor, restitution);
+	}
+
 	void JoltStaticBody::DidUpdate(SceneNode::ChangeSet changeSet)
 	{
 		JoltCollisionObject::DidUpdate(changeSet);
