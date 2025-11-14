@@ -702,6 +702,10 @@ namespace RN
 
 	void SceneQuadtree::RelocateNodeIfNeeded(SceneNode *node)
 	{
+		node->GetChildren()->Enumerate<SceneNode>([&](SceneNode *child, size_t index, bool &stop) {
+			RelocateNodeIfNeeded(child);
+		});
+		
 		SceneQuadtreeInfo *sceneInfo = static_cast<SceneQuadtreeInfo*>(node->GetSceneInfo());
 		if(!sceneInfo) return;
 		uint32 nodeIndex = sceneInfo->quadtreeNodeIndex;
