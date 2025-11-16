@@ -46,6 +46,7 @@ namespace RN
 
 		JTAPI virtual void SetCollisionFilter(uint32 group, uint32 mask);
 		JTAPI void SetContactCallback(std::function<void(JoltCollisionObject *, const JoltContactInfo &, ContactState)> &&callback);
+		JTAPI std::function<void(JoltCollisionObject *, const JoltContactInfo &, ContactState)> GetContactCallback() const { return _contactCallback; }
 		JTAPI virtual void SetPositionOffset(RN::Vector3 offset);
 		JTAPI virtual void SetRotationOffset(RN::Quaternion offset);
 		JTAPI void NotifyContact(const JoltContactInfo &info, ContactState state);
