@@ -304,10 +304,12 @@ namespace RN
 			if(multiviewCount > 0 || multiviewLayer > 0)
 			{
 				[colorAttachment setSlice:multiviewLayer];
+				if(resolveFramebuffer) [colorAttachment setResolveSlice:multiviewLayer];
 			}
 			else
 			{
 				[colorAttachment setSlice:metalTarget->targetView.slice];
+				if(resolveFramebuffer) [colorAttachment setResolveSlice:metalTarget->targetView.slice];
 			}
 			[colorAttachment setLevel:metalTarget->targetView.mipmap];
 			
