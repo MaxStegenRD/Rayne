@@ -327,6 +327,8 @@ namespace RN
 
 		CreateMipMaps();
 
+		_frameStatistics.clear();
+
 		_currentResourcesCommandBufferLock.Lock();
 		VulkanCommandBuffer *resourcesCommandBuffer = _currentResourcesCommandBuffer;
 		if(resourcesCommandBuffer)
@@ -692,6 +694,8 @@ namespace RN
 			}
 		}
 
+		_frameStatistics.push_back({0, 0, 0, 0});
+
 		_internals->currentPipelineState = nullptr; //This is used when submitting drawables to make lists of drawables to instance and needs to be reset per render pass
 		_internals->currentInstanceDrawable = nullptr;
 
@@ -782,6 +786,7 @@ namespace RN
 		_internals->totalDrawableCount += numberOfDrawables;
 
 		if(numberOfDrawables > 0) _internals->currentDrawableResourceIndex += 1;
+		_frameStatistics.back().numberOfDrawCalls = _internals->renderPasses[_internals->currentRenderPassIndex].instanceSteps.size();
 
 		nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
 			SubmitRenderPass(nextPass, renderPass, std::forward<Function>(function));
@@ -1819,6 +1824,10 @@ namespace RN
 	{
 		VulkanDrawable *drawable = static_cast<VulkanDrawable *>(tdrawable);
 		drawable->AddCameraSpecificsIfNeeded(_internals->currentDrawableResourceIndex);
+
+		_frameStatistics.back().numberOfDrawables += 1;
+		_frameStatistics.back().numberOfVertices += drawable->mesh->GetVerticesCount();
+		_frameStatistics.back().numberOfIndices += drawable->mesh->GetIndicesCount();
 
 		_lock.Lock();
 		VulkanRenderPass &renderPass = _internals->renderPasses[_internals->currentRenderPassIndex];

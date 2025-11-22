@@ -125,6 +125,8 @@ namespace RN
 			
 			CreateMipMaps();
 			
+			_frameStatistics.clear();
+			
 			//Submit camera is called for each camera and creates lists of drawables per camera
 			function();
 			
@@ -367,6 +369,8 @@ namespace RN
 			}
 		}
 		
+		_frameStatistics.push_back({0, 0, 0, 0});
+		
 		RenderPass *cameraRenderPass = _currentMultiviewFallbackRenderPass? _currentMultiviewFallbackRenderPass : camera->GetRenderPass();
 		
 		// Set up
@@ -435,6 +439,8 @@ namespace RN
 		
 		// Create drawables
 		function();
+		
+		_frameStatistics.back().numberOfDrawCalls = _internals->renderPasses[_internals->currentRenderPassIndex].instanceSteps.size();
 		
 		const Array *nextRenderPasses = cameraRenderPass->GetNextRenderPasses();
 		nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
@@ -556,6 +562,8 @@ namespace RN
 				// Create drawables
 				function();
 			}
+			
+			_frameStatistics.back().numberOfDrawCalls = _internals->renderPasses[_internals->currentRenderPassIndex].instanceSteps.size();
 		}
 		else
 		{
@@ -1260,6 +1268,10 @@ namespace RN
 		ZoneScoped;
 		MetalDrawable *drawable = static_cast<MetalDrawable *>(tdrawable);
 		drawable->AddCameraSepecificsIfNeeded(_internals->currentRenderPassIndex);
+		
+		_frameStatistics.back().numberOfDrawables += 1;
+		_frameStatistics.back().numberOfVertices += drawable->mesh->GetVerticesCount();
+		_frameStatistics.back().numberOfIndices += drawable->mesh->GetIndicesCount();
 
 		MetalRenderPass &renderPass = _internals->renderPasses[_internals->currentRenderPassIndex];
 		MetalDrawable::CameraSpecific &cameraSpecific = drawable->_cameraSpecifics[_internals->currentRenderPassIndex];
@@ -1329,6 +1341,7 @@ namespace RN
 	void MetalRenderer::RenderDrawable(MetalDrawable *drawable, uint32 instanceCount)
 	{
 		ZoneScoped;
+
 		id<MTLRenderCommandEncoder> encoder = _internals->commandEncoder;
 		if(_internals->currentRenderState != drawable->_cameraSpecifics[_internals->currentRenderPassIndex].pipelineState)
 		{
