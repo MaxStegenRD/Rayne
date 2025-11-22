@@ -25,6 +25,10 @@
 	#include <dlfcn.h>
 #endif
 
+#if RN_PLATFORM_MAC_OS
+#include <RNMetalDevice.h>
+#endif
+
 namespace RN
 {
 	RNDefineMeta(OpenXRWindow, VRWindow)
@@ -1489,10 +1493,7 @@ namespace RN
 		if(Renderer::GetActiveRenderer()->GetDescriptor()->GetAPI()->IsEqual(RNCSTR("Metal")))
 		{
 			MetalRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<MetalRenderer>();
-
-			//Needs to be created somehow from the previously passed metalDevice
 			metalGraphicsBinding.commandQueue = (__bridge void *)renderer->GetCommandQueue();
-
 			sessionCreateInfo.next = &metalGraphicsBinding;
 		}
 #endif
@@ -2532,9 +2533,18 @@ namespace RN
 			{
 				RN_ASSERT(false, "Failed fetching metal graphics requirements");
 			}
-
-			//Needs to be passed into the renderer somehow
-			//graphicsRequirements.metalDevice
+			
+			//Pick the correct device
+			MetalDevice *result = nullptr;
+			descriptor->GetDevices()->Enumerate<MetalDevice>([&](MetalDevice *device, size_t index, bool &stop){
+				if(graphicsRequirements.metalDevice == device->GetDevice())
+				{
+					result = device;
+					stop = true;
+				}
+			});
+			
+			return result;
 		}
 #endif
 
