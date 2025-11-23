@@ -380,9 +380,7 @@ namespace RN
 			submitInfo.pCommandBuffers = buffers.data();
 			submitInfo.signalSemaphoreCount = 1;
 			submitInfo.pSignalSemaphores = &resourceUploadsSemaphore;
-
-			VkPipelineStageFlags pipelineStageFlags[] = {VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT};
-			submitInfo.pWaitDstStageMask = pipelineStageFlags;
+			submitInfo.pWaitDstStageMask = nullptr;
 
 			RNVulkanValidate(vk::QueueSubmit(_workQueue, 1, &submitInfo, VK_NULL_HANDLE));
 
@@ -2125,7 +2123,7 @@ namespace RN
 				canUseInstancing = false;
 			}
 
-			if(renderSubPass.currentPipelineState == cameraSpecifics.pipelineState && drawable->mesh == renderSubPass.currentInstanceDrawable->mesh && drawable->material->GetTextures()->IsEqualLite(renderSubPass.currentInstanceDrawable->material->GetTextures()) && canUseInstancing)
+			if(canUseInstancing && renderSubPass.currentPipelineState == cameraSpecifics.pipelineState && drawable->mesh == renderSubPass.currentInstanceDrawable->mesh && drawable->material->GetTextures()->IsEqualLite(renderSubPass.currentInstanceDrawable->material->GetTextures()))
 			{
 				renderSubPass.instanceSteps.back() += 1; //Increase counter if the rendering state is the same
 			}
@@ -2258,17 +2256,6 @@ namespace RN
 
 		_internals->currentRenderPassIndex = 0;
 		_internals->currentDrawableResourceIndex = 0;
-
-		for(VulkanRenderPass &renderPass : _internals->renderPasses)
-		{
-			RN_PROFILE_SCOPE();
-			renderPass.renderTargetsUsedInShader.clear();
-
-			if(renderPass.type != VulkanRenderPass::Type::Default && renderPass.type != VulkanRenderPass::Type::Convert)
-			{
-				_internals->currentRenderPassIndex += 1;
-				continue;
-			}
 
 		auto updateDescriptorSets = [&](const VulkanRenderPass &renderPass, VulkanRenderPass &rootRenderPass){
 			if(renderPass.drawables.size() > 0)
