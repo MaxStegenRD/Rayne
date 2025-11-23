@@ -305,6 +305,11 @@ namespace RN
 
 		VmaAllocator memoryAllocator;
 		VulkanDescriptorPool descriptorPool;
+		
+		// Tracy Vulkan GPU context (opaque)
+		RN_PROFILE_VULKAN_CONTEXT_TYPE tracyVulkanCtx;
+		VulkanCommandBuffer *tracyCommandBuffer;
+		VkCommandBuffer tracyVulkanCommandBuffer;
 	};
 
 	class VulkanBufferedDescriptorSet

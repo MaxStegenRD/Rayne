@@ -89,6 +89,14 @@ namespace RN
 		_internals->descriptorPool.Init(this);
 
 		_internals->stateCoordinator.LoadPipelineCache(Kernel::GetSharedInstance()->GetApplication()->GetBuildNumber(), device, GetAllocatorCallback());
+
+		#if RN_PROFILE_TRACY
+			_internals->tracyCommandBuffer = GetCommandBuffer()->Retain();
+			_internals->tracyVulkanCtx = RN_PROFILE_VULKAN_DECLARE_CONTEXT(device->GetInstance()->GetInstance(), device->GetDevice(), device->GetPhysicalDevice(), _workQueue, _internals->tracyCommandBuffer->GetCommandBuffer(), vk::GetInstanceProcAddr, vk::GetDeviceProcAddr);
+		#else
+			_internals->tracyCommandBuffer = nullptr;
+			_internals->tracyVulkanCtx = nullptr;
+		#endif
 	}
 
 	VulkanRenderer::~VulkanRenderer()
@@ -401,6 +409,7 @@ namespace RN
 		if(_internals->swapChains.size() > 0)
 		{
 			VkCommandBuffer commandBuffer = _currentCommandBuffer->GetCommandBuffer();
+			RN_PROFILE_VULKAN_SCOPE_CMD(_internals->tracyVulkanCtx, commandBuffer);
 
 			for(VulkanSwapChain *swapChain : _internals->swapChains)
 			{
@@ -527,6 +536,8 @@ namespace RN
 			if(renderSemaphore != VK_NULL_HANDLE) renderSemaphores.push_back(renderSemaphore);
 		}
 
+		RN_PROFILE_VULKAN_COLLECT(_internals->tracyVulkanCtx, _currentCommandBuffer->GetCommandBuffer());
+
 		_currentCommandBuffer->End();
 		SubmitCommandBuffer(_currentCommandBuffer);
 		_currentCommandBuffer = nullptr;
@@ -576,9 +587,17 @@ namespace RN
 	void VulkanRenderer::SetupRendertargets(VkCommandBuffer commandBuffer, const VulkanRenderPass &renderpass)
 	{
 		RN_PROFILE_SCOPE();
+		RN_PROFILE_VULKAN_SCOPE_CMD_N(_internals->tracyVulkanCtx, commandBuffer, "SetupRendertargets");
+
 		//TODO: Call PrepareAsRendertargetForFrame() only once per framebuffer per frame, find new solution for setting things up for msaa while reusing a framebuffer?
-		renderpass.framebuffer->PrepareAsRendertargetForFrame(renderpass.resolveFramebuffer, renderpass.renderPass->GetFlags(), renderpass.multiviewLayer, renderpass.multiviewCameraInfo.size());
-		renderpass.framebuffer->SetAsRendertarget(commandBuffer, renderpass.resolveFramebuffer, renderpass.renderPass->GetClearColor(), renderpass.renderPass->GetClearDepth(), renderpass.renderPass->GetClearStencil());
+		{
+			RN_PROFILE_VULKAN_SCOPE_CMD_N(_internals->tracyVulkanCtx, commandBuffer, "PrepareRendertargetForFrame");
+			renderpass.framebuffer->PrepareAsRendertargetForFrame(renderpass.resolveFramebuffer, renderpass.renderPass->GetFlags(), renderpass.multiviewLayer, renderpass.multiviewCameraInfo.size());
+		}
+		{
+			RN_PROFILE_VULKAN_SCOPE_CMD_N(_internals->tracyVulkanCtx, commandBuffer, "SetAsRendertarget");
+			renderpass.framebuffer->SetAsRendertarget(commandBuffer, renderpass.resolveFramebuffer, renderpass.renderPass->GetClearColor(), renderpass.renderPass->GetClearDepth(), renderpass.renderPass->GetClearStencil());
+		}
 
 		//Setup viewport and scissor rect
 		Rect cameraRect = renderpass.renderPass->GetFrame();
@@ -2172,6 +2191,8 @@ namespace RN
 
 	void VulkanRenderer::RenderDrawable(VkCommandBuffer commandBuffer, VulkanDrawable *drawable, uint32 instanceCount)
 	{
+		RN_PROFILE_VULKAN_SCOPE_CMD_N(_internals->tracyVulkanCtx, commandBuffer, "Draw");
+
 		VulkanDrawable::CameraSpecific &cameraSpecific = drawable->_cameraSpecifics[_internals->currentDrawableResourceIndex];
 		const VulkanPipelineState *pipelineState = cameraSpecific.pipelineState;
         const VulkanUniformState *uniformState = cameraSpecific.uniformState;
