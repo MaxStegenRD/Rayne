@@ -524,15 +524,24 @@ namespace RN
 
 		//Prepare command buffer submission
 		std::vector<VkSemaphore> presentSemaphores;
+		std::vector<VkPipelineStageFlags> presentSemaphoresWaitStages;
 		std::vector<VkSemaphore> renderSemaphores;
 
-        if(resourceUploadsSemaphore) presentSemaphores.push_back(resourceUploadsSemaphore); //Wait until all resources are available
+		if(resourceUploadsSemaphore)
+		{
+			presentSemaphores.push_back(resourceUploadsSemaphore); //Wait until all resources are available
+			presentSemaphoresWaitStages.push_back(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+		}
 
 		for(VulkanSwapChain *swapChain : _internals->swapChains)
 		{
 			VkSemaphore presentSemaphore = swapChain->GetCurrentPresentSemaphore();
 			VkSemaphore renderSemaphore = swapChain->GetCurrentRenderSemaphore();
-			if(presentSemaphore != VK_NULL_HANDLE) presentSemaphores.push_back(presentSemaphore);
+			if(presentSemaphore != VK_NULL_HANDLE)
+			{
+				presentSemaphores.push_back(presentSemaphore);
+				presentSemaphoresWaitStages.push_back(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+			}
 			if(renderSemaphore != VK_NULL_HANDLE) renderSemaphores.push_back(renderSemaphore);
 		}
 
@@ -569,8 +578,7 @@ namespace RN
 		submitInfo.signalSemaphoreCount = renderSemaphores.size();
 		submitInfo.pSignalSemaphores = renderSemaphores.data();
 
-		std::vector<VkPipelineStageFlags> pipelineStageFlags(presentSemaphores.size(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-		submitInfo.pWaitDstStageMask = pipelineStageFlags.data();
+		submitInfo.pWaitDstStageMask = presentSemaphoresWaitStages.data();
 
 		RNVulkanValidate(vk::QueueSubmit(_workQueue, 1, &submitInfo, _frameFences[_currentFrameFenceIndex]));
 
