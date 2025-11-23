@@ -418,6 +418,7 @@ namespace RN
 		renderPass.resolveFramebuffer = nullptr;
 
 		renderPass.camera = camera;
+		renderPass.currentInstanceDrawable = nullptr;
 		
 		renderPass.viewPosition = camera->GetWorldPosition();
 		renderPass.viewMatrix = camera->GetViewMatrix();
@@ -558,6 +559,7 @@ namespace RN
 		metalRenderPass.directionalShadowDepthTexture = nullptr;
 		metalRenderPass.multiviewLayer = previousRenderPass.multiviewLayer;
 		metalRenderPass.camera = previousRenderPass.camera;
+		metalRenderPass.currentInstanceDrawable = nullptr;
 		
 		metalRenderPass.cameraAmbientColor = previousRenderPass.cameraAmbientColor;
 		
