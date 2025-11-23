@@ -9,8 +9,6 @@
 #ifndef __RAYNE_RAYNE_H__
 #define __RAYNE_RAYNE_H__
 
-#include <tracy/Tracy.hpp>
-
 #include "Base/RNApplication.h"
 #include "Base/RNArgumentParser.h"
 #include "Base/RNBase.h"
@@ -36,6 +34,7 @@
 #include "Debug/RNLogFormatter.h"
 #include "Debug/RNLogger.h"
 #include "Debug/RNLoggingEngine.h"
+#include "Debug/RNProfiler.h"
 
 #include "Input/RNHIDDevice.h"
 #include "Input/RNInputControl.h"

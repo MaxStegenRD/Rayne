@@ -152,7 +152,7 @@ namespace RN
 
 	VulkanCommandBuffer *VulkanRenderer::StartResourcesCommandBuffer()
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		_currentResourcesCommandBufferLock.Lock();
 		if(!_currentResourcesCommandBuffer)
         {
@@ -225,7 +225,7 @@ namespace RN
 
 	void VulkanRenderer::UpdateFrameFences()
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		//Check fence status
 		int index = 0;
 		int freeFenceIndex = -1;
@@ -271,7 +271,7 @@ namespace RN
 
 	void VulkanRenderer::ReleaseFrameResources(uint32 frame)
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		//Delete command lists that finished execution on the graphics card (the command allocator needs to be alive the whole time)
 		for(int i = _executedCommandBuffers->GetCount() - 1; i >= 0; i--)
 		{
@@ -304,7 +304,7 @@ namespace RN
 
 	void VulkanRenderer::Render(Function &&function)
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 
 		_internals->stateCoordinator.SavePipelineCache(Kernel::GetSharedInstance()->GetApplication()->GetBuildNumber(), GetVulkanDevice()); //This won't do anything if no new pipelines were loaded
 
@@ -568,14 +568,14 @@ namespace RN
 			swapChain->PresentBackBuffer(_workQueue);
 		}
 
-		FrameMark;
+		RN_PROFILE_FRAME_TRACY();
 
 		_currentFrame ++;
 	}
 
 	void VulkanRenderer::SetupRendertargets(VkCommandBuffer commandBuffer, const VulkanRenderPass &renderpass)
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		//TODO: Call PrepareAsRendertargetForFrame() only once per framebuffer per frame, find new solution for setting things up for msaa while reusing a framebuffer?
 		renderpass.framebuffer->PrepareAsRendertargetForFrame(renderpass.resolveFramebuffer, renderpass.renderPass->GetFlags(), renderpass.multiviewLayer, renderpass.multiviewCameraInfo.size());
 		renderpass.framebuffer->SetAsRendertarget(commandBuffer, renderpass.resolveFramebuffer, renderpass.renderPass->GetClearColor(), renderpass.renderPass->GetClearDepth(), renderpass.renderPass->GetClearStencil());
@@ -612,7 +612,7 @@ namespace RN
 	//TODO: Merge parts of this with SubmitRenderPass and call it in here
 	void VulkanRenderer::SubmitCamera(Camera *camera, Function &&function)
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		VulkanRenderPass renderPass;
 
 		const Array *multiviewCameras = camera->GetMultiviewCameras();
@@ -795,7 +795,7 @@ namespace RN
 
 	void VulkanRenderer::SubmitRenderPass(RenderPass *renderPass, VulkanRenderPass &previousRenderPass, Function &&function)
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		_internals->currentPipelineState = nullptr; //This is used when submitting drawables to make lists of drawables to instance and needs to be reset per render pass
 		_internals->currentInstanceDrawable = nullptr;
 
@@ -1020,7 +1020,7 @@ namespace RN
 
 	void VulkanRenderer::CreateMipMaps()
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		if(_mipMapTextures->GetCount() == 0)
 			return;
 
@@ -1914,7 +1914,7 @@ namespace RN
 
 	void VulkanRenderer::UpdateDescriptorSets()
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		_internals->currentRenderPassIndex = 0;
 		_internals->currentDrawableResourceIndex = 0;
 
@@ -1923,7 +1923,7 @@ namespace RN
 
 		for(const VulkanRenderPass &renderPass : _internals->renderPasses)
 		{
-			ZoneScoped;
+			RN_PROFILE_SCOPE();
         	if(renderPass.type != VulkanRenderPass::Type::Default && renderPass.type != VulkanRenderPass::Type::Convert)
         	{
 				_internals->currentRenderPassIndex += 1;
@@ -1966,7 +1966,7 @@ namespace RN
 
 		for(VulkanRenderPass &renderPass : _internals->renderPasses)
 		{
-			ZoneScoped;
+			RN_PROFILE_SCOPE();
 			renderPass.renderTargetsUsedInShader.clear();
 
 			if(renderPass.type != VulkanRenderPass::Type::Default && renderPass.type != VulkanRenderPass::Type::Convert)

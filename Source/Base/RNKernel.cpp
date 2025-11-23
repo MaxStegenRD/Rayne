@@ -53,7 +53,7 @@ namespace RN
 
 	void Kernel::Bootstrap()
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		__sharedInstance = this;
 
 #if RN_ENABLE_VTUNE
@@ -326,7 +326,7 @@ namespace RN
 
 	void Kernel::HandleObserver(RunLoopObserver *observer, RunLoopObserver::Activity activity)
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		RN_UNUSED ScopeAllocator rootAllocator(BumpAllocator::GetThreadAllocator());
 
 		if(RN_EXPECT_FALSE(_exit))
@@ -439,7 +439,7 @@ namespace RN
 
 	void Kernel::HandleSystemEvents()
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 #if RN_PLATFORM_MAC_OS
 		@autoreleasepool
 		{
@@ -509,7 +509,7 @@ namespace RN
 
 	void Kernel::Run()
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		_exit = false;
 
 		do {
@@ -519,7 +519,7 @@ namespace RN
 
 	void Kernel::Exit()
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		_exit = true;
 	}
 } // namespace RN

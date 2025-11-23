@@ -131,7 +131,9 @@ rayne_add_library(RayneVulkan "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${
 rayne_set_module_output_directory(RayneVulkan)
 rayne_set_module_resources(RayneVulkan ${RESOURCES})
 
-target_link_libraries(RayneVulkan PUBLIC TracyClient)
+if(RAYNE_PROFILER STREQUAL "TRACY")
+    target_compile_definitions(RayneVulkan PUBLIC TRACY_ENABLE RN_PROFILE_TRACY)
+endif()
 
 add_dependencies(VulkanGenerateDispatchTable vulkan_headers)
 add_dependencies(RayneVulkan_copyHeaderTarget VulkanGenerateDispatchTable)

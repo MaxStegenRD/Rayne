@@ -90,8 +90,9 @@ target_link_libraries(RayneMetal PUBLIC "${LINK_LIBRARIES}")
 target_compile_options(RayneMetal PRIVATE "-xobjective-c++")
 target_compile_definitions(RayneMetal PRIVATE "${DEFINES}")
 
-target_link_libraries(RayneMetal PUBLIC TracyClient)
-
+if(RAYNE_PROFILER STREQUAL "TRACY")
+    target_compile_definitions(RayneMetal PUBLIC TRACY_ENABLE RN_PROFILE_TRACY)
+endif()
 
 if(IOS OR VISIONOS)
         add_custom_command(TARGET RayneMetal PRE_BUILD COMMAND ${CMAKE_COMMAND} -E rm -rf "$<TARGET_FILE_DIR:RayneMetal>/ResourceFiles/Resources")

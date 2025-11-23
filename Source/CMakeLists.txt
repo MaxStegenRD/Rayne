@@ -4,6 +4,10 @@ project(Rayne)
 include(../CMake/CompilerCheck.cmake)
 include(../CMake/LibraryTarget.cmake)
 
+# Profiler backend selection (NONE, TRACY)
+set(RAYNE_PROFILER "NONE" CACHE STRING "Profiler backend (NONE, TRACY)")
+set_property(CACHE RAYNE_PROFILER PROPERTY STRINGS "NONE" "TRACY")
+
 if(MSVC)
     include(../CMake/Modules/FindWindowsSDK.cmake)
     get_windowssdk_library_dirs(${WINDOWSSDK_PREFERRED_DIR} WINDOWS_SDK_LIBRARY_PATH)
@@ -153,6 +157,7 @@ set(RAYNE_HEADERS
     Debug/RNLogFormatter.h
     Debug/RNLogger.h
     Debug/RNLoggingEngine.h
+    Debug/RNProfiler.h
     Input/Devices/RNPS4Controller.h
     Input/RNHID.h
     Input/RNHIDDevice.h
@@ -420,7 +425,11 @@ target_link_libraries(Rayne PUBLIC ${LINK_LIBRARIES})
 target_compile_definitions(Rayne PRIVATE "${COMPILE_DEFINITIONS}")
 target_compile_options(Rayne PRIVATE ${COMPILE_OPTIONS})
 
-target_link_libraries(Rayne PUBLIC TracyClient)
+# Conditionally wire profiler backend
+if(RAYNE_PROFILER STREQUAL "TRACY")
+    target_link_libraries(Rayne PUBLIC TracyClient)
+    target_compile_definitions(Rayne PUBLIC TRACY_ENABLE RN_PROFILE_TRACY)
+endif()
 
 #rayne_install(Rayne Rayne ${_TARGETS} LIBRARY DESTINATION lib ARCHIVE DESTINATION lib)
 rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/. DESTINATION include/Rayne)

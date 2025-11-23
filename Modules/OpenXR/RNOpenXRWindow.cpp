@@ -1853,7 +1853,7 @@ namespace RN
 
 	void OpenXRWindow::BeginFrame(float delta)
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		while(1)
 		{
 			XrEventDataBuffer event;
@@ -1982,7 +1982,7 @@ namespace RN
 
 	void OpenXRWindow::Update(float delta, float near, float far)
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 
 		if(_hmdTrackingState.mode == VRHMDTrackingState::Mode::Disconnected) return;
 
