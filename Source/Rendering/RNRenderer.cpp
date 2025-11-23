@@ -8,6 +8,8 @@
 
 #include "RNRenderer.h"
 #include "../Base/RNSettings.h"
+#include "../Base/RNKernel.h"
+#include "../Debug/RNLogger.h"
 
 namespace RN
 {
@@ -48,6 +50,42 @@ namespace RN
 	void Renderer::Deactivate()
 	{
 		_activeRenderer = nullptr;
+	}
+
+	void Renderer::PrintFrameStatistics(float interval)
+	{
+		double currentTime = Kernel::GetSharedInstance()->GetTotalTime();
+		if((currentTime - _frameStatisticsTimer) > 5.0)
+		{
+			_frameStatisticsTimer = currentTime;
+
+			RNInfo("------------------");
+			RNInfo("Number of Cameras: " << _frameStatistics.size());
+			uint64 totalVertices = 0;
+			uint64 totalTriangles = 0;
+			uint64 totalDrawables = 0;
+			uint64 totalDrawCalls = 0;
+			for(int i = 0; i < _frameStatistics.size(); i++)
+			{
+				totalVertices += _frameStatistics[i].numberOfVertices;
+				totalTriangles += (_frameStatistics[i].numberOfIndices / 3);
+				totalDrawables += _frameStatistics[i].numberOfDrawables;
+				totalDrawCalls += _frameStatistics[i].numberOfDrawCalls;
+			}
+			RNInfo("Total Number of Vertices: " << totalVertices);
+			RNInfo("Total Number of Triangles: " << totalTriangles);
+			RNInfo("Total Number of Drawables: " << totalDrawables);
+			RNInfo("Total Number of Draw Calls: " << totalDrawCalls);
+			for(int i = 0; i < _frameStatistics.size(); i++)
+			{
+				RNInfo("--- " << i << " ---");
+				RNInfo("- Number of Vertices: " << _frameStatistics[i].numberOfVertices);
+				RNInfo("- Number of Triangles: " << (_frameStatistics[i].numberOfIndices / 3));
+				RNInfo("- Number of Drawables: " << _frameStatistics[i].numberOfDrawables);
+				RNInfo("- Number of Draw Calls: " << _frameStatistics[i].numberOfDrawCalls);
+			}
+			RNInfo("------------------");
+		}
 	}
 
 	void Renderer::WarmupDrawable(Mesh *mesh, Material *material, Camera *camera)

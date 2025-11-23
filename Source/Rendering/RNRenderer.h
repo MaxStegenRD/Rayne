@@ -135,12 +135,25 @@ namespace RN
 		RNAPI virtual void WarmupDrawable(Mesh *mesh, Material *material, Camera *camera); //If the renderer supports it, this will create the necessary render pipeline state or similar to speed things up when actually rendering the first time
 
 		RNAPI virtual void SubmitLight(const Light *light) = 0;
+		
+		RNAPI void PrintFrameStatistics(float interval = 5.0f);
 
 		RendererDescriptor *GetDescriptor() const { return _descriptor; }
 		RenderingDevice *GetDevice() const { return _device; }
 
 	protected:
 		RNAPI Renderer(RendererDescriptor *descriptor, RenderingDevice *device);
+		
+		struct CameraStatistics
+		{
+			uint64 numberOfDrawables;
+			uint64 numberOfDrawCalls;
+			uint64 numberOfVertices;
+			uint64 numberOfIndices;
+		};
+		
+		std::vector<CameraStatistics> _frameStatistics;
+		double _frameStatisticsTimer;
 
 	private:
 		RenderingDevice *_device;

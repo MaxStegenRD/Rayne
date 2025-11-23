@@ -37,7 +37,7 @@ namespace RN
 		_currentResourcesCommandBuffer(nullptr),
 		_commandBufferPool(new Array()),
 		_commandBufferResourcesPool(new Array()),
-        _defaultPostProcessingDrawable(nullptr),
+		_defaultPostProcessingDrawable(nullptr),
 		_currentMultiviewLayer(0),
 		_currentMultiviewCount(0),
 		_currentMultiviewFallbackRenderPass(nullptr)
@@ -89,6 +89,14 @@ namespace RN
 		_internals->descriptorPool.Init(this);
 
 		_internals->stateCoordinator.LoadPipelineCache(Kernel::GetSharedInstance()->GetApplication()->GetBuildNumber(), device, GetAllocatorCallback());
+
+		#if RN_PROFILE_TRACY
+			_internals->tracyCommandBuffer = GetCommandBuffer()->Retain();
+			_internals->tracyVulkanCtx = RN_PROFILE_VULKAN_DECLARE_CONTEXT(device->GetInstance()->GetInstance(), device->GetDevice(), device->GetPhysicalDevice(), _workQueue, _internals->tracyCommandBuffer->GetCommandBuffer(), vk::GetInstanceProcAddr, vk::GetDeviceProcAddr);
+		#else
+			_internals->tracyCommandBuffer = nullptr;
+			_internals->tracyVulkanCtx = nullptr;
+		#endif
 	}
 
 	VulkanRenderer::~VulkanRenderer()
@@ -152,10 +160,10 @@ namespace RN
 
 	VulkanCommandBuffer *VulkanRenderer::StartResourcesCommandBuffer()
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		_currentResourcesCommandBufferLock.Lock();
 		if(!_currentResourcesCommandBuffer)
-        {
+		{
 			VulkanCommandBuffer *commandBuffer = nullptr;
 			for(int i = 0; i < _commandBufferResourcesPool->GetCount(); i++)
 			{
@@ -183,18 +191,18 @@ namespace RN
 				commandBuffer->Reset();
 			}
 
-            _currentResourcesCommandBuffer = commandBuffer; //already retained at as part of the pool array, not doing any memory management on this!
-		    _currentResourcesCommandBuffer->Begin();
-        }
+			_currentResourcesCommandBuffer = commandBuffer; //already retained at as part of the pool array, not doing any memory management on this!
+			_currentResourcesCommandBuffer->Begin();
+		}
 
 		return _currentResourcesCommandBuffer;
 	}
 
-    void VulkanRenderer::EndResourcesCommandBuffer()
-    {
-        RN_DEBUG_ASSERT(_currentResourcesCommandBuffer, "No active Resources command buffer!");
-	    _currentResourcesCommandBufferLock.Unlock();
-    }
+	void VulkanRenderer::EndResourcesCommandBuffer()
+	{
+		RN_DEBUG_ASSERT(_currentResourcesCommandBuffer, "No active Resources command buffer!");
+		_currentResourcesCommandBufferLock.Unlock();
+	}
 
 	void VulkanRenderer::SubmitCommandBuffer(VulkanCommandBuffer *commandBuffer)
 	{
@@ -225,7 +233,7 @@ namespace RN
 
 	void VulkanRenderer::UpdateFrameFences()
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		//Check fence status
 		int index = 0;
 		int freeFenceIndex = -1;
@@ -271,7 +279,7 @@ namespace RN
 
 	void VulkanRenderer::ReleaseFrameResources(uint32 frame)
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		//Delete command lists that finished execution on the graphics card (the command allocator needs to be alive the whole time)
 		for(int i = _executedCommandBuffers->GetCount() - 1; i >= 0; i--)
 		{
@@ -304,7 +312,7 @@ namespace RN
 
 	void VulkanRenderer::Render(Function &&function)
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 
 		_internals->stateCoordinator.SavePipelineCache(Kernel::GetSharedInstance()->GetApplication()->GetBuildNumber(), GetVulkanDevice()); //This won't do anything if no new pipelines were loaded
 
@@ -315,7 +323,7 @@ namespace RN
 		_internals->currentDrawableResourceIndex = 0;
 		_internals->totalDescriptorTables = 0;
 		_internals->swapChains.clear();
-//		_currentRootSignature = nullptr;
+	//		_currentRootSignature = nullptr;
 
 		UpdateFrameFences(); //Releases resources of frames that finished
 
@@ -326,6 +334,8 @@ namespace RN
 		}
 
 		CreateMipMaps();
+
+		_frameStatistics.clear();
 
 		_currentResourcesCommandBufferLock.Lock();
 		VulkanCommandBuffer *resourcesCommandBuffer = _currentResourcesCommandBuffer;
@@ -338,7 +348,7 @@ namespace RN
 		_currentResourcesCommandBufferLock.Unlock();
 
 		_lock.Lock();
-        VkSemaphore resourceUploadsSemaphore = VK_NULL_HANDLE;
+		VkSemaphore resourceUploadsSemaphore = VK_NULL_HANDLE;
 		if(_submittedCommandBuffers->GetCount() > 0 || resourcesCommandBuffer)
 		{
 			std::vector<VkCommandBuffer> buffers;
@@ -351,25 +361,25 @@ namespace RN
 			_submittedCommandBuffers->Enumerate<VulkanCommandBuffer>([&](VulkanCommandBuffer *buffer, int i, bool &stop){
 				buffer->_frameValue = _currentFrame;
 				buffers.push_back(buffer->_commandBuffer);
-                _executedCommandBuffers->AddObject(buffer);
+				_executedCommandBuffers->AddObject(buffer);
 			});
 
-            //Create a semaphore for the render queue to wait for the resource upload queue
-            VkSemaphoreCreateInfo semaphoreInfo{};
-            semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-            VkDevice device = GetVulkanDevice()->GetDevice();
-            vk::CreateSemaphore(device, &semaphoreInfo, nullptr, &resourceUploadsSemaphore);
-            AddFrameFinishedCallback([device, resourceUploadsSemaphore](){
-                vk::DestroySemaphore(device, resourceUploadsSemaphore, nullptr);
-            });
+			//Create a semaphore for the render queue to wait for the resource upload queue
+			VkSemaphoreCreateInfo semaphoreInfo{};
+			semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+			VkDevice device = GetVulkanDevice()->GetDevice();
+			vk::CreateSemaphore(device, &semaphoreInfo, nullptr, &resourceUploadsSemaphore);
+			AddFrameFinishedCallback([device, resourceUploadsSemaphore](){
+				vk::DestroySemaphore(device, resourceUploadsSemaphore, nullptr);
+			});
 
 			//Submit command buffers
 			VkSubmitInfo submitInfo = {};
 			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 			submitInfo.commandBufferCount = buffers.size();
 			submitInfo.pCommandBuffers = buffers.data();
-            submitInfo.signalSemaphoreCount = 1;
-            submitInfo.pSignalSemaphores = &resourceUploadsSemaphore;
+			submitInfo.signalSemaphoreCount = 1;
+			submitInfo.pSignalSemaphores = &resourceUploadsSemaphore;
 
 			VkPipelineStageFlags pipelineStageFlags[] = {VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT};
 			submitInfo.pWaitDstStageMask = pipelineStageFlags;
@@ -427,6 +437,7 @@ namespace RN
 		if(_internals->swapChains.size() > 0)
 		{
 			VkCommandBuffer commandBuffer = _currentCommandBuffer->GetCommandBuffer();
+			RN_PROFILE_VULKAN_SCOPE_CMD(_internals->tracyVulkanCtx, commandBuffer);
 
 			for(VulkanSwapChain *swapChain : _internals->swapChains)
 			{
@@ -452,33 +463,33 @@ namespace RN
 					renderPass.directionalShadowDepthTexture->SetCurrentLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
 				}
 
-                //Set textures layout for reading for render targets that are used in this frame
-                for(VulkanTexture *vulkanTexture : renderPass.renderTargetsUsedInShader)
-                {
-                    const Texture::Format format = vulkanTexture->GetDescriptor().format;
-                    VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-                    VkImageLayout targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                    if(format == Texture::Format::Depth_24_Stencil_8 || format == Texture::Format::Depth_32F_Stencil_8)
-                    {
-                        aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-                        targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-                    }
-                    else if(format == Texture::Format::Depth_16I || format == Texture::Format::Depth_24I || format == Texture::Format::Depth_32F)
-                    {
-                        aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-                        targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-                    }
-                    else if(format == Texture::Format::Stencil_8)
-                    {
-                        aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
-                        targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-                    }
+				//Set textures layout for reading for render targets that are used in this frame
+				for(VulkanTexture *vulkanTexture : renderPass.renderTargetsUsedInShader)
+				{
+					const Texture::Format format = vulkanTexture->GetDescriptor().format;
+					VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+					VkImageLayout targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+					if(format == Texture::Format::Depth_24_Stencil_8 || format == Texture::Format::Depth_32F_Stencil_8)
+					{
+						aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+						targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+					}
+					else if(format == Texture::Format::Depth_16I || format == Texture::Format::Depth_24I || format == Texture::Format::Depth_32F)
+					{
+						aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+						targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+					}
+					else if(format == Texture::Format::Stencil_8)
+					{
+						aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
+						targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+					}
 
-                    if(vulkanTexture->GetCurrentLayout() == targetLayout) continue; //Nothing to do if the layout is already correct
+					if(vulkanTexture->GetCurrentLayout() == targetLayout) continue; //Nothing to do if the layout is already correct
 
-                    VulkanTexture::SetImageLayout(commandBuffer, vulkanTexture->GetVulkanImage(), 0, vulkanTexture->GetDescriptor().mipMaps, 0, vulkanTexture->GetDescriptor().depth, aspectMask, vulkanTexture->GetCurrentLayout(), targetLayout, VulkanTexture::BarrierIntent::ShaderSource);
-                    vulkanTexture->SetCurrentLayout(targetLayout);
-                }
+					VulkanTexture::SetImageLayout(commandBuffer, vulkanTexture->GetVulkanImage(), 0, vulkanTexture->GetDescriptor().mipMaps, 0, vulkanTexture->GetDescriptor().depth, aspectMask, vulkanTexture->GetCurrentLayout(), targetLayout, VulkanTexture::BarrierIntent::ShaderSource);
+					vulkanTexture->SetCurrentLayout(targetLayout);
+				}
 
 				//Set previous framebuffer texture layout for reading
 				if(renderPass.previousRenderPass && renderPass.previousRenderPass->GetFramebuffer())
@@ -676,17 +687,28 @@ namespace RN
 
 		//Prepare command buffer submission
 		std::vector<VkSemaphore> presentSemaphores;
+		std::vector<VkPipelineStageFlags> presentSemaphoresWaitStages;
 		std::vector<VkSemaphore> renderSemaphores;
 
-        if(resourceUploadsSemaphore) presentSemaphores.push_back(resourceUploadsSemaphore); //Wait until all resources are available
+		if(resourceUploadsSemaphore)
+		{
+			presentSemaphores.push_back(resourceUploadsSemaphore); //Wait until all resources are available
+			presentSemaphoresWaitStages.push_back(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+		}
 
 		for(VulkanSwapChain *swapChain : _internals->swapChains)
 		{
 			VkSemaphore presentSemaphore = swapChain->GetCurrentPresentSemaphore();
 			VkSemaphore renderSemaphore = swapChain->GetCurrentRenderSemaphore();
-			if(presentSemaphore != VK_NULL_HANDLE) presentSemaphores.push_back(presentSemaphore);
+			if(presentSemaphore != VK_NULL_HANDLE)
+			{
+				presentSemaphores.push_back(presentSemaphore);
+				presentSemaphoresWaitStages.push_back(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+			}
 			if(renderSemaphore != VK_NULL_HANDLE) renderSemaphores.push_back(renderSemaphore);
 		}
+
+		RN_PROFILE_VULKAN_COLLECT(_internals->tracyVulkanCtx, _currentCommandBuffer->GetCommandBuffer());
 
 		_currentCommandBuffer->End();
 		SubmitCommandBuffer(_currentCommandBuffer);
@@ -719,8 +741,7 @@ namespace RN
 		submitInfo.signalSemaphoreCount = renderSemaphores.size();
 		submitInfo.pSignalSemaphores = renderSemaphores.data();
 
-		std::vector<VkPipelineStageFlags> pipelineStageFlags(presentSemaphores.size(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-		submitInfo.pWaitDstStageMask = pipelineStageFlags.data();
+		submitInfo.pWaitDstStageMask = presentSemaphoresWaitStages.data();
 
 		RNVulkanValidate(vk::QueueSubmit(_workQueue, 1, &submitInfo, _frameFences[_currentFrameFenceIndex]));
 
@@ -729,17 +750,25 @@ namespace RN
 			swapChain->PresentBackBuffer(_workQueue);
 		}
 
-		FrameMark;
+		RN_PROFILE_FRAME_TRACY();
 
 		_currentFrame ++;
 	}
 
 	void VulkanRenderer::SetupRendertargets(VkCommandBuffer commandBuffer, const VulkanRenderPass &renderpass)
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
+		RN_PROFILE_VULKAN_SCOPE_CMD_N(_internals->tracyVulkanCtx, commandBuffer, "SetupRendertargets");
+
 		//TODO: Call PrepareAsRendertargetForFrame() only once per framebuffer per frame, find new solution for setting things up for msaa while reusing a framebuffer?
-		renderpass.framebuffer->PrepareAsRendertargetForFrame(&renderpass);
-		renderpass.framebuffer->SetAsRendertarget(commandBuffer, renderpass.resolveFramebuffer, renderpass.renderPass->GetClearColor(), renderpass.renderPass->GetClearDepth(), renderpass.renderPass->GetClearStencil());
+		{
+			RN_PROFILE_VULKAN_SCOPE_CMD_N(_internals->tracyVulkanCtx, commandBuffer, "PrepareRendertargetForFrame");
+			renderpass.framebuffer->PrepareAsRendertargetForFrame(&renderpass);
+		}
+		{
+			RN_PROFILE_VULKAN_SCOPE_CMD_N(_internals->tracyVulkanCtx, commandBuffer, "SetAsRendertarget");
+			renderpass.framebuffer->SetAsRendertarget(commandBuffer, renderpass.resolveFramebuffer, renderpass.renderPass->GetClearColor(), renderpass.renderPass->GetClearDepth(), renderpass.renderPass->GetClearStencil());
+		}
 
 		//Setup viewport and scissor rect
 		Rect cameraRect = renderpass.cameraViewport;
@@ -768,7 +797,7 @@ namespace RN
 	//TODO: Merge parts of this with SubmitRenderPass and call it in here
 	void VulkanRenderer::SubmitCamera(Camera *camera, Function &&function)
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		VulkanRenderPass renderPass;
 
 		const Array *multiviewCameras = camera->GetMultiviewCameras();
@@ -793,7 +822,7 @@ namespace RN
 						cameraInfo.inverseViewMatrix = multiviewCamera->GetInverseViewMatrix();
 
 						Matrix clipSpaceCorrectionMatrix;
-                        clipSpaceCorrectionMatrix.m[5] = -1.0f;
+						clipSpaceCorrectionMatrix.m[5] = -1.0f;
 						cameraInfo.projectionMatrix = clipSpaceCorrectionMatrix * multiviewCamera->GetProjectionMatrix();
 						cameraInfo.inverseProjectionMatrix = multiviewCamera->GetInverseProjectionMatrix();
 						cameraInfo.projectionViewMatrix = cameraInfo.projectionMatrix * cameraInfo.viewMatrix;
@@ -854,6 +883,8 @@ namespace RN
 			}
 		}
 
+		_frameStatistics.push_back({0, 0, 0, 0});
+
 		RenderPass *cameraRenderPass = _currentMultiviewFallbackRenderPass? _currentMultiviewFallbackRenderPass : camera->GetRenderPass();
 		cameraRenderPass->UpdateSubpassChain();
 
@@ -871,7 +902,7 @@ namespace RN
 		renderPass.shaderHint = cameraRenderPass->GetShaderHint();
 		renderPass.overrideMaterial = cameraRenderPass->GetOverrideMaterial();
 
-        renderPass.cameraInfo.camera = camera;
+		renderPass.cameraInfo.camera = camera;
 
 		renderPass.cameraInfo.viewPosition = camera->GetWorldPosition();
 		renderPass.cameraInfo.viewMatrix = camera->GetViewMatrix();
@@ -976,7 +1007,7 @@ namespace RN
 
 	void VulkanRenderer::SubmitRenderPass(RenderPass *renderPass, VulkanRenderPass &previousRenderPass)
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 
 		renderPass->UpdateSubpassChain();
 		_internals->currentSubpassIndex = 0;
@@ -1032,7 +1063,7 @@ namespace RN
 				{
 					vulkanRenderPass.type = VulkanRenderPass::Type::Convert;
 
-/*					if(!_ppConvertMaterial)
+	/*					if(!_ppConvertMaterial)
 					{
 						_ppConvertMaterial = Material::WithShaders(_defaultShaderLibrary->GetShaderWithName(RNCSTR("pp_vertex")), _defaultShaderLibrary->GetShaderWithName(RNCSTR("pp_blit_fragment")));
 					}
@@ -1186,7 +1217,7 @@ namespace RN
 
 	void VulkanRenderer::CreateMipMaps()
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		if(_mipMapTextures->GetCount() == 0)
 			return;
 
@@ -1194,7 +1225,7 @@ namespace RN
 
 		_mipMapTextures->Enumerate<VulkanTexture>([&](VulkanTexture *texture, size_t index, bool &stop) {
 
-		    //TODO: Fix mipmap generation for texture arrays
+			//TODO: Fix mipmap generation for texture arrays
 			VulkanTexture::SetImageLayout(commandBuffer->GetCommandBuffer(), texture->GetVulkanImage(), 0, 1, 0, 1, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VulkanTexture::BarrierIntent::CopySource);
 			VulkanTexture::SetImageLayout(commandBuffer->GetCommandBuffer(), texture->GetVulkanImage(), 1, texture->GetDescriptor().mipMaps-1, 0, 1, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VulkanTexture::BarrierIntent::CopyDestination);
 			for(uint16 i = 0; i < texture->GetDescriptor().mipMaps-1; i++)
@@ -1341,11 +1372,11 @@ namespace RN
 				{
 					if(renderPass.multiviewCameraInfo.size() > 0)
 					{
-                        size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
+						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
 						for(int i = 0; i < viewCount; i++)
 						{
 							Matrix result = renderPass.multiviewCameraInfo[i].viewMatrix * drawable->modelMatrix;
-                            std::memcpy(buffer + descriptor->GetOffset() + 64 * i, result.m, 64);
+							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, result.m, 64);
 						}
 					}
 					break;
@@ -1360,15 +1391,15 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::ModelViewProjectionMatrixMultiview:
 				{
-                    if(renderPass.multiviewCameraInfo.size() > 0)
-                    {
-                        size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
-                        for(int i = 0; i < viewCount; i++)
-                        {
-                            Matrix result = renderPass.multiviewCameraInfo[i].projectionViewMatrix * drawable->modelMatrix;
-                            std::memcpy(buffer + descriptor->GetOffset() + 64 * i, result.m, 64);
-                        }
-                    }
+					if(renderPass.multiviewCameraInfo.size() > 0)
+					{
+						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
+						for(int i = 0; i < viewCount; i++)
+						{
+							Matrix result = renderPass.multiviewCameraInfo[i].projectionViewMatrix * drawable->modelMatrix;
+							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, result.m, 64);
+						}
+					}
 					break;
 				}
 
@@ -1380,14 +1411,14 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::ViewMatrixMultiview:
 				{
-                    if(renderPass.multiviewCameraInfo.size() > 0)
-                    {
-                        size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
-                        for(int i = 0; i < viewCount; i++)
-                        {
-                            std::memcpy(buffer + descriptor->GetOffset() + 64 * i, renderPass.multiviewCameraInfo[i].viewMatrix.m, 64);
-                        }
-                    }
+					if(renderPass.multiviewCameraInfo.size() > 0)
+					{
+						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
+						for(int i = 0; i < viewCount; i++)
+						{
+							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, renderPass.multiviewCameraInfo[i].viewMatrix.m, 64);
+						}
+					}
 					break;
 				}
 
@@ -1401,11 +1432,11 @@ namespace RN
 				{
 					if(renderPass.multiviewCameraInfo.size() > 0)
 					{
-                        size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
-                        for(int i = 0; i < viewCount; i++)
-                        {
-                            std::memcpy(buffer + descriptor->GetOffset() + 64 * i, renderPass.multiviewCameraInfo[i].projectionViewMatrix.m, 64);
-                        }
+						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
+						for(int i = 0; i < viewCount; i++)
+						{
+							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, renderPass.multiviewCameraInfo[i].projectionViewMatrix.m, 64);
+						}
 					}
 					break;
 				}
@@ -1420,11 +1451,11 @@ namespace RN
 				{
 					if(renderPass.multiviewCameraInfo.size() > 0)
 					{
-                        size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
-                        for(int i = 0; i < viewCount; i++)
-                        {
-                            std::memcpy(buffer + descriptor->GetOffset() + 64 * i, renderPass.multiviewCameraInfo[i].projectionMatrix.m, 64);
-                        }
+						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
+						for(int i = 0; i < viewCount; i++)
+						{
+							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, renderPass.multiviewCameraInfo[i].projectionMatrix.m, 64);
+						}
 					}
 					break;
 				}
@@ -1440,12 +1471,12 @@ namespace RN
 				{
 					if(renderPass.multiviewCameraInfo.size() > 0)
 					{
-                        size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
-                        for(int i = 0; i < viewCount; i++)
-                        {
-                            Matrix result = renderPass.multiviewCameraInfo[i].inverseViewMatrix * drawable->inverseModelMatrix;
-                            std::memcpy(buffer + descriptor->GetOffset() + 64 * i, result.m, 64);
-                        }
+						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
+						for(int i = 0; i < viewCount; i++)
+						{
+							Matrix result = renderPass.multiviewCameraInfo[i].inverseViewMatrix * drawable->inverseModelMatrix;
+							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, result.m, 64);
+						}
 					}
 					break;
 				}
@@ -1461,12 +1492,12 @@ namespace RN
 				{
 					if(renderPass.multiviewCameraInfo.size() > 0)
 					{
-                        size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
-                        for(int i = 0; i < viewCount; i++)
-                        {
-                            Matrix result = renderPass.multiviewCameraInfo[i].inverseProjectionViewMatrix * drawable->inverseModelMatrix;
-                            std::memcpy(buffer + descriptor->GetOffset() + 64 * i, result.m, 64);
-                        }
+						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
+						for(int i = 0; i < viewCount; i++)
+						{
+							Matrix result = renderPass.multiviewCameraInfo[i].inverseProjectionViewMatrix * drawable->inverseModelMatrix;
+							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, result.m, 64);
+						}
 					}
 					break;
 				}
@@ -1481,11 +1512,11 @@ namespace RN
 				{
 					if(renderPass.multiviewCameraInfo.size() > 0)
 					{
-                        size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
-                        for(int i = 0; i < viewCount; i++)
-                        {
-                            std::memcpy(buffer + descriptor->GetOffset() + 64 * i, renderPass.multiviewCameraInfo[i].inverseViewMatrix.m, 64);
-                        }
+						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
+						for(int i = 0; i < viewCount; i++)
+						{
+							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, renderPass.multiviewCameraInfo[i].inverseViewMatrix.m, 64);
+						}
 					}
 					break;
 				}
@@ -1500,11 +1531,11 @@ namespace RN
 				{
 					if(renderPass.multiviewCameraInfo.size() > 0)
 					{
-                        size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
-                        for(int i = 0; i < viewCount; i++)
-                        {
-                            std::memcpy(buffer + descriptor->GetOffset() + 64 * i, renderPass.multiviewCameraInfo[i].inverseProjectionViewMatrix.m, 64);
-                        }
+						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
+						for(int i = 0; i < viewCount; i++)
+						{
+							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, renderPass.multiviewCameraInfo[i].inverseProjectionViewMatrix.m, 64);
+						}
 					}
 					break;
 				}
@@ -1519,11 +1550,11 @@ namespace RN
 				{
 					if(renderPass.multiviewCameraInfo.size() > 0)
 					{
-                        size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
-                        for(int i = 0; i < viewCount; i++)
-                        {
-                            std::memcpy(buffer + descriptor->GetOffset() + 64 * i, renderPass.multiviewCameraInfo[i].inverseProjectionMatrix.m, 64);
-                        }
+						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
+						for(int i = 0; i < viewCount; i++)
+						{
+							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, renderPass.multiviewCameraInfo[i].inverseProjectionMatrix.m, 64);
+						}
 					}
 					break;
 				}
@@ -1539,11 +1570,11 @@ namespace RN
 				{
 					if(renderPass.multiviewCameraInfo.size() > 0)
 					{
-                        size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
-                        for(int i = 0; i < viewCount; i++)
-                        {
-                            std::memcpy(buffer + descriptor->GetOffset() + 16 * i, &renderPass.multiviewCameraInfo[i].viewPosition.x, 16);
-                        }
+						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
+						for(int i = 0; i < viewCount; i++)
+						{
+							std::memcpy(buffer + descriptor->GetOffset() + 16 * i, &renderPass.multiviewCameraInfo[i].viewPosition.x, 16);
+						}
 					}
 					break;
 				}
@@ -1719,9 +1750,9 @@ namespace RN
 						std::memcpy(buffer + descriptor->GetOffset(), &renderPass.spotLights[0], (12 + 4 + 12 + 4 + 16) * lightCount);
 					}
 					if(lightCount < descriptor->GetElementCount())
-                    {
-                    	std::memset(buffer + descriptor->GetOffset() + (12 + 4 + 12 + 4 + 16) * lightCount, 0, (12 + 4 + 12 + 4 + 16) * (descriptor->GetElementCount() - lightCount));
-                    }
+					{
+						std::memset(buffer + descriptor->GetOffset() + (12 + 4 + 12 + 4 + 16) * lightCount, 0, (12 + 4 + 12 + 4 + 16) * (descriptor->GetElementCount() - lightCount));
+					}
 					break;
 				}
 
@@ -2113,6 +2144,10 @@ namespace RN
 			// Push into the queue
 			renderSubPass.drawables.push_back(drawable);
 			_internals->currentDrawableResourceIndex += 1;
+
+			_frameStatistics.back().numberOfDrawables += 1;
+			_frameStatistics.back().numberOfVertices += drawable->mesh->GetVerticesCount();
+			_frameStatistics.back().numberOfIndices += drawable->mesh->GetIndicesCount();
 		};
 
 		for(size_t pi = _internals->currentRenderPassIndex; pi < _internals->renderPasses.size(); pi++)
@@ -2137,7 +2172,7 @@ namespace RN
 
 	void VulkanRenderer::UpdateDescriptorSets()
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		_internals->currentRenderPassIndex = 0;
 		_internals->currentDrawableResourceIndex = 0;
 
@@ -2147,13 +2182,13 @@ namespace RN
 
 		for(const VulkanRenderPass &renderPass : _internals->renderPasses)
 		{
-			ZoneScoped;
-        	if(renderPass.type != VulkanRenderPass::Type::Default && renderPass.type != VulkanRenderPass::Type::Convert)
-        	{
+			RN_PROFILE_SCOPE();
+			if(renderPass.type != VulkanRenderPass::Type::Default && renderPass.type != VulkanRenderPass::Type::Convert)
+			{
 				_internals->currentRenderPassIndex += 1;
 				_internals->currentDrawableResourceIndex += 1;
-        		continue;
-        	}
+				continue;
+			}
 
 			if(renderPass.subpasses.size() > 0)
 			{
@@ -2224,6 +2259,17 @@ namespace RN
 		_internals->currentRenderPassIndex = 0;
 		_internals->currentDrawableResourceIndex = 0;
 
+		for(VulkanRenderPass &renderPass : _internals->renderPasses)
+		{
+			RN_PROFILE_SCOPE();
+			renderPass.renderTargetsUsedInShader.clear();
+
+			if(renderPass.type != VulkanRenderPass::Type::Default && renderPass.type != VulkanRenderPass::Type::Convert)
+			{
+				_internals->currentRenderPassIndex += 1;
+				continue;
+			}
+
 		auto updateDescriptorSets = [&](const VulkanRenderPass &renderPass, VulkanRenderPass &rootRenderPass){
 			if(renderPass.drawables.size() > 0)
 			{
@@ -2260,7 +2306,7 @@ namespace RN
 					VulkanUniformState *uniformState = cameraSpecific.uniformState;
 					if(uniformState->instanceAttributesBuffer)
 					{
-                        //These are not actually part of the descripter sets, but filling them with data here anyway
+						//These are not actually part of the descripter sets, but filling them with data here anyway
 						Shader::ArgumentBuffer *argument = uniformState->instanceAttributesArgumentBuffer;
 
 						//Setup per instance uniforms as vertex data for all instances that are part of this draw call
@@ -2269,7 +2315,7 @@ namespace RN
 							if(instance > 0 && argument->GetMaxInstanceCount() == 1) break;
 
 							VulkanUniformState *instanceUniformState = renderPass.drawables[i + instance]->_cameraSpecifics[_internals->currentDrawableResourceIndex].uniformState;
-                            VulkanDynamicBufferReference *instanceAttributesBuffer = instanceUniformState->instanceAttributesBuffer;
+							VulkanDynamicBufferReference *instanceAttributesBuffer = instanceUniformState->instanceAttributesBuffer;
 							UpdateDynamicBufferReference(instanceAttributesBuffer, instance == 0);
 							FillUniformBuffer(argument, instanceAttributesBuffer, renderPass.drawables[i + instance]);
 						}
@@ -2285,12 +2331,12 @@ namespace RN
 						{
 							if(instance > 0 && argument->GetMaxInstanceCount() == 1) break;
 
-						    VulkanUniformState *instanceUniformState = renderPass.drawables[i + instance]->_cameraSpecifics[_internals->currentDrawableResourceIndex].uniformState;
+							VulkanUniformState *instanceUniformState = renderPass.drawables[i + instance]->_cameraSpecifics[_internals->currentDrawableResourceIndex].uniformState;
 							UpdateDynamicBufferReference(instanceUniformState->vertexConstantBuffers[bufferIndex], instance == 0);
 							FillUniformBuffer(argument, instanceUniformState->vertexConstantBuffers[bufferIndex], renderPass.drawables[i + instance]);
 						}
 
-                        VulkanDynamicBufferReference *constantBuffer = uniformState->vertexConstantBuffers[bufferIndex];
+						VulkanDynamicBufferReference *constantBuffer = uniformState->vertexConstantBuffers[bufferIndex];
 
 						GPUBuffer *gpuBuffer = constantBuffer->dynamicBuffer->GetActiveGPUBuffer();
 						VkDescriptorBufferInfo constantBufferDescriptorInfo = {};
@@ -2311,23 +2357,23 @@ namespace RN
 						writeDescriptorSets.push_back(writeConstantDescriptorSet);
 					}
 
-                    for(size_t bufferIndex = 0; bufferIndex < uniformState->fragmentConstantBuffers.size(); bufferIndex += 1)
+					for(size_t bufferIndex = 0; bufferIndex < uniformState->fragmentConstantBuffers.size(); bufferIndex += 1)
 					{
 						Shader::ArgumentBuffer *argument = uniformState->constantBufferToArgumentMapping[counter++];
 
-                        //Setup uniforms for all instances that are part of this draw call
-                        for(size_t instance = 0; instance < stepSize; instance += 1)
-                        {
+						//Setup uniforms for all instances that are part of this draw call
+						for(size_t instance = 0; instance < stepSize; instance += 1)
+						{
 							if(instance > 0 && argument->GetMaxInstanceCount() == 1) break;
 
-                            VulkanUniformState *instanceUniformState = renderPass.drawables[i + instance]->_cameraSpecifics[_internals->currentDrawableResourceIndex].uniformState;
+							VulkanUniformState *instanceUniformState = renderPass.drawables[i + instance]->_cameraSpecifics[_internals->currentDrawableResourceIndex].uniformState;
 							UpdateDynamicBufferReference(
 									instanceUniformState->fragmentConstantBuffers[bufferIndex],
 									instance == 0);
-                            FillUniformBuffer(argument,  instanceUniformState->fragmentConstantBuffers[bufferIndex], renderPass.drawables[i + instance]);
-                        }
+							FillUniformBuffer(argument,  instanceUniformState->fragmentConstantBuffers[bufferIndex], renderPass.drawables[i + instance]);
+						}
 
-                        VulkanDynamicBufferReference *constantBuffer = uniformState->fragmentConstantBuffers[bufferIndex];
+						VulkanDynamicBufferReference *constantBuffer = uniformState->fragmentConstantBuffers[bufferIndex];
 
 						GPUBuffer *gpuBuffer = constantBuffer->dynamicBuffer->GetActiveGPUBuffer();
 						VkDescriptorBufferInfo constantBufferDescriptorInfo = {};
@@ -2554,11 +2600,11 @@ namespace RN
 
 								imageView = materialTexture->_imageView;
 
-                                if(materialTexture->GetDescriptor().usageHint & Texture::UsageHint::RenderTarget)
-                                {
+								if(materialTexture->GetDescriptor().usageHint & Texture::UsageHint::RenderTarget)
+								{
 									//Add render targets to list of textures that needs to be transitioned for this render pass
-                                    rootRenderPass.renderTargetsUsedInShader.push_back(materialTexture);
-                                }
+									rootRenderPass.renderTargetsUsedInShader.push_back(materialTexture);
+								}
 							}
 
 							VkDescriptorImageInfo imageBufferDescriptorInfo = {};
@@ -2618,9 +2664,11 @@ namespace RN
 
 	void VulkanRenderer::RenderDrawable(VkCommandBuffer commandBuffer, VulkanDrawable *drawable, uint32 instanceCount)
 	{
+		RN_PROFILE_VULKAN_SCOPE_CMD_N(_internals->tracyVulkanCtx, commandBuffer, "Draw");
+
 		VulkanDrawable::CameraSpecific &cameraSpecific = drawable->_cameraSpecifics[_internals->currentDrawableResourceIndex];
 		const VulkanPipelineState *pipelineState = cameraSpecific.pipelineState;
-        const VulkanUniformState *uniformState = cameraSpecific.uniformState;
+		const VulkanUniformState *uniformState = cameraSpecific.uniformState;
 		const VulkanRootSignature *rootSignature = pipelineState->rootSignature;
 
 		VkDescriptorSet descriptorSet = cameraSpecific.descriptorSet->GetActiveDescriptorSet();
@@ -2629,34 +2677,34 @@ namespace RN
 
 		VulkanGPUBuffer *buffer = static_cast<VulkanGPUBuffer *>(drawable->mesh->GetGPUVertexBuffer());
 		VulkanGPUBuffer *indices = static_cast<VulkanGPUBuffer *>(drawable->mesh->GetGPUIndicesBuffer());
-        VulkanGPUBuffer *instanceAttributesBuffer = uniformState->instanceAttributesBuffer? static_cast<VulkanGPUBuffer *>(uniformState->instanceAttributesBuffer->dynamicBuffer->GetActiveGPUBuffer()) : nullptr;
+		VulkanGPUBuffer *instanceAttributesBuffer = uniformState->instanceAttributesBuffer? static_cast<VulkanGPUBuffer *>(uniformState->instanceAttributesBuffer->dynamicBuffer->GetActiveGPUBuffer()) : nullptr;
 
 		//IF positions are separated, they will be in the first part of the buffer, everything else will be bound as the second binding, per instance data if provided through attributes are bound as a third buffer
-        VkDeviceSize offsets[3];
-        VkBuffer vertexBuffers[3];
-        int attributesBufferIndex = 0;
+		VkDeviceSize offsets[3];
+		VkBuffer vertexBuffers[3];
+		int attributesBufferIndex = 0;
 
-        offsets[attributesBufferIndex] = 0;
-        vertexBuffers[attributesBufferIndex++] = buffer->GetVulkanBuffer();
+		offsets[attributesBufferIndex] = 0;
+		vertexBuffers[attributesBufferIndex++] = buffer->GetVulkanBuffer();
 
-        if(pipelineState->vertexAttributeBufferCount > 1)
-        {
-            offsets[attributesBufferIndex] = drawable->mesh->GetVertexPositionsSeparatedSize();
-            vertexBuffers[attributesBufferIndex++] = buffer->GetVulkanBuffer();
-        }
-        if(instanceAttributesBuffer)
-        {
-            offsets[attributesBufferIndex] = uniformState->instanceAttributesBuffer->offset;
-            vertexBuffers[attributesBufferIndex++] = instanceAttributesBuffer->GetVulkanBuffer();
-        }
+		if(pipelineState->vertexAttributeBufferCount > 1)
+		{
+			offsets[attributesBufferIndex] = drawable->mesh->GetVertexPositionsSeparatedSize();
+			vertexBuffers[attributesBufferIndex++] = buffer->GetVulkanBuffer();
+		}
+		if(instanceAttributesBuffer)
+		{
+			offsets[attributesBufferIndex] = uniformState->instanceAttributesBuffer->offset;
+			vertexBuffers[attributesBufferIndex++] = instanceAttributesBuffer->GetVulkanBuffer();
+		}
 
-        // Bind mesh vertex buffer
+		// Bind mesh vertex buffer
 		vk::CmdBindVertexBuffers(commandBuffer, 0, attributesBufferIndex, vertexBuffers, offsets);
 		if(drawable->mesh->GetIndicesCount() > 0)
 		{
-            // Bind mesh index buffer
+			// Bind mesh index buffer
 			vk::CmdBindIndexBuffer(commandBuffer, indices->GetVulkanBuffer(), 0, drawable->mesh->GetAttribute(Mesh::VertexAttribute::Feature::Indices)->GetType() == PrimitiveType::Uint16? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
-            // Render mesh vertex buffer using it's indices
+			// Render mesh vertex buffer using it's indices
 			vk::CmdDrawIndexed(commandBuffer, drawable->mesh->GetIndicesCount(), instanceCount, 0, 0, 0);
 		}
 		else
@@ -2670,7 +2718,7 @@ namespace RN
 	void VulkanRenderer::RenderAPIRenderPass(VulkanCommandBuffer *commandList, const VulkanRenderPass &renderPass)
 	{
 		//TODO: Handle multiple and not existing textures
-/*		Texture *sourceColorTexture = renderPass.previousRenderPass->GetFramebuffer()->GetColorTexture(0);
+	/*		Texture *sourceColorTexture = renderPass.previousRenderPass->GetFramebuffer()->GetColorTexture(0);
 		VulkanTexture *sourceD3DColorTexture = nullptr;
 		D3D12_RESOURCE_STATES oldColorSourceState = D3D12_RESOURCE_STATE_RENDER_TARGET;
 		if(sourceColorTexture)

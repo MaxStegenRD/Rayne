@@ -15,7 +15,7 @@
 	#include "../RayneConfig.h"
 #endif
 
-#include <tracy/Tracy.hpp>
+#include "../Debug/RNProfiler.h"
 
 // ---------------------------
 // Platform dependent includes
