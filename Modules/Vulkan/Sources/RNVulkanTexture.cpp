@@ -745,7 +745,7 @@ namespace RN
 		if(intent == BarrierIntent::ShaderSource)
 		{
 			srcStageFlags = VK_PIPELINE_STAGE_TRANSFER_BIT;
-			destStageFlags = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+			destStageFlags = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 		}
 
 		if(intent == BarrierIntent::CopySource)
@@ -776,7 +776,7 @@ namespace RN
 
 		if(intent == BarrierIntent::RenderTarget)
 		{
-			srcStageFlags = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			srcStageFlags = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 			destStageFlags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
 			if(fromLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
