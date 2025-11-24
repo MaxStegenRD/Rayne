@@ -41,7 +41,7 @@
 		#define RN_PROFILE_METAL_SCOPE_N(ctxVar, cmdBuf, name) TracyMetalZone(ctxVar, cmdBuf, name)
 		#define RN_PROFILE_METAL_DESTROY_CONTEXT(ctxVar) TracyMetalDestroy(ctxVar)
 	#else*/
-		#define RN_PROFILE_METAL_CONTEXT_TYPE (void*)
+		#define RN_PROFILE_METAL_CONTEXT_TYPE void*
 		#define RN_PROFILE_METAL_DECLARE_CONTEXT(ctxVar, device) nullptr
 		#define RN_PROFILE_METAL_COLLECT(ctxVar) ((void)0)
 		#define RN_PROFILE_METAL_SCOPE(ctxVar, cmdBuf) ((void)0)
@@ -61,7 +61,7 @@
 		#define RN_PROFILE_VULKAN_SCOPE_CMD_N(ctxVar, cmdBuf, name) TracyVkZone(ctxVar, cmdBuf, name)
 		#define RN_PROFILE_VULKAN_DESTROY_CONTEXT(ctxVar) TracyVkDestroy(ctxVar)
 	#else
-		#define RN_PROFILE_VULKAN_CONTEXT_TYPE (void*)
+		#define RN_PROFILE_VULKAN_CONTEXT_TYPE void*
 		#define RN_PROFILE_VULKAN_DECLARE_CONTEXT(instance, device, physicalDevice, queue, cmdBuf, instanceProcAddr, deviceProcAddr) nullptr
 		#define RN_PROFILE_VULKAN_COLLECT(ctxVar, cmdBuf) ((void)0)
 		#define RN_PROFILE_VULKAN_SCOPE_CMD(ctxVar, cmdBuf) ((void)0)
@@ -79,14 +79,14 @@
 	#define RN_PROFILE_FRAME() ((void)0)
 	#define RN_PROFILE_FRAME_TRACY() ((void)0)
 
-	#define RN_PROFILE_METAL_CONTEXT_TYPE (void*)
+	#define RN_PROFILE_METAL_CONTEXT_TYPE void*
 	#define RN_PROFILE_METAL_DECLARE_CONTEXT(ctxVar, device, cmdBuf) nullptr
 	#define RN_PROFILE_METAL_COLLECT(ctxVar) ((void)0)
 	#define RN_PROFILE_METAL_SCOPE(ctxVar, cmdBuf) ((void)0)
 	#define RN_PROFILE_METAL_SCOPE_N(ctxVar, cmdBuf, name) ((void)0)
 	#define RN_PROFILE_METAL_DESTROY_CONTEXT(ctxVar) ((void)0)
 
-	#define RN_PROFILE_VULKAN_CONTEXT_TYPE (void*)
+	#define RN_PROFILE_VULKAN_CONTEXT_TYPE void*
 	#define RN_PROFILE_VULKAN_DECLARE_CONTEXT(instance, device, physicalDevice, queue, cmdBuf, instanceProcAddr, deviceProcAddr) nullptr
 	#define RN_PROFILE_VULKAN_COLLECT(ctxVar, cmdBuf) ((void)0)
 	#define RN_PROFILE_VULKAN_SCOPE_CMD(ctxVar, cmdBuf) ((void)0)
