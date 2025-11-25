@@ -7,7 +7,7 @@ local platform_specific_files = {
 	{ plats = {"applexros"}, files = {"Input/RNInputIOS.cpp"} },
 	{ plats = {"macosx"}, files = {"Input/RNInputOSX.cpp"} },
 	{ plats = {"windows", "mingw"}, files = {"Input/RNInputWindows.cpp"} },
-	{ plats = {"android"}, files = {"Input/RNInputAndroid.cpp"} },
+	{ plats = {"android"}, files = {"Input/RNInputAndroid.cpp", "../Vendor/android_native_app_glue/android_native_app_glue.c"} },
 	{ plats = {"linux"}, files = {"Input/RNInputLinux.cpp"} },
 }
 
@@ -22,7 +22,9 @@ target("Rayne")
 		if is_plat(table.unpack(spec.plats)) then
 			add_files(table.unpack(spec.files))
 		else
-			table.insert(filesToRemove, table.unpack(spec.files))
+			for _, f in ipairs(spec.files) do
+				table.insert(filesToRemove, f)
+			end
 		end
 	end
 	remove_files(table.unpack(filesToRemove))
@@ -39,6 +41,10 @@ target("Rayne")
 		add_frameworks("Foundation", "Cocoa", "IOKit", {public = true})
 		add_cxxflags("-xobjective-c++")
 	end
+	if is_plat("android") then
+		add_includedirs("../Vendor/android_native_app_glue", {public = true})
+	end
+
 	-- Generate config header via rule (no direct function calls here)
 	add_configfiles("RayneConfig.h.in", { filename = "RayneConfig.h", pattern = "%${(.-)}", prefixdir = "generated/include" })
 	rayne_apply_config()

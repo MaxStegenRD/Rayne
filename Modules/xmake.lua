@@ -1,12 +1,11 @@
 add_repositories("localrepo " .. path.absolute(path.join(os.scriptdir(), "xmake-packages")))
 
--- Metal on macOS
+-- Metal on apple platforms
 if has_config("rayne_build_metal") then
-	print("Building Metal module")
 	includes("Metal/xmake.lua")
 end
 
--- Vulkan on non-Apple platforms (optional)
+-- Vulkan
 if has_config("rayne_build_vulkan") then
 	includes("Vulkan/xmake.lua")
 end
@@ -14,12 +13,12 @@ end
 -- VR wrapper is always present (it conditionally depends on renderer)
 includes("VRWrapper/xmake.lua")
 
--- OpenXR (desktop/Android)
+-- OpenXR
 if has_config("rayne_build_openxr") and not is_plat("iphoneos", "iphonesimulator", "applexros") then
 	includes("OpenXR/xmake.lua")
 end
 
--- AppleXR on macOS
+-- AppleXR
 if is_plat("applexros") then
 	includes("AppleXR/xmake.lua")
 end

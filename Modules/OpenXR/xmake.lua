@@ -23,7 +23,6 @@ target("RayneOpenXR")
     end
 
     if has_config("rayne_build_vulkan") then
-        print("Including OpenXR Vulkan module")
         add_deps("RayneVulkan")
         add_defines("XR_USE_GRAPHICS_API_VULKAN")
         add_includedirs(path.join(os.projectdir(), "Modules/Vulkan/Sources"))
@@ -33,7 +32,6 @@ target("RayneOpenXR")
     end
 
     if has_config("rayne_build_metal") then
-        print("Including OpenXR Metal module")
         add_deps("RayneMetal")
         add_defines("XR_USE_GRAPHICS_API_METAL")
         add_includedirs(path.join(os.projectdir(), "Modules/Metal/Sources"))

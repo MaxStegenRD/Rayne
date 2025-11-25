@@ -9,15 +9,12 @@ target("RayneVulkan")
     add_includedirs("Sources", "../../Source", "$(builddir)/generated/include", {public = true})
     add_files("Sources/**.cpp")
 
-    if is_plat("windows", "mingw") then
+    if is_plat("windows") then
         add_defines("VK_USE_PLATFORM_WIN32_KHR")
-        add_links("vulkan-1")
     elseif is_plat("android") then
         add_defines("VK_USE_PLATFORM_ANDROID_KHR")
-        add_links("vulkan")
     elseif is_plat("linux") then
         add_defines("VK_USE_PLATFORM_XCB_KHR")
-        add_links("vulkan")
     end
 
     on_load(function (target)
@@ -42,7 +39,7 @@ target("RayneVulkan")
         local vkheaders_dir = path.join(depsdir, "vulkan-headers")
         ensure_repo("https://github.com/KhronosGroup/Vulkan-Headers.git", vkheaders_dir, {
             depth = 1,
-            tag = "sdk-1.3.280.0",
+            tag = "v1.3.210",
             outputdir = vkheaders_dir
         })
 
