@@ -1,0 +1,10 @@
+add_requires("physx-local latest", {system = false})
+
+target("RaynePhysX")
+    set_kind("shared")
+    set_languages("cxx20")
+    add_deps("Rayne")
+    add_defines("RN_BUILD_LIBRARY=1", "RN_BUILD_PHYSX", "PX_PHYSX_STATIC_LIB")
+    add_includedirs(".", "../../Source", "$(builddir)/generated/include", {public = true})
+    add_files("*.cpp")
+    add_packages("physx-local")
