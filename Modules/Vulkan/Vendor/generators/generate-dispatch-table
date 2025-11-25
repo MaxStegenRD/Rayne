@@ -164,10 +164,14 @@ def parse_vulkan_h(filename):
                 includefilename = line[10:-1]
                 includedir = os.path.dirname(filename)
                 includefilename = os.path.join(includedir, includefilename)
-                with open(includefilename, "r") as fi:
-                    for line in fi:
-                        line = line.strip()
-                        lines.append(line)
+                try:
+                    with open(includefilename, "r") as fi:
+                        for line in fi:
+                            line = line.strip()
+                            lines.append(line)
+                except FileNotFoundError:
+                    sys.stderr.write("warning: skipped missing include %s\n" % includefilename)
+                    continue
             else:
                 lines.append(line)
 
