@@ -25,7 +25,7 @@
 	#include <dlfcn.h>
 #endif
 
-#if RN_PLATFORM_MAC_OS
+#if XR_USE_GRAPHICS_API_METAL
 #include <RNMetalDevice.h>
 #endif
 
