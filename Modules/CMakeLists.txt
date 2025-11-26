@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10.1)
 project(Rayne-Modules)
 
 option(RN_BUILD_METAL_MODULE "Build the Metal renderer module" ON)
-option(RN_BUILD_D3D12_MODULE "Build the DirectX12 renderer module" ON)
+option(RN_BUILD_D3D12_MODULE "Build the DirectX12 renderer module" OFF)
 option(RN_BUILD_VULKAN_MODULE "Build the Vulkan renderer module" ON)
 option(RN_BUILD_ASSIMP_MODULE "Build the Assimp module" OFF)
 option(RN_BUILD_GLTF_MODULE "Build the glTF module" OFF)
