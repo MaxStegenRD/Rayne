@@ -129,6 +129,8 @@ def main():
         print('python pack.py inputFolder outputFolder platform [--resourcespec=filename.json --skip-textures --is-demo]')
         return
 
+    print(sys.argv)
+
     pythonExecutable = sys.executable
     scriptDirectory = os.path.dirname(sys.argv[0])
     sourceDirectory = sys.argv[1]
@@ -273,6 +275,8 @@ def main():
                     targetFilePath = os.path.join(currentTargetDirectory, filename)
                     if needsToUpdateFile(sourceFilePath, targetFilePath):
                         shutil.copy2(sourceFilePath, targetFilePath)
+
+    print("Resource packing completed successfully")
 
 
 if __name__ == '__main__':
