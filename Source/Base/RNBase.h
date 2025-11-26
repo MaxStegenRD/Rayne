@@ -15,8 +15,6 @@
 	#include "../RayneConfig.h"
 #endif
 
-#include "../Debug/RNProfiler.h"
-
 // ---------------------------
 // Platform dependent includes
 // ---------------------------
@@ -118,6 +116,8 @@
 #include "RNExpected.h"
 #include "RNOptions.h"
 #include "RNScopeGuard.h"
+
+#include "../Debug/RNProfiler.h"
 
 
 // ---------------------------
