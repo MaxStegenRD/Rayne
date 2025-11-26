@@ -48,6 +48,10 @@ option("rayne_build_physx")
 	set_default(true)
 option_end()
 
+option("rayne_build_bhaptics")
+	set_default(true)
+option_end()
+
 -- Use external packages instead of vendored builds for simplicity
 add_requires("zlib", "libpng", "libzip", "jansson")
 

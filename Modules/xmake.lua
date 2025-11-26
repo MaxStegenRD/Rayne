@@ -55,4 +55,7 @@ if has_config("rayne_build_physx") then
 	includes("PhysX/xmake.lua")
 end
 
+if has_config("rayne_build_bhaptics") then
+	includes("bHaptics/xmake.lua")
+end
 
