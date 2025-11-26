@@ -1,6 +1,6 @@
 project(ImageResizer)
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.21)
 
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../../../Vendor/zlib" ${CMAKE_CURRENT_BINARY_DIR}/zlib)
 

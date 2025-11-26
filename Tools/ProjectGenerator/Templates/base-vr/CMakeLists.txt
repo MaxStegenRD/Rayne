@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10.1)
+cmake_minimum_required(VERSION 3.21)
 include(ExternalProject)
 
 project(__TMP_APPLICATION_TARGET__)
