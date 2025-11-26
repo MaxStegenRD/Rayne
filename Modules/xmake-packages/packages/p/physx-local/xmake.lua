@@ -44,10 +44,10 @@ package("physx-local")
         local config_dir = build_config:lower()
         os.mkdir(buildroot)
 
-        local linux_include = path.join(repo_dir, "physx", "source", "foundation", "include", "linux")
-        if not os.isdir(linux_include) then
-            os.cp(path.join(repo_dir, "physx", "source", "foundation", "include", "unix"), linux_include)
-        end
+        --local linux_include = path.join(repo_dir, "physx", "source", "foundation", "include", "linux")
+        --if not os.isdir(linux_include) then
+        --    os.cp(path.join(repo_dir, "physx", "source", "foundation", "include", "unix"), linux_include)
+        --end
 
         local function ensure_file(path)
             if not os.isfile(path) then
