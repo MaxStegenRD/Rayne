@@ -53,18 +53,25 @@ end
 
 local function detect_signature_and_expect()
 	-- function signature macro
+	-- Prefer __PRETTY_FUNCTION__ as it includes namespace information needed for MetaClass
 	set_configvar("RAYNE_FUNCTION_SIGNATURE", "__func__", {quote = false})
 	configvar_check_cxxsnippets(
 		"RAYNE_FUNCTION_SIGNATURE=__PRETTY_FUNCTION__",
 		"int main(){ (void)__PRETTY_FUNCTION__; return 0; }",
 		{quote = false, name = "__rayne_funcsig_pretty"}
 	)
-	if not has_config("__rayne_funcsig_pretty") then
+	if has_config("__rayne_funcsig_pretty") then
+		set_configvar("RAYNE_FUNCTION_SIGNATURE", "__PRETTY_FUNCTION__", {quote = false})
+	else
 		configvar_check_cxxsnippets(
 			"RAYNE_FUNCTION_SIGNATURE=__FUNCTION__",
 			"int main(){ (void)__FUNCTION__; return 0; }",
 			{quote = false, name = "__rayne_funcsig_function"}
 		)
+		if has_config("__rayne_funcsig_function") then
+			set_configvar("RAYNE_FUNCTION_SIGNATURE", "__FUNCTION__", {quote = false})
+		end
+		-- Otherwise keep __func__ as fallback
 	end
 
 	-- branch prediction hints
