@@ -25,7 +25,7 @@ target("RayneOpenXR")
     if has_config("rayne_build_vulkan") then
         add_deps("RayneVulkan")
         add_defines("XR_USE_GRAPHICS_API_VULKAN")
-        add_includedirs(path.join(os.projectdir(), "Modules/Vulkan/Sources"))
+        add_includedirs("../Vulkan/Sources")
     else
         table.insert(filesToRemove, "RNOpenXRVulkanSwapChain.cpp")
         table.insert(headersToRemove, "RNOpenXRVulkanSwapChain.h")
@@ -34,7 +34,7 @@ target("RayneOpenXR")
     if has_config("rayne_build_metal") then
         add_deps("RayneMetal")
         add_defines("XR_USE_GRAPHICS_API_METAL")
-        add_includedirs(path.join(os.projectdir(), "Modules/Metal/Sources"))
+        add_includedirs("../Metal/Sources")
         add_cxxflags("-xobjective-c++")
     else
         table.insert(filesToRemove, "RNOpenXRMetalSwapChain.cpp")
