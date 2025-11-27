@@ -71,5 +71,7 @@ target("RayneVulkan")
                 path.join(spirv_dir, "spirv_cross.cpp"))
             target:data_set("rayne_spirv_added", true)
         end
+        
+        -- Register resources for copying to application
+        target:data_set("rayne_module_resources", {"Resources"})
     end)
-

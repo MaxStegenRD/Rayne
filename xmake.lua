@@ -54,7 +54,6 @@ option_end()
 
 -- Use external packages instead of vendored builds for simplicity
 add_requires("zlib", "libpng", "libzip", "jansson")
-
 -- add_requires("python >=3.*") -- Could maybe make this a host thing, to ensure it actually exist without user having to install it
 
 
@@ -173,29 +172,35 @@ rule("rayne_copy_resources")
 -- This is automatically applied when modules are used via add_deps
 rule("rayne_copy_module_resources")
     after_build(function (target)
-        -- Get all dependencies that are Rayne modules
         local module_resources = {}
         local project = import("core.project.project")
         
-        -- Iterate through all targets to find Rayne modules this target depends on
+        -- Find all Rayne module dependencies with registered resources
         for _, dep_name in ipairs(target:get("deps") or {}) do
-            -- Check if this is a Rayne module (starts with "Rayne")
-            if dep_name:match("^Rayne") then
-                local dep_target = project.target(dep_name)
-                if dep_target then
-                    local resources = dep_target:get("rayne_module_resources") or {}
-                    if type(resources) == "table" and #resources > 0 then
-                        module_resources[dep_name] = {
-                            target = dep_target,
-                            resources = resources
-                        }
-                    end
-                end
-            end
+			local dep_target = project.target(dep_name)
+			if dep_target then
+				local resources = dep_target:data("rayne_module_resources")
+				if resources and type(resources) == "table" then
+					-- Check if table has any entries
+					for _ in pairs(resources) do
+						module_resources[dep_name] = {
+							target = dep_target,
+							resources = resources
+						}
+						break
+					end
+				end
+			end
         end
         
-        if next(module_resources) == nil then
-            return -- No module resources to copy
+        -- Check if any module resources were found
+        local has_resources = false
+        for _ in pairs(module_resources) do
+            has_resources = true
+            break
+        end
+        if not has_resources then
+            return
         end
         
         -- Determine output directory based on platform
@@ -203,49 +208,41 @@ rule("rayne_copy_module_resources")
         local resource_dir = outdir
         
         if is_plat("macosx") then
-            local target_name = target:name()
-            local bundle_path = path.join(outdir, target_name .. ".app", "Contents", "Resources")
-            if os.isdir(bundle_path) then
-                resource_dir = bundle_path
-            else
-                resource_dir = path.join(outdir, "Resources")
-            end
+            local bundle_path = path.join(outdir, target:name() .. ".app", "Contents", "Resources")
+            resource_dir = os.isdir(bundle_path) and bundle_path or path.join(outdir, "Resources")
         elseif is_plat("iphoneos", "iphonesimulator", "applexros") then
-            local target_name = target:name()
-            local bundle_path = path.join(outdir, target_name .. ".app", "Contents", "ResourceFiles")
-            if os.isdir(bundle_path) then
-                resource_dir = bundle_path
-            else
-                resource_dir = path.join(outdir, "ResourceFiles")
-            end
+            local bundle_path = path.join(outdir, target:name() .. ".app", "Contents", "ResourceFiles")
+            resource_dir = os.isdir(bundle_path) and bundle_path or path.join(outdir, "ResourceFiles")
         end
         
         local modules_dir = path.join(resource_dir, "Modules")
-        
+
         -- Copy resources from each module
         for module_name, module_info in pairs(module_resources) do
-            local module_target = module_info.target
-            local resources = module_info.resources
-            local module_outdir = module_target:targetdir()
+            local module_outdir = module_info.target:scriptdir()
             local module_dest_dir = path.join(modules_dir, module_name)
+            os.mkdir(module_dest_dir)
             
-            -- Ensure destination directory exists
-            if not os.isdir(module_dest_dir) then
-                os.mkdir(module_dest_dir)
-            end
-            
-            for _, resource in ipairs(resources) do
-                local src_path = path.join(module_outdir, resource)
-                local dst_path = path.join(module_dest_dir, resource)
+            print("Copying resources from module: " .. module_name)
+            for key, value in pairs(module_info.resources) do
+                local src_name, dst_name
+                if type(key) == "number" then
+                    src_name = value
+                    dst_name = value
+                else
+                    dst_name = key
+                    src_name = value
+                end
                 
+                local src_path = path.join(module_outdir, src_name)
+                local dst_path = path.join(module_dest_dir, dst_name)
+
                 if os.isdir(src_path) then
-                    -- Copy directory
                     if os.isdir(dst_path) then
                         os.rm(dst_path)
                     end
                     os.cp(src_path, dst_path)
                 elseif os.isfile(src_path) then
-                    -- Copy file - ensure parent directory exists
                     local dst_parent = path.directory(dst_path)
                     if not os.isdir(dst_parent) then
                         os.mkdir(dst_parent)
