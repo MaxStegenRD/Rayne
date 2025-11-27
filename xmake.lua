@@ -102,22 +102,11 @@ rule("rayne_copy_resources")
             -- For macOS, resources go into the bundle's Resources directory
             -- Bundle structure: AppName.app/Contents/Resources/
             local target_name = target:name()
-            local bundle_path = path.join(outdir, target_name .. ".app", "Contents", "Resources")
-            if os.isdir(bundle_path) then
-                resource_dir = bundle_path
-            else
-                -- If bundle doesn't exist yet, use targetdir/Resources
-                resource_dir = outdir
-            end
+            resource_dir = path.join(outdir, target_name .. ".app", "Contents", "Resources")
         elseif is_plat("iphoneos", "iphonesimulator", "applexros") then
             -- For iOS/VisionOS, resources go into ResourceFiles
             local target_name = target:name()
-            local bundle_path = path.join(outdir, target_name .. ".app", "Contents", "ResourceFiles")
-            if os.isdir(bundle_path) then
-                resource_dir = bundle_path
-            else
-                resource_dir = path.join(outdir, "ResourceFiles")
-            end
+            resource_dir = path.join(outdir, target_name .. ".app", "Contents", "ResourceFiles")
         elseif is_plat("android") then
             -- For Android, resources go into assets directory
             -- This would need to be configured based on Android project structure
@@ -170,7 +159,7 @@ rule("rayne_copy_resources")
 
 -- Rule to copy module resources to application Resources folder
 -- This is automatically applied when modules are used via add_deps
-rule("rayne_copy_module_resources")
+rule("rayne_copy_engine_files")
     after_build(function (target)
         local module_resources = {}
         local project = import("core.project.project")
@@ -209,13 +198,13 @@ rule("rayne_copy_module_resources")
         
         if is_plat("macosx") then
             local bundle_path = path.join(outdir, target:name() .. ".app", "Contents", "Resources")
-            resource_dir = os.isdir(bundle_path) and bundle_path or path.join(outdir, "Resources")
+            resource_dir = os.isdir(bundle_path) and bundle_path or outdir
         elseif is_plat("iphoneos", "iphonesimulator", "applexros") then
             local bundle_path = path.join(outdir, target:name() .. ".app", "Contents", "ResourceFiles")
-            resource_dir = os.isdir(bundle_path) and bundle_path or path.join(outdir, "ResourceFiles")
+            resource_dir = os.isdir(bundle_path) and bundle_path or outdir
         end
         
-        local modules_dir = path.join(resource_dir, "Modules")
+        local modules_dir = path.join(resource_dir, "Resources", "Modules")
 
         -- Copy resources from each module
         for module_name, module_info in pairs(module_resources) do
@@ -248,6 +237,40 @@ rule("rayne_copy_module_resources")
                         os.mkdir(dst_parent)
                     end
                     os.cp(src_path, dst_path)
+                end
+            end
+        end
+
+        -- For macOS bundles, dylibs need to go in Contents/MacOS
+        if is_plat("macosx") then
+            local bundle_path = path.join(outdir, target:name() .. ".app", "Contents", "Frameworks")
+            if os.isdir(bundle_path) then
+                outdir = bundle_path
+            end
+        end
+
+         -- Loop through all dependencies
+        for _, dep_name in ipairs(target:get("deps") or {}) do
+            local dep_target = project.target(dep_name)
+            local files = dep_target:data("rayne_copy_libs") or {}
+            for _, f in ipairs(files) do
+                print(f)
+                if os.isfile(f) then
+                    os.cp(f, outdir)
+                end
+            end
+        end
+
+        -- Loop through all packages
+        for _, pkg_name in ipairs(target:get("packages") or {}) do
+            local pkg = project.required_package(pkg_name)
+            if pkg then
+                local files = pkg:get("rayne_copy_libs") or {}
+                for _, f in ipairs(files) do
+                    print(f)
+                    if os.isfile(f) then
+                        os.cp(f, outdir)
+                    end
                 end
             end
         end

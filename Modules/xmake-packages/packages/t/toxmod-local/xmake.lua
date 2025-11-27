@@ -28,7 +28,8 @@ package("toxmod-local")
             syslinks    = {},
             rundirs     = {},
             rpathdirs   = {},
-            files       = {}
+            files       = {},
+            rayne_copy_libs = {}
         }
 
         if package:plat() == "windows" then
@@ -44,10 +45,10 @@ package("toxmod-local")
             table.insert(result.files, path.join(winlib, cfg == "Debug" and "zlibd1.dll" or "zlib1.dll"))
         elseif package:plat() == "macosx" then
             table.insert(result.links, path.join(libdir, "libtox.dylib"))
-            table.insert(result.files, path.join(libdir, "libtox.dylib"))
-            table.insert(result.files, path.join(libdir, "libopus.0.dylib"))
-            table.insert(result.files, path.join(libdir, "libopusenc.0.dylib"))
-            table.insert(result.files, path.join(libdir, "libfvad.0.dylib"))
+            table.insert(result.rayne_copy_libs, path.join(libdir, "libtox.dylib"))
+            table.insert(result.rayne_copy_libs, path.join(libdir, "libopus.0.dylib"))
+            table.insert(result.rayne_copy_libs, path.join(libdir, "libopusenc.0.dylib"))
+            table.insert(result.rayne_copy_libs, path.join(libdir, "libfvad.0.dylib"))
         elseif package:plat() == "android" then
             table.insert(result.linkdirs, libdir)
             table.insert(result.links, "tox")

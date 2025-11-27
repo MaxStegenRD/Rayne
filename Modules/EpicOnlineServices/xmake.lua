@@ -6,17 +6,6 @@ target("RayneEOS")
     add_includedirs(".", "../../Source", "$(builddir)/generated/include", {public = true})
     add_files("*.cpp")
 
-    after_build(function (target)
-        local bins = target:data("eos_copybins")
-        if bins then
-            for _, bin in ipairs(bins) do
-                if os.isfile(bin) then
-                    os.cp(bin, target:targetdir())
-                end
-            end
-        end
-    end)
-
     on_load(function (target)
 		local moduledir = os.scriptdir()
 		local vendordir = path.join(moduledir, "Vendor")
@@ -59,7 +48,7 @@ target("RayneEOS")
             ensure_file(xaudio, "xaudio DLL")
             table.insert(includes, inc)
             table.insert(libs, lib)
-            target:data_set("eos_copybins", {
+            target:data_set("rayne_copy_libs", {
                 dll,
                 xaudio
             })
@@ -70,7 +59,7 @@ target("RayneEOS")
             ensure_file(dylib, "dylib")
             table.insert(includes, inc)
             table.insert(libs, dylib)
-            target:data_set("eos_copybins", {
+            target:data_set("rayne_copy_libs", {
                 dylib
             })
         end
