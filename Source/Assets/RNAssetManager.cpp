@@ -19,7 +19,7 @@
 namespace RN
 {
 	static AssetManager *__sharedInstance = nullptr;
-	static Lockable __sharedInstanceLock;
+	static RecursiveLockable __sharedInstanceLock;
 
 	AssetManager::AssetManager() :
 		_loaders(new Array()),
@@ -27,7 +27,7 @@ namespace RN
 		_requests(new Dictionary()),
 		_defaultQueue(nullptr)
 	{
-		SetDefaultQueue(WorkQueue::GetGlobalQueue(WorkQueue::Priority::High));
+		__sharedInstance = this;
 
 #if RN_PLATFORM_MAC_OS || RN_PLATFORM_WINDOWS || RN_PLATFORM_LINUX
 		_preferredTextureFileExtension = RNSTR("dds")->Retain();
@@ -58,10 +58,10 @@ namespace RN
 
 	AssetManager *AssetManager::GetSharedInstance()
 	{
-		LockGuard<Lockable> guard(__sharedInstanceLock);
+		LockGuard<RecursiveLockable> guard(__sharedInstanceLock);
 		if(!__sharedInstance)
 		{
-			__sharedInstance = new AssetManager();
+			new AssetManager(); //Will assign __sharedInstance internally, would get stuck in endless recursion otherwise
 		}
 		return __sharedInstance;
 	}
