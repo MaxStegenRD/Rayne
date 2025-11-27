@@ -142,6 +142,7 @@ namespace RN
 #endif
 			_resourcePath = SafeRetain(coordinator->ResolveFullPath(relativeResourcePath, 0));
 
+#if !RN_PLATFORM_ANDROID //Assume correct on android for now. It's not really a problem if it adds a none existing path here anyway
 			//Try Resource directory next to the dylib first
 			if(!_resourcePath || !coordinator->PathExists(_resourcePath))
 			{
@@ -158,6 +159,7 @@ namespace RN
 					if(_resourcePath && !coordinator->PathExists(_resourcePath)) SafeRelease(_resourcePath);
 				}
 			}
+#endif
 
 			if(_resourcePath)
 			{
