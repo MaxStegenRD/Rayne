@@ -91,14 +91,28 @@ namespace RN
 
 		paths->AddObject(basePath->StringByAppendingPathComponent(base));
 		paths->AddObject(coordinator->GetPathForLocation(FileManager::Location::ApplicationDirectory)->StringByAppendingPathComponent(base));
+		paths->AddObject(coordinator->GetPathForLocation(FileManager::Location::ApplicationDirectory)->StringByAppendingPathComponent(RNCSTR("Frameworks"))->StringByAppendingPathComponent(base));
 		base->Insert(RNCSTR("lib"), 0);
 		paths->AddObject(basePath->StringByAppendingPathComponent(base));
 		paths->AddObject(coordinator->GetPathForLocation(FileManager::Location::ApplicationDirectory)->StringByAppendingPathComponent(base));
+		paths->AddObject(coordinator->GetPathForLocation(FileManager::Location::ApplicationDirectory)->StringByAppendingPathComponent(RNCSTR("Frameworks"))->StringByAppendingPathComponent(base));
 
 		paths->Enumerate<String>([&](String *path, size_t index, bool &stop) {
 			_path = coordinator->ResolveFullPath(path, 0);
 			if(_path)
 				stop = true;
+			else
+			{
+				// For absolute paths (like Frameworks), try direct file existence check
+				// ResolveFullPath may fail even with fallback, so check directly
+				bool isDirectory = false;
+				if(FileManager::PathExists(path, isDirectory) && !isDirectory)
+				{
+					// Path exists and is a file, use it directly
+					_path = path->Copy()->Autorelease();
+					stop = true;
+				}
+			}
 		});
 		paths->Release();
 
@@ -128,8 +142,22 @@ namespace RN
 #endif
 			_resourcePath = SafeRetain(coordinator->ResolveFullPath(relativeResourcePath, 0));
 
-			if(_resourcePath && !coordinator->PathExists(_resourcePath))
-				SafeRetain(_resourcePath);
+			//Try Resource directory next to the dylib first
+			if(!_resourcePath || !coordinator->PathExists(_resourcePath))
+			{
+				SafeRelease(_resourcePath);
+
+				//Else try within Resources/Modules/ModuleName
+				String *bundleResourcesPath = coordinator->GetPathForLocation(FileManager::Location::RootResourcesDirectory);
+				if(bundleResourcesPath && bundleResourcesPath->GetLength() > 0)
+				{
+					String *moduleResourcesPath = bundleResourcesPath->StringByAppendingPathComponent(RNCSTR("Modules"));
+					moduleResourcesPath = moduleResourcesPath->StringByAppendingPathComponent(_name);
+					moduleResourcesPath = moduleResourcesPath->StringByAppendingPathComponent(RNCSTR("Resources"));
+					_resourcePath = SafeRetain(coordinator->ResolveFullPath(moduleResourcesPath, 0));
+					if(_resourcePath && !coordinator->PathExists(_resourcePath)) SafeRelease(_resourcePath);
+				}
+			}
 
 			if(_resourcePath)
 			{
