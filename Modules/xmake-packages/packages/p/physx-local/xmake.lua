@@ -37,7 +37,7 @@ package("physx-local")
         local find_tool = import("lib.detect.find_tool")
         local config = import("core.project.config")
         local cmake_tool = import("package.tools.cmake")
-        local repo_dir = path.join(os.curdir(), "physx-local")
+        local repo_dir = os.curdir()
         local sourcedir = path.join(repo_dir, "physx", "compiler", "public")
         local buildroot = path.join(repo_dir, "build-rayne")
         local build_config = package:debug() and "Debug" or "Release"
