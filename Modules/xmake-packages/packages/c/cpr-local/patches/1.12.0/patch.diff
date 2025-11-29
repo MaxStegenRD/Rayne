@@ -1,8 +1,8 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 7bfff7f..2584797 100644
+index 7bfff7f..228fa04 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -296,10 +296,7 @@ else()
+@@ -296,10 +296,14 @@ else()
          cmake_policy(SET CMP0135 NEW)
      endif()
  
@@ -11,6 +11,13 @@ index 7bfff7f..2584797 100644
 -        include(libpsl)
 -    endif()
 +    set(CURL_USE_LIBPSL OFF CACHE INTERNAL "" FORCE) #Should be used for security, but requires meson to build and not critical for my current use cases
++
++    set(CURL_BROTLI OFF CACHE INTERNAL "" FORCE)
++    set(CURL_ZSTD OFF CACHE INTERNAL "" FORCE)
++    set(USE_NGHTTP2 OFF CACHE INTERNAL "" FORCE)
++    set(USE_LIBIDN2 OFF CACHE INTERNAL "" FORCE)
++    set(CURL_DISABLE_LDAP ON CACHE INTERNAL "" FORCE)
++    set(CURL_DISABLE_LDAPS ON CACHE INTERNAL "" FORCE)
  
      FetchContent_Declare(curl URL https://github.com/curl/curl/releases/download/curl-8_13_0/curl-8.13.0.tar.xz
                                URL_HASH SHA256=4a093979a3c2d02de2fbc00549a32771007f2e78032c6faa5ecd2f7a9e152025) # the file hash for curl-8.13.0.tar.xz

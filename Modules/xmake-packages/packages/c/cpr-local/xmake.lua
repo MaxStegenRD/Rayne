@@ -16,7 +16,7 @@ package("cpr-local")
     add_versions("1.8.3", "0784d4c2dbb93a0d3009820b7858976424c56578ce23dcd89d06a1d0bf5fd8e2")
     add_versions("1.7.2", "aa38a414fe2ffc49af13a08b6ab34df825fdd2e7a1213d032d835a779e14176f")
 
-    add_patches("1.12.0", "patches/1.12.0/patch.diff", "1c3b56a0b939882fe1836196047afbe4c2f80ab79254003f7d9b78a2f4abfef4")
+    add_patches("1.12.0", "patches/1.12.0/patch.diff", "bd916fe9ff06818b387db5dcde891866619b7ebeb935da8e3e663f61352a6a0c")
 
     add_configs("ssl", {description = "Enable SSL.", default = false, type = "boolean"})
 
@@ -24,11 +24,15 @@ package("cpr-local")
     if is_plat("linux") then
         add_syslinks("pthread")
     end
-    add_links("cpr")
+    add_links("cpr", "curl")
 
     on_load(function (package)
         if package:config("ssl") then
             package:add("deps", "openssl3")
+        end
+        -- Add SystemConfiguration framework and optional curl dependencies for macOS
+        if package:is_plat("macosx") then
+            package:add("frameworks", "SystemConfiguration")
         end
     end)
 
@@ -45,8 +49,7 @@ package("cpr-local")
             "-DCPR_FORCE_USE_SYSTEM_CURL=OFF",
             "-DCPR_USE_SYSTEM_CURL=OFF",
             "-DCPR_FORCE_OPENSSL_BACKEND=ON",
-            "-DCPR_ENABLE_SSL=ON",
-            --"-DCURL_DISABLE_LIBPSL=ON" --should be used, but requires meson to build...
+            "-DCPR_ENABLE_SSL=ON"
         }
         table.insert(configs, "-DCMAKE_BUILD_TYPE=" .. (package:debug() and "Debug" or "Release"))
         table.insert(configs, "-DBUILD_SHARED_LIBS=" .. (package:config("shared") and "ON" or "OFF"))
