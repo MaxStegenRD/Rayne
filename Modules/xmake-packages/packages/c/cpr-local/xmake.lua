@@ -26,6 +26,12 @@ package("cpr-local")
     end
     add_links("cpr")
 
+    on_load(function (package)
+        if package:config("ssl") then
+            package:add("deps", "openssl3")
+        end
+    end)
+
     on_install("!wasm and !bsd", function (package)
         io.replace("CMakeLists.txt", "-Werror", "", {plain = true})
         if package:is_plat("windows") or (package:is_plat("android") and is_subhost("windows")) then
