@@ -40,9 +40,18 @@ target("RayneResonanceAudio")
 
 		if not os.isdir(resdir) then
 			git.clone("https://github.com/Slin/resonance-audio.git", { depth = 1, outputdir = resdir })
-			local deps = path.join(resdir, "third_party", "clone_core_deps.sh")
-			if os.isfile(deps) then
-				os.runv("bash", { deps })
+			local third_party_dir = path.join(resdir, "third_party")
+			
+			-- Clone Eigen
+			local eigen_dir = path.join(third_party_dir, "eigen")
+			if not os.isdir(eigen_dir) then
+				git.clone("https://gitlab.com/libeigen/eigen.git", { branch = "master", outputdir = eigen_dir })
+			end
+			
+			-- Clone PFFFT
+			local pffft_dir = path.join(third_party_dir, "pffft")
+			if not os.isdir(pffft_dir) then
+				git.clone("https://bitbucket.org/jpommier/pffft.git", { branch = "master", outputdir = pffft_dir })
 			end
 		end
 
