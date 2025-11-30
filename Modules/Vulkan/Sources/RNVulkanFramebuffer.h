@@ -15,7 +15,7 @@
 
 namespace RN
 {
-	class VulkanRenderPass;
+	struct VulkanRenderPass;
 	class VulkanFramebuffer : public Framebuffer
 	{
 	public:

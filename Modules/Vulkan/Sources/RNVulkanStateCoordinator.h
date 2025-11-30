@@ -19,7 +19,7 @@ namespace RN
 	class VulkanDynamicBufferReference;
 	class VulkanShader;
 	class VulkanDevice;
-	class VulkanRenderPass;
+	struct VulkanRenderPass;
 
 	struct VulkanUniformState
 	{
