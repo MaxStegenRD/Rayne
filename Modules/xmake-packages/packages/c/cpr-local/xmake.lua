@@ -24,7 +24,7 @@ package("cpr-local")
     if is_plat("linux") then
         add_syslinks("pthread")
     end
-    add_links("cpr", "curl")
+    add_links("cpr", "libcurl")
 
     on_load(function (package)
         if package:config("ssl") then
@@ -51,7 +51,7 @@ package("cpr-local")
             "-DCPR_FORCE_OPENSSL_BACKEND=ON",
             "-DCPR_ENABLE_SSL=ON"
         }
-        table.insert(configs, "-DCMAKE_BUILD_TYPE=" .. (package:debug() and "Debug" or "Release"))
+        table.insert(configs, "-DCMAKE_BUILD_TYPE=" .. (package:is_debug() and "Debug" or "Release"))
         table.insert(configs, "-DBUILD_SHARED_LIBS=" .. (package:config("shared") and "ON" or "OFF"))
         table.insert(configs, "-DCPR_ENABLE_SSL=" .. (package:config("ssl") and "ON" or "OFF"))
 

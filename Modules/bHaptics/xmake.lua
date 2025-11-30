@@ -9,13 +9,14 @@ target("RayneBHaptics")
     add_files("*.cpp")
     add_headerfiles("*.h")
 
-    if is_plat("windows", "mingw") then
-        local moduledir = os.scriptdir()
-        local bh_vendor = path.join(moduledir, "Vendor", "BhapticsCPP", "Win64")
-
-        add_includedirs(path.join(moduledir, "Vendor", "BhapticsCPP"), {public = true})
-        add_linkdirs(bh_vendor)
-        add_links("bhaptics_library")
-    end
-
+    on_load(function (target)
+        if is_plat("windows", "mingw") then
+            local moduledir = os.scriptdir()
+            local bh_vendor = path.join(moduledir, "Vendor", "BhapticsCPP", "Win64")
+            target:data_set("rayne_copy_libs", { path.join(bh_vendor, "bhaptics_library.dll") })
+            target:add("includedirs", path.join(moduledir, "Vendor", "BhapticsCPP"), {public = true})
+            target:add("linkdirs", bh_vendor)
+            target:add("links", "bhaptics_library")
+        end
+    end)
 

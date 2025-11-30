@@ -1,4 +1,4 @@
-add_requires("physx-local latest", {system = false})
+add_requires("physx-local latest", {system = false, debug = is_mode("debug")})
 
 target("RaynePhysX")
     set_kind("shared")

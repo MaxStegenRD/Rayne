@@ -33,16 +33,16 @@ package("toxmod-local")
         }
 
         if package:plat() == "windows" then
-            local cfg = package:debug() and "Debug" or "Release"
+            local cfg = package:is_debug() and "Debug" or "Release"
             local winlib = path.join(libdir, "x64", cfg)
             table.insert(result.linkdirs, winlib)
             table.insert(result.links, "libtox")
-            table.insert(result.files, path.join(winlib, "libtox.dll"))
-            table.insert(result.files, path.join(winlib, "opus.dll"))
-            table.insert(result.files, path.join(winlib, "opusenc.dll"))
-            table.insert(result.files, path.join(winlib, "fvad.dll"))
-            table.insert(result.files, path.join(winlib, cfg == "Debug" and "libcurl-d.dll" or "libcurl.dll"))
-            table.insert(result.files, path.join(winlib, cfg == "Debug" and "zlibd1.dll" or "zlib1.dll"))
+            table.insert(result.rayne_copy_libs, path.join(winlib, "libtox.dll"))
+            table.insert(result.rayne_copy_libs, path.join(winlib, "opus.dll"))
+            table.insert(result.rayne_copy_libs, path.join(winlib, "opusenc.dll"))
+            table.insert(result.rayne_copy_libs, path.join(winlib, "fvad.dll"))
+            table.insert(result.rayne_copy_libs, path.join(winlib, package:is_debug() and "libcurl-d.dll" or "libcurl.dll"))
+            table.insert(result.rayne_copy_libs, path.join(winlib, package:is_debug() and "zlibd1.dll" or "zlib1.dll"))
         elseif package:plat() == "macosx" then
             table.insert(result.links, path.join(libdir, "libtox.dylib"))
             table.insert(result.rayne_copy_libs, path.join(libdir, "libtox.dylib"))

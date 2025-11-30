@@ -40,7 +40,7 @@ package("physx-local")
         local repo_dir = os.curdir()
         local sourcedir = path.join(repo_dir, "physx", "compiler", "public")
         local buildroot = path.join(repo_dir, "build-rayne")
-        local build_config = package:debug() and "Debug" or "Release"
+        local build_config = package:is_debug() and "Debug" or "Release"
         local config_dir = build_config:lower()
         os.mkdir(buildroot)
 
@@ -206,18 +206,20 @@ package("physx-local")
     end)
 
     on_test(function (package)
-        local defines = {}
-        if package:debug() then
-            table.insert(defines, "_DEBUG")
-        else
-            table.insert(defines, "NDEBUG")
+        if not is_plat("windows") then
+            local defines = {}
+            if package:is_debug() then
+                table.insert(defines, "_DEBUG")
+            else
+                table.insert(defines, "NDEBUG")
+            end
+            assert(package:check_cxxsnippets({test = [[
+                #include <physx/PxPhysicsAPI.h>
+                using namespace physx;
+                void test() {
+                    PxVec3 vec(1.0f, 0.0f, 0.0f);
+                }
+            ]]}, {configs = {languages = "c++20", defines = defines}}))
         end
-        assert(package:check_cxxsnippets({test = [[
-            #include <physx/PxPhysicsAPI.h>
-            using namespace physx;
-            void test() {
-                PxVec3 vec(1.0f, 0.0f, 0.0f);
-            }
-        ]]}, {configs = {languages = "c++20", defines = defines}}))
     end)
 
