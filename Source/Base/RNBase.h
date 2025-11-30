@@ -15,8 +15,6 @@
 	#include "../RayneConfig.h"
 #endif
 
-#include "../Debug/RNProfiler.h"
-
 // ---------------------------
 // Platform dependent includes
 // ---------------------------
@@ -119,6 +117,8 @@
 #include "RNOptions.h"
 #include "RNScopeGuard.h"
 
+#include "../Debug/RNProfiler.h"
+
 
 // ---------------------------
 // Helper macros
@@ -156,8 +156,8 @@ namespace RN
 	class Kernel;
 	class Application;
 
-	RNAPI RN_NORETURN void Initialize(int argc, const char *argv[], Application *app, void *object = nullptr);
-	RNAPI RN_NORETURN void __Assert(const char *func, const char *file, int line, const char *expression, const char *message, ...);
+	RN_NORETURN RNAPI void Initialize(int argc, const char *argv[], Application *app, void *object = nullptr);
+	RN_NORETURN RNAPI void __Assert(const char *func, const char *file, int line, const char *expression, const char *message, ...);
 
 	/**
 	 * Returns the ABI version. Rayne differentiates between ABI and API version,

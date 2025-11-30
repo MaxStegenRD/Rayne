@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.21)
 cmake_policy(SET CMP0097 NEW)
 project(RaynePhysX)
 
@@ -20,15 +20,7 @@ set(PHYSX_CMAKE_ARGS
         -DCMAKEMODULES_NAME=CMakeModules
         -DCMAKEMODULES_VERSION=1.27)
 
-set(PHYSX_PATCH_COMMAND "")
-
- set(SED_PATH "sed")
-if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
-    set(SED_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/super-sed/sed.exe")
-endif()
-
 if(IOS OR VISIONOS)
-    #set(PHYSX_CXX_FLAGS "-Wno-unknown-warning-option -Wno-invalid-noreturn -Wno-unused-private-field -Wno-unused-local-typedef -D__ANDROID__ -O3 -DNDEBUG")
     set(PHYSX_CMAKE_ARGS ${PHYSX_CMAKE_ARGS}
         -DTARGET_BUILD_PLATFORM=ios
         -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
@@ -120,13 +112,7 @@ elseif(APPLE)
         "${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/bin/mac.x86_64/release/libPhysXPvdSDK_static_64.a")
 
     set(RN_PHYSX_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/bin/mac.x86_64)
-    set(PHYSX_PATCH_COMMAND sed -i.bak /CMAKE_OSX_ARCHITECTURES/d <SOURCE_DIR>/physx/source/compiler/cmake/mac/CMakeLists.txt
-        COMMAND sed -i.bak /arch/d <SOURCE_DIR>/physx/source/compiler/cmake/mac/CMakeLists.txt
-        COMMAND sed -i.bak s/-Werror//g <SOURCE_DIR>/physx/source/compiler/cmake/mac/CMakeLists.txt
-        COMMAND sed -i.bak s/-msse2//g <SOURCE_DIR>/physx/source/compiler/cmake/mac/CMakeLists.txt)
 elseif(ANDROID)
-    set(PHYSX_PATCH_COMMAND ${SED_PATH} -i.bak s/-Werror//g <SOURCE_DIR>/physx/source/compiler/cmake/android/CMakeLists.txt COMMAND ${SED_PATH} -i.bak -e "/PX_FORCE_INLINE Vec4V V4SplatElement(Vec4V a)/ {" -e "n$<SEMICOLON> n$<SEMICOLON> s/\#if .*/\#if 1/" -e "}" <SOURCE_DIR>/physx/source/foundation/include/unix/neon/PsUnixNeonInlineAoS.h)
-
     set(PHYSX_CXX_FLAGS "-Wno-unknown-warning-option -Wno-invalid-noreturn -Wno-unused-private-field -Wno-unused-local-typedef -D__ANDROID__ -O3 -DNDEBUG")
     set(PHYSX_CMAKE_ARGS ${PHYSX_CMAKE_ARGS}
         -DTARGET_BUILD_PLATFORM=android
@@ -171,9 +157,6 @@ elseif(UNIX)
         "${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/linux.clang/release/libPhysXVehicle_static_64.a"
         "${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/linux.clang/release/libPhysXExtensions_static_64.a"
         "${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/linux.clang/release/libPhysXPvdSDK_static_64.a")
-
-    set(PHYSX_PATCH_COMMAND sed -i.bak s/-Werror//g <SOURCE_DIR>/physx/source/compiler/cmake/linux/CMakeLists.txt
-        COMMAND sed -i.bak "s/PX_FORCE_INLINE Ps::aos::PsMatTransformV& getRelativeTransform/PX_FORCE_INLINE const Ps::aos::PsMatTransformV\\& getRelativeTransform/g" <SOURCE_DIR>/physx/source/geomutils/src/gjk/GuGJKType.h)
 else()
     set(PHYSX_CMAKE_ARGS ${PHYSX_CMAKE_ARGS}
         -DTARGET_BUILD_PLATFORM=windows
@@ -181,8 +164,6 @@ else()
         -DPHYSX_CXX_FLAGS_DEBUG=/MDd
         -DCMAKE_SYSTEM_VERSION=${CMAKE_SYSTEM_VERSION})
     set(RN_PHYSX_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/win.x86_64.vc142.md)
-
-    set(PHYSX_PATCH_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/patch.bat ${SED_PATH} <SOURCE_DIR>/physx/source/compiler/cmake/windows/CMakeLists.txt)
 
     set(RN_PHYSX_BUILD_BYPRODUCTS
         "${RN_PHYSX_BUILD_DIR}/debug/PhysXFoundation_static_64.lib"
@@ -205,12 +186,10 @@ endif()
 
 if(APPLE AND CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "arm64" AND NOT IOS AND NOT VISIONOS)
     ExternalProject_Add(physx
-        GIT_REPOSITORY https://github.com/NVIDIAGameWorks/PhysX.git
+        GIT_REPOSITORY https://github.com/SlinDev-GmbH/PhysX.git
         GIT_TAG origin/4.1
         GIT_SHALLOW ON
         GIT_PROGRESS ON
-        PATCH_COMMAND ${PHYSX_PATCH_COMMAND}
-        COMMAND sed -i.bak -e "/PX_FORCE_INLINE Vec4V V4SplatElement(Vec4V a)/ {" -e "n$<SEMICOLON> n$<SEMICOLON> s/\#if .*/\#if 1/" -e "}" <SOURCE_DIR>/physx/source/foundation/include/unix/neon/PsUnixNeonInlineAoS.h
         SOURCE_SUBDIR physx/compiler/public
         CONFIGURE_COMMAND ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=Release "${PHYSX_X64_CMAKE_ARGS}" -B<BINARY_DIR>/x64 -S<SOURCE_DIR>/<SOURCE_SUBDIR>
         COMMAND ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=Release "${PHYSX_ARM64_CMAKE_ARGS}" -B<BINARY_DIR>/arm64 -S<SOURCE_DIR>/<SOURCE_SUBDIR>
@@ -239,7 +218,6 @@ else()
         GIT_SHALLOW ON
         GIT_PROGRESS ON
         GIT_SUBMODULES ""
-        PATCH_COMMAND ${PHYSX_PATCH_COMMAND}
         SOURCE_SUBDIR physx/compiler/public
         CMAKE_ARGS "${PHYSX_CMAKE_ARGS}"
         UPDATE_COMMAND ""

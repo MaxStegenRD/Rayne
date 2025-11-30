@@ -171,7 +171,7 @@ namespace RN
 	public:
 		static Kernel *BootstrapKernel(Application *app, const ArgumentParser &arguments, void *object)
 		{
-			__functionPool = new MemoryPool();
+			__GetFunctionPool();
 
 #if RN_PLATFORM_WINDOWS
 			if(!arguments.HasArgument("no-locale", '\0'))
@@ -269,6 +269,11 @@ namespace RN
 
 	MemoryPool *__GetFunctionPool()
 	{
+		if(RN_EXPECT_FALSE(!__functionPool))
+		{
+			__functionPool = new MemoryPool();
+		}
+		
 		return __functionPool;
 	}
 

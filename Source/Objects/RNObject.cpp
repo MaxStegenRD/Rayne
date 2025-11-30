@@ -219,10 +219,13 @@ namespace RN
 		AutoreleasePool *pool = AutoreleasePool::GetCurrentPool();
 		if(!pool)
 		{
-			AutoreleasePool::PerformBlock([this]() {
-				MetaClass *meta = GetClass();
-				RNError("Autorelease() with no pool in place, <" << meta->GetFullname() << ":" << reinterpret_cast<void *>(this) << "> will leak!");
-			});
+			if(Logger::GetSharedInstance())
+			{
+				AutoreleasePool::PerformBlock([this]() {
+					MetaClass *meta = GetClass();
+					RNError("Autorelease() with no pool in place, <" << meta->GetFullname() << ":" << reinterpret_cast<void *>(this) << "> will leak!");
+				});
+			}
 
 			return this;
 		}
@@ -250,10 +253,13 @@ namespace RN
 		AutoreleasePool *pool = AutoreleasePool::GetCurrentPool();
 		if(!pool)
 		{
-			AutoreleasePool::PerformBlock([this]() {
-				MetaClass *meta = GetClass();
-				RNError("Autorelease() with no pool in place, <" << meta->GetFullname() << ":" << reinterpret_cast<const void *>(this) << "> will leak!");
-			});
+			if(Logger::GetSharedInstance())
+			{
+				AutoreleasePool::PerformBlock([this]() {
+					MetaClass *meta = GetClass();
+					RNError("Autorelease() with no pool in place, <" << meta->GetFullname() << ":" << reinterpret_cast<const void *>(this) << "> will leak!");
+				});
+			}
 
 			return this;
 		}

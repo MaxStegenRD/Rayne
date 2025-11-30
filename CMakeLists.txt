@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10.1)
+cmake_minimum_required(VERSION 3.21.0)
 project(RayneAll)
 
 # General settings, independent of target
@@ -63,11 +63,15 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-optimize-sibling-calls -fno-omit-frame-pointer")
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-optimize-sibling-calls -fno-omit-frame-pointer")
     endif()
+
+    set(CMAKE_CXX_FLAGS_DEBUG "-fno-math-errno -funsafe-math-optimizations ${CMAKE_CXX_FLAGS_DEBUG}")
+    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-fno-math-errno -funsafe-math-optimizations ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+    set(CMAKE_CXX_FLAGS_RELEASE "-fno-math-errno -funsafe-math-optimizations ${CMAKE_CXX_FLAGS_RELEASE}")
 endif()
 
-set(CMAKE_CXX_FLAGS_DEBUG "-fno-math-errno -funsafe-math-optimizations ${CMAKE_CXX_FLAGS_DEBUG}")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -fno-math-errno -funsafe-math-optimizations ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fno-math-errno -funsafe-math-optimizations ${CMAKE_CXX_FLAGS_RELEASE}")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 ${CMAKE_CXX_FLAGS_RELEASE}")
 
 if(UNIX)
     if(APPLE)

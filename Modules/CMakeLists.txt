@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10.1)
+cmake_minimum_required(VERSION 3.21)
 project(Rayne-Modules)
 
 option(RN_BUILD_METAL_MODULE "Build the Metal renderer module" ON)

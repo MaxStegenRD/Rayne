@@ -101,7 +101,7 @@ namespace RN
 		}
 
 		//From JPH::BroadPhaseLayerInterface
-		uint GetNumBroadPhaseLayers() const final
+		JPH::uint GetNumBroadPhaseLayers() const final
 		{
 			return 4;
 		}

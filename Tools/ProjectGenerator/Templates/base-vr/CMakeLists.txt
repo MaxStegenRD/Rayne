@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10.1)
+cmake_minimum_required(VERSION 3.21)
 include(ExternalProject)
 
 project(__TMP_APPLICATION_TARGET__)
@@ -134,6 +134,9 @@ elseif(${RN_BUILD_CONFIGURATION} STREQUAL "pico")
 	set(__TMP___COMPILE_DEFINITIONS ${__TMP___COMPILE_DEFINITIONS} -DBUILD_FOR_PICO)
 elseif(WIN32)
 	add_custom_command(TARGET __TMP_APPLICATION_TARGET__ POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/Other/RunPancake-windows.bat $<TARGET_FILE_DIR:__TMP_APPLICATION_TARGET__>/RunPancake-windows.bat)
+	add_custom_command(TARGET GRAB POST_BUILD
+	  COMMAND ${CMAKE_COMMAND} -E copy -t $<TARGET_FILE_DIR:GRAB> $<TARGET_RUNTIME_DLLS:GRAB>
+	  COMMAND_EXPAND_LISTS)
 endif()
 
 target_compile_definitions(__TMP_APPLICATION_TARGET__ PRIVATE ${__TMP___COMPILE_DEFINITIONS})

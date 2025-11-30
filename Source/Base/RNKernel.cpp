@@ -114,7 +114,8 @@ namespace RN
 			_settings = new Settings(); // Requires the FileManager to have all search paths
 
 			_notificationManager = new NotificationManager();
-			_assetManager = new AssetManager();
+			_assetManager = AssetManager::GetSharedInstance(); //Potentially needed for registering modules during static initialisation, so GetSharedInstance constructs it if needed
+			_assetManager->SetDefaultQueue(WorkQueue::GetGlobalQueue(WorkQueue::Priority::High));
 			_sceneManager = new SceneManager();
 			_inputManager = new InputManager();
 			_moduleManager = new ModuleManager();
