@@ -185,7 +185,7 @@ package("physx-local")
             }
 			
             local builddir = run_cmake_build("windows", extra)
-            local bindir = path.join(builddir, "physx", "bin", "win.x86_64.vc142.md", config_dir)
+            local bindir = path.join(builddir, "bin", "win.x86_64.vc142.md", config_dir)
             for _, name in ipairs(physx_libs) do
                 table.insert(libs, ensure_file(path.join(bindir, name .. ".lib")))
             end
