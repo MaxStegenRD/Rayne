@@ -5,6 +5,7 @@ find_package(Python COMPONENTS Interpreter)
 
 include(../../CMake/LibraryTarget.cmake)
 include(ExternalProject)
+include(FetchContent)
 
 ExternalProject_Add(spirvcross
         GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Cross.git
@@ -21,15 +22,13 @@ ExternalProject_Add(spirvcross
             ${CMAKE_CURRENT_BINARY_DIR}/spirvcross-prefix/src/spirvcross/spirv_cross.cpp
         INSTALL_COMMAND "")
 
-ExternalProject_Add(vulkan_headers
+FetchContent_Declare(VulkanHeaders
         GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Headers.git
         GIT_TAG refs/tags/v1.3.210
-        GIT_SHALLOW ON
-        GIT_PROGRESS ON
-        UPDATE_COMMAND ""
-        CONFIGURE_COMMAND ""
-        BUILD_COMMAND ""
-        INSTALL_COMMAND "")
+        GIT_SHALLOW TRUE
+        GIT_PROGRESS ON)
+FetchContent_MakeAvailable(VulkanHeaders)
+set(vulkanheaders_SOURCE_DIR "${vulkanheaders_SOURCE_DIR}" CACHE PATH "Path to Vulkan-Headers sources" FORCE)
 
 set(VMA_SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/VulkanMemoryAllocator-prefix/src/VulkanMemoryAllocator)
 ExternalProject_Add(VulkanMemoryAllocator
@@ -42,8 +41,6 @@ ExternalProject_Add(VulkanMemoryAllocator
         BUILD_COMMAND ""
         INSTALL_COMMAND "")
 
-ExternalProject_Get_property(vulkan_headers SOURCE_DIR)
-set(VulkanHeaders_SOURCE_DIR ${SOURCE_DIR})
 
 set(VERSION_MAJOR 0)
 set(VERSION_MINOR 5)
@@ -52,10 +49,10 @@ set(VERSION_ABI 1)
 set(VERSION_STRING "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 
 add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/generators/dispatchTableParsedHeader.py ${CMAKE_CURRENT_SOURCE_DIR}/Sources/RNVulkanDispatchTable.h ${CMAKE_CURRENT_SOURCE_DIR}/Sources/RNVulkanDispatchTable.cpp
-        COMMAND ${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/generators/generate-dispatch-table parse ${VulkanHeaders_SOURCE_DIR}/include/vulkan/vulkan.h
+        COMMAND ${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/generators/generate-dispatch-table parse ${vulkanheaders_SOURCE_DIR}/include/vulkan/vulkan.h
         COMMAND ${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/generators/generate-dispatch-table ${CMAKE_CURRENT_SOURCE_DIR}/Sources/RNVulkanDispatchTable.h
         COMMAND ${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/generators/generate-dispatch-table ${CMAKE_CURRENT_SOURCE_DIR}/Sources/RNVulkanDispatchTable.cpp
-        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/generators/generate-dispatch-table ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/generators/dispatchTableClasses.py ${VulkanHeaders_SOURCE_DIR}/include/vulkan/vulkan.h
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/generators/generate-dispatch-table ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/generators/dispatchTableClasses.py ${vulkanheaders_SOURCE_DIR}/include/vulkan/vulkan.h
         COMMENT "Generate Vulkan Dispatch Table")
 
 add_custom_target(VulkanGenerateDispatchTable DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/Sources/RNVulkanDispatchTable.h ${CMAKE_CURRENT_SOURCE_DIR}/Sources/RNVulkanDispatchTable.cpp)
@@ -135,7 +132,6 @@ if(RAYNE_PROFILER STREQUAL "TRACY")
     target_compile_definitions(RayneVulkan PUBLIC TRACY_ENABLE RN_PROFILE_TRACY)
 endif()
 
-add_dependencies(VulkanGenerateDispatchTable vulkan_headers)
 add_dependencies(RayneVulkan_copyHeaderTarget VulkanGenerateDispatchTable)
 add_dependencies(RayneVulkan_copyHeaderTarget spirvcross)
 add_dependencies(RayneVulkan_copyHeaderTarget VulkanMemoryAllocator)
@@ -143,8 +139,8 @@ add_dependencies(RayneVulkan_copyHeaderTarget VulkanMemoryAllocator)
 target_include_directories(RayneVulkan SYSTEM PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/spirvcross-prefix/src/spirvcross)
 target_include_directories(RayneVulkan SYSTEM PRIVATE ${VMA_SOURCE_DIR}/include)
 target_include_directories(RayneVulkan SYSTEM PRIVATE ${Rayne_BINARY_DIR}/include)
-target_include_directories(RayneVulkan SYSTEM PRIVATE ${VulkanHeaders_SOURCE_DIR}/include)
-target_include_directories(RayneVulkan SYSTEM PRIVATE ${VulkanHeaders_SOURCE_DIR}/include/vulkan)
+target_include_directories(RayneVulkan SYSTEM PRIVATE ${vulkanheaders_SOURCE_DIR}/include)
+target_include_directories(RayneVulkan SYSTEM PRIVATE ${vulkanheaders_SOURCE_DIR}/include/vulkan)
 target_compile_definitions(RayneVulkan PRIVATE "${DEFINES}")
 
 rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneVulkan/. DESTINATION lib/Rayne/RayneVulkan)

@@ -107,16 +107,14 @@ add_dependencies(RayneOpenXR OpenXRSDK)
 target_link_libraries(RayneOpenXR PRIVATE OpenXRLoader)
 
 if(NOT APPLE AND ${RN_BUILD_VULKAN_MODULE})
-	ExternalProject_Get_property(vulkan_headers SOURCE_DIR)
-	set(VulkanHeaders_SOURCE_DIR ${SOURCE_DIR})
 	ExternalProject_Get_property(VulkanMemoryAllocator SOURCE_DIR)
 	set(VulkanMemoryAllocator_SOURCE_DIR ${SOURCE_DIR})
 
 	target_link_libraries(RayneOpenXR PUBLIC RayneVulkan)
 	set(INCLUDE_DIRECTORIES ${INCLUDE_DIRECTORIES}
-		${RayneVulkan_BINARY_DIR}/include
-		"${VulkanHeaders_SOURCE_DIR}/include"
-		"${VulkanHeaders_SOURCE_DIR}/include/vulkan"
+		"${RayneVulkan_BINARY_DIR}/include"
+		"${vulkanheaders_SOURCE_DIR}/include"
+		"${vulkanheaders_SOURCE_DIR}/include/vulkan"
 		"${VulkanMemoryAllocator_SOURCE_DIR}/include"
 		"${CMAKE_CURRENT_BINARY_DIR}/../Vulkan/include/Sources")
 	set(DEFINES ${DEFINES} XR_USE_GRAPHICS_API_VULKAN)
