@@ -2618,7 +2618,7 @@ namespace RN
 
 		for(VulkanRenderPass &renderPass : _internals->renderPasses)
 		{
-			ZoneScoped;
+			RN_PROFILE_SCOPE();
 			renderPass.renderTargetsUsedInShader.clear();
 
 			if(renderPass.type != VulkanRenderPass::Type::Default && renderPass.type != VulkanRenderPass::Type::Convert)

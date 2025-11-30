@@ -31,13 +31,13 @@ namespace RN
 	SceneQuadtreeInfo::SceneQuadtreeInfo(Scene *scene) :
 		SceneInfo(scene), occludedFrameCounter(0), quadtreeNodeIndex(UINT32_MAX)
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 	}
 
 	SceneQuadtree::SceneQuadtree(AABB worldBounds, float minNodeSize) :
 		_nodesToRemove(new Array()), _currentFrameCount(0)
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		_occlusionCuller = new OcclusionCuller(40, 40);
 
 		worldBounds.minExtend.y = 0.0f;
@@ -104,21 +104,21 @@ namespace RN
 
 	SceneQuadtree::~SceneQuadtree()
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		_nodesToRemove->Release();
 		delete _occlusionCuller;
 	}
 
 	void SceneQuadtree::Update(float delta)
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		WillUpdate(delta);
 
 		WorkQueue *queue = WorkQueue::GetGlobalQueue(WorkQueue::Priority::Default);
 
 		for(size_t i = 0; i < 4; i++)
 		{
-			ZoneScopedN("Update by Priority");
+			RN_PROFILE_SCOPE_N("Update by Priority");
 			WorkGroup *group = nullptr;
 			IntrusiveList<SceneNode>::Member *member = _updateNodes[i].GetHead();
 			IntrusiveList<SceneNode>::Member *first = member;
@@ -131,7 +131,7 @@ namespace RN
 				{
 					if(!group) group = new WorkGroup();
 					group->Perform(queue, [&, member, first] {
-						ZoneScopedN("Update Batch");
+						RN_PROFILE_SCOPE_N("Update Batch");
 
 						AutoreleasePool pool;
 						auto iterator = first;
@@ -155,7 +155,7 @@ namespace RN
 			//Update remaining less than kRNSceneUpdateBatchSize number of nodes
 			if(first != member)
 			{
-				ZoneScopedN("Update Last Batch");
+				RN_PROFILE_SCOPE_N("Update Last Batch");
 
 				AutoreleasePool pool;
 				auto iterator = first;
@@ -183,7 +183,7 @@ namespace RN
 
 	void SceneQuadtree::FlushDeletionQueue()
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		bool didUpdateCameras = false;
 		_nodesToRemove->Enumerate<SceneNode>([&](SceneNode *node, size_t index, bool &stop) {
 			if(node->IsKindOfClass(Camera::GetMetaClass()))
@@ -220,7 +220,7 @@ namespace RN
 
 	void SceneQuadtree::Render(Renderer *renderer)
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		WillRender(renderer);
 
 		//Run camera PostUpdate once for each camera
@@ -237,7 +237,7 @@ namespace RN
 			cameraMember = _cameras.GetHead();
 			while(cameraMember)
 			{
-				ZoneScoped;
+				RN_PROFILE_SCOPE();
 				Camera *camera = cameraMember->Get();
 
 				//Early out if camera is not supposed to render or if this isn't it's priority loop
@@ -267,7 +267,7 @@ namespace RN
 				IntrusiveList<SceneNode>::Member *nodeMember = firstNodeMember;
 				if(!(camera->GetFlags() & Camera::Flags::NoOcclusionCulling) && !camera->GetRenderNodes())
 				{
-					ZoneScopedN("Collect Occluders");
+					RN_PROFILE_SCOPE_N("Collect Occluders");
 					const RN::Vector3 cameraWorldPosition = camera->GetWorldPosition();
 					//Collect all occluders
 					while(nodeMember)
@@ -293,9 +293,9 @@ namespace RN
 				//Do occlusion culling if there are 1 or more occluders!
 				if(occluders.size() > 0)
 				{
-					ZoneScopedN("Collect Entities with Occlusion Culling");
+					RN_PROFILE_SCOPE_N("Collect Entities with Occlusion Culling");
 					{
-						ZoneScopedN("Find 30 biggest occluders");
+						RN_PROFILE_SCOPE_N("Find 30 biggest occluders");
 
 						//Sort occluders by approximated size on the screen
 						int clampedCount = std::min(static_cast<int>(occluders.size()), 30);
@@ -330,7 +330,7 @@ namespace RN
 					}
 
 					{
-						ZoneScopedN("Render Occluder Depth");
+						RN_PROFILE_SCOPE_N("Render Occluder Depth");
 
 						//Render occluders to depth buffer first (first test if the bounding box is visible at all)
 						for(SceneNode *node : occluders)
@@ -370,7 +370,7 @@ namespace RN
 					}
 
 					{
-						ZoneScopedN("Test Objects");
+						RN_PROFILE_SCOPE_N("Test Objects");
 
 						//Test all visible objects against depth buffer
 						while(nodeMember)
@@ -423,7 +423,7 @@ namespace RN
 				else*/
 /*				if(camera->GetFlags() & Camera::Flags::UseUIFastPath)
 				{
-					ZoneScopedN("Collect UI Entities");
+					RN_PROFILE_SCOPE_N("Collect UI Entities");
 					while(nodeMember)
 					{
 						SceneNode *node = nodeMember->Get();
@@ -448,7 +448,7 @@ namespace RN
 				}
 				else*/
 				{
-					ZoneScopedN("Collect Entities");
+					RN_PROFILE_SCOPE_N("Collect Entities");
 					if(camera->GetRenderNodes())
 					{
 						//In this case the camera was given a list of nodes to render, don't visibility check them and ignore the actual scene
@@ -473,7 +473,7 @@ namespace RN
 
 				if(camera->GetFlags() & Camera::Flags::SortFrontToBack)
 				{
-					ZoneScopedN("Sort Opaque");
+					RN_PROFILE_SCOPE_N("Sort Opaque");
 					const RN::Vector3 cameraWorldPosition = camera->GetWorldPosition();
 					std::sort(sceneNodesToRender.begin(), sceneNodesToRender.end(), [cameraWorldPosition](SceneNode *a, SceneNode *b) {
 						if(a->GetRenderPriority() == b->GetRenderPriority() && b->GetRenderPriority() < SceneNode::RenderSky)
@@ -486,7 +486,7 @@ namespace RN
 
 			/*	if(camera->GetFlags() & Camera::Flags::SortTransparentBackToFront && firstTransparentIndex < lastTransparentIndex)
 				{
-					ZoneScopedN("Sort Transparent");
+					RN_PROFILE_SCOPE_N("Sort Transparent");
 					const RN::Vector3 cameraWorldPosition = camera->GetWorldPosition();
 					std::sort(sceneNodesToRender.begin() + firstTransparentIndex, sceneNodesToRender.begin() + lastTransparentIndex + 1, [cameraWorldPosition](SceneNode *a, SceneNode *b) {
 						return a->GetWorldPosition().GetSquaredDistance(cameraWorldPosition) > b->GetWorldPosition().GetSquaredDistance(cameraWorldPosition);
@@ -496,7 +496,7 @@ namespace RN
 				//RNInfo("Number of objects: " << sceneNodesToRender.size());
 
 				renderer->SubmitCamera(camera, [&] {
-					ZoneScopedN("Submit Drawables");
+					RN_PROFILE_SCOPE_N("Submit Drawables");
 					//TODO: Add back some multithreading while not breaking the priorities.
 
 					//Submit lights first
@@ -538,7 +538,7 @@ namespace RN
 
 	void SceneQuadtree::TraverseTree(RN::Camera *camera, std::vector<SceneNode *> &sceneNodesToRender)
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		
 		RN::Camera *lodCamera = camera;
 		if(camera->GetLODCamera()) lodCamera = camera->GetLODCamera();
@@ -669,7 +669,7 @@ namespace RN
 
 	void SceneQuadtree::AddRenderNode(SceneNode *node)
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 
 		Lock();
 		
@@ -683,7 +683,7 @@ namespace RN
 
 	void SceneQuadtree::RemoveRenderNode(SceneNode *node)
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 
 		SceneQuadtreeInfo *sceneInfo = static_cast<SceneQuadtreeInfo*>(node->GetSceneInfo());
 		uint32 nodeIndex = sceneInfo->quadtreeNodeIndex;
@@ -738,7 +738,7 @@ namespace RN
 
 	void SceneQuadtree::AddNode(SceneNode *node, uint8 maxDepth)
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		//Remove from deletion list if scheduled for deletion if the scene didn't change.
 		if(node->GetSceneInfo() && node->GetSceneInfo()->GetScene() == this && node->_scheduledForRemovalFromScene)
 		{
@@ -803,7 +803,7 @@ namespace RN
 
 	void SceneQuadtree::RemoveNode(SceneNode *node)
 	{
-		ZoneScoped;
+		RN_PROFILE_SCOPE();
 		RN_ASSERT(node->GetSceneInfo() && node->GetSceneInfo()->GetScene() == this && node->_scheduledForRemovalFromScene == false, "RemoveNode() must be called on a Node owned by the scene");
 
 		_nodesToRemove->Lock();
