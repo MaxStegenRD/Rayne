@@ -17,6 +17,10 @@ target("RayneVulkan")
         add_defines("VK_USE_PLATFORM_XCB_KHR")
     end
 
+    if is_plat("windows") then
+        add_syslinks("user32", "shell32", "setupapi")
+    end
+
     on_load(function (target)
         local git = import("devel.git")
         local find_tool = import("lib.detect.find_tool")

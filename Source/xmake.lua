@@ -44,6 +44,9 @@ target("Rayne")
 	if is_plat("android") then
 		add_includedirs("../Vendor/android_native_app_glue", {public = true})
 	end
+	if is_plat("windows") then
+        add_syslinks("user32", "shell32", "setupapi")
+    end
 
 	-- Generate config header via rule (no direct function calls here)
 	add_configfiles("RayneConfig.h.in", { filename = "RayneConfig.h", pattern = "%${(.-)}", prefixdir = "generated/include" })
