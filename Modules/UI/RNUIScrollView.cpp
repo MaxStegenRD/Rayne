@@ -28,7 +28,7 @@ namespace RN
 		{
 			_pixelPerInch = pixelPerInch;
 		}
-	
+
 		void ScrollView::StopScrolling()
 		{
 			_isScrollInteraction = false;
@@ -46,7 +46,7 @@ namespace RN
 				_needsNewPreviousPosition = false;
 				return;
 			}
-			
+
 			Vector2 transformedPosition = ConvertPointFromBase(cursorPosition); //Converts to inside bounds, so reverse that effect below
 			transformedPosition.x += GetBounds().x;
 			transformedPosition.y += GetBounds().y;
@@ -75,6 +75,7 @@ namespace RN
 			if(!_wasTouched && touched)
 			{
 				_tapTimer = 0.2f;
+				_isAutoScrolling = false;
 			}
 			_tapTimer -= delta;
 
@@ -210,8 +211,81 @@ namespace RN
 				}
 			}
 
+			if(_isAutoScrolling)
+			{
+				const Rect scrollBounds = GetBounds();
+
+				const Vector2 scrollDiff = _autoScrollDstOffset - scrollBounds.GetOrigin();
+				const float scrollDistance = scrollDiff.GetLength();
+				if(scrollDistance > RN::k::EpsilonFloat)
+				{
+					Vector2 scrollDelta = scrollDiff.GetNormalized() * _scrollSpeed * delta;
+					if(scrollDelta.GetLength() >= scrollDistance)
+					{
+						SetBounds(Rect(_autoScrollDstOffset.x, _autoScrollDstOffset.y, scrollBounds.width, scrollBounds.height));
+						_isAutoScrolling = false;
+					}
+					else
+					{
+						SetBounds(Rect(scrollBounds.x + scrollDelta.x, scrollBounds.y + scrollDelta.y, scrollBounds.width, scrollBounds.height));
+					}
+				}
+			}
+
 			_wasTouched = touched;
 			_previousCursorPosition = transformedPosition;
+		}
+
+		void ScrollView::ScrollIntoView(Rect targetRect)
+		{
+			const Rect bounds = GetBounds();
+
+			Rect visibleRect = GetFrame();
+			visibleRect.x = -bounds.x;
+			visibleRect.y = -bounds.y;
+
+			Vector2 dstOffset = bounds.GetOrigin();
+			if(_scrollsHorizontal)
+			{
+				if(targetRect.x < visibleRect.x && targetRect.GetRight() < visibleRect.GetRight())
+				{
+					// scroll left
+					dstOffset.x = -targetRect.x;
+				}
+				else if(targetRect.x > visibleRect.x && targetRect.GetRight() > visibleRect.GetRight())
+				{
+					// scroll right
+					dstOffset.x = -(targetRect.GetRight() - visibleRect.width);
+				}
+			}
+
+			if(_scrollsVertical)
+			{
+				if(targetRect.y < visibleRect.y && targetRect.GetBottom() < visibleRect.GetBottom())
+				{
+					// scroll up
+					dstOffset.y = -targetRect.y;
+				}
+				else if(targetRect.y > visibleRect.y && targetRect.GetBottom() > visibleRect.GetBottom())
+				{
+					// scroll down
+					dstOffset.y = -(targetRect.GetBottom() - visibleRect.height);
+				}
+			}
+
+			if(dstOffset != bounds.GetOrigin())
+			{
+				_autoScrollDstOffset = dstOffset;
+				_isAutoScrolling = true;
+				_isScrolling = false;
+				_needsNewPreviousPosition = false;
+
+				_scrollSpeed = Vector2(2000.0f, 2000.0f); // units per second
+			}
+			else
+			{
+				_isAutoScrolling = false;
+			}
 		}
 	} // namespace UI
 } // namespace RN
