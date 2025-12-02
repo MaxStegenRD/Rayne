@@ -2108,6 +2108,13 @@ namespace RN
 				_controllerTrackingState[0].rotationGrip = Quaternion(gripLocation.pose.orientation.x, gripLocation.pose.orientation.y, gripLocation.pose.orientation.z, gripLocation.pose.orientation.w);
 			}
 
+			//Override aim position and rotation for oculus touch controllers, TODO: Remove once the runtime does this correctly again...
+			if(_controllerTrackingState[0].type == VRControllerTrackingState::Type::OculusTouchController)
+			{
+				_controllerTrackingState[0].positionAim = _controllerTrackingState[0].positionGrip + _controllerTrackingState[0].rotationGrip.GetRotatedVector(Vector3(0.000000, -0.019641, -0.050981));
+				_controllerTrackingState[0].rotationAim = _controllerTrackingState[0].rotationGrip * Quaternion(-0.5f, 0.0f, 0.0f, 0.866025f);
+			}
+
 			XrActionStateFloat handTriggerState {XR_TYPE_ACTION_STATE_FLOAT};
 			XrActionStateGetInfo handTriggerGetInfo {XR_TYPE_ACTION_STATE_GET_INFO};
 			handTriggerGetInfo.action = _internals->handLeftTriggerAction;
@@ -2265,6 +2272,13 @@ namespace RN
 			if(gripLocation.locationFlags & XR_SPACE_LOCATION_ORIENTATION_VALID_BIT)
 			{
 				_controllerTrackingState[1].rotationGrip = Quaternion(gripLocation.pose.orientation.x, gripLocation.pose.orientation.y, gripLocation.pose.orientation.z, gripLocation.pose.orientation.w);
+			}
+
+			//Override aim position and rotation for oculus touch controllers, TODO: Remove once the runtime does this correctly again...
+			if(_controllerTrackingState[1].type == VRControllerTrackingState::Type::OculusTouchController)
+			{
+				_controllerTrackingState[1].positionAim = _controllerTrackingState[1].positionGrip + _controllerTrackingState[1].rotationGrip.GetRotatedVector(Vector3(0.000000, -0.019641, -0.050981));
+				_controllerTrackingState[1].rotationAim = _controllerTrackingState[1].rotationGrip * Quaternion(-0.5f, 0.0f, 0.0f, 0.866025f);
 			}
 
 			XrActionStateFloat handTriggerState {XR_TYPE_ACTION_STATE_FLOAT};
