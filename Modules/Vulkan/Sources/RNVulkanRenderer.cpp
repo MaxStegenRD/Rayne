@@ -593,7 +593,10 @@ namespace RN
 					_internals->currentDrawableResourceIndex += 1;
 				}
 
-				vk::CmdEndRenderPass(commandBuffer);
+				if(renderPass.subpasses.size() > 0 || renderPass.drawables.size() > 0)
+				{
+					vk::CmdEndRenderPass(commandBuffer);
+				}
 
 				// Update tracked layouts for attachments to match final layouts of this render pass
 				{
