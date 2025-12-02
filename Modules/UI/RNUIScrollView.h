@@ -33,6 +33,8 @@ namespace RN
 
 			bool IsScrollInteraction() const { return _isScrollInteraction; }
 
+			UIAPI void ScrollIntoView(RN::Rect targetRect);
+
 		private:
 			bool _isScrollEnabled;
 			bool _isScrolling;
@@ -48,6 +50,9 @@ namespace RN
 			Vector2 _scrollSpeed;
 			Vector2 _previousCursorPosition;
 			bool _needsNewPreviousPosition;
+
+			bool _isAutoScrolling = false;
+			Vector2 _autoScrollDstOffset;
 
 			RNDeclareMetaAPI(ScrollView, UIAPI)
 		};
