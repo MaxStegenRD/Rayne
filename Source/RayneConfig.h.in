@@ -157,7 +157,7 @@ namespace RN
 
 namespace RN
 {
-	using Clock = std::chrono::high_resolution_clock;
+	using Clock = std::chrono::steady_clock;
 
 	RN_NORETURN RNAPI void __Assert(const char *func, const char *file, int line, const char *expression, const char *message, ...);
 }
