@@ -357,7 +357,6 @@ namespace RN
 
 		float Font::GetOffsetForNextCharacter(int currentCodepoint, int nextCodepoint)
 		{
-			Lock();
 			if(_arFont)
 			{
 				artery_font::StdArteryFont<float> *arFont = static_cast<artery_font::StdArteryFont<float> *>(_arFont);
@@ -377,7 +376,6 @@ namespace RN
 				kerning.x += foundGlyph.advance.h;
 				kerning.y += foundGlyph.advance.v;
 
-				Unlock();
 				return kerning.x;
 			}
 
@@ -386,91 +384,70 @@ namespace RN
 			float offset = advance;
 			if(nextCodepoint >= 0)
 				offset += stbtt_GetCodepointKernAdvance(_fontInfo, currentCodepoint, nextCodepoint);
-			Unlock();
 
 			return offset;
 		}
 
 		float Font::GetAscent()
 		{
-			Lock();
 			if(_arFont)
 			{
 				artery_font::StdArteryFont<float> *arFont = static_cast<artery_font::StdArteryFont<float> *>(_arFont);
 				auto variant = arFont->variants[0];
 
-				float ascent = variant.metrics.ascender;
-
-				Unlock();
-				return ascent;
+				return variant.metrics.ascender;
 			}
 
 			int ascent, descent, linegap;
 			stbtt_GetFontVMetrics(_fontInfo, &ascent, &descent, &linegap);
-			Unlock();
 
 			return ascent;
 		}
 
 		float Font::GetDescent()
 		{
-			Lock();
 			if(_arFont)
 			{
 				artery_font::StdArteryFont<float> *arFont = static_cast<artery_font::StdArteryFont<float> *>(_arFont);
 				auto variant = arFont->variants[0];
 
-				float descent = variant.metrics.descender;
-
-				Unlock();
-				return descent;
+				return variant.metrics.descender;
 			}
 
 			int ascent, descent, linegap;
 			stbtt_GetFontVMetrics(_fontInfo, &ascent, &descent, &linegap);
-			Unlock();
 
 			return descent;
 		}
 
 		float Font::GetLineOffset()
 		{
-			Lock();
 			if(_arFont)
 			{
 				artery_font::StdArteryFont<float> *arFont = static_cast<artery_font::StdArteryFont<float> *>(_arFont);
 				auto variant = arFont->variants[0];
 
-				float linegap = variant.metrics.lineHeight;
-
-				Unlock();
-				return linegap;
+				return variant.metrics.lineHeight;
 			}
 
 			int ascent, descent, linegap;
 			stbtt_GetFontVMetrics(_fontInfo, &ascent, &descent, &linegap);
-			Unlock();
 
 			return linegap;
 		}
 
 		float Font::GetHeight()
 		{
-			Lock();
 			if(_arFont)
 			{
 				artery_font::StdArteryFont<float> *arFont = static_cast<artery_font::StdArteryFont<float> *>(_arFont);
 				auto variant = arFont->variants[0];
 
-				float height = variant.metrics.ascender - variant.metrics.descender;
-
-				Unlock();
-				return height;
+				return variant.metrics.ascender - variant.metrics.descender;
 			}
 
 			int ascent, descent, linegap;
 			stbtt_GetFontVMetrics(_fontInfo, &ascent, &descent, &linegap);
-			Unlock();
 
 			return ascent - descent;
 		}
