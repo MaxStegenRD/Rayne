@@ -60,4 +60,14 @@ namespace RN
 
 		return characterSet->Autorelease();
 	}
+
+	const CharacterSet *CharacterSet::GetShareWhitespacesCharacterSet()
+	{
+		static CharacterSet *sharedWhitespacesCharacterSet = nullptr;
+		if(!sharedWhitespacesCharacterSet)
+		{
+			sharedWhitespacesCharacterSet = CharacterSet::WithWhitespaces()->Retain();
+		}
+		return sharedWhitespacesCharacterSet;
+	}
 } // namespace RN

@@ -26,6 +26,7 @@ namespace RN
 		RNAPI bool CharacterIsMember(UniChar character) const;
 
 		RNAPI static CharacterSet *WithWhitespaces();
+		RNAPI static const CharacterSet *GetShareWhitespacesCharacterSet();
 
 	private:
 		void AddCharacter(UniChar character);
