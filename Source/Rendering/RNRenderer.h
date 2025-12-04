@@ -15,6 +15,7 @@
 #include "../Math/RNMatrix.h"
 #include "../Math/RNQuaternion.h"
 #include "../Math/RNVector.h"
+#include "../Objects/RNDictionary.h"
 #include "../Objects/RNWeakStorage.h"
 #include "../Scene/RNCamera.h"
 #include "../System/RNScreen.h"
@@ -158,6 +159,8 @@ namespace RN
 	private:
 		RenderingDevice *_device;
 		RendererDescriptor *_descriptor;
+		Dictionary *_defaultShaderCache[Shader::Type::COUNT][Shader::UsageHint::COUNT];
+		Lockable _defaultShaderCacheLock;
 
 		__RNDeclareMetaInternal(Renderer)
 	};

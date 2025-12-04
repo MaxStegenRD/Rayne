@@ -25,10 +25,26 @@ namespace RN
 	{
 		RN_ASSERT(descriptor, "Descriptor mustn't be NULL");
 		RN_ASSERT(device, "Device mustn't be NULL");
+
+		for(size_t typeIndex = 0; typeIndex < Shader::Type::COUNT; typeIndex++)
+		{
+			for(size_t hintIndex = 0; hintIndex < Shader::UsageHint::COUNT; hintIndex++)
+			{
+				_defaultShaderCache[typeIndex][hintIndex] = nullptr;
+			}
+		}
 	}
 
 	Renderer::~Renderer()
-	{}
+	{
+		for(size_t typeIndex = 0; typeIndex < Shader::Type::COUNT; typeIndex++)
+		{
+			for(size_t hintIndex = 0; hintIndex < Shader::UsageHint::COUNT; hintIndex++)
+			{
+				SafeRelease(_defaultShaderCache[typeIndex][hintIndex]);
+			}
+		}
+	}
 
 	bool Renderer::IsHeadless()
 	{
@@ -101,6 +117,24 @@ namespace RN
 			realOptions->EnableMultiview();
 		}
 
+		const size_t typeIndex = static_cast<size_t>(type);
+		const size_t hintIndex = static_cast<size_t>(hint);
+		RN_ASSERT(hintIndex < Shader::UsageHint::COUNT, "Invalid shader usage hint");
+
+		{
+			LockGuard<Lockable> lock(_defaultShaderCacheLock);
+			Dictionary *cache = _defaultShaderCache[typeIndex][hintIndex];
+			if(cache)
+			{
+				Shader *cachedShader = cache->GetObjectForKey<Shader>(realOptions);
+				if(cachedShader)
+				{
+					realOptions->Release();
+					return cachedShader;
+				}
+			}
+		}
+
 		ShaderLibrary *shaderLibrary = GetDefaultShaderLibrary();
 		Shader *shader = nullptr;
 		if(type == Shader::Type::Vertex)
@@ -153,6 +187,27 @@ namespace RN
 				{
 					shader = shaderLibrary->GetShaderWithName(RNCSTR("gouraud_fragment"), realOptions);
 				}
+			}
+		}
+
+		if(shader)
+		{
+			LockGuard<Lockable> lock(_defaultShaderCacheLock);
+			Dictionary *cache = _defaultShaderCache[typeIndex][hintIndex];
+			if(!cache)
+			{
+				cache = new Dictionary();
+				_defaultShaderCache[typeIndex][hintIndex] = cache;
+			}
+
+			Shader *cachedShader = cache->GetObjectForKey<Shader>(realOptions);
+			if(cachedShader)
+			{
+				shader = cachedShader;
+			}
+			else
+			{
+				cache->SetObjectForKey(shader, realOptions);
 			}
 		}
 
