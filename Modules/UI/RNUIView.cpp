@@ -16,6 +16,111 @@ namespace RN
 {
 	namespace UI
 	{
+		namespace
+		{
+			enum class CornerType : uint8_t
+			{
+				TopLeft,
+				TopRight,
+				BottomRight,
+				BottomLeft
+			};
+
+			struct CornerCacheKey
+			{
+				float radius;
+				float thickness;
+
+				bool operator<(const CornerCacheKey &other) const
+				{
+					if(radius != other.radius) return radius < other.radius;
+					return thickness < other.thickness;
+				}
+			};
+
+			static float QuantizeValue(float value)
+			{
+				return std::round(value * 1000.0f) / 1000.0f;
+			}
+
+			static KG::TriangleMesh BuildCornerMesh(float radius, float thickness)
+			{
+				KG::TriangleMesh mesh;
+				if(radius <= RN::k::EpsilonFloat) return mesh;
+
+				float innerRadius = std::max(thickness, radius);
+
+				auto addPoint = [](KG::PathSegment &segment, const Vector2 &point)
+				{
+					KG::Vector2 value;
+					value.x = point.x;
+					value.y = point.y;
+					segment.controlPoints.push_back(value);
+				};
+
+				Vector2 outerStart(0.0f, -radius);
+				Vector2 outerControl(0.0f, 0.0f);
+				Vector2 outerEnd(radius, 0.0f);
+
+				Vector2 innerStart(thickness, -innerRadius);
+				Vector2 innerControl(thickness, -thickness);
+				Vector2 innerEnd(innerRadius, -thickness);
+
+				KG::Path path;
+				path.segments.reserve(4);
+
+				KG::PathSegment segment;
+				segment.type = KG::PathSegment::TypeBezierQuadratic;
+				addPoint(segment, outerStart);
+				addPoint(segment, outerControl);
+				addPoint(segment, outerEnd);
+				path.segments.push_back(segment);
+
+				segment = KG::PathSegment();
+				segment.type = KG::PathSegment::TypeLine;
+				addPoint(segment, outerEnd);
+				addPoint(segment, innerEnd);
+				path.segments.push_back(segment);
+
+				segment = KG::PathSegment();
+				segment.type = KG::PathSegment::TypeBezierQuadratic;
+				addPoint(segment, innerEnd);
+				addPoint(segment, innerControl);
+				addPoint(segment, innerStart);
+				path.segments.push_back(segment);
+
+				segment = KG::PathSegment();
+				segment.type = KG::PathSegment::TypeLine;
+				addPoint(segment, innerStart);
+				addPoint(segment, outerStart);
+				path.segments.push_back(segment);
+
+				KG::PathCollection paths;
+				paths.paths.push_back(path);
+
+				mesh = KG::MeshGeneratorLoopBlinn::GetMeshForPathCollection(paths);
+				return mesh;
+			}
+
+			static const KG::TriangleMesh GetCornerMesh(float radius, float thickness, bool useCache)
+			{
+				static std::map<CornerCacheKey, KG::TriangleMesh> cache;
+
+				CornerCacheKey key { QuantizeValue(radius), QuantizeValue(thickness) };
+				const auto iterator = cache.find(key);
+				if(iterator != cache.end()) return iterator->second;
+
+				if(!useCache)
+				{
+					return BuildCornerMesh(radius, thickness);
+				}
+
+				KG::TriangleMesh mesh = BuildCornerMesh(key.radius, key.thickness);
+				const auto result = cache.emplace(key, std::move(mesh));
+				return result.first->second;
+			}
+		}
+
 		RNDefineMeta(View, Entity)
 
 		View::View() :
@@ -47,6 +152,7 @@ namespace RN
 			_isCircle(false),
 			_hasOutline(false),
 			_outlineThickness(0.0f),
+			_useOutlineCache(false),
 			_uvScale(1.0f, 1.0f),
 			_mirrorU(false),
 			_mirrorV(false),
@@ -542,6 +648,17 @@ namespace RN
 			Unlock();
 		}
 
+		void View::SetOutlineCacheEnabled(bool enabled)
+		{
+			if(_useOutlineCache == enabled) return;
+			_useOutlineCache = enabled;
+		}
+
+		bool View::GetOutlineCacheEnabled() const
+		{
+			return _useOutlineCache;
+		}
+
 		void View::SetCullMode(CullMode cullMode)
 		{
 			Lock();
@@ -823,130 +940,35 @@ namespace RN
 				size_t indexCount = 30;
 				size_t vertexPositionSize = (_hasOutline ? 3 : 2);
 
-				KG::TriangleMesh outlineTriangleMesh;
-				size_t outlineTriangleMeshVertexFloatCount = 0;
-				if(_hasOutline && _outlineThickness > RN::k::EpsilonFloat)
+				const bool shouldGenerateOutlineMesh = (_hasOutline && _outlineThickness > RN::k::EpsilonFloat);
+				size_t outlineEdgeVertexCount = 0;
+				size_t outlineEdgeIndexCount = 0;
+				size_t cornerOutlineVertexCount = 0;
+				size_t cornerOutlineIndexCount = 0;
+
+				std::array<KG::TriangleMesh, 4> cornerMeshData;
+
+				if(shouldGenerateOutlineMesh)
 				{
-					KG::PathCollection paths;
-					KG::Path mypath;
-					KG::PathSegment segment;
+					outlineEdgeVertexCount = 4 * 4;
+					outlineEdgeIndexCount = 4 * 6;
 
-					//Outter outline
-					segment.type = KG::PathSegment::TypeLine;
-					segment.controlPoints.push_back({cornerRadius.x, 0.0});
-					segment.controlPoints.push_back({_frame.width - cornerRadius.y, 0.0});
-					mypath.segments.push_back(segment);
+					auto accumulateCorner = [&](size_t index, float radius)
+					{
+						if(radius <= RN::k::EpsilonFloat) return;
+						cornerMeshData[index] = GetCornerMesh(radius, _outlineThickness, _useOutlineCache);
 
-					segment.type = KG::PathSegment::TypeBezierQuadratic;
-					segment.controlPoints.clear();
-					segment.controlPoints.push_back({_frame.width - cornerRadius.y, 0.0});
-					segment.controlPoints.push_back({_frame.width, 0.0});
-					segment.controlPoints.push_back({_frame.width, -cornerRadius.y});
-					mypath.segments.push_back(segment);
+						cornerOutlineVertexCount += cornerMeshData[index].vertices.size() / 5;
+						cornerOutlineIndexCount += cornerMeshData[index].indices.size();
+					};
 
-					segment.type = KG::PathSegment::TypeLine;
-					segment.controlPoints.clear();
-					segment.controlPoints.push_back({_frame.width, -cornerRadius.y});
-					segment.controlPoints.push_back({_frame.width, -_frame.height + cornerRadius.w});
-					mypath.segments.push_back(segment);
+					accumulateCorner(0, cornerRadius.y);
+					accumulateCorner(1, cornerRadius.w);
+					accumulateCorner(2, cornerRadius.z);
+					accumulateCorner(3, cornerRadius.x);
 
-					segment.type = KG::PathSegment::TypeBezierQuadratic;
-					segment.controlPoints.clear();
-					segment.controlPoints.push_back({_frame.width, -_frame.height + cornerRadius.w});
-					segment.controlPoints.push_back({_frame.width, -_frame.height});
-					segment.controlPoints.push_back({_frame.width - cornerRadius.w, -_frame.height});
-					mypath.segments.push_back(segment);
-
-					segment.type = KG::PathSegment::TypeLine;
-					segment.controlPoints.clear();
-					segment.controlPoints.push_back({_frame.width - cornerRadius.w, -_frame.height});
-					segment.controlPoints.push_back({cornerRadius.z, -_frame.height});
-					mypath.segments.push_back(segment);
-
-					segment.type = KG::PathSegment::TypeBezierQuadratic;
-					segment.controlPoints.clear();
-					segment.controlPoints.push_back({cornerRadius.z, -_frame.height});
-					segment.controlPoints.push_back({0.0, -_frame.height});
-					segment.controlPoints.push_back({0.0, -_frame.height + cornerRadius.z});
-					mypath.segments.push_back(segment);
-
-					segment.type = KG::PathSegment::TypeLine;
-					segment.controlPoints.clear();
-					segment.controlPoints.push_back({0.0, -_frame.height + cornerRadius.z});
-					segment.controlPoints.push_back({0.0, -cornerRadius.x});
-					mypath.segments.push_back(segment);
-
-					segment.type = KG::PathSegment::TypeBezierQuadratic;
-					segment.controlPoints.clear();
-					segment.controlPoints.push_back({0.0, -cornerRadius.x});
-					segment.controlPoints.push_back({0.0, 0.0});
-					segment.controlPoints.push_back({cornerRadius.x, 0.0});
-					mypath.segments.push_back(segment);
-
-					paths.paths.push_back(mypath);
-					mypath.segments.clear();
-
-
-					//Inner outline
-					segment.type = KG::PathSegment::TypeLine;
-					segment.controlPoints.clear();
-					segment.controlPoints.push_back({std::max(_outlineThickness, cornerRadius.x), -_outlineThickness});
-					segment.controlPoints.push_back({_frame.width - std::max(_outlineThickness, cornerRadius.y), -_outlineThickness});
-					mypath.segments.push_back(segment);
-
-					segment.type = KG::PathSegment::TypeBezierQuadratic;
-					segment.controlPoints.clear();
-					segment.controlPoints.push_back({_frame.width - std::max(_outlineThickness, cornerRadius.y), -_outlineThickness});
-					segment.controlPoints.push_back({_frame.width - _outlineThickness, -_outlineThickness});
-					segment.controlPoints.push_back({_frame.width - _outlineThickness, -std::max(_outlineThickness, cornerRadius.y)});
-					mypath.segments.push_back(segment);
-
-					segment.type = KG::PathSegment::TypeLine;
-					segment.controlPoints.clear();
-					segment.controlPoints.push_back({_frame.width - _outlineThickness, -std::max(_outlineThickness, cornerRadius.y)});
-					segment.controlPoints.push_back({_frame.width - _outlineThickness, -_frame.height + std::max(_outlineThickness, cornerRadius.w)});
-					mypath.segments.push_back(segment);
-
-					segment.type = KG::PathSegment::TypeBezierQuadratic;
-					segment.controlPoints.clear();
-					segment.controlPoints.push_back({_frame.width - _outlineThickness, -_frame.height + std::max(_outlineThickness, cornerRadius.w)});
-					segment.controlPoints.push_back({_frame.width - _outlineThickness, -_frame.height + _outlineThickness});
-					segment.controlPoints.push_back({_frame.width - std::max(_outlineThickness, cornerRadius.w), -_frame.height + _outlineThickness});
-					mypath.segments.push_back(segment);
-
-					segment.type = KG::PathSegment::TypeLine;
-					segment.controlPoints.clear();
-					segment.controlPoints.push_back({_frame.width - std::max(_outlineThickness, cornerRadius.w), -_frame.height + _outlineThickness});
-					segment.controlPoints.push_back({std::max(_outlineThickness, cornerRadius.z), -_frame.height + _outlineThickness});
-					mypath.segments.push_back(segment);
-
-					segment.type = KG::PathSegment::TypeBezierQuadratic;
-					segment.controlPoints.clear();
-					segment.controlPoints.push_back({std::max(_outlineThickness, cornerRadius.z), -_frame.height + _outlineThickness});
-					segment.controlPoints.push_back({_outlineThickness, -_frame.height + _outlineThickness});
-					segment.controlPoints.push_back({_outlineThickness, -_frame.height + std::max(_outlineThickness, cornerRadius.z)});
-					mypath.segments.push_back(segment);
-
-					segment.type = KG::PathSegment::TypeLine;
-					segment.controlPoints.clear();
-					segment.controlPoints.push_back({_outlineThickness, -_frame.height + std::max(_outlineThickness, cornerRadius.z)});
-					segment.controlPoints.push_back({_outlineThickness, -std::max(_outlineThickness, cornerRadius.x)});
-					mypath.segments.push_back(segment);
-
-					segment.type = KG::PathSegment::TypeBezierQuadratic;
-					segment.controlPoints.clear();
-					segment.controlPoints.push_back({_outlineThickness, -std::max(_outlineThickness, cornerRadius.x)});
-					segment.controlPoints.push_back({_outlineThickness, -_outlineThickness});
-					segment.controlPoints.push_back({std::max(_outlineThickness, cornerRadius.x), -_outlineThickness});
-					mypath.segments.push_back(segment);
-
-					paths.paths.push_back(mypath);
-
-					outlineTriangleMesh = KG::MeshGeneratorLoopBlinn::GetMeshForPathCollection(paths);
-					outlineTriangleMeshVertexFloatCount = 5;
-
-					vertexCount += outlineTriangleMesh.vertices.size() / outlineTriangleMeshVertexFloatCount;
-					indexCount += outlineTriangleMesh.indices.size();
+					vertexCount += outlineEdgeVertexCount + cornerOutlineVertexCount;
+					indexCount += outlineEdgeIndexCount + cornerOutlineIndexCount;
 				}
 
 				float *vertexPositionBuffer = new float[vertexCount * vertexPositionSize];
@@ -1122,36 +1144,144 @@ namespace RN
 				indexBuffer[28] = 10;
 				indexBuffer[29] = 11;
 
-				if(_hasOutline && _outlineThickness > RN::k::EpsilonFloat)
+				if(shouldGenerateOutlineMesh)
 				{
-					for(size_t i = 0; i < outlineTriangleMesh.vertices.size() / outlineTriangleMeshVertexFloatCount; i++)
+					size_t outlineVertexCursor = 20;
+					size_t outlineIndexCursor = 30;
+
+					Vector4 innerCornerRadius(
+						std::max(_outlineThickness, cornerRadius.x),
+						std::max(_outlineThickness, cornerRadius.y),
+						std::max(_outlineThickness, cornerRadius.z),
+						std::max(_outlineThickness, cornerRadius.w)
+					);
+
+					auto writePositionAndUV0 = [&](size_t vertexIndex, const Vector2 &position)
 					{
-						vertexPositionBuffer[(i + 20) * vertexPositionSize + 0] = outlineTriangleMesh.vertices[i * outlineTriangleMeshVertexFloatCount + 0];
-						vertexPositionBuffer[(i + 20) * vertexPositionSize + 1] = outlineTriangleMesh.vertices[i * outlineTriangleMeshVertexFloatCount + 1];
-						vertexPositionBuffer[(i + 20) * vertexPositionSize + 2] = 1.0f;
+						vertexPositionBuffer[vertexIndex * vertexPositionSize + 0] = position.x;
+						vertexPositionBuffer[vertexIndex * vertexPositionSize + 1] = position.y;
+						vertexPositionBuffer[vertexIndex * vertexPositionSize + 2] = 1.0f;
 
-						vertexUV0Buffer[(i + 20) * 2 + 0] = vertexPositionBuffer[(i + 20) * vertexPositionSize + 0] / _frame.width * _uvScale.x + _uvOffset.x;
-						vertexUV0Buffer[(i + 20) * 2 + 1] = -vertexPositionBuffer[(i + 20) * vertexPositionSize + 1] / _frame.height * _uvScale.x + _uvOffset.x;
-						
-						if(_mirrorU)
-						{
-							vertexUV0Buffer[i * 2 + 0] = 1.0f - vertexUV0Buffer[i * 2 + 0];
-						}
-						
-						if(_mirrorV)
-						{
-							vertexUV0Buffer[i * 2 + 1] = 1.0f - vertexUV0Buffer[i * 2 + 1];
-						}
+						float u = position.x / _frame.width * _uvScale.x + _uvOffset.x;
+						float v = -position.y / _frame.height * _uvScale.y + _uvOffset.y;
+						if(_mirrorU) u = 1.0f - u;
+						if(_mirrorV) v = 1.0f - v;
 
-						vertexUV1Buffer[(i + 20) * 3 + 0] = outlineTriangleMesh.vertices[i * outlineTriangleMeshVertexFloatCount + 2];
-						vertexUV1Buffer[(i + 20) * 3 + 1] = outlineTriangleMesh.vertices[i * outlineTriangleMeshVertexFloatCount + 3];
-						vertexUV1Buffer[(i + 20) * 3 + 2] = outlineTriangleMesh.vertices[i * outlineTriangleMeshVertexFloatCount + 4];
-					}
+						vertexUV0Buffer[vertexIndex * 2 + 0] = u;
+						vertexUV0Buffer[vertexIndex * 2 + 1] = v;
+					};
 
-					for(size_t i = 0; i < outlineTriangleMesh.indices.size(); i++)
+					auto writeOutlineVertex = [&](size_t vertexIndex, const Vector2 &position)
 					{
-						indexBuffer[(i + 30)] = 20 + outlineTriangleMesh.indices[i];
-					}
+						writePositionAndUV0(vertexIndex, position);
+						vertexUV1Buffer[vertexIndex * 3 + 0] = 0.0f;
+						vertexUV1Buffer[vertexIndex * 3 + 1] = 1.0f;
+						vertexUV1Buffer[vertexIndex * 3 + 2] = 1.0f;
+					};
+
+					auto writeCornerVertex = [&](size_t vertexIndex, const Vector2 &position, const Vector3 &uv1)
+					{
+						writePositionAndUV0(vertexIndex, position);
+						vertexUV1Buffer[vertexIndex * 3 + 0] = uv1.x;
+						vertexUV1Buffer[vertexIndex * 3 + 1] = uv1.y;
+						vertexUV1Buffer[vertexIndex * 3 + 2] = uv1.z;
+					};
+
+					auto addOutlineQuad = [&](const Vector2 &outerStart, const Vector2 &outerEnd, const Vector2 &innerStart, const Vector2 &innerEnd)
+					{
+						size_t vertexOffset = outlineVertexCursor;
+						outlineVertexCursor += 4;
+
+						writeOutlineVertex(vertexOffset + 0, outerStart);
+						writeOutlineVertex(vertexOffset + 1, outerEnd);
+						writeOutlineVertex(vertexOffset + 2, innerStart);
+						writeOutlineVertex(vertexOffset + 3, innerEnd);
+
+						size_t indexOffset = outlineIndexCursor;
+						outlineIndexCursor += 6;
+						indexBuffer[indexOffset + 0] = static_cast<uint32>(vertexOffset + 0);
+						indexBuffer[indexOffset + 1] = static_cast<uint32>(vertexOffset + 1);
+						indexBuffer[indexOffset + 2] = static_cast<uint32>(vertexOffset + 2);
+						indexBuffer[indexOffset + 3] = static_cast<uint32>(vertexOffset + 1);
+						indexBuffer[indexOffset + 4] = static_cast<uint32>(vertexOffset + 2);
+						indexBuffer[indexOffset + 5] = static_cast<uint32>(vertexOffset + 3);
+					};
+
+					auto addCornerMesh = [&](CornerType type, const Vector2 &translation, float radius, const KG::TriangleMesh &cornerMesh)
+					{
+						if(cornerMesh.vertices.empty()) return;
+
+						auto rotatePosition = [&](const Vector2 &position) -> Vector2
+						{
+							switch(type)
+							{
+								case CornerType::TopLeft:
+									return position;
+								case CornerType::TopRight:
+									return Vector2(position.y, -position.x);
+								case CornerType::BottomRight:
+									return Vector2(-position.x, -position.y);
+								case CornerType::BottomLeft:
+									return Vector2(-position.y, position.x);
+							}
+							return position;
+						};
+
+						const size_t vertexCount = cornerMesh.vertices.size() / 5;
+						size_t vertexOffset = outlineVertexCursor;
+						for(size_t i = 0; i < vertexCount; i++)
+						{
+							const float x = static_cast<float>(cornerMesh.vertices[i * 5 + 0]);
+							const float y = static_cast<float>(cornerMesh.vertices[i * 5 + 1]);
+							const float g = static_cast<float>(cornerMesh.vertices[i * 5 + 2]);
+							const float f = static_cast<float>(cornerMesh.vertices[i * 5 + 3]);
+							const float s = static_cast<float>(cornerMesh.vertices[i * 5 + 4]);
+
+							Vector2 rotatedPosition = rotatePosition(Vector2(x, y)) + translation;
+							writeCornerVertex(vertexOffset + i, rotatedPosition, Vector3(g, f, s));
+						}
+
+						const uint32 baseIndex = static_cast<uint32>(vertexOffset);
+						for(uint32_t index : cornerMesh.indices)
+						{
+							indexBuffer[outlineIndexCursor++] = baseIndex + static_cast<uint32>(index);
+						}
+
+						outlineVertexCursor += vertexCount;
+					};
+
+					// Top edge
+					addOutlineQuad(
+						Vector2(cornerRadius.x, 0.0f),
+						Vector2(_frame.width - cornerRadius.y, 0.0f),
+						Vector2(innerCornerRadius.x, -_outlineThickness),
+						Vector2(_frame.width - innerCornerRadius.y, -_outlineThickness));
+
+					// Right edge
+					addOutlineQuad(
+						Vector2(_frame.width, -cornerRadius.y),
+						Vector2(_frame.width, -_frame.height + cornerRadius.w),
+						Vector2(_frame.width - _outlineThickness, -innerCornerRadius.y),
+						Vector2(_frame.width - _outlineThickness, -_frame.height + innerCornerRadius.w));
+
+					// Bottom edge
+					addOutlineQuad(
+						Vector2(_frame.width - cornerRadius.w, -_frame.height),
+						Vector2(cornerRadius.z, -_frame.height),
+						Vector2(_frame.width - innerCornerRadius.w, -_frame.height + _outlineThickness),
+						Vector2(innerCornerRadius.z, -_frame.height + _outlineThickness));
+
+					// Left edge
+					addOutlineQuad(
+						Vector2(0.0f, -_frame.height + cornerRadius.z),
+						Vector2(0.0f, -cornerRadius.x),
+						Vector2(_outlineThickness, -_frame.height + innerCornerRadius.z),
+						Vector2(_outlineThickness, -innerCornerRadius.x));
+
+					addCornerMesh(CornerType::TopRight, Vector2(_frame.width, 0.0f), cornerRadius.y, cornerMeshData[0]);
+					addCornerMesh(CornerType::BottomRight, Vector2(_frame.width, -_frame.height), cornerRadius.w, cornerMeshData[1]);
+					addCornerMesh(CornerType::BottomLeft, Vector2(0.0f, -_frame.height), cornerRadius.z, cornerMeshData[2]);
+					addCornerMesh(CornerType::TopLeft, Vector2(0.0f, 0.0f), cornerRadius.x, cornerMeshData[3]);
 				}
 
 				std::vector<Mesh::VertexAttribute> meshVertexAttributes;

@@ -68,6 +68,8 @@ namespace RN
 			UIAPI virtual void SetOutline(Color color, float thickness);
 			UIAPI void SetMirrorUV(bool mirrorU, bool mirrorV);
 			UIAPI void SetUVOffsetAndScale(RN::Vector2 offset, RN::Vector2 scale);
+			UIAPI void SetOutlineCacheEnabled(bool enabled);
+			UIAPI bool GetOutlineCacheEnabled() const;
 
 			UIAPI virtual void Draw(bool isParentHidden);
 
@@ -150,6 +152,7 @@ namespace RN
 			Color _backgroundColor[4];
 			bool _hasBackgroundGradient;
 			float _outlineThickness;
+			bool _useOutlineCache;
 
 			View *_superview;
 			Array *_subviews;
