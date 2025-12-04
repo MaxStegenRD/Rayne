@@ -312,15 +312,15 @@ namespace RN
 			__RNDeclareMetaInternal(Signature)
 		};
 
-		enum class Type
-		{
+		RN_OPTIONS(Type, uint32,
 			Fragment,
 			Vertex,
-			Compute
-		};
+			Compute,
 
-		enum UsageHint
-		{
+			COUNT
+		);
+
+		RN_OPTIONS(UsageHint, uint32,
 			Default,
 			Multiview,
 			Depth,
@@ -330,7 +330,7 @@ namespace RN
 			Instancing,
 
 			COUNT
-		};
+		);
 
 		RNAPI virtual const String *GetName() const = 0;
 
