@@ -295,7 +295,7 @@ namespace RN
 			int characterCounter = 0;
 
 			int64 lastWhiteSpaceIndex = -1;
-			CharacterSet *whiteSpaces = CharacterSet::WithWhitespaces();
+			const CharacterSet *whiteSpaces = CharacterSet::GetShareWhitespacesCharacterSet();
 			for(int64 i = 0; i < _attributedText->GetLength(); i++)
 			{
 				int currentCodepoint = _attributedText->GetCharacterAtIndex(i);
@@ -528,7 +528,7 @@ namespace RN
 			int characterCounter = 0;
 
 			int64 lastWhiteSpaceIndex = -1;
-			CharacterSet *whiteSpaces = CharacterSet::WithWhitespaces();
+			const CharacterSet *whiteSpaces = CharacterSet::GetShareWhitespacesCharacterSet();
 			for(int64 i = 0; i < _attributedText->GetLength(); i++)
 			{
 				int currentCodepoint = _attributedText->GetCharacterAtIndex(i);
@@ -761,7 +761,7 @@ namespace RN
 			float tempMaxLineOffset = 0.0f;
 
 			int lastWhiteSpaceIndex = -1;
-			CharacterSet *whiteSpaces = CharacterSet::WithWhitespaces();
+			const CharacterSet *whiteSpaces = CharacterSet::GetShareWhitespacesCharacterSet();
 			for(int64 i = 0; i < _attributedText->GetLength(); i++)
 			{
 				int currentCodepoint = _attributedText->GetCharacterAtIndex(i);
@@ -949,7 +949,7 @@ namespace RN
 			float tempMaxLineOffset = 0.0f;
 
 			int lastWhiteSpaceIndex = -1;
-			CharacterSet *whiteSpaces = CharacterSet::WithWhitespaces();
+			const CharacterSet *whiteSpaces = CharacterSet::GetShareWhitespacesCharacterSet();
 			for(int64 i = 0; i < _attributedText->GetLength(); i++)
 			{
 				int currentCodepoint = _attributedText->GetCharacterAtIndex(i);
