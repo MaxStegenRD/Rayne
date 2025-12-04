@@ -269,7 +269,8 @@ namespace RN
 				return result;
 			}
 
-			Array *spacings = (new Array(_attributedText->GetLength()))->Autorelease();
+			std::vector<float> spacings;
+			spacings.reserve(_attributedText->GetLength());
 
 			std::vector<int64> linebreaks;
 			std::vector<float> linewidth;
@@ -382,8 +383,9 @@ namespace RN
 
 						if(lastWhiteSpaceIndex != i)
 						{
-							currentWidth -= spacings->GetObjectAtIndex<RN::Number>(lastWhiteSpaceIndex)->GetFloatValue();
-							spacings->ReplaceObjectAtIndex(lastWhiteSpaceIndex, RN::Number::WithFloat(0.0f));
+							const size_t spacingIndex = static_cast<size_t>(lastWhiteSpaceIndex);
+							currentWidth -= spacings[spacingIndex];
+							spacings[spacingIndex] = 0.0f;
 						}
 						else
 						{
@@ -409,7 +411,7 @@ namespace RN
 				}
 
 				currentWidth += offset;
-				spacings->AddObject(RN::Number::WithFloat(offset));
+				spacings.push_back(offset);
 			}
 
 			if(!linebreaks.empty() && (maxAscent == 0.0f && maxDescent == 0.0f && currentWidth == 0.0f))
@@ -458,7 +460,7 @@ namespace RN
 			for(int index = 0; index <= characterCounter; index++)
 			{
 				bool isLinebreak = (linebreakIndex < linebreaks.size() && linebreaks[linebreakIndex] == index);
-				if(index > 0) characterPositionX += spacings->GetObjectAtIndex<RN::Number>(index - 1)->GetFloatValue();
+				if(index > 0) characterPositionX += spacings[index - 1];
 
 				const TextAttributes *currentAttributes = _attributedText->GetAttributesAtIndex(index);
 				if(!currentAttributes) currentAttributes = &_defaultAttributes;
@@ -737,8 +739,6 @@ namespace RN
 				return Vector2();
 			}
 
-			Array *spacings = (new Array(_attributedText->GetLength()))->Autorelease();
-
 			std::vector<int> linebreaks;
 			std::vector<float> lineascent;
 			std::vector<float> linedescent;
@@ -746,6 +746,7 @@ namespace RN
 
 			float currentWidth = 0.0f;
 			float lastWordWidth = 0.0f;
+			float lastWhitespaceAdvance = 0.0f;
 
 			float totalHeight = 0.0f;
 			float maxWidth = 0.0f;
@@ -788,6 +789,7 @@ namespace RN
 				if(whiteSpaces->CharacterIsMember(currentCodepoint))
 				{
 					lastWhiteSpaceIndex = i;
+					lastWhitespaceAdvance = offset;
 
 					lastWordWidth = currentWidth;
 
@@ -847,8 +849,7 @@ namespace RN
 
 						if(lastWhiteSpaceIndex != i)
 						{
-							currentWidth -= spacings->GetObjectAtIndex<RN::Number>(lastWhiteSpaceIndex)->GetFloatValue();
-							spacings->ReplaceObjectAtIndex(lastWhiteSpaceIndex, RN::Number::WithFloat(0.0f));
+							currentWidth -= lastWhitespaceAdvance;
 						}
 						else
 						{
@@ -874,7 +875,6 @@ namespace RN
 				}
 
 				currentWidth += offset;
-				spacings->AddObject(RN::Number::WithFloat(offset));
 			}
 
 			if(!linebreaks.empty() && (maxAscent == 0.0f && maxDescent == 0.0f && currentWidth == 0.0f))
@@ -925,7 +925,8 @@ namespace RN
 			uint32 numberOfIndices = 0;
 
 			Array *characters = (new Array(_attributedText->GetLength()))->Autorelease();
-			Array *spacings = (new Array(_attributedText->GetLength()))->Autorelease();
+			std::vector<float> spacings;
+			spacings.reserve(_attributedText->GetLength());
 
 			std::vector<int> linebreaks;
 			std::vector<float> linewidth;
@@ -1047,8 +1048,9 @@ namespace RN
 
 						if(lastWhiteSpaceIndex != i)
 						{
-							currentWidth -= spacings->GetObjectAtIndex<RN::Number>(lastWhiteSpaceIndex)->GetFloatValue();
-							spacings->ReplaceObjectAtIndex(lastWhiteSpaceIndex, RN::Number::WithFloat(0.0f));
+							const size_t spacingIndex = static_cast<size_t>(lastWhiteSpaceIndex);
+							currentWidth -= spacings[spacingIndex];
+							spacings[spacingIndex] = 0.0f;
 						}
 						else
 						{
@@ -1074,7 +1076,7 @@ namespace RN
 				}
 
 				currentWidth += offset;
-				spacings->AddObject(RN::Number::WithFloat(offset));
+				spacings.push_back(offset);
 			}
 
 			if(numberOfIndices < 3)
@@ -1146,7 +1148,7 @@ namespace RN
 
 			characters->Enumerate<RN::Mesh>([&](RN::Mesh *mesh, size_t index, bool &stop) {
 				bool isLinebreak = (linebreakIndex < linebreaks.size() && linebreaks[linebreakIndex] == index);
-				if(!isLinebreak && index > 0) characterPositionX += spacings->GetObjectAtIndex<RN::Number>(index - 1)->GetFloatValue();
+				if(!isLinebreak && index > 0) characterPositionX += spacings[index - 1];
 
 				const TextAttributes *currentAttributes = _attributedText->GetAttributesAtIndex(index);
 				if(!currentAttributes) currentAttributes = &_defaultAttributes;
