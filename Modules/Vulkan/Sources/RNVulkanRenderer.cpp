@@ -2286,8 +2286,9 @@ namespace RN
 				{
 					stepSize = renderPass.instanceSteps[stepSizeIndex++];
 
+					const size_t drawableResourceIndex = _internals->currentDrawableResourceIndex;
 					VulkanDrawable *drawable = renderPass.drawables[i];
-					VulkanDrawable::CameraSpecific &cameraSpecific = drawable->_cameraSpecifics[_internals->currentDrawableResourceIndex];
+					VulkanDrawable::CameraSpecific &cameraSpecific = drawable->_cameraSpecifics[drawableResourceIndex];
 
 					const VulkanPipelineState *pipelineState = cameraSpecific.pipelineState;
 
@@ -2298,16 +2299,17 @@ namespace RN
 					{
 						//These are not actually part of the descripter sets, but filling them with data here anyway
 						Shader::ArgumentBuffer *argument = uniformState->instanceAttributesArgumentBuffer;
+						const size_t maxInstanceCount = argument->GetMaxInstanceCount();
+						const size_t instanceCount = (maxInstanceCount == 0)? stepSize : std::min(stepSize, maxInstanceCount);
 
 						//Setup per instance uniforms as vertex data for all instances that are part of this draw call
-						for(size_t instance = 0; instance < stepSize; instance += 1)
+						for(size_t instance = 0; instance < instanceCount; instance += 1)
 						{
-							if(instance > 0 && argument->GetMaxInstanceCount() == 1) break;
-
-							VulkanUniformState *instanceUniformState = renderPass.drawables[i + instance]->_cameraSpecifics[_internals->currentDrawableResourceIndex].uniformState;
+							VulkanDrawable *instanceDrawable = renderPass.drawables[i + instance];
+							VulkanUniformState *instanceUniformState = instanceDrawable->_cameraSpecifics[drawableResourceIndex].uniformState;
 							VulkanDynamicBufferReference *instanceAttributesBuffer = instanceUniformState->instanceAttributesBuffer;
 							UpdateDynamicBufferReference(instanceAttributesBuffer, instance == 0);
-							FillUniformBuffer(argument, instanceAttributesBuffer, renderPass.drawables[i + instance]);
+							FillUniformBuffer(argument, instanceAttributesBuffer, instanceDrawable);
 						}
 					}
 
@@ -2315,15 +2317,16 @@ namespace RN
 					for(size_t bufferIndex = 0; bufferIndex < uniformState->vertexConstantBuffers.size(); bufferIndex += 1)
 					{
 						Shader::ArgumentBuffer *argument = uniformState->constantBufferToArgumentMapping[counter++];
+						const size_t maxInstanceCount = argument->GetMaxInstanceCount();
+						const size_t instanceCount = (maxInstanceCount == 0)? stepSize : std::min(stepSize, maxInstanceCount);
 
 						//Setup uniforms for all instances that are part of this draw call
-						for(size_t instance = 0; instance < stepSize; instance += 1)
+						for(size_t instance = 0; instance < instanceCount; instance += 1)
 						{
-							if(instance > 0 && argument->GetMaxInstanceCount() == 1) break;
-
-							VulkanUniformState *instanceUniformState = renderPass.drawables[i + instance]->_cameraSpecifics[_internals->currentDrawableResourceIndex].uniformState;
+							VulkanDrawable *instanceDrawable = renderPass.drawables[i + instance];
+							VulkanUniformState *instanceUniformState = instanceDrawable->_cameraSpecifics[drawableResourceIndex].uniformState;
 							UpdateDynamicBufferReference(instanceUniformState->vertexConstantBuffers[bufferIndex], instance == 0);
-							FillUniformBuffer(argument, instanceUniformState->vertexConstantBuffers[bufferIndex], renderPass.drawables[i + instance]);
+							FillUniformBuffer(argument, instanceUniformState->vertexConstantBuffers[bufferIndex], instanceDrawable);
 						}
 
 						VulkanDynamicBufferReference *constantBuffer = uniformState->vertexConstantBuffers[bufferIndex];
@@ -2332,7 +2335,7 @@ namespace RN
 						VkDescriptorBufferInfo constantBufferDescriptorInfo = {};
 						constantBufferDescriptorInfo.buffer = gpuBuffer->Downcast<VulkanGPUBuffer>()->GetVulkanBuffer();
 						constantBufferDescriptorInfo.offset = constantBuffer->offset;
-						constantBufferDescriptorInfo.range = constantBuffer->size * std::min(stepSize, argument->GetMaxInstanceCount());
+						constantBufferDescriptorInfo.range = constantBuffer->size * instanceCount;
 						constantBufferDescriptorInfoArray.push_back(constantBufferDescriptorInfo);
 
 						VkWriteDescriptorSet writeConstantDescriptorSet = {};
@@ -2350,17 +2353,18 @@ namespace RN
 					for(size_t bufferIndex = 0; bufferIndex < uniformState->fragmentConstantBuffers.size(); bufferIndex += 1)
 					{
 						Shader::ArgumentBuffer *argument = uniformState->constantBufferToArgumentMapping[counter++];
+						const size_t maxInstanceCount = argument->GetMaxInstanceCount();
+						const size_t instanceCount = (maxInstanceCount == 0)? stepSize : std::min(stepSize, maxInstanceCount);
 
 						//Setup uniforms for all instances that are part of this draw call
-						for(size_t instance = 0; instance < stepSize; instance += 1)
+						for(size_t instance = 0; instance < instanceCount; instance += 1)
 						{
-							if(instance > 0 && argument->GetMaxInstanceCount() == 1) break;
-
-							VulkanUniformState *instanceUniformState = renderPass.drawables[i + instance]->_cameraSpecifics[_internals->currentDrawableResourceIndex].uniformState;
+							VulkanDrawable *instanceDrawable = renderPass.drawables[i + instance];
+							VulkanUniformState *instanceUniformState = instanceDrawable->_cameraSpecifics[drawableResourceIndex].uniformState;
 							UpdateDynamicBufferReference(
 									instanceUniformState->fragmentConstantBuffers[bufferIndex],
 									instance == 0);
-							FillUniformBuffer(argument,  instanceUniformState->fragmentConstantBuffers[bufferIndex], renderPass.drawables[i + instance]);
+							FillUniformBuffer(argument, instanceUniformState->fragmentConstantBuffers[bufferIndex], instanceDrawable);
 						}
 
 						VulkanDynamicBufferReference *constantBuffer = uniformState->fragmentConstantBuffers[bufferIndex];
@@ -2369,7 +2373,7 @@ namespace RN
 						VkDescriptorBufferInfo constantBufferDescriptorInfo = {};
 						constantBufferDescriptorInfo.buffer = gpuBuffer->Downcast<VulkanGPUBuffer>()->GetVulkanBuffer();
 						constantBufferDescriptorInfo.offset = constantBuffer->offset;
-						constantBufferDescriptorInfo.range = constantBuffer->size * std::min(stepSize, argument->GetMaxInstanceCount());
+						constantBufferDescriptorInfo.range = constantBuffer->size * instanceCount;
 						constantBufferDescriptorInfoArray.push_back(constantBufferDescriptorInfo);
 
 						VkWriteDescriptorSet writeConstantDescriptorSet = {};
