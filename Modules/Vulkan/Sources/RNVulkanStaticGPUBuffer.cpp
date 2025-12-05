@@ -104,7 +104,7 @@ namespace RN
 			}
 		}
 
-		void *mappedBuffer = _mappedBuffer;
+		mappedBuffer = _mappedBuffer;
 		Unlock();
 
 		return mappedBuffer;
