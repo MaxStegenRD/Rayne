@@ -74,6 +74,10 @@ namespace RN
 
 	void *VulkanStaticGPUBuffer::GetBuffer()
 	{
+		//No need to lock or do anything else if the buffer is already mapped
+		void *mappedBuffer = _mappedBuffer.load(std::memory_order_acquire);
+		if(mappedBuffer) return mappedBuffer;
+
 		Lock();
 		if(!_mappedBuffer)
 		{
