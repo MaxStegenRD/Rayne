@@ -2266,6 +2266,9 @@ namespace RN
 				std::vector<uint32> subpassInputColorIndices;
 				bool subpassReadsDepthStencilAttachment = false;
 				VulkanFramebuffer *rootFramebuffer = rootRenderPass.framebuffer;
+				std::vector<VkImageView> subpassInputColorViews;
+				VkImageView subpassInputDepthView = VK_NULL_HANDLE;
+
 				if(rootFramebuffer && rootRenderPass.subpasses.size() > 0)
 				{
 					RenderPass *subpassRP = renderPass.renderPass;
@@ -2278,8 +2281,41 @@ namespace RN
 						}
 					}
 					subpassReadsDepthStencilAttachment = subpassRP->GetSubpassReadDepthStencilAttachment();
+
+					if(subpassInputColorIndices.size() > 0)
+					{
+						subpassInputColorViews.reserve(subpassInputColorIndices.size());
+						for(uint32 colorIndex : subpassInputColorIndices)
+						{
+							Texture *texture = rootFramebuffer->GetColorTexture(colorIndex);
+							VulkanTexture *framebufferTexture = texture ? texture->Downcast<VulkanTexture>() : nullptr;
+							subpassInputColorViews.push_back(framebufferTexture ? framebufferTexture->_imageView : VK_NULL_HANDLE);
+						}
+					}
+
+					if(subpassReadsDepthStencilAttachment)
+					{
+						Texture *depthTexture = rootFramebuffer->GetDepthStencilTexture();
+						VulkanTexture *depthFramebufferTexture = depthTexture ? depthTexture->Downcast<VulkanTexture>() : nullptr;
+						subpassInputDepthView = depthFramebufferTexture ? depthFramebufferTexture->_imageView : VK_NULL_HANDLE;
+					}
 				}
 				
+				VkImageView previousPassColorView = VK_NULL_HANDLE;
+				if(rootRenderPass.previousRenderPass && rootRenderPass.previousRenderPass->GetFramebuffer())
+				{
+					VulkanFramebuffer *previousFramebuffer = rootRenderPass.previousRenderPass->GetFramebuffer()->Downcast<VulkanFramebuffer>();
+					if(previousFramebuffer)
+					{
+						Texture *previousColorTexture = previousFramebuffer->GetColorTexture();
+						if(previousColorTexture)
+						{
+							VulkanTexture *previousColorVulkanTexture = previousColorTexture->Downcast<VulkanTexture>();
+							previousPassColorView = previousColorVulkanTexture ? previousColorVulkanTexture->_imageView : VK_NULL_HANDLE;
+						}
+					}
+				}
+
 				size_t stepSize = 0;
 				uint32 stepSizeIndex = 0;
 				for(size_t i = 0; i < renderPass.drawables.size(); i+= stepSize)
@@ -2483,43 +2519,28 @@ namespace RN
 							materialTextureIndex = isDepthInput ? materialTextureIndex - 128 : materialTextureIndex;
 
 							VkImageView imageView = VK_NULL_HANDLE;
-							VulkanFramebuffer *framebuffer = rootRenderPass.framebuffer;
 
 							if(isDepthInput)
 							{
 								// Ensure this subpass reads depth
-								if(!subpassReadsDepthStencilAttachment)
+								if(!subpassReadsDepthStencilAttachment || !subpassInputDepthView)
 								{
 									stop = true;
 									return;
 								}
 
-								Texture *texture = framebuffer->GetDepthStencilTexture();
-								VulkanTexture *framebufferTexture = texture ? texture->Downcast<VulkanTexture>() : nullptr;
-								imageView = framebufferTexture ? framebufferTexture->_imageView : VK_NULL_HANDLE;
-								if(!framebufferTexture)
+								imageView = subpassInputDepthView;
+							}
+							else
+							{
+								// Map color input ordinal to actual color attachment index via cached views
+								if(materialTextureIndex >= subpassInputColorViews.size())
 								{
 									stop = true;
 									return;
 								}
-							}
-							else
-							{
-								// Map color input ordinal to actual color attachment index via subpass mapping
-								uint32 mappedColorIndex = materialTextureIndex;
-								if(subpassInputColorIndices.size() > 0)
-								{
-									if(materialTextureIndex >= subpassInputColorIndices.size())
-									{
-										stop = true;
-										return;
-									}
-									mappedColorIndex = subpassInputColorIndices[materialTextureIndex];
-								}
-								Texture *texture = framebuffer->GetColorTexture(mappedColorIndex);
-								VulkanTexture *framebufferTexture = texture ? texture->Downcast<VulkanTexture>() : nullptr;
-								imageView = framebufferTexture ? framebufferTexture->_imageView : VK_NULL_HANDLE;
-								if(!framebufferTexture)
+								imageView = subpassInputColorViews[materialTextureIndex];
+								if(imageView == VK_NULL_HANDLE)
 								{
 									stop = true;
 									return;
@@ -2551,19 +2572,13 @@ namespace RN
 								const VulkanTexture *materialTexture = rootRenderPass.directionalShadowDepthTexture;
 								imageView = materialTexture->_imageView;
 							}
-							else if(argument->GetMaterialTextureIndex() == Shader::ArgumentTexture::IndexFramebufferTexture && rootRenderPass.previousRenderPass && rootRenderPass.previousRenderPass->GetFramebuffer())
+							else if(argument->GetMaterialTextureIndex() == Shader::ArgumentTexture::IndexFramebufferTexture)
 							{
-								VulkanFramebuffer *framebuffer = rootRenderPass.previousRenderPass->GetFramebuffer()->Downcast<VulkanFramebuffer>();
-								Texture *texture = framebuffer->GetColorTexture();
-								if(texture)
-								{
-									const VulkanTexture *framebufferTexture = texture->Downcast<VulkanTexture>();
-									imageView = framebufferTexture->_imageView;
-								}
-								else
+								if(!previousPassColorView)
 								{
 									return;
 								}
+								imageView = previousPassColorView;
 							}
 							else if(argument->GetMaterialTextureIndex() >= drawable->material->GetTextures()->GetCount())
 							{
