@@ -1417,6 +1417,7 @@ namespace RN
 				pass.currentPipelineState = cameraSpecific.pipelineState;
 				pass.currentInstanceDrawable = drawable;
 				pass.instanceSteps.push_back(1);
+				_frameStatistics.back().numberOfDrawCalls += 1;
 			}
 
 			_frameStatistics.back().numberOfDrawables += 1;

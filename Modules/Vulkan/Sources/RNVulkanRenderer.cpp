@@ -2135,6 +2135,7 @@ namespace RN
 				renderSubPass.currentPipelineState = cameraSpecifics.pipelineState;
 				renderSubPass.currentInstanceDrawable = drawable;
 				renderSubPass.instanceSteps.push_back(1); //Add new entry if the rendering state changed
+				_frameStatistics.back().numberOfDrawCalls += 1;
 
 				//This stuff should only be needed per draw call and not for any additional instances... hopefully
 				cameraSpecifics.descriptorSet->Advance(_currentFrame, _completedFrame);
