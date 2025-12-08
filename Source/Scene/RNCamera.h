@@ -45,7 +45,6 @@ namespace RN
 				   Hidden = (1 << 22),
 
 				   UseFog = (1 << 24),
-				   UseClipPlanes = (1 << 25),
 				   UseSimpleCulling = (1 << 26),
 				   UseUIFastPath = (1 << 27),
 
