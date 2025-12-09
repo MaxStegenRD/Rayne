@@ -375,6 +375,7 @@ namespace RN
 
 		attachment->_node = nullptr;
 		_attachments->RemoveObject(attachment);
+		attachment->__DidUpdate(ChangeSet::Attachments); //Usually gets called by the SceneNode::DidUpdate() below, but not if removed from the attachments
 
 		DidUpdate(ChangeSet::Attachments);
 	}
