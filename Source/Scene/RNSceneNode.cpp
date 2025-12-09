@@ -205,6 +205,8 @@ namespace RN
 
 	void SceneNode::SetRenderPriority(int32 priority)
 	{
+		if(_renderPriority == priority) return;
+		
 		WillUpdate(ChangeSet::RenderPriority);
 		_renderPriority = priority;
 
