@@ -85,7 +85,12 @@ namespace RN
 		_children->Release();
 
 		if(_attachments)
+		{
+			_attachments->Enumerate<SceneNodeAttachment>([](SceneNodeAttachment *attachment, size_t index, bool &stop) {
+				attachment->_node = nullptr;
+			});
 			_attachments->Release();
+		}
 	}
 
 
