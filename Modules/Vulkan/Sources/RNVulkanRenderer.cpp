@@ -392,34 +392,6 @@ namespace RN
 		//SubmitCamera is called for each camera and creates lists of drawables per camera
 		function();
 
-		for(VulkanRenderPass &renderPass : _internals->renderPasses)
-		{
-			renderPass.subpassSignature = 0;
-			if(renderPass.subpasses.size() > 0)
-			{
-				// Compute subpass signature early for cache comparison
-				uint32 colorAttachmentCount = renderPass.framebuffer->GetColorTargetCount();
-				bool hasDepth = (renderPass.framebuffer->_depthStencilTarget != nullptr);
-		
-				uint64 signature = 0;
-				for(size_t si = 0; si < renderPass.subpasses.size(); si++)
-				{
-					RenderPass *rp = renderPass.subpasses[si].renderPass;
-					for(uint32 ci = 0; ci < colorAttachmentCount; ci++)
-					{
-						if(rp->GetSubpassWritesColorAttachment(ci)) signature ^= (0x9e3779b97f4a7c15ull + ((static_cast<uint64>(si) << 32) ^ ci));
-						if(rp->GetSubpassReadColorAttachment(ci)) signature ^= (0x85ebca6b + ((static_cast<uint64>(si) << 33) ^ ci));
-					}
-					if(hasDepth)
-					{
-						if(rp->GetSubpassWritesDepthStencil()) signature ^= (0x27d4eb2f + (static_cast<uint64>(si) << 1));
-						else if(rp->GetSubpassReadDepthStencilAttachment()) signature ^= (0x165667b1 + (static_cast<uint64>(si) << 1));
-					}
-				}
-				renderPass.subpassSignature = signature ^ (static_cast<uint64>(renderPass.subpasses.size()) * 0x9e3779b97f4a7c15ull);
-			}
-		}
-
 		_dynamicBufferPool->Update(this, _currentFrame, _completedFrame);
 		UpdateDescriptorSets();
 
@@ -982,6 +954,30 @@ namespace RN
 			for(VulkanRenderPass &subpass : renderpass.subpasses)
 			{
 				subpass.cameraViewport = renderpass.cameraViewport;
+			}
+
+			renderpass.subpassSignature = 0;
+			if(renderpass.subpasses.size() > 0)
+			{
+				uint32 colorAttachmentCount = renderpass.framebuffer->GetColorTargetCount();
+				bool hasDepth = (renderpass.framebuffer->_depthStencilTarget != nullptr);
+
+				uint64 signature = 0;
+				for(size_t si = 0; si < renderpass.subpasses.size(); si++)
+				{
+					RenderPass *rp = renderpass.subpasses[si].renderPass;
+					for(uint32 ci = 0; ci < colorAttachmentCount; ci++)
+					{
+						if(rp->GetSubpassWritesColorAttachment(ci)) signature ^= (0x9e3779b97f4a7c15ull + ((static_cast<uint64>(si) << 32) ^ ci));
+						if(rp->GetSubpassReadColorAttachment(ci)) signature ^= (0x85ebca6b + ((static_cast<uint64>(si) << 33) ^ ci));
+					}
+					if(hasDepth)
+					{
+						if(rp->GetSubpassWritesDepthStencil()) signature ^= (0x27d4eb2f + (static_cast<uint64>(si) << 1));
+						else if(rp->GetSubpassReadDepthStencilAttachment()) signature ^= (0x165667b1 + (static_cast<uint64>(si) << 1));
+					}
+				}
+				renderpass.subpassSignature = signature ^ (static_cast<uint64>(renderpass.subpasses.size()) * 0x9e3779b97f4a7c15ull);
 			}
 		}
 
@@ -2040,6 +2036,7 @@ namespace RN
 		warmupRenderPass.resolveFramebuffer = resolveFramebuffer;
 		warmupRenderPass.shaderHint = renderPass->GetShaderHint();
 		warmupRenderPass.overrideMaterial = renderPass->GetOverrideMaterial();
+		warmupRenderPass.subpassSignature = 0; // no subpasses in warmup
 		warmupRenderPass.multiviewLayer = 0;
 		warmupRenderPass.subpasses.clear();
 
