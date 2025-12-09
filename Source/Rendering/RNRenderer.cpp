@@ -75,32 +75,40 @@ namespace RN
 		{
 			_frameStatisticsTimer = currentTime;
 
-			RNInfo("------------------");
-			RNInfo("Number of Cameras: " << _frameStatistics.size());
+			const size_t cameraCount = _frameStatistics.size();
 			uint64 totalVertices = 0;
 			uint64 totalTriangles = 0;
 			uint64 totalDrawables = 0;
 			uint64 totalDrawCalls = 0;
-			for(int i = 0; i < _frameStatistics.size(); i++)
+
+			for(size_t i = 0; i < cameraCount; i++)
 			{
 				totalVertices += _frameStatistics[i].numberOfVertices;
 				totalTriangles += (_frameStatistics[i].numberOfIndices / 3);
 				totalDrawables += _frameStatistics[i].numberOfDrawables;
 				totalDrawCalls += _frameStatistics[i].numberOfDrawCalls;
 			}
-			RNInfo("Total Number of Vertices: " << totalVertices);
-			RNInfo("Total Number of Triangles: " << totalTriangles);
-			RNInfo("Total Number of Drawables: " << totalDrawables);
-			RNInfo("Total Number of Draw Calls: " << totalDrawCalls);
-			for(int i = 0; i < _frameStatistics.size(); i++)
+
+			std::ostringstream statsStream;
+			statsStream << "\nFrame stats | cameras=" << cameraCount
+				<< " verts=" << totalVertices
+				<< " tris=" << totalTriangles
+				<< " drawables=" << totalDrawables
+				<< " draws=" << totalDrawCalls;
+
+			if(cameraCount > 1)
 			{
-				RNInfo("--- " << i << " ---");
-				RNInfo("- Number of Vertices: " << _frameStatistics[i].numberOfVertices);
-				RNInfo("- Number of Triangles: " << (_frameStatistics[i].numberOfIndices / 3));
-				RNInfo("- Number of Drawables: " << _frameStatistics[i].numberOfDrawables);
-				RNInfo("- Number of Draw Calls: " << _frameStatistics[i].numberOfDrawCalls);
+				for(size_t i = 0; i < cameraCount; i++)
+				{
+					statsStream << "\n  cam " << i
+						<< " | verts=" << _frameStatistics[i].numberOfVertices
+						<< " tris=" << (_frameStatistics[i].numberOfIndices / 3)
+						<< " drawables=" << _frameStatistics[i].numberOfDrawables
+						<< " draws=" << _frameStatistics[i].numberOfDrawCalls;
+				}
 			}
-			RNInfo("------------------");
+
+			RNInfo(statsStream.str());
 		}
 	}
 
