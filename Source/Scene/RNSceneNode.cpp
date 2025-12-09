@@ -374,8 +374,10 @@ namespace RN
 		WillUpdate(ChangeSet::Attachments);
 
 		attachment->_node = nullptr;
+		attachment->Retain();
 		_attachments->RemoveObject(attachment);
 		attachment->__DidUpdate(ChangeSet::Attachments); //Usually gets called by the SceneNode::DidUpdate() below, but not if removed from the attachments
+		attachment->Release();
 
 		DidUpdate(ChangeSet::Attachments);
 	}
