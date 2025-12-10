@@ -53,6 +53,20 @@ namespace RN
 		_shape->Release();
 	}
 
+	void PhysXStaticBody::ApplyPose()
+	{
+		if(!GetParent()) return;
+
+		if(_actor)
+		{
+			Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
+			Vector3 position = GetWorldPosition() - positionOffset;
+			Quaternion rotation = GetWorldRotation() * _rotationOffset;
+
+			_actor->setGlobalPose(physx::PxTransform(physx::PxVec3(position.x, position.y, position.z), physx::PxQuat(rotation.x, rotation.y, rotation.z, rotation.w)));
+		}
+	}
+
 
 	PhysXStaticBody *PhysXStaticBody::WithShape(PhysXShape *shape)
 	{
@@ -94,23 +108,15 @@ namespace RN
 
 		if(changeSet & SceneNode::ChangeSet::Position)
 		{
-			RN::Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
-			Vector3 position = GetWorldPosition() - positionOffset;
-			Quaternion rotation = GetWorldRotation() * _rotationOffset;
-			PhysXWorld::GetSharedInstance()->Lock();
-			_actor->setGlobalPose(physx::PxTransform(physx::PxVec3(position.x, position.y, position.z), physx::PxQuat(rotation.x, rotation.y, rotation.z, rotation.w)));
-			PhysXWorld::GetSharedInstance()->Unlock();
+			PhysXWorld::GetSharedInstance()->EnqueuePoseChange(this);
 		}
 
 		if(changeSet & SceneNode::ChangeSet::Attachments)
 		{
 			if(!_owner && GetParent())
 			{
-				RN::Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
-				Vector3 position = GetWorldPosition() - positionOffset;
-				Quaternion rotation = GetWorldRotation() * _rotationOffset;
 				PhysXWorld::GetSharedInstance()->Lock();
-				_actor->setGlobalPose(physx::PxTransform(physx::PxVec3(position.x, position.y, position.z), physx::PxQuat(rotation.x, rotation.y, rotation.z, rotation.w)));
+				ApplyPose();
 				PhysXWorld::GetSharedInstance()->Unlock();
 			}
 

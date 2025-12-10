@@ -19,6 +19,48 @@ namespace RN
 
 	PhysXWorld *PhysXWorld::_sharedInstance = nullptr;
 
+	void PhysXWorld::EnqueuePoseChange(PhysXCollisionObject *collisionObject)
+	{
+		if(!collisionObject) return;
+		if(collisionObject->IsPoseUpdateQueued()) return;
+
+		size_t slot = 0;
+		if(!_pendingPoseChanges.PushWithIndex(collisionObject, slot))
+		{
+			RN_ASSERT(false, "PhysXWorld pose queue is full, dropping collision object transform update.");
+			return;
+		}
+
+		if(!collisionObject->TryMarkPoseUpdateQueued(slot))
+		{
+			_pendingPoseChanges.NullSlot(slot);
+			return;
+		}
+
+		collisionObject->Retain();
+	}
+
+	void PhysXWorld::FlushQueuedPoseChanges()
+	{
+		PhysXCollisionObject *collisionObject;
+		size_t slot = 0;
+		while(_pendingPoseChanges.PopWithIndex(collisionObject, slot))
+		{
+			if(!collisionObject) continue;
+
+			if(collisionObject->ClearPoseUpdateQueued(slot))
+			{
+				collisionObject->ApplyPose();
+				collisionObject->Release();
+			}
+		}
+	}
+
+	void PhysXWorld::ClearPoseQueueSlot(size_t slot)
+	{
+		_pendingPoseChanges.NullSlot(slot);
+	}
+
 	PhysXWorld::PhysXWorld(const Vector3 &gravity, String *pvdServerIP) :
 		_pvd(nullptr), _hasVehicles(false), _substeps(1), _paused(false), _isSimulating(false)
 	{
@@ -137,11 +179,17 @@ namespace RN
 
 	void PhysXWorld::Update(float delta)
 	{
+		FlushQueuedPoseChanges();
+
 		if(_paused)
+		{
 			return;
+		}
 
 		if(delta > 0.1f || delta < k::EpsilonFloat)
+		{
 			return;
+		}
 
 		if(_substeps > 1 && delta > RN::k::EpsilonFloat)
 		{

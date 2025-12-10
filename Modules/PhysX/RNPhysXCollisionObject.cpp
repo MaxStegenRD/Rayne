@@ -20,7 +20,8 @@ namespace RN
 		_collisionFilterMask(0xffffffff),
 		_collisionFilterID(0),
 		_collisionFilterIgnoreID(0),
-		_owner(nullptr)
+		_owner(nullptr),
+		_poseUpdateQueueSlot(kInvalidPoseQueueSlot)
 	{}
 
 	PhysXCollisionObject::~PhysXCollisionObject()
@@ -57,24 +58,45 @@ namespace RN
 		UpdatePosition();
 	}
 
+	bool PhysXCollisionObject::TryMarkPoseUpdateQueued(size_t slot)
+	{
+		size_t expected = kInvalidPoseQueueSlot;
+		return _poseUpdateQueueSlot.compare_exchange_strong(expected, slot, std::memory_order_acq_rel);
+	}
+
+	bool PhysXCollisionObject::ClearPoseUpdateQueued(size_t slot)
+	{
+		size_t expected = slot;
+		return _poseUpdateQueueSlot.compare_exchange_strong(expected, kInvalidPoseQueueSlot, std::memory_order_acq_rel);
+	}
+
+	bool PhysXCollisionObject::IsPoseUpdateQueued() const
+	{
+		return _poseUpdateQueueSlot.load(std::memory_order_acquire) != kInvalidPoseQueueSlot;
+	}
+
 
 	void PhysXCollisionObject::DidUpdate(SceneNode::ChangeSet changeSet)
 	{
-		/*		if(changeSet & SceneNode::ChangeSet::World)
+		if(changeSet & SceneNode::ChangeSet::Attachments)
 		{
-			World *world = GetParent()->GetWorld();
-				
-			if(!world && _owner)
+			// If detached, drop any queued pose and balance the enqueue retain.
+			if(!GetParent())
 			{
-				_owner->RemoveCollisionObject(this);
-				return;
+				size_t slot = _poseUpdateQueueSlot.load(std::memory_order_acquire);
+				if(slot != kInvalidPoseQueueSlot)
+				{
+					if(PhysXWorld::GetSharedInstance())
+					{
+						PhysXWorld::GetSharedInstance()->ClearPoseQueueSlot(slot);
+					}
+
+					if(ClearPoseUpdateQueued(slot))
+					{
+						Release();
+					}
+				}
 			}
-				
-			if(world && !_owner)
-			{
-				BulletWorld::GetSharedInstance()->InsertCollisionObject(this);
-				return;
-			}
-		}*/
+		}
 	}
 } // namespace RN

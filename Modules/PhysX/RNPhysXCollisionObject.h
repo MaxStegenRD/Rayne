@@ -59,6 +59,10 @@ namespace RN
 
 	protected:
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
+		virtual void ApplyPose() {}
+		bool TryMarkPoseUpdateQueued(size_t slot);
+		bool ClearPoseUpdateQueued(size_t slot);
+		bool IsPoseUpdateQueued() const;
 
 		Vector3 _positionOffset;
 		Quaternion _rotationOffset;
@@ -69,6 +73,9 @@ namespace RN
 		uint32 _collisionFilterIgnoreID;
 
 		SceneNode *_owner;
+
+		static constexpr size_t kInvalidPoseQueueSlot = std::numeric_limits<size_t>::max();
+		std::atomic<size_t> _poseUpdateQueueSlot{kInvalidPoseQueueSlot};
 
 	private:
 		std::function<void(PhysXCollisionObject *, const PhysXContactInfo &, ContactState)> _contactCallback;

@@ -36,6 +36,7 @@ namespace RN
 
 	protected:
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
+		void ApplyPose() override;
 
 	private:
 		PhysXShape *_shape;

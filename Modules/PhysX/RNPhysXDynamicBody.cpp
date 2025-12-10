@@ -58,6 +58,20 @@ namespace RN
 		_shape->Release();
 	}
 
+	void PhysXDynamicBody::ApplyPose()
+	{
+		if(!GetParent()) return;
+
+		if(_actor)
+		{
+			Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
+			Vector3 position = GetWorldPosition() - positionOffset;
+			Quaternion rotation = GetWorldRotation() * _rotationOffset;
+
+			_actor->setGlobalPose(physx::PxTransform(physx::PxVec3(position.x, position.y, position.z), physx::PxQuat(rotation.x, rotation.y, rotation.z, rotation.w)), false);
+		}
+	}
+
 	void PhysXDynamicBody::SetCollisionFilter(uint32 group, uint32 mask)
 	{
 		PhysXCollisionObject::SetCollisionFilter(group, mask);
@@ -449,20 +463,16 @@ namespace RN
 
 		if(changeSet & SceneNode::ChangeSet::Position && !_detachTransform)
 		{
-			RN::Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
-			Vector3 position = GetWorldPosition() - positionOffset;
-			Quaternion rotation = GetWorldRotation() * _rotationOffset;
-			_actor->setGlobalPose(physx::PxTransform(physx::PxVec3(position.x, position.y, position.z), physx::PxQuat(rotation.x, rotation.y, rotation.z, rotation.w)), false);
+			PhysXWorld::GetSharedInstance()->EnqueuePoseChange(this);
 		}
 
 		if(changeSet & SceneNode::ChangeSet::Attachments)
 		{
 			if(!_owner && GetParent())
 			{
-				RN::Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
-				Vector3 position = GetWorldPosition() - positionOffset;
-				Quaternion rotation = GetWorldRotation() * _rotationOffset;
-				_actor->setGlobalPose(physx::PxTransform(physx::PxVec3(position.x, position.y, position.z), physx::PxQuat(rotation.x, rotation.y, rotation.z, rotation.w)), false);
+				PhysXWorld::GetSharedInstance()->Lock();
+				ApplyPose();
+				PhysXWorld::GetSharedInstance()->Unlock();
 			}
 
 			_owner = GetParent();

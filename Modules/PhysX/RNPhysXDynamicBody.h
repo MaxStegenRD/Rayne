@@ -92,6 +92,7 @@ namespace RN
 
 	protected:
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
+		void ApplyPose() override;
 		//		void UpdateFromMaterial(BulletMaterial *material) override;
 
 	private:

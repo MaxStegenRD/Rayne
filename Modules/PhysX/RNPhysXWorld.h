@@ -63,7 +63,12 @@ namespace RN
 
 		static PhysXWorld *GetSharedInstance() { return _sharedInstance; }
 
+		PXAPI void EnqueuePoseChange(PhysXCollisionObject *collisionObject);
+		PXAPI void ClearPoseQueueSlot(size_t slot);
+
 	private:
+		void FlushQueuedPoseChanges();
+
 		static PhysXWorld *_sharedInstance;
 
 		physx::PxFoundation *_foundation;
@@ -82,6 +87,9 @@ namespace RN
 
 		PhysXSimulationCallback *_simulationCallback;
 		PhysXKinematicControllerCallback *_controllerManagerFilterCallback;
+
+		//Just making this big enough to hopefully never be a problem...
+		AtomicRingBuffer<PhysXCollisionObject *, 50000> _pendingPoseChanges;
 
 		RNDeclareMetaAPI(PhysXWorld, PXAPI)
 	};
