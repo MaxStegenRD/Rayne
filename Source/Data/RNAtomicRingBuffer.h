@@ -20,53 +20,153 @@ namespace RN
 		AtomicRingBuffer() :
 			_head(0),
 			_tail(0)
-		{}
+		{
+			for(size_t i = 0; i < Capacity; ++i)
+			{
+				_buffer[i].seq.store(i, std::memory_order_relaxed);
+			}
+		}
+
+		bool PushWithIndex(const T &value, size_t &outIndex)
+		{
+			for(;;)
+			{
+				size_t pos = _tail.load(std::memory_order_relaxed);
+				size_t ticket = pos % Wrap;
+				Slot &slot = _buffer[pos % Capacity];
+				size_t seq = slot.seq.load(std::memory_order_acquire);
+				const intptr_t diff = static_cast<intptr_t>(seq) - static_cast<intptr_t>(ticket);
+
+				if(diff == 0)
+				{
+					if(_tail.compare_exchange_weak(pos, pos + 1, std::memory_order_acq_rel))
+					{
+						slot.value = value;
+						slot.seq.store((ticket + 1) % Wrap, std::memory_order_release);
+						outIndex = pos % Capacity;
+						return true;
+					}
+				}
+				else if(diff < 0 && diff >= -static_cast<intptr_t>(Capacity))
+				{
+					return false; // full
+				}
+			}
+		}
+
+		bool PopWithIndex(T &value, size_t &outIndex)
+		{
+			for(;;)
+			{
+				size_t pos = _head.load(std::memory_order_relaxed);
+				size_t ticket = pos % Wrap;
+				Slot &slot = _buffer[pos % Capacity];
+				size_t seq = slot.seq.load(std::memory_order_acquire);
+				const intptr_t diff = static_cast<intptr_t>(seq) - static_cast<intptr_t>((ticket + 1) % Wrap);
+
+				if(diff == 0)
+				{
+					if(_head.compare_exchange_weak(pos, pos + 1, std::memory_order_acq_rel))
+					{
+						outIndex = pos % Capacity;
+						value = std::move(slot.value);
+						slot.value = T();
+						slot.seq.store((ticket + Capacity) % Wrap, std::memory_order_release);
+						return true;
+					}
+				}
+				else if(diff < 0 && diff >= -static_cast<intptr_t>(Capacity))
+				{
+					return false; // empty
+				}
+			}
+		}
+
+		void NullSlot(size_t index)
+		{
+			if(index < Capacity)
+			{
+				_buffer[index].value = T();
+			}
+		}
 
 		bool Push(const T &value)
 		{
-			size_t tail = _tail.load(std::memory_order_relaxed);
-			size_t next = Advance(tail);
-
-			if(next != _head.load(std::memory_order_acquire))
+			for(;;)
 			{
-				_buffer[tail] = value;
-				_tail.store(next, std::memory_order_release);
+				size_t pos = _tail.load(std::memory_order_relaxed);
+				size_t ticket = pos % Wrap;
+				Slot &slot = _buffer[pos % Capacity];
+				size_t seq = slot.seq.load(std::memory_order_acquire);
+				const intptr_t diff = static_cast<intptr_t>(seq) - static_cast<intptr_t>(ticket);
 
-				return true;
+				if(diff == 0)
+				{
+					if(_tail.compare_exchange_weak(pos, pos + 1, std::memory_order_acq_rel))
+					{
+						slot.value = value;
+						slot.seq.store((ticket + 1) % Wrap, std::memory_order_release);
+						return true;
+					}
+				}
+				else if(diff < 0 && diff >= -static_cast<intptr_t>(Capacity))
+				{
+					return false; // full
+				}
 			}
-
-			return false;
 		}
 
 		bool Push(T &&value)
 		{
-			size_t tail = _tail.load(std::memory_order_relaxed);
-			size_t next = Advance(tail);
-
-			if(next != _head.load(std::memory_order_acquire))
+			for(;;)
 			{
-				_buffer[tail] = std::move(value);
-				_tail.store(next, std::memory_order_release);
+				size_t pos = _tail.load(std::memory_order_relaxed);
+				size_t ticket = pos % Wrap;
+				Slot &slot = _buffer[pos % Capacity];
+				size_t seq = slot.seq.load(std::memory_order_acquire);
+				const intptr_t diff = static_cast<intptr_t>(seq) - static_cast<intptr_t>(ticket);
 
-				return true;
+				if(diff == 0)
+				{
+					if(_tail.compare_exchange_weak(pos, pos + 1, std::memory_order_acq_rel))
+					{
+						slot.value = std::move(value);
+						slot.seq.store((ticket + 1) % Wrap, std::memory_order_release);
+						return true;
+					}
+				}
+				else if(diff < 0 && diff >= -static_cast<intptr_t>(Capacity))
+				{
+					return false; // full
+				}
 			}
-
-			return false;
 		}
 
 		bool Pop(T &value)
 		{
-			size_t head = _head.load(std::memory_order_relaxed);
-
-			if(head != _tail.load(std::memory_order_acquire))
+			for(;;)
 			{
-				value = std::move(_buffer[head]);
-				_head.store(Advance(head), std::memory_order_release);
+				size_t pos = _head.load(std::memory_order_relaxed);
+				size_t ticket = pos % Wrap;
+				Slot &slot = _buffer[pos % Capacity];
+				size_t seq = slot.seq.load(std::memory_order_acquire);
+				const intptr_t diff = static_cast<intptr_t>(seq) - static_cast<intptr_t>((ticket + 1) % Wrap);
 
-				return true;
+				if(diff == 0)
+				{
+					if(_head.compare_exchange_weak(pos, pos + 1, std::memory_order_acq_rel))
+					{
+						value = std::move(slot.value);
+						slot.value = T();
+						slot.seq.store((ticket + Capacity) % Wrap, std::memory_order_release);
+						return true;
+					}
+				}
+				else if(diff < 0 && diff >= -static_cast<intptr_t>(Capacity))
+				{
+					return false; // empty
+				}
 			}
-
-			return false;
 		}
 
 		bool WasEmpty() const
@@ -80,17 +180,19 @@ namespace RN
 		}
 
 	private:
-		static RN_CONSTEXPR size_t Capacity = Size + 1;
+		static RN_CONSTEXPR size_t Capacity = Size;
+		static RN_CONSTEXPR size_t Wrap = Capacity * 2;
 
-		size_t Advance(size_t index) const
+		struct Slot
 		{
-			return (index + 1) % Capacity;
-		}
+			std::atomic<size_t> seq;
+			T value;
+		};
 
 		std::atomic<size_t> _head;
 		std::atomic<size_t> _tail;
 
-		std::array<T, Capacity> _buffer;
+		std::array<Slot, Capacity> _buffer;
 	};
 } // namespace RN
 
