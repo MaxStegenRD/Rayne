@@ -21,7 +21,7 @@ namespace RN
 			_head(0),
 			_tail(0)
 		{
-			for(size_t i = 0; i < Capacity; ++i)
+			for(uint64 i = 0; i < Capacity; ++i)
 			{
 				_buffer[i].seq.store(i, std::memory_order_relaxed);
 			}
@@ -31,23 +31,22 @@ namespace RN
 		{
 			for(;;)
 			{
-				size_t pos = _tail.load(std::memory_order_relaxed);
-				size_t ticket = pos % Wrap;
-				Slot &slot = _buffer[pos % Capacity];
-				size_t seq = slot.seq.load(std::memory_order_acquire);
-				const intptr_t diff = static_cast<intptr_t>(seq) - static_cast<intptr_t>(ticket);
+				uint64 pos = _tail.load(std::memory_order_relaxed);
+				Slot &slot = _buffer[static_cast<size_t>(pos % Capacity)];
+				uint64 seq = slot.seq.load(std::memory_order_acquire);
+				const int64 diff = static_cast<int64>(seq) - static_cast<int64>(pos);
 
 				if(diff == 0)
 				{
 					if(_tail.compare_exchange_weak(pos, pos + 1, std::memory_order_acq_rel))
 					{
 						slot.value = value;
-						slot.seq.store((ticket + 1) % Wrap, std::memory_order_release);
-						outIndex = pos % Capacity;
+						slot.seq.store(pos + 1, std::memory_order_release);
+						outIndex = static_cast<size_t>(pos % Capacity);
 						return true;
 					}
 				}
-				else if(diff < 0 && diff >= -static_cast<intptr_t>(Capacity))
+				else if(diff < 0)
 				{
 					return false; // full
 				}
@@ -58,24 +57,23 @@ namespace RN
 		{
 			for(;;)
 			{
-				size_t pos = _head.load(std::memory_order_relaxed);
-				size_t ticket = pos % Wrap;
-				Slot &slot = _buffer[pos % Capacity];
-				size_t seq = slot.seq.load(std::memory_order_acquire);
-				const intptr_t diff = static_cast<intptr_t>(seq) - static_cast<intptr_t>((ticket + 1) % Wrap);
+				uint64 pos = _head.load(std::memory_order_relaxed);
+				Slot &slot = _buffer[static_cast<size_t>(pos % Capacity)];
+				uint64 seq = slot.seq.load(std::memory_order_acquire);
+				const int64 diff = static_cast<int64>(seq) - static_cast<int64>(pos + 1);
 
 				if(diff == 0)
 				{
 					if(_head.compare_exchange_weak(pos, pos + 1, std::memory_order_acq_rel))
 					{
-						outIndex = pos % Capacity;
+						outIndex = static_cast<size_t>(pos % Capacity);
 						value = std::move(slot.value);
 						slot.value = T();
-						slot.seq.store((ticket + Capacity) % Wrap, std::memory_order_release);
+						slot.seq.store(pos + Capacity, std::memory_order_release);
 						return true;
 					}
 				}
-				else if(diff < 0 && diff >= -static_cast<intptr_t>(Capacity))
+				else if(diff < 0)
 				{
 					return false; // empty
 				}
@@ -94,22 +92,21 @@ namespace RN
 		{
 			for(;;)
 			{
-				size_t pos = _tail.load(std::memory_order_relaxed);
-				size_t ticket = pos % Wrap;
-				Slot &slot = _buffer[pos % Capacity];
-				size_t seq = slot.seq.load(std::memory_order_acquire);
-				const intptr_t diff = static_cast<intptr_t>(seq) - static_cast<intptr_t>(ticket);
+				uint64 pos = _tail.load(std::memory_order_relaxed);
+				Slot &slot = _buffer[static_cast<size_t>(pos % Capacity)];
+				uint64 seq = slot.seq.load(std::memory_order_acquire);
+				const int64 diff = static_cast<int64>(seq) - static_cast<int64>(pos);
 
 				if(diff == 0)
 				{
 					if(_tail.compare_exchange_weak(pos, pos + 1, std::memory_order_acq_rel))
 					{
 						slot.value = value;
-						slot.seq.store((ticket + 1) % Wrap, std::memory_order_release);
+						slot.seq.store(pos + 1, std::memory_order_release);
 						return true;
 					}
 				}
-				else if(diff < 0 && diff >= -static_cast<intptr_t>(Capacity))
+				else if(diff < 0)
 				{
 					return false; // full
 				}
@@ -120,22 +117,21 @@ namespace RN
 		{
 			for(;;)
 			{
-				size_t pos = _tail.load(std::memory_order_relaxed);
-				size_t ticket = pos % Wrap;
-				Slot &slot = _buffer[pos % Capacity];
-				size_t seq = slot.seq.load(std::memory_order_acquire);
-				const intptr_t diff = static_cast<intptr_t>(seq) - static_cast<intptr_t>(ticket);
+				uint64 pos = _tail.load(std::memory_order_relaxed);
+				Slot &slot = _buffer[static_cast<size_t>(pos % Capacity)];
+				uint64 seq = slot.seq.load(std::memory_order_acquire);
+				const int64 diff = static_cast<int64>(seq) - static_cast<int64>(pos);
 
 				if(diff == 0)
 				{
 					if(_tail.compare_exchange_weak(pos, pos + 1, std::memory_order_acq_rel))
 					{
 						slot.value = std::move(value);
-						slot.seq.store((ticket + 1) % Wrap, std::memory_order_release);
+						slot.seq.store(pos + 1, std::memory_order_release);
 						return true;
 					}
 				}
-				else if(diff < 0 && diff >= -static_cast<intptr_t>(Capacity))
+				else if(diff < 0)
 				{
 					return false; // full
 				}
@@ -146,11 +142,10 @@ namespace RN
 		{
 			for(;;)
 			{
-				size_t pos = _head.load(std::memory_order_relaxed);
-				size_t ticket = pos % Wrap;
-				Slot &slot = _buffer[pos % Capacity];
-				size_t seq = slot.seq.load(std::memory_order_acquire);
-				const intptr_t diff = static_cast<intptr_t>(seq) - static_cast<intptr_t>((ticket + 1) % Wrap);
+				uint64 pos = _head.load(std::memory_order_relaxed);
+				Slot &slot = _buffer[static_cast<size_t>(pos % Capacity)];
+				uint64 seq = slot.seq.load(std::memory_order_acquire);
+				const int64 diff = static_cast<int64>(seq) - static_cast<int64>(pos + 1);
 
 				if(diff == 0)
 				{
@@ -158,11 +153,11 @@ namespace RN
 					{
 						value = std::move(slot.value);
 						slot.value = T();
-						slot.seq.store((ticket + Capacity) % Wrap, std::memory_order_release);
+						slot.seq.store(pos + Capacity, std::memory_order_release);
 						return true;
 					}
 				}
-				else if(diff < 0 && diff >= -static_cast<intptr_t>(Capacity))
+				else if(diff < 0)
 				{
 					return false; // empty
 				}
@@ -181,16 +176,15 @@ namespace RN
 
 	private:
 		static RN_CONSTEXPR size_t Capacity = Size;
-		static RN_CONSTEXPR size_t Wrap = Capacity * 2;
 
 		struct Slot
 		{
-			std::atomic<size_t> seq;
+			std::atomic<uint64> seq;
 			T value;
 		};
 
-		std::atomic<size_t> _head;
-		std::atomic<size_t> _tail;
+		std::atomic<uint64> _head;
+		std::atomic<uint64> _tail;
 
 		std::array<Slot, Capacity> _buffer;
 	};
