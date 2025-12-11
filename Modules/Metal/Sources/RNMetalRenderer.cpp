@@ -1369,6 +1369,8 @@ namespace RN
 			MetalRenderPass &pass = _internals->renderPasses[pi];
 			// Only accept real draw passes
 			if(pass.type != MetalRenderPass::Type::Default && pass.type != MetalRenderPass::Type::Convert) continue;
+			// For post processing/convert passes, render only the injected fullscreen quad.
+			if((pass.type == MetalRenderPass::Type::Convert || pass.renderPass->IsKindOfClass(PostProcessingStage::GetMetaClass())) && drawable != _defaultPostProcessingDrawable) continue;
 			// Filter by render group mask
 			if((drawable->renderGroup & pass.renderPass->GetRenderGroupMask()) == 0) continue;
 

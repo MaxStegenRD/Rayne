@@ -1106,6 +1106,24 @@ namespace RN
 			{
 				_internals->currentRenderPassIndex = _internals->renderPasses.size();
 				_internals->renderPasses.push_back(vulkanRenderPass);
+
+				// Inject a default fullscreen quad for post processing passes so we don't redraw the whole scene.
+				if(ppStage || vulkanRenderPass.type == VulkanRenderPass::Type::Convert)
+				{
+					if(!_defaultPostProcessingDrawable)
+					{
+						Mesh *planeMesh = Mesh::WithTexturedPlane(Quaternion::WithEulerAngle(Vector3(0.0f, 90.0f, 0.0f)), Vector3(0.0f), Vector2(1.0f, 1.0f));
+						Material *planeMaterial = Material::WithShaders(GetDefaultShader(Shader::Type::Vertex, nullptr), GetDefaultShader(Shader::Type::Fragment, nullptr));
+
+						_lock.Lock();
+						_defaultPostProcessingDrawable = static_cast<VulkanDrawable*>(CreateDrawable());
+						_defaultPostProcessingDrawable->mesh = planeMesh->Retain();
+						_defaultPostProcessingDrawable->material = planeMaterial->Retain();
+						_lock.Unlock();
+					}
+
+					SubmitDrawable(_defaultPostProcessingDrawable);
+				}
 			}
 
 			if(!renderPass->GetIsRoot()) _internals->currentDrawableResourceIndex += 1;
@@ -2053,6 +2071,12 @@ namespace RN
 
 		auto submitDrawable = [&](VulkanRenderPass &renderPass, VulkanRenderPass &renderSubPass, uint32 subpassIndex){
 			if(renderSubPass.type != VulkanRenderPass::Type::Default && renderSubPass.type != VulkanRenderPass::Type::Convert)
+			{
+				_internals->currentDrawableResourceIndex += 1;
+				return;
+			}
+			// Post processing passes should only render the injected fullscreen quad.
+			if((renderSubPass.type == VulkanRenderPass::Type::Convert || renderSubPass.renderPass->IsKindOfClass(PostProcessingStage::GetMetaClass())) && drawable != _defaultPostProcessingDrawable)
 			{
 				_internals->currentDrawableResourceIndex += 1;
 				return;
