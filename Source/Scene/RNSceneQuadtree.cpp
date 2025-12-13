@@ -804,7 +804,9 @@ namespace RN
 	void SceneQuadtree::RemoveNode(SceneNode *node)
 	{
 		RN_PROFILE_SCOPE();
-		RN_ASSERT(node->GetSceneInfo() && node->GetSceneInfo()->GetScene() == this && node->_scheduledForRemovalFromScene == false, "RemoveNode() must be called on a Node owned by the scene");
+		RN_ASSERT(node->GetSceneInfo() && node->GetSceneInfo()->GetScene() == this, "RemoveNode() must be called on a Node owned by the scene");
+
+		if(node->_scheduledForRemovalFromScene) return; //Already queued for removal
 
 		_nodesToRemove->Lock();
 		_nodesToRemove->AddObject(node);
