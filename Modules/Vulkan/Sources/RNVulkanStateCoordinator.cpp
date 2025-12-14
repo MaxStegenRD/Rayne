@@ -1014,6 +1014,8 @@ namespace RN
 		}
 
 		renderPassState.subpassSignature = rootVulkanPass->subpassSignature;
+		renderPassState.imageSampleCount = framebuffer->GetSampleCount();
+		renderPassState.resolveSampleCount = resolveFramebuffer ? resolveFramebuffer->GetSampleCount() : 1;
 
 		for(VulkanRenderPassState *state : _renderPassStates)
 		{
@@ -1027,6 +1029,8 @@ namespace RN
 		state->multiviewCount = renderPassState.multiviewCount;
 		state->hasFragmentDensityMap = renderPassState.hasFragmentDensityMap;
 		state->subpassSignature = renderPassState.subpassSignature;
+		state->imageSampleCount = renderPassState.imageSampleCount;
+		state->resolveSampleCount = renderPassState.resolveSampleCount;
 
 		std::vector<VkAttachmentDescription> attachments;
 		std::vector<VkAttachmentReference> colorAttachmentRefs;

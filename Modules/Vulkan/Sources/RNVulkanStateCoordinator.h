@@ -145,6 +145,8 @@ namespace RN
 		std::vector<VkFormat> imageFormats;
 		std::vector<VkFormat> resolveFormats;
 		VkRenderPass renderPass;
+		uint8 imageSampleCount;
+		uint8 resolveSampleCount;
 
 		RN_INLINE bool operator==(const VulkanRenderPassState &descriptor) const
 		{
@@ -153,6 +155,8 @@ namespace RN
 			if(flags != descriptor.flags) return false;
 			if(multiviewCount != descriptor.multiviewCount) return false;
 			if(subpassSignature != descriptor.subpassSignature) return false;
+			if(imageSampleCount != descriptor.imageSampleCount) return false;
+			if(resolveSampleCount != descriptor.resolveSampleCount) return false;
 
 			for(int i = 0; i < imageFormats.size(); i++)
 			{
