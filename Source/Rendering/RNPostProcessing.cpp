@@ -24,6 +24,12 @@ namespace RN
 	{
 	}
 
+	void PostProcessingAPIStage::SetFlags(Flags flags)
+	{
+		RN_DEBUG_ASSERT(_type != ResolveMSAA, "MSAA Resolve Pass flags are ignored, the previous passes flags are used instead!");
+		RenderPass::SetFlags(flags);
+	}
+
 
 	PostProcessingStage::PostProcessingStage() :
 		_material(nullptr)

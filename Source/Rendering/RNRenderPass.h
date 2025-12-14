@@ -34,7 +34,7 @@ namespace RN
 		RNAPI ~RenderPass();
 
 		RNAPI void SetFramebuffer(Framebuffer *framebuffer);
-		RNAPI void SetFlags(Flags flags);
+		RNAPI virtual void SetFlags(Flags flags);
 		RNAPI void SetFrame(const Rect &frame);
 		RNAPI void SetClearColor(const Color &color);
 		RNAPI void SetClearDepthStencil(float depth, uint8 stencil);

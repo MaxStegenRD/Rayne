@@ -31,6 +31,8 @@ namespace RN
 		RNAPI PostProcessingAPIStage(Type type);
 		RNAPI ~PostProcessingAPIStage();
 
+		RNAPI void SetFlags(Flags flags) override;
+
 		Type GetType() const { return _type; }
 
 	private:
