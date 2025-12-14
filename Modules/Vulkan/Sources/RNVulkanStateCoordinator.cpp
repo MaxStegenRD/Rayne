@@ -503,7 +503,7 @@ namespace RN
 				samplerInfo.maxLod = std::numeric_limits<float>::max();
 				const bool wantsAnisotropy = (sampler->GetFilter() == Shader::ArgumentSampler::Filter::Anisotropic);
 				const bool supportsAnisotropy = device->GetSupportsSamplerAnisotropy();
-				const float clampedAnisotropy = supportsAnisotropy? std::min(sampler->GetAnisotropy(), device->GetMaxSamplerAnisotropy()) : 1.0f;
+				const float clampedAnisotropy = supportsAnisotropy? std::min(static_cast<float>(sampler->GetAnisotropy()), device->GetMaxSamplerAnisotropy()) : 1.0f;
 				samplerInfo.maxAnisotropy = clampedAnisotropy;
 				samplerInfo.anisotropyEnable = (wantsAnisotropy && supportsAnisotropy)? VK_TRUE:VK_FALSE;
 				samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;

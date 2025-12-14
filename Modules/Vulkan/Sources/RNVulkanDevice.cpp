@@ -192,13 +192,15 @@ namespace RN
 		_instance->EnumerateDeviceExtensions(_physicalDevice, nullptr, rawDeviceExtensions);
 		for(const auto &extension : rawDeviceExtensions)
 		{
+			#if RN_PLATFORM_WINDOWS
 			if(std::strcmp(extension.extensionName, VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME) == 0)
 			{
 				deviceExtensions.push_back(extension.extensionName);
 				_supportsFullscreenExclusive = true;
-			}
+			} else
+			#endif
 			//check for multiview extension
-			else if(std::strcmp(extension.extensionName, VK_KHR_MULTIVIEW_EXTENSION_NAME) == 0)
+			if(std::strcmp(extension.extensionName, VK_KHR_MULTIVIEW_EXTENSION_NAME) == 0)
 			{
 				deviceExtensions.push_back(extension.extensionName);
 
@@ -252,6 +254,14 @@ namespace RN
 		vk::GetPhysicalDeviceFeatures2KHR(_physicalDevice, &features);
 
 		_supportsSamplerAnisotropy = (features.features.samplerAnisotropy == VK_TRUE);
+
+		if(_maxMultiviewViewCount <= 1 || (multiviewFeatures.multiview != VK_TRUE))
+		{
+			_maxMultiviewViewCount = 1;
+			deviceExtensions.erase(std::remove_if(deviceExtensions.begin(), deviceExtensions.end(), [](const char *name){
+				return std::strcmp(name, VK_KHR_MULTIVIEW_EXTENSION_NAME) == 0;
+			}), deviceExtensions.end());
+		}
 
 		_supportsFragmentDensityMaps = _supportsFragmentDensityMaps && (fragmentDensityMapFeatures.fragmentDensityMap == VK_TRUE);
 		if(!_supportsFragmentDensityMaps)
