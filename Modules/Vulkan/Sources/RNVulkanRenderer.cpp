@@ -327,7 +327,7 @@ namespace RN
 
 		UpdateFrameFences(); //Releases resources of frames that finished
 
-		if(_currentFrame - _completedFrame > 4)
+		if(_currentFrame - _completedFrame > 4 && _completedFrame != -1)
 		{
 			//RNDebug("Too many frames in-flight, ignore this one");
 			return; //Don't submit a new frame if there are already 5 frames in flight
