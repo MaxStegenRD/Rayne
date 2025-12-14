@@ -89,12 +89,6 @@ namespace RN
 		if(_eye[0]) _eye[0]->SetPosition(Vector3(-0.032f, 0.0f, 0.0f));
 		if(_eye[1]) _eye[1]->SetPosition(Vector3(0.032f, 0.0f, 0.0f));
 
-#if RN_PLATFORM_ANDROID
-
-#else
-		_eye[0]->GetRenderPass()->SetFlags(0);
-#endif
-
 		CreatePostprocessingPipeline();
 
 		NotificationManager::GetSharedInstance()->AddSubscriber(kRNWindowDidChangeSize, [this](Notification *notification) {
