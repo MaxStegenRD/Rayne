@@ -262,11 +262,12 @@ VulkanSwapChain::VulkanSwapChain(const Vector2& size, VulkanRenderer* renderer, 
 		}
 
 #if RN_PLATFORM_WINDOWS
+		VkSurfaceFullScreenExclusiveInfoEXT exclusiveFullscreenInfo = {};
+		exclusiveFullscreenInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
+		exclusiveFullscreenInfo.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_DEFAULT_EXT;
+
 		if(_renderer->GetVulkanDevice()->GetSupportsFullscreenExclusive())
 		{
-			VkSurfaceFullScreenExclusiveInfoEXT exclusiveFullscreenInfo = {};
-			exclusiveFullscreenInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
-			exclusiveFullscreenInfo.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_DEFAULT_EXT;
 			swapchainInfo.pNext = &exclusiveFullscreenInfo;
 
 			/*VkSurfaceFullScreenExclusiveWin32InfoEXT exclusiveFullscreenWin32Info = {};
