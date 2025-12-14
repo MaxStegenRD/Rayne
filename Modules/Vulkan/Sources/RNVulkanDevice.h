@@ -43,6 +43,9 @@ namespace RN
 		bool GetSupportsMultiview() const { return _maxMultiviewViewCount > 1; }
 		uint32 GetMaxMultiviewViewCount() const { return _maxMultiviewViewCount; }
 		bool GetSupportsFragmentDensityMaps() const { return _supportsFragmentDensityMaps; }
+		bool GetSupportsSamplerAnisotropy() const { return _supportsSamplerAnisotropy; }
+		float GetMaxSamplerAnisotropy() const { return _maxSamplerAnisotropy; }
+		bool GetSupportsFullscreenExclusive() const { return _supportsFullscreenExclusive; }
 
 		VKAPI void SetExtensions(Array *extensions) final;
 
@@ -57,6 +60,9 @@ namespace RN
 		bool _supportsFragmentDensityMaps;
 		Vector2 _minFragmentDensityTexelSize;
 		Vector2 _maxFragmentDensityTexelSize;
+		bool _supportsSamplerAnisotropy;
+		bool _supportsFullscreenExclusive;
+		float _maxSamplerAnisotropy;
 
 		VulkanInstance *_instance;
 		VkPhysicalDevice _physicalDevice;

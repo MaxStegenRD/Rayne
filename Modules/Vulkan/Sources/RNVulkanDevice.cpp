@@ -62,7 +62,10 @@ namespace RN
 		_workQueue(kRNNotFound),
 		_deviceExtensions(nullptr),
 		_maxMultiviewViewCount(1),
-		_supportsFragmentDensityMaps(false)
+		_supportsFragmentDensityMaps(false),
+		_supportsSamplerAnisotropy(false),
+		_supportsFullscreenExclusive(false),
+		_maxSamplerAnisotropy(1.0f)
 	{
 		std::vector<VkQueueFamilyProperties> queues;
 		GetQueueProperties(queues);
@@ -94,6 +97,7 @@ namespace RN
 
 		VkPhysicalDeviceProperties properties;
 		vk::GetPhysicalDeviceProperties(device, &properties);
+		_maxSamplerAnisotropy = properties.limits.maxSamplerAnisotropy;
 		for(int i = 0; i < VK_UUID_SIZE; i++)
 		{
 			pipelineCacheUUID[i] = properties.pipelineCacheUUID[i];
@@ -188,8 +192,13 @@ namespace RN
 		_instance->EnumerateDeviceExtensions(_physicalDevice, nullptr, rawDeviceExtensions);
 		for(const auto &extension : rawDeviceExtensions)
 		{
+			if(std::strcmp(extension.extensionName, VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME) == 0)
+			{
+				deviceExtensions.push_back(extension.extensionName);
+				_supportsFullscreenExclusive = true;
+			}
 			//check for multiview extension
-			if(std::strcmp(extension.extensionName, VK_KHR_MULTIVIEW_EXTENSION_NAME) == 0)
+			else if(std::strcmp(extension.extensionName, VK_KHR_MULTIVIEW_EXTENSION_NAME) == 0)
 			{
 				deviceExtensions.push_back(extension.extensionName);
 
@@ -207,6 +216,7 @@ namespace RN
 
 				RNDebug("Maximum number of multiviews: " << _maxMultiviewViewCount << " instances: " << multiviewProperties.maxMultiviewInstanceIndex);
 			}
+			//check for fragment density map extension
 			else if(std::strcmp(extension.extensionName, VK_EXT_FRAGMENT_DENSITY_MAP_EXTENSION_NAME) == 0)
 			{
 				deviceExtensions.push_back(extension.extensionName);
@@ -240,6 +250,16 @@ namespace RN
 		features.pNext = &multiviewFeatures;
 
 		vk::GetPhysicalDeviceFeatures2KHR(_physicalDevice, &features);
+
+		_supportsSamplerAnisotropy = (features.features.samplerAnisotropy == VK_TRUE);
+
+		_supportsFragmentDensityMaps = _supportsFragmentDensityMaps && (fragmentDensityMapFeatures.fragmentDensityMap == VK_TRUE);
+		if(!_supportsFragmentDensityMaps)
+		{
+			deviceExtensions.erase(std::remove_if(deviceExtensions.begin(), deviceExtensions.end(), [](const char *name){
+				return std::strcmp(name, VK_EXT_FRAGMENT_DENSITY_MAP_EXTENSION_NAME) == 0;
+			}), deviceExtensions.end());
+		}
 
 		const std::vector<float> queuePriorities(1, 0.0f);
 		VkDeviceQueueCreateInfo queueInfo = {};

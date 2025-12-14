@@ -262,15 +262,18 @@ VulkanSwapChain::VulkanSwapChain(const Vector2& size, VulkanRenderer* renderer, 
 		}
 
 #if RN_PLATFORM_WINDOWS
-		VkSurfaceFullScreenExclusiveInfoEXT exclusiveFullscreenInfo = {};
-		exclusiveFullscreenInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
-		exclusiveFullscreenInfo.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT;
-		swapchainInfo.pNext = &exclusiveFullscreenInfo;
+		if(_renderer->GetVulkanDevice()->GetSupportsFullscreenExclusive())
+		{
+			VkSurfaceFullScreenExclusiveInfoEXT exclusiveFullscreenInfo = {};
+			exclusiveFullscreenInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
+			exclusiveFullscreenInfo.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_DEFAULT_EXT;
+			swapchainInfo.pNext = &exclusiveFullscreenInfo;
 
-		/*VkSurfaceFullScreenExclusiveWin32InfoEXT exclusiveFullscreenWin32Info = {};
-		exclusiveFullscreenWin32Info.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT;
-		exclusiveFullscreenWin32Info.hmonitor = MonitorFromWindow(_hwnd, MONITOR_DEFAULTTONEAREST);
-		exclusiveFullscreenInfo.pNext = &exclusiveFullscreenWin32Info;*/
+			/*VkSurfaceFullScreenExclusiveWin32InfoEXT exclusiveFullscreenWin32Info = {};
+			exclusiveFullscreenWin32Info.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT;
+			exclusiveFullscreenWin32Info.hmonitor = MonitorFromWindow(_hwnd, MONITOR_DEFAULTTONEAREST);
+			exclusiveFullscreenInfo.pNext = &exclusiveFullscreenWin32Info;*/
+		}
 #endif
 
 		RNVulkanValidate(vk::CreateSwapchainKHR(_device, &swapchainInfo, nullptr, &_swapchain));
