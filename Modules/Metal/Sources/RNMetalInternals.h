@@ -184,6 +184,7 @@ namespace RN
 		Type type;
 		RenderPass *renderPass;
 		RenderPass *previousRenderPass;
+		MetalFramebuffer *previousStoredFramebuffer;
 
 		MetalFramebuffer *framebuffer;
 		Shader::UsageHint shaderHint;

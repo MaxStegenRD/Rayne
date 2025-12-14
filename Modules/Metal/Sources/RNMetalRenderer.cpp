@@ -277,7 +277,7 @@ namespace RN
 			_internals->commandBuffer = nil;
 		}
 	}
-	
+
 	void MetalRenderer::RenderAPIRenderPass(const MetalRenderPass &renderPass)
 	{
 		RN_PROFILE_SCOPE();
@@ -285,7 +285,7 @@ namespace RN
 		{
 			case MetalRenderPass::Type::Convert:
 			{
-				MetalFramebuffer *sourceFramebuffer = renderPass.previousRenderPass->GetFramebuffer()->Downcast<RN::MetalFramebuffer>();
+				MetalFramebuffer *sourceFramebuffer = renderPass.previousStoredFramebuffer;
 				Texture *sourceTexture = sourceFramebuffer->GetColorTexture(0);
 				
 				renderPass.drawables[0]->material->RemoveAllTextures();
@@ -297,7 +297,7 @@ namespace RN
 			case MetalRenderPass::Type::Blit:
 			{
 				//TODO: Handle multiple and not existing textures
-				MetalFramebuffer *sourceFramebuffer = renderPass.previousRenderPass->GetFramebuffer()->Downcast<RN::MetalFramebuffer>();
+				MetalFramebuffer *sourceFramebuffer = renderPass.previousStoredFramebuffer;
 				Texture *sourceTexture = sourceFramebuffer->GetColorTexture(0);
 				MetalFramebuffer *destinationFramebuffer = renderPass.renderPass->GetFramebuffer()->Downcast<RN::MetalFramebuffer>();
 				Texture *destinationTexture = destinationFramebuffer->GetColorTexture(0);
@@ -416,6 +416,7 @@ namespace RN
 
 		renderPass.overrideMaterial = cameraRenderPass->GetOverrideMaterial();
 		renderPass.resolveFramebuffer = nullptr;
+		renderPass.previousStoredFramebuffer = nullptr;
 
 		renderPass.camera = camera;
 		renderPass.currentInstanceDrawable = nullptr;
@@ -486,6 +487,7 @@ namespace RN
 		metalRenderPass.type = MetalRenderPass::Type::Default;
 		metalRenderPass.renderPass = renderPass;
 		metalRenderPass.previousRenderPass = previousRenderPass.renderPass;
+		metalRenderPass.previousStoredFramebuffer = nullptr;
 		
 		metalRenderPass.drawables.clear();
 		metalRenderPass.framebuffer = nullptr;
@@ -528,6 +530,11 @@ namespace RN
 					break;
 				}
 			}
+		}
+		
+		if(previousRenderPass.renderPass)
+		{
+			metalRenderPass.previousStoredFramebuffer = previousRenderPass.resolveFramebuffer ? previousRenderPass.resolveFramebuffer : previousRenderPass.framebuffer;
 		}
 		
 		//This forces passes to not use multiview
@@ -1543,17 +1550,25 @@ namespace RN
 					[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
 				}
 			}
-			else if(argument->GetMaterialTextureIndex() == Shader::ArgumentTexture::IndexFramebufferTexture && renderPass.previousRenderPass && renderPass.previousRenderPass->GetFramebuffer())
+			else if(argument->GetMaterialTextureIndex() == Shader::ArgumentTexture::IndexFramebufferTexture && renderPass.previousStoredFramebuffer)
 			{
-				MetalSwapChain *swapChain = renderPass.previousRenderPass->GetFramebuffer()->Downcast<MetalFramebuffer>()->GetSwapChain();
-				if(swapChain)
+				MetalFramebuffer *previousFramebuffer = renderPass.previousStoredFramebuffer;
+				if(previousFramebuffer)
 				{
-					[encoder setFragmentTexture:swapChain->GetMetalColorTexture() atIndex:argument->GetIndex()];
+					MetalSwapChain *swapChain = previousFramebuffer->GetSwapChain();
+					if(swapChain)
+					{
+						[encoder setFragmentTexture:swapChain->GetMetalColorTexture() atIndex:argument->GetIndex()];
+					}
+					else
+					{
+						MetalTexture *colorBuffer = previousFramebuffer->GetColorTexture()->Downcast<MetalTexture>();
+						[encoder setFragmentTexture:(id<MTLTexture>)colorBuffer->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
+					}
 				}
 				else
 				{
-					MetalTexture *colorBuffer = renderPass.previousRenderPass->GetFramebuffer()->GetColorTexture()->Downcast<MetalTexture>();
-					[encoder setFragmentTexture:(id<MTLTexture>)colorBuffer->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
+					[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
 				}
 			}
 			else

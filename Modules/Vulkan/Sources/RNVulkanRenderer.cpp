@@ -462,9 +462,9 @@ namespace RN
 				}
 
 				//Set previous framebuffer texture layout for reading
-				if(renderPass.previousRenderPass && renderPass.previousRenderPass->GetFramebuffer())
+				if(renderPass.previousStoredFramebuffer)
 				{
-					Texture *texture = renderPass.previousRenderPass->GetFramebuffer()->GetColorTexture(0);
+					Texture *texture = renderPass.previousStoredFramebuffer->GetColorTexture(0);
 					if(texture)
 					{
 						VulkanTexture *vulkanTexture = texture->Downcast<VulkanTexture>();
@@ -633,9 +633,9 @@ namespace RN
 				}
 
 				//Set previous framebuffer texture layout for writing
-				if(renderPass.previousRenderPass && renderPass.previousRenderPass->GetFramebuffer())
+				if(renderPass.previousStoredFramebuffer)
 				{
-					Texture *texture = renderPass.previousRenderPass->GetFramebuffer()->GetColorTexture(0);
+					Texture *texture = renderPass.previousStoredFramebuffer->GetColorTexture(0);
 					if(texture)
 					{
 						VulkanTexture *vulkanTexture = texture->Downcast<VulkanTexture>();
@@ -772,6 +772,7 @@ namespace RN
 	{
 		RN_PROFILE_SCOPE();
 		VulkanRenderPass renderPass;
+		renderPass.previousStoredFramebuffer = nullptr;
 
 		const Array *multiviewCameras = camera->GetMultiviewCameras();
 		if(multiviewCameras && multiviewCameras->GetCount() > 0)
@@ -1029,6 +1030,7 @@ namespace RN
 
 		vulkanRenderPass.renderPass = renderPass;
 		vulkanRenderPass.previousRenderPass = previousRenderPass.renderPass;
+		vulkanRenderPass.previousStoredFramebuffer = nullptr;
 		vulkanRenderPass.currentPipelineState = nullptr;
 		vulkanRenderPass.currentInstanceDrawable = nullptr;
 
@@ -1068,6 +1070,11 @@ namespace RN
 					break;
 				}
 			}
+		}
+
+		if(previousRenderPass.renderPass)
+		{
+			vulkanRenderPass.previousStoredFramebuffer = previousRenderPass.resolveFramebuffer ? previousRenderPass.resolveFramebuffer : previousRenderPass.framebuffer;
 		}
 
 		if(!renderPass->GetIsSubpass())
@@ -2050,6 +2057,7 @@ namespace RN
 		warmupRenderPass.type = VulkanRenderPass::Type::Default;
 		warmupRenderPass.renderPass = renderPass;
 		warmupRenderPass.previousRenderPass = nullptr;
+		warmupRenderPass.previousStoredFramebuffer = nullptr;
 		warmupRenderPass.framebuffer = vulkanFramebuffer;
 		warmupRenderPass.resolveFramebuffer = resolveFramebuffer;
 		warmupRenderPass.shaderHint = renderPass->GetShaderHint();
@@ -2324,9 +2332,9 @@ namespace RN
 				}
 				
 				VkImageView previousPassColorView = VK_NULL_HANDLE;
-				if(rootRenderPass.previousRenderPass && rootRenderPass.previousRenderPass->GetFramebuffer())
+				if(rootRenderPass.previousStoredFramebuffer)
 				{
-					VulkanFramebuffer *previousFramebuffer = rootRenderPass.previousRenderPass->GetFramebuffer()->Downcast<VulkanFramebuffer>();
+					VulkanFramebuffer *previousFramebuffer = rootRenderPass.previousStoredFramebuffer;
 					if(previousFramebuffer)
 					{
 						Texture *previousColorTexture = previousFramebuffer->GetColorTexture();

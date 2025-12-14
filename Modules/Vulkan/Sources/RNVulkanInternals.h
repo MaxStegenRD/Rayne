@@ -230,6 +230,7 @@ namespace RN
 		Type type;
 		RenderPass *renderPass;
 		RenderPass *previousRenderPass;
+		VulkanFramebuffer *previousStoredFramebuffer;
 
 		const VulkanPipelineState *currentPipelineState;
 		VulkanDrawable *currentInstanceDrawable;
