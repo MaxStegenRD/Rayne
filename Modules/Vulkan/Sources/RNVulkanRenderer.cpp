@@ -1119,7 +1119,7 @@ namespace RN
 				{
 					if(!_defaultPostProcessingDrawable)
 					{
-						Mesh *planeMesh = Mesh::WithTexturedPlane(Quaternion::WithEulerAngle(Vector3(0.0f, 90.0f, 0.0f)), Vector3(0.0f), Vector2(1.0f, 1.0f));
+						Mesh *planeMesh = Mesh::WithTexturedPlane(Quaternion::WithEulerAngle(Vector3(0.0f, 90.0f + 180.0f, 0.0f)), Vector3(0.0f), Vector2(1.0f, 1.0f));
 						Material *planeMaterial = Material::WithShaders(GetDefaultShader(Shader::Type::Vertex, nullptr), GetDefaultShader(Shader::Type::Fragment, nullptr));
 
 						_lock.Lock();
