@@ -27,6 +27,7 @@ namespace RN
 		RNAPI ~Data() override;
 
 		RNAPI void Serialize(Serializer *serializer) const override;
+		RNAPI String *GetSha256Hash() const;
 
 		RNAPI static Data *WithBytes(const uint8 *bytes, size_t length);
 		RNAPI static Expected<Data *> WithContentsOfFile(const String *file);

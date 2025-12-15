@@ -22,6 +22,7 @@
 #include "../System//RNFile.h"
 #include "../System/RNFileManager.h"
 #include "RNData.h"
+#include "../Math/RNAlgorithm.h"
 #include "RNSerialization.h"
 #include "RNString.h"
 
@@ -95,6 +96,13 @@ namespace RN
 	void Data::Serialize(Serializer *serializer) const
 	{
 		serializer->EncodeBytes(_bytes, _length);
+	}
+
+	String *Data::GetSha256Hash() const
+	{
+		char hex[65];
+		ComputeSHA256Hex(_bytes, _length, hex);
+		return String::WithString(hex, false);
 	}
 
 
