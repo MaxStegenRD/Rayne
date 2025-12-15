@@ -144,20 +144,39 @@ def getPNGInfo(imageFile):
 
 
 def main():
-    if len(sys.argv) < 2:
+    args = sys.argv[1:]
+    skip_prepare = False
+    prepare_only = False
+    filtered_args = list()
+    for arg in args:
+        if arg == '--skip-prepare':
+            skip_prepare = True
+        elif arg == '--prepare-only':
+            prepare_only = True
+        else:
+            filtered_args.append(arg)
+
+    if prepare_only:
+        prepare()
+        return
+
+    if len(filtered_args) < 1:
         print('python convert.py input.png [output (with optional extension for a specific format) --astc=AxB]')
         return
+
+    if not skip_prepare:
+        prepare()
 
     supportedFileExtensions = ['.png', '.dds', '.astc']
     requestedFileExtensions = supportedFileExtensions
 
-    inputFileName, inputFileExtension = os.path.splitext(sys.argv[1])
+    inputFileName, inputFileExtension = os.path.splitext(filtered_args[0])
     if inputFileExtension != '.png':
         print('Currently only png files are supported as input')
         return
 
-    if len(sys.argv) >= 3:
-        outputFileName, outputFileExtension = os.path.splitext(sys.argv[2])
+    if len(filtered_args) >= 2:
+        outputFileName, outputFileExtension = os.path.splitext(filtered_args[1])
         if outputFileExtension:
             if outputFileExtension in supportedFileExtensions:
                 requestedFileExtensions = [outputFileExtension]
@@ -168,9 +187,9 @@ def main():
         outputFileName = inputFileName
 
     astcBlockSize = '6x6'
-    for i in range(2, len(sys.argv), 1):
-        if sys.argv[i].startswith('--astc='):
-            astcBlockSize = sys.argv[i][7:]
+    for i in range(2, len(filtered_args), 1):
+        if filtered_args[i].startswith('--astc='):
+            astcBlockSize = filtered_args[i][7:]
 
     astcencPath = os.path.dirname(sys.argv[0])
     bc7encPath = os.path.dirname(sys.argv[0])
@@ -332,5 +351,4 @@ def main():
                         os.remove(tempSourceFile)
 
 if __name__ == '__main__':
-    prepare()
     main()

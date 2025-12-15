@@ -5,6 +5,7 @@ import subprocess
 import struct
 import shutil
 import json
+import concurrent.futures
 
 def needsToUpdateFile(sourceFile, targetFile):
     if os.path.isfile(sourceFile) and os.path.isfile(targetFile):
@@ -191,6 +192,12 @@ def main():
     textureConverter = os.path.join(scriptDirectory, '../TextureCompression/convert.py')
 
     globalFileToSkip = dict()
+    texture_futures = list()
+    texture_executor = None
+    submitted_textures = set()
+    if not skipTextures:
+        subprocess.call([pythonExecutable, textureConverter, '--prepare-only'])
+        texture_executor = concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count() or 1)
 
     #Compile shaders
     if resourceSpecFile and "shaders" in resourceSpec and "libraries" in resourceSpec["shaders"]:
@@ -230,10 +237,16 @@ def main():
 
                             textureInputPath = os.path.join(currentSourceDirectory, filename)
                             textureOutputPath = os.path.join(currentTargetDirectory, textureFileName + textureSpec["extension"])
+                            output_key = os.path.abspath(textureOutputPath)
+                            if output_key in submitted_textures:
+                                filesToSkip[filename] = True
+                                continue
                             callArray = [pythonExecutable, textureConverter, textureInputPath, textureOutputPath]
                             if len(textureSpec["parameters"]) > 0:
                                 callArray.append(textureSpec["parameters"])
-                            subprocess.call(callArray)
+                            callArray.append('--skip-prepare')
+                            texture_futures.append(texture_executor.submit(subprocess.call, callArray))
+                            submitted_textures.add(output_key)
                             filesToSkip[filename] = True
 
                 else:
@@ -258,7 +271,11 @@ def main():
                                 textureInputPath = os.path.join(currentSourceDirectory, textureInputFilename)
                                 if os.path.isfile(textureInputPath):
                                     textureOutputPath = os.path.join(currentTargetDirectory, textureFileName + preferredTextureExtension)
-                                    subprocess.call([pythonExecutable, textureConverter, textureInputPath, textureOutputPath])
+                                    output_key = os.path.abspath(textureOutputPath)
+                                    if output_key not in submitted_textures:
+                                        callArray = [pythonExecutable, textureConverter, textureInputPath, textureOutputPath, '--skip-prepare']
+                                        texture_futures.append(texture_executor.submit(subprocess.call, callArray))
+                                        submitted_textures.add(output_key)
                                     for extension in textureExtensionsToSkipForCompressed:
                                         textureInputFilename = textureFileName + extension
                                         filesToSkip[textureInputFilename] = True
@@ -275,6 +292,11 @@ def main():
                     targetFilePath = os.path.join(currentTargetDirectory, filename)
                     if needsToUpdateFile(sourceFilePath, targetFilePath):
                         shutil.copy2(sourceFilePath, targetFilePath)
+
+    if texture_executor:
+        for future in concurrent.futures.as_completed(texture_futures):
+            future.result()
+        texture_executor.shutdown(wait=True)
 
     print("Resource packing completed successfully")
 
