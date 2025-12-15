@@ -5,6 +5,24 @@ import errno
 import subprocess
 import platform
 import pathlib
+import concurrent.futures
+
+def build_metal_commands(sdk, permutation_out_file, bitcode_out_file, lib_out_file, enable_debug_symbols):
+    commands = list()
+    metal_cmd = ['xcrun', '-sdk', sdk, 'metal']
+    if enable_debug_symbols:
+        metal_cmd.extend(['-gline-tables-only', '-MO'])
+    metal_cmd.extend(['-c', permutation_out_file, '-o', bitcode_out_file])
+    commands.append(metal_cmd)
+    commands.append(['xcrun', '-sdk', sdk, 'metallib', bitcode_out_file, '-o', lib_out_file])
+    return commands
+
+def execute_command_sequence(commands, cleanup_paths):
+    for command in commands:
+        print(command)
+        subprocess.call(command)
+    for path in cleanup_paths:
+        os.remove(path)
 
 def getNeedsUpdate(scriptFile, libraryFile, sourceFile, directory, pattern):
     referenceChangeTime = os.path.getmtime(scriptFile)
@@ -80,11 +98,21 @@ def main():
         shaderConductorCmdPath = path
         break
 
+    metal_sdk_map = {
+        'metal_macos': 'macosx',
+        'metal_ios': 'iphoneos',
+        'metal_ios_sim': 'iphonesimulator',
+        'metal_visionos': 'xros',
+        'metal_visionos_sim': 'xrsimulator',
+    }
+
     requestedFormats = sys.argv[2].split(',')
     outFormats = list()
     for request in requestedFormats:
         if request in supportedFormats:
             outFormats.append(request)
+
+    command_jobs = list()
 
     hlslFile = False
 
@@ -251,44 +279,16 @@ def main():
                         parameterList.extend(permutation)
 
                     if not skipShaderCompiling:
-                        print(parameterList)
-                        subprocess.call(parameterList)
-
-                        if (outFormat == 'metal_macos' or outFormat == 'metal_ios' or outFormat == 'metal_ios_sim' or outFormat == 'metal_visionos' or outFormat == 'metal_visionos_sim') and platform.system() == 'Darwin':
+                        job_commands = [parameterList]
+                        job_cleanup = list()
+                        if outFormat in metal_sdk_map and platform.system() == 'Darwin':
                             bitcodeOutFile = permutationOutFile + '.air'
                             libOutFile = os.path.join(outDirName, fileName + '.' + shaderType + '.' + str(permutationDict["identifier"]) + '.metallib')
-                            if outFormat == 'metal_macos':
-                                if enableDebugSymbols:
-                                    subprocess.call(['xcrun', '-sdk', 'macosx', 'metal', '-gline-tables-only', '-MO', '-c', permutationOutFile, '-o', bitcodeOutFile])
-                                else:
-                                    subprocess.call(['xcrun', '-sdk', 'macosx', 'metal', '-c', permutationOutFile, '-o', bitcodeOutFile])
-                                subprocess.call(['xcrun', '-sdk', 'macosx', 'metallib', bitcodeOutFile, '-o', libOutFile])
-                            elif outFormat == 'metal_ios':
-                                if enableDebugSymbols:
-                                    subprocess.call(['xcrun', '-sdk', 'iphoneos', 'metal', '-gline-tables-only', '-MO', '-c', permutationOutFile, '-o', bitcodeOutFile])
-                                else:
-                                    subprocess.call(['xcrun', '-sdk', 'iphoneos', 'metal', '-c', permutationOutFile, '-o', bitcodeOutFile])
-                                subprocess.call(['xcrun', '-sdk', 'iphoneos', 'metallib', bitcodeOutFile, '-o', libOutFile])
-                            elif outFormat == 'metal_ios_sim':
-                                if enableDebugSymbols:
-                                    subprocess.call(['xcrun', '-sdk', 'iphonesimulator', 'metal', '-gline-tables-only', '-MO', '-c', permutationOutFile, '-o', bitcodeOutFile])
-                                else:
-                                    subprocess.call(['xcrun', '-sdk', 'iphonesimulator', 'metal', '-c', permutationOutFile, '-o', bitcodeOutFile])
-                                subprocess.call(['xcrun', '-sdk', 'iphonesimulator', 'metallib', bitcodeOutFile, '-o', libOutFile])
-                            elif outFormat == 'metal_visionos':
-                                if enableDebugSymbols:
-                                    subprocess.call(['xcrun', '-sdk', 'xros', 'metal', '-gline-tables-only', '-MO', '-c', permutationOutFile, '-o', bitcodeOutFile])
-                                else:
-                                    subprocess.call(['xcrun', '-sdk', 'xros', 'metal', '-c', permutationOutFile, '-o', bitcodeOutFile])
-                                subprocess.call(['xcrun', '-sdk', 'xros', 'metallib', bitcodeOutFile, '-o', libOutFile])
-                            elif outFormat == 'metal_visionos_sim':
-                                if enableDebugSymbols:
-                                    subprocess.call(['xcrun', '-sdk', 'xrsimulator', 'metal', '-gline-tables-only', '-MO', '-c', permutationOutFile, '-o', bitcodeOutFile])
-                                else:
-                                    subprocess.call(['xcrun', '-sdk', 'xrsimulator', 'metal', '-c', permutationOutFile, '-o', bitcodeOutFile])
-                                subprocess.call(['xcrun', '-sdk', 'xrsimulator', 'metallib', bitcodeOutFile, '-o', libOutFile])
-                            os.remove(permutationOutFile)
-                            os.remove(bitcodeOutFile)
+                            sdk = metal_sdk_map[outFormat]
+                            metal_commands = build_metal_commands(sdk, permutationOutFile, bitcodeOutFile, libOutFile, enableDebugSymbols)
+                            job_commands.extend(metal_commands)
+                            job_cleanup.extend([permutationOutFile, bitcodeOutFile])
+                        command_jobs.append((job_commands, job_cleanup))
 
             destinationJson.append(destinationShaderFile)
 
@@ -297,6 +297,12 @@ def main():
 
         with open(os.path.join(outDirName, 'Shaders.json'), 'w') as destinationJsonData:
             json.dump(destinationJson, destinationJsonData, indent=4, sort_keys=True)
+
+    cpu_workers = os.cpu_count() or 1
+    with concurrent.futures.ThreadPoolExecutor(max_workers=cpu_workers) as executor:
+        futures = [executor.submit(execute_command_sequence, commands, cleanup_paths) for commands, cleanup_paths in command_jobs]
+        for future in concurrent.futures.as_completed(futures):
+            future.result()
 
 if __name__ == '__main__':
     main()
