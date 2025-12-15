@@ -17,12 +17,22 @@ def build_metal_commands(sdk, permutation_out_file, bitcode_out_file, lib_out_fi
     commands.append(['xcrun', '-sdk', sdk, 'metallib', bitcode_out_file, '-o', lib_out_file])
     return commands
 
-def execute_command_sequence(commands, cleanup_paths):
+def execute_command_sequence(commands, cleanup_paths, expected_outputs):
     for command in commands:
         print(command)
-        subprocess.call(command)
+        result = subprocess.run(command)
+        if result.returncode != 0:
+            raise RuntimeError(f"Command failed with exit code {result.returncode}: {command}")
+
+    for output in expected_outputs:
+        if not os.path.isfile(output):
+            raise RuntimeError(f"Expected output missing after compilation: {output}")
+
     for path in cleanup_paths:
-        os.remove(path)
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
 
 def getNeedsUpdate(scriptFile, libraryFile, sourceFile, directory, pattern):
     referenceChangeTime = os.path.getmtime(scriptFile)
@@ -281,6 +291,8 @@ def main():
                     if not skipShaderCompiling:
                         job_commands = [parameterList]
                         job_cleanup = list()
+                        expected_output = permutationOutFile
+
                         if outFormat in metal_sdk_map and platform.system() == 'Darwin':
                             bitcodeOutFile = permutationOutFile + '.air'
                             libOutFile = os.path.join(outDirName, fileName + '.' + shaderType + '.' + str(permutationDict["identifier"]) + '.metallib')
@@ -288,7 +300,9 @@ def main():
                             metal_commands = build_metal_commands(sdk, permutationOutFile, bitcodeOutFile, libOutFile, enableDebugSymbols)
                             job_commands.extend(metal_commands)
                             job_cleanup.extend([permutationOutFile, bitcodeOutFile])
-                        command_jobs.append((job_commands, job_cleanup))
+                            expected_output = libOutFile
+
+                        command_jobs.append((job_commands, job_cleanup, [expected_output]))
 
             destinationJson.append(destinationShaderFile)
 
@@ -300,7 +314,7 @@ def main():
 
     cpu_workers = os.cpu_count() or 1
     with concurrent.futures.ThreadPoolExecutor(max_workers=cpu_workers) as executor:
-        futures = [executor.submit(execute_command_sequence, commands, cleanup_paths) for commands, cleanup_paths in command_jobs]
+        futures = [executor.submit(execute_command_sequence, commands, cleanup_paths, outputs) for commands, cleanup_paths, outputs in command_jobs]
         for future in concurrent.futures.as_completed(futures):
             future.result()
 
