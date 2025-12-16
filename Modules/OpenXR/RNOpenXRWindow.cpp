@@ -297,6 +297,9 @@ namespace RN
 		XrResult createInstanceResult = xrCreateInstance(&createInfo, &_internals->instance);
 		if(createInstanceResult != XR_SUCCESS)
 		{
+			char resultString[XR_MAX_RESULT_STRING_SIZE] = {};
+			xrResultToString(XR_NULL_HANDLE, createInstanceResult, resultString);
+			RNError("OpenXR instance creation failed: " << createInstanceResult << " (" << resultString << ")");
 			//TODO: For some reason this fails regularly on Quest
 			RN_ASSERT(false, "Failed creating OpenXR instance");
 		}
@@ -305,14 +308,22 @@ namespace RN
 		systemInfo.type = XR_TYPE_SYSTEM_GET_INFO;
 		systemInfo.next = nullptr;
 		systemInfo.formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
-		if(xrGetSystem(_internals->instance, &systemInfo, &_internals->systemID) != XR_SUCCESS)
+		XrResult systemResult = xrGetSystem(_internals->instance, &systemInfo, &_internals->systemID);
+		if(systemResult != XR_SUCCESS)
 		{
+			char resultString[XR_MAX_RESULT_STRING_SIZE] = {};
+			xrResultToString(_internals->instance, systemResult, resultString);
+			RNError("OpenXR system discovery failed: " << systemResult << " (" << resultString << ")");
 			RN_ASSERT(false, "No HMD found");
 		}
 
 		_internals->systemProperties.type = XR_TYPE_SYSTEM_PROPERTIES;
-		if(xrGetSystemProperties(_internals->instance, _internals->systemID, &_internals->systemProperties) != XR_SUCCESS)
+		XrResult systemPropertiesResult = xrGetSystemProperties(_internals->instance, _internals->systemID, &_internals->systemProperties);
+		if(systemPropertiesResult != XR_SUCCESS)
 		{
+			char resultString[XR_MAX_RESULT_STRING_SIZE] = {};
+			xrResultToString(_internals->instance, systemPropertiesResult, resultString);
+			RNError("OpenXR system properties fetch failed: " << systemPropertiesResult << " (" << resultString << ")");
 			RN_ASSERT(false, "Failed fetching HMD info!");
 		}
 
