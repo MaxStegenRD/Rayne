@@ -102,6 +102,15 @@ namespace RN
 		}
 	}
 
+	AABB PhysXStaticBody::GetPhysXAABB(float inflation) const
+	{
+		if(!_actor) return AABB();
+
+		const physx::PxBounds3 bounds = _actor->getWorldBounds(inflation);
+		return AABB(Vector3(bounds.minimum.x, bounds.minimum.y, bounds.minimum.z),
+					Vector3(bounds.maximum.x, bounds.maximum.y, bounds.maximum.z));
+	}
+
 	void PhysXStaticBody::DidUpdate(SceneNode::ChangeSet changeSet)
 	{
 		PhysXCollisionObject::DidUpdate(changeSet);

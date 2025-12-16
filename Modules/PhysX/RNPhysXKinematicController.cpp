@@ -430,4 +430,16 @@ namespace RN
 		const physx::PxExtendedVec3 &position = _controller->getPosition();
 		SetWorldPosition(Vector3(position.x, position.y, position.z) + _positionOffset);
 	}
+
+	AABB PhysXKinematicController::GetPhysXAABB(float inflation) const
+	{
+		if(!_controller) return AABB();
+
+		physx::PxRigidDynamic *actor = _controller->getActor();
+		if(!actor) return AABB();
+
+		const physx::PxBounds3 bounds = actor->getWorldBounds(inflation);
+		return AABB(Vector3(bounds.minimum.x, bounds.minimum.y, bounds.minimum.z),
+					Vector3(bounds.maximum.x, bounds.maximum.y, bounds.maximum.z));
+	}
 } // namespace RN

@@ -46,6 +46,8 @@ namespace RN
 
 		PXAPI void Jump(float force);
 
+		PXAPI AABB GetPhysXAABB(float inflation = 1.0f) const override;
+
 		/*	PXAPI void SetFallSpeed(float speed);
 		PXAPI void SetJumpSpeed(float speed);
 		PXAPI void SetMaxJumpHeight(float maxHeight);

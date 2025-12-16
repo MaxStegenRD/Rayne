@@ -45,6 +45,8 @@ namespace RN
 		PXAPI float GetCurrentRPM();
 		PXAPI uint32 GetCurrentGear();
 
+		PXAPI AABB GetPhysXAABB(float inflation = 1.0f) const override;
+
 	private:
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
 

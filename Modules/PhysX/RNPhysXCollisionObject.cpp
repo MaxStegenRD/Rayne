@@ -99,4 +99,9 @@ namespace RN
 			}
 		}
 	}
+
+	AABB PhysXCollisionObject::GetPhysXAABB(RN_UNUSED float inflation) const
+	{
+		return AABB();
+	}
 } // namespace RN

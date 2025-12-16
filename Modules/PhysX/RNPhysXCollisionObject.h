@@ -57,6 +57,8 @@ namespace RN
 		uint32 GetCollisionFilterGroup() const { return _collisionFilterGroup; }
 		uint32 GetCollisionFilterMask() const { return _collisionFilterMask; }
 
+		PXAPI virtual AABB GetPhysXAABB(float inflation = 1.0f) const;
+
 	protected:
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
 		virtual void ApplyPose() {}
