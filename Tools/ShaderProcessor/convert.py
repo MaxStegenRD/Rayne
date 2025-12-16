@@ -7,6 +7,17 @@ import platform
 import pathlib
 import concurrent.futures
 
+
+def running_under_xcode():
+    xcode_env_keys = (
+        'XCODE_VERSION_ACTUAL',
+        'XCODE_PRODUCT_BUILD_VERSION',
+        'ACTION',
+        'TARGET_BUILD_DIR',
+        'OBJROOT',
+    )
+    return any(key in os.environ for key in xcode_env_keys)
+
 def build_metal_commands(sdk, permutation_out_file, bitcode_out_file, lib_out_file, enable_debug_symbols):
     commands = list()
     metal_cmd = ['xcrun', '-sdk', sdk, 'metal']
@@ -313,6 +324,9 @@ def main():
             json.dump(destinationJson, destinationJsonData, indent=4, sort_keys=True)
 
     cpu_workers = os.cpu_count() or 1
+    if running_under_xcode():
+        cpu_workers = min(cpu_workers, 1)
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=cpu_workers) as executor:
         futures = [executor.submit(execute_command_sequence, commands, cleanup_paths, outputs) for commands, cleanup_paths, outputs in command_jobs]
         for future in concurrent.futures.as_completed(futures):
