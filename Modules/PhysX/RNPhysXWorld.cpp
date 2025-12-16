@@ -518,8 +518,10 @@ namespace RN
 			physx::PxShape *pxShape1 = s1->GetPhysXShape();
 			if(!pxShape0 || !pxShape1) return;
 
-			const physx::PxGeometry &geom0 = pxShape0->getGeometry().any();
-			const physx::PxGeometry &geom1 = pxShape1->getGeometry().any();
+			physx::PxGeometryHolder geomHolder0 = pxShape0->getGeometry();
+			physx::PxGeometryHolder geomHolder1 = pxShape1->getGeometry();
+			const physx::PxGeometry &geom0 = geomHolder0.any();
+			const physx::PxGeometry &geom1 = geomHolder1.any();
 
 			physx::PxVec3 direction;
 			physx::PxF32 depth = 0.0f;
