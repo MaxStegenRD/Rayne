@@ -30,6 +30,15 @@ namespace RN
 
 	void ResonanceAudioWorld::AudioCallback(void *outputBuffer, const void *inputBuffer, unsigned int frameSize, unsigned int status)
 	{
+		//Capture microphone samples if requested
+		if(_instance->_inputSamplesCallback && inputBuffer)
+		{
+			const float *floatInput = static_cast<const float *>(inputBuffer);
+			_instance->_inputSamplesCallback(_instance->_audioSystem->_sampleRate, _instance->_audioSystem->_channelCount, frameSize, floatInput);
+		}
+
+		if(!outputBuffer) return;
+
 		AutoreleasePool pool;
 		_instance->_audioSourcesLock.Lock();
 		for(ResonanceAudioSource *source : _instance->_audioSources)
@@ -261,6 +270,11 @@ namespace RN
 		SafeRelease(_inputBuffer);
 		_inputBuffer = inputBuffer;
 		SafeRetain(_inputBuffer);
+	}
+
+	void ResonanceAudioWorld::SetInputSamplesCallback(std::function<void(uint32, uint32, uint32, const float *)> inputSamplesCallback)
+	{
+		_inputSamplesCallback = std::move(inputSamplesCallback);
 	}
 
 	void ResonanceAudioWorld::SetListener(SceneNode *listener)

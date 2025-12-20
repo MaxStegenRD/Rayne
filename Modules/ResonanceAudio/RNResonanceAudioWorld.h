@@ -77,7 +77,7 @@ namespace RN
 		RAAPI void SetSimpleRoomEnabled(bool enabled);
 
 		RAAPI void SetInputBuffer(AudioAsset *inputBuffer);
-		//RAAPI void SetCustomWriteCallback(const std::function<void (double)> &customWriteCallback);
+		RAAPI void SetInputSamplesCallback(std::function<void(uint32 /*sampleRate*/, uint32 /*channelCount*/, uint32 /*frameCount*/, const float * /*frames*/)> inputSamplesCallback);
 
 		RAAPI static void RequestMicrophonePermission();
 		RAAPI static MicrophonePermissionState GetMicrophonePermissionState();
@@ -97,6 +97,7 @@ namespace RN
 		SceneNode *_listener;
 
 		AudioAsset *_inputBuffer;
+		std::function<void(uint32, uint32, uint32, const float *)> _inputSamplesCallback;
 
 		float *_sharedFrameData;
 
@@ -104,7 +105,6 @@ namespace RN
 		std::vector<ResonanceAudioSource *> _audioSources;
 
 		std::function<void(Vector3, Vector3, float &)> _raycastCallback;
-		//std::function<void (double)> _customWriteCallback;
 
 		vraudio::ResonanceAudioApi *_audioAPI;
 
