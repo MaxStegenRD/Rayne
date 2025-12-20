@@ -30,24 +30,30 @@ namespace RN
 
 	void ResonanceAudioWorld::AudioCallback(void *outputBuffer, const void *inputBuffer, unsigned int frameSize, unsigned int status)
 	{
+		AutoreleasePool pool;
+
 		//Capture microphone samples if requested
+		_instance->_audioSourcesLock.Lock();
 		if(_instance->_inputSamplesCallback && inputBuffer)
 		{
 			const float *floatInput = static_cast<const float *>(inputBuffer);
 			_instance->_inputSamplesCallback(_instance->_audioSystem->_sampleRate, _instance->_audioSystem->_channelCount, frameSize, floatInput);
 		}
 
-		if(!outputBuffer) return;
-
-		AutoreleasePool pool;
-		_instance->_audioSourcesLock.Lock();
-		for(ResonanceAudioSource *source : _instance->_audioSources)
+		if(!outputBuffer)
 		{
-			if(source->IsPositional()) source->Update();
+			_instance->_audioSourcesLock.Unlock();
+			return;
 		}
 
+		for(ResonanceAudioSource *source : _instance->_audioSources)
+		{
+			source->Update();
+		}
+
+		const uint32 channelCount = _instance->_audioSystem->_channelCount;
 		float *floatOutputBuffer = static_cast<float *>(outputBuffer);
-		if(!_instance->_audioAPI->FillInterleavedOutputBuffer(2, frameSize, floatOutputBuffer))
+		if(!_instance->_audioAPI->FillInterleavedOutputBuffer(channelCount, frameSize, floatOutputBuffer))
 		{
 			//RNDebug("Shit. " << frameSize);
 		}
@@ -57,23 +63,23 @@ namespace RN
 			if(!source->IsPositional() && source->IsPlaying() && source->GetSampler() && source->GetSampler()->GetAsset())
 			{
 				float *frameData = nullptr;
-				source->Update(frameSize / 48000.0f, frameSize, &frameData, 2);
-				for(int i = 0; i < frameSize; i++)
+				source->Update(frameSize / 48000.0f, frameSize, &frameData, channelCount);
+				for(int i = 0; i < static_cast<int>(frameSize); i++)
 				{
-					for(int j = 0; j < 2; j++)
+					for(uint32 j = 0; j < channelCount; j++)
 					{
-						floatOutputBuffer[i * 2 + j] += frameData[i * 2 + j] * source->GetVolume();
+						floatOutputBuffer[i * channelCount + j] += frameData[i * channelCount + j] * source->GetVolume();
 					}
 				}
 			}
 		}
 		_instance->_audioSourcesLock.Unlock();
 
-		for(int i = 0; i < frameSize; i++)
+		for(uint32 i = 0; i < frameSize; i++)
 		{
-			for(int j = 0; j < 2; j++)
+			for(uint32 j = 0; j < channelCount; j++)
 			{
-				floatOutputBuffer[i * 2 + j] = tanh(floatOutputBuffer[i * 2 + j]);
+				floatOutputBuffer[i * channelCount + j] = tanh(floatOutputBuffer[i * channelCount + j]);
 			}
 		}
 	}
@@ -274,7 +280,9 @@ namespace RN
 
 	void ResonanceAudioWorld::SetInputSamplesCallback(std::function<void(uint32, uint32, uint32, const float *)> inputSamplesCallback)
 	{
+		_audioSourcesLock.Lock();
 		_inputSamplesCallback = std::move(inputSamplesCallback);
+		_audioSourcesLock.Unlock();
 	}
 
 	void ResonanceAudioWorld::SetListener(SceneNode *listener)
@@ -308,11 +316,6 @@ namespace RN
 
 		return source->Autorelease();
 	}
-
-	/*	void ResonanceAudioWorld::SetCustomWriteCallback(const std::function<void (double)> &customWriteCallback)
-	{
-		_customWriteCallback = customWriteCallback;
-	}*/
 
 	void ResonanceAudioWorld::RequestMicrophonePermission()
 	{

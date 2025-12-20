@@ -14,6 +14,17 @@
 
 namespace RN
 {
+	static vraudio::DistanceRolloffModel MapRolloffModel(ResonanceAudioSource::DistanceRolloffModel model)
+	{
+		switch(model)
+		{
+			case ResonanceAudioSource::DistanceRolloffModel::Logarithmic: return vraudio::DistanceRolloffModel::kLogarithmic;
+			case ResonanceAudioSource::DistanceRolloffModel::Linear: return vraudio::DistanceRolloffModel::kLinear;
+			case ResonanceAudioSource::DistanceRolloffModel::None: return vraudio::DistanceRolloffModel::kNone;
+		}
+		return vraudio::DistanceRolloffModel::kLinear;
+	}
+
 	RNDefineMeta(ResonanceAudioSource, SceneNode)
 
 	ResonanceAudioSource::ResonanceAudioSource(AudioAsset *asset, bool wantsIndirectSound, bool isPositional) :
@@ -41,7 +52,7 @@ namespace RN
 		{
 			//TODO: Make quality adjustable
 			_sourceID = ResonanceAudioWorld::_instance->_audioAPI->CreateSoundObjectSource(vraudio::RenderingMode::kBinauralHighQuality);
-			ResonanceAudioWorld::_instance->_audioAPI->SetSourceDistanceModel(_sourceID, static_cast<vraudio::DistanceRolloffModel>(_rolloffModel), 1.0f, 20.0f);
+			ResonanceAudioWorld::_instance->_audioAPI->SetSourceDistanceModel(_sourceID, MapRolloffModel(_rolloffModel), 1.0f, 20.0f);
 		}
 	}
 
@@ -96,7 +107,7 @@ namespace RN
 		const float maxDistance = std::max(minDistance, _minMaxRange.y);
 		_minMaxRange = RN::Vector2(minDistance, maxDistance);
 
-		ResonanceAudioWorld::_instance->_audioAPI->SetSourceDistanceModel(_sourceID, static_cast<vraudio::DistanceRolloffModel>(_rolloffModel), minDistance, maxDistance);
+		ResonanceAudioWorld::_instance->_audioAPI->SetSourceDistanceModel(_sourceID, MapRolloffModel(_rolloffModel), minDistance, maxDistance);
 	}
 
 	void ResonanceAudioSource::SetSelfdestruct(bool selfdestruct)
@@ -118,7 +129,7 @@ namespace RN
 
 		const float minDistance = std::max(0.001f, _minMaxRange.x);
 		const float maxDistance = std::max(minDistance, _minMaxRange.y);
-		ResonanceAudioWorld::_instance->_audioAPI->SetSourceDistanceModel(_sourceID, static_cast<vraudio::DistanceRolloffModel>(_rolloffModel), minDistance, maxDistance);
+		ResonanceAudioWorld::_instance->_audioAPI->SetSourceDistanceModel(_sourceID, MapRolloffModel(_rolloffModel), minDistance, maxDistance);
 	}
 
 
@@ -205,9 +216,13 @@ namespace RN
 
 	void ResonanceAudioSource::Update()
 	{
-		float *newBuffer;
-		Update(960.0f / 48000.0f, 960, &newBuffer, 1);
-		if(_isPositional) ResonanceAudioWorld::_instance->_audioAPI->SetInterleavedBuffer(_sourceID, newBuffer, 1, 960);
+		if(_isPositional)
+		{
+			//For none positional sources this happens in the audio handling callback
+			float *newBuffer;
+			Update(960.0f / 48000.0f, 960, &newBuffer, 1);
+			ResonanceAudioWorld::_instance->_audioAPI->SetInterleavedBuffer(_sourceID, newBuffer, 1, 960);
+		}
 
 		if(HasEnded())
 		{
