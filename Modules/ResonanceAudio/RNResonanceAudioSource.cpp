@@ -30,6 +30,7 @@ namespace RN
 		_volume(1.0f),
 		_pitch(1.0f),
 		_minMaxRange(RN::Vector2(0.2f, 200.0f)),
+		_rolloffModel(DistanceRolloffModel::Logarithmic),
 		_currentTime(0.0f)
 	{
 		RN_ASSERT(ResonanceAudioWorld::_instance, "You need to create a ResonanceAudioWorld before creating audio sources!");
@@ -40,7 +41,7 @@ namespace RN
 		{
 			//TODO: Make quality adjustable
 			_sourceID = ResonanceAudioWorld::_instance->_audioAPI->CreateSoundObjectSource(vraudio::RenderingMode::kBinauralHighQuality);
-			ResonanceAudioWorld::_instance->_audioAPI->SetSourceDistanceModel(_sourceID, vraudio::DistanceRolloffModel::kLinear, 1.0f, 20.0f);
+			ResonanceAudioWorld::_instance->_audioAPI->SetSourceDistanceModel(_sourceID, static_cast<vraudio::DistanceRolloffModel>(_rolloffModel), 1.0f, 20.0f);
 		}
 	}
 
@@ -81,6 +82,21 @@ namespace RN
 		ResonanceAudioWorld::_instance->_audioAPI->SetSourceVolume(_sourceID, volume);
 	}
 
+	void ResonanceAudioSource::SetRange(RN::Vector2 minMaxRange)
+	{
+		if(!_isPositional) return;
+		if(_minMaxRange == minMaxRange) return;
+		
+		_minMaxRange = minMaxRange;
+
+		// Clamp to sane positives to avoid API errors
+		const float minDistance = std::max(0.001f, _minMaxRange.x);
+		const float maxDistance = std::max(minDistance, _minMaxRange.y);
+		_minMaxRange = RN::Vector2(minDistance, maxDistance);
+
+		ResonanceAudioWorld::_instance->_audioAPI->SetSourceDistanceModel(_sourceID, static_cast<vraudio::DistanceRolloffModel>(_rolloffModel), minDistance, maxDistance);
+	}
+
 	void ResonanceAudioSource::SetSelfdestruct(bool selfdestruct)
 	{
 		_isSelfdestructing = selfdestruct;
@@ -89,6 +105,18 @@ namespace RN
 	void ResonanceAudioSource::SetTimeOfFlight(bool tof)
 	{
 		_hasTimeOfFlight = tof;
+	}
+
+	void ResonanceAudioSource::SetRolloffModel(DistanceRolloffModel rolloffModel)
+	{
+		if(!_isPositional) return;
+		if(_rolloffModel == rolloffModel) return;
+
+		_rolloffModel = rolloffModel;
+
+		const float minDistance = std::max(0.001f, _minMaxRange.x);
+		const float maxDistance = std::max(minDistance, _minMaxRange.y);
+		ResonanceAudioWorld::_instance->_audioAPI->SetSourceDistanceModel(_sourceID, static_cast<vraudio::DistanceRolloffModel>(_rolloffModel), minDistance, maxDistance);
 	}
 
 

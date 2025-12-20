@@ -20,6 +20,13 @@ namespace RN
 	public:
 		friend class ResonanceAudioWorld;
 
+		enum class DistanceRolloffModel
+		{
+			Logarithmic,
+			Linear,
+			None
+		};
+
 		RAAPI ResonanceAudioSource(AudioAsset *asset = nullptr, bool wantsIndirectSound = true, bool isPositional = true);
 		RAAPI ~ResonanceAudioSource() override;
 
@@ -36,6 +43,7 @@ namespace RN
 		RAAPI void SetVolume(float volume);
 		RAAPI void SetRange(RN::Vector2 minMaxRange);
 		RAAPI void SetSelfdestruct(bool selfdestruct);
+		RAAPI void SetRolloffModel(DistanceRolloffModel rolloffModel);
 		RAAPI void SetChannel(uint8 channel);
 		RAAPI void SetTimeOfFlight(bool tof);
 		RAAPI void SetReverb(bool reverb);
@@ -76,6 +84,7 @@ namespace RN
 		float _pitch;
 
 		RN::Vector2 _minMaxRange;
+		DistanceRolloffModel _rolloffModel;
 
 		double _currentTime;
 
