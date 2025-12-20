@@ -25,6 +25,7 @@ namespace RN
 
 		RAAPI void Play();
 		RAAPI void Stop();
+		RAAPI void Pause();
 		RAAPI void Seek(double time);
 
 		RAAPI void SetAudioAsset(AudioAsset *asset);

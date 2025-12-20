@@ -104,6 +104,12 @@ namespace RN
 	void ResonanceAudioSource::Stop()
 	{
 		_isPlaying = false;
+		_currentTime = 0.0;
+	}
+
+	void ResonanceAudioSource::Pause()
+	{
+		_isPlaying = false;
 	}
 
 	void ResonanceAudioSource::Seek(double time)
