@@ -64,9 +64,11 @@ namespace RN
 		_isRepeating = repeat;
 	}
 
-	void ResonanceAudioSource::SetDistanceAttenuation(float attentuation)
+	void ResonanceAudioSource::SetCurrentDistanceAttenuationValue(float attentuation)
 	{
 		if(!_isPositional) return;
+		RN_DEBUG_ASSERT(_rolloffModel == DistanceRolloffModel::None, "Distance attenuation value is only supported for none rolloff model");
+
 		ResonanceAudioWorld::_instance->_audioAPI->SetSourceDistanceAttenuation(_sourceID, attentuation);
 	}
 
@@ -207,9 +209,11 @@ namespace RN
 		Update(960.0f / 48000.0f, 960, &newBuffer, 1);
 		if(_isPositional) ResonanceAudioWorld::_instance->_audioAPI->SetInterleavedBuffer(_sourceID, newBuffer, 1, 960);
 
-		if(_isSelfdestructing && HasEnded())
+		if(HasEnded())
 		{
-			if(GetSceneInfo() && GetSceneInfo()->GetScene())
+			_isPlaying = false;
+
+			if(_isSelfdestructing && GetSceneInfo() && GetSceneInfo()->GetScene())
 			{
 				GetSceneInfo()->GetScene()->RemoveNode(const_cast<ResonanceAudioSource *>(this));
 			}

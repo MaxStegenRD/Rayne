@@ -38,7 +38,7 @@ namespace RN
 		RAAPI void SetAudioAsset(AudioAsset *asset);
 
 		RAAPI void SetRepeat(bool repeat);
-		RAAPI void SetDistanceAttenuation(float attentuation);
+		RAAPI void SetCurrentDistanceAttenuationValue(float attentuation);
 		RAAPI void SetPitch(float pitch);
 		RAAPI void SetVolume(float volume);
 		RAAPI void SetRange(RN::Vector2 minMaxRange);
