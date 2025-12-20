@@ -34,7 +34,7 @@ namespace RN
 		RAAPI void SetPitch(float pitch);
 		RAAPI void SetVolume(float volume);
 		RAAPI void SetRange(RN::Vector2 minMaxRange);
-		//		RAAPI void SetSelfdestruct(bool selfdestruct);
+		RAAPI void SetSelfdestruct(bool selfdestruct);
 		RAAPI void SetChannel(uint8 channel);
 		RAAPI void SetTimeOfFlight(bool tof);
 		RAAPI void SetReverb(bool reverb);
@@ -67,7 +67,7 @@ namespace RN
 
 		bool _isPlaying;
 		bool _isRepeating;
-		//		bool _isSelfdestructing;
+		bool _isSelfdestructing;
 		bool _hasTimeOfFlight;
 		bool _hasReverb;
 

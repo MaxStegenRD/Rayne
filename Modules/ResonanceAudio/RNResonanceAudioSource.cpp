@@ -24,7 +24,7 @@ namespace RN
 		_isPositional(isPositional),
 		_isPlaying(false),
 		_isRepeating(false),
-		//		_isSelfdestructing(false),
+		_isSelfdestructing(false),
 		_hasTimeOfFlight(true),
 		_hasReverb(true),
 		_volume(1.0f),
@@ -81,10 +81,10 @@ namespace RN
 		ResonanceAudioWorld::_instance->_audioAPI->SetSourceVolume(_sourceID, volume);
 	}
 
-	/*	void ResonanceAudioSource::SetSelfdestruct(bool selfdestruct)
+	void ResonanceAudioSource::SetSelfdestruct(bool selfdestruct)
 	{
 		_isSelfdestructing = selfdestruct;
-	}*/
+	}
 
 	void ResonanceAudioSource::SetTimeOfFlight(bool tof)
 	{
@@ -113,6 +113,8 @@ namespace RN
 
 	bool ResonanceAudioSource::HasEnded() const
 	{
+		if(!_sampler->GetAsset()) return true;
+		if(_isRepeating) return false;
 		return (_currentTime >= _sampler->GetTotalTime());
 	}
 
@@ -170,6 +172,14 @@ namespace RN
 		float *newBuffer;
 		Update(960.0f / 48000.0f, 960, &newBuffer, 1);
 		if(_isPositional) ResonanceAudioWorld::_instance->_audioAPI->SetInterleavedBuffer(_sourceID, newBuffer, 1, 960);
+
+		if(_isSelfdestructing && HasEnded())
+		{
+			if(GetSceneInfo() && GetSceneInfo()->GetScene())
+			{
+				GetSceneInfo()->GetScene()->RemoveNode(const_cast<ResonanceAudioSource *>(this));
+			}
+		}
 	}
 
 	void ResonanceAudioSource::DidUpdate(SceneNode::ChangeSet changeSet)
