@@ -65,6 +65,9 @@ namespace RN
 
 	void ResonanceAudioSource::SetAudioAsset(AudioAsset *asset)
 	{
+		// Avoid resetting playback time when the asset is unchanged (common for streaming ringbuffers like voice chat)
+		if(_sampler->GetAsset() == asset) return;
+
 		_sampler->SetAudioAsset(asset);
 		_currentTime = 0.0f;
 	}
