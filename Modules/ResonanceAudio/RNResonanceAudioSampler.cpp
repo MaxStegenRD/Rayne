@@ -95,7 +95,7 @@ namespace RN
 		samplePositions[3] = time * sampleRate - 1;
 		double interpolationFactor = (static_cast<double>(samplePositions[1]) / static_cast<double>(sampleRate) - time) * static_cast<double>(sampleRate);
 
-		uint64 maxSamplePosition = _asset->GetData()->GetLength() / _asset->GetBytesPerSample();
+		uint64 maxSamplePosition = _asset->GetData()->GetLength() / (_asset->GetBytesPerSample() / channelCount);
 		for(int i = 0; i < 4; i++)
 		{
 			samplePositions[i] = samplePositions[i] * channelCount + channel;
