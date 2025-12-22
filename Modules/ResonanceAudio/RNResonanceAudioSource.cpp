@@ -221,10 +221,13 @@ namespace RN
 	{
 		if(_isPositional)
 		{
+			const uint32 frameSize = ResonanceAudioWorld::_instance->_audioSystem->_frameSize;
+			const uint32 sampleRate = ResonanceAudioWorld::_instance->_audioSystem->_sampleRate;
+
 			//For none positional sources this happens in the audio handling callback
 			float *newBuffer;
-			Update(960.0f / 48000.0f, 960, &newBuffer, 1);
-			ResonanceAudioWorld::_instance->_audioAPI->SetInterleavedBuffer(_sourceID, newBuffer, 1, 960);
+			Update(static_cast<double>(frameSize) / static_cast<double>(sampleRate), frameSize, &newBuffer, 1);
+			ResonanceAudioWorld::_instance->_audioAPI->SetInterleavedBuffer(_sourceID, newBuffer, 1, frameSize);
 		}
 
 		if(HasEnded())

@@ -58,12 +58,13 @@ namespace RN
 			//RNDebug("Shit. " << frameSize);
 		}
 
+		const float outputSampleRate = static_cast<float>(_instance->_audioSystem->_sampleRate);
 		for(ResonanceAudioSource *source : _instance->_audioSources)
 		{
 			if(!source->IsPositional() && source->IsPlaying() && source->GetSampler() && source->GetSampler()->GetAsset())
 			{
 				float *frameData = nullptr;
-				source->Update(frameSize / 48000.0f, frameSize, &frameData, channelCount);
+				source->Update(frameSize / outputSampleRate, frameSize, &frameData, channelCount);
 				for(int i = 0; i < static_cast<int>(frameSize); i++)
 				{
 					for(uint32 j = 0; j < channelCount; j++)

@@ -50,10 +50,12 @@ namespace RN
 		RNDeclareMetaAPI(ResonanceAudioDevice, RAAPI)
 	};
 
+	class ResonanceAudioSource;
 	class ResonanceAudioWorld;
 	class ResonanceAudioSystem : public Object
 	{
 	public:
+		friend ResonanceAudioSource;
 		friend ResonanceAudioWorld;
 		RAAPI ~ResonanceAudioSystem();
 
