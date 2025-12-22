@@ -185,7 +185,8 @@ namespace RN
 		if(_sampler->GetAsset()->GetType() == AudioAsset::Type::Ringbuffer)
 		{
 			//Buffer for audio data to play
-			uint32 assetFrameSamples = std::round(frameLength * _sampler->GetAsset()->GetSampleRate() * _sampler->GetAsset()->GetBytesPerSample());
+			uint32 bytesPerSecond = _sampler->GetAsset()->GetSampleRate() * _sampler->GetAsset()->GetBytesPerSample();
+			uint32 assetFrameSamples = std::round(frameLength * bytesPerSecond);
 			if(_sampler->GetAsset()->GetBufferedSize() < assetFrameSamples)
 			{
 				*outputBuffer = nullptr;
@@ -198,7 +199,7 @@ namespace RN
 				if(_sampler->GetAsset()->GetBufferedSize() > maxBufferedLength)
 				{
 					uint32 skipBytes = _sampler->GetAsset()->GetBufferedSize() - assetFrameSamples;
-					double skipTime = skipBytes / _sampler->GetAsset()->GetBytesPerSample() / static_cast<double>(_sampler->GetAsset()->GetSampleRate());
+					double skipTime = skipBytes / static_cast<double>(bytesPerSecond);
 					_currentTime += skipTime;
 					_sampler->GetAsset()->PopData(nullptr, skipBytes);
 				}
