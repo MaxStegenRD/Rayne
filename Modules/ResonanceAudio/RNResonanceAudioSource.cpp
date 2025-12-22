@@ -225,7 +225,7 @@ namespace RN
 
 	void ResonanceAudioSource::Update()
 	{
-		if(_isPositional)
+		if(_isPositional && _isPlaying)
 		{
 			const uint32 frameSize = ResonanceAudioWorld::_instance->_audioSystem->_frameSize;
 			const uint32 sampleRate = ResonanceAudioWorld::_instance->_audioSystem->_sampleRate;
