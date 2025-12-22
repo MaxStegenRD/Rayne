@@ -61,6 +61,12 @@ namespace RN
 			return 0.0f;
 		}
 
+		if(channel >= _asset->GetChannels())
+		{
+			RN_DEBUG_ASSERT(false, "Channel out of range");
+			return 0.0f;
+		}
+
 		if(_isRepeating || _asset->GetType() == AudioAsset::Type::Ringbuffer)
 		{
 			if(time < 0.0f)
