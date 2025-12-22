@@ -36,10 +36,11 @@ namespace RN
 			return;
 		}
 
-		RN_ASSERT(asset->GetBytesPerSample() == 1 || asset->GetBytesPerSample() == 2 || asset->GetBytesPerSample() == 4, "Only 8 and 16 and 32 bit audio assets are currently supported.");
+		size_t singleSamplePerChannelSize = asset->GetBytesPerSample() / asset->GetChannels();
+		RN_ASSERT(singleSamplePerChannelSize == 1 || singleSamplePerChannelSize == 2 || singleSamplePerChannelSize == 4, "Only 8 and 16 and 32 bit audio assets are currently supported.");
 
 		_asset = asset->Retain();
-		_totalTime = static_cast<double>(_asset->GetData()->GetLength()) / static_cast<double>(_asset->GetBytesPerSample()) / static_cast<double>(_asset->GetChannels()) / static_cast<double>(_asset->GetSampleRate());
+		_totalTime = static_cast<double>(_asset->GetData()->GetLength()) / static_cast<double>(_asset->GetBytesPerSample()) / static_cast<double>(_asset->GetSampleRate());
 	}
 
 	void ResonanceAudioSampler::SetRepeat(bool repeat)

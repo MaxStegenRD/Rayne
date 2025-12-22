@@ -78,6 +78,11 @@ namespace RN
 		_isRepeating = repeat;
 	}
 
+	void ResonanceAudioSource::SetChannel(uint8 channel)
+	{
+		_channel = channel;
+	}
+
 	void ResonanceAudioSource::SetCurrentDistanceAttenuationValue(float attentuation)
 	{
 		if(!_isPositional) return;
