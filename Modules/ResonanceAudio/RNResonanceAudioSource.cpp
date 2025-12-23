@@ -14,6 +14,8 @@
 
 namespace RN
 {
+	static constexpr uint32 kFadeSamples = 32;
+
 	static vraudio::DistanceRolloffModel MapRolloffModel(ResonanceAudioSource::DistanceRolloffModel model)
 	{
 		switch(model)
@@ -42,7 +44,14 @@ namespace RN
 		_pitch(1.0f),
 		_minMaxRange(RN::Vector2(0.2f, 200.0f)),
 		_rolloffModel(DistanceRolloffModel::Logarithmic),
-		_currentTime(0.0f)
+		_currentTime(0.0f),
+		_fadeSamples(0),
+		_pendingSeekTime(0.0),
+		_pendingAsset(nullptr),
+		_wantsFadeIn(false),
+		_wantsFadeOut(false),
+		_wantsSeek(false),
+		_finalAction(PendingAction::None)
 	{
 		RN_ASSERT(ResonanceAudioWorld::_instance, "You need to create a ResonanceAudioWorld before creating audio sources!");
 
@@ -58,6 +67,7 @@ namespace RN
 
 	ResonanceAudioSource::~ResonanceAudioSource()
 	{
+		SafeRelease(_pendingAsset);
 		ResonanceAudioWorld::_instance->RemoveAudioSource(this);
 		if(_isPositional) ResonanceAudioWorld::_instance->_audioAPI->DestroySource(_sourceID);
 		_sampler->Release();
@@ -65,11 +75,19 @@ namespace RN
 
 	void ResonanceAudioSource::SetAudioAsset(AudioAsset *asset)
 	{
-		// Avoid resetting playback time when the asset is unchanged (common for streaming ringbuffers like voice chat)
 		if(_sampler->GetAsset() == asset) return;
 
-		_sampler->SetAudioAsset(asset);
-		_currentTime = 0.0f;
+		SafeRelease(_pendingAsset);
+		if(!_isPlaying)
+		{
+			_sampler->SetAudioAsset(asset);
+			_currentTime = 0.0f;
+			return;
+		}
+
+		_pendingAsset = SafeRetain(asset);
+
+		SubmitPendingAction(PendingAction::Asset);
 	}
 
 	void ResonanceAudioSource::SetRepeat(bool repeat)
@@ -143,7 +161,9 @@ namespace RN
 
 	void ResonanceAudioSource::Play()
 	{
+		SubmitPendingAction(PendingAction::Play);
 		_isPlaying = true;
+
 		if(_sampler->GetAsset() && _currentTime >= _sampler->GetTotalTime())
 		{
 			_currentTime = 0.0f;
@@ -152,18 +172,31 @@ namespace RN
 
 	void ResonanceAudioSource::Stop()
 	{
-		_isPlaying = false;
-		_currentTime = 0.0;
+
+		if(!_isPlaying)
+		{
+			_currentTime = 0.0;
+			return;
+		}
+
+		SubmitPendingAction(PendingAction::Stop);
 	}
 
 	void ResonanceAudioSource::Pause()
 	{
-		_isPlaying = false;
+		SubmitPendingAction(PendingAction::Pause);
 	}
 
 	void ResonanceAudioSource::Seek(double time)
 	{
-		_currentTime = time;
+		_pendingSeekTime = time;
+		if(!_isPlaying)
+		{
+			_currentTime = time;
+			return;
+		}
+
+		SubmitPendingAction(PendingAction::Seek);
 	}
 
 	bool ResonanceAudioSource::HasEnded() const
@@ -210,16 +243,40 @@ namespace RN
 
 		double sampleLength = frameLength / static_cast<double>(sampleCount);
 		double localTime = _currentTime;
+
 		for(int i = 0; i < sampleCount; i++)
 		{
+			float gain = 1.0f;
+
+			if(_fadeSamples > 0)
+			{
+				gain *= 1.0f - (static_cast<float>(_fadeSamples - 1) / static_cast<float>(kFadeSamples));
+				_fadeSamples -= 1;
+			}
+			else if(_fadeSamples < 0)
+			{
+				gain *= static_cast<float>(-_fadeSamples) / static_cast<float>(kFadeSamples);
+				_fadeSamples += 1;
+			}
+
 			for(int j = 0; j < channelCount; j++)
 			{
-				ResonanceAudioWorld::_instance->_sharedFrameData[i * channelCount + j] = _sampler->GetSample(localTime, j + _channel);
+				float value = _isPlaying ? _sampler->GetSample(localTime, j + _channel) : 0.0f;
+				ResonanceAudioWorld::_instance->_sharedFrameData[i * channelCount + j] = value * gain;
 			}
-			localTime += sampleLength * _pitch;
+			if(_isPlaying) localTime += sampleLength * _pitch;
+
+			if(_fadeSamples == 0)
+			{
+				if(ProcessPendingActions())
+				{
+					localTime = _currentTime;
+				}
+			}
 		}
 
 		_currentTime = localTime;
+
 		*outputBuffer = ResonanceAudioWorld::_instance->_sharedFrameData;
 	}
 
@@ -260,4 +317,109 @@ namespace RN
 		}
 	}
 
+	void ResonanceAudioSource::SubmitPendingAction(PendingAction action)
+	{
+		switch(action)
+		{
+			case PendingAction::Seek:
+				_wantsSeek = true;
+				_wantsFadeOut = true;
+				if(_finalAction != PendingAction::Stop && _finalAction != PendingAction::Pause) _wantsFadeIn = true;
+				break;
+
+			case PendingAction::Asset:
+				// Asset swap while playing should be guarded by fades
+				_wantsFadeOut = true;
+				_wantsSeek = true;
+				_pendingSeekTime = 0.0;
+				if(_finalAction != PendingAction::Stop && _finalAction != PendingAction::Pause) _wantsFadeIn = true;
+				break;
+
+			case PendingAction::Stop:
+				_finalAction = action;
+				_wantsFadeOut = true;
+				_wantsFadeIn = false;
+				_wantsSeek = true;
+				_pendingSeekTime = 0.0;
+				break;
+
+			case PendingAction::Pause:
+				_finalAction  = action;
+				_wantsFadeOut = true;
+				_wantsFadeIn  = false;
+				break;
+
+			case PendingAction::Play:
+				_finalAction = action;
+				_wantsFadeIn = true;
+				// No need to force FadeOut for Play.
+				break;
+
+			default:
+				break;
+		}
+	}
+
+	bool ResonanceAudioSource::ProcessPendingActions()
+	{
+		bool isSeeking = false;
+
+		if(_wantsFadeOut)
+		{
+			_wantsFadeOut = false;
+			_fadeSamples = -static_cast<int32>(kFadeSamples);
+			return isSeeking;
+		}
+
+		if(_pendingAsset)
+		{
+			_sampler->SetAudioAsset(_pendingAsset);
+			SafeRelease(_pendingAsset);
+			_pendingAsset = nullptr;
+		}
+
+		if(_wantsSeek)
+		{
+			_wantsSeek = false;
+			_currentTime = _pendingSeekTime;
+			isSeeking = true;
+		}
+
+		if(_finalAction != PendingAction::None)
+		{
+			const PendingAction action = _finalAction;
+			_finalAction = PendingAction::None;
+
+			switch(action)
+			{
+				case PendingAction::Stop:
+					_isPlaying = false;
+					break;
+
+				case PendingAction::Pause:
+					_isPlaying = false;
+					break;
+
+				case PendingAction::Play:
+					_isPlaying = true;
+					break;
+
+				default:
+					break;
+			}
+		}
+
+		if(_wantsFadeIn)
+		{
+			_wantsFadeIn = false;
+
+			if(_isPlaying)
+			{
+				_fadeSamples = static_cast<int32>(kFadeSamples);
+			}
+			return isSeeking;
+		}
+
+		return isSeeking;
+	}
 } // namespace RN

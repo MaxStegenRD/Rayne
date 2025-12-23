@@ -20,6 +20,16 @@ namespace RN
 	public:
 		friend class ResonanceAudioWorld;
 
+		enum class PendingAction
+		{
+			None,
+			Seek,
+			Asset,
+			Stop,
+			Pause,
+			Play
+		};
+
 		enum class DistanceRolloffModel
 		{
 			Logarithmic,
@@ -66,6 +76,9 @@ namespace RN
 		ResonanceAudioSampler *GetSampler() const { return _sampler; }
 
 	private:
+		void SubmitPendingAction(PendingAction action);
+		bool ProcessPendingActions();
+
 		uint8 _channel;
 		ResonanceAudioSampler *_sampler;
 
@@ -87,6 +100,15 @@ namespace RN
 		DistanceRolloffModel _rolloffModel;
 
 		double _currentTime;
+
+		bool _wantsFadeIn;
+		bool _wantsFadeOut;
+		bool _wantsSeek;
+		double _pendingSeekTime;
+		AudioAsset *_pendingAsset;
+		PendingAction _finalAction;
+
+		int32 _fadeSamples; // >0 fade-in, <0 fade-out, 0 none
 
 		RNDeclareMetaAPI(ResonanceAudioSource, RAAPI)
 	};
