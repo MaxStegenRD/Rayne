@@ -45,7 +45,7 @@ namespace RN
 
 	void ResonanceAudioSampler::SetRepeat(bool repeat)
 	{
-		_isRepeating = repeat;
+		_isRepeating.store(repeat, std::memory_order_release);
 	}
 
 	double ResonanceAudioSampler::GetTotalTime() const
@@ -67,7 +67,8 @@ namespace RN
 			return 0.0f;
 		}
 
-		if(_isRepeating || _asset->GetType() == AudioAsset::Type::Ringbuffer)
+		bool isRepeating = _isRepeating.load(std::memory_order_acquire);
+		if(isRepeating || _asset->GetType() == AudioAsset::Type::Ringbuffer)
 		{
 			if(time < 0.0f)
 			{
@@ -102,7 +103,7 @@ namespace RN
 
 			if(samplePositions[i] >= maxSamplePosition)
 			{
-				if(_isRepeating || _asset->GetType() == AudioAsset::Type::Ringbuffer)
+				if(isRepeating || _asset->GetType() == AudioAsset::Type::Ringbuffer)
 				{
 					samplePositions[i] %= maxSamplePosition;
 				}
@@ -113,7 +114,7 @@ namespace RN
 			}
 			else if(samplePositions[i] < 0)
 			{
-				if(_isRepeating || _asset->GetType() == AudioAsset::Type::Ringbuffer)
+				if(isRepeating || _asset->GetType() == AudioAsset::Type::Ringbuffer)
 				{
 					int64 moduloresult = samplePositions[i] % maxSamplePosition;
 					samplePositions[i] = maxSamplePosition + moduloresult;

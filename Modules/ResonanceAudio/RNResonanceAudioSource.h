@@ -65,7 +65,7 @@ namespace RN
 		bool IsPositional() const { return _isPositional; }
 
 		bool IsPlaying() const { return _isPlaying; }
-		bool IsRepeating() const { return _isRepeating; }
+		bool IsRepeating() const { return _sampler->IsRepeating(); }
 		bool HasTimeOfFlight() const { return _hasTimeOfFlight; }
 		bool HasReverb() const { return _hasReverb; }
 		RAAPI bool HasEnded() const;
@@ -88,7 +88,6 @@ namespace RN
 		bool _isPositional;
 
 		bool _isPlaying;
-		bool _isRepeating;
 		bool _isSelfdestructing;
 		bool _hasTimeOfFlight;
 		bool _hasReverb;

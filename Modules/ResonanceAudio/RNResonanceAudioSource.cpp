@@ -36,7 +36,6 @@ namespace RN
 		_wantsIndirectSound(wantsIndirectSound),
 		_isPositional(isPositional),
 		_isPlaying(false),
-		_isRepeating(false),
 		_isSelfdestructing(false),
 		_hasTimeOfFlight(true),
 		_hasReverb(true),
@@ -105,7 +104,6 @@ namespace RN
 	void ResonanceAudioSource::SetRepeat(bool repeat)
 	{
 		_sampler->SetRepeat(repeat);
-		_isRepeating = repeat;
 	}
 
 	void ResonanceAudioSource::SetChannel(uint8 channel)
@@ -217,7 +215,7 @@ namespace RN
 	{
 		bool cachedHasAsset = _cachedHasAsset.load(std::memory_order_acquire);
 		if(!cachedHasAsset) return true;
-		if(_isRepeating) return false;
+		if(_sampler->IsRepeating()) return false;
 		double cachedTotalTime = _cachedTotalTime.load(std::memory_order_acquire);
 		return (_currentTime >= cachedTotalTime);
 	}
