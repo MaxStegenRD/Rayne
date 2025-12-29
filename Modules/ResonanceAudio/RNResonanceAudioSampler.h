@@ -26,11 +26,7 @@ namespace RN
 		RAAPI double GetTotalTime() const;
 		RAAPI bool IsRepeating() const { return _isRepeating.load(std::memory_order_relaxed); }
 
-		AudioAsset *GetAsset()
-		{
-			LockGuard<Lockable> lock(_lock);
-			return _asset;
-		}
+		AudioAsset *GetAsset() const { return _asset; }
 
 		//TODO: Implement an optional effects pipeline
 
@@ -38,7 +34,6 @@ namespace RN
 		AudioAsset *_asset;
 		double _totalTime;
 		std::atomic<bool> _isRepeating;
-		Lockable _lock;
 
 		RNDeclareMetaAPI(ResonanceAudioSampler, RAAPI)
 	};

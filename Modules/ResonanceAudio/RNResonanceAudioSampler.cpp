@@ -28,8 +28,6 @@ namespace RN
 
 	void ResonanceAudioSampler::SetAudioAsset(AudioAsset *asset)
 	{
-		LockGuard<Lockable> lock(_lock);
-
 		SafeRelease(_asset);
 		if(!asset)
 		{
@@ -55,7 +53,6 @@ namespace RN
 
 	float ResonanceAudioSampler::GetSample(double time, uint8 channel)
 	{
-		LockGuard<Lockable> lock(_lock);
 		if(!_asset)
 		{
 			return 0.0f;

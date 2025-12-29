@@ -106,6 +106,11 @@ namespace RN
 		_sampler->SetRepeat(repeat);
 	}
 
+	bool ResonanceAudioSource::IsRepeating() const
+	{
+		return _sampler->IsRepeating();
+	}
+
 	void ResonanceAudioSource::SetChannel(uint8 channel)
 	{
 		_channel = channel;
