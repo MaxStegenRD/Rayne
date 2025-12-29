@@ -177,13 +177,13 @@ namespace RN
 		return (cachedCurrentTime >= cachedTotalTime);
 	}
 
-	void ResonanceAudioSource::Update(double frameLength, uint32 sampleCount, float **outputBuffer, uint8 channelCount)
+	bool ResonanceAudioSource::Update(double frameLength, uint32 sampleCount, float **outputBuffer, uint8 channelCount)
 	{
 		AudioAsset *asset = _sampler->GetAsset();
-		if(!asset)
+		if(!asset || !_isPlaying)
 		{
 			*outputBuffer = nullptr;
-			return;
+			return false;
 		}
 
 		if(_sampler->GetAsset()->GetType() == AudioAsset::Type::Ringbuffer)
@@ -194,7 +194,7 @@ namespace RN
 			if(_sampler->GetAsset()->GetBufferedSize() < assetFrameSamples)
 			{
 				*outputBuffer = nullptr;
-				return;
+				return false;
 			}
 			else
 			{
@@ -217,10 +217,11 @@ namespace RN
 		bool isRepeating = _isRepeating.load(std::memory_order_relaxed);
 		uint8 channel = _channel.load(std::memory_order_relaxed);
 		float pitch = _pitch.load(std::memory_order_relaxed);
+		float volume = _isPositional ? 1.0f : _volume.load(std::memory_order_relaxed);
 
 		for(int i = 0; i < sampleCount; i++)
 		{
-			float gain = 1.0f;
+			float gain = volume;
 
 			if(_fadeSamples > 0)
 			{
@@ -253,6 +254,7 @@ namespace RN
 		_cachedCurrentTime.store(_currentTime, std::memory_order_relaxed);
 
 		*outputBuffer = ResonanceAudioWorld::_instance->_sharedFrameData;
+		return true;
 	}
 
 	void ResonanceAudioSource::Update()

@@ -55,21 +55,23 @@ namespace RN
 		float *floatOutputBuffer = static_cast<float *>(outputBuffer);
 		if(!_instance->_audioAPI->FillInterleavedOutputBuffer(channelCount, frameSize, floatOutputBuffer))
 		{
+			memset(floatOutputBuffer, 0, frameSize * channelCount * sizeof(float));
 			//RNDebug("Shit. " << frameSize);
 		}
 
 		const float outputSampleRate = static_cast<float>(_instance->_audioSystem->_sampleRate);
 		for(ResonanceAudioSource *source : _instance->_audioSources)
 		{
-			if(!source->IsPositional() && source->IsPlaying() && source->GetSampler() && source->GetSampler()->GetAsset())
+			if(source->IsPositional()) continue;
+			
+			float *frameData = nullptr;
+			if(source->Update(frameSize / outputSampleRate, frameSize, &frameData, channelCount))
 			{
-				float *frameData = nullptr;
-				source->Update(frameSize / outputSampleRate, frameSize, &frameData, channelCount);
 				for(int i = 0; i < static_cast<int>(frameSize); i++)
 				{
 					for(uint32 j = 0; j < channelCount; j++)
 					{
-						floatOutputBuffer[i * channelCount + j] += frameData[i * channelCount + j] * source->GetVolume();
+						floatOutputBuffer[i * channelCount + j] += frameData[i * channelCount + j];
 					}
 				}
 			}
@@ -161,6 +163,7 @@ namespace RN
 		_audioAPI->SetReverbProperties(vraudio::ComputeReverbProperties(roomProperties));
 		_audioAPI->SetReflectionProperties(vraudio::ComputeReflectionProperties(roomProperties));
 
+		_audioSourcesLock.Lock();
 		for(ResonanceAudioSource *source : _instance->_audioSources)
 		{
 			Vector3 sourcePosition = source->GetWorldPosition();
@@ -208,6 +211,7 @@ namespace RN
 				}
 			}
 		}
+		_audioSourcesLock.Unlock();
 	}
 
 	void ResonanceAudioWorld::SetRaycastCallback(const std::function<void(Vector3, Vector3, float &distance)> &raycastCallback)

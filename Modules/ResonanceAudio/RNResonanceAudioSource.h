@@ -64,7 +64,7 @@ namespace RN
 		RAAPI void SetRolloffModel(DistanceRolloffModel rolloffModel);
 		RAAPI void SetChannel(uint8 channel);
 
-		RAAPI void Update(double frameLength, uint32 sampleCount, float **outputBuffer, uint8 channelCount = 1);
+		RAAPI bool Update(double frameLength, uint32 sampleCount, float **outputBuffer, uint8 channelCount = 1);
 		void Update();
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
 
