@@ -21,10 +21,8 @@ namespace RN
 		RAAPI ~ResonanceAudioSampler() override;
 
 		RAAPI void SetAudioAsset(AudioAsset *asset);
-		RAAPI void SetRepeat(bool repeat);
-		RAAPI float GetSample(double time, uint8 channel);
+		RAAPI float GetSample(double time, uint8 channel, bool isRepeating);
 		RAAPI double GetTotalTime() const;
-		RAAPI bool IsRepeating() const { return _isRepeating.load(std::memory_order_relaxed); }
 
 		AudioAsset *GetAsset() const { return _asset; }
 
@@ -33,7 +31,6 @@ namespace RN
 	private:
 		AudioAsset *_asset;
 		double _totalTime;
-		std::atomic<bool> _isRepeating;
 
 		RNDeclareMetaAPI(ResonanceAudioSampler, RAAPI)
 	};

@@ -65,7 +65,7 @@ namespace RN
 		bool IsPositional() const { return _isPositional; }
 
 		bool IsPlaying() const { return _isPlaying; }
-		RAAPI bool IsRepeating() const;
+		bool IsRepeating() const { return _isRepeating.load(std::memory_order_acquire); }
 		bool HasTimeOfFlight() const { return _hasTimeOfFlight; }
 		bool HasReverb() const { return _hasReverb; }
 		RAAPI bool HasEnded() const;
@@ -88,6 +88,7 @@ namespace RN
 		bool _isPositional;
 
 		bool _isPlaying;
+		std::atomic<bool> _isRepeating;
 		bool _isSelfdestructing;
 		bool _hasTimeOfFlight;
 		bool _hasReverb;

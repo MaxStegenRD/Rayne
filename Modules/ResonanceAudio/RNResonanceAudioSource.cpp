@@ -36,6 +36,7 @@ namespace RN
 		_wantsIndirectSound(wantsIndirectSound),
 		_isPositional(isPositional),
 		_isPlaying(false),
+		_isRepeating(false),
 		_isSelfdestructing(false),
 		_hasTimeOfFlight(true),
 		_hasReverb(true),
@@ -103,12 +104,7 @@ namespace RN
 
 	void ResonanceAudioSource::SetRepeat(bool repeat)
 	{
-		_sampler->SetRepeat(repeat);
-	}
-
-	bool ResonanceAudioSource::IsRepeating() const
-	{
-		return _sampler->IsRepeating();
+		_isRepeating.store(repeat, std::memory_order_release);
 	}
 
 	void ResonanceAudioSource::SetChannel(uint8 channel)
@@ -220,7 +216,7 @@ namespace RN
 	{
 		bool cachedHasAsset = _cachedHasAsset.load(std::memory_order_acquire);
 		if(!cachedHasAsset) return true;
-		if(_sampler->IsRepeating()) return false;
+		if(_isRepeating.load(std::memory_order_acquire)) return false;
 		double cachedTotalTime = _cachedTotalTime.load(std::memory_order_acquire);
 		return (_currentTime >= cachedTotalTime);
 	}
@@ -262,6 +258,7 @@ namespace RN
 
 		double sampleLength = frameLength / static_cast<double>(sampleCount);
 		double localTime = _currentTime;
+		bool isRepeating = _isRepeating.load(std::memory_order_acquire);
 
 		for(int i = 0; i < sampleCount; i++)
 		{
@@ -280,7 +277,7 @@ namespace RN
 
 			for(int j = 0; j < channelCount; j++)
 			{
-				float value = _isPlaying ? _sampler->GetSample(localTime, j + _channel) : 0.0f;
+				float value = _isPlaying ? _sampler->GetSample(localTime, j + _channel, isRepeating) : 0.0f;
 				ResonanceAudioWorld::_instance->_sharedFrameData[i * channelCount + j] = value * gain;
 			}
 			if(_isPlaying) localTime += sampleLength * _pitch;

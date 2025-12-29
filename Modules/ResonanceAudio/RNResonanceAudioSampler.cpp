@@ -15,8 +15,7 @@ namespace RN
 	RNDefineMeta(ResonanceAudioSampler, Object)
 
 	ResonanceAudioSampler::ResonanceAudioSampler(AudioAsset *asset) :
-		_asset(nullptr),
-		_isRepeating(false)
+		_asset(nullptr)
 	{
 		SetAudioAsset(asset);
 	}
@@ -41,17 +40,12 @@ namespace RN
 		_totalTime = static_cast<double>(_asset->GetData()->GetLength()) / static_cast<double>(_asset->GetBytesPerSample()) / static_cast<double>(_asset->GetSampleRate());
 	}
 
-	void ResonanceAudioSampler::SetRepeat(bool repeat)
-	{
-		_isRepeating.store(repeat, std::memory_order_release);
-	}
-
 	double ResonanceAudioSampler::GetTotalTime() const
 	{
 		return _totalTime;
 	}
 
-	float ResonanceAudioSampler::GetSample(double time, uint8 channel)
+	float ResonanceAudioSampler::GetSample(double time, uint8 channel, bool isRepeating)
 	{
 		if(!_asset)
 		{
@@ -64,7 +58,6 @@ namespace RN
 			return 0.0f;
 		}
 
-		bool isRepeating = _isRepeating.load(std::memory_order_acquire);
 		if(isRepeating || _asset->GetType() == AudioAsset::Type::Ringbuffer)
 		{
 			if(time < 0.0f)
