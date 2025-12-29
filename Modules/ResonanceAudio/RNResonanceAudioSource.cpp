@@ -48,10 +48,13 @@ namespace RN
 		_fadeSamples(0),
 		_pendingSeekTime(0.0),
 		_pendingAsset(nullptr),
+		_wantsAssetChange(false),
 		_wantsFadeIn(false),
 		_wantsFadeOut(false),
 		_wantsSeek(false),
-		_finalAction(PendingAction::None)
+		_finalAction(PendingAction::None),
+		_cachedHasAsset(asset != nullptr),
+		_cachedTotalTime(asset ? _sampler->GetTotalTime() : 0.0)
 	{
 		RN_ASSERT(ResonanceAudioWorld::_instance, "You need to create a ResonanceAudioWorld before creating audio sources!");
 
@@ -67,7 +70,8 @@ namespace RN
 
 	ResonanceAudioSource::~ResonanceAudioSource()
 	{
-		SafeRelease(_pendingAsset);
+		AudioAsset *pendingAsset = _pendingAsset.exchange(nullptr, std::memory_order_acq_rel);
+		SafeRelease(pendingAsset);
 		ResonanceAudioWorld::_instance->RemoveAudioSource(this);
 		if(_isPositional) ResonanceAudioWorld::_instance->_audioAPI->DestroySource(_sourceID);
 		_sampler->Release();
@@ -75,17 +79,25 @@ namespace RN
 
 	void ResonanceAudioSource::SetAudioAsset(AudioAsset *asset)
 	{
-		if(_sampler->GetAsset() == asset) return;
-
-		SafeRelease(_pendingAsset);
 		if(!_isPlaying)
 		{
+			_wantsAssetChange.store(false, std::memory_order_release);
+			AudioAsset* old = _pendingAsset.exchange(nullptr, std::memory_order_acq_rel);
+			SafeRelease(old);
+
 			_sampler->SetAudioAsset(asset);
 			_currentTime = 0.0f;
+
+			// Update cached values immediately when not playing
+			_cachedHasAsset.store(asset != nullptr, std::memory_order_release);
+			_cachedTotalTime.store(_sampler->GetTotalTime(), std::memory_order_release);
 			return;
 		}
 
-		_pendingAsset = SafeRetain(asset);
+		AudioAsset* retained = asset ? SafeRetain(asset) : nullptr;
+		AudioAsset* old = _pendingAsset.exchange(retained, std::memory_order_acq_rel);
+		SafeRelease(old);
+		_wantsAssetChange.store(true, std::memory_order_release);
 
 		SubmitPendingAction(PendingAction::Asset);
 	}
@@ -164,7 +176,9 @@ namespace RN
 		SubmitPendingAction(PendingAction::Play);
 		_isPlaying = true;
 
-		if(_sampler->GetAsset() && _currentTime >= _sampler->GetTotalTime())
+		bool cachedHasAsset = _cachedHasAsset.load(std::memory_order_acquire);
+		double cachedTotalTime = _cachedTotalTime.load(std::memory_order_acquire);
+		if(cachedHasAsset && _currentTime >= cachedTotalTime)
 		{
 			_currentTime = 0.0f;
 		}
@@ -201,9 +215,11 @@ namespace RN
 
 	bool ResonanceAudioSource::HasEnded() const
 	{
-		if(!_sampler->GetAsset()) return true;
+		bool cachedHasAsset = _cachedHasAsset.load(std::memory_order_acquire);
+		if(!cachedHasAsset) return true;
 		if(_isRepeating) return false;
-		return (_currentTime >= _sampler->GetTotalTime());
+		double cachedTotalTime = _cachedTotalTime.load(std::memory_order_acquire);
+		return (_currentTime >= cachedTotalTime);
 	}
 
 	void ResonanceAudioSource::Update(double frameLength, uint32 sampleCount, float **outputBuffer, uint8 channelCount)
@@ -371,11 +387,14 @@ namespace RN
 			return isSeeking;
 		}
 
-		if(_pendingAsset)
+		if(_wantsAssetChange.exchange(false, std::memory_order_acq_rel))
 		{
-			_sampler->SetAudioAsset(_pendingAsset);
-			SafeRelease(_pendingAsset);
-			_pendingAsset = nullptr;
+			AudioAsset *pendingAsset = _pendingAsset.exchange(nullptr, std::memory_order_acq_rel);
+			_sampler->SetAudioAsset(pendingAsset);
+			// Update cached values after asset change
+			_cachedHasAsset.store(_sampler->GetAsset() != nullptr, std::memory_order_release);
+			_cachedTotalTime.store(_sampler->GetTotalTime(), std::memory_order_release);
+			SafeRelease(pendingAsset);
 		}
 
 		if(_wantsSeek)

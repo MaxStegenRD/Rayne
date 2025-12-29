@@ -101,14 +101,19 @@ namespace RN
 
 		double _currentTime;
 
+		std::atomic<bool> _wantsAssetChange;
 		bool _wantsFadeIn;
 		bool _wantsFadeOut;
 		bool _wantsSeek;
 		double _pendingSeekTime;
-		AudioAsset *_pendingAsset;
+		std::atomic<AudioAsset*> _pendingAsset;
 		PendingAction _finalAction;
 
 		int32 _fadeSamples; // >0 fade-in, <0 fade-out, 0 none
+
+		// Cached on audio thread to use on other threads
+		std::atomic<bool> _cachedHasAsset;
+		std::atomic<double> _cachedTotalTime;
 
 		RNDeclareMetaAPI(ResonanceAudioSource, RAAPI)
 	};
