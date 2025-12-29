@@ -37,6 +37,14 @@ namespace RN
 			None
 		};
 
+		enum ControlBits : uint32_t
+		{
+			kWantFadeOut     = 1u << 0,
+			kWantFadeIn      = 1u << 1,
+			kWantSeek        = 1u << 2,
+			kWantAssetChange = 1u << 3
+		};
+
 		RAAPI ResonanceAudioSource(AudioAsset *asset = nullptr, bool wantsIndirectSound = true, bool isPositional = true);
 		RAAPI ~ResonanceAudioSource() override;
 
@@ -101,13 +109,10 @@ namespace RN
 
 		double _currentTime;
 
-		std::atomic<bool> _wantsAssetChange;
-		bool _wantsFadeIn;
-		bool _wantsFadeOut;
-		bool _wantsSeek;
-		double _pendingSeekTime;
+		std::atomic<uint32_t> _controlBits;
+		std::atomic<double> _pendingSeekTime;
 		std::atomic<AudioAsset*> _pendingAsset;
-		PendingAction _finalAction;
+		std::atomic<PendingAction> _finalAction;
 
 		int32 _fadeSamples; // >0 fade-in, <0 fade-out, 0 none
 
