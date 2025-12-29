@@ -63,8 +63,6 @@ namespace RN
 		RAAPI void SetSelfdestruct(bool selfdestruct);
 		RAAPI void SetRolloffModel(DistanceRolloffModel rolloffModel);
 		RAAPI void SetChannel(uint8 channel);
-		RAAPI void SetTimeOfFlight(bool tof);
-		RAAPI void SetReverb(bool reverb);
 
 		RAAPI void Update(double frameLength, uint32 sampleCount, float **outputBuffer, uint8 channelCount = 1);
 		void Update();
@@ -72,13 +70,11 @@ namespace RN
 
 		bool IsPositional() const { return _isPositional; }
 
-		bool IsPlaying() const { return _isPlaying; }
-		bool IsRepeating() const { return _isRepeating.load(std::memory_order_acquire); }
-		bool HasTimeOfFlight() const { return _hasTimeOfFlight; }
-		bool HasReverb() const { return _hasReverb; }
+		bool IsPlaying() const { return _cachedIsPlaying.load(std::memory_order_relaxed); }
+		bool IsRepeating() const { return _isRepeating.load(std::memory_order_relaxed); }
 		RAAPI bool HasEnded() const;
 
-		RAAPI float GetVolume() const { return _volume; }
+		RAAPI float GetVolume() const { return _volume.load(std::memory_order_relaxed); }
 
 		RN::Vector2 GetRange() const { return _minMaxRange; }
 		ResonanceAudioSampler *GetSampler() const { return _sampler; }
@@ -87,7 +83,7 @@ namespace RN
 		void SubmitPendingAction(PendingAction action);
 		bool ProcessPendingActions();
 
-		uint8 _channel;
+		std::atomic<uint8> _channel;
 		ResonanceAudioSampler *_sampler;
 
 		int _sourceID;
@@ -95,30 +91,31 @@ namespace RN
 		bool _wantsIndirectSound;
 		bool _isPositional;
 
-		bool _isPlaying;
+		std::atomic<bool> _isSelfdestructing;
 		std::atomic<bool> _isRepeating;
-		bool _isSelfdestructing;
-		bool _hasTimeOfFlight;
-		bool _hasReverb;
 
-		float _volume;
-		float _pitch;
+		std::atomic<float> _volume;
+		std::atomic<float> _pitch;
 
 		RN::Vector2 _minMaxRange;
 		DistanceRolloffModel _rolloffModel;
 
+		//Only used on audio thread
+		bool _isPlaying;
 		double _currentTime;
+		int32 _fadeSamples; // >0 fade-in, <0 fade-out, 0 none
 
+		//Used to sync between threads
 		std::atomic<uint32_t> _controlBits;
 		std::atomic<double> _pendingSeekTime;
 		std::atomic<AudioAsset*> _pendingAsset;
 		std::atomic<PendingAction> _finalAction;
 
-		int32 _fadeSamples; // >0 fade-in, <0 fade-out, 0 none
-
 		// Cached on audio thread to use on other threads
 		std::atomic<bool> _cachedHasAsset;
 		std::atomic<double> _cachedTotalTime;
+		std::atomic<bool> _cachedIsPlaying;
+		std::atomic<double> _cachedCurrentTime;
 
 		RNDeclareMetaAPI(ResonanceAudioSource, RAAPI)
 	};

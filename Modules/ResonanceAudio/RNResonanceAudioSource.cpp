@@ -38,8 +38,6 @@ namespace RN
 		_isPlaying(false),
 		_isRepeating(false),
 		_isSelfdestructing(false),
-		_hasTimeOfFlight(true),
-		_hasReverb(true),
 		_volume(1.0f),
 		_pitch(1.0f),
 		_minMaxRange(RN::Vector2(0.2f, 200.0f)),
@@ -51,7 +49,9 @@ namespace RN
 		_controlBits(0),
 		_finalAction(PendingAction::None),
 		_cachedHasAsset(asset != nullptr),
-		_cachedTotalTime(asset ? _sampler->GetTotalTime() : 0.0)
+		_cachedTotalTime(asset ? _sampler->GetTotalTime() : 0.0),
+		_cachedIsPlaying(false),
+		_cachedCurrentTime(0.0)
 	{
 		RN_ASSERT(ResonanceAudioWorld::_instance, "You need to create a ResonanceAudioWorld before creating audio sources!");
 
@@ -76,21 +76,6 @@ namespace RN
 
 	void ResonanceAudioSource::SetAudioAsset(AudioAsset *asset)
 	{
-		if(!_isPlaying)
-		{
-			_controlBits.fetch_and(~static_cast<uint32_t>(ControlBits::kWantAssetChange), std::memory_order_acq_rel);
-			AudioAsset* old = _pendingAsset.exchange(nullptr, std::memory_order_acq_rel);
-			SafeRelease(old);
-
-			_sampler->SetAudioAsset(asset);
-			_currentTime = 0.0f;
-
-			// Update cached values immediately when not playing
-			_cachedHasAsset.store(asset != nullptr, std::memory_order_release);
-			_cachedTotalTime.store(_sampler->GetTotalTime(), std::memory_order_release);
-			return;
-		}
-
 		AudioAsset* retained = asset ? SafeRetain(asset) : nullptr;
 		AudioAsset* old = _pendingAsset.exchange(retained, std::memory_order_acq_rel);
 		SafeRelease(old);
@@ -100,12 +85,12 @@ namespace RN
 
 	void ResonanceAudioSource::SetRepeat(bool repeat)
 	{
-		_isRepeating.store(repeat, std::memory_order_release);
+		_isRepeating.store(repeat, std::memory_order_relaxed);
 	}
 
 	void ResonanceAudioSource::SetChannel(uint8 channel)
 	{
-		_channel = channel;
+		_channel.store(channel, std::memory_order_relaxed);
 	}
 
 	void ResonanceAudioSource::SetCurrentDistanceAttenuationValue(float attentuation)
@@ -118,12 +103,12 @@ namespace RN
 
 	void ResonanceAudioSource::SetPitch(float pitch)
 	{
-		_pitch = pitch;
+		_pitch.store(pitch, std::memory_order_relaxed);
 	}
 
 	void ResonanceAudioSource::SetVolume(float volume)
 	{
-		_volume = volume;
+		_volume.store(volume, std::memory_order_relaxed);
 		if(!_isPositional) return;
 		ResonanceAudioWorld::_instance->_audioAPI->SetSourceVolume(_sourceID, volume);
 	}
@@ -145,12 +130,7 @@ namespace RN
 
 	void ResonanceAudioSource::SetSelfdestruct(bool selfdestruct)
 	{
-		_isSelfdestructing = selfdestruct;
-	}
-
-	void ResonanceAudioSource::SetTimeOfFlight(bool tof)
-	{
-		_hasTimeOfFlight = tof;
+		_isSelfdestructing.store(selfdestruct, std::memory_order_relaxed);
 	}
 
 	void ResonanceAudioSource::SetRolloffModel(DistanceRolloffModel rolloffModel)
@@ -169,25 +149,10 @@ namespace RN
 	void ResonanceAudioSource::Play()
 	{
 		SubmitPendingAction(PendingAction::Play);
-		_isPlaying = true;
-
-		bool cachedHasAsset = _cachedHasAsset.load(std::memory_order_acquire);
-		double cachedTotalTime = _cachedTotalTime.load(std::memory_order_acquire);
-		if(cachedHasAsset && _currentTime >= cachedTotalTime)
-		{
-			_currentTime = 0.0f;
-		}
 	}
 
 	void ResonanceAudioSource::Stop()
 	{
-
-		if(!_isPlaying)
-		{
-			_currentTime = 0.0;
-			return;
-		}
-
 		SubmitPendingAction(PendingAction::Stop);
 	}
 
@@ -198,23 +163,18 @@ namespace RN
 
 	void ResonanceAudioSource::Seek(double time)
 	{
-		_pendingSeekTime.store(time, std::memory_order_release);
-		if(!_isPlaying)
-		{
-			_currentTime = time;
-			return;
-		}
-
+		_pendingSeekTime.store(time, std::memory_order_relaxed);
 		SubmitPendingAction(PendingAction::Seek);
 	}
 
 	bool ResonanceAudioSource::HasEnded() const
 	{
-		bool cachedHasAsset = _cachedHasAsset.load(std::memory_order_acquire);
+		bool cachedHasAsset = _cachedHasAsset.load(std::memory_order_relaxed);
 		if(!cachedHasAsset) return true;
-		if(_isRepeating.load(std::memory_order_acquire)) return false;
-		double cachedTotalTime = _cachedTotalTime.load(std::memory_order_acquire);
-		return (_currentTime >= cachedTotalTime);
+		if(_isRepeating.load(std::memory_order_relaxed)) return false;
+		double cachedTotalTime = _cachedTotalTime.load(std::memory_order_relaxed);
+		double cachedCurrentTime = _cachedCurrentTime.load(std::memory_order_relaxed);
+		return (cachedCurrentTime >= cachedTotalTime);
 	}
 
 	void ResonanceAudioSource::Update(double frameLength, uint32 sampleCount, float **outputBuffer, uint8 channelCount)
@@ -254,7 +214,9 @@ namespace RN
 
 		double sampleLength = frameLength / static_cast<double>(sampleCount);
 		double localTime = _currentTime;
-		bool isRepeating = _isRepeating.load(std::memory_order_acquire);
+		bool isRepeating = _isRepeating.load(std::memory_order_relaxed);
+		uint8 channel = _channel.load(std::memory_order_relaxed);
+		float pitch = _pitch.load(std::memory_order_relaxed);
 
 		for(int i = 0; i < sampleCount; i++)
 		{
@@ -273,10 +235,10 @@ namespace RN
 
 			for(int j = 0; j < channelCount; j++)
 			{
-				float value = _isPlaying ? _sampler->GetSample(localTime, j + _channel, isRepeating) : 0.0f;
+				float value = _isPlaying ? _sampler->GetSample(localTime, j + channel, isRepeating) : 0.0f;
 				ResonanceAudioWorld::_instance->_sharedFrameData[i * channelCount + j] = value * gain;
 			}
-			if(_isPlaying) localTime += sampleLength * _pitch;
+			if(_isPlaying) localTime += sampleLength * pitch;
 
 			if(_fadeSamples == 0)
 			{
@@ -288,12 +250,18 @@ namespace RN
 		}
 
 		_currentTime = localTime;
+		_cachedCurrentTime.store(_currentTime, std::memory_order_relaxed);
 
 		*outputBuffer = ResonanceAudioWorld::_instance->_sharedFrameData;
 	}
 
 	void ResonanceAudioSource::Update()
 	{
+		if(!_isPlaying)
+		{
+			ProcessPendingActions();
+		}
+		
 		if(_isPositional && _isPlaying)
 		{
 			const uint32 frameSize = ResonanceAudioWorld::_instance->_audioSystem->_frameSize;
@@ -308,8 +276,9 @@ namespace RN
 		if(HasEnded())
 		{
 			_isPlaying = false;
+			_cachedIsPlaying.store(false, std::memory_order_relaxed);
 
-			if(_isSelfdestructing && GetSceneInfo() && GetSceneInfo()->GetScene())
+			if(_isSelfdestructing.load(std::memory_order_relaxed) && GetSceneInfo() && GetSceneInfo()->GetScene())
 			{
 				GetSceneInfo()->GetScene()->RemoveNode(const_cast<ResonanceAudioSource *>(this));
 			}
@@ -343,8 +312,7 @@ namespace RN
 			case PendingAction::Asset:
 			{
 				// Asset swap while playing should be guarded by fades
-				_pendingSeekTime.store(0.0, std::memory_order_release);
-				uint32_t bitsToSet = static_cast<uint32_t>(ControlBits::kWantSeek) | static_cast<uint32_t>(ControlBits::kWantFadeOut) | static_cast<uint32_t>(ControlBits::kWantAssetChange) | static_cast<uint32_t>(ControlBits::kWantFadeIn);
+				uint32_t bitsToSet = static_cast<uint32_t>(ControlBits::kWantFadeOut) | static_cast<uint32_t>(ControlBits::kWantAssetChange) | static_cast<uint32_t>(ControlBits::kWantFadeIn);
 				_controlBits.fetch_or(bitsToSet, std::memory_order_release);
 				break;
 			}
@@ -352,7 +320,7 @@ namespace RN
 			case PendingAction::Stop:
 			{
 				_finalAction.store(action, std::memory_order_release);
-				_pendingSeekTime.store(0.0, std::memory_order_release);
+				_pendingSeekTime.store(0.0, std::memory_order_relaxed);
 				_controlBits.fetch_or(static_cast<uint32_t>(ControlBits::kWantFadeOut) | static_cast<uint32_t>(ControlBits::kWantSeek), std::memory_order_release);
 				_controlBits.fetch_and(~static_cast<uint32_t>(ControlBits::kWantFadeIn), std::memory_order_release);
 				break;
@@ -395,16 +363,24 @@ namespace RN
 		if(controlBits & static_cast<uint32_t>(ControlBits::kWantAssetChange))
 		{
 			AudioAsset *pendingAsset = _pendingAsset.exchange(nullptr, std::memory_order_acq_rel);
-			_sampler->SetAudioAsset(pendingAsset);
-			// Update cached values after asset change
-			_cachedHasAsset.store(_sampler->GetAsset() != nullptr, std::memory_order_release);
-			_cachedTotalTime.store(_sampler->GetTotalTime(), std::memory_order_release);
+			if(pendingAsset != _sampler->GetAsset())
+			{
+				_sampler->SetAudioAsset(pendingAsset);
+				// Update cached values after asset change
+				_cachedHasAsset.store(_sampler->GetAsset() != nullptr, std::memory_order_relaxed);
+				_cachedTotalTime.store(_sampler->GetTotalTime(), std::memory_order_relaxed);
+
+				_currentTime = 0.0;
+				_cachedCurrentTime.store(0.0, std::memory_order_relaxed);
+				isSeeking = true;
+			}
 			SafeRelease(pendingAsset);
 		}
 
-		if(controlBits & static_cast<uint32_t>(ControlBits::kWantSeek))
+		if(controlBits & static_cast<uint32_t>(ControlBits::kWantSeek) && !isSeeking)
 		{
-			_currentTime = _pendingSeekTime.load(std::memory_order_acquire);
+			_currentTime = _pendingSeekTime.load(std::memory_order_relaxed);
+			_cachedCurrentTime.store(_currentTime, std::memory_order_relaxed);
 			isSeeking = true;
 		}
 
@@ -412,15 +388,20 @@ namespace RN
 		switch(finalAction)
 		{
 			case PendingAction::Stop:
-				_isPlaying = false;
-				break;
-
 			case PendingAction::Pause:
 				_isPlaying = false;
+				_cachedIsPlaying.store(false, std::memory_order_relaxed);
+				controlBits &= ~static_cast<uint32_t>(ControlBits::kWantFadeIn);
 				break;
 
 			case PendingAction::Play:
+				if(_sampler->GetAsset() && _currentTime >= _sampler->GetTotalTime())
+				{
+					_currentTime = 0.0f;
+					_cachedCurrentTime.store(0.0, std::memory_order_relaxed);
+				}
 				_isPlaying = true;
+				_cachedIsPlaying.store(true, std::memory_order_relaxed);
 				break;
 
 			default:
