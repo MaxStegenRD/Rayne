@@ -291,7 +291,7 @@ namespace RN
 	{
 		SceneNode::DidUpdate(changeSet);
 
-		if(changeSet & SceneNode::ChangeSet::Position || changeSet & SceneNode::ChangeSet::Attachments)
+		if(changeSet & SceneNode::ChangeSet::Position || changeSet & SceneNode::ChangeSet::Parent || changeSet & SceneNode::ChangeSet::World || changeSet & SceneNode::ChangeSet::Attachments)
 		{
 			RN::Vector3 position = GetWorldPosition();
 			RN::Quaternion rotation = GetWorldRotation();
@@ -340,7 +340,6 @@ namespace RN
 			{
 				_finalAction.store(action, std::memory_order_release);
 				_controlBits.fetch_or(static_cast<uint32_t>(ControlBits::kWantFadeIn), std::memory_order_release);
-				// No need to force FadeOut for Play.
 				break;
 			}
 
