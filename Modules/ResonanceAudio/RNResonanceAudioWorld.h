@@ -109,7 +109,6 @@ namespace RN
 		std::vector<ResonanceAudioSource *> _audioSources;
 
 		std::atomic<float> _masterVolume;
-		std::atomic<float> _wetVolume;
 		std::atomic<float> _dryVolume;
 
 		std::function<void(Vector3, Vector3, float &)> _raycastCallback;

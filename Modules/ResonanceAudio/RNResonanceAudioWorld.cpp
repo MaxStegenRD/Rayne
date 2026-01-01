@@ -62,7 +62,6 @@ namespace RN
 		}
 
 		float masterVolume = _instance->_masterVolume.load(std::memory_order_relaxed);
-		float wetVolume = _instance->_wetVolume.load(std::memory_order_relaxed);
 		float dryVolume = _instance->_dryVolume.load(std::memory_order_relaxed);
 
 		const uint32 channelCount = _instance->_audioSystem->_channelCount;
@@ -72,11 +71,6 @@ namespace RN
 		{
 			memset(floatOutputBuffer, 0, outputSampleCount * sizeof(float));
 			//RNDebug("Shit. " << frameSize);
-		}
-
-		for(uint32 i = 0; i < outputSampleCount; i++)
-		{
-			floatOutputBuffer[i] *= wetVolume;
 		}
 
 		const float outputSampleRate = static_cast<float>(_instance->_audioSystem->_sampleRate);
@@ -108,7 +102,6 @@ namespace RN
 		_inputBuffer(nullptr),
 		_sharedFrameData(nullptr),
 		_masterVolume(1.0f),
-		_wetVolume(0.5f),
 		_dryVolume(0.5f)
 	{
 		RN_ASSERT(!_instance, "There already is a ResonanceAudioWorld!");
@@ -249,7 +242,7 @@ namespace RN
 			_audioAPI->SetHeadRotation(listenerRotation.x, listenerRotation.y, listenerRotation.z, listenerRotation.w);
 
 			//Calculate current room properties
-			Vector3 dimensions(10.0f, 10.0f, 10.0f);
+			/*Vector3 dimensions(10.0f, 10.0f, 10.0f);
 			ResonanceAudioMaterial material[6] = {ResonanceAudioMaterialBrickBare, ResonanceAudioMaterialBrickBare, ResonanceAudioMaterialBrickBare, ResonanceAudioMaterialBrickBare, ResonanceAudioMaterialBrickBare, ResonanceAudioMaterialBrickBare};
 
 			if(_instance->_raycastCallback)
@@ -287,7 +280,7 @@ namespace RN
 				listenerPosition.y += (distance[2] * directions[2].x + distance[3] * directions[3].x) * 0.5f;
 				listenerPosition.z += (distance[4] * directions[4].x + distance[5] * directions[5].x) * 0.5f;
 			}
-			SetSimpleRoom(listenerPosition, dimensions, 1.0f, material[0], material[1], material[2], material[3], material[4], material[5]);
+			SetSimpleRoom(listenerPosition, dimensions, 1.0f, material[0], material[1], material[2], material[3], material[4], material[5]);*/
 		}
 	}
 
@@ -325,7 +318,7 @@ namespace RN
 
 	void ResonanceAudioWorld::SetWetVolume(float volume)
 	{
-		_wetVolume.store(volume, std::memory_order_relaxed);
+		_audioAPI->SetMasterVolume(volume);
 	}
 
 	void ResonanceAudioWorld::SetDryVolume(float volume)
