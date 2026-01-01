@@ -28,6 +28,16 @@ namespace RN
 		return _instance;
 	}
 
+	static inline float SoftClipTanhKnee(float x, float T)
+	{
+		const float ax = std::fabs(x);
+		if(ax <= T) return x;
+
+		const float u = (ax - T) / (1.0f - T);
+		const float y = T + (1.0f - T) * std::tanhf(u);
+		return std::copysign(y, x);
+	}
+
 	void ResonanceAudioWorld::AudioCallback(void *outputBuffer, const void *inputBuffer, unsigned int frameSize, unsigned int status)
 	{
 		AutoreleasePool pool;
@@ -51,12 +61,22 @@ namespace RN
 			source->Update();
 		}
 
+		float masterVolume = _instance->_masterVolume.load(std::memory_order_relaxed);
+		float wetVolume = _instance->_wetVolume.load(std::memory_order_relaxed);
+		float dryVolume = _instance->_dryVolume.load(std::memory_order_relaxed);
+
 		const uint32 channelCount = _instance->_audioSystem->_channelCount;
+		const uint32 outputSampleCount = frameSize * channelCount;
 		float *floatOutputBuffer = static_cast<float *>(outputBuffer);
 		if(!_instance->_audioAPI->FillInterleavedOutputBuffer(channelCount, frameSize, floatOutputBuffer))
 		{
-			memset(floatOutputBuffer, 0, frameSize * channelCount * sizeof(float));
+			memset(floatOutputBuffer, 0, outputSampleCount * sizeof(float));
 			//RNDebug("Shit. " << frameSize);
+		}
+
+		for(uint32 i = 0; i < outputSampleCount; i++)
+		{
+			floatOutputBuffer[i] *= wetVolume;
 		}
 
 		const float outputSampleRate = static_cast<float>(_instance->_audioSystem->_sampleRate);
@@ -67,23 +87,17 @@ namespace RN
 			float *frameData = nullptr;
 			if(source->Update(frameSize / outputSampleRate, frameSize, &frameData, channelCount))
 			{
-				for(int i = 0; i < static_cast<int>(frameSize); i++)
+				for(uint32 i = 0; i < outputSampleCount; i++)
 				{
-					for(uint32 j = 0; j < channelCount; j++)
-					{
-						floatOutputBuffer[i * channelCount + j] += frameData[i * channelCount + j];
-					}
+					floatOutputBuffer[i] += frameData[i] * dryVolume;
 				}
 			}
 		}
 		_instance->_audioSourcesLock.Unlock();
 
-		for(uint32 i = 0; i < frameSize; i++)
+		for(uint32 i = 0; i < outputSampleCount; i++)
 		{
-			for(uint32 j = 0; j < channelCount; j++)
-			{
-				floatOutputBuffer[i * channelCount + j] = tanh(floatOutputBuffer[i * channelCount + j]);
-			}
+			floatOutputBuffer[i] = SoftClipTanhKnee(floatOutputBuffer[i] * masterVolume, 0.9f);
 		}
 	}
 
@@ -92,7 +106,10 @@ namespace RN
 		_audioSystem(audioSystem),
 		_listener(nullptr),
 		_inputBuffer(nullptr),
-		_sharedFrameData(nullptr)
+		_sharedFrameData(nullptr),
+		_masterVolume(1.0f),
+		_wetVolume(0.5f),
+		_dryVolume(0.5f)
 	{
 		RN_ASSERT(!_instance, "There already is a ResonanceAudioWorld!");
 		RN_ASSERT(_audioSystem, "Audio system needs to be provided when creating an audio world!");
@@ -299,6 +316,21 @@ namespace RN
 
 		if(listener)
 			_listener = listener->Retain();
+	}
+
+	void ResonanceAudioWorld::SetMasterVolume(float volume)
+	{
+		_masterVolume.store(volume, std::memory_order_relaxed);
+	}
+
+	void ResonanceAudioWorld::SetWetVolume(float volume)
+	{
+		_wetVolume.store(volume, std::memory_order_relaxed);
+	}
+
+	void ResonanceAudioWorld::SetDryVolume(float volume)
+	{
+		_dryVolume.store(volume, std::memory_order_relaxed);
 	}
 
 	ResonanceAudioSource *ResonanceAudioWorld::PlaySound(AudioAsset *resource) const

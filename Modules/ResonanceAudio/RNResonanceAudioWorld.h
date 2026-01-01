@@ -69,6 +69,10 @@ namespace RN
 		RAAPI void SetListener(SceneNode *listener);
 		SceneNode *GetListener() const { return _listener; };
 
+		RAAPI void SetMasterVolume(float volume);
+		RAAPI void SetWetVolume(float volume);
+		RAAPI void SetDryVolume(float volume);
+
 		RAAPI ResonanceAudioSource *PlaySound(AudioAsset *resource) const;
 		RAAPI ResonanceAudioSource *PlaySound(AudioAsset *resource, Vector3 position) const;
 
@@ -103,6 +107,10 @@ namespace RN
 
 		Lockable _audioSourcesLock;
 		std::vector<ResonanceAudioSource *> _audioSources;
+
+		std::atomic<float> _masterVolume;
+		std::atomic<float> _wetVolume;
+		std::atomic<float> _dryVolume;
 
 		std::function<void(Vector3, Vector3, float &)> _raycastCallback;
 
