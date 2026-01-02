@@ -81,6 +81,7 @@ namespace RN
 
 	private:
 		void SubmitPendingAction(PendingAction action);
+		void ProcessPendingActionsQueue();
 		bool ProcessPendingActions();
 
 		std::atomic<uint8> _channel;
@@ -104,12 +105,14 @@ namespace RN
 		bool _isPlaying;
 		double _currentTime;
 		int32 _fadeSamples; // >0 fade-in, <0 fade-out, 0 none
+		uint32_t _controlBits;
+		PendingAction _finalAction;
 
 		//Used to sync between threads
-		std::atomic<uint32_t> _controlBits;
 		std::atomic<double> _pendingSeekTime;
 		std::atomic<AudioAsset*> _pendingAsset;
-		std::atomic<PendingAction> _finalAction;
+		std::vector<PendingAction> _pendingActionsBuffer[2];
+		std::atomic<std::vector<PendingAction>*> _pendingActionsWrite;
 
 		// Cached on audio thread to use on other threads
 		std::atomic<bool> _cachedHasAsset;
