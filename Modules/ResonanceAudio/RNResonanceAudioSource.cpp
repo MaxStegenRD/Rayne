@@ -54,6 +54,12 @@ namespace RN
 		_cachedIsPlaying(false),
 		_cachedCurrentTime(0.0)
 	{
+		// Ring buffers should always be repeating (streaming sources that never "end")
+		if(asset && asset->GetType() == AudioAsset::Type::Ringbuffer)
+		{
+			_isRepeating.store(true, std::memory_order_relaxed);
+		}
+
 		RN_ASSERT(ResonanceAudioWorld::_instance, "You need to create a ResonanceAudioWorld before creating audio sources!");
 
 		ResonanceAudioWorld::_instance->AddAudioSource(this);
@@ -411,6 +417,12 @@ namespace RN
 				// Update cached values after asset change
 				_cachedHasAsset.store(_sampler->GetAsset() != nullptr, std::memory_order_relaxed);
 				_cachedTotalTime.store(_sampler->GetTotalTime(), std::memory_order_relaxed);
+
+				// Ring buffers should always be repeating (streaming sources that never "end")
+				if(pendingAsset && pendingAsset->GetType() == AudioAsset::Type::Ringbuffer)
+				{
+					_isRepeating.store(true, std::memory_order_relaxed);
+				}
 
 				_currentTime = 0.0;
 				_cachedCurrentTime.store(0.0, std::memory_order_relaxed);
