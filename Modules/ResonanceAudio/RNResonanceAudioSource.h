@@ -34,6 +34,7 @@ namespace RN
 		{
 			Logarithmic,
 			Linear,
+			Inverse,
 			None
 		};
 

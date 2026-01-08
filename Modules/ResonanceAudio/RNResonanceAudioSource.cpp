@@ -22,12 +22,83 @@ namespace RN
 		{
 			case ResonanceAudioSource::DistanceRolloffModel::Logarithmic: return vraudio::DistanceRolloffModel::kLogarithmic;
 			case ResonanceAudioSource::DistanceRolloffModel::Linear: return vraudio::DistanceRolloffModel::kLinear;
+			case ResonanceAudioSource::DistanceRolloffModel::Inverse: return vraudio::DistanceRolloffModel::kInverse;
 			case ResonanceAudioSource::DistanceRolloffModel::None: return vraudio::DistanceRolloffModel::kNone;
 		}
 		return vraudio::DistanceRolloffModel::kLinear;
 	}
 
 	RNDefineMeta(ResonanceAudioSource, SceneNode)
+
+	void ResonanceAudioSource::Update(float delta)
+	{
+		SceneNode::Update(delta);
+
+		auto ResetDoppler = [&] {
+			_dopplerPitchMultiplier.store(1.0f, std::memory_order_relaxed);
+			_dopplerInitialized = false;
+		};
+
+		if(!_isPositional)
+			return;
+
+		ResonanceAudioWorld *world = ResonanceAudioWorld::GetInstance();
+		if(!world || !world->_listener || delta <= 0.0f || !IsPlaying())
+		{
+			ResetDoppler();
+			return;
+		}
+
+		const float dopplerFactor = world->_dopplerFactor;
+		const float speedOfSound = world->_dopplerSpeedOfSound;
+		if(dopplerFactor <= 0.0f || speedOfSound <= 0.0f)
+		{
+			ResetDoppler();
+			return;
+		}
+
+		const Vector3 listenerPosition = world->_listener->GetWorldPosition();
+		const Vector3 listenerVelocity = world->_dopplerListenerVelocity;
+		const Vector3 sourcePosition = GetWorldPosition();
+
+		if(!_dopplerInitialized)
+		{
+			_dopplerOldPosition = sourcePosition;
+			_dopplerVelocity = Vector3(0.0f, 0.0f, 0.0f);
+			_dopplerInitialized = true;
+			_dopplerPitchMultiplier.store(1.0f, std::memory_order_relaxed);
+			return;
+		}
+
+		const float smoothingOld = std::clamp(world->_dopplerVelocitySmoothing, 0.0f, 0.999f);
+		Vector3 rawVelocity = (sourcePosition - _dopplerOldPosition) / delta;
+		_dopplerOldPosition = sourcePosition;
+		_dopplerVelocity = _dopplerVelocity * smoothingOld + rawVelocity * (1.0f - smoothingOld);
+
+		Vector3 dir = listenerPosition - sourcePosition; // source -> listener
+		const float dist = dir.GetLength();
+		if(dist <= k::EpsilonFloat)
+		{
+			_dopplerPitchMultiplier.store(1.0f, std::memory_order_relaxed);
+			return;
+		}
+		dir = dir / dist;
+
+		// Project velocities onto the source->listener direction.
+		const float vls = listenerVelocity.GetDotProduct(dir);
+		const float vss = _dopplerVelocity.GetDotProduct(dir);
+
+		// OpenAL 1.1-style ratio: (c - factor*v_l) / (c - factor*v_s)
+		// Keep strictly positive to avoid negative/NaN pitch factors.
+		const float kMinDenom = 0.01f;
+		float num = std::max(kMinDenom, speedOfSound - dopplerFactor * vls);
+		float den = std::max(kMinDenom, speedOfSound - dopplerFactor * vss);
+		float shift = num / den;
+
+		// Prevent extreme pitch explosions.
+		shift = std::clamp(shift, 0.125f, 8.0f);
+		_dopplerPitchMultiplier.store(shift, std::memory_order_relaxed);
+	}
 
 	ResonanceAudioSource::ResonanceAudioSource(AudioAsset *asset, bool wantsIndirectSound, bool isPositional) :
 		_channel(0),
@@ -40,6 +111,10 @@ namespace RN
 		_isSelfdestructing(false),
 		_volume(1.0f),
 		_pitch(1.0f),
+		_dopplerPitchMultiplier(1.0f),
+		_dopplerOldPosition(Vector3()),
+		_dopplerVelocity(Vector3()),
+		_dopplerInitialized(false),
 		_minMaxRange(RN::Vector2(0.2f, 200.0f)),
 		_rolloffModel(DistanceRolloffModel::Logarithmic),
 		_currentTime(0.0f),
