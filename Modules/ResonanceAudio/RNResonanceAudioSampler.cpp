@@ -99,7 +99,7 @@ namespace RN
 				}
 				else
 				{
-					samplePositions[i] = maxSamplePosition - (channelCount - channel - 1);
+					samplePositions[i] = maxSamplePosition - channelCount + channel;
 				}
 			}
 			else if(samplePositions[i] < 0)

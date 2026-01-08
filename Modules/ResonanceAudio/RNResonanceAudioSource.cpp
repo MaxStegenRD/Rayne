@@ -303,6 +303,7 @@ namespace RN
 		uint8 channel = _channel.load(std::memory_order_relaxed);
 		float pitch = _pitch.load(std::memory_order_relaxed);
 		float volume = _isPositional ? 1.0f : _volume.load(std::memory_order_relaxed);
+		bool isMonoAsset = _sampler->GetAsset()->GetChannels() == 1;
 
 		for(int i = 0; i < sampleCount; i++)
 		{
@@ -321,7 +322,8 @@ namespace RN
 
 			for(int j = 0; j < channelCount; j++)
 			{
-				float value = _isPlaying ? _sampler->GetSample(localTime, j + channel, isRepeating) : 0.0f;
+				int sampleChannel = isMonoAsset ? 0 : j;
+				float value = _isPlaying ? _sampler->GetSample(localTime, sampleChannel + channel, isRepeating) : 0.0f;
 				ResonanceAudioWorld::_instance->_sharedFrameData[i * channelCount + j] = value * gain;
 			}
 			if(_isPlaying) localTime += sampleLength * pitch;
