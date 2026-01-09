@@ -7,8 +7,6 @@
 //
 
 #include "RNResonanceAudioWorld.h"
-#include "RNResonanceAudioInternals.h"
-#include "RNResonanceAudioSampler.h"
 
 #include <api/resonance_audio_api.h>
 #include <platforms/common/room_effects_utils.h>
@@ -102,7 +100,11 @@ namespace RN
 		_inputBuffer(nullptr),
 		_sharedFrameData(nullptr),
 		_masterVolume(1.0f),
-		_dryVolume(0.5f)
+		_dryVolume(0.5f),
+		_dopplerFactor(1.0f),
+		_dopplerSpeedOfSound(343.3f),
+		_dopplerVelocitySmoothing(0.95f),
+		_dopplerListenerOldPosition(Vector3())
 	{
 		RN_ASSERT(!_instance, "There already is a ResonanceAudioWorld!");
 		RN_ASSERT(_audioSystem, "Audio system needs to be provided when creating an audio world!");
@@ -229,6 +231,25 @@ namespace RN
 		_raycastCallback = raycastCallback;
 	}
 
+	ResonanceAudioWorld::ListenerState ResonanceAudioWorld::GetListenerState() const
+	{
+		const uint32 index = _listenerStateIndex.load(std::memory_order_acquire) & 1;
+		return _listenerStateBuffers[index];
+	}
+
+	void ResonanceAudioWorld::SetDopplerEffect(float factor, float speedOfSound)
+	{
+		const float f = (factor > 0.0f) ? factor : 0.0f;
+		const float c = (speedOfSound > 0.001f) ? speedOfSound : 0.001f;
+		_dopplerFactor = f;
+		_dopplerSpeedOfSound = c;
+	}
+
+	void ResonanceAudioWorld::SetDopplerVelocitySmoothing(float oldVelocityWeight)
+	{
+		_dopplerVelocitySmoothing = std::clamp(oldVelocityWeight, 0.0f, 0.999f);
+	}
+
 	void ResonanceAudioWorld::Update(float delta)
 	{
 		SceneAttachment::Update(delta);
@@ -240,6 +261,24 @@ namespace RN
 			Quaternion listenerRotation = _listener->GetWorldRotation();
 			_audioAPI->SetHeadPosition(listenerPosition.x, listenerPosition.y, listenerPosition.z);
 			_audioAPI->SetHeadRotation(listenerRotation.x, listenerRotation.y, listenerRotation.z, listenerRotation.w);
+
+			// Compute listener velocity once per frame.
+			Vector3 listenerVelocity(0.0f, 0.0f, 0.0f);
+			if(delta > 0.0f)
+			{
+				listenerVelocity = (listenerPosition - _dopplerListenerOldPosition) / delta;
+				_dopplerListenerOldPosition = listenerPosition;
+			}
+			
+			// Publish listener snapshot (lock-free, coherent multi-field read).
+			const uint32 currentIndex = _listenerStateIndex.load(std::memory_order_relaxed) & 1;
+			const uint32 nextIndex = currentIndex ^ 1;
+			ListenerState &dst = _listenerStateBuffers[nextIndex];
+			dst.position = listenerPosition;
+			dst.velocity = listenerVelocity;
+			dst.rotation = listenerRotation;
+			dst.isValid = true;
+			_listenerStateIndex.store(nextIndex, std::memory_order_release);
 
 			//Calculate current room properties
 			/*Vector3 dimensions(10.0f, 10.0f, 10.0f);
@@ -308,7 +347,28 @@ namespace RN
 		_listener = nullptr;
 
 		if(listener)
+		{
 			_listener = listener->Retain();
+			_dopplerListenerOldPosition = _listener->GetWorldPosition();
+			
+			// Publish a valid snapshot immediately (velocity starts at 0).
+			const uint32 currentIndex = _listenerStateIndex.load(std::memory_order_relaxed) & 1;
+			const uint32 nextIndex = currentIndex ^ 1;
+			ListenerState &dst = _listenerStateBuffers[nextIndex];
+			dst.position = _dopplerListenerOldPosition;
+			dst.velocity = Vector3(0.0f, 0.0f, 0.0f);
+			dst.rotation = _listener->GetWorldRotation();
+			dst.isValid = true;
+			_listenerStateIndex.store(nextIndex, std::memory_order_release);
+		}
+		else
+		{
+			// Publish invalid snapshot.
+			const uint32 currentIndex = _listenerStateIndex.load(std::memory_order_relaxed) & 1;
+			const uint32 nextIndex = currentIndex ^ 1;
+			_listenerStateBuffers[nextIndex].isValid = false;
+			_listenerStateIndex.store(nextIndex, std::memory_order_release);
+		}
 	}
 
 	void ResonanceAudioWorld::SetMasterVolume(float volume)

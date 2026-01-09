@@ -65,6 +65,7 @@ namespace RN
 		RAAPI void SetRolloffModel(DistanceRolloffModel rolloffModel);
 		RAAPI void SetChannel(uint8 channel);
 
+		void Update(float delta) override;
 		RAAPI bool Update(double frameLength, uint32 sampleCount, float **outputBuffer, uint8 channelCount = 1);
 		void Update();
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
@@ -98,6 +99,13 @@ namespace RN
 
 		std::atomic<float> _volume;
 		std::atomic<float> _pitch;
+
+		// Updated from ResonanceAudioWorld on the main thread; consumed on the audio thread.
+		// This mirrors OpenAL's Doppler behaviour by modulating the sampler pitch.
+		std::atomic<float> _dopplerPitchMultiplier;
+		Vector3 _dopplerOldPosition;
+		Vector3 _dopplerVelocity; // smoothed
+		bool _dopplerInitialized;
 
 		RN::Vector2 _minMaxRange;
 		DistanceRolloffModel _rolloffModel;

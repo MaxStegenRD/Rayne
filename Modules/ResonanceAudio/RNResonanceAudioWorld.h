@@ -52,6 +52,14 @@ namespace RN
 	{
 	public:
 		friend class ResonanceAudioSource;
+		
+		struct ListenerState
+		{
+			Vector3 position;
+			Vector3 velocity;
+			Quaternion rotation;
+			bool isValid = false;
+		};
 		enum MicrophonePermissionState
 		{
 			MicrophonePermissionStateAuthorized,
@@ -72,6 +80,11 @@ namespace RN
 		RAAPI void SetMasterVolume(float volume);
 		RAAPI void SetWetVolume(float volume);
 		RAAPI void SetDryVolume(float volume);
+
+		RAAPI void SetDopplerEffect(float factor, float speedOfSound = 343.3f);
+		RAAPI void SetDopplerVelocitySmoothing(float oldVelocityWeight = 0.95f);
+		
+		ListenerState GetListenerState() const;
 
 		RAAPI ResonanceAudioSource *PlaySound(AudioAsset *resource) const;
 		RAAPI ResonanceAudioSource *PlaySound(AudioAsset *resource, Vector3 position) const;
@@ -110,6 +123,14 @@ namespace RN
 
 		std::atomic<float> _masterVolume;
 		std::atomic<float> _dryVolume;
+
+		float _dopplerFactor;
+		float _dopplerSpeedOfSound;
+		float _dopplerVelocitySmoothing; // old velocity weight
+		Vector3 _dopplerListenerOldPosition;
+		
+		ListenerState _listenerStateBuffers[2] = {};
+		std::atomic<uint32> _listenerStateIndex {0};
 
 		std::function<void(Vector3, Vector3, float &)> _raycastCallback;
 

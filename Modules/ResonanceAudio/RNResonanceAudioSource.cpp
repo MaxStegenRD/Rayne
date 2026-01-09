@@ -43,7 +43,14 @@ namespace RN
 			return;
 
 		ResonanceAudioWorld *world = ResonanceAudioWorld::GetInstance();
-		if(!world || !world->_listener || delta <= 0.0f || !IsPlaying())
+		if(!world || delta <= 0.0f || !IsPlaying())
+		{
+			ResetDoppler();
+			return;
+		}
+
+		const ResonanceAudioWorld::ListenerState listenerState = world->GetListenerState();
+		if(!listenerState.isValid)
 		{
 			ResetDoppler();
 			return;
@@ -57,8 +64,8 @@ namespace RN
 			return;
 		}
 
-		const Vector3 listenerPosition = world->_listener->GetWorldPosition();
-		const Vector3 listenerVelocity = world->_dopplerListenerVelocity;
+		const Vector3 listenerPosition = listenerState.position;
+		const Vector3 listenerVelocity = listenerState.velocity;
 		const Vector3 sourcePosition = GetWorldPosition();
 
 		if(!_dopplerInitialized)
@@ -302,6 +309,11 @@ namespace RN
 		bool isRepeating = _isRepeating.load(std::memory_order_relaxed);
 		uint8 channel = _channel.load(std::memory_order_relaxed);
 		float pitch = _pitch.load(std::memory_order_relaxed);
+		// Do not apply Doppler to ringbuffer-backed sources (typically streaming/voice).
+		if(_isPositional && asset && asset->GetType() != AudioAsset::Type::Ringbuffer)
+		{
+			pitch *= _dopplerPitchMultiplier.load(std::memory_order_relaxed);
+		}
 		float volume = _isPositional ? 1.0f : _volume.load(std::memory_order_relaxed);
 		bool isMonoAsset = _sampler->GetAsset()->GetChannels() == 1;
 
