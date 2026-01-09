@@ -107,6 +107,7 @@ namespace RN
 
 		void AddAudioSource(ResonanceAudioSource *source);
 		void RemoveAudioSource(ResonanceAudioSource *source);
+		void PublishAudioSourcesSnapshot(const std::vector<ResonanceAudioSource *> &sources);
 
 		static ResonanceAudioWorld *_instance;
 
@@ -120,6 +121,10 @@ namespace RN
 
 		Lockable _audioSourcesLock;
 		std::vector<ResonanceAudioSource *> _audioSources;
+		bool _audioSourcesSnapshotDirty = false;
+		Array *_audioSourcesSnapshots[3];
+		std::atomic<uint32> _audioSourcesSnapshotIndex {0};
+		std::atomic<uint32> _audioSourcesSnapshotInUseIndex {0};
 
 		std::atomic<float> _masterVolume;
 		std::atomic<float> _dryVolume;
