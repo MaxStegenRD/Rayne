@@ -100,82 +100,20 @@ namespace RN
 
 	void ResonanceAudioWorld::SetSimpleRoomEnabled(bool enabled)
 	{
-		GetAudioAPI()->EnableRoomEffects(enabled);
+		if(!_audioSystem) return;
+		for(ResonanceAudioListenerContext *ctx : _audioSystem->_listenerContexts)
+		{
+			if(ctx) ctx->SetSimpleRoomEnabled(enabled);
+		}
 	}
 
 	void ResonanceAudioWorld::SetSimpleRoom(Vector3 position, Vector3 dimensions, float reflectionConstant, ResonanceAudioMaterial left, ResonanceAudioMaterial right, ResonanceAudioMaterial bottom, ResonanceAudioMaterial top, ResonanceAudioMaterial front, ResonanceAudioMaterial back)
 	{
-		vraudio::RoomProperties roomProperties;
-		roomProperties.dimensions[0] = dimensions.x;
-		roomProperties.dimensions[1] = dimensions.y;
-		roomProperties.dimensions[2] = dimensions.z;
-		roomProperties.position[0] = position.x;
-		roomProperties.position[1] = position.y;
-		roomProperties.position[2] = position.z;
-		roomProperties.reflection_scalar = reflectionConstant;
-		roomProperties.material_names[0] = static_cast<vraudio::MaterialName>(left);
-		roomProperties.material_names[1] = static_cast<vraudio::MaterialName>(right);
-		roomProperties.material_names[2] = static_cast<vraudio::MaterialName>(bottom);
-		roomProperties.material_names[3] = static_cast<vraudio::MaterialName>(top);
-		roomProperties.material_names[4] = static_cast<vraudio::MaterialName>(front);
-		roomProperties.material_names[5] = static_cast<vraudio::MaterialName>(back);
-
-		GetAudioAPI()->SetReverbProperties(vraudio::ComputeReverbProperties(roomProperties));
-		GetAudioAPI()->SetReflectionProperties(vraudio::ComputeReflectionProperties(roomProperties));
-
-		Lock();
-		for(ResonanceAudioSource *source : _instance->_audioSources)
+		if(!_audioSystem) return;
+		for(ResonanceAudioListenerContext *ctx : _audioSystem->_listenerContexts)
 		{
-			Vector3 sourcePosition = source->GetWorldPosition();
-			vraudio::WorldPosition audioSourcePosition;
-			audioSourcePosition[0] = sourcePosition.x;
-			audioSourcePosition[1] = sourcePosition.y;
-			audioSourcePosition[2] = sourcePosition.z;
-
-			vraudio::WorldPosition audioRoomPosition;
-			audioRoomPosition[0] = position.x;
-			audioRoomPosition[1] = position.y;
-			audioRoomPosition[2] = position.z;
-
-			vraudio::WorldRotation audioRoomRotation;
-
-			vraudio::WorldPosition audioRoomDimensions;
-			audioRoomDimensions[0] = dimensions.x;
-			audioRoomDimensions[1] = dimensions.y;
-			audioRoomDimensions[2] = dimensions.z;
-
-			GetAudioAPI()->SetSourceRoomEffectsGain(source->_sourceID, vraudio::ComputeRoomEffectsGain(audioSourcePosition, audioRoomPosition, audioRoomRotation, audioRoomDimensions));
-
-			if(_raycastCallback)
-			{
-				float distance;
-				SceneNode *listener = GetListener();
-				if(listener)
-					_raycastCallback(sourcePosition, listener->GetWorldPosition() - sourcePosition, distance);
-				else
-					distance = -1.0f;
-				if(distance > -0.5f)
-				{
-					/*float realDistance = _listener->GetWorldPosition().GetDistance(sourcePosition);
-					float otherDistance;
-					_raycastCallback(_listener->GetWorldPosition(), sourcePosition - _listener->GetWorldPosition(), otherDistance);
-					if(otherDistance > -0.5f)
-					{
-						_audioAPI->SetSoundObjectOcclusionIntensity(source->_sourceID, realDistance - distance - otherDistance);
-					}
-					else
-					{
-						_audioAPI->SetSoundObjectOcclusionIntensity(source->_sourceID, realDistance - distance);
-					}*/
-					GetAudioAPI()->SetSoundObjectOcclusionIntensity(source->_sourceID, 10.0f); //Maybe make this dependent on the material
-				}
-				else
-				{
-					GetAudioAPI()->SetSoundObjectOcclusionIntensity(source->_sourceID, 0.0f);
-				}
-			}
+			if(ctx) ctx->SetSimpleRoom(position, dimensions, reflectionConstant, left, right, bottom, top, front, back);
 		}
-		Unlock();
 	}
 
 	void ResonanceAudioWorld::SetRaycastCallback(const std::function<void(Vector3, Vector3, float &distance)> &raycastCallback)
@@ -220,8 +158,13 @@ namespace RN
 		}
 		Unlock();
 		
-		ResonanceAudioListenerContext *ctx = GetListenerContext();
-		if(ctx) ctx->Update(delta);
+		if(_audioSystem)
+		{
+			for(ResonanceAudioListenerContext *ctx : _audioSystem->_listenerContexts)
+			{
+				if(ctx) ctx->Update(delta);
+			}
+		}
 	}
 
 	void ResonanceAudioWorld::SetInputSamplesCallback(std::function<void(uint32, uint32, uint32, const float *)> inputSamplesCallback)

@@ -48,6 +48,9 @@ namespace RN
 		float GetDopplerSpeedOfSound() const { return _dopplerSpeedOfSound; }
 		float GetDopplerVelocitySmoothing() const { return _dopplerVelocitySmoothing; }
 
+		RAAPI void SetSimpleRoom(Vector3 position, Vector3 dimensions, float reflectionConstant, ResonanceAudioMaterial left, ResonanceAudioMaterial right, ResonanceAudioMaterial bottom, ResonanceAudioMaterial top, ResonanceAudioMaterial front, ResonanceAudioMaterial back);
+		RAAPI void SetSimpleRoomEnabled(bool enabled);
+
 		RAAPI void SetInputSamplesCallback(std::function<void(uint32 /*sampleRate*/, uint32 /*channelCount*/, uint32 /*frameCount*/, const float * /*frames*/)> inputSamplesCallback);
 
 		RAAPI void SetListener(SceneNode *listener);
@@ -81,6 +84,13 @@ namespace RN
 		float _dopplerFactor;
 		float _dopplerSpeedOfSound;
 		float _dopplerVelocitySmoothing; // old velocity weight
+
+		bool _roomEnabled;
+		bool _roomDirty;
+		Vector3 _roomPosition;
+		Vector3 _roomDimensions;
+		float _roomReflectionConstant;
+		ResonanceAudioMaterial _roomMaterials[6];
 
 		ResonanceAudioListenerState _stateBuffers[2] = {};
 		std::atomic<uint32> _stateIndex {0};

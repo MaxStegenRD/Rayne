@@ -16,34 +16,6 @@
 
 namespace RN
 {
-	enum ResonanceAudioMaterial
-	{
-		ResonanceAudioMaterialTransparent = 0,
-		ResonanceAudioMaterialAcousticCeilingTiles,
-		ResonanceAudioMaterialBrickBare,
-		ResonanceAudioMaterialBrickPainted,
-		ResonanceAudioMaterialConcreteBlockCoarse,
-		ResonanceAudioMaterialConcreteBlockPainted,
-		ResonanceAudioMaterialCurtainHeavy,
-		ResonanceAudioMaterialFiberGlassInsulation,
-		ResonanceAudioMaterialGlassThin,
-		ResonanceAudioMaterialGlassThick,
-		ResonanceAudioMaterialGrass,
-		ResonanceAudioMaterialLinoleumOnConcrete,
-		ResonanceAudioMaterialMarble,
-		ResonanceAudioMaterialMetal,
-		ResonanceAudioMaterialParquetOnConcrete,
-		ResonanceAudioMaterialPlasterRough,
-		ResonanceAudioMaterialPlasterSmooth,
-		ResonanceAudioMaterialPlywoodPanel,
-		ResonanceAudioMaterialPolishedConcreteOrTile,
-		ResonanceAudioMaterialSheetrock,
-		ResonanceAudioMaterialWaterOrIceSurface,
-		ResonanceAudioMaterialWoodCeiling,
-		ResonanceAudioMaterialWoodPanel,
-		ResonanceAudioMaterialUniform
-	};
-
 	class ResonanceAudioWorld : public SceneAttachment
 	{
 	public:

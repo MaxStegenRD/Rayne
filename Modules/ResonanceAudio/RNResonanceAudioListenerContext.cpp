@@ -10,6 +10,7 @@
 #include "RNResonanceAudioWorld.h"
 
 #include <api/resonance_audio_api.h>
+#include <platforms/common/room_effects_utils.h>
 
 namespace RN
 {
@@ -38,8 +39,20 @@ namespace RN
 		_dopplerFactor(1.0f),
 		_dopplerSpeedOfSound(343.3f),
 		_dopplerVelocitySmoothing(0.95f),
+		_roomEnabled(false),
+		_roomDirty(false),
+		_roomPosition(Vector3()),
+		_roomDimensions(Vector3(1.0f, 1.0f, 1.0f)),
+		_roomReflectionConstant(1.0f),
 		_audioAPI(nullptr)
 	{
+		_roomMaterials[0] = ResonanceAudioMaterialBrickBare;
+		_roomMaterials[1] = ResonanceAudioMaterialBrickBare;
+		_roomMaterials[2] = ResonanceAudioMaterialBrickBare;
+		_roomMaterials[3] = ResonanceAudioMaterialBrickBare;
+		_roomMaterials[4] = ResonanceAudioMaterialBrickBare;
+		_roomMaterials[5] = ResonanceAudioMaterialBrickBare;
+
 		_audioAPI = vraudio::CreateResonanceAudioApi(channelCount, frameSize, sampleRate);
 		_audioAPI->SetMasterVolume(_wetVolume);
 		_audioAPI->EnableRoomEffects(false);
@@ -84,6 +97,26 @@ namespace RN
 	void ResonanceAudioListenerContext::SetDopplerVelocitySmoothing(float oldVelocityWeight)
 	{
 		_dopplerVelocitySmoothing = std::clamp(oldVelocityWeight, 0.0f, 0.999f);
+	}
+
+	void ResonanceAudioListenerContext::SetSimpleRoom(Vector3 position, Vector3 dimensions, float reflectionConstant, ResonanceAudioMaterial left, ResonanceAudioMaterial right, ResonanceAudioMaterial bottom, ResonanceAudioMaterial top, ResonanceAudioMaterial front, ResonanceAudioMaterial back)
+	{
+		_roomPosition = position;
+		_roomDimensions = dimensions;
+		_roomReflectionConstant = reflectionConstant;
+		_roomMaterials[0] = left;
+		_roomMaterials[1] = right;
+		_roomMaterials[2] = bottom;
+		_roomMaterials[3] = top;
+		_roomMaterials[4] = front;
+		_roomMaterials[5] = back;
+		_roomDirty = true;
+	}
+
+	void ResonanceAudioListenerContext::SetSimpleRoomEnabled(bool enabled)
+	{
+		_roomEnabled = enabled;
+		_audioAPI->EnableRoomEffects(enabled);
 	}
 
 	void ResonanceAudioListenerContext::SetInputSamplesCallback(std::function<void(uint32, uint32, uint32, const float *)> inputSamplesCallback)
@@ -153,6 +186,72 @@ namespace RN
 		dst.rotation = rotation;
 		dst.isValid = true;
 		_stateIndex.store(nextIndex, std::memory_order_release);
+
+		if(!_roomEnabled)
+			return;
+
+		// Apply room properties if they changed.
+		if(_roomDirty)
+		{
+			vraudio::RoomProperties roomProperties;
+			roomProperties.dimensions[0] = _roomDimensions.x;
+			roomProperties.dimensions[1] = _roomDimensions.y;
+			roomProperties.dimensions[2] = _roomDimensions.z;
+			roomProperties.position[0] = _roomPosition.x;
+			roomProperties.position[1] = _roomPosition.y;
+			roomProperties.position[2] = _roomPosition.z;
+			roomProperties.reflection_scalar = _roomReflectionConstant;
+			roomProperties.material_names[0] = static_cast<vraudio::MaterialName>(_roomMaterials[0]);
+			roomProperties.material_names[1] = static_cast<vraudio::MaterialName>(_roomMaterials[1]);
+			roomProperties.material_names[2] = static_cast<vraudio::MaterialName>(_roomMaterials[2]);
+			roomProperties.material_names[3] = static_cast<vraudio::MaterialName>(_roomMaterials[3]);
+			roomProperties.material_names[4] = static_cast<vraudio::MaterialName>(_roomMaterials[4]);
+			roomProperties.material_names[5] = static_cast<vraudio::MaterialName>(_roomMaterials[5]);
+
+			_audioAPI->SetReverbProperties(vraudio::ComputeReverbProperties(roomProperties));
+			_audioAPI->SetReflectionProperties(vraudio::ComputeReflectionProperties(roomProperties));
+
+			_roomDirty = false;
+		}
+
+		ResonanceAudioWorld *world = _world;
+		if(!world) return;
+
+		// Keep per-source room gain + occlusion up to date (main thread only).
+		vraudio::WorldPosition audioRoomPosition;
+		audioRoomPosition[0] = _roomPosition.x;
+		audioRoomPosition[1] = _roomPosition.y;
+		audioRoomPosition[2] = _roomPosition.z;
+		vraudio::WorldRotation audioRoomRotation; // identity
+		vraudio::WorldPosition audioRoomDimensions;
+		audioRoomDimensions[0] = _roomDimensions.x;
+		audioRoomDimensions[1] = _roomDimensions.y;
+		audioRoomDimensions[2] = _roomDimensions.z;
+
+		SceneNode *listener = _listener;
+		const Vector3 listenerPosition = listener ? listener->GetWorldPosition() : Vector3();
+
+		world->Lock();
+		for(ResonanceAudioSource *source : world->_audioSources)
+		{
+			if(!source || !source->IsPositional()) continue;
+
+			Vector3 sourcePosition = source->GetWorldPosition();
+			vraudio::WorldPosition audioSourcePosition;
+			audioSourcePosition[0] = sourcePosition.x;
+			audioSourcePosition[1] = sourcePosition.y;
+			audioSourcePosition[2] = sourcePosition.z;
+
+			_audioAPI->SetSourceRoomEffectsGain(source->_sourceID, vraudio::ComputeRoomEffectsGain(audioSourcePosition, audioRoomPosition, audioRoomRotation, audioRoomDimensions));
+
+			if(world->_raycastCallback && listener)
+			{
+				float distance;
+				world->_raycastCallback(sourcePosition, listenerPosition - sourcePosition, distance);
+				_audioAPI->SetSoundObjectOcclusionIntensity(source->_sourceID, (distance > -0.5f) ? 10.0f : 0.0f);
+			}
+		}
+		world->Unlock();
 	}
 
 	void ResonanceAudioListenerContext::RenderAudio(void *outputBuffer, const void *inputBuffer, uint32 sampleRate, uint32 channelCount, uint32 frameCount, uint32 status)

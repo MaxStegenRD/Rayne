@@ -19,6 +19,7 @@ namespace RN
 	{
 	public:
 		friend class ResonanceAudioWorld;
+		friend class ResonanceAudioListenerContext;
 
 		enum class PendingAction
 		{
