@@ -115,11 +115,11 @@ namespace RN
 		SceneNode *_listener;
 
 		AudioAsset *_inputBuffer;
-		std::function<void(uint32, uint32, uint32, const float *)> _inputSamplesCallback;
+		std::function<void(uint32, uint32, uint32, const float *)> _inputSamplesCallbackBuffers[2] = {};
+		std::atomic<uint32> _inputSamplesCallbackIndex {0};
 
 		float *_sharedFrameData;
 
-		Lockable _audioSourcesLock;
 		std::vector<ResonanceAudioSource *> _audioSources;
 		bool _audioSourcesSnapshotDirty = false;
 		Array *_audioSourcesSnapshots[3];

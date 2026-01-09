@@ -41,11 +41,8 @@ namespace RN
 		AutoreleasePool pool;
 
 		//Capture microphone samples if requested
-		std::function<void(uint32, uint32, uint32, const float *)> inputSamplesCallback;
-		_instance->_audioSourcesLock.Lock();
-		inputSamplesCallback = _instance->_inputSamplesCallback;
-		_instance->_audioSourcesLock.Unlock();
-
+		const uint32 callbackIndex = _instance->_inputSamplesCallbackIndex.load(std::memory_order_acquire) & 1;
+		const auto &inputSamplesCallback = _instance->_inputSamplesCallbackBuffers[callbackIndex];
 		if(inputSamplesCallback && inputBuffer)
 		{
 			const float *floatInput = static_cast<const float *>(inputBuffer);
@@ -147,22 +144,22 @@ namespace RN
 
 	void ResonanceAudioWorld::AddAudioSource(ResonanceAudioSource *source)
 	{
-		_audioSourcesLock.Lock();
+		Lock();
 		_audioSources.push_back(source);
 		_audioSourcesSnapshotDirty = true;
-		_audioSourcesLock.Unlock();
+		Unlock();
 	}
 
 	void ResonanceAudioWorld::RemoveAudioSource(ResonanceAudioSource *source)
 	{
-		_audioSourcesLock.Lock();
+		Lock();
 		auto iterator = std::find(_audioSources.begin(), _audioSources.end(), source);
 		if(iterator != _audioSources.end())
 		{
 			_audioSources.erase(iterator);
 			_audioSourcesSnapshotDirty = true;
 		}
-		_audioSourcesLock.Unlock();
+		Unlock();
 	}
 
 	void ResonanceAudioWorld::PublishAudioSourcesSnapshot(const std::vector<ResonanceAudioSource *> &sources)
@@ -209,7 +206,7 @@ namespace RN
 		_audioAPI->SetReverbProperties(vraudio::ComputeReverbProperties(roomProperties));
 		_audioAPI->SetReflectionProperties(vraudio::ComputeReflectionProperties(roomProperties));
 
-		_audioSourcesLock.Lock();
+		Lock();
 		for(ResonanceAudioSource *source : _instance->_audioSources)
 		{
 			Vector3 sourcePosition = source->GetWorldPosition();
@@ -257,7 +254,7 @@ namespace RN
 				}
 			}
 		}
-		_audioSourcesLock.Unlock();
+		Unlock();
 	}
 
 	void ResonanceAudioWorld::SetRaycastCallback(const std::function<void(Vector3, Vector3, float &distance)> &raycastCallback)
@@ -289,13 +286,13 @@ namespace RN
 		SceneAttachment::Update(delta);
 
 		// Publish audio sources snapshot at most once per frame (instead of on every add/remove).
-		_audioSourcesLock.Lock();
+		Lock();
 		if(_audioSourcesSnapshotDirty)
 		{
 			PublishAudioSourcesSnapshot(_audioSources);
 			_audioSourcesSnapshotDirty = false;
 		}
-		_audioSourcesLock.Unlock();
+		Unlock();
 		
 		//Update listener position
 		if(_listener)
@@ -377,9 +374,10 @@ namespace RN
 
 	void ResonanceAudioWorld::SetInputSamplesCallback(std::function<void(uint32, uint32, uint32, const float *)> inputSamplesCallback)
 	{
-		_audioSourcesLock.Lock();
-		_inputSamplesCallback = std::move(inputSamplesCallback);
-		_audioSourcesLock.Unlock();
+		const uint32 currentIndex = _inputSamplesCallbackIndex.load(std::memory_order_relaxed) & 1;
+		const uint32 nextIndex = currentIndex ^ 1;
+		_inputSamplesCallbackBuffers[nextIndex] = std::move(inputSamplesCallback);
+		_inputSamplesCallbackIndex.store(nextIndex, std::memory_order_release);
 	}
 
 	void ResonanceAudioWorld::SetListener(SceneNode *listener)
