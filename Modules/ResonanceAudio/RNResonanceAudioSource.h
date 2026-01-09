@@ -86,6 +86,8 @@ namespace RN
 		void ProcessPendingActionsQueue();
 		bool ProcessPendingActions();
 
+		bool _isRegisteredInWorld;
+
 		std::atomic<uint8> _channel;
 		ResonanceAudioSampler *_sampler;
 

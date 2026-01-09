@@ -108,6 +108,7 @@ namespace RN
 	}
 
 	ResonanceAudioSource::ResonanceAudioSource(AudioAsset *asset, bool wantsIndirectSound, bool isPositional) :
+		_isRegisteredInWorld(false),
 		_channel(0),
 		_sampler(new ResonanceAudioSampler(asset)),
 		_sourceID(vraudio::ResonanceAudioApi::kInvalidSourceId),
@@ -144,8 +145,6 @@ namespace RN
 
 		RN_ASSERT(ResonanceAudioWorld::_instance, "You need to create a ResonanceAudioWorld before creating audio sources!");
 
-		ResonanceAudioWorld::_instance->AddAudioSource(this);
-
 		if(_isPositional)
 		{
 			//TODO: Make quality adjustable
@@ -158,7 +157,11 @@ namespace RN
 	{
 		AudioAsset *pendingAsset = _pendingAsset.exchange(nullptr, std::memory_order_acq_rel);
 		SafeRelease(pendingAsset);
-		ResonanceAudioWorld::_instance->RemoveAudioSource(this);
+		if(_isRegisteredInWorld)
+		{
+			ResonanceAudioWorld::_instance->RemoveAudioSource(this);
+			_isRegisteredInWorld = false;
+		}
 		if(_isPositional) ResonanceAudioWorld::_instance->_audioAPI->DestroySource(_sourceID);
 		_sampler->Release();
 	}
@@ -390,6 +393,22 @@ namespace RN
 	void ResonanceAudioSource::DidUpdate(SceneNode::ChangeSet changeSet)
 	{
 		SceneNode::DidUpdate(changeSet);
+		
+		// Register/unregister based on whether the node is actually attached to a scene.
+		if(changeSet & (SceneNode::ChangeSet::Parent | SceneNode::ChangeSet::World))
+		{
+			const bool isInScene = (GetSceneInfo() != nullptr);
+			if(isInScene && !_isRegisteredInWorld)
+			{
+				ResonanceAudioWorld::_instance->AddAudioSource(this);
+				_isRegisteredInWorld = true;
+			}
+			else if(!isInScene && _isRegisteredInWorld)
+			{
+				ResonanceAudioWorld::_instance->RemoveAudioSource(this);
+				_isRegisteredInWorld = false;
+			}
+		}
 
 		if(changeSet & SceneNode::ChangeSet::Position || changeSet & SceneNode::ChangeSet::Parent || changeSet & SceneNode::ChangeSet::World || changeSet & SceneNode::ChangeSet::Attachments)
 		{
