@@ -235,6 +235,7 @@ set(VERSION_STRING "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 set(SOURCES
         RNResonanceAudioInit.cpp
         RNResonanceAudioWorld.cpp
+        RNResonanceAudioListenerContext.cpp
         RNResonanceAudioSystem.cpp
         RNResonanceAudioSampler.cpp
         RNResonanceAudioSource.cpp
@@ -243,6 +244,7 @@ set(SOURCES
 set(HEADERS
 	RNResonanceAudio.h
         RNResonanceAudioWorld.h
+        RNResonanceAudioListenerContext.h
         RNResonanceAudioSystem.h
         RNResonanceAudioSampler.h
         RNResonanceAudioSource.h

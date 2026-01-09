@@ -8,6 +8,8 @@
 
 #include "RNResonanceAudioSystem.h"
 #include "RNResonanceAudioInternals.h"
+#include "RNResonanceAudioListenerContext.h"
+#include "RNResonanceAudioWorld.h"
 
 #define MA_NO_DECODING
 #define MA_NO_ENCODING
@@ -30,10 +32,87 @@ namespace RN
 	ResonanceAudioSystem::ResonanceAudioSystem(uint32 sampleRate, uint32 frameSize, uint8 channelCount) :
 		_frameSize(frameSize), _sampleRate(sampleRate), _channelCount(channelCount)
 	{
+		for(int i = 0; i < 3; i++)
+		{
+			_listenerContextSnapshots[i] = new Array();
+		}
 	}
 
 	ResonanceAudioSystem::~ResonanceAudioSystem()
 	{
+		RemoveAllListenerContexts();
+		for(int i = 0; i < 3; i++)
+		{
+			SafeRelease(_listenerContextSnapshots[i]);
+		}
+	}
+
+	void ResonanceAudioSystem::RenderAudio(void *outputBuffer, const void *inputBuffer, uint32 frameCount, uint32 sampleRate, uint32 channelCount, uint32 status)
+	{
+		const uint32 snapshotIndex = _listenerContextSnapshotIndex.load(std::memory_order_acquire) % 3;
+		_listenerContextSnapshotInUseIndex.store(snapshotIndex, std::memory_order_relaxed);
+		Array *snapshot = _listenerContextSnapshots[snapshotIndex];
+
+		if(snapshot && snapshot->GetCount() > 0)
+		{
+			ResonanceAudioListenerContext *listenerContext = snapshot->GetObjectAtIndex<ResonanceAudioListenerContext>(0);
+			if(listenerContext)
+			{
+				listenerContext->RenderAudio(outputBuffer, inputBuffer, sampleRate, channelCount, frameCount, status);
+				return;
+			}
+		}
+		
+		if(outputBuffer)
+		{
+			memset(outputBuffer, 0, frameCount * channelCount * sizeof(float));
+		}
+	}
+
+	ResonanceAudioListenerContext *ResonanceAudioSystem::CreateListenerContext()
+	{
+		ResonanceAudioWorld *world = _owningWorld;
+		RN_ASSERT(world, "Owning world must be set before creating listener contexts!");
+
+		ResonanceAudioListenerContext *context = new ResonanceAudioListenerContext(world, _channelCount, _frameSize, _sampleRate);
+		context->Retain();
+		_listenerContexts.push_back(context);
+		PublishListenerContextsSnapshot();
+
+		return context;
+	}
+
+	void ResonanceAudioSystem::RemoveAllListenerContexts()
+	{
+		for(ResonanceAudioListenerContext *context : _listenerContexts)
+		{
+			if(context) context->Release();
+		}
+		_listenerContexts.clear();
+		PublishListenerContextsSnapshot();
+	}
+
+	ResonanceAudioListenerContext *ResonanceAudioSystem::GetListenerContext() const
+	{
+		if(_listenerContexts.empty()) return nullptr;
+		return _listenerContexts.front();
+	}
+
+	void ResonanceAudioSystem::PublishListenerContextsSnapshot()
+	{
+		const uint32 inUse = _listenerContextSnapshotInUseIndex.load(std::memory_order_relaxed) % 3;
+		const uint32 published = _listenerContextSnapshotIndex.load(std::memory_order_relaxed) % 3;
+		uint32 writeIndex = (published + 1) % 3;
+		if(writeIndex == inUse) writeIndex = (writeIndex + 1) % 3;
+
+		Array *fresh = _listenerContextSnapshots[writeIndex];
+		fresh->RemoveAllObjects();
+		for(ResonanceAudioListenerContext *context : _listenerContexts)
+		{
+			if(!context) continue;
+			fresh->AddObject(context); // retain for audio thread
+		}
+		_listenerContextSnapshotIndex.store(writeIndex, std::memory_order_release);
 	}
 
 	ResonanceAudioSystem *ResonanceAudioSystem::WithInfo(uint32 sampleRate, uint32 frameSize, uint8 channelCount)
@@ -86,10 +165,7 @@ namespace RN
 	void ResonanceAudioSystemMiniAudio::AudioCallback(ma_device *pDevice, void *pOutput, const void *pInput, uint32 frameCount)
 	{
 		ResonanceAudioSystemMiniAudio *instance = static_cast<ResonanceAudioSystemMiniAudio *>(pDevice->pUserData);
-		if(instance->_audioCallback)
-		{
-			instance->_audioCallback(pOutput, pInput, frameCount, 0);
-		}
+		instance->RenderAudio(pOutput, pInput, frameCount, instance->_sampleRate, instance->_channelCount, 0);
 	}
 
 	void ResonanceAudioSystemMiniAudio::SetOutputDevice(ResonanceAudioDevice *outputDevice)

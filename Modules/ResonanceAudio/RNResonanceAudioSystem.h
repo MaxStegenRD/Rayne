@@ -52,6 +52,7 @@ namespace RN
 
 	class ResonanceAudioSource;
 	class ResonanceAudioWorld;
+	class ResonanceAudioListenerContext;
 	class ResonanceAudioSystem : public Object
 	{
 	public:
@@ -70,16 +71,24 @@ namespace RN
 
 	protected:
 		RAAPI ResonanceAudioSystem(uint32 sampleRate, uint32 frameSize, uint8 channelCount);
-		std::function<void(void *, const void *, unsigned int, unsigned int)> _audioCallback;
 
-		void SetAudioCallback(const std::function<void(void *, const void *, unsigned int, unsigned int)> &audioCallback)
-		{
-			_audioCallback = audioCallback;
-		}
+		void SetOwningWorld(ResonanceAudioWorld *world) { _owningWorld = world; }
+		ResonanceAudioListenerContext *CreateListenerContext();
+		void RemoveAllListenerContexts();
+		ResonanceAudioListenerContext *GetListenerContext() const;
+		void PublishListenerContextsSnapshot();
+
+		void RenderAudio(void *outputBuffer, const void *inputBuffer, uint32 frameCount, uint32 sampleRate, uint32 channelCount, uint32 status);
 
 		uint32 _frameSize;
 		uint32 _sampleRate;
 		uint32 _channelCount;
+
+		std::vector<ResonanceAudioListenerContext *> _listenerContexts;
+		Array *_listenerContextSnapshots[3] = {};
+		std::atomic<uint32> _listenerContextSnapshotIndex {0};
+		std::atomic<uint32> _listenerContextSnapshotInUseIndex {0};
+		WeakRef<ResonanceAudioWorld> _owningWorld;
 
 		RNDeclareMetaAPI(ResonanceAudioSystem, RAAPI)
 	};

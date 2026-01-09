@@ -49,15 +49,16 @@ namespace RN
 			return;
 		}
 
-		const ResonanceAudioWorld::ListenerState listenerState = world->GetListenerState();
-		if(!listenerState.isValid)
+		ResonanceAudioListenerContext *listenerContext = world->GetListenerContext();
+		const ResonanceAudioListenerState listenerState = listenerContext ? listenerContext->GetListenerState() : ResonanceAudioListenerState();
+		if(!listenerContext || !listenerState.isValid)
 		{
 			ResetDoppler();
 			return;
 		}
 
-		const float dopplerFactor = world->_dopplerFactor;
-		const float speedOfSound = world->_dopplerSpeedOfSound;
+		const float dopplerFactor = listenerContext->GetDopplerFactor();
+		const float speedOfSound = listenerContext->GetDopplerSpeedOfSound();
 		if(dopplerFactor <= 0.0f || speedOfSound <= 0.0f)
 		{
 			ResetDoppler();
@@ -77,7 +78,7 @@ namespace RN
 			return;
 		}
 
-		const float smoothingOld = std::clamp(world->_dopplerVelocitySmoothing, 0.0f, 0.999f);
+		const float smoothingOld = std::clamp(listenerContext->GetDopplerVelocitySmoothing(), 0.0f, 0.999f);
 		Vector3 rawVelocity = (sourcePosition - _dopplerOldPosition) / delta;
 		_dopplerOldPosition = sourcePosition;
 		_dopplerVelocity = _dopplerVelocity * smoothingOld + rawVelocity * (1.0f - smoothingOld);
@@ -148,8 +149,8 @@ namespace RN
 		if(_isPositional)
 		{
 			//TODO: Make quality adjustable
-			_sourceID = ResonanceAudioWorld::_instance->_audioAPI->CreateSoundObjectSource(vraudio::RenderingMode::kBinauralHighQuality);
-			ResonanceAudioWorld::_instance->_audioAPI->SetSourceDistanceModel(_sourceID, MapRolloffModel(_rolloffModel), _minMaxRange.x, _minMaxRange.y);
+			_sourceID = ResonanceAudioWorld::_instance->GetAudioAPI()->CreateSoundObjectSource(vraudio::RenderingMode::kBinauralHighQuality);
+			ResonanceAudioWorld::_instance->GetAudioAPI()->SetSourceDistanceModel(_sourceID, MapRolloffModel(_rolloffModel), _minMaxRange.x, _minMaxRange.y);
 		}
 	}
 
@@ -162,7 +163,7 @@ namespace RN
 			ResonanceAudioWorld::_instance->RemoveAudioSource(this);
 			_isRegisteredInWorld = false;
 		}
-		if(_isPositional) ResonanceAudioWorld::_instance->_audioAPI->DestroySource(_sourceID);
+		if(_isPositional) ResonanceAudioWorld::_instance->GetAudioAPI()->DestroySource(_sourceID);
 		_sampler->Release();
 	}
 
@@ -190,7 +191,7 @@ namespace RN
 		if(!_isPositional) return;
 		RN_DEBUG_ASSERT(_rolloffModel == DistanceRolloffModel::None, "Distance attenuation value is only supported for none rolloff model");
 
-		ResonanceAudioWorld::_instance->_audioAPI->SetSourceDistanceAttenuation(_sourceID, attentuation);
+		ResonanceAudioWorld::_instance->GetAudioAPI()->SetSourceDistanceAttenuation(_sourceID, attentuation);
 	}
 
 	void ResonanceAudioSource::SetPitch(float pitch)
@@ -202,7 +203,7 @@ namespace RN
 	{
 		_volume.store(volume, std::memory_order_relaxed);
 		if(!_isPositional) return;
-		ResonanceAudioWorld::_instance->_audioAPI->SetSourceVolume(_sourceID, volume);
+		ResonanceAudioWorld::_instance->GetAudioAPI()->SetSourceVolume(_sourceID, volume);
 	}
 
 	void ResonanceAudioSource::SetRange(RN::Vector2 minMaxRange)
@@ -217,7 +218,7 @@ namespace RN
 		const float maxDistance = std::max(minDistance, _minMaxRange.y);
 		_minMaxRange = RN::Vector2(minDistance, maxDistance);
 
-		ResonanceAudioWorld::_instance->_audioAPI->SetSourceDistanceModel(_sourceID, MapRolloffModel(_rolloffModel), minDistance, maxDistance);
+		ResonanceAudioWorld::_instance->GetAudioAPI()->SetSourceDistanceModel(_sourceID, MapRolloffModel(_rolloffModel), minDistance, maxDistance);
 	}
 
 	void ResonanceAudioSource::SetSelfdestruct(bool selfdestruct)
@@ -234,7 +235,7 @@ namespace RN
 
 		const float minDistance = std::max(0.001f, _minMaxRange.x);
 		const float maxDistance = std::max(minDistance, _minMaxRange.y);
-		ResonanceAudioWorld::_instance->_audioAPI->SetSourceDistanceModel(_sourceID, MapRolloffModel(_rolloffModel), minDistance, maxDistance);
+		ResonanceAudioWorld::_instance->GetAudioAPI()->SetSourceDistanceModel(_sourceID, MapRolloffModel(_rolloffModel), minDistance, maxDistance);
 	}
 
 
@@ -280,6 +281,11 @@ namespace RN
 			*outputBuffer = nullptr;
 			return false;
 		}
+		
+		if(!outputBuffer || !*outputBuffer)
+		{
+			return false;
+		}
 
 		if(_sampler->GetAsset()->GetType() == AudioAsset::Type::Ringbuffer)
 		{
@@ -319,6 +325,8 @@ namespace RN
 		}
 		float volume = _isPositional ? 1.0f : _volume.load(std::memory_order_relaxed);
 		bool isMonoAsset = _sampler->GetAsset()->GetChannels() == 1;
+		
+		float *targetBuffer = *outputBuffer;
 
 		for(int i = 0; i < sampleCount; i++)
 		{
@@ -339,7 +347,7 @@ namespace RN
 			{
 				int sampleChannel = isMonoAsset ? 0 : j;
 				float value = _isPlaying ? _sampler->GetSample(localTime, sampleChannel + channel, isRepeating) : 0.0f;
-				ResonanceAudioWorld::_instance->_sharedFrameData[i * channelCount + j] = value * gain;
+				targetBuffer[i * channelCount + j] = value * gain;
 			}
 			if(_isPlaying) localTime += sampleLength * pitch;
 
@@ -355,7 +363,7 @@ namespace RN
 		_currentTime = localTime;
 		_cachedCurrentTime.store(_currentTime, std::memory_order_relaxed);
 
-		*outputBuffer = ResonanceAudioWorld::_instance->_sharedFrameData;
+		*outputBuffer = targetBuffer;
 		return true;
 	}
 
@@ -373,9 +381,13 @@ namespace RN
 			const uint32 sampleRate = ResonanceAudioWorld::_instance->_audioSystem->_sampleRate;
 
 			//For none positional sources this happens in the audio handling callback
-			float *newBuffer;
-			Update(static_cast<double>(frameSize) / static_cast<double>(sampleRate), frameSize, &newBuffer, 1);
-			ResonanceAudioWorld::_instance->_audioAPI->SetInterleavedBuffer(_sourceID, newBuffer, 1, frameSize);
+			ResonanceAudioListenerContext *listenerContext = ResonanceAudioWorld::_instance->GetListenerContext();
+			float *newBuffer = listenerContext ? listenerContext->GetSharedFrameData() : nullptr;
+			if(newBuffer)
+			{
+				Update(static_cast<double>(frameSize) / static_cast<double>(sampleRate), frameSize, &newBuffer, 1);
+				ResonanceAudioWorld::_instance->GetAudioAPI()->SetInterleavedBuffer(_sourceID, newBuffer, 1, frameSize);
+			}
 		}
 
 		if(HasEnded())
@@ -414,8 +426,8 @@ namespace RN
 		{
 			RN::Vector3 position = GetWorldPosition();
 			RN::Quaternion rotation = GetWorldRotation();
-			ResonanceAudioWorld::_instance->_audioAPI->SetSourcePosition(_sourceID, position.x, position.y, position.z);
-			ResonanceAudioWorld::_instance->_audioAPI->SetSourceRotation(_sourceID, rotation.x, rotation.y, rotation.z, rotation.w);
+			ResonanceAudioWorld::_instance->GetAudioAPI()->SetSourcePosition(_sourceID, position.x, position.y, position.z);
+			ResonanceAudioWorld::_instance->GetAudioAPI()->SetSourceRotation(_sourceID, rotation.x, rotation.y, rotation.z, rotation.w);
 		}
 	}
 

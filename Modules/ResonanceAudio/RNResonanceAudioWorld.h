@@ -12,11 +12,7 @@
 #include "RNResonanceAudio.h"
 #include "RNResonanceAudioSource.h"
 #include "RNResonanceAudioSystem.h"
-
-namespace vraudio
-{
-	class ResonanceAudioApi;
-}
+#include "RNResonanceAudioListenerContext.h"
 
 namespace RN
 {
@@ -52,14 +48,9 @@ namespace RN
 	{
 	public:
 		friend class ResonanceAudioSource;
-		
-		struct ListenerState
-		{
-			Vector3 position;
-			Vector3 velocity;
-			Quaternion rotation;
-			bool isValid = false;
-		};
+		friend class ResonanceAudioSystem;
+		friend class ResonanceAudioListenerContext;
+
 		enum MicrophonePermissionState
 		{
 			MicrophonePermissionStateAuthorized,
@@ -73,9 +64,11 @@ namespace RN
 		RAAPI ~ResonanceAudioWorld() override;
 
 		ResonanceAudioSystem *GetAudioSystem() const { return _audioSystem; }
+		ResonanceAudioListenerContext *GetListenerContext() const { return _audioSystem ? _audioSystem->GetListenerContext() : nullptr; }
+		vraudio::ResonanceAudioApi *GetAudioAPI() const { ResonanceAudioListenerContext *ctx = GetListenerContext(); return ctx ? ctx->GetAudioAPI() : nullptr; }
 
 		RAAPI void SetListener(SceneNode *listener);
-		SceneNode *GetListener() const { return _listener; };
+		SceneNode *GetListener() const;
 
 		RAAPI void SetMasterVolume(float volume);
 		RAAPI void SetWetVolume(float volume);
@@ -84,7 +77,7 @@ namespace RN
 		RAAPI void SetDopplerEffect(float factor, float speedOfSound = 343.3f);
 		RAAPI void SetDopplerVelocitySmoothing(float oldVelocityWeight = 0.95f);
 		
-		ListenerState GetListenerState() const;
+		ResonanceAudioListenerState GetListenerState() const;
 
 		RAAPI ResonanceAudioSource *PlaySound(AudioAsset *resource) const;
 		RAAPI ResonanceAudioSource *PlaySound(AudioAsset *resource, Vector3 position) const;
@@ -93,7 +86,6 @@ namespace RN
 		RAAPI void SetSimpleRoom(Vector3 position, Vector3 dimensions, float reflectionConstant, ResonanceAudioMaterial left, ResonanceAudioMaterial right, ResonanceAudioMaterial bottom, ResonanceAudioMaterial top, ResonanceAudioMaterial front, ResonanceAudioMaterial back);
 		RAAPI void SetSimpleRoomEnabled(bool enabled);
 
-		RAAPI void SetInputBuffer(AudioAsset *inputBuffer);
 		RAAPI void SetInputSamplesCallback(std::function<void(uint32 /*sampleRate*/, uint32 /*channelCount*/, uint32 /*frameCount*/, const float * /*frames*/)> inputSamplesCallback);
 
 		RAAPI static void RequestMicrophonePermission();
@@ -103,8 +95,6 @@ namespace RN
 		void Update(float delta) override;
 
 	private:
-		static void AudioCallback(void *outputBuffer, const void *inputBuffer, unsigned int frameSize, unsigned int status);
-
 		void AddAudioSource(ResonanceAudioSource *source);
 		void RemoveAudioSource(ResonanceAudioSource *source);
 		void PublishAudioSourcesSnapshot(const std::vector<ResonanceAudioSource *> &sources);
@@ -112,13 +102,6 @@ namespace RN
 		static ResonanceAudioWorld *_instance;
 
 		ResonanceAudioSystem *_audioSystem;
-		SceneNode *_listener;
-
-		AudioAsset *_inputBuffer;
-		std::function<void(uint32, uint32, uint32, const float *)> _inputSamplesCallbackBuffers[2] = {};
-		std::atomic<uint32> _inputSamplesCallbackIndex {0};
-
-		float *_sharedFrameData;
 
 		std::vector<ResonanceAudioSource *> _audioSources;
 		bool _audioSourcesSnapshotDirty = false;
@@ -126,20 +109,9 @@ namespace RN
 		std::atomic<uint32> _audioSourcesSnapshotIndex {0};
 		std::atomic<uint32> _audioSourcesSnapshotInUseIndex {0};
 
-		std::atomic<float> _masterVolume;
-		std::atomic<float> _dryVolume;
-
-		float _dopplerFactor;
-		float _dopplerSpeedOfSound;
-		float _dopplerVelocitySmoothing; // old velocity weight
-		Vector3 _dopplerListenerOldPosition;
-		
-		ListenerState _listenerStateBuffers[2] = {};
-		std::atomic<uint32> _listenerStateIndex {0};
+		std::atomic<float> _worldMasterVolume;
 
 		std::function<void(Vector3, Vector3, float &)> _raycastCallback;
-
-		vraudio::ResonanceAudioApi *_audioAPI;
 
 		RNDeclareMetaAPI(ResonanceAudioWorld, RAAPI)
 	};

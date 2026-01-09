@@ -26,85 +26,10 @@ namespace RN
 		return _instance;
 	}
 
-	static inline float SoftClipTanhKnee(float x, float T)
-	{
-		const float ax = std::fabs(x);
-		if(ax <= T) return x;
-
-		const float u = (ax - T) / (1.0f - T);
-		const float y = T + (1.0f - T) * std::tanhf(u);
-		return std::copysign(y, x);
-	}
-
-	void ResonanceAudioWorld::AudioCallback(void *outputBuffer, const void *inputBuffer, unsigned int frameSize, unsigned int status)
-	{
-		AutoreleasePool pool;
-
-		//Capture microphone samples if requested
-		const uint32 callbackIndex = _instance->_inputSamplesCallbackIndex.load(std::memory_order_acquire) & 1;
-		const auto &inputSamplesCallback = _instance->_inputSamplesCallbackBuffers[callbackIndex];
-		if(inputSamplesCallback && inputBuffer)
-		{
-			const float *floatInput = static_cast<const float *>(inputBuffer);
-			inputSamplesCallback(_instance->_audioSystem->_sampleRate, _instance->_audioSystem->_channelCount, frameSize, floatInput);
-		}
-
-		if(!outputBuffer)
-		{
-			return;
-		}
-
-		const uint32 sourcesIndex = _instance->_audioSourcesSnapshotIndex.load(std::memory_order_acquire) % 3;
-		_instance->_audioSourcesSnapshotInUseIndex.store(sourcesIndex, std::memory_order_relaxed);
-		Array *sourcesSnapshot = _instance->_audioSourcesSnapshots[sourcesIndex];
-
-		sourcesSnapshot->Enumerate<ResonanceAudioSource>([&](ResonanceAudioSource *source, size_t index, bool &stop){
-			source->Update();
-		});
-
-		float masterVolume = _instance->_masterVolume.load(std::memory_order_relaxed);
-		float dryVolume = _instance->_dryVolume.load(std::memory_order_relaxed);
-
-		const uint32 channelCount = _instance->_audioSystem->_channelCount;
-		const uint32 outputSampleCount = frameSize * channelCount;
-		float *floatOutputBuffer = static_cast<float *>(outputBuffer);
-		if(!_instance->_audioAPI->FillInterleavedOutputBuffer(channelCount, frameSize, floatOutputBuffer))
-		{
-			memset(floatOutputBuffer, 0, outputSampleCount * sizeof(float));
-			//RNDebug("Shit. " << frameSize);
-		}
-
-		const float outputSampleRate = static_cast<float>(_instance->_audioSystem->_sampleRate);
-		sourcesSnapshot->Enumerate<ResonanceAudioSource>([&](ResonanceAudioSource *source, size_t index, bool &stop){
-			if(source->IsPositional()) return;
-			
-			float *frameData = nullptr;
-			if(source->Update(frameSize / outputSampleRate, frameSize, &frameData, channelCount))
-			{
-				for(uint32 i = 0; i < outputSampleCount; i++)
-				{
-					floatOutputBuffer[i] += frameData[i] * dryVolume;
-				}
-			}
-		});
-		for(uint32 i = 0; i < outputSampleCount; i++)
-		{
-			floatOutputBuffer[i] = SoftClipTanhKnee(floatOutputBuffer[i] * masterVolume, 0.9f);
-		}
-	}
-
 	//TODO: Allow to initialize with preferred device names and fall back to defaults
 	ResonanceAudioWorld::ResonanceAudioWorld(ResonanceAudioSystem *audioSystem) :
 		_audioSystem(audioSystem),
-		_listener(nullptr),
-		_inputBuffer(nullptr),
-		_sharedFrameData(nullptr),
-		_masterVolume(1.0f),
-		_dryVolume(0.5f),
-		_dopplerFactor(1.0f),
-		_dopplerSpeedOfSound(343.3f),
-		_dopplerVelocitySmoothing(0.95f),
-		_dopplerListenerOldPosition(Vector3())
+		_worldMasterVolume(1.0f)
 	{
 		RN_ASSERT(!_instance, "There already is a ResonanceAudioWorld!");
 		RN_ASSERT(_audioSystem, "Audio system needs to be provided when creating an audio world!");
@@ -114,29 +39,21 @@ namespace RN
 			_audioSourcesSnapshots[i] = new Array();
 		}
 
-		_audioAPI = vraudio::CreateResonanceAudioApi(_audioSystem->_channelCount, _audioSystem->_frameSize, _audioSystem->_sampleRate);
-		_audioAPI->SetMasterVolume(1.0f);
-		_audioAPI->EnableRoomEffects(false);
-
-		_sharedFrameData = new float[_audioSystem->_frameSize * _audioSystem->_channelCount];
+		_audioSystem->SetOwningWorld(this);
+		_audioSystem->CreateListenerContext();
 		_instance = this;
 		_audioSystem->Retain();
-		_audioSystem->SetAudioCallback(AudioCallback);
 	}
 
 	ResonanceAudioWorld::~ResonanceAudioWorld()
 	{
+		_audioSystem->RemoveAllListenerContexts();
+		_audioSystem->SetOwningWorld(nullptr);
 		_audioSystem->Release();
 
 		for(int i = 0; i < 3; i++)
 		{
 			SafeRelease(_audioSourcesSnapshots[i]);
-		}
-
-		if(_sharedFrameData)
-		{
-			delete[] _sharedFrameData;
-			_sharedFrameData = nullptr;
 		}
 
 		_instance = nullptr;
@@ -183,7 +100,7 @@ namespace RN
 
 	void ResonanceAudioWorld::SetSimpleRoomEnabled(bool enabled)
 	{
-		_audioAPI->EnableRoomEffects(enabled);
+		GetAudioAPI()->EnableRoomEffects(enabled);
 	}
 
 	void ResonanceAudioWorld::SetSimpleRoom(Vector3 position, Vector3 dimensions, float reflectionConstant, ResonanceAudioMaterial left, ResonanceAudioMaterial right, ResonanceAudioMaterial bottom, ResonanceAudioMaterial top, ResonanceAudioMaterial front, ResonanceAudioMaterial back)
@@ -203,8 +120,8 @@ namespace RN
 		roomProperties.material_names[4] = static_cast<vraudio::MaterialName>(front);
 		roomProperties.material_names[5] = static_cast<vraudio::MaterialName>(back);
 
-		_audioAPI->SetReverbProperties(vraudio::ComputeReverbProperties(roomProperties));
-		_audioAPI->SetReflectionProperties(vraudio::ComputeReflectionProperties(roomProperties));
+		GetAudioAPI()->SetReverbProperties(vraudio::ComputeReverbProperties(roomProperties));
+		GetAudioAPI()->SetReflectionProperties(vraudio::ComputeReflectionProperties(roomProperties));
 
 		Lock();
 		for(ResonanceAudioSource *source : _instance->_audioSources)
@@ -227,12 +144,16 @@ namespace RN
 			audioRoomDimensions[1] = dimensions.y;
 			audioRoomDimensions[2] = dimensions.z;
 
-			_audioAPI->SetSourceRoomEffectsGain(source->_sourceID, vraudio::ComputeRoomEffectsGain(audioSourcePosition, audioRoomPosition, audioRoomRotation, audioRoomDimensions));
+			GetAudioAPI()->SetSourceRoomEffectsGain(source->_sourceID, vraudio::ComputeRoomEffectsGain(audioSourcePosition, audioRoomPosition, audioRoomRotation, audioRoomDimensions));
 
 			if(_raycastCallback)
 			{
 				float distance;
-				_raycastCallback(sourcePosition, _listener->GetWorldPosition() - sourcePosition, distance);
+				SceneNode *listener = GetListener();
+				if(listener)
+					_raycastCallback(sourcePosition, listener->GetWorldPosition() - sourcePosition, distance);
+				else
+					distance = -1.0f;
 				if(distance > -0.5f)
 				{
 					/*float realDistance = _listener->GetWorldPosition().GetDistance(sourcePosition);
@@ -246,11 +167,11 @@ namespace RN
 					{
 						_audioAPI->SetSoundObjectOcclusionIntensity(source->_sourceID, realDistance - distance);
 					}*/
-					_audioAPI->SetSoundObjectOcclusionIntensity(source->_sourceID, 10.0f); //Maybe make this dependent on the material
+					GetAudioAPI()->SetSoundObjectOcclusionIntensity(source->_sourceID, 10.0f); //Maybe make this dependent on the material
 				}
 				else
 				{
-					_audioAPI->SetSoundObjectOcclusionIntensity(source->_sourceID, 0.0f);
+					GetAudioAPI()->SetSoundObjectOcclusionIntensity(source->_sourceID, 0.0f);
 				}
 			}
 		}
@@ -262,23 +183,28 @@ namespace RN
 		_raycastCallback = raycastCallback;
 	}
 
-	ResonanceAudioWorld::ListenerState ResonanceAudioWorld::GetListenerState() const
+	ResonanceAudioListenerState ResonanceAudioWorld::GetListenerState() const
 	{
-		const uint32 index = _listenerStateIndex.load(std::memory_order_acquire) & 1;
-		return _listenerStateBuffers[index];
+		ResonanceAudioListenerContext *ctx = GetListenerContext();
+		return ctx ? ctx->GetListenerState() : ResonanceAudioListenerState();
 	}
 
 	void ResonanceAudioWorld::SetDopplerEffect(float factor, float speedOfSound)
 	{
-		const float f = (factor > 0.0f) ? factor : 0.0f;
-		const float c = (speedOfSound > 0.001f) ? speedOfSound : 0.001f;
-		_dopplerFactor = f;
-		_dopplerSpeedOfSound = c;
+		if(!_audioSystem) return;
+		for(ResonanceAudioListenerContext *ctx : _audioSystem->_listenerContexts)
+		{
+			if(ctx) ctx->SetDopplerEffect(factor, speedOfSound);
+		}
 	}
 
 	void ResonanceAudioWorld::SetDopplerVelocitySmoothing(float oldVelocityWeight)
 	{
-		_dopplerVelocitySmoothing = std::clamp(oldVelocityWeight, 0.0f, 0.999f);
+		if(!_audioSystem) return;
+		for(ResonanceAudioListenerContext *ctx : _audioSystem->_listenerContexts)
+		{
+			if(ctx) ctx->SetDopplerVelocitySmoothing(oldVelocityWeight);
+		}
 	}
 
 	void ResonanceAudioWorld::Update(float delta)
@@ -294,137 +220,49 @@ namespace RN
 		}
 		Unlock();
 		
-		//Update listener position
-		if(_listener)
-		{
-			Vector3 listenerPosition = _listener->GetWorldPosition();
-			Quaternion listenerRotation = _listener->GetWorldRotation();
-			_audioAPI->SetHeadPosition(listenerPosition.x, listenerPosition.y, listenerPosition.z);
-			_audioAPI->SetHeadRotation(listenerRotation.x, listenerRotation.y, listenerRotation.z, listenerRotation.w);
-
-			// Compute listener velocity once per frame.
-			Vector3 listenerVelocity(0.0f, 0.0f, 0.0f);
-			if(delta > 0.0f)
-			{
-				listenerVelocity = (listenerPosition - _dopplerListenerOldPosition) / delta;
-				_dopplerListenerOldPosition = listenerPosition;
-			}
-			
-			// Publish listener snapshot (lock-free, coherent multi-field read).
-			const uint32 currentIndex = _listenerStateIndex.load(std::memory_order_relaxed) & 1;
-			const uint32 nextIndex = currentIndex ^ 1;
-			ListenerState &dst = _listenerStateBuffers[nextIndex];
-			dst.position = listenerPosition;
-			dst.velocity = listenerVelocity;
-			dst.rotation = listenerRotation;
-			dst.isValid = true;
-			_listenerStateIndex.store(nextIndex, std::memory_order_release);
-
-			//Calculate current room properties
-			/*Vector3 dimensions(10.0f, 10.0f, 10.0f);
-			ResonanceAudioMaterial material[6] = {ResonanceAudioMaterialBrickBare, ResonanceAudioMaterialBrickBare, ResonanceAudioMaterialBrickBare, ResonanceAudioMaterialBrickBare, ResonanceAudioMaterialBrickBare, ResonanceAudioMaterialBrickBare};
-
-			if(_instance->_raycastCallback)
-			{
-				Vector3 directions[6];
-				directions[0].x = -1.0f;
-				directions[1].x = 1.0f;
-				directions[2].y = -1.0f;
-				directions[3].y = 1.0f;
-				directions[4].z = -1.0f;
-				directions[5].z = 1.0f;
-
-				float distance[6];
-				for(int i = 0; i < 6; i++)
-				{
-					_instance->_raycastCallback(listenerPosition, directions[i] * 100.0f, distance[i]);
-
-					if(distance[i] < -0.5f)
-					{
-						distance[i] = 1.0f;
-						material[i] = ResonanceAudioMaterialTransparent;
-					}
-					else
-					{
-						material[i] = ResonanceAudioMaterialBrickBare;
-					}
-				}
-
-				dimensions.x = distance[0] + distance[1];
-				dimensions.y = distance[2] + distance[3];
-				dimensions.z = distance[4] + distance[5];
-
-				//Move to actual room center
-				listenerPosition.x += (distance[0] * directions[0].x + distance[1] * directions[1].x) * 0.5f;
-				listenerPosition.y += (distance[2] * directions[2].x + distance[3] * directions[3].x) * 0.5f;
-				listenerPosition.z += (distance[4] * directions[4].x + distance[5] * directions[5].x) * 0.5f;
-			}
-			SetSimpleRoom(listenerPosition, dimensions, 1.0f, material[0], material[1], material[2], material[3], material[4], material[5]);*/
-		}
-	}
-
-	void ResonanceAudioWorld::SetInputBuffer(AudioAsset *inputBuffer)
-	{
-		RN_ASSERT(!inputBuffer || (inputBuffer->GetData()->GetLength() > 2 * _audioSystem->_frameSize), "Requires an input buffer big enough to contain two frames of audio data!");
-
-		SafeRelease(_inputBuffer);
-		_inputBuffer = inputBuffer;
-		SafeRetain(_inputBuffer);
+		ResonanceAudioListenerContext *ctx = GetListenerContext();
+		if(ctx) ctx->Update(delta);
 	}
 
 	void ResonanceAudioWorld::SetInputSamplesCallback(std::function<void(uint32, uint32, uint32, const float *)> inputSamplesCallback)
 	{
-		const uint32 currentIndex = _inputSamplesCallbackIndex.load(std::memory_order_relaxed) & 1;
-		const uint32 nextIndex = currentIndex ^ 1;
-		_inputSamplesCallbackBuffers[nextIndex] = std::move(inputSamplesCallback);
-		_inputSamplesCallbackIndex.store(nextIndex, std::memory_order_release);
+		ResonanceAudioListenerContext *ctx = GetListenerContext();
+		if(ctx) ctx->SetInputSamplesCallback(std::move(inputSamplesCallback));
 	}
 
 	void ResonanceAudioWorld::SetListener(SceneNode *listener)
 	{
-		if(_listener)
-			_listener->Release();
+		ResonanceAudioListenerContext *ctx = GetListenerContext();
+		if(ctx) ctx->SetListener(listener);
+	}
 
-		_listener = nullptr;
-
-		if(listener)
-		{
-			_listener = listener->Retain();
-			_dopplerListenerOldPosition = _listener->GetWorldPosition();
-			
-			// Publish a valid snapshot immediately (velocity starts at 0).
-			const uint32 currentIndex = _listenerStateIndex.load(std::memory_order_relaxed) & 1;
-			const uint32 nextIndex = currentIndex ^ 1;
-			ListenerState &dst = _listenerStateBuffers[nextIndex];
-			dst.position = _dopplerListenerOldPosition;
-			dst.velocity = Vector3(0.0f, 0.0f, 0.0f);
-			dst.rotation = _listener->GetWorldRotation();
-			dst.isValid = true;
-			_listenerStateIndex.store(nextIndex, std::memory_order_release);
-		}
-		else
-		{
-			// Publish invalid snapshot.
-			const uint32 currentIndex = _listenerStateIndex.load(std::memory_order_relaxed) & 1;
-			const uint32 nextIndex = currentIndex ^ 1;
-			_listenerStateBuffers[nextIndex].isValid = false;
-			_listenerStateIndex.store(nextIndex, std::memory_order_release);
-		}
+	SceneNode *ResonanceAudioWorld::GetListener() const
+	{
+		ResonanceAudioListenerContext *ctx = GetListenerContext();
+		return ctx ? ctx->GetListener() : nullptr;
 	}
 
 	void ResonanceAudioWorld::SetMasterVolume(float volume)
 	{
-		_masterVolume.store(volume, std::memory_order_relaxed);
+		_worldMasterVolume.store(volume, std::memory_order_relaxed);
 	}
 
 	void ResonanceAudioWorld::SetWetVolume(float volume)
 	{
-		_audioAPI->SetMasterVolume(volume);
+		if(!_audioSystem) return;
+		for(ResonanceAudioListenerContext *ctx : _audioSystem->_listenerContexts)
+		{
+			if(ctx) ctx->SetWetVolume(volume);
+		}
 	}
 
 	void ResonanceAudioWorld::SetDryVolume(float volume)
 	{
-		_dryVolume.store(volume, std::memory_order_relaxed);
+		if(!_audioSystem) return;
+		for(ResonanceAudioListenerContext *ctx : _audioSystem->_listenerContexts)
+		{
+			if(ctx) ctx->SetDryVolume(volume);
+		}
 	}
 
 	ResonanceAudioSource *ResonanceAudioWorld::PlaySound(AudioAsset *resource) const
