@@ -220,6 +220,8 @@ namespace RN
 
 		size_t GetIndexOfObject(Object *object) const
 		{
+			if(!object) return kRNNotFound;
+
 			for(size_t i = 0; i < _count; i++)
 			{
 				if(object->IsEqual(_data[i]))
@@ -231,6 +233,8 @@ namespace RN
 
 		bool ContainsObject(const Object *object) const
 		{
+			if(!object) return false;
+
 			for(size_t i = 0; i < _count; i++)
 			{
 				if(object->IsEqual(_data[i]))
@@ -242,15 +246,12 @@ namespace RN
 
 		bool IsEqual(const Object *temp) const override
 		{
-			if(!temp)
-				return false;
+			if(!temp) return false;
 
 			const Array *other = temp->Downcast<Array>();
-			if(!other)
-				return false;
+			if(!other) return false;
 
-			if(GetCount() != other->GetCount())
-				return false;
+			if(GetCount() != other->GetCount()) return false;
 
 			for(size_t i = 0; i < _count; i++)
 			{
