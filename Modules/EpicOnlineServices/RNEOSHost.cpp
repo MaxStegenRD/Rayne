@@ -365,6 +365,11 @@ namespace RN
 
 	const RN::String *EOSHost::GetEOSUserIDStringForClient(RN::uint8 clientID) const
 	{
+		if(clientID == _clientID)
+		{
+			return EOSWorld::GetInstance()->GetUserIDString();
+		}
+
 		auto it = _idMap.find(clientID);
 		if(it == _idMap.end()) return nullptr;
 		return EOSWorld::GetInstance()->GetUserIDString(it->second);
