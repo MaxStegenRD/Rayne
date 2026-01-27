@@ -249,6 +249,11 @@ namespace RN
 		return EOS_ProductUserId_FromString(userIDString->GetUTF8String());
 	}
 
+	void EOSWorld::SetLoginCallback(std::function<void()> callback)
+	{
+		_loginCallback = callback;
+	}
+
 	double EOSWorld::Ping(String *ip, size_t repetitions)
 	{
 		/*#if !RN_PLATFORM_WINDOWS
@@ -553,6 +558,7 @@ namespace RN
 
 			eosWorld->_loginState = LoginStateIsLoggedIn;
 			eosWorld->_loggedInUserID = Data->LocalUserId;
+			if(eosWorld->_loginCallback) eosWorld->_loginCallback();
 		}
 		else if(Data->ResultCode == EOS_EResult::EOS_InvalidUser)
 		{
