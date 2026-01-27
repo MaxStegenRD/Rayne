@@ -76,6 +76,7 @@ namespace RN
 
 		EOSAPI String *GetUserIDString(EOS_ProductUserId userID = nullptr) const;
 		EOSAPI EOS_ProductUserId GetUserIDFromString(const String *userIDString) const;
+		EOSAPI String *GetLocalUserIdTokenString() const;
 		EOSAPI void SetLoginCallback(std::function<void()> callback);
 
 		EOSAPI double Ping(String *address, size_t repetitions);

@@ -249,6 +249,27 @@ namespace RN
 		return EOS_ProductUserId_FromString(userIDString->GetUTF8String());
 	}
 
+	RN::String *EOSWorld::GetLocalUserIdTokenString() const
+	{
+		if(!_connectInterfaceHandle || !_loggedInUserID) return nullptr;
+
+		EOS_Connect_CopyIdTokenOptions tokenOptions = {0};
+		tokenOptions.ApiVersion = EOS_CONNECT_COPYIDTOKEN_API_LATEST;
+		tokenOptions.LocalUserId = _loggedInUserID;
+
+		EOS_Connect_IdToken *token = nullptr;
+		const EOS_EResult result = EOS_Connect_CopyIdToken(_connectInterfaceHandle, &tokenOptions, &token);
+		if(result != EOS_EResult::EOS_Success || !token || !token->JsonWebToken)
+		{
+			if(token) EOS_Connect_IdToken_Release(token);
+			return nullptr;
+		}
+
+		RN::String *tokenString = RNSTR(token->JsonWebToken);
+		EOS_Connect_IdToken_Release(token);
+		return tokenString;
+	}
+
 	void EOSWorld::SetLoginCallback(std::function<void()> callback)
 	{
 		_loginCallback = callback;
