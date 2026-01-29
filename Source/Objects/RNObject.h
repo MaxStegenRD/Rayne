@@ -523,6 +523,11 @@ public:                                                         \
 			return Load();
 		}
 
+		T *Get() const
+		{
+			return _value;
+		}
+
 
 		T *operator->() const
 		{
