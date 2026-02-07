@@ -77,7 +77,7 @@ namespace RN
 		EOSAPI String *GetUserIDString(EOS_ProductUserId userID = nullptr) const;
 		EOSAPI EOS_ProductUserId GetUserIDFromString(const String *userIDString) const;
 		EOSAPI String *GetLocalUserIdTokenString() const;
-		EOSAPI void SetLoginCallback(std::function<void()> callback);
+		EOSAPI void SetLoginCallback(std::function<void(bool)> callback);
 
 		EOSAPI double Ping(String *address, size_t repetitions);
 
@@ -108,7 +108,7 @@ namespace RN
 		EOS_HP2P _p2pInterfaceHandle;
 
 		EOSLobbyManager *_lobbyManager;
-		std::function<void()> _loginCallback;
+		std::function<void(bool)> _loginCallback;
 
 		RNDeclareMetaAPI(EOSWorld, EOSAPI)
 	};
