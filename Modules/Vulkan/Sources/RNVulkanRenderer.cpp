@@ -242,6 +242,12 @@ namespace RN
 			if(_frameFenceValues[index] != -1)
 			{
 				VkResult status = vk::GetFenceStatus(GetVulkanDevice()->GetDevice(), fence);
+				if(status < 0)
+				{
+					RNVulkanValidate(status);
+					index += 1;
+					continue;
+				}
 				if(status == VK_SUCCESS)
 				{
 					_completedFrame = _frameFenceValues[index];
@@ -368,7 +374,7 @@ namespace RN
 			VkSemaphoreCreateInfo semaphoreInfo{};
 			semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 			VkDevice device = GetVulkanDevice()->GetDevice();
-			vk::CreateSemaphore(device, &semaphoreInfo, nullptr, &resourceUploadsSemaphore);
+			RNVulkanValidate(vk::CreateSemaphore(device, &semaphoreInfo, nullptr, &resourceUploadsSemaphore));
 			AddFrameFinishedCallback([device, resourceUploadsSemaphore](){
 				vk::DestroySemaphore(device, resourceUploadsSemaphore, nullptr);
 			});

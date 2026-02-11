@@ -290,8 +290,8 @@ VulkanSwapChain::VulkanSwapChain(const Vector2& size, VulkanRenderer* renderer, 
 		}
 
 		uint32_t count = _descriptor.bufferCount;
-		vk::GetSwapchainImagesKHR(_device, _swapchain, &count, nullptr);
-		vk::GetSwapchainImagesKHR(_device, _swapchain, &count, _colorBuffers);
+		RNVulkanValidate(vk::GetSwapchainImagesKHR(_device, _swapchain, &count, nullptr));
+		RNVulkanValidate(vk::GetSwapchainImagesKHR(_device, _swapchain, &count, _colorBuffers));
 		_descriptor.bufferCount = static_cast<uint8>(count);
 
 		CreateSemaphores();
