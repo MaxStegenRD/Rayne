@@ -1497,7 +1497,7 @@ namespace RN
 				Shader::Options *shaderOptions = Shader::Options::WithNone();
 				shaderOptions->EnableAlpha();
 				shaderOptions->AddDefine("RN_UI", "1");
-				if((_cornerRadius.x > 0.0f || _cornerRadius.y > 0.0f || _cornerRadius.z > 0.0f || _cornerRadius.w > 0.0f) && !_isCircle) shaderOptions->AddDefine("RN_UV1", "1");
+				if((cornerRadius.x > 0.0f || cornerRadius.y > 0.0f || cornerRadius.z > 0.0f || cornerRadius.w > 0.0f) && !_isCircle) shaderOptions->AddDefine("RN_UV1", "1");
 				if(_hasBackgroundGradient) shaderOptions->AddDefine("RN_UI_GRADIENT", "1");
 				if(_isCircle) shaderOptions->AddDefine("RN_UI_CIRCLE", "1");
 				if(_hasOutline) shaderOptions->AddDefine("RN_UI_OUTLINE", "1");
