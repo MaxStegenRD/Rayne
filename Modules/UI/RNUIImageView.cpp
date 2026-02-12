@@ -56,6 +56,7 @@ namespace RN
 				finalColor.a *= _combinedOpacityFactor;
 				material->SetSkipRendering(_image == nullptr || finalColor.a < k::EpsilonFloat);
 			}
+			NotifyIntrinsicSizeChanged();
 		}
 	
 		void ImageView::SetFramebuffer(Framebuffer *framebuffer)
@@ -77,6 +78,7 @@ namespace RN
 				finalColor.a *= _combinedOpacityFactor;
 				material->SetSkipRendering(_framebuffer == nullptr || finalColor.a < k::EpsilonFloat);
 			}
+			NotifyIntrinsicSizeChanged();
 		}
 
 		void ImageView::SetColor(Color color)

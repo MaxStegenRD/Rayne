@@ -85,6 +85,7 @@ namespace RN
 
 			UIAPI virtual void HandleButtonClick();
 			UIAPI virtual void HandleButtonClickLate();
+			UIAPI virtual void NotifyIntrinsicSizeChanged();
 
 		protected:
 			UIAPI virtual void DidAddSubview(View *subview);

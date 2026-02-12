@@ -473,6 +473,11 @@ namespace RN
 			});
 		}
 
+		void View::NotifyIntrinsicSizeChanged()
+		{
+			if(_superview) _superview->NotifyIntrinsicSizeChanged();
+		}
+
 		// ---------------------
 		// MARK: -
 		// MARK: Properties

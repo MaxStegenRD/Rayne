@@ -40,6 +40,7 @@ namespace RN
 			_attributedText = new AttributedString(text);
 			_needsMeshUpdate = true;
 			Unlock();
+			NotifyIntrinsicSizeChanged();
 		}
 
 		void Label::SetAttributedText(AttributedString *text)
@@ -50,6 +51,7 @@ namespace RN
 			SafeRetain(_attributedText);
 			_needsMeshUpdate = true;
 			Unlock();
+			NotifyIntrinsicSizeChanged();
 		}
 
 		void Label::SetDefaultAttributes(const TextAttributes &attributes)
@@ -58,6 +60,7 @@ namespace RN
 			_defaultAttributes = attributes;
 			_needsMeshUpdate = true;
 			Unlock();
+			NotifyIntrinsicSizeChanged();
 		}
 
 		void Label::SetTextColor(const Color &color)
