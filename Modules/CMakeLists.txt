@@ -22,6 +22,7 @@ option(RN_BUILD_RESONANCEAUDIO_MODULE "Build the Resonance Audio module" OFF)
 option(RN_BUILD_ENET_MODULE "Build the ENet module" OFF)
 option(RN_BUILD_RECAST_MODULE "Build the Recast navmesh module" OFF)
 option(RN_BUILD_UI_MODULE "Build the UI module" ON)
+option(RN_BUILD_FLEXUI_MODULE "Build the FlexUI module" ON)
 option(RN_BUILD_EPICONLINESERVICES_MODULE "Build the Epic Online Services module" OFF)
 option(RN_BUILD_BHAPTICS_MODULE "Build the bHaptics module" OFF)
 
@@ -94,6 +95,10 @@ endif()
 
 if(${RN_BUILD_UI_MODULE})
     add_subdirectory("UI")
+endif()
+
+if(${RN_BUILD_FLEXUI_MODULE})
+    add_subdirectory("FlexUI")
 endif()
 
 if(${RN_BUILD_EPICONLINESERVICES_MODULE})
