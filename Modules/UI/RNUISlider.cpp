@@ -50,6 +50,30 @@ namespace RN
 			_handleView->SetFrame(handleFrame);
 		}
 
+		void Slider::SetFrame(const Rect &frame)
+		{
+			View::SetFrame(frame);
+
+			const float lineWidth = 4.0f;
+			if(_rangeView)
+			{
+				_rangeView->SetFrame(Rect(0.0f, (frame.height - lineWidth) * 0.5f, frame.width, lineWidth));
+				_rangeView->SetCornerRadius(lineWidth * 0.5f);
+			}
+
+			if(_handleView)
+			{
+				Rect handleFrame = _handleView->GetFrame();
+				handleFrame.y = 0.0f;
+				handleFrame.width = 15.0f;
+				handleFrame.height = frame.height;
+				_handleView->SetFrame(handleFrame);
+				_handleView->SetCornerRadius(7.5f);
+			}
+
+			SetValue(_value);
+		}
+
 		void Slider::SetRange(float from, float to, float step)
 		{
 			_from = from;

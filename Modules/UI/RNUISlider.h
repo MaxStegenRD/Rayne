@@ -25,6 +25,8 @@ namespace RN
 			float GetValue() const { return _value; }
 			UIAPI void SetValue(float value);
 			UIAPI void SetRange(float from, float to, float step = 0.0f);
+			
+			UIAPI void SetFrame(const Rect &frame) override;
 
 			bool GetIsActive() const { return _isActive; }
 
