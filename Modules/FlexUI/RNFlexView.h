@@ -62,6 +62,8 @@ namespace RN
 
 		void SetDirection(FlexDirection direction);
 		FlexDirection GetDirection() const { return _direction; }
+		FlexAlign GetAlign() const { return _align; }
+		const RN::Vector4 &GetPadding() const { return _padding; }
 		void SetJustify(FlexJustify justify);
 		void SetAlign(FlexAlign align);
 		void SetPadding(const RN::Vector4 &padding);

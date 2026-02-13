@@ -22,20 +22,76 @@ namespace RN
 	class FlexViewMeasure : public FlexMeasure
 	{
 	public:
-		explicit FlexViewMeasure(FlexView *view) : _view(view) {}
+		explicit FlexViewMeasure(FlexView *view, FlexView *parent) : _view(view), _parent(parent) {}
 
 		YGSize Measure(float width, YGMeasureMode widthMode, float height, YGMeasureMode heightMode) override
 		{
 			if(!_view) return {0.0f, 0.0f};
 
-			const float resolvedWidth = (widthMode == YGMeasureModeUndefined) ? -1.0f : width;
-			const float resolvedHeight = (heightMode == YGMeasureModeUndefined) ? -1.0f : height;
-			const RN::Vector2 contentSize = _view->GetContentSize(resolvedWidth, resolvedHeight);
-			return {contentSize.x, contentSize.y};
+			const RN::Vector2 intrinsicSize = _view->GetContentSize(-1.0f, -1.0f);
+
+			float measuredWidth = intrinsicSize.x;
+			if(widthMode == YGMeasureModeExactly)
+			{
+				measuredWidth = width;
+			}
+			else if(widthMode == YGMeasureModeAtMost)
+			{
+				measuredWidth = std::min(measuredWidth, width);
+			}
+
+			float measuredHeight = 0.0f;
+			if(heightMode == YGMeasureModeExactly)
+			{
+				measuredHeight = height;
+			}
+			else
+			{
+				const float heightWidthConstraint = (widthMode == YGMeasureModeUndefined) ? -1.0f : measuredWidth;
+				const RN::Vector2 sizeForHeight = (widthMode == YGMeasureModeUndefined && heightMode == YGMeasureModeUndefined)
+					? intrinsicSize
+					: _view->GetContentSize(heightWidthConstraint, -1.0f);
+				measuredHeight = sizeForHeight.y;
+				if(heightMode == YGMeasureModeAtMost)
+				{
+					measuredHeight = std::min(measuredHeight, height);
+				}
+			}
+
+			if(_parent && _parent->GetAlign() == FlexAlign::Stretch && _parent->GetDirection() == FlexDirection::Column)
+			{
+				if(!YGFloatIsUndefined(width) && widthMode != YGMeasureModeUndefined)
+				{
+					measuredWidth = width;
+				}
+				else
+				{
+					const RN::Vector4 padding = _parent->GetPadding();
+					const float innerWidth = _parent->GetBounds().width - padding.x - padding.z;
+					if(innerWidth > 0.0f) measuredWidth = innerWidth;
+				}
+			}
+
+			if(_parent && _parent->GetAlign() == FlexAlign::Stretch && _parent->GetDirection() == FlexDirection::Row)
+			{
+				if(!YGFloatIsUndefined(height) && heightMode != YGMeasureModeUndefined)
+				{
+					measuredHeight = height;
+				}
+				else
+				{
+					const RN::Vector4 padding = _parent->GetPadding();
+					const float innerHeight = _parent->GetBounds().height - padding.y - padding.w;
+					if(innerHeight > 0.0f) measuredHeight = innerHeight;
+				}
+			}
+
+			return {measuredWidth, measuredHeight};
 		}
 
 	private:
 		FlexView *_view;
+		FlexView *_parent;
 	};
 
 	static RN::Vector2 GetImageViewIntrinsicSize(RN::UI::ImageView *imageView)
@@ -228,7 +284,7 @@ namespace RN
 		}
 		else if(RN::FlexView *flexView = dynamic_cast<RN::FlexView *>(view))
 		{
-			node->SetMeasure(new FlexViewMeasure(flexView), true);
+			node->SetMeasure(new FlexViewMeasure(flexView, this), true);
 		}
 
 		bool hasIntrinsic = false;
@@ -609,5 +665,4 @@ namespace RN
 		style.marginBottom = bottom;
 		return Style(style);
 	}
-
 } // namespace RN
