@@ -232,6 +232,26 @@ namespace RN
 
 	FlexView::ItemHandle FlexView::Add(RN::UI::View *view)
 	{
+		if(dynamic_cast<FlexSpacerView *>(view))
+		{
+			FlexStyle style;
+			style.flexGrow = 1.0f;
+			style.flexShrink = 1.0f;
+			style.flexBasis = 0.0f;
+			if(style.minWidth < 0.0f) style.minWidth = 0.0f;
+			if(style.minHeight < 0.0f) style.minHeight = 0.0f;
+			if(_direction == FlexDirection::Row)
+			{
+				style.width = 0.0f;
+			}
+			else if(_direction == FlexDirection::Column)
+			{
+				style.height = 0.0f;
+			}
+			AddFlexSubview(view, style);
+			return ItemHandle(this, view);
+		}
+
 		return Add(view, FlexStyle());
 	}
 

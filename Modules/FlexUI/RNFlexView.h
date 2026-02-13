@@ -113,6 +113,12 @@ namespace RN
 
 		RNDeclareMeta(FlexView)
 	};
+
+	class FlexSpacerView : public FlexView
+	{
+	public:
+		explicit FlexSpacerView(RN::Rect frame = Rect()) : FlexView(frame) {}
+	};
 } // namespace RN
 
 #endif /* defined(__RN_FLEX_VIEW_H_) */

@@ -123,6 +123,41 @@ namespace RN
 			return (new FlexView(frame))->Autorelease();
 		}
 
+		inline FlexView *Row(const RN::Rect &frame = Rect())
+		{
+			FlexView *view = View(frame);
+			view->Direction(FlexDirection::Row);
+			return view;
+		}
+
+		inline FlexView *Column(const RN::Rect &frame = Rect())
+		{
+			FlexView *view = View(frame);
+			view->Direction(FlexDirection::Column);
+			return view;
+		}
+
+		inline FlexView *HStack(float gap = 0.0f, const RN::Rect &frame = Rect())
+		{
+			FlexView *view = Row(frame);
+			view->Align(FlexAlign::Center);
+			view->Gap(gap);
+			return view;
+		}
+
+		inline FlexView *VStack(float gap = 0.0f, const RN::Rect &frame = Rect())
+		{
+			FlexView *view = Column(frame);
+			view->Align(FlexAlign::Center);
+			view->Gap(gap);
+			return view;
+		}
+
+		inline FlexView *Spacer()
+		{
+			return (new FlexSpacerView())->Autorelease();
+		}
+
 		inline RN::UI::Label *Label(const RN::String *text, const RN::UI::TextAttributes &attributes)
 		{
 			RN::UI::Label *label = (new RN::UI::Label(attributes))->Autorelease();
