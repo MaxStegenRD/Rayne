@@ -308,6 +308,11 @@ namespace RN
 			_identifier = CameraViewport;
 			_type = PrimitiveType::Vector4;
 		}
+		else if(name->IsEqual(RNCSTR("camera_customdata")) || name->IsEqual(RNCSTR("cameraCustomData")))
+		{
+			_identifier = CameraCustomData;
+			_type = PrimitiveType::Vector4;
+		}
 		else if(name->IsEqual(RNCSTR("material_ambientcolor")) || name->IsEqual(RNCSTR("ambientColor")) || name->IsEqual(RNCSTR("in_var_INSTANCE_AMBIENTCOLOR")))
 		{
 			_identifier = AmbientColor;

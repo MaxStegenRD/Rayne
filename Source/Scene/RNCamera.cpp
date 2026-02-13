@@ -69,6 +69,7 @@ namespace RN
 		_fogNear = 100.0f;
 		_fogFar = 500.0f;
 		_ambient = Color::White();
+		_customData = Vector4(0.0f, 0.0f, 0.0f, 0.0f);
 		_customNearClipPlane = Plane();
 
 		_dirtyProjection = true;
@@ -160,6 +161,11 @@ namespace RN
 	void Camera::SetAmbientColor(Color color)
 	{
 		_ambient = color;
+	}
+
+	void Camera::SetCustomData(const Vector4 &data)
+	{
+		_customData = data;
 	}
 	void Camera::SetCustomNearClipPlane(const Plane &clipPlane, bool enabled)
 	{

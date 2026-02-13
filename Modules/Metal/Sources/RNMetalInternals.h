@@ -201,6 +201,7 @@ namespace RN
 		Matrix inverseProjectionViewMatrix;
 		
 		Color cameraAmbientColor;
+		Vector4 cameraCustomData;
 		Color cameraFogColor0;
 		Color cameraFogColor1;
 		Vector2 cameraClipDistance;

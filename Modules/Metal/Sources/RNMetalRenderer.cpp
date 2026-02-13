@@ -432,6 +432,7 @@ namespace RN
 		renderPass.directionalShadowDepthTexture = nullptr;
 		
 		renderPass.cameraAmbientColor = camera->GetAmbientColor();
+		renderPass.cameraCustomData = camera->GetCustomData();
 		
 		renderPass.cameraClipDistance = Vector2(camera->GetClipNear(), camera->GetClipFar());
 		renderPass.cameraFogDistance = Vector2(camera->GetFogNear(), camera->GetFogFar());
@@ -569,6 +570,7 @@ namespace RN
 		metalRenderPass.currentInstanceDrawable = nullptr;
 		
 		metalRenderPass.cameraAmbientColor = previousRenderPass.cameraAmbientColor;
+		metalRenderPass.cameraCustomData = previousRenderPass.cameraCustomData;
 		
 		metalRenderPass.cameraClipDistance = previousRenderPass.cameraClipDistance;
 		metalRenderPass.cameraFogDistance = previousRenderPass.cameraFogDistance;
@@ -1053,6 +1055,11 @@ namespace RN
 				case Shader::UniformDescriptor::Identifier::CameraAmbientColor:
 				{
 					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.cameraAmbientColor.r, descriptor->GetSize());
+					break;
+				}
+				case Shader::UniformDescriptor::Identifier::CameraCustomData:
+				{
+					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.cameraCustomData.x, descriptor->GetSize());
 					break;
 				}
 					

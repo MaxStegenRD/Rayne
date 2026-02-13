@@ -244,6 +244,7 @@ namespace RN
 		Material *overrideMaterial;
 
 		Color cameraAmbientColor;
+		Vector4 cameraCustomData;
 		Color cameraFogColor0;
 		Color cameraFogColor1;
 		Vector2 cameraClipDistance;
