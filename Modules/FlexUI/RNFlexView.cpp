@@ -41,11 +41,11 @@ namespace RN
 				{
 					if(parentIsRow)
 					{
-						hasMainAxisSize = (style->width >= 0.0f || style->flexGrow > 0.0f || style->flexBasis >= 0.0f);
+						hasMainAxisSize = (style->width >= 0.0f || style->flexBasis >= 0.0f);
 					}
 					else
 					{
-						hasMainAxisSize = (style->height >= 0.0f || style->flexGrow > 0.0f || style->flexBasis >= 0.0f);
+						hasMainAxisSize = (style->height >= 0.0f || style->flexBasis >= 0.0f);
 					}
 				}
 			}
