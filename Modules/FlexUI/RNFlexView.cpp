@@ -30,6 +30,26 @@ namespace RN
 
 			const RN::Vector2 intrinsicSize = _view->GetContentSize(-1.0f, -1.0f);
 
+			const FlexStyle *style = nullptr;
+			bool parentIsRow = false;
+			bool hasMainAxisSize = false;
+			if(_parent)
+			{
+				style = _parent->GetStyleForSubview(_view);
+				parentIsRow = (_parent->GetDirection() == FlexDirection::Row);
+				if(style)
+				{
+					if(parentIsRow)
+					{
+						hasMainAxisSize = (style->width >= 0.0f || style->flexGrow > 0.0f || style->flexBasis >= 0.0f);
+					}
+					else
+					{
+						hasMainAxisSize = (style->height >= 0.0f || style->flexGrow > 0.0f || style->flexBasis >= 0.0f);
+					}
+				}
+			}
+
 			float measuredWidth = intrinsicSize.x;
 			if(widthMode == YGMeasureModeExactly)
 			{
@@ -37,7 +57,8 @@ namespace RN
 			}
 			else if(widthMode == YGMeasureModeAtMost)
 			{
-				measuredWidth = std::min(measuredWidth, width);
+				if(parentIsRow && hasMainAxisSize) measuredWidth = width;
+				else measuredWidth = std::min(measuredWidth, width);
 			}
 
 			float measuredHeight = 0.0f;
@@ -54,7 +75,8 @@ namespace RN
 				measuredHeight = sizeForHeight.y;
 				if(heightMode == YGMeasureModeAtMost)
 				{
-					measuredHeight = std::min(measuredHeight, height);
+					if(!parentIsRow && hasMainAxisSize) measuredHeight = height;
+					else measuredHeight = std::min(measuredHeight, height);
 				}
 			}
 
@@ -67,7 +89,21 @@ namespace RN
 				else
 				{
 					const RN::Vector4 padding = _parent->GetPadding();
-					const float innerWidth = _parent->GetBounds().width - padding.x - padding.z;
+					float parentWidth = -1.0f;
+					if(FlexView *superFlex = dynamic_cast<FlexView *>(_parent->GetSuperview()))
+					{
+						if(const FlexStyle *parentStyle = superFlex->GetStyleForSubview(_parent))
+						{
+							if(parentStyle->width >= 0.0f) parentWidth = parentStyle->width;
+							else if(parentStyle->minWidth >= 0.0f) parentWidth = parentStyle->minWidth;
+						}
+					}
+					else
+					{
+						parentWidth = _parent->GetBounds().width;
+					}
+
+					const float innerWidth = parentWidth - padding.x - padding.z;
 					if(innerWidth > 0.0f) measuredWidth = innerWidth;
 				}
 			}
@@ -81,7 +117,21 @@ namespace RN
 				else
 				{
 					const RN::Vector4 padding = _parent->GetPadding();
-					const float innerHeight = _parent->GetBounds().height - padding.y - padding.w;
+					float parentHeight = -1.0f;
+					if(FlexView *superFlex = dynamic_cast<FlexView *>(_parent->GetSuperview()))
+					{
+						if(const FlexStyle *parentStyle = superFlex->GetStyleForSubview(_parent))
+						{
+							if(parentStyle->height >= 0.0f) parentHeight = parentStyle->height;
+							else if(parentStyle->minHeight >= 0.0f) parentHeight = parentStyle->minHeight;
+						}
+					}
+					else
+					{
+						parentHeight = _parent->GetBounds().height;
+					}
+
+					const float innerHeight = parentHeight - padding.y - padding.w;
 					if(innerHeight > 0.0f) measuredHeight = innerHeight;
 				}
 			}
@@ -616,19 +666,6 @@ namespace RN
 		style.flexShrink = 1.0f;
 		if(style.minWidth < 0.0f) style.minWidth = 0.0f;
 		if(style.minHeight < 0.0f) style.minHeight = 0.0f;
-		return Style(style);
-	}
-
-	FlexView::ItemHandle &FlexView::ItemHandle::FlexEqual()
-	{
-		if(!_owner || !_view) return *this;
-		const FlexStyle *current = _owner->GetStyleForSubview(_view);
-		if(!current) return *this;
-		FlexStyle style = *current;
-		style.flexBasis = 0.0f;
-		style.flexShrink = 1.0f;
-		if(style.minWidth < 0.0f) style.minWidth = 0.0f;
-		if(style.minHeight < 0.0f) style.minHeight = 0.0f;
 		if(_owner->GetDirection() == FlexDirection::Row)
 		{
 			style.width = 0.0f;
@@ -638,6 +675,11 @@ namespace RN
 			style.height = 0.0f;
 		}
 		return Style(style);
+	}
+
+	FlexView::ItemHandle &FlexView::ItemHandle::FlexEqual()
+	{
+		return BasisZero();
 	}
 
 	FlexView::ItemHandle &FlexView::ItemHandle::Margin(float all)
