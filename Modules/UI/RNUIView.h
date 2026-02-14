@@ -22,6 +22,9 @@ namespace RN
 		public:
 			friend class Window;
 
+			UIAPI static void SetDefaultUIShaders(ShaderLibrary *library, const String *vertexShaderName, const String *fragmentShaderName);
+			UIAPI static void ApplyDefaultUIShaders(Material *material, Shader::Options *options);
+
 			UIAPI View();
 			UIAPI View(const Rect &frame);
 			UIAPI ~View();
@@ -157,6 +160,10 @@ namespace RN
 
 			View *_superview;
 			Array *_subviews;
+
+			static ShaderLibrary *_defaultUIShaderLibrary;
+			static String *_defaultUIVertexShaderName;
+			static String *_defaultUIFragmentShaderName;
 
 			RNDeclareMetaAPI(View, UIAPI)
 		};

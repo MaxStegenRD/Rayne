@@ -1269,10 +1269,7 @@ namespace RN
 						material->AddTexture(_defaultAttributes.GetFont()->GetFontTexture());
 					}
 
-					material->SetVertexShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Vertex, shaderOptions));
-					material->SetFragmentShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Fragment, shaderOptions));
-					material->SetVertexShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Vertex, shaderOptions, RN::Shader::UsageHint::Multiview), RN::Shader::UsageHint::Multiview);
-					material->SetFragmentShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Fragment, shaderOptions, RN::Shader::UsageHint::Multiview), RN::Shader::UsageHint::Multiview);
+					ApplyDefaultUIShaders(material, shaderOptions);
 
 					SetTextMaterial(material);
 				}
@@ -1296,10 +1293,7 @@ namespace RN
 						shadowShaderOptions->AddDefine("RN_UV1", "1");
 					}
 
-					shadowMaterial->SetVertexShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Vertex, shadowShaderOptions));
-					shadowMaterial->SetFragmentShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Fragment, shadowShaderOptions));
-					shadowMaterial->SetVertexShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Vertex, shadowShaderOptions, RN::Shader::UsageHint::Multiview), RN::Shader::UsageHint::Multiview);
-					shadowMaterial->SetFragmentShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Fragment, shadowShaderOptions, RN::Shader::UsageHint::Multiview), RN::Shader::UsageHint::Multiview);
+					ApplyDefaultUIShaders(shadowMaterial, shadowShaderOptions);
 
 					SetTextShadowMaterial(shadowMaterial);
 				}

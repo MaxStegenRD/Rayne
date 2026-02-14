@@ -7,8 +7,6 @@
 //
 
 #include "RNUIView.h"
-#include "RNUIServer.h"
-#include "RNUIWindow.h"
 
 #include <KGMeshGeneratorLoopBlinn.h> //Used to generate the outline for views with outline and rounded corners, which requires handling of overlaps
 
@@ -16,6 +14,61 @@ namespace RN
 {
 	namespace UI
 	{
+		ShaderLibrary *View::_defaultUIShaderLibrary = nullptr;
+		String *View::_defaultUIVertexShaderName = nullptr;
+		String *View::_defaultUIFragmentShaderName = nullptr;
+
+		void View::SetDefaultUIShaders(ShaderLibrary *library, const String *vertexShaderName, const String *fragmentShaderName)
+		{
+			if(!library || !vertexShaderName || !fragmentShaderName)
+			{
+				SafeRelease(_defaultUIShaderLibrary);
+				SafeRelease(_defaultUIVertexShaderName);
+				SafeRelease(_defaultUIFragmentShaderName);
+				return;
+			}
+
+			SafeRelease(_defaultUIShaderLibrary);
+			_defaultUIShaderLibrary = SafeRetain(library);
+
+			SafeRelease(_defaultUIVertexShaderName);
+			_defaultUIVertexShaderName = SafeRetain(const_cast<String *>(vertexShaderName));
+
+			SafeRelease(_defaultUIFragmentShaderName);
+			_defaultUIFragmentShaderName = SafeRetain(const_cast<String *>(fragmentShaderName));
+		}
+
+		void View::ApplyDefaultUIShaders(Material *material, Shader::Options *options)
+		{
+			ShaderLibrary *shaderLibrary = _defaultUIShaderLibrary;
+			const String *vertexShaderName = _defaultUIVertexShaderName;
+			const String *fragmentShaderName = _defaultUIFragmentShaderName;
+
+			if(!shaderLibrary) shaderLibrary = Renderer::GetActiveRenderer()->GetDefaultShaderLibrary();
+			if(!vertexShaderName) vertexShaderName = RNCSTR("ui_vertex");
+			if(!fragmentShaderName) fragmentShaderName = RNCSTR("ui_fragment");
+
+			auto getUIShader = [&](Shader::Type type, Shader::Options *shaderOptions, bool multiview) {
+				Shader::Options *realOptions = shaderOptions;
+				if(multiview)
+				{
+					realOptions = shaderOptions->Copy();
+					realOptions->EnableMultiview();
+				}
+
+				const String *name = (type == Shader::Type::Vertex) ? vertexShaderName : fragmentShaderName;
+				Shader *shader = shaderLibrary->GetShaderWithName(name, realOptions);
+
+				if(realOptions != shaderOptions) realOptions->Release();
+				return shader;
+			};
+
+			material->SetVertexShader(getUIShader(Shader::Type::Vertex, options, false));
+			material->SetFragmentShader(getUIShader(Shader::Type::Fragment, options, false));
+			material->SetVertexShader(getUIShader(Shader::Type::Vertex, options, true), RN::Shader::UsageHint::Multiview);
+			material->SetFragmentShader(getUIShader(Shader::Type::Fragment, options, true), RN::Shader::UsageHint::Multiview);
+		}
+
 		namespace
 		{
 			enum class CornerType : uint8_t
@@ -1553,10 +1606,7 @@ namespace RN
 					//TODO: Skip rendering stuff should also depend on the outline being visible or not... see background gradient...
 				}
 
-				material->SetVertexShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Vertex, shaderOptions));
-				material->SetFragmentShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Fragment, shaderOptions));
-				material->SetVertexShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Vertex, shaderOptions, RN::Shader::UsageHint::Multiview), RN::Shader::UsageHint::Multiview);
-				material->SetFragmentShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Fragment, shaderOptions, RN::Shader::UsageHint::Multiview), RN::Shader::UsageHint::Multiview);
+				ApplyDefaultUIShaders(material, shaderOptions);
 
 				material->SetUIClippingRect(Vector4(_scissorRect.GetLeft(), _scissorRect.GetRight(), _scissorRect.GetTop(), _scissorRect.GetBottom()));
 				material->SetUIOffset(Vector2(0.0f, 0.0f));

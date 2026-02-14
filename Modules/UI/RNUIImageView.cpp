@@ -177,9 +177,8 @@ namespace RN
 					if(GetCornerRadius().x > 0.0f || GetCornerRadius().y > 0.0f || GetCornerRadius().z > 0.0f || GetCornerRadius().w > 0.0f) shaderOptions->AddDefine("RN_UV1", "1");
 					if(_hasOutline) shaderOptions->AddDefine("RN_UI_OUTLINE", "1");
 
-					material = RN::Material::WithShaders(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Vertex, shaderOptions), Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Fragment, shaderOptions));
-					material->SetVertexShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Vertex, shaderOptions, RN::Shader::UsageHint::Multiview), RN::Shader::UsageHint::Multiview);
-					material->SetFragmentShader(Renderer::GetActiveRenderer()->GetDefaultShader(Shader::Type::Fragment, shaderOptions, RN::Shader::UsageHint::Multiview), RN::Shader::UsageHint::Multiview);
+					material = RN::Material::WithShaders(nullptr, nullptr);
+					ApplyDefaultUIShaders(material, shaderOptions);
 
 					SetImageMaterial(material);
 				}
