@@ -92,8 +92,6 @@ namespace RN
 		{
 			RN::UI::View *view;
 			FlexNode *node;
-			RN::Vector2 lastIntrinsic;
-			bool hasIntrinsic;
 			bool intrinsicMinHeightApplied = false;
 		};
 

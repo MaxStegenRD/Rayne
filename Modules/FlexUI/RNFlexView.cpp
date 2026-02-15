@@ -358,11 +358,8 @@ namespace RN
 			node->SetMeasure(new FlexViewMeasure(flexView, this), true);
 		}
 
-		bool hasIntrinsic = false;
-		const RN::Vector2 intrinsicSize = GetIntrinsicSizeForView(view, hasIntrinsic);
-
 		_rootNode.AddChild(node);
-		_items.push_back({view, node, intrinsicSize, hasIntrinsic, false});
+		_items.push_back({view, node, false});
 		SetNeedsLayout();
 	}
 
@@ -544,8 +541,6 @@ namespace RN
 
 				bool hasIntrinsic = false;
 				const RN::Vector2 intrinsicSize = GetIntrinsicSizeForView(item.view, hasIntrinsic);
-				item.hasIntrinsic = hasIntrinsic;
-				item.lastIntrinsic = intrinsicSize;
 
 				if(shouldUseIntrinsic && hasIntrinsic && intrinsicSize.y > 0.0f)
 				{
