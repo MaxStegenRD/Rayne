@@ -207,6 +207,7 @@ namespace RN
 	FlexView::FlexView(RN::Rect frame) :
 		_rootNode(this),
 		_needsLayout(true),
+		_isApplyingLayout(false),
 		_direction(FlexDirection::Row),
 		_justify(FlexJustify::Start),
 		_align(FlexAlign::Start),
@@ -444,7 +445,19 @@ namespace RN
 
 	void FlexView::SetFrame(const RN::Rect &frame)
 	{
+		const RN::Rect previousFrame = GetFrame();
 		RN::UI::View::SetFrame(frame);
+		const bool sizeChanged = (previousFrame.width != frame.width || previousFrame.height != frame.height);
+		if(!sizeChanged) return;
+
+		if(_isApplyingLayout)
+		{
+			// Parent layout changed our size; relayout our own subtree, but don't invalidate
+			// parent layout again.
+			_needsLayout = true;
+			return;
+		}
+
 		SetNeedsLayout();
 	}
 
@@ -565,7 +578,9 @@ namespace RN
 		}
 
 		const RN::Rect bounds = GetBounds();
+		_isApplyingLayout = true;
 		FlexLayout::Layout(&_rootNode, bounds.width, bounds.height, YGDirectionLTR, false);
+		_isApplyingLayout = false;
 	}
 
 	RN::Vector2 FlexView::GetContentSize(float width, float height)

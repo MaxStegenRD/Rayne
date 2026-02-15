@@ -104,6 +104,7 @@ namespace RN
 		FlexNode _rootNode;
 		std::vector<Item> _items;
 		bool _needsLayout;
+		bool _isApplyingLayout;
 
 		FlexDirection _direction;
 		FlexJustify _justify;
