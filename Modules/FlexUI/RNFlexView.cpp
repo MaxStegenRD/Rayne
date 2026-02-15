@@ -421,6 +421,20 @@ namespace RN
 	void FlexView::SetNeedsLayout()
 	{
 		_needsLayout = true;
+
+		// If this FlexView is measured as a leaf in a parent FlexView, mark that measured
+		// node dirty so Yoga re-runs the parent measure callback with updated content size.
+		if(FlexView *parentFlex = dynamic_cast<FlexView *>(GetSuperview()))
+		{
+			if(Item *item = parentFlex->FindItem(this))
+			{
+				if(item->node && item->node->GetMeasure())
+				{
+					item->node->MarkDirty();
+				}
+			}
+			parentFlex->SetNeedsLayout();
+		}
 	}
 
 	void FlexView::Update(float delta)
