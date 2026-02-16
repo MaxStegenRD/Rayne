@@ -23,9 +23,9 @@ namespace RN
 	class FlexImage : public FlexMeasure
 	{
 	public:
-		explicit FlexImage(RN::UI::ImageView *imageView);
+		FLXAPI explicit FlexImage(RN::UI::ImageView *imageView);
 
-		YGSize Measure(float width, YGMeasureMode widthMode, float height, YGMeasureMode heightMode) override;
+		FLXAPI YGSize Measure(float width, YGMeasureMode widthMode, float height, YGMeasureMode heightMode) override;
 
 		RN::UI::ImageView *GetImageView() const { return _imageView; }
 

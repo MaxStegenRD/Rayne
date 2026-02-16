@@ -23,9 +23,9 @@ namespace RN
 	class FlexText : public FlexMeasure
 	{
 	public:
-		explicit FlexText(RN::UI::Label *label);
+		FLXAPI explicit FlexText(RN::UI::Label *label);
 
-		YGSize Measure(float width, YGMeasureMode widthMode, float height, YGMeasureMode heightMode) override;
+		FLXAPI YGSize Measure(float width, YGMeasureMode widthMode, float height, YGMeasureMode heightMode) override;
 
 		RN::UI::Label *GetLabel() const { return _label; }
 

@@ -17,7 +17,8 @@
 
 namespace RN
 {
-	RNDefineMeta(FlexView, RN::UI::View)
+	RNDefineMeta(FlexView, UI::View)
+	RNDefineMeta(FlexSpacerView, FlexView)
 
 	class FlexViewMeasure : public FlexMeasure
 	{

@@ -26,20 +26,20 @@ namespace RN
 		public:
 			ItemHandle(FlexView *owner, RN::UI::View *view) : _owner(owner), _view(view) {}
 
-			ItemHandle &Style(const FlexStyle &style);
-			ItemHandle &Measure(FlexMeasure *measure, bool takeOwnership = false);
-			ItemHandle &Width(float value);
-			ItemHandle &Height(float value);
-			ItemHandle &Size(float width, float height);
-			ItemHandle &MinSize(float width, float height);
-			ItemHandle &MaxSize(float width, float height);
-			ItemHandle &Grow(float value);
-			ItemHandle &Shrink(float value);
-			ItemHandle &Basis(float value);
-			ItemHandle &BasisZero();
-			ItemHandle &FlexEqual();
-			ItemHandle &Margin(float all);
-			ItemHandle &Margin(float left, float top, float right, float bottom);
+			FLXAPI ItemHandle &Style(const FlexStyle &style);
+			FLXAPI ItemHandle &Measure(FlexMeasure *measure, bool takeOwnership = false);
+			FLXAPI ItemHandle &Width(float value);
+			FLXAPI ItemHandle &Height(float value);
+			FLXAPI ItemHandle &Size(float width, float height);
+			FLXAPI ItemHandle &MinSize(float width, float height);
+			FLXAPI ItemHandle &MaxSize(float width, float height);
+			FLXAPI ItemHandle &Grow(float value);
+			FLXAPI ItemHandle &Shrink(float value);
+			FLXAPI ItemHandle &Basis(float value);
+			FLXAPI ItemHandle &BasisZero();
+			FLXAPI ItemHandle &FlexEqual();
+			FLXAPI ItemHandle &Margin(float all);
+			FLXAPI ItemHandle &Margin(float left, float top, float right, float bottom);
 
 			RN::UI::View *Get() const { return _view; }
 
@@ -48,44 +48,44 @@ namespace RN
 			RN::UI::View *_view;
 		};
 
-		explicit FlexView(RN::Rect frame);
-		~FlexView();
+		FLXAPI explicit FlexView(RN::Rect frame);
+		FLXAPI  ~FlexView();
 
-		ItemHandle Add(RN::UI::View *view);
-		ItemHandle Add(RN::UI::View *view, const FlexStyle &style);
+		FLXAPI ItemHandle Add(RN::UI::View *view);
+		FLXAPI ItemHandle Add(RN::UI::View *view, const FlexStyle &style);
 
-		FlexView &Direction(FlexDirection direction);
-		FlexView &Justify(FlexJustify justify);
-		FlexView &Align(FlexAlign align);
-		FlexView &Padding(const RN::Vector4 &padding);
-		FlexView &Gap(float gap);
+		FLXAPI FlexView &Direction(FlexDirection direction);
+		FLXAPI FlexView &Justify(FlexJustify justify);
+		FLXAPI FlexView &Align(FlexAlign align);
+		FLXAPI FlexView &Padding(const RN::Vector4 &padding);
+		FLXAPI FlexView &Gap(float gap);
 
-		void SetDirection(FlexDirection direction);
-		FlexDirection GetDirection() const { return _direction; }
-		FlexAlign GetAlign() const { return _align; }
-		const RN::Vector4 &GetPadding() const { return _padding; }
-		void SetJustify(FlexJustify justify);
-		void SetAlign(FlexAlign align);
-		void SetPadding(const RN::Vector4 &padding);
-		void SetGap(float gap);
+		FLXAPI void SetDirection(FlexDirection direction);
+		FLXAPI FlexDirection GetDirection() const { return _direction; }
+		FLXAPI FlexAlign GetAlign() const { return _align; }
+		FLXAPI const RN::Vector4 &GetPadding() const { return _padding; }
+		FLXAPI void SetJustify(FlexJustify justify);
+		FLXAPI void SetAlign(FlexAlign align);
+		FLXAPI void SetPadding(const RN::Vector4 &padding);
+		FLXAPI void SetGap(float gap);
 
-		void AddFlexSubview(RN::UI::View *view, const FlexStyle &style);
-		void RemoveFlexSubview(RN::UI::View *view);
-		void SetStyleForSubview(RN::UI::View *view, const FlexStyle &style);
-		void SetMeasureForSubview(RN::UI::View *view, FlexMeasure *measure, bool takeOwnership = false);
-		bool HasFlexSubview(RN::UI::View *view) const;
-		const FlexStyle *GetStyleForSubview(RN::UI::View *view) const;
-		RN::Vector2 GetContentSize(float width = -1.0f, float height = -1.0f);
-		void SizeToFitContent(float width, float maxHeight = -1.0f);
+		FLXAPI void AddFlexSubview(RN::UI::View *view, const FlexStyle &style);
+		FLXAPI void RemoveFlexSubview(RN::UI::View *view);
+		FLXAPI void SetStyleForSubview(RN::UI::View *view, const FlexStyle &style);
+		FLXAPI void SetMeasureForSubview(RN::UI::View *view, FlexMeasure *measure, bool takeOwnership = false);
+		FLXAPI bool HasFlexSubview(RN::UI::View *view) const;
+		FLXAPI const FlexStyle *GetStyleForSubview(RN::UI::View *view) const;
+		FLXAPI RN::Vector2 GetContentSize(float width = -1.0f, float height = -1.0f);
+		FLXAPI void SizeToFitContent(float width, float maxHeight = -1.0f);
 
-		void SetNeedsLayout();
+		FLXAPI void SetNeedsLayout();
 
 	protected:
-		void Update(float delta) override;
-		void Draw(bool isParentHidden) override;
-		void SetFrame(const RN::Rect &frame) override;
-		void NotifyIntrinsicSizeChanged() override;
-		void WillRemoveSubview(RN::UI::View *subview) override;
+		FLXAPI void Update(float delta) override;
+		FLXAPI void Draw(bool isParentHidden) override;
+		FLXAPI void SetFrame(const RN::Rect &frame) override;
+		FLXAPI void NotifyIntrinsicSizeChanged() override;
+		FLXAPI void WillRemoveSubview(RN::UI::View *subview) override;
 
 	private:
 		struct Item
@@ -110,13 +110,16 @@ namespace RN
 		RN::Vector4 _padding;
 		float _gap;
 
-		RNDeclareMeta(FlexView)
+		RNDeclareMetaAPI(FlexView, FLXAPI)
 	};
 
 	class FlexSpacerView : public FlexView
 	{
 	public:
 		explicit FlexSpacerView(RN::Rect frame = Rect()) : FlexView(frame) {}
+
+	private:
+		RNDeclareMetaAPI(FlexSpacerView, FLXAPI)
 	};
 } // namespace RN
 

@@ -23,9 +23,9 @@ namespace RN
 	class FlexButton : public FlexMeasure
 	{
 	public:
-		explicit FlexButton(RN::UI::Button *button);
+		FLXAPI explicit FlexButton(RN::UI::Button *button);
 
-		YGSize Measure(float width, YGMeasureMode widthMode, float height, YGMeasureMode heightMode) override;
+		FLXAPI YGSize Measure(float width, YGMeasureMode widthMode, float height, YGMeasureMode heightMode) override;
 
 		RN::UI::Button *GetButton() const { return _button; }
 

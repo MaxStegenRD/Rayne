@@ -10,14 +10,15 @@
 
 #include <Rayne.h>
 #include <yoga/Yoga.h>
+#include "RNFlexConfig.h"
 
 namespace RN
 {
 	class FlexMeasure
 	{
 	public:
-		virtual ~FlexMeasure() = default;
-		virtual YGSize Measure(float width, YGMeasureMode widthMode, float height, YGMeasureMode heightMode) = 0;
+		FLXAPI virtual ~FlexMeasure() = default;
+		FLXAPI virtual YGSize Measure(float width, YGMeasureMode widthMode, float height, YGMeasureMode heightMode) = 0;
 
 	protected:
 		static float ResolveSize(float content, float constraint, YGMeasureMode mode)

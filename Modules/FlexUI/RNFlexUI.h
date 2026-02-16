@@ -8,6 +8,7 @@
 #ifndef __RN_FLEX_UI_H_
 #define __RN_FLEX_UI_H_
 
+#include "RNFlexConfig.h"
 #include "RNFlexStyle.h"
 #include "RNFlexMeasure.h"
 #include "RNFlexNode.h"

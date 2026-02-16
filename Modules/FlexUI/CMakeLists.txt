@@ -11,6 +11,7 @@ set(VERSION_ABI 1)
 set(VERSION_STRING "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 
 set(SOURCES
+        RNFlexInit.cpp
         RNFlexView.cpp
         RNFlexNode.cpp
         RNFlexLayout.cpp
@@ -28,6 +29,7 @@ set(HEADERS
         RNFlexButton.h
         RNFlexHelpers.h
         RNFlexView.h
+        RNFlexConfig.h
         RNFlexUI.h)
 
 set(DEFINES
