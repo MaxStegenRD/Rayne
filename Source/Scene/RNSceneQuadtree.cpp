@@ -184,23 +184,8 @@ namespace RN
 	void SceneQuadtree::FlushDeletionQueue()
 	{
 		RN_PROFILE_SCOPE();
-		bool didUpdateCameras = false;
 		_nodesToRemove->Enumerate<SceneNode>([&](SceneNode *node, size_t index, bool &stop) {
-			if(node->IsKindOfClass(Camera::GetMetaClass()))
-			{
-				Camera *camera = static_cast<Camera *>(node);
-				_cameras.Erase(camera->_cameraSceneEntry);
-				didUpdateCameras = true;
-			}
-			else if(node->IsKindOfClass(Light::GetMetaClass()))
-			{
-				Light *light = static_cast<Light *>(node);
-				_lights.Erase(light->_lightSceneEntry);
-			}
-			else
-			{
-				RemoveRenderNode(node);
-			}
+			RemoveRenderNode(node);
 
 			if(node->GetUpdatePriority() != SceneNode::UpdatePriority::UpdateNever)
 			{
@@ -671,6 +656,20 @@ namespace RN
 	{
 		RN_PROFILE_SCOPE();
 
+		if(node->IsKindOfClass(Camera::GetMetaClass()))
+		{
+			Camera *camera = static_cast<Camera *>(node);
+			_cameras.PushFront(camera->_cameraSceneEntry);
+			return;
+		}
+
+		if(node->IsKindOfClass(Light::GetMetaClass()))
+		{
+			Light *light = static_cast<Light *>(node);
+			_lights.PushFront(light->_lightSceneEntry);
+			return;
+		}
+
 		Lock();
 		
 		SceneQuadtreeInfo *sceneInfo = static_cast<SceneQuadtreeInfo*>(node->GetSceneInfo());
@@ -684,6 +683,20 @@ namespace RN
 	void SceneQuadtree::RemoveRenderNode(SceneNode *node)
 	{
 		RN_PROFILE_SCOPE();
+
+		if(node->IsKindOfClass(Camera::GetMetaClass()))
+		{
+			Camera *camera = static_cast<Camera *>(node);
+			_cameras.Erase(camera->_cameraSceneEntry);
+			return;
+		}
+
+		if(node->IsKindOfClass(Light::GetMetaClass()))
+		{
+			Light *light = static_cast<Light *>(node);
+			_lights.Erase(light->_lightSceneEntry);
+			return;
+		}
 
 		SceneQuadtreeInfo *sceneInfo = static_cast<SceneQuadtreeInfo*>(node->GetSceneInfo());
 		uint32 nodeIndex = sceneInfo->quadtreeNodeIndex;
@@ -771,20 +784,7 @@ namespace RN
 		node->UpdateSceneInfo(sceneInfo);
 		sceneInfo->Release();
 
-		if(node->IsKindOfClass(Camera::GetMetaClass()))
-		{
-			Camera *camera = static_cast<Camera *>(node);
-			_cameras.PushFront(camera->_cameraSceneEntry);
-		}
-		else if(node->IsKindOfClass(Light::GetMetaClass()))
-		{
-			Light *light = static_cast<Light *>(node);
-			_lights.PushFront(light->_lightSceneEntry);
-		}
-		else
-		{
-			AddRenderNode(node);
-		}
+		AddRenderNode(node);
 
 		//Lock to prevent race condition of multiple threads adding nodes at the same time
 		Lock();
@@ -814,5 +814,4 @@ namespace RN
 		node->_scheduledForRemovalFromScene = true;
 	}
 } // namespace RN
-
 

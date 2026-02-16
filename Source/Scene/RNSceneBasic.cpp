@@ -129,23 +129,8 @@ namespace RN
 	void SceneBasic::FlushDeletionQueue()
 	{
 		RN_PROFILE_SCOPE();
-		bool didUpdateCameras = false;
 		_nodesToRemove->Enumerate<SceneNode>([&](SceneNode *node, size_t index, bool &stop) {
-			if(node->IsKindOfClass(Camera::GetMetaClass()))
-			{
-				Camera *camera = static_cast<Camera *>(node);
-				_cameras.Erase(camera->_cameraSceneEntry);
-				didUpdateCameras = true;
-			}
-			else if(node->IsKindOfClass(Light::GetMetaClass()))
-			{
-				Light *light = static_cast<Light *>(node);
-				_lights.Erase(light->_lightSceneEntry);
-			}
-			else
-			{
-				RemoveRenderNode(node);
-			}
+			RemoveRenderNode(node);
 
 			if(node->GetUpdatePriority() != SceneNode::UpdatePriority::UpdateNever)
 			{
@@ -501,6 +486,20 @@ namespace RN
 	{
 		RN_PROFILE_SCOPE();
 
+		if(node->IsKindOfClass(Camera::GetMetaClass()))
+		{
+			Camera *camera = static_cast<Camera *>(node);
+			_cameras.PushFront(camera->_cameraSceneEntry);
+			return;
+		}
+
+		if(node->IsKindOfClass(Light::GetMetaClass()))
+		{
+			Light *light = static_cast<Light *>(node);
+			_lights.PushFront(light->_lightSceneEntry);
+			return;
+		}
+
 		Lock();
 		int32 renderPriority = node->GetRenderPriority();
 		if(!_renderNodes.GetHead() || _renderNodes.GetHead()->Get()->GetRenderPriority() >= renderPriority)
@@ -528,6 +527,21 @@ namespace RN
 	void SceneBasic::RemoveRenderNode(SceneNode *node)
 	{
 		RN_PROFILE_SCOPE();
+
+		if(node->IsKindOfClass(Camera::GetMetaClass()))
+		{
+			Camera *camera = static_cast<Camera *>(node);
+			_cameras.Erase(camera->_cameraSceneEntry);
+			return;
+		}
+
+		if(node->IsKindOfClass(Light::GetMetaClass()))
+		{
+			Light *light = static_cast<Light *>(node);
+			_lights.Erase(light->_lightSceneEntry);
+			return;
+		}
+
 		_renderNodes.Erase(node->_sceneRenderEntry);
 	}
 
@@ -565,20 +579,7 @@ namespace RN
 		node->UpdateSceneInfo(sceneInfo);
 		sceneInfo->Release();
 
-		if(node->IsKindOfClass(Camera::GetMetaClass()))
-		{
-			Camera *camera = static_cast<Camera *>(node);
-			_cameras.PushFront(camera->_cameraSceneEntry);
-		}
-		else if(node->IsKindOfClass(Light::GetMetaClass()))
-		{
-			Light *light = static_cast<Light *>(node);
-			_lights.PushFront(light->_lightSceneEntry);
-		}
-		else
-		{
-			AddRenderNode(node);
-		}
+		AddRenderNode(node);
 
 		//Lock to prevent race condition of multiple threads adding nodes at the same time
 		Lock();
