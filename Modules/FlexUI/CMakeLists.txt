@@ -32,11 +32,8 @@ set(HEADERS
         RNFlexConfig.h
         RNFlexUI.h)
 
-set(DEFINES
-        "RN_BUILD_FLEXUI")
-
+set(DEFINES "RN_BUILD_FLEXUI")
 set(RAYNE_LIBRARIES Rayne RayneUI)
-
 set(INCLUDE_DIRECTORIES ${Rayne_BINARY_DIR}/include)
 
 rayne_add_library(RayneFlexUI "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
@@ -54,16 +51,7 @@ FetchContent_Declare(Yoga
 )
 FetchContent_MakeAvailable(Yoga)
 
-set(YOGA_TARGET "")
-if(TARGET yoga)
-    set(YOGA_TARGET yoga)
-elseif(TARGET yogacore)
-    set(YOGA_TARGET yogacore)
-endif()
-
-if(YOGA_TARGET)
-    target_link_libraries(RayneFlexUI PUBLIC ${YOGA_TARGET})
-endif()
+target_link_libraries(RayneFlexUI PUBLIC yogacore)
 
 if(DEFINED Yoga_SOURCE_DIR AND EXISTS "${Yoga_SOURCE_DIR}")
     target_include_directories(RayneFlexUI SYSTEM PUBLIC "${Yoga_SOURCE_DIR}")
@@ -72,13 +60,6 @@ endif()
 target_include_directories(RayneFlexUI SYSTEM PRIVATE "${INCLUDE_DIRECTORIES}")
 target_compile_definitions(RayneFlexUI PRIVATE "${DEFINES}")
 
-set(RAYNE_UI_CANDIDATE_INCLUDE_DIRS
-    "${RayneUI_BINARY_DIR}/include"
-    "${CMAKE_BINARY_DIR}/Modules/UI/include")
-foreach(RAYNE_UI_INCLUDE_DIR IN LISTS RAYNE_UI_CANDIDATE_INCLUDE_DIRS)
-    if(RAYNE_UI_INCLUDE_DIR)
-        target_include_directories(RayneFlexUI SYSTEM PUBLIC "${RAYNE_UI_INCLUDE_DIR}")
-    endif()
-endforeach()
+target_include_directories(RayneFlexUI SYSTEM PUBLIC "${RayneUI_BINARY_DIR}/include" PUBLIC "${CMAKE_BINARY_DIR}/Modules/UI/include")
 
 rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneFlexUI/. DESTINATION lib/Rayne/RayneFlexUI)
