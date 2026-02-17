@@ -218,9 +218,19 @@ namespace RN
 			projs.push_back(parentProj);
 			viewProjs.push_back(parentProj * parentView);
 		}
+		const size_t viewCount = views.size();
+		std::vector<float> projAbsX(viewCount);
+		std::vector<float> projAbsY(viewCount);
+		for(size_t vi = 0; vi < viewCount; ++vi)
+		{
+			projAbsX[vi] = std::abs(projs[vi].m[0]);
+			projAbsY[vi] = std::abs(projs[vi].m[5]);
+		}
 
 		_lastClipNear = camera->GetClipNear();
 		_lastClipFar = camera->GetClipFar();
+		const float zNear = _lastClipNear;
+		const float zFar = _lastClipFar;
 
 		Vector2 framebufferSize = camera->GetRenderPass()->GetFrame().GetSize();
 		_lastViewportWidth = framebufferSize.x;
@@ -251,12 +261,10 @@ namespace RN
 		for(uint32 li = 0; li < _packedPointLights.size(); ++li)
 		{
 			const PointLightPacked &pl = _packedPointLights[li];
+			const uint16_t lightIndex = static_cast<uint16_t>(std::min<uint32>(li, 0xffffu));
 
 			Vector3 position(pl.positionRange.x, pl.positionRange.y, pl.positionRange.z);
 			float range = pl.positionRange.w;
-
-			float zNear = camera->GetClipNear();
-			float zFar = camera->GetClipFar();
 
 			uint32 zMin, zMax;
 			float minNdcX, minNdcY, maxNdcX, maxNdcY;
@@ -264,7 +272,7 @@ namespace RN
 			float maxZDepth = zNear;
 			bool hadProjected = false;
 			minNdcX =  1.0f; minNdcY =  1.0f; maxNdcX = -1.0f; maxNdcY = -1.0f;
-			for(size_t vi = 0; vi < views.size(); ++vi)
+			for(size_t vi = 0; vi < viewCount; ++vi)
 			{
 				Vector4 centerVSv = views[vi] * Vector4(position, 1.0f);
 				float depthv = -centerVSv.z;
@@ -280,8 +288,8 @@ namespace RN
 					float centerNdcYv = centerCSv.y / centerCSv.w;
 					float denom = std::max(depthv*depthv - range*range, 1e-6f);
 					float rSil = range / std::sqrt(denom);
-					float rNdcXv = std::abs(projs[vi].m[0]) * rSil;
-					float rNdcYv = std::abs(projs[vi].m[5]) * rSil;
+					float rNdcXv = projAbsX[vi] * rSil;
+					float rNdcYv = projAbsY[vi] * rSil;
 					float ndcMinXv = std::max(-1.0f, centerNdcXv - rNdcXv);
 					float ndcMaxXv = std::min( 1.0f, centerNdcXv + rNdcXv);
 					float ndcMinYv = std::max(-1.0f, centerNdcYv - rNdcYv);
@@ -318,7 +326,7 @@ namespace RN
 						if(count < _maxLightsPerCluster)
 						{
 							const size_t writeIndex = static_cast<size_t>(idx) * perClusterCapacity + count;
-							_clusterPointScratch[writeIndex] = static_cast<uint16_t>(std::min<uint32>(li, 0xffffu));
+							_clusterPointScratch[writeIndex] = lightIndex;
 							++count;
 						}
 					}
@@ -329,11 +337,9 @@ namespace RN
 		for(uint32 li = 0; li < _packedSpotLights.size(); ++li)
 		{
 			const SpotLightPacked &pl = _packedSpotLights[li];
+			const uint16_t lightIndex = static_cast<uint16_t>(std::min<uint32>(li, 0xffffu));
 			Vector3 position(pl.positionRange.x, pl.positionRange.y, pl.positionRange.z);
 			float range = pl.positionRange.w;
-
-			float zNear = camera->GetClipNear();
-			float zFar = camera->GetClipFar();
 
 			uint32 zMin, zMax;
 			float minNdcX, minNdcY, maxNdcX, maxNdcY;
@@ -341,7 +347,7 @@ namespace RN
 			float maxZDepth = zNear;
 			bool hadProjected = false;
 			minNdcX =  1.0f; minNdcY =  1.0f; maxNdcX = -1.0f; maxNdcY = -1.0f;
-			for(size_t vi = 0; vi < views.size(); ++vi)
+			for(size_t vi = 0; vi < viewCount; ++vi)
 			{
 				Vector4 centerVSv = views[vi] * Vector4(position, 1.0f);
 				float depthv = -centerVSv.z;
@@ -357,8 +363,8 @@ namespace RN
 					float centerNdcYv = centerCSv.y / centerCSv.w;
 					float dFront = std::max(zNear, depthv - range);
 					float rcpFront = 1.0f / std::max(1e-6f, dFront);
-					float rNdcXv = std::abs(projs[vi].m[0]) * range * rcpFront;
-					float rNdcYv = std::abs(projs[vi].m[5]) * range * rcpFront;
+					float rNdcXv = projAbsX[vi] * range * rcpFront;
+					float rNdcYv = projAbsY[vi] * range * rcpFront;
 					float ndcMinXv = std::max(-1.0f, centerNdcXv - rNdcXv);
 					float ndcMaxXv = std::min( 1.0f, centerNdcXv + rNdcXv);
 					float ndcMinYv = std::max(-1.0f, centerNdcYv - rNdcYv);
@@ -383,11 +389,6 @@ namespace RN
 			screenToCluster(maxNdcX, maxNdcY, x1, y1);
 			if(x1 < x0) std::swap(x0, x1);
 			if(y1 < y0) std::swap(y0, y1);
-			// One-tile margin
-			x0 = (x0 > 0) ? (x0 - 1) : 0;
-			y0 = (y0 > 0) ? (y0 - 1) : 0;
-			x1 = std::min<uint32>(tilesX - 1, x1 + 1);
-			y1 = std::min<uint32>(tilesY - 1, y1 + 1);
 
 			for(uint32 z = zMin; z <= zMax; ++z)
 			{
@@ -400,7 +401,7 @@ namespace RN
 						if(count < _maxLightsPerCluster)
 						{
 							const size_t writeIndex = static_cast<size_t>(idx) * perClusterCapacity + count;
-							_clusterSpotScratch[writeIndex] = static_cast<uint16_t>(std::min<uint32>(li, 0xffffu));
+							_clusterSpotScratch[writeIndex] = lightIndex;
 							++count;
 						}
 					}
