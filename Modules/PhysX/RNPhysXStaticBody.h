@@ -35,6 +35,8 @@ namespace RN
 		PXAPI AABB GetPhysXAABB(float inflation = 1.0f) const override;
 		PXAPI PhysXShape *GetShape() const { return _shape; }
 
+		PXAPI void GetPhysXTransform(Vector3 &position, Quaternion &rotation) const override;
+
 	protected:
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
 		void ApplyPose() override;

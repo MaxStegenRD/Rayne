@@ -146,4 +146,21 @@ namespace RN
 		SetWorldPosition(Vector3(transform.p.x, transform.p.y, transform.p.z) + positionOffset);
 		SetWorldRotation(rotation);
 	}
+
+	void PhysXStaticBody::GetPhysXTransform(Vector3 &position, Quaternion &rotation) const
+	{
+		if(_actor)
+		{
+			const physx::PxTransform &transform = _actor->getGlobalPose();
+			rotation = Quaternion(transform.q.x, transform.q.y, transform.q.z, transform.q.w) * _rotationOffset.GetConjugated();
+
+			Vector3 positionOffset = rotation.GetRotatedVector(_positionOffset);
+			position = Vector3(transform.p.x, transform.p.y, transform.p.z) + positionOffset;
+		}
+		else
+		{
+			position = Vector3();
+			rotation = Quaternion();
+		}
+	}
 } // namespace RN
