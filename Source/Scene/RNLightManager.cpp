@@ -263,9 +263,14 @@ namespace RN
 			cy = std::clamp(uint32(syBottomLeft * tilesY / std::max(1.0f, framebufferSize.y)), 0u, tilesY - 1u);
 		};
 
-		// Collect per-cluster indices, then flatten once
-		std::vector<std::vector<uint16_t>> perClusterPoints(clusterCount);
-		std::vector<std::vector<uint16_t>> perClusterSpots(clusterCount);
+		// Reuse scratch buffers to avoid per-frame per-cluster allocations.
+		const size_t perClusterCapacity = static_cast<size_t>(_maxLightsPerCluster);
+		const size_t totalScratchCapacity = static_cast<size_t>(clusterCount) * perClusterCapacity;
+		_clusterPointScratch.resize(totalScratchCapacity);
+		_clusterSpotScratch.resize(totalScratchCapacity);
+		_clusterPointCountsScratch.assign(clusterCount, 0);
+		_clusterSpotCountsScratch.assign(clusterCount, 0);
+		_clusterOffsetsScratch.resize(clusterCount);
 		_clusterLightIndices.clear();
 
 		// Second pass: actually fill using separate write cursors
@@ -335,9 +340,12 @@ namespace RN
 					for(uint32 x = x0; x <= x1; ++x)
 					{
 						uint32 idx = EncodeClusterIndex(x, y, z);
-						if(perClusterPoints[idx].size() < _maxLightsPerCluster)
+						uint8_t &count = _clusterPointCountsScratch[idx];
+						if(count < _maxLightsPerCluster)
 						{
-							perClusterPoints[idx].push_back(static_cast<uint16_t>(std::min<uint32>(li, 0xffffu)));
+							const size_t writeIndex = static_cast<size_t>(idx) * perClusterCapacity + count;
+							_clusterPointScratch[writeIndex] = static_cast<uint16_t>(std::min<uint32>(li, 0xffffu));
+							++count;
 						}
 					}
 				}
@@ -414,9 +422,12 @@ namespace RN
 					for(uint32 x = x0; x <= x1; ++x)
 					{
 						uint32 idx = EncodeClusterIndex(x, y, z);
-						if(perClusterSpots[idx].size() < _maxLightsPerCluster)
+						uint8_t &count = _clusterSpotCountsScratch[idx];
+						if(count < _maxLightsPerCluster)
 						{
-							perClusterSpots[idx].push_back(static_cast<uint16_t>(std::min<uint32>(li, 0xffffu)));
+							const size_t writeIndex = static_cast<size_t>(idx) * perClusterCapacity + count;
+							_clusterSpotScratch[writeIndex] = static_cast<uint16_t>(std::min<uint32>(li, 0xffffu));
+							++count;
 						}
 					}
 				}
@@ -424,17 +435,12 @@ namespace RN
 		}
 
 		// Build per-cluster counts and offsets
-		std::vector<uint8_t> perPointCounts(clusterCount, 0);
-		std::vector<uint8_t> perSpotCounts(clusterCount, 0);
-		std::vector<uint32_t> perOffsets(clusterCount, 0);
 		uint32 totalCount = 0;
 		for(uint32 i = 0; i < clusterCount; ++i)
 		{
-			uint8_t pcount = static_cast<uint8_t>(std::min<size_t>(perClusterPoints[i].size(), _maxLightsPerCluster));
-			uint8_t scount = static_cast<uint8_t>(std::min<size_t>(perClusterSpots[i].size(),  _maxLightsPerCluster));
-			perOffsets[i] = totalCount;
-			perPointCounts[i] = pcount;
-			perSpotCounts[i] = scount;
+			const uint8_t pcount = _clusterPointCountsScratch[i];
+			const uint8_t scount = _clusterSpotCountsScratch[i];
+			_clusterOffsetsScratch[i] = totalCount;
 			totalCount += static_cast<uint32>(pcount) + static_cast<uint32>(scount);
 		}
 
@@ -442,16 +448,18 @@ namespace RN
 		_clusterLightIndices.assign(totalCount, 0);
 		for(uint32 i = 0, offset = 0; i < clusterCount; ++i)
 		{
-			const uint8_t pcount = perPointCounts[i];
-			const uint8_t scount = perSpotCounts[i];
+			const uint8_t pcount = _clusterPointCountsScratch[i];
+			const uint8_t scount = _clusterSpotCountsScratch[i];
 			if(pcount)
 			{
-				memcpy(_clusterLightIndices.data() + offset, perClusterPoints[i].data(), static_cast<size_t>(pcount) * sizeof(uint16_t));
+				const size_t src = static_cast<size_t>(i) * perClusterCapacity;
+				memcpy(_clusterLightIndices.data() + offset, _clusterPointScratch.data() + src, static_cast<size_t>(pcount) * sizeof(uint16_t));
 				offset += pcount;
 			}
 			if(scount)
 			{
-				memcpy(_clusterLightIndices.data() + offset, perClusterSpots[i].data(), static_cast<size_t>(scount) * sizeof(uint16_t));
+				const size_t src = static_cast<size_t>(i) * perClusterCapacity;
+				memcpy(_clusterLightIndices.data() + offset, _clusterSpotScratch.data() + src, static_cast<size_t>(scount) * sizeof(uint16_t));
 				offset += scount;
 			}
 		}
@@ -463,11 +471,11 @@ namespace RN
 		{
 			uint32 base = g * 6u;
 			ClusterRecord rec{};
-			rec.offset = (base < clusterCount) ? perOffsets[base] : 0u;
+			rec.offset = (base < clusterCount) ? _clusterOffsetsScratch[base] : 0u;
 			auto packPair = [&](uint32 idxInGroup) -> uint32 {
 				uint32 ci = base + idxInGroup;
-				uint32 p = (ci < clusterCount) ? perPointCounts[ci] : 0u;
-				uint32 s = (ci < clusterCount) ? perSpotCounts[ci] : 0u;
+				uint32 p = (ci < clusterCount) ? _clusterPointCountsScratch[ci] : 0u;
+				uint32 s = (ci < clusterCount) ? _clusterSpotCountsScratch[ci] : 0u;
 				return (p & 0xffu) | ((s & 0xffu) << 8);
 			};
 			rec.counts01 = packPair(0) | (packPair(1) << 16);
@@ -554,5 +562,3 @@ namespace RN
 		}
 	}
 }
-
-

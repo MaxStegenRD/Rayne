@@ -105,6 +105,11 @@ namespace RN
 
 		std::vector<uint16_t> _clusterLightIndices; // point indices then spot indices per cluster
 		std::vector<ClusterRecord> _clusterRecords;
+		std::vector<uint16_t> _clusterPointScratch; // [clusterCount * _maxLightsPerCluster]
+		std::vector<uint16_t> _clusterSpotScratch;  // [clusterCount * _maxLightsPerCluster]
+		std::vector<uint8_t> _clusterPointCountsScratch;
+		std::vector<uint8_t> _clusterSpotCountsScratch;
+		std::vector<uint32_t> _clusterOffsetsScratch;
 
 		GPUBuffer *_pointLightBuffer;
 		GPUBuffer *_spotLightBuffer;
