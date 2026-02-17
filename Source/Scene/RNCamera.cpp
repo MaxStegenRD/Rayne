@@ -418,9 +418,10 @@ namespace RN
 		if(_lightManager) return;
 
 		Rect frame = _renderPass->GetFrame();
-		uint32 clustersX = frame.width / 64;
-		uint32 clustersY = frame.height / 64;
-		uint32 clustersZ = std::min((4000 * 6) / (clustersX * clustersY), 32u);
+		uint32 clustersX = std::max<uint32>(1u, static_cast<uint32>(frame.width) / 64u);
+		uint32 clustersY = std::max<uint32>(1u, static_cast<uint32>(frame.height) / 64u);
+		uint32 clusterXY = std::max<uint32>(1u, clustersX * clustersY);
+		uint32 clustersZ = std::max<uint32>(1u, std::min((4000u * 6u) / clusterXY, 32u));
 		float zLogFactor = 0.7f;
 		_lightManager = new LightManager(clustersX, clustersY, clustersZ, zLogFactor);
 	}
