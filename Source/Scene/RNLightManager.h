@@ -56,8 +56,8 @@ namespace RN
 			float clipFar;
 			float viewportWidth;
 			float viewportHeight;
-			float projA;
-			float projB;
+			float padFloat0;
+			float padFloat1;
 		};
 
 		RNAPI LightManager(uint32 x, uint32 y, uint32 z, float zLogFactor = 0.7f);
@@ -119,8 +119,6 @@ namespace RN
 		// Cached per-camera parameters for cluster header
 		float _lastViewportWidth;
 		float _lastViewportHeight;
-		float _lastProjA;
-		float _lastProjB;
 		float _lastClipNear;
 		float _lastClipFar;
 
@@ -131,5 +129,3 @@ namespace RN
 }
 
 #endif
-
-

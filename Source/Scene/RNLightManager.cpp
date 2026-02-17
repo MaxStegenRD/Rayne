@@ -21,8 +21,6 @@ namespace RN
 		_clusterRecordsBuffer(nullptr),
 		_lastViewportWidth(0.0f),
 		_lastViewportHeight(0.0f),
-		_lastProjA(0.0f),
-		_lastProjB(0.0f),
 		_lastClipNear(0.0f),
 		_lastClipFar(0.0f),
 		_maxLightsPerCluster(255)
@@ -63,7 +61,7 @@ namespace RN
 		size_t pointBytes = std::max<size_t>(pointEstimate, kLightsPointMax) * sizeof(PointLightPacked);
 		size_t spotBytes  = std::max<size_t>(spotEstimate,  kLightsSpotMax)  * sizeof(SpotLightPacked);
 		size_t indexBytes = clusterCount * (pointPerClusterEstimate + spotPerClusterEstimate) * sizeof(uint16);
-		size_t headerBytes = sizeof(ClusterGridInfo); // expected 48 bytes
+		size_t headerBytes = sizeof(ClusterGridInfo);
 
 		// Records buffer must match shader-declared maximum array size
 		const uint32 kLightClusterRecordsMax = 4000;
@@ -207,7 +205,6 @@ namespace RN
 			{
 				Camera *eye = mv->GetObjectAtIndex<Camera>(i);
 				if(!eye) continue;
-				eye->PostUpdate();
 				Matrix v = eye->GetViewMatrix();
 				Matrix p = eye->GetProjectionMatrix();
 				views.push_back(v);
@@ -224,29 +221,6 @@ namespace RN
 
 		_lastClipNear = camera->GetClipNear();
 		_lastClipFar = camera->GetClipFar();
-		// Compute proj constants numerically to satisfy: z_ndc = a + b / viewZ
-		// This avoids platform/layout differences (Metal/Vulkan, reverse-Z)
-		auto ndcFromViewZ = [&](float viewZ) -> float {
-			// Use parent projection; z mapping is identical across stereo eyes in typical XR
-			Vector4 p = parentProj * Vector4(0.0f, 0.0f, -viewZ, 1.0f);
-			float z01 = p.z / std::max(1e-6f, p.w); // depth 0..1
-			return z01 * 2.0f - 1.0f; // to [-1,1] as shader does: z_ndc = SV_Position.z*2-1
-		};
-		float zn = std::max(1e-4f, _lastClipNear);
-		float zf = std::max(zn + 1e-3f, _lastClipFar);
-		float ndcN = ndcFromViewZ(zn);
-		float ndcF = ndcFromViewZ(zf);
-		float denom = (1.0f/zn - 1.0f/zf);
-		if(std::abs(denom) > 1e-8f)
-		{
-			_lastProjB = (ndcN - ndcF) / denom;
-			_lastProjA = ndcN - _lastProjB / zn;
-		}
-		else
-		{
-			_lastProjA = 0.0f;
-			_lastProjB = 0.0f;
-		}
 
 		Vector2 framebufferSize = camera->GetRenderPass()->GetFrame().GetSize();
 		_lastViewportWidth = framebufferSize.x;
@@ -554,8 +528,8 @@ namespace RN
 			_grid.clipFar = _lastClipFar;
 			_grid.viewportWidth = _lastViewportWidth;
 			_grid.viewportHeight = _lastViewportHeight;
-			_grid.projA = _lastProjA;
-			_grid.projB = _lastProjB;
+			_grid.padFloat0 = 0.0f;
+			_grid.padFloat1 = 0.0f;
 			memcpy(dst, &_grid, headerBytes);
 			memcpy(static_cast<uint8*>(dst) + headerBytes, _clusterRecords.data(), recordsBytes);
 			_clusterRecordsBuffer->FlushRange(Range(0, headerBytes + recordsBytes));
