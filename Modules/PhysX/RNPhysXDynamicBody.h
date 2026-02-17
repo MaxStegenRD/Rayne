@@ -91,6 +91,8 @@ namespace RN
 
 		PXAPI void SetDetachTransform(bool detach);
 
+		PXAPI void GetPhysXTransform(Vector3 &position, Quaternion &rotation) const override;
+
 	protected:
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
 		void ApplyPose() override;

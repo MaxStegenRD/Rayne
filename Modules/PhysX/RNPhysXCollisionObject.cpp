@@ -104,4 +104,10 @@ namespace RN
 	{
 		return AABB();
 	}
+
+	void PhysXCollisionObject::GetPhysXTransform(Vector3 &position, Quaternion &rotation) const
+	{
+		position = Vector3();
+		rotation = Quaternion();
+	}
 } // namespace RN
