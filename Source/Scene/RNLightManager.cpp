@@ -237,6 +237,9 @@ namespace RN
 		_lastViewportHeight = framebufferSize.y;
 		uint32 tilesX = _grid.clustersX;
 		uint32 tilesY = _grid.clustersY;
+		// Inflate projected bounds by half a tile in NDC to reduce precision/quantization under-coverage.
+		const float ndcPadX = 1.0f / float(std::max(1u, tilesX));
+		const float ndcPadY = 1.0f / float(std::max(1u, tilesY));
 
 		auto screenToCluster = [&](float ndcX, float ndcY, uint32 &cx, uint32 &cy)
 		{
@@ -305,6 +308,10 @@ namespace RN
 			{
 				minNdcX = -1.0f; maxNdcX = 1.0f; minNdcY = -1.0f; maxNdcY = 1.0f;
 			}
+			minNdcX = std::max(-1.0f, minNdcX - ndcPadX);
+			maxNdcX = std::min( 1.0f, maxNdcX + ndcPadX);
+			minNdcY = std::max(-1.0f, minNdcY - ndcPadY);
+			maxNdcY = std::min( 1.0f, maxNdcY + ndcPadY);
 			zMin = uint32(ComputeZSlice(camera, minZDepth));
 			zMax = uint32(ComputeZSlice(camera, maxZDepth));
 			if(zMax < zMin) std::swap(zMin, zMax);
@@ -380,6 +387,10 @@ namespace RN
 			{
 				minNdcX = -1.0f; maxNdcX = 1.0f; minNdcY = -1.0f; maxNdcY = 1.0f;
 			}
+			minNdcX = std::max(-1.0f, minNdcX - ndcPadX);
+			maxNdcX = std::min( 1.0f, maxNdcX + ndcPadX);
+			minNdcY = std::max(-1.0f, minNdcY - ndcPadY);
+			maxNdcY = std::min( 1.0f, maxNdcY + ndcPadY);
 			zMin = uint32(ComputeZSlice(camera, minZDepth));
 			zMax = uint32(ComputeZSlice(camera, maxZDepth));
 			if(zMax < zMin) std::swap(zMin, zMax);
