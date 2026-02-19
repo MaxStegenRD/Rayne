@@ -117,6 +117,8 @@ namespace RN
 		float GetAngle() const { return _angle; }
 		float GetAngleCos() const { return _angleCos; }
 		float GetIntensity() const { return _intensity; }
+		Vector3 GetForward() const override;
+		float GetTanHalfAngle() const { return _tanHalfAngle; }
 
 		ShadowParameter GetShadowParameters() const { return _shadowParameter; }
 
@@ -128,6 +130,9 @@ namespace RN
 
 	private:
 		void ReCalculateColor();
+		void UpdateCachedForward();
+		void UpdateCachedAngleData();
+		void UpdateBoundsForType();
 		void RemoveShadowCameras();
 		void SetRangeInternal(float range);
 
@@ -147,6 +152,8 @@ namespace RN
 		float _angle;
 
 		float _angleCos;
+		Vector3 _cachedForward;
+		float _tanHalfAngle;
 
 		Camera *_shadowTarget;
 		std::vector<Matrix> _shadowCameraMatrices;

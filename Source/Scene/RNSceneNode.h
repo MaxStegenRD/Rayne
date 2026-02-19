@@ -124,9 +124,9 @@ namespace RN
 
 		Tag GetTag() const { return _tag; }
 
-		Vector3 GetForward() const;
-		Vector3 GetUp() const;
-		Vector3 GetRight() const;
+		virtual Vector3 GetForward() const;
+		virtual Vector3 GetUp() const;
+		virtual Vector3 GetRight() const;
 
 		Vector3 GetWorldPosition() const;
 		Vector3 GetWorldScale() const;

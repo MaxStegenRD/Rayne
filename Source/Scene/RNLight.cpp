@@ -24,6 +24,8 @@ namespace RN
 		_range(10.0f),
 		_angle(45.0f),
 		_angleCos(0.797f),
+		_cachedForward(0.0f, 0.0f, -1.0f),
+		_tanHalfAngle(1.0f),
 		_shadowTarget(nullptr),
 		_shadowDepthTexture(nullptr),
 		_suppressShadows(false),
@@ -36,6 +38,9 @@ namespace RN
 		SetCollisionGroup(25);
 
 		ReCalculateColor();
+		UpdateCachedForward();
+		UpdateCachedAngleData();
+		UpdateBoundsForType();
 	}
 
 	Light::Light(const Light *other) :
@@ -58,6 +63,8 @@ namespace RN
 		SetAngle(other->GetAngle());
 		SetRange(other->GetRange());
 		_angleCos = other->_angleCos;
+		_cachedForward = other->_cachedForward;
+		_tanHalfAngle = other->_tanHalfAngle;
 
 		_suppressShadows = other->_suppressShadows;
 
@@ -90,6 +97,8 @@ namespace RN
 	void Light::SetType(Type type)
 	{
 		_lightType = type;
+		UpdateCachedAngleData();
+		UpdateBoundsForType();
 
 		if(_suppressShadows || _shadowDepthCameras.GetCount() == 0)
 			return;
@@ -123,7 +132,58 @@ namespace RN
 	void Light::SetAngle(float angle)
 	{
 		_angle = angle;
-		_angleCos = cosf(angle * k::DegToRad);
+		UpdateCachedAngleData();
+		if(_lightType == Type::SpotLight) UpdateBoundsForType();
+	}
+
+	Vector3 Light::GetForward() const
+	{
+		if(_lightType == Type::SpotLight) return _cachedForward;
+		return SceneNode::GetForward();
+	}
+
+	void Light::UpdateCachedForward()
+	{
+		if(_lightType != Type::SpotLight) return; //Only cache it for spot lights!
+		_cachedForward = SceneNode::GetForward();
+	}
+
+	void Light::UpdateCachedAngleData()
+	{
+		_angleCos = cosf(_angle * k::DegToRad);
+
+		float clampedAngle = _angle;
+		if(clampedAngle < 1.0f) clampedAngle = 1.0f;
+		if(clampedAngle > 89.0f) clampedAngle = 89.0f;
+		_tanHalfAngle = tanf(clampedAngle * k::DegToRad);
+	}
+
+	void Light::UpdateBoundsForType()
+	{
+		if(_lightType != Type::SpotLight)
+		{
+			SetBoundingSphere(Sphere(Vector3(), 1.0f));
+			SetBoundingBox(AABB(Vector3(), 1.0f), false);
+			return;
+		}
+
+		const float baseRadius = _tanHalfAngle;
+		float centerOffset = 0.0f;
+		float radius = 0.0f;
+		if(baseRadius <= 1.0f)
+		{
+			centerOffset = (1.0f + baseRadius * baseRadius) * 0.5f;
+			radius = centerOffset;
+		}
+		else
+		{
+			centerOffset = 1.0f;
+			radius = baseRadius;
+		}
+
+		const Vector3 sphereOffset(0.0f, 0.0f, -centerOffset);
+		SetBoundingSphere(Sphere(sphereOffset, radius));
+		SetBoundingBox(AABB(sphereOffset, radius), false);
 	}
 
 	void Light::RemoveShadowCameras()
@@ -456,8 +516,9 @@ namespace RN
 	void Light::DidUpdate(ChangeSet change)
 	{
 		SceneNode::DidUpdate(change);
-		if(change == ChangeSet::Position)
+		if(change & ChangeSet::Position)
 		{
+			UpdateCachedForward();
 			float range = GetScale().GetMax();
 			if(!Math::Compare(range, _range))
 			{
