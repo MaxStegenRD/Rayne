@@ -68,7 +68,7 @@ namespace RN
 			float padFloat1;
 		};
 
-		RNAPI LightManager(uint32 x, uint32 y, uint32 z, float zLogFactor = 0.7f);
+		RNAPI LightManager(uint32 x, uint32 y, uint32 z, float zLogFactor = 0.7f, uint16_t maxPackedPointLights = 256, uint16_t maxPackedSpotLights = 256);
 		RNAPI ~LightManager() override;
 
 		RNAPI void SetClusterGridInfo(uint32 x, uint32 y, uint32 z, float zLogFactor = 0.5f);
@@ -93,6 +93,9 @@ namespace RN
 
 		RNAPI void SetMaxLightsPerCluster(uint16_t max);
 		uint16_t GetMaxLightsPerCluster() const { return _maxLightsPerCluster; }
+		RNAPI void SetMaxPackedLights(uint16_t maxPointLights, uint16_t maxSpotLights);
+		uint16_t GetMaxPackedPointLights() const { return _maxPackedPointLights; }
+		uint16_t GetMaxPackedSpotLights() const { return _maxPackedSpotLights; }
 
 	private:
 		void ClearData();
@@ -132,6 +135,8 @@ namespace RN
 		float _lastClipFar;
 
 		uint16_t _maxLightsPerCluster;
+		uint16_t _maxPackedPointLights;
+		uint16_t _maxPackedSpotLights;
 
 		__RNDeclareMetaInternal(LightManager)
 	};

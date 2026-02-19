@@ -12,9 +12,15 @@
 
 namespace RN
 {
+	namespace
+	{
+		constexpr uint16_t kLightManagerShaderMaxPointLights = 512;
+		constexpr uint16_t kLightManagerShaderMaxSpotLights = 512;
+	}
+
 	RNDefineMeta(LightManager, Object)
 
-	LightManager::LightManager(uint32 x, uint32 y, uint32 z, float zLogFactor) :
+	LightManager::LightManager(uint32 x, uint32 y, uint32 z, float zLogFactor, uint16_t maxPackedPointLights, uint16_t maxPackedSpotLights) :
 		_pointLightBuffer(nullptr),
 		_spotLightBuffer(nullptr),
 		_clusterIndexBuffer(nullptr),
@@ -23,7 +29,9 @@ namespace RN
 		_lastViewportHeight(0.0f),
 		_lastClipNear(0.0f),
 		_lastClipFar(0.0f),
-		_maxLightsPerCluster(255)
+		_maxLightsPerCluster(255),
+		_maxPackedPointLights(std::max<uint16_t>(1, std::min<uint16_t>(maxPackedPointLights, kLightManagerShaderMaxPointLights))),
+		_maxPackedSpotLights(std::max<uint16_t>(1, std::min<uint16_t>(maxPackedSpotLights, kLightManagerShaderMaxSpotLights)))
 	{
 		SetClusterGridInfo(x, y, z, zLogFactor);
 		_grid.zFirstSliceDepth = 3.0f;
@@ -111,6 +119,14 @@ namespace RN
 		PreallocateBuffers(pointEstimate, spotEstimate, clamped, clamped);
 	}
 
+	void LightManager::SetMaxPackedLights(uint16_t maxPointLights, uint16_t maxSpotLights)
+	{
+		const uint16_t clampedPoint = std::max<uint16_t>(1, std::min<uint16_t>(maxPointLights, kLightManagerShaderMaxPointLights));
+		const uint16_t clampedSpot = std::max<uint16_t>(1, std::min<uint16_t>(maxSpotLights, kLightManagerShaderMaxSpotLights));
+		_maxPackedPointLights = clampedPoint;
+		_maxPackedSpotLights = clampedSpot;
+	}
+
 	void LightManager::BuildForCamera(Camera *camera, const std::vector<Light *> &lights)
 	{
 		ClearData();
@@ -140,6 +156,7 @@ namespace RN
 
 			if(type == Light::Type::SpotLight)
 			{
+				if(_packedSpotLights.size() >= _maxPackedSpotLights) continue;
 				Vector3 pos = light->GetWorldPosition();
 				Vector3 dir = light->GetForward();
 				SpotLightPacked out;
@@ -158,6 +175,7 @@ namespace RN
 			}
 			else // Point
 			{
+				if(_packedPointLights.size() >= _maxPackedPointLights) continue;
 				Vector3 pos = light->GetWorldPosition();
 				PointLightPacked out;
 				out.positionRange = Vector4(pos.x, pos.y, pos.z, light->GetRange());
@@ -648,32 +666,8 @@ namespace RN
 		size_t headerBytes = sizeof(ClusterGridInfo);
 		size_t recordsBytes = _clusterRecords.size() * sizeof(ClusterRecord);
 
-		// Ensure buffers are large enough using unified preallocation path
-		uint16_t maxPointPerCluster = 1;
-		uint16_t maxSpotPerCluster = 1;
-		for(const ClusterRecord &rec : _clusterRecords)
-		{
-			uint32 pairs[6] = {
-				rec.counts01 & 0xffffu,
-				rec.counts01 >> 16,
-				rec.counts23 & 0xffffu,
-				rec.counts23 >> 16,
-				rec.counts45 & 0xffffu,
-				rec.counts45 >> 16
-			};
-			for(int j = 0; j < 6; ++j)
-			{
-				uint16_t pair = static_cast<uint16_t>(pairs[j]);
-				uint16_t p = static_cast<uint16_t>(pair & 0xffu);
-				uint16_t s = static_cast<uint16_t>((pair >> 8) & 0xffu);
-				if(p > maxPointPerCluster) maxPointPerCluster = p;
-				if(s > maxSpotPerCluster)  maxSpotPerCluster = s;
-			}
-		}
-		maxPointPerCluster = std::max<uint16_t>(1, std::min<uint16_t>(maxPointPerCluster, _maxLightsPerCluster));
-		maxSpotPerCluster = std::max<uint16_t>(1, std::min<uint16_t>(maxSpotPerCluster, _maxLightsPerCluster));
-		
-		PreallocateBuffers(static_cast<uint32>(_packedPointLights.size()), static_cast<uint32>(_packedSpotLights.size()), maxPointPerCluster, maxSpotPerCluster);
+		// Keep cluster index capacity stable across visibility changes to avoid transient realloc/release churn.
+		PreallocateBuffers(static_cast<uint32>(_packedPointLights.size()), static_cast<uint32>(_packedSpotLights.size()), _maxLightsPerCluster, _maxLightsPerCluster);
 
 		if(pointBytes > 0)
 		{
@@ -710,7 +704,7 @@ namespace RN
 			_grid.padFloat0 = 0.0f;
 			_grid.padFloat1 = 0.0f;
 			memcpy(dst, &_grid, headerBytes);
-			memcpy(static_cast<uint8*>(dst) + headerBytes, _clusterRecords.data(), recordsBytes);
+			memcpy(static_cast<uint8 *>(dst) + headerBytes, _clusterRecords.data(), recordsBytes);
 			_clusterRecordsBuffer->FlushRange(Range(0, headerBytes + recordsBytes));
 		}
 	}

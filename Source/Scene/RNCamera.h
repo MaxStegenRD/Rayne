@@ -80,7 +80,7 @@ namespace RN
 		RNAPI void AddMultiviewCamera(RN::Camera *camera);
 		RNAPI void RemoveMultiviewCamera(RN::Camera *camera);
 
-		RNAPI void CreateLightManager();
+		RNAPI void CreateLightManager(uint16_t maxPackedPointLights = 256, uint16_t maxPackedSpotLights = 256);
 
 		RNAPI void Update(float delta) override;
 		RNAPI void PostUpdate();

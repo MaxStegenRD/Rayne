@@ -413,7 +413,7 @@ namespace RN
 		return Vector3(vec);
 	}
 
-	void Camera::CreateLightManager()
+	void Camera::CreateLightManager(uint16_t maxPackedPointLights, uint16_t maxPackedSpotLights)
 	{
 		if(_lightManager) return;
 
@@ -423,7 +423,7 @@ namespace RN
 		uint32 clusterXY = std::max<uint32>(1u, clustersX * clustersY);
 		uint32 clustersZ = std::max<uint32>(1u, std::min((4000u * 6u) / clusterXY, 32u));
 		float zLogFactor = 0.7f;
-		_lightManager = new LightManager(clustersX, clustersY, clustersZ, zLogFactor);
+		_lightManager = new LightManager(clustersX, clustersY, clustersZ, zLogFactor, maxPackedPointLights, maxPackedSpotLights);
 	}
 
 	const Vector3 &Camera::GetFrustumCenter()
