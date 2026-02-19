@@ -44,6 +44,14 @@ namespace RN
 			Vector4 dirCos; // xyz = direction, w = cos(angle)
 		};
 
+		struct SpotLightCullData
+		{
+			Vector3 center;
+			float radius;
+			Vector3 forward;
+			float tanHalfAngle;
+		};
+
 		struct ClusterGridInfo
 		{
 			uint32 clustersX;
@@ -102,6 +110,7 @@ namespace RN
 
 		std::vector<PointLightPacked> _packedPointLights;
 		std::vector<SpotLightPacked> _packedSpotLights;
+		std::vector<SpotLightCullData> _spotLightCullData;
 
 		std::vector<uint16_t> _clusterLightIndices; // point indices then spot indices per cluster
 		std::vector<ClusterRecord> _clusterRecords;

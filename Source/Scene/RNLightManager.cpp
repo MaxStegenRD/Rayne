@@ -123,6 +123,7 @@ namespace RN
 	{
 		_packedPointLights.clear();
 		_packedSpotLights.clear();
+		_spotLightCullData.clear();
 		_clusterLightIndices.clear();
 		_clusterRecords.clear();
 	}
@@ -131,6 +132,7 @@ namespace RN
 	{
 		_packedPointLights.reserve(lights.size());
 		_packedSpotLights.reserve(lights.size());
+		_spotLightCullData.reserve(lights.size());
 		for(const Light *light : lights)
 		{
 			Light::Type type = light->GetType();
@@ -139,12 +141,20 @@ namespace RN
 			if(type == Light::Type::SpotLight)
 			{
 				Vector3 pos = light->GetWorldPosition();
-				Vector3 dir = light->GetWorldRotation().GetRotatedVector(Vector3(0.0f, 0.0f, -1.0f));
+				Vector3 dir = light->GetForward();
 				SpotLightPacked out;
 				out.positionRange = Vector4(pos.x, pos.y, pos.z, light->GetRange());
 				out.color = light->GetFinalColor();
 				out.dirCos = Vector4(dir.x, dir.y, dir.z, light->GetAngleCos());
 				_packedSpotLights.push_back(out);
+
+				const Sphere cullSphere = light->GetBoundingSphere();
+				SpotLightCullData cullData;
+				cullData.center = cullSphere.position + cullSphere.offset;
+				cullData.radius = cullSphere.radius;
+				cullData.forward = dir;
+				cullData.tanHalfAngle = light->GetTanHalfAngle();
+				_spotLightCullData.push_back(cullData);
 			}
 			else // Point
 			{
@@ -199,6 +209,7 @@ namespace RN
 		std::vector<Matrix> views;
 		std::vector<Matrix> projs;
 		std::vector<Matrix> viewProjs;
+		std::vector<Camera *> eyeCameras;
 		if(mv && mv->GetCount() > 0)
 		{
 			for(size_t i = 0; i < mv->GetCount(); ++i)
@@ -210,6 +221,7 @@ namespace RN
 				views.push_back(v);
 				projs.push_back(p);
 				viewProjs.push_back(p * v);
+				eyeCameras.push_back(eye);
 			}
 		}
 		else
@@ -217,6 +229,7 @@ namespace RN
 			views.push_back(parentView);
 			projs.push_back(parentProj);
 			viewProjs.push_back(parentProj * parentView);
+			eyeCameras.push_back(camera);
 		}
 		const size_t viewCount = views.size();
 		std::vector<float> projAbsX(viewCount);
@@ -237,9 +250,157 @@ namespace RN
 		_lastViewportHeight = framebufferSize.y;
 		uint32 tilesX = _grid.clustersX;
 		uint32 tilesY = _grid.clustersY;
+		uint32 tilesZ = _grid.clustersZ;
 		// Inflate projected bounds by half a tile in NDC to reduce precision/quantization under-coverage.
 		const float ndcPadX = 1.0f / float(std::max(1u, tilesX));
 		const float ndcPadY = 1.0f / float(std::max(1u, tilesY));
+		const float invTilesX = 1.0f / float(std::max(1u, tilesX));
+		const float invTilesY = 1.0f / float(std::max(1u, tilesY));
+		std::vector<float> zSliceNearDepth;
+		std::vector<float> zSliceFarDepth;
+		if(!_packedSpotLights.empty())
+		{
+			auto solveDepthFromU = [&](float nearDepth, float farDepth, float u) {
+				u = std::clamp(u, 0.0f, 1.0f);
+				const float logDenominator = std::max(log2f(std::max(farDepth / std::max(nearDepth, 1e-6f), 1.0f)), 1e-6f);
+				float low = nearDepth;
+				float high = farDepth;
+				for(uint32 iteration = 0; iteration < 18; ++iteration)
+				{
+					float mid = 0.5f * (low + high);
+					float uLinear = (mid - nearDepth) / std::max(1e-6f, (farDepth - nearDepth));
+					float uLog = log2f(std::max(mid / std::max(nearDepth, 1e-6f), 1.0f)) / logDenominator;
+					float mixedU = std::lerp(uLinear, uLog, std::clamp(_grid.zLogFactor, 0.0f, 1.0f));
+					if(mixedU < u) low = mid;
+					else high = mid;
+				}
+				return 0.5f * (low + high);
+			};
+
+			zSliceNearDepth.resize(tilesZ);
+			zSliceFarDepth.resize(tilesZ);
+			if(_grid.zFirstSliceDepth > 0.0f)
+			{
+				const float firstEnd = std::min(zNear + _grid.zFirstSliceDepth, zFar);
+				zSliceNearDepth[0] = zNear;
+				zSliceFarDepth[0] = firstEnd;
+
+				const float remainingNear = std::max(firstEnd, zNear + 1e-6f);
+				if(tilesZ > 1)
+				{
+					const float remainingSlices = float(std::max(1u, tilesZ - 1u));
+					for(uint32 z = 1; z < tilesZ; ++z)
+					{
+						const float u0 = float(z - 1u) / remainingSlices;
+						const float u1 = float(z) / remainingSlices;
+						zSliceNearDepth[z] = solveDepthFromU(remainingNear, zFar, u0);
+						zSliceFarDepth[z] = solveDepthFromU(remainingNear, zFar, u1);
+					}
+				}
+			}
+			else
+			{
+				const float slicesF = float(std::max(1u, tilesZ));
+				for(uint32 z = 0; z < tilesZ; ++z)
+				{
+					const float u0 = float(z) / slicesF;
+					const float u1 = float(z + 1u) / slicesF;
+					zSliceNearDepth[z] = solveDepthFromU(zNear, zFar, u0);
+					zSliceFarDepth[z] = solveDepthFromU(zNear, zFar, u1);
+				}
+			}
+		}
+
+		const uint32 cornerCols = tilesX + 1u;
+		const uint32 cornerRows = tilesY + 1u;
+		const size_t cornersPerEye = static_cast<size_t>(cornerCols) * static_cast<size_t>(cornerRows);
+		std::vector<Vector3> tileCornerRays;
+		struct ClusterConeBounds
+		{
+			Vector3 center;
+			float radius;
+		};
+		std::vector<ClusterConeBounds> clusterConeBoundsByEye;
+		if(!_packedSpotLights.empty())
+		{
+			tileCornerRays.resize(static_cast<size_t>(viewCount) * cornersPerEye);
+			auto cornerIndex = [&](size_t eye, uint32 cx, uint32 cy) -> size_t {
+				return eye * cornersPerEye + static_cast<size_t>(cy) * static_cast<size_t>(cornerCols) + static_cast<size_t>(cx);
+			};
+
+			for(size_t vi = 0; vi < viewCount; ++vi)
+			{
+				for(uint32 cy = 0; cy <= tilesY; ++cy)
+				{
+					const float ndcY = std::clamp(2.0f * (float(cy) * invTilesY) - 1.0f, -1.0f, 1.0f);
+					for(uint32 cx = 0; cx <= tilesX; ++cx)
+					{
+						const float ndcX = std::clamp(2.0f * (float(cx) * invTilesX) - 1.0f, -1.0f, 1.0f);
+						const Vector3 worldOnRay = eyeCameras[vi]->ToWorld(Vector3(ndcX, ndcY, 1.0f));
+						const Vector4 viewPoint4 = views[vi] * Vector4(worldOnRay, 1.0f);
+						Vector3 rayVS(viewPoint4.x, viewPoint4.y, viewPoint4.z);
+						const float invDepth = 1.0f / std::max(std::abs(rayVS.z), 1e-6f);
+						rayVS *= invDepth;
+						if(rayVS.z > 0.0f) rayVS *= -1.0f;
+						tileCornerRays[cornerIndex(vi, cx, cy)] = rayVS;
+					}
+				}
+			}
+
+			clusterConeBoundsByEye.resize(static_cast<size_t>(viewCount) * static_cast<size_t>(clusterCount));
+			for(size_t vi = 0; vi < viewCount; ++vi)
+			{
+				const size_t eyeRayBase = vi * cornersPerEye;
+				const size_t eyeClusterBase = vi * static_cast<size_t>(clusterCount);
+				for(uint32 z = 0; z < tilesZ; ++z)
+				{
+					const float clusterDepthNear = zSliceNearDepth[z];
+					const float clusterDepthFar = zSliceFarDepth[z];
+					for(uint32 y = 0; y < tilesY; ++y)
+					{
+						for(uint32 x = 0; x < tilesX; ++x)
+						{
+							const size_t corner00 = eyeRayBase + static_cast<size_t>(y) * static_cast<size_t>(cornerCols) + static_cast<size_t>(x);
+							const size_t corner10 = eyeRayBase + static_cast<size_t>(y) * static_cast<size_t>(cornerCols) + static_cast<size_t>(x + 1u);
+							const size_t corner01 = eyeRayBase + static_cast<size_t>(y + 1u) * static_cast<size_t>(cornerCols) + static_cast<size_t>(x);
+							const size_t corner11 = eyeRayBase + static_cast<size_t>(y + 1u) * static_cast<size_t>(cornerCols) + static_cast<size_t>(x + 1u);
+
+							const Vector3 &ray00 = tileCornerRays[corner00];
+							const Vector3 &ray10 = tileCornerRays[corner10];
+							const Vector3 &ray01 = tileCornerRays[corner01];
+							const Vector3 &ray11 = tileCornerRays[corner11];
+
+							const Vector3 near00 = ray00 * clusterDepthNear;
+							const Vector3 near10 = ray10 * clusterDepthNear;
+							const Vector3 near01 = ray01 * clusterDepthNear;
+							const Vector3 near11 = ray11 * clusterDepthNear;
+							const Vector3 far00 = ray00 * clusterDepthFar;
+							const Vector3 far10 = ray10 * clusterDepthFar;
+							const Vector3 far01 = ray01 * clusterDepthFar;
+							const Vector3 far11 = ray11 * clusterDepthFar;
+
+							float clusterMinX = std::min(std::min(near00.x, near10.x), std::min(near01.x, near11.x));
+							clusterMinX = std::min(clusterMinX, std::min(std::min(far00.x, far10.x), std::min(far01.x, far11.x)));
+							float clusterMaxX = std::max(std::max(near00.x, near10.x), std::max(near01.x, near11.x));
+							clusterMaxX = std::max(clusterMaxX, std::max(std::max(far00.x, far10.x), std::max(far01.x, far11.x)));
+							float clusterMinYEye = std::min(std::min(near00.y, near10.y), std::min(near01.y, near11.y));
+							clusterMinYEye = std::min(clusterMinYEye, std::min(std::min(far00.y, far10.y), std::min(far01.y, far11.y)));
+							float clusterMaxYEye = std::max(std::max(near00.y, near10.y), std::max(near01.y, near11.y));
+							clusterMaxYEye = std::max(clusterMaxYEye, std::max(std::max(far00.y, far10.y), std::max(far01.y, far11.y)));
+							float clusterMinZEye = std::min(std::min(near00.z, near10.z), std::min(near01.z, near11.z));
+							clusterMinZEye = std::min(clusterMinZEye, std::min(std::min(far00.z, far10.z), std::min(far01.z, far11.z)));
+							float clusterMaxZEye = std::max(std::max(near00.z, near10.z), std::max(near01.z, near11.z));
+							clusterMaxZEye = std::max(clusterMaxZEye, std::max(std::max(far00.z, far10.z), std::max(far01.z, far11.z)));
+
+							const Vector3 center((clusterMinX + clusterMaxX) * 0.5f, (clusterMinYEye + clusterMaxYEye) * 0.5f, (clusterMinZEye + clusterMaxZEye) * 0.5f);
+							const Vector3 halfExtents((clusterMaxX - clusterMinX) * 0.5f, (clusterMaxYEye - clusterMinYEye) * 0.5f, (clusterMaxZEye - clusterMinZEye) * 0.5f);
+							const uint32 clusterIndex = EncodeClusterIndex(x, y, z);
+							clusterConeBoundsByEye[eyeClusterBase + static_cast<size_t>(clusterIndex)] = {center, halfExtents.GetLength()};
+						}
+					}
+				}
+			}
+		}
 
 		auto screenToCluster = [&](float ndcX, float ndcY, uint32 &cx, uint32 &cy)
 		{
@@ -248,6 +409,67 @@ namespace RN
 			float syBottomLeft = (ndcY * 0.5f + 0.5f) * framebufferSize.y; // [0..H], y up from bottom
 			cx = std::clamp(uint32(sx * tilesX / std::max(1.0f, framebufferSize.x)), 0u, tilesX - 1u);
 			cy = std::clamp(uint32(syBottomLeft * tilesY / std::max(1.0f, framebufferSize.y)), 0u, tilesY - 1u);
+		};
+		struct ClusterSpan
+		{
+			uint32 zMin, zMax;
+			uint32 x0, y0, x1, y1;
+		};
+		auto computeClusterSpan = [&](const Vector3 &center, float depthRadius, auto &&computeProjectedRadius) -> ClusterSpan {
+			float minNdcX = 1.0f;
+			float minNdcY = 1.0f;
+			float maxNdcX = -1.0f;
+			float maxNdcY = -1.0f;
+			float minZDepth = zFar;
+			float maxZDepth = zNear;
+			bool hadProjected = false;
+			for(size_t vi = 0; vi < viewCount; ++vi)
+			{
+				const Vector4 centerVSv = views[vi] * Vector4(center, 1.0f);
+				const float depthv = -centerVSv.z;
+				const float minZv = std::clamp(depthv - depthRadius, zNear, zFar);
+				const float maxZv = std::clamp(depthv + depthRadius, zNear, zFar);
+				minZDepth = std::min(minZDepth, minZv);
+				maxZDepth = std::max(maxZDepth, maxZv);
+
+				const Vector4 centerCSv = viewProjs[vi] * Vector4(center, 1.0f);
+				if(centerCSv.w > 0.0f && depthv > 1e-6f)
+				{
+					const float centerNdcXv = centerCSv.x / centerCSv.w;
+					const float centerNdcYv = centerCSv.y / centerCSv.w;
+					float rNdcXv, rNdcYv;
+					computeProjectedRadius(vi, depthv, rNdcXv, rNdcYv);
+					const float ndcMinXv = std::max(-1.0f, centerNdcXv - rNdcXv);
+					const float ndcMaxXv = std::min( 1.0f, centerNdcXv + rNdcXv);
+					const float ndcMinYv = std::max(-1.0f, centerNdcYv - rNdcYv);
+					const float ndcMaxYv = std::min( 1.0f, centerNdcYv + rNdcYv);
+					minNdcX = std::min(minNdcX, ndcMinXv);
+					maxNdcX = std::max(maxNdcX, ndcMaxXv);
+					minNdcY = std::min(minNdcY, ndcMinYv);
+					maxNdcY = std::max(maxNdcY, ndcMaxYv);
+					hadProjected = true;
+				}
+			}
+
+			if(!hadProjected)
+			{
+				minNdcX = -1.0f; maxNdcX = 1.0f; minNdcY = -1.0f; maxNdcY = 1.0f;
+			}
+			minNdcX = std::max(-1.0f, minNdcX - ndcPadX);
+			maxNdcX = std::min( 1.0f, maxNdcX + ndcPadX);
+			minNdcY = std::max(-1.0f, minNdcY - ndcPadY);
+			maxNdcY = std::min( 1.0f, maxNdcY + ndcPadY);
+
+			ClusterSpan span{};
+			span.zMin = uint32(ComputeZSlice(camera, minZDepth));
+			span.zMax = uint32(ComputeZSlice(camera, maxZDepth));
+			if(span.zMax < span.zMin) std::swap(span.zMin, span.zMax);
+
+			screenToCluster(minNdcX, minNdcY, span.x0, span.y0);
+			screenToCluster(maxNdcX, maxNdcY, span.x1, span.y1);
+			if(span.x1 < span.x0) std::swap(span.x0, span.x1);
+			if(span.y1 < span.y0) std::swap(span.y0, span.y1);
+			return span;
 		};
 
 		// Reuse scratch buffers to avoid per-frame per-cluster allocations.
@@ -266,67 +488,20 @@ namespace RN
 			const PointLightPacked &pl = _packedPointLights[li];
 			const uint16_t lightIndex = static_cast<uint16_t>(std::min<uint32>(li, 0xffffu));
 
-			Vector3 position(pl.positionRange.x, pl.positionRange.y, pl.positionRange.z);
-			float range = pl.positionRange.w;
+			const Vector3 position(pl.positionRange.x, pl.positionRange.y, pl.positionRange.z);
+			const float range = pl.positionRange.w;
+			const ClusterSpan span = computeClusterSpan(position, range, [&](size_t vi, float depthv, float &rNdcXv, float &rNdcYv) {
+				const float denom = std::max(depthv * depthv - range * range, 1e-6f);
+				const float rSil = range / std::sqrt(denom);
+				rNdcXv = projAbsX[vi] * rSil;
+				rNdcYv = projAbsY[vi] * rSil;
+			});
 
-			uint32 zMin, zMax;
-			float minNdcX, minNdcY, maxNdcX, maxNdcY;
-			float minZDepth = zFar;
-			float maxZDepth = zNear;
-			bool hadProjected = false;
-			minNdcX =  1.0f; minNdcY =  1.0f; maxNdcX = -1.0f; maxNdcY = -1.0f;
-			for(size_t vi = 0; vi < viewCount; ++vi)
+			for(uint32 z = span.zMin; z <= span.zMax; ++z)
 			{
-				Vector4 centerVSv = views[vi] * Vector4(position, 1.0f);
-				float depthv = -centerVSv.z;
-				float minZv = std::clamp(depthv - range, zNear, zFar);
-				float maxZv = std::clamp(depthv + range, zNear, zFar);
-				minZDepth = std::min(minZDepth, minZv);
-				maxZDepth = std::max(maxZDepth, maxZv);
-
-				Vector4 centerCSv = viewProjs[vi] * Vector4(position, 1.0f);
-				if(centerCSv.w > 0.0f && depthv > 1e-6f)
+				for(uint32 y = span.y0; y <= span.y1; ++y)
 				{
-					float centerNdcXv = centerCSv.x / centerCSv.w;
-					float centerNdcYv = centerCSv.y / centerCSv.w;
-					float denom = std::max(depthv*depthv - range*range, 1e-6f);
-					float rSil = range / std::sqrt(denom);
-					float rNdcXv = projAbsX[vi] * rSil;
-					float rNdcYv = projAbsY[vi] * rSil;
-					float ndcMinXv = std::max(-1.0f, centerNdcXv - rNdcXv);
-					float ndcMaxXv = std::min( 1.0f, centerNdcXv + rNdcXv);
-					float ndcMinYv = std::max(-1.0f, centerNdcYv - rNdcYv);
-					float ndcMaxYv = std::min( 1.0f, centerNdcYv + rNdcYv);
-					minNdcX = std::min(minNdcX, ndcMinXv);
-					maxNdcX = std::max(maxNdcX, ndcMaxXv);
-					minNdcY = std::min(minNdcY, ndcMinYv);
-					maxNdcY = std::max(maxNdcY, ndcMaxYv);
-					hadProjected = true;
-				}
-			}
-			if(!hadProjected)
-			{
-				minNdcX = -1.0f; maxNdcX = 1.0f; minNdcY = -1.0f; maxNdcY = 1.0f;
-			}
-			minNdcX = std::max(-1.0f, minNdcX - ndcPadX);
-			maxNdcX = std::min( 1.0f, maxNdcX + ndcPadX);
-			minNdcY = std::max(-1.0f, minNdcY - ndcPadY);
-			maxNdcY = std::min( 1.0f, maxNdcY + ndcPadY);
-			zMin = uint32(ComputeZSlice(camera, minZDepth));
-			zMax = uint32(ComputeZSlice(camera, maxZDepth));
-			if(zMax < zMin) std::swap(zMin, zMax);
-
-			uint32 x0, y0, x1, y1;
-			screenToCluster(minNdcX, minNdcY, x0, y0);
-			screenToCluster(maxNdcX, maxNdcY, x1, y1);
-			if(x1 < x0) std::swap(x0, x1);
-			if(y1 < y0) std::swap(y0, y1);
-
-			for(uint32 z = zMin; z <= zMax; ++z)
-			{
-				for(uint32 y = y0; y <= y1; ++y)
-				{
-					for(uint32 x = x0; x <= x1; ++x)
+					for(uint32 x = span.x0; x <= span.x1; ++x)
 					{
 						uint32 idx = EncodeClusterIndex(x, y, z);
 						uint8_t &count = _clusterPointCountsScratch[idx];
@@ -341,73 +516,65 @@ namespace RN
 			}
 		}
 
+		std::vector<Vector3> directionVSByEye(viewCount);
+		std::vector<Vector3> positionVSByEye(viewCount);
 		for(uint32 li = 0; li < _packedSpotLights.size(); ++li)
 		{
 			const SpotLightPacked &pl = _packedSpotLights[li];
 			const uint16_t lightIndex = static_cast<uint16_t>(std::min<uint32>(li, 0xffffu));
-			Vector3 position(pl.positionRange.x, pl.positionRange.y, pl.positionRange.z);
-			float range = pl.positionRange.w;
-
-			uint32 zMin, zMax;
-			float minNdcX, minNdcY, maxNdcX, maxNdcY;
-			float minZDepth = zFar;
-			float maxZDepth = zNear;
-			bool hadProjected = false;
-			minNdcX =  1.0f; minNdcY =  1.0f; maxNdcX = -1.0f; maxNdcY = -1.0f;
+			const Vector3 position(pl.positionRange.x, pl.positionRange.y, pl.positionRange.z);
+			const float range = pl.positionRange.w;
+			const SpotLightCullData &cullData = _spotLightCullData[li];
+			const Vector3 directionWS = cullData.forward;
+			const float spotTanHalfAngle = cullData.tanHalfAngle;
+			const float rangeTimesTanHalfAngle = range * spotTanHalfAngle;
+			const Vector3 cullCenter = cullData.center;
+			const float cullRadius = cullData.radius;
+			const ClusterSpan span = computeClusterSpan(cullCenter, cullRadius, [&](size_t vi, float depthv, float &rNdcXv, float &rNdcYv) {
+				const float dFront = std::max(zNear, depthv - cullRadius);
+				const float rcpFront = 1.0f / std::max(1e-6f, dFront);
+				rNdcXv = projAbsX[vi] * cullRadius * rcpFront;
+				rNdcYv = projAbsY[vi] * cullRadius * rcpFront;
+			});
 			for(size_t vi = 0; vi < viewCount; ++vi)
 			{
-				Vector4 centerVSv = views[vi] * Vector4(position, 1.0f);
-				float depthv = -centerVSv.z;
-				float minZv = std::clamp(depthv - range, zNear, zFar);
-				float maxZv = std::clamp(depthv + range, zNear, zFar);
-				minZDepth = std::min(minZDepth, minZv);
-				maxZDepth = std::max(maxZDepth, maxZv);
-
-				Vector4 centerCSv = viewProjs[vi] * Vector4(position, 1.0f);
-				if(centerCSv.w > 0.0f && depthv > 1e-6f)
-				{
-					float centerNdcXv = centerCSv.x / centerCSv.w;
-					float centerNdcYv = centerCSv.y / centerCSv.w;
-					float dFront = std::max(zNear, depthv - range);
-					float rcpFront = 1.0f / std::max(1e-6f, dFront);
-					float rNdcXv = projAbsX[vi] * range * rcpFront;
-					float rNdcYv = projAbsY[vi] * range * rcpFront;
-					float ndcMinXv = std::max(-1.0f, centerNdcXv - rNdcXv);
-					float ndcMaxXv = std::min( 1.0f, centerNdcXv + rNdcXv);
-					float ndcMinYv = std::max(-1.0f, centerNdcYv - rNdcYv);
-					float ndcMaxYv = std::min( 1.0f, centerNdcYv + rNdcYv);
-					minNdcX = std::min(minNdcX, ndcMinXv);
-					maxNdcX = std::max(maxNdcX, ndcMaxXv);
-					minNdcY = std::min(minNdcY, ndcMinYv);
-					maxNdcY = std::max(maxNdcY, ndcMaxYv);
-					hadProjected = true;
-				}
+				const Vector4 directionVS4 = views[vi] * Vector4(directionWS, 0.0f);
+				directionVSByEye[vi] = Vector3(directionVS4.x, directionVS4.y, directionVS4.z);
+				directionVSByEye[vi].Normalize();
+				const Vector4 positionVS4 = views[vi] * Vector4(position, 1.0f);
+				positionVSByEye[vi] = Vector3(positionVS4.x, positionVS4.y, positionVS4.z);
 			}
-			if(!hadProjected)
-			{
-				minNdcX = -1.0f; maxNdcX = 1.0f; minNdcY = -1.0f; maxNdcY = 1.0f;
-			}
-			minNdcX = std::max(-1.0f, minNdcX - ndcPadX);
-			maxNdcX = std::min( 1.0f, maxNdcX + ndcPadX);
-			minNdcY = std::max(-1.0f, minNdcY - ndcPadY);
-			maxNdcY = std::min( 1.0f, maxNdcY + ndcPadY);
-			zMin = uint32(ComputeZSlice(camera, minZDepth));
-			zMax = uint32(ComputeZSlice(camera, maxZDepth));
-			if(zMax < zMin) std::swap(zMin, zMax);
 
-			uint32 x0, y0, x1, y1;
-			screenToCluster(minNdcX, minNdcY, x0, y0);
-			screenToCluster(maxNdcX, maxNdcY, x1, y1);
-			if(x1 < x0) std::swap(x0, x1);
-			if(y1 < y0) std::swap(y0, y1);
-
-			for(uint32 z = zMin; z <= zMax; ++z)
+			for(uint32 z = span.zMin; z <= span.zMax; ++z)
 			{
-				for(uint32 y = y0; y <= y1; ++y)
+				for(uint32 y = span.y0; y <= span.y1; ++y)
 				{
-					for(uint32 x = x0; x <= x1; ++x)
+					for(uint32 x = span.x0; x <= span.x1; ++x)
 					{
-						uint32 idx = EncodeClusterIndex(x, y, z);
+						const uint32 idx = EncodeClusterIndex(x, y, z);
+						bool passesAnyEye = false;
+						for(size_t vi = 0; vi < viewCount; ++vi)
+						{
+							const ClusterConeBounds &clusterBounds = clusterConeBoundsByEye[vi * static_cast<size_t>(clusterCount) + static_cast<size_t>(idx)];
+							const Vector3 &clusterCenter = clusterBounds.center;
+							const float clusterRadius = clusterBounds.radius;
+							const float inflatedClusterRadius = clusterRadius * 1.5f;
+							const float tipFloorRadius = std::min(rangeTimesTanHalfAngle, inflatedClusterRadius);
+
+							const Vector3 toCluster = clusterCenter - positionVSByEye[vi];
+							const float axial = directionVSByEye[vi].GetDotProduct(toCluster);
+							if(axial < -inflatedClusterRadius || axial > range + inflatedClusterRadius) continue;
+
+							const float radialFromAxial = std::max(axial, 0.0f) * spotTanHalfAngle;
+							const float radialLimit = std::max(radialFromAxial, tipFloorRadius) + inflatedClusterRadius;
+							const Vector3 radialVector = toCluster - (directionVSByEye[vi] * axial);
+							if(radialVector.GetSquaredLength() > radialLimit * radialLimit) continue;
+
+							passesAnyEye = true;
+							break;
+						}
+						if(!passesAnyEye) continue;
+
 						uint8_t &count = _clusterSpotCountsScratch[idx];
 						if(count < _maxLightsPerCluster)
 						{
