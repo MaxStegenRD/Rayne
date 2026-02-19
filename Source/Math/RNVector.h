@@ -43,6 +43,7 @@ namespace RN
 		Vector2 &operator/=(const Vector2 &other);
 
 		float GetLength() const;
+		float GetSquaredLength() const;
 		float GetMax() const;
 		float GetMin() const;
 		float GetDotProduct(const Vector2 &other) const;
@@ -91,6 +92,7 @@ namespace RN
 		Vector3 &operator/=(const Vector3 &other);
 
 		float GetLength() const;
+		float GetSquaredLength() const;
 		float GetMax() const;
 		float GetMin() const;
 		float GetDotProduct(const Vector3 &other) const;
@@ -141,6 +143,7 @@ namespace RN
 		Vector4 &operator/=(const Vector4 &other);
 
 		float GetLength() const;
+		float GetSquaredLength() const;
 		float GetMax() const;
 		float GetMin() const;
 		float GetDotProduct(const Vector4 &other) const;
@@ -273,6 +276,11 @@ namespace RN
 	RN_INLINE float Vector2::GetLength() const
 	{
 		return Math::Sqrt(x * x + y * y);
+	}
+
+	RN_INLINE float Vector2::GetSquaredLength() const
+	{
+		return x * x + y * y;
 	}
 
 	RN_INLINE float Vector2::GetMax() const
@@ -471,6 +479,11 @@ namespace RN
 	RN_INLINE float Vector3::GetLength() const
 	{
 		return Math::Sqrt(x * x + y * y + z * z);
+	}
+
+	RN_INLINE float Vector3::GetSquaredLength() const
+	{
+		return x * x + y * y + z * z;
 	}
 
 	RN_INLINE float Vector3::GetMax() const
@@ -709,6 +722,11 @@ namespace RN
 	RN_INLINE float Vector4::GetLength() const
 	{
 		return Math::Sqrt(x * x + y * y + z * z + w * w);
+	}
+
+	RN_INLINE float Vector4::GetSquaredLength() const
+	{
+		return x * x + y * y + z * z + w * w;
 	}
 
 	RN_INLINE float Vector4::GetMax() const
