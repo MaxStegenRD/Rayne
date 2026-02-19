@@ -989,21 +989,6 @@ namespace RN
 			}
 		}
 
-		//Advance light manager buffers if there is a light manager
-		if(camera->GetLightManager())
-		{
-			LightManager *lightManager = camera->GetLightManager();
-			VulkanDynamicGPUBuffer *pointLightBuffer = lightManager->GetPointLightBuffer()->Downcast<VulkanDynamicGPUBuffer>();
-			VulkanDynamicGPUBuffer *spotLightBuffer = lightManager->GetSpotLightBuffer()->Downcast<VulkanDynamicGPUBuffer>();
-			VulkanDynamicGPUBuffer *clusterRecordsBuffer = lightManager->GetClusterRecordsBuffer()->Downcast<VulkanDynamicGPUBuffer>();
-			VulkanDynamicGPUBuffer *clusterIndexBuffer = lightManager->GetClusterIndexBuffer()->Downcast<VulkanDynamicGPUBuffer>();
-
-			pointLightBuffer->Advance(_currentFrame, _completedFrame, false);
-			spotLightBuffer->Advance(_currentFrame, _completedFrame, false);
-			clusterRecordsBuffer->Advance(_currentFrame, _completedFrame, false);
-			clusterIndexBuffer->Advance(_currentFrame, _completedFrame, false);
-		}
-
 		// Run once to submit all scene nodes; SubmitDrawable will route to all matching passes
 		function();
 
