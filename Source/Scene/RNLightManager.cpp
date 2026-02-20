@@ -274,8 +274,16 @@ namespace RN
 		const float ndcPadY = 1.0f / float(std::max(1u, tilesY));
 		const float invTilesX = 1.0f / float(std::max(1u, tilesX));
 		const float invTilesY = 1.0f / float(std::max(1u, tilesY));
+
 		std::vector<float> zSliceNearDepth;
 		std::vector<float> zSliceFarDepth;
+		std::vector<Vector3> tileCornerRays;
+		struct ClusterConeBounds
+		{
+			Vector3 center;
+			float radius;
+		};
+		std::vector<ClusterConeBounds> clusterConeBoundsByEye;
 		if(!_packedSpotLights.empty())
 		{
 			auto solveDepthFromU = [&](float nearDepth, float farDepth, float u) {
@@ -327,20 +335,10 @@ namespace RN
 					zSliceFarDepth[z] = solveDepthFromU(zNear, zFar, u1);
 				}
 			}
-		}
 
-		const uint32 cornerCols = tilesX + 1u;
-		const uint32 cornerRows = tilesY + 1u;
-		const size_t cornersPerEye = static_cast<size_t>(cornerCols) * static_cast<size_t>(cornerRows);
-		std::vector<Vector3> tileCornerRays;
-		struct ClusterConeBounds
-		{
-			Vector3 center;
-			float radius;
-		};
-		std::vector<ClusterConeBounds> clusterConeBoundsByEye;
-		if(!_packedSpotLights.empty())
-		{
+			const uint32 cornerCols = tilesX + 1u;
+			const uint32 cornerRows = tilesY + 1u;
+			const size_t cornersPerEye = static_cast<size_t>(cornerCols) * static_cast<size_t>(cornerRows);
 			tileCornerRays.resize(static_cast<size_t>(viewCount) * cornersPerEye);
 			auto cornerIndex = [&](size_t eye, uint32 cx, uint32 cy) -> size_t {
 				return eye * cornersPerEye + static_cast<size_t>(cy) * static_cast<size_t>(cornerCols) + static_cast<size_t>(cx);
@@ -534,8 +532,6 @@ namespace RN
 			}
 		}
 
-		std::vector<Vector3> directionVSByEye(viewCount);
-		std::vector<Vector3> positionVSByEye(viewCount);
 		for(uint32 li = 0; li < _packedSpotLights.size(); ++li)
 		{
 			const SpotLightPacked &pl = _packedSpotLights[li];
@@ -545,20 +541,28 @@ namespace RN
 			const SpotLightCullData &cullData = _spotLightCullData[li];
 			const Vector3 directionWS = cullData.forward;
 			const float spotTanHalfAngle = cullData.tanHalfAngle;
-			const float rangeTimesTanHalfAngle = range * spotTanHalfAngle;
 			const Vector3 cullCenter = cullData.center;
 			const float cullRadius = cullData.radius;
 			const ClusterSpan span = computeClusterSpan(cullCenter, cullRadius, [&](size_t vi, float depthv, float &rNdcXv, float &rNdcYv) {
-				const float dFront = std::max(zNear, depthv - cullRadius);
-				const float rcpFront = 1.0f / std::max(1e-6f, dFront);
-				rNdcXv = projAbsX[vi] * cullRadius * rcpFront;
-				rNdcYv = projAbsY[vi] * cullRadius * rcpFront;
+				const float denom = std::max(depthv * depthv - cullRadius * cullRadius, 1e-6f);
+				const float rSil = cullRadius / std::sqrt(denom);
+				rNdcXv = projAbsX[vi] * rSil;
+				rNdcYv = projAbsY[vi] * rSil;
 			});
+			std::vector<Vector3> directionVSByEye(viewCount);
+			std::vector<bool> directionValidByEye(viewCount, false);
+			std::vector<Vector3> positionVSByEye(viewCount);
 			for(size_t vi = 0; vi < viewCount; ++vi)
 			{
 				const Vector4 directionVS4 = views[vi] * Vector4(directionWS, 0.0f);
-				directionVSByEye[vi] = Vector3(directionVS4.x, directionVS4.y, directionVS4.z);
-				directionVSByEye[vi].Normalize();
+				Vector3 directionVS(directionVS4.x, directionVS4.y, directionVS4.z);
+				const float dirLenSq = directionVS.GetSquaredLength();
+				if(std::isfinite(dirLenSq) && dirLenSq > 1e-12f)
+				{
+					directionVS *= 1.0f / std::sqrt(dirLenSq);
+					directionVSByEye[vi] = directionVS;
+					directionValidByEye[vi] = true;
+				}
 				const Vector4 positionVS4 = views[vi] * Vector4(position, 1.0f);
 				positionVSByEye[vi] = Vector3(positionVS4.x, positionVS4.y, positionVS4.z);
 			}
@@ -573,20 +577,38 @@ namespace RN
 						bool passesAnyEye = false;
 						for(size_t vi = 0; vi < viewCount; ++vi)
 						{
+							// Fail-open: if spotlight axis is invalid in this eye, keep this cluster.
+							if(!directionValidByEye[vi]) { passesAnyEye = true; break; }
+
 							const ClusterConeBounds &clusterBounds = clusterConeBoundsByEye[vi * static_cast<size_t>(clusterCount) + static_cast<size_t>(idx)];
-							const Vector3 &clusterCenter = clusterBounds.center;
+							const Vector3 toCluster = clusterBounds.center - positionVSByEye[vi];
 							const float clusterRadius = clusterBounds.radius;
-							const float inflatedClusterRadius = clusterRadius * 1.5f;
-							const float tipFloorRadius = std::min(rangeTimesTanHalfAngle, inflatedClusterRadius);
 
-							const Vector3 toCluster = clusterCenter - positionVSByEye[vi];
 							const float axial = directionVSByEye[vi].GetDotProduct(toCluster);
-							if(axial < -inflatedClusterRadius || axial > range + inflatedClusterRadius) continue;
+							if(!std::isfinite(axial)) { passesAnyEye = true; break; }
+							if(axial < -clusterRadius) continue;
+							if(axial > range + clusterRadius) continue;
 
-							const float radialFromAxial = std::max(axial, 0.0f) * spotTanHalfAngle;
-							const float radialLimit = std::max(radialFromAxial, tipFloorRadius) + inflatedClusterRadius;
 							const Vector3 radialVector = toCluster - (directionVSByEye[vi] * axial);
-							if(radialVector.GetSquaredLength() > radialLimit * radialLimit) continue;
+							const float radialSq = radialVector.GetSquaredLength();
+							if(!std::isfinite(radialSq)) { passesAnyEye = true; break; }
+
+							const float sideExpand = clusterRadius * std::sqrt(1.0f + spotTanHalfAngle * spotTanHalfAngle);
+							if(axial > range)
+							{
+								// End-cap reject: outside cone base radius (expanded by cluster sphere support term).
+								const float capLimit = range * spotTanHalfAngle + sideExpand;
+								const float capLimitSq = capLimit * capLimit;
+								if(!std::isfinite(capLimitSq)) { passesAnyEye = true; break; }
+								if(radialSq > capLimitSq) continue;
+							}
+							else
+							{
+								const float sideLimit = std::max(axial, 0.0f) * spotTanHalfAngle + sideExpand;
+								const float sideLimitSq = sideLimit * sideLimit;
+								if(!std::isfinite(sideLimitSq)) { passesAnyEye = true; break; }
+								if(radialSq > sideLimitSq) continue;
+							}
 
 							passesAnyEye = true;
 							break;
