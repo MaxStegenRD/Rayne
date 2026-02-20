@@ -532,6 +532,9 @@ namespace RN
 			}
 		}
 
+		std::vector<Vector3> spotDirectionVSByEye(viewCount);
+		std::vector<uint8_t> spotDirectionValidByEye(viewCount, 0);
+		std::vector<Vector3> spotPositionVSByEye(viewCount);
 		for(uint32 li = 0; li < _packedSpotLights.size(); ++li)
 		{
 			const SpotLightPacked &pl = _packedSpotLights[li];
@@ -549,9 +552,7 @@ namespace RN
 				rNdcXv = projAbsX[vi] * rSil;
 				rNdcYv = projAbsY[vi] * rSil;
 			});
-			std::vector<Vector3> directionVSByEye(viewCount);
-			std::vector<bool> directionValidByEye(viewCount, false);
-			std::vector<Vector3> positionVSByEye(viewCount);
+			std::fill(spotDirectionValidByEye.begin(), spotDirectionValidByEye.end(), 0);
 			for(size_t vi = 0; vi < viewCount; ++vi)
 			{
 				const Vector4 directionVS4 = views[vi] * Vector4(directionWS, 0.0f);
@@ -560,11 +561,11 @@ namespace RN
 				if(std::isfinite(dirLenSq) && dirLenSq > 1e-12f)
 				{
 					directionVS *= 1.0f / std::sqrt(dirLenSq);
-					directionVSByEye[vi] = directionVS;
-					directionValidByEye[vi] = true;
+					spotDirectionVSByEye[vi] = directionVS;
+					spotDirectionValidByEye[vi] = 1;
 				}
 				const Vector4 positionVS4 = views[vi] * Vector4(position, 1.0f);
-				positionVSByEye[vi] = Vector3(positionVS4.x, positionVS4.y, positionVS4.z);
+				spotPositionVSByEye[vi] = Vector3(positionVS4.x, positionVS4.y, positionVS4.z);
 			}
 
 			for(uint32 z = span.zMin; z <= span.zMax; ++z)
@@ -578,18 +579,18 @@ namespace RN
 						for(size_t vi = 0; vi < viewCount; ++vi)
 						{
 							// Fail-open: if spotlight axis is invalid in this eye, keep this cluster.
-							if(!directionValidByEye[vi]) { passesAnyEye = true; break; }
+							if(spotDirectionValidByEye[vi] == 0) { passesAnyEye = true; break; }
 
 							const ClusterConeBounds &clusterBounds = clusterConeBoundsByEye[vi * static_cast<size_t>(clusterCount) + static_cast<size_t>(idx)];
-							const Vector3 toCluster = clusterBounds.center - positionVSByEye[vi];
+							const Vector3 toCluster = clusterBounds.center - spotPositionVSByEye[vi];
 							const float clusterRadius = clusterBounds.radius;
 
-							const float axial = directionVSByEye[vi].GetDotProduct(toCluster);
+							const float axial = spotDirectionVSByEye[vi].GetDotProduct(toCluster);
 							if(!std::isfinite(axial)) { passesAnyEye = true; break; }
 							if(axial < -clusterRadius) continue;
 							if(axial > range + clusterRadius) continue;
 
-							const Vector3 radialVector = toCluster - (directionVSByEye[vi] * axial);
+							const Vector3 radialVector = toCluster - (spotDirectionVSByEye[vi] * axial);
 							const float radialSq = radialVector.GetSquaredLength();
 							if(!std::isfinite(radialSq)) { passesAnyEye = true; break; }
 
