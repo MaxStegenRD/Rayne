@@ -67,6 +67,11 @@ namespace RN
 			float padFloat0;
 			float padFloat1;
 		};
+		struct SpotClusterBound
+		{
+			Vector3 center;
+			float radius;
+		};
 
 		RNAPI LightManager(uint32 x, uint32 y, uint32 z, float zLogFactor = 0.7f, uint16_t maxPackedPointLights = 256, uint16_t maxPackedSpotLights = 256);
 		RNAPI ~LightManager() override;
@@ -133,6 +138,10 @@ namespace RN
 		float _lastViewportHeight;
 		float _lastClipNear;
 		float _lastClipFar;
+
+		bool _hasSpotClusterBoundsCache;
+		std::vector<Matrix> _cachedSpotBoundsProjections;
+		std::vector<SpotClusterBound> _cachedSpotClusterBoundsByEye;
 
 		uint16_t _maxLightsPerCluster;
 		uint16_t _maxPackedPointLights;
