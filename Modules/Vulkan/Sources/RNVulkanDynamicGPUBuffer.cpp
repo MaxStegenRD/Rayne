@@ -52,6 +52,9 @@ namespace RN
 	void VulkanDynamicGPUBuffer::Advance(size_t currentFrame, size_t completedFrame, bool isOwnedByPool)
 	{
 		_bufferIndex = _hostBufferIndex;
+		// Standalone streamed buffers call Advance() right after writes/flushes,
+		// so we can safely tag the just-published buffer as in-flight.
+		if(!isOwnedByPool) _bufferFrames[_bufferIndex] = currentFrame;
 		_hostBufferIndex = (_hostBufferIndex + 1) % _buffers.size();
 
 		if(_bufferFrames[_hostBufferIndex] > completedFrame)
@@ -67,13 +70,18 @@ namespace RN
 			}
 			else
 			{
-				_buffers.insert(_buffers.begin() + _hostBufferIndex, dynamic_cast<VulkanStaticGPUBuffer*>(buffer));
-				_bufferFrames.insert(_bufferFrames.begin() + _hostBufferIndex, currentFrame);
+				const size_t insertIndex = _hostBufferIndex;
+				_buffers.insert(_buffers.begin() + insertIndex, dynamic_cast<VulkanStaticGPUBuffer*>(buffer));
+				_bufferFrames.insert(_bufferFrames.begin() + insertIndex, currentFrame);
+				// Insertion can shift indices; keep standalone published-buffer index stable.
+				if(!isOwnedByPool && insertIndex <= _bufferIndex) ++_bufferIndex;
 			}
 		}
 		else
 		{
-			_bufferFrames[_hostBufferIndex] = currentFrame;
+			// For pooled suballocation buffers we pre-reserve the upcoming host buffer for this frame.
+			// For standalone streamed buffers (e.g. LightManager) we only timestamp actually written buffers.
+			if(isOwnedByPool) _bufferFrames[_hostBufferIndex] = currentFrame;
 		}
 
 		if(isOwnedByPool) _bufferIndex = _hostBufferIndex;
