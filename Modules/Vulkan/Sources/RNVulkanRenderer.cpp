@@ -354,7 +354,6 @@ namespace RN
 		_currentResourcesCommandBufferLock.Unlock();
 
 		_lock.Lock();
-		VkSemaphore resourceUploadsSemaphore = VK_NULL_HANDLE;
 		if(_submittedCommandBuffers->GetCount() > 0 || resourcesCommandBuffer)
 		{
 			std::vector<VkCommandBuffer> buffers;
@@ -370,23 +369,11 @@ namespace RN
 				_executedCommandBuffers->AddObject(buffer);
 			});
 
-			//Create a semaphore for the render queue to wait for the resource upload queue
-			VkSemaphoreCreateInfo semaphoreInfo{};
-			semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-			VkDevice device = GetVulkanDevice()->GetDevice();
-			RNVulkanValidate(vk::CreateSemaphore(device, &semaphoreInfo, nullptr, &resourceUploadsSemaphore));
-			AddFrameFinishedCallback([device, resourceUploadsSemaphore](){
-				vk::DestroySemaphore(device, resourceUploadsSemaphore, nullptr);
-			});
-
 			//Submit command buffers
 			VkSubmitInfo submitInfo = {};
 			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 			submitInfo.commandBufferCount = buffers.size();
 			submitInfo.pCommandBuffers = buffers.data();
-			submitInfo.signalSemaphoreCount = 1;
-			submitInfo.pSignalSemaphores = &resourceUploadsSemaphore;
-			submitInfo.pWaitDstStageMask = nullptr;
 
 			RNVulkanValidate(vk::QueueSubmit(_workQueue, 1, &submitInfo, VK_NULL_HANDLE));
 
@@ -668,12 +655,6 @@ namespace RN
 		std::vector<VkSemaphore> presentSemaphores;
 		std::vector<VkPipelineStageFlags> presentSemaphoresWaitStages;
 		std::vector<VkSemaphore> renderSemaphores;
-
-		if(resourceUploadsSemaphore)
-		{
-			presentSemaphores.push_back(resourceUploadsSemaphore); //Wait until all resources are available
-			presentSemaphoresWaitStages.push_back(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
-		}
 
 		for(VulkanSwapChain *swapChain : _internals->swapChains)
 		{
