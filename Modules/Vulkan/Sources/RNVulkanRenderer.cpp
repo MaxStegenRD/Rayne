@@ -2352,7 +2352,7 @@ namespace RN
 							VulkanDrawable *instanceDrawable = renderPass.drawables[i + instance];
 							VulkanUniformState *instanceUniformState = instanceDrawable->_cameraSpecifics[drawableResourceIndex].uniformState;
 							VulkanDynamicBufferReference *instanceAttributesBuffer = instanceUniformState->instanceAttributesBuffer;
-							UpdateDynamicBufferReference(instanceAttributesBuffer, instance == 0);
+							_dynamicBufferPool->UpdateDynamicBufferReference(instanceAttributesBuffer, instance == 0);
 							FillUniformBuffer(argument, instanceAttributesBuffer, instanceDrawable);
 						}
 					}
@@ -2369,7 +2369,7 @@ namespace RN
 						{
 							VulkanDrawable *instanceDrawable = renderPass.drawables[i + instance];
 							VulkanUniformState *instanceUniformState = instanceDrawable->_cameraSpecifics[drawableResourceIndex].uniformState;
-							UpdateDynamicBufferReference(instanceUniformState->vertexConstantBuffers[bufferIndex], instance == 0);
+							_dynamicBufferPool->UpdateDynamicBufferReference(instanceUniformState->vertexConstantBuffers[bufferIndex], instance == 0);
 							FillUniformBuffer(argument, instanceUniformState->vertexConstantBuffers[bufferIndex], instanceDrawable);
 						}
 
@@ -2405,7 +2405,7 @@ namespace RN
 						{
 							VulkanDrawable *instanceDrawable = renderPass.drawables[i + instance];
 							VulkanUniformState *instanceUniformState = instanceDrawable->_cameraSpecifics[drawableResourceIndex].uniformState;
-							UpdateDynamicBufferReference(
+							_dynamicBufferPool->UpdateDynamicBufferReference(
 									instanceUniformState->fragmentConstantBuffers[bufferIndex],
 									instance == 0);
 							FillUniformBuffer(argument, instanceUniformState->fragmentConstantBuffers[bufferIndex], instanceDrawable);
