@@ -516,7 +516,7 @@ namespace RN
 	void Light::DidUpdate(ChangeSet change)
 	{
 		SceneNode::DidUpdate(change);
-		if(change & ChangeSet::Position)
+		if(change & (ChangeSet::Position | ChangeSet::Parent))
 		{
 			UpdateCachedForward();
 			float range = GetScale().GetMax();
