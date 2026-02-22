@@ -48,6 +48,7 @@ namespace RN
 	void VulkanErrorBreak(VkResult result)
 	{
 		RNError("Encountered Vulkan error " <<  result << ", put a breakpoint in RN::VulkanErrorBreak() to catch");
+		RN_ASSERT(false, "Encountered Vulkan error");
 	}
 
 	bool SetupVulkanDebugging(VkInstance instance)
