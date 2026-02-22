@@ -267,8 +267,12 @@ namespace RN
 				}
 				if(status == VK_SUCCESS)
 				{
-					_completedFrame = _frameFenceValues[index];
-					ReleaseFrameResources(_frameFenceValues[index]);
+					const size_t completedFrameValue = _frameFenceValues[index];
+					if(_completedFrame == static_cast<size_t>(-1) || completedFrameValue > _completedFrame)
+					{
+						_completedFrame = completedFrameValue;
+					}
+					ReleaseFrameResources(completedFrameValue);
 					RNVulkanValidate(vk::ResetFences(GetVulkanDevice()->GetDevice(), 1, &fence));
 
 					_frameFenceValues[index] = -1;
@@ -291,12 +295,11 @@ namespace RN
 			VkFence frameFence;
 			RNVulkanValidate(vk::CreateFence(GetVulkanDevice()->GetDevice(), &fenceInfo, GetAllocatorCallback(), &frameFence));
 			_frameFences.push_back(frameFence);
-			_frameFenceValues.push_back(0);
+			_frameFenceValues.push_back(-1);
 
 			freeFenceIndex = _frameFences.size() - 1;
 		}
 
-		_frameFenceValues[freeFenceIndex] = _currentFrame;
 		_currentFrameFenceIndex = freeFenceIndex;
 	}
 
@@ -721,6 +724,7 @@ namespace RN
 
 		submitInfo.pWaitDstStageMask = presentSemaphoresWaitStages.data();
 
+		_frameFenceValues[_currentFrameFenceIndex] = _currentFrame;
 		RNVulkanValidate(vk::QueueSubmit(_workQueue, 1, &submitInfo, _frameFences[_currentFrameFenceIndex]));
 
 		for(VulkanSwapChain *swapChain : _internals->swapChains)
