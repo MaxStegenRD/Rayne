@@ -387,8 +387,10 @@ namespace RN
 					{
 						const float clusterDepthNear = zSliceNearDepth[z];
 						const float clusterDepthFar = zSliceFarDepth[z];
+						const uint32 zBase = z * tilesY * tilesX;
 						for(uint32 y = 0; y < tilesY; ++y)
 						{
+							const uint32 yBase = zBase + y * tilesX;
 							for(uint32 x = 0; x < tilesX; ++x)
 							{
 								const size_t corner00 = eyeRayBase + static_cast<size_t>(y) * static_cast<size_t>(cornerCols) + static_cast<size_t>(x);
@@ -425,7 +427,7 @@ namespace RN
 
 								const Vector3 center((clusterMinX + clusterMaxX) * 0.5f, (clusterMinYEye + clusterMaxYEye) * 0.5f, (clusterMinZEye + clusterMaxZEye) * 0.5f);
 								const Vector3 halfExtents((clusterMaxX - clusterMinX) * 0.5f, (clusterMaxYEye - clusterMinYEye) * 0.5f, (clusterMaxZEye - clusterMinZEye) * 0.5f);
-								const uint32 clusterIndex = EncodeClusterIndex(x, y, z);
+								const uint32 clusterIndex = yBase + x;
 								_cachedSpotClusterBoundsByEye[eyeClusterBase + static_cast<size_t>(clusterIndex)] = {center, halfExtents.GetLength()};
 							}
 						}
@@ -522,6 +524,8 @@ namespace RN
 		_clusterLightIndices.clear();
 
 		// Second pass: actually fill using separate write cursors
+		const uint32 sliceStride = tilesX * tilesY;
+		const uint32 rowStride = tilesX;
 		for(uint32 li = 0; li < _packedPointLights.size(); ++li)
 		{
 			const PointLightPacked &pl = _packedPointLights[li];
@@ -538,11 +542,12 @@ namespace RN
 
 			for(uint32 z = span.zMin; z <= span.zMax; ++z)
 			{
+				const uint32 zBase = z * sliceStride;
 				for(uint32 y = span.y0; y <= span.y1; ++y)
 				{
-					for(uint32 x = span.x0; x <= span.x1; ++x)
+					uint32 idx = zBase + y * rowStride + span.x0;
+					for(uint32 x = span.x0; x <= span.x1; ++x, ++idx)
 					{
-						uint32 idx = EncodeClusterIndex(x, y, z);
 						uint8_t &count = _clusterPointCountsScratch[idx];
 						if(count < _maxLightsPerCluster)
 						{
@@ -567,6 +572,7 @@ namespace RN
 			const SpotLightCullData &cullData = _spotLightCullData[li];
 			const Vector3 directionWS = cullData.forward;
 			const float spotTanHalfAngle = cullData.tanHalfAngle;
+			const float spotSideExpandFactor = std::sqrt(1.0f + spotTanHalfAngle * spotTanHalfAngle);
 			const Vector3 cullCenter = cullData.center;
 			const float cullRadius = cullData.radius;
 			const ClusterSpan span = computeClusterSpan(cullCenter, cullRadius, [&](size_t vi, float depthv, float &rNdcXv, float &rNdcYv) {
@@ -593,11 +599,12 @@ namespace RN
 
 			for(uint32 z = span.zMin; z <= span.zMax; ++z)
 			{
+				const uint32 zBase = z * sliceStride;
 				for(uint32 y = span.y0; y <= span.y1; ++y)
 				{
-					for(uint32 x = span.x0; x <= span.x1; ++x)
+					uint32 idx = zBase + y * rowStride + span.x0;
+					for(uint32 x = span.x0; x <= span.x1; ++x, ++idx)
 					{
-						const uint32 idx = EncodeClusterIndex(x, y, z);
 						bool passesAnyEye = false;
 						for(size_t vi = 0; vi < viewCount; ++vi)
 						{
@@ -617,7 +624,7 @@ namespace RN
 							const float radialSq = radialVector.GetSquaredLength();
 							if(!std::isfinite(radialSq)) { passesAnyEye = true; break; }
 
-							const float sideExpand = clusterRadius * std::sqrt(1.0f + spotTanHalfAngle * spotTanHalfAngle);
+							const float sideExpand = clusterRadius * spotSideExpandFactor;
 							if(axial > range)
 							{
 								// End-cap reject: outside cone base radius (expanded by cluster sphere support term).
@@ -662,7 +669,7 @@ namespace RN
 		}
 
 		// Flatten indices in cluster order
-		_clusterLightIndices.assign(totalCount, 0);
+		_clusterLightIndices.resize(totalCount);
 		for(uint32 i = 0, offset = 0; i < clusterCount; ++i)
 		{
 			const uint8_t pcount = _clusterPointCountsScratch[i];

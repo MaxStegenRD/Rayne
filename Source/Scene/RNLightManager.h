@@ -111,7 +111,6 @@ namespace RN
 
 		// Helpers
 		uint32 ComputeClusterCount() const { return _grid.clustersX * _grid.clustersY * _grid.clustersZ; }
-		uint32 EncodeClusterIndex(uint32 x, uint32 y, uint32 z) const { return (z * _grid.clustersY + y) * _grid.clustersX + x; }
 		float ComputeZSlice(const Camera *camera, float viewZ) const;
 
 		ClusterGridInfo _grid;
