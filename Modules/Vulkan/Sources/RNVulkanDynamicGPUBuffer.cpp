@@ -36,6 +36,12 @@ namespace RN
 			_buffers[i]->Release();
 	}
 
+	size_t VulkanDynamicGPUBuffer::AlignUpTo(size_t value, size_t alignment)
+	{
+		size_t remainder = value % alignment;
+		return (remainder == 0) ? value : (value + alignment - remainder);
+	}
+
 	void VulkanDynamicGPUBuffer::FlushRange(const Range &range)
 	{
 		_buffers[_hostBufferIndex]->FlushRange(range);
@@ -97,7 +103,7 @@ namespace RN
 	size_t VulkanDynamicGPUBuffer::Allocate(size_t size, bool align)
 	{
 		//Align offset when allocating the next buffer (if it is supposed to be aligned)
-		if(align) _offsetToFreeData += kRNDynamicBufferAlignement - (_offsetToFreeData % kRNDynamicBufferAlignement);
+		if(align) _offsetToFreeData = AlignUpTo(_offsetToFreeData, kRNDynamicBufferAlignement);
 
 		int availableSize = static_cast<int>(_totalSize) - static_cast<int>(_offsetToFreeData);
 		if(availableSize < static_cast<int>(size))
@@ -111,7 +117,7 @@ namespace RN
 
 	size_t VulkanDynamicGPUBuffer::Reserve(size_t size)
 	{
-		size_t alignedSize = size + kRNDynamicBufferAlignement - (size % kRNDynamicBufferAlignement);
+		size_t alignedSize = AlignUpTo(size, kRNDynamicBufferAlignement);
 
 		int availableSize = static_cast<int>(_totalSize) - static_cast<int>(_sizeReserved);
 		if(availableSize < static_cast<int>(alignedSize))
@@ -200,7 +206,7 @@ namespace RN
 			{
 				requiredSize[reference->usageOptions] = 0;
 			}
-			requiredSize[reference->usageOptions] += reference->size + kRNDynamicBufferAlignement - (reference->size % kRNDynamicBufferAlignement);
+			requiredSize[reference->usageOptions] += VulkanDynamicGPUBuffer::AlignUpTo(reference->size, kRNDynamicBufferAlignement);
 		});
 
 		if(requiredSize.size() == 0) return;

@@ -50,6 +50,8 @@ namespace RN
 		VKAPI void Unreserve(size_t size);
 
 	private:
+		static size_t AlignUpTo(size_t value, size_t alignment);
+
 		std::vector<VulkanStaticGPUBuffer*> _buffers;
 		std::vector<size_t> _bufferFrames;
 		size_t _bufferIndex;
