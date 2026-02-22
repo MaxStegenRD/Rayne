@@ -114,6 +114,23 @@ namespace RN
 		vmaDestroyAllocator(_internals->memoryAllocator);
 	}
 
+	void VulkanRenderer::ResetDrawBindStateCache()
+	{
+		_internals->drawBindStateCache.pipeline = VK_NULL_HANDLE;
+		_internals->drawBindStateCache.pipelineLayout = VK_NULL_HANDLE;
+		_internals->drawBindStateCache.descriptorSet = VK_NULL_HANDLE;
+		_internals->drawBindStateCache.vertexBufferCount = 0;
+		for(uint8 i = 0; i < 3; i++)
+		{
+			_internals->drawBindStateCache.vertexBuffers[i] = VK_NULL_HANDLE;
+			_internals->drawBindStateCache.vertexOffsets[i] = 0;
+		}
+		_internals->drawBindStateCache.hasIndexBufferBinding = false;
+		_internals->drawBindStateCache.indexBuffer = VK_NULL_HANDLE;
+		_internals->drawBindStateCache.indexOffset = 0;
+		_internals->drawBindStateCache.indexType = VK_INDEX_TYPE_UINT16;
+	}
+
 	VkRenderPass VulkanRenderer::GetVulkanRenderPass(const VulkanRenderPass *renderPass)
 	{
 		return _internals->stateCoordinator.GetRenderPassState(renderPass)->renderPass;
@@ -396,6 +413,7 @@ namespace RN
 		_currentCommandBuffer = GetCommandBuffer();
 		_currentCommandBuffer->Retain();
 		_currentCommandBuffer->Begin();
+		ResetDrawBindStateCache();
 
 		if(_internals->swapChains.size() > 0)
 		{
@@ -729,6 +747,7 @@ namespace RN
 			RN_PROFILE_VULKAN_SCOPE_CMD_N(_internals->tracyVulkanCtx, commandBuffer, "SetAsRendertarget");
 			renderpass.framebuffer->SetAsRendertarget(commandBuffer, renderpass.resolveFramebuffer, renderpass.renderPass->GetClearColor(), renderpass.renderPass->GetClearDepth(), renderpass.renderPass->GetClearStencil());
 		}
+		ResetDrawBindStateCache();
 
 		//Setup viewport and scissor rect
 		Rect cameraRect = renderpass.cameraViewport;
@@ -2689,8 +2708,17 @@ namespace RN
 		const VulkanRootSignature *rootSignature = pipelineState->rootSignature;
 
 		VkDescriptorSet descriptorSet = cameraSpecific.descriptorSet->GetActiveDescriptorSet();
-		vk::CmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rootSignature->pipelineLayout, 0, 1, &descriptorSet, 0, NULL);
-		vk::CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineState->state);
+		if(_internals->drawBindStateCache.pipelineLayout != rootSignature->pipelineLayout || _internals->drawBindStateCache.descriptorSet != descriptorSet)
+		{
+			vk::CmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rootSignature->pipelineLayout, 0, 1, &descriptorSet, 0, NULL);
+			_internals->drawBindStateCache.pipelineLayout = rootSignature->pipelineLayout;
+			_internals->drawBindStateCache.descriptorSet = descriptorSet;
+		}
+		if(_internals->drawBindStateCache.pipeline != pipelineState->state)
+		{
+			vk::CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineState->state);
+			_internals->drawBindStateCache.pipeline = pipelineState->state;
+		}
 
 		VulkanGPUBuffer *buffer = static_cast<VulkanGPUBuffer *>(drawable->mesh->GetGPUVertexBuffer());
 		VulkanGPUBuffer *indices = static_cast<VulkanGPUBuffer *>(drawable->mesh->GetGPUIndicesBuffer());
@@ -2715,12 +2743,34 @@ namespace RN
 			vertexBuffers[attributesBufferIndex++] = instanceAttributesBuffer->GetVulkanBuffer();
 		}
 
-		// Bind mesh vertex buffer
-		vk::CmdBindVertexBuffers(commandBuffer, 0, attributesBufferIndex, vertexBuffers, offsets);
+		bool needsVertexBufferBind = _internals->drawBindStateCache.vertexBufferCount != attributesBufferIndex;
+		for(int i = 0; i < attributesBufferIndex && !needsVertexBufferBind; i++)
+		{
+			needsVertexBufferBind = (_internals->drawBindStateCache.vertexBuffers[i] != vertexBuffers[i] || _internals->drawBindStateCache.vertexOffsets[i] != offsets[i]);
+		}
+		if(needsVertexBufferBind)
+		{
+			vk::CmdBindVertexBuffers(commandBuffer, 0, attributesBufferIndex, vertexBuffers, offsets);
+			_internals->drawBindStateCache.vertexBufferCount = attributesBufferIndex;
+			for(int i = 0; i < attributesBufferIndex; i++)
+			{
+				_internals->drawBindStateCache.vertexBuffers[i] = vertexBuffers[i];
+				_internals->drawBindStateCache.vertexOffsets[i] = offsets[i];
+			}
+		}
 		if(drawable->mesh->GetIndicesCount() > 0)
 		{
-			// Bind mesh index buffer
-			vk::CmdBindIndexBuffer(commandBuffer, indices->GetVulkanBuffer(), 0, drawable->mesh->GetAttribute(Mesh::VertexAttribute::Feature::Indices)->GetType() == PrimitiveType::Uint16? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
+			VkBuffer indexBuffer = indices->GetVulkanBuffer();
+			VkIndexType indexType = drawable->mesh->GetAttribute(Mesh::VertexAttribute::Feature::Indices)->GetType() == PrimitiveType::Uint16? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
+			if(!_internals->drawBindStateCache.hasIndexBufferBinding || _internals->drawBindStateCache.indexBuffer != indexBuffer || _internals->drawBindStateCache.indexOffset != 0 || _internals->drawBindStateCache.indexType != indexType)
+			{
+				// Bind mesh index buffer
+				vk::CmdBindIndexBuffer(commandBuffer, indexBuffer, 0, indexType);
+				_internals->drawBindStateCache.hasIndexBufferBinding = true;
+				_internals->drawBindStateCache.indexBuffer = indexBuffer;
+				_internals->drawBindStateCache.indexOffset = 0;
+				_internals->drawBindStateCache.indexType = indexType;
+			}
 			// Render mesh vertex buffer using it's indices
 			vk::CmdDrawIndexed(commandBuffer, drawable->mesh->GetIndicesCount(), instanceCount, 0, 0, 0);
 		}

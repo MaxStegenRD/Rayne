@@ -298,6 +298,37 @@ namespace RN
 		RNDeclareMetaAPI(VulkanCommandBuffer, VKAPI)
 	};
 
+	struct VulkanDrawBindStateCache
+	{
+		VkPipeline pipeline;
+		VkPipelineLayout pipelineLayout;
+		VkDescriptorSet descriptorSet;
+		uint8 vertexBufferCount;
+		VkBuffer vertexBuffers[3];
+		VkDeviceSize vertexOffsets[3];
+		bool hasIndexBufferBinding;
+		VkBuffer indexBuffer;
+		VkDeviceSize indexOffset;
+		VkIndexType indexType;
+
+		VulkanDrawBindStateCache() :
+			pipeline(VK_NULL_HANDLE),
+			pipelineLayout(VK_NULL_HANDLE),
+			descriptorSet(VK_NULL_HANDLE),
+			vertexBufferCount(0),
+			hasIndexBufferBinding(false),
+			indexBuffer(VK_NULL_HANDLE),
+			indexOffset(0),
+			indexType(VK_INDEX_TYPE_UINT16)
+		{
+			for(uint8 i = 0; i < 3; i++)
+			{
+				vertexBuffers[i] = VK_NULL_HANDLE;
+				vertexOffsets[i] = 0;
+			}
+		}
+	};
+
 	struct VulkanRendererInternals
 	{
 		std::vector<VulkanRenderPass> renderPasses;
@@ -311,6 +342,7 @@ namespace RN
 		size_t totalDrawableCount;
 
 		size_t totalDescriptorTables;
+		VulkanDrawBindStateCache drawBindStateCache;
 
 		uint32 currentSubpassIndex; //TODO: Remove this
 
