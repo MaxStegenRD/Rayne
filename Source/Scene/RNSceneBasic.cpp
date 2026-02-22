@@ -227,14 +227,16 @@ namespace RN
 						RN_PROFILE_SCOPE_N("Find 30 biggest occluders");
 
 						//Sort occluders by approximated size on the screen
-						int clampedCount = std::min(static_cast<int>(occluders.size()), 30);
-						std::nth_element(occluders.begin(), occluders.begin() + clampedCount, occluders.end(), [](SceneNode *a, SceneNode *b) {
-							SceneBasicInfo *sceneInfoA = static_cast<SceneBasicInfo *>(a->GetSceneInfo());
-							SceneBasicInfo *sceneInfoB = static_cast<SceneBasicInfo *>(b->GetSceneInfo());
-							return sceneInfoA->occluderSize > sceneInfoB->occluderSize;
-						});
+						if(occluders.size() > 30)
+						{
+							std::nth_element(occluders.begin(), occluders.begin() + 30, occluders.end(), [](SceneNode *a, SceneNode *b) {
+								SceneBasicInfo *sceneInfoA = static_cast<SceneBasicInfo *>(a->GetSceneInfo());
+								SceneBasicInfo *sceneInfoB = static_cast<SceneBasicInfo *>(b->GetSceneInfo());
+								return sceneInfoA->occluderSize > sceneInfoB->occluderSize;
+							});
 
-						occluders.resize(std::min(static_cast<size_t>(30), occluders.size())); //Only keep the biggest 30 occluders in the list
+							occluders.resize(30); //Only keep the biggest 30 occluders in the list
+						}
 
 						//Sort remaining occluders front to back
 						std::sort(occluders.begin(), occluders.end(), [](SceneNode *a, SceneNode *b) {
