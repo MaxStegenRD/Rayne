@@ -39,6 +39,8 @@ namespace RN
 			material = nullptr;
 			skeleton = nullptr;
 			renderGroup = 0xffff;
+			_transformNode = nullptr;
+			_transformVersion = 0;
 		}
 		virtual ~Drawable()
 		{}
@@ -70,12 +72,21 @@ namespace RN
 			{
 				modelMatrix = Matrix();
 				inverseModelMatrix = Matrix();
+				_transformNode = nullptr;
+				_transformVersion = 0;
 			}
 			else
 			{
-				modelMatrix = node->GetWorldTransform();
-				inverseModelMatrix = node->GetInverseWorldTransform();
 				renderGroup = node->GetRenderGroup();
+
+				uint64 transformVersion = node->GetTransformVersion();
+				if(_transformNode != node || _transformVersion != transformVersion)
+				{
+					modelMatrix = node->GetWorldTransform();
+					inverseModelMatrix = node->GetInverseWorldTransform();
+					_transformNode = node;
+					_transformVersion = transformVersion;
+				}
 			}
 		}
 		virtual void MakeDirty() {}
@@ -87,6 +98,8 @@ namespace RN
 		Matrix modelMatrix;
 		Matrix inverseModelMatrix;
 		uint16 renderGroup;
+		const SceneNode *_transformNode;
+		uint64 _transformVersion;
 	};
 
 	class RendererDescriptor;

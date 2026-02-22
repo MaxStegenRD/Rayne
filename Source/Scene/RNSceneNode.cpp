@@ -157,7 +157,8 @@ namespace RN
 		_children = new Array();
 		_parent = nullptr;
 		_sceneInfo = nullptr;
-		_updated = true;
+		_updated = 1;
+		_lastUpdatedVersion = 0;
 		_updatedTransform = true;
 		_updatedInverseTransform = true;
 		_updatedBounds = true;
@@ -474,7 +475,7 @@ namespace RN
 	{
 		if(changeSet & ChangeSet::Position)
 		{
-			_updated = true;
+			_updated += 1;
 			_updatedTransform = true;
 			_updatedInverseTransform = true;
 			_updatedBounds = true;
@@ -487,6 +488,7 @@ namespace RN
 
 		if(changeSet & ChangeSet::Parent)
 		{
+			_updated += 1;
 			if(_parent == nullptr)
 			{
 				SetWorldPosition(_position);
@@ -494,7 +496,6 @@ namespace RN
 				SetWorldScale(_scale);
 			}
 
-			_updated = true;
 			_updatedTransform = true;
 			_updatedInverseTransform = true;
 			_updatedBounds = true;
@@ -518,7 +519,7 @@ namespace RN
 
 	void SceneNode::UpdateInternalData() const
 	{
-		if(_updated)
+		if(_lastUpdatedVersion != _updated)
 		{
 			if(_parent)
 			{
@@ -537,7 +538,7 @@ namespace RN
 				_worldEuler = _euler;
 			}
 
-			_updated = false;
+			_lastUpdatedVersion = _updated;
 		}
 	}
 

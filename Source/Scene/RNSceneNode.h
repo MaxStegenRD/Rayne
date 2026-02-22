@@ -132,6 +132,7 @@ namespace RN
 		Vector3 GetWorldScale() const;
 		Vector3 GetWorldEulerAngle() const;
 		Quaternion GetWorldRotation() const;
+		uint64 GetTransformVersion() const { return _updated; }
 
 		AABB GetBoundingBox() const;
 		Sphere GetBoundingSphere() const;
@@ -231,7 +232,8 @@ namespace RN
 
 		Array *_attachments;
 
-		mutable bool _updated;
+		mutable uint64 _updated;
+		mutable uint64 _lastUpdatedVersion;
 		mutable Vector3 _worldPosition;
 		mutable Quaternion _worldRotation;
 		mutable Vector3 _worldScale;
