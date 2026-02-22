@@ -990,7 +990,9 @@ namespace RN
 		}
 
 		// Run once to submit all scene nodes; SubmitDrawable will route to all matching passes
+		_lock.Lock();
 		function();
+		_lock.Unlock();
 
 		_internals->currentDrawableResourceIndex = newDrawableResourceIndex;
 	}
@@ -1960,11 +1962,9 @@ namespace RN
 
 	void VulkanRenderer::SubmitLight(const Light *light)
 	{
-		_lock.Lock();
 		// Distribute the light to all passes belonging to the current camera range
 		size_t startIndex = _internals->currentRenderPassIndex;
 		size_t originalIndex = _internals->currentRenderPassIndex;
-		_lock.Unlock();
 
 		for(size_t pi = startIndex; pi < _internals->renderPasses.size(); pi++)
 		{
@@ -2014,9 +2014,7 @@ namespace RN
 			}
 		}
 
-		_lock.Lock();
 		_internals->currentRenderPassIndex = originalIndex;
-		_lock.Unlock();
 	}
 
 	void VulkanRenderer::WarmupDrawable(Mesh *mesh, Material *material, Camera *camera)
@@ -2071,7 +2069,6 @@ namespace RN
 	{
 		VulkanDrawable *drawable = static_cast<VulkanDrawable *>(tdrawable);
 
-		_lock.Lock();
 		size_t drawableResourceIndex = _internals->currentDrawableResourceIndex;
 
 		auto submitDrawable = [&](VulkanRenderPass &renderPass, VulkanRenderPass &renderSubPass, uint32 subpassIndex){
@@ -2195,7 +2192,6 @@ namespace RN
 			}
 		}
 		_internals->currentDrawableResourceIndex = drawableResourceIndex;
-		_lock.Unlock();
 	}
 
 	void VulkanRenderer::UpdateDescriptorSets()
