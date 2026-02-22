@@ -19,17 +19,18 @@
 
 namespace RN
 {
-	//While this pool uses a VkDescriptorPool, it only uses it to create more descriptors, but will try to reuse previously created ones instead if it has any
+	//Descriptor sets are allocated from per-frame Vulkan descriptor pools and reclaimed via pool reset on frame completion.
 	class VulkanDescriptorPool
 	{
 		public:
-			VulkanDescriptorPool() : _initialized(false)
+			VulkanDescriptorPool() : _initialized(false), _renderer(nullptr), _activeFramePoolIndex(0)
 			{
 				
 			}
 
 			void Init(VulkanRenderer *renderer)
 			{
+				_renderer = renderer;
 				//Create descriptor pool
 				VkDescriptorPoolSize uniformBufferPoolSize = {};
 				uniformBufferPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -46,17 +47,10 @@ namespace RN
 				VkDescriptorPoolSize samplerBufferPoolSize = {};
 				samplerBufferPoolSize.type = VK_DESCRIPTOR_TYPE_SAMPLER;
 				samplerBufferPoolSize.descriptorCount = 10000;
-				std::vector<VkDescriptorPoolSize> poolSizes = { uniformBufferPoolSize, storageBufferPoolSize, samplerBufferPoolSize, textureBufferPoolSize, inputAttachmentPoolSize };
-
-				VkDescriptorPoolCreateInfo descriptorPoolInfo = {};
-				descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-				descriptorPoolInfo.pNext = NULL;
-				descriptorPoolInfo.poolSizeCount = poolSizes.size();
-				descriptorPoolInfo.pPoolSizes = poolSizes.data();
-				descriptorPoolInfo.maxSets = 100000;
-				descriptorPoolInfo.flags = 0;
-
-				RNVulkanValidate(vk::CreateDescriptorPool(renderer->GetVulkanDevice()->GetDevice(), &descriptorPoolInfo, renderer->GetAllocatorCallback(), &_descriptorPool));
+				_poolSizes = { uniformBufferPoolSize, storageBufferPoolSize, samplerBufferPoolSize, textureBufferPoolSize, inputAttachmentPoolSize };
+				_maxSets = 50000;
+				_framePools.clear();
+				EnsureFramePool(_renderer, 0);
 				_initialized = true;
 			}
 
@@ -64,30 +58,38 @@ namespace RN
 			{
 				if(!_initialized) return;
 
-				VulkanRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<VulkanRenderer>();
-				vk::DestroyDescriptorPool(renderer->GetVulkanDevice()->GetDevice(), _descriptorPool, renderer->GetAllocatorCallback());
+				RN_ASSERT(_renderer, "VulkanDescriptorPool::Init must be called before use!");
+				for(VkDescriptorPool descriptorPool : _framePools)
+				{
+					if(descriptorPool == VK_NULL_HANDLE) continue;
+					vk::DestroyDescriptorPool(_renderer->GetVulkanDevice()->GetDevice(), descriptorPool, _renderer->GetAllocatorCallback());
+				}
 			}
 
-			VkDescriptorSet Allocate(VkDescriptorSetLayout layout)
+			void SetActiveFramePool(VulkanRenderer *renderer, size_t framePoolIndex)
 			{
-				if(_freeDescriptorSets.count(layout))
-				{
-					if(_freeDescriptorSets[layout].size() > 0)
-					{
-						VkDescriptorSet descriptorSet = _freeDescriptorSets[layout].back();
-						_freeDescriptorSets[layout].pop_back();
-						if(_freeDescriptorSets[layout].size() == 0) _freeDescriptorSets.erase(layout);
+				EnsureFramePool(renderer, framePoolIndex);
+				_activeFramePoolIndex = framePoolIndex;
+			}
 
-						return descriptorSet;
-					}
-				}
+			void ResetFramePool(VulkanRenderer *renderer, size_t framePoolIndex)
+			{
+				RN_ASSERT(renderer, "VulkanDescriptorPool::ResetFramePool requires a valid renderer!");
+				if(framePoolIndex >= _framePools.size()) return;
+				if(_framePools[framePoolIndex] == VK_NULL_HANDLE) return;
 
-				VulkanRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<VulkanRenderer>();
+				RNVulkanValidate(vk::ResetDescriptorPool(renderer->GetVulkanDevice()->GetDevice(), _framePools[framePoolIndex], 0));
+			}
+
+			VkDescriptorSet Allocate(VulkanRenderer *renderer, VkDescriptorSetLayout layout)
+			{
+				RN_ASSERT(renderer, "VulkanDescriptorPool::Allocate requires a valid renderer!");
+				RN_ASSERT(_activeFramePoolIndex < _framePools.size() && _framePools[_activeFramePoolIndex] != VK_NULL_HANDLE, "VulkanDescriptorPool::Allocate called without an active frame pool!");
 
 				VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
 				descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 				descriptorSetAllocateInfo.pNext = NULL;
-				descriptorSetAllocateInfo.descriptorPool = _descriptorPool;
+				descriptorSetAllocateInfo.descriptorPool = _framePools[_activeFramePoolIndex];
 				descriptorSetAllocateInfo.pSetLayouts = &layout;
 				descriptorSetAllocateInfo.descriptorSetCount = 1;
 
@@ -96,20 +98,33 @@ namespace RN
 				return descriptorSet;
 			}
 
-			void Free(VkDescriptorSetLayout layout, VkDescriptorSet descriptorSet)
+		private:
+			void EnsureFramePool(VulkanRenderer *renderer, size_t framePoolIndex)
 			{
-				if(_freeDescriptorSets.count(layout) == 0)
+				RN_ASSERT(renderer, "VulkanDescriptorPool::EnsureFramePool requires a valid renderer!");
+				if(_framePools.size() <= framePoolIndex)
 				{
-					_freeDescriptorSets[layout] = std::vector<VkDescriptorSet>();
+					_framePools.resize(framePoolIndex + 1, VK_NULL_HANDLE);
 				}
-				
-				_freeDescriptorSets[layout].push_back(descriptorSet);
+
+				if(_framePools[framePoolIndex] != VK_NULL_HANDLE) return;
+
+				VkDescriptorPoolCreateInfo descriptorPoolInfo = {};
+				descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+				descriptorPoolInfo.pNext = NULL;
+				descriptorPoolInfo.poolSizeCount = _poolSizes.size();
+				descriptorPoolInfo.pPoolSizes = _poolSizes.data();
+				descriptorPoolInfo.maxSets = _maxSets;
+				descriptorPoolInfo.flags = 0;
+				RNVulkanValidate(vk::CreateDescriptorPool(renderer->GetVulkanDevice()->GetDevice(), &descriptorPoolInfo, renderer->GetAllocatorCallback(), &_framePools[framePoolIndex]));
 			}
 
-		private:
 			bool _initialized;
-			VkDescriptorPool _descriptorPool;
-			std::map<VkDescriptorSetLayout, std::vector<VkDescriptorSet>> _freeDescriptorSets;
+			VulkanRenderer *_renderer;
+			std::vector<VkDescriptorPoolSize> _poolSizes;
+			uint32 _maxSets;
+			std::vector<VkDescriptorPool> _framePools;
+			size_t _activeFramePoolIndex;
 	};
 
 	struct VulkanDrawable : public Drawable
@@ -119,8 +134,8 @@ namespace RN
 			const VulkanPipelineState *pipelineState; //No need for cleanup here as it's shared, but maybe add reference counting to clear later.
 			VulkanUniformState *uniformState;
 			bool dirty;
-			VulkanBufferedDescriptorSet *descriptorSet;
-            Camera *camera;
+			VulkanTransientDescriptorSet *descriptorSet;
+			Camera *camera;
 		};
 
 		~VulkanDrawable()
@@ -150,7 +165,7 @@ namespace RN
 		void UpdateRenderingState(size_t cameraID, Camera *camera, const VulkanPipelineState *pipelineState, VulkanUniformState *uniformState)
 		{
 			_cameraSpecifics[cameraID].pipelineState = pipelineState;
-            _cameraSpecifics[cameraID].camera = camera;
+			_cameraSpecifics[cameraID].camera = camera;
 			if(_cameraSpecifics[cameraID].uniformState)
 			{
 				VulkanUniformState *oldUniformState = _cameraSpecifics[cameraID].uniformState;
@@ -188,7 +203,7 @@ namespace RN
 		Vector4 color;
 	};
 
-    struct VulkanPointLight
+	struct VulkanPointLight
 	{
 		Vector3 position;
 		float range;
@@ -355,91 +370,36 @@ namespace RN
 		VkCommandBuffer tracyVulkanCommandBuffer;
 	};
 
-	class VulkanBufferedDescriptorSet
+	class VulkanTransientDescriptorSet
 	{
 		public:
-			VulkanBufferedDescriptorSet() : _layout(VK_NULL_HANDLE), _currentIndex(0), _resetFrame(0)
+			VulkanTransientDescriptorSet() : _layout(VK_NULL_HANDLE), _activeDescriptorSet(VK_NULL_HANDLE)
 			{
 
 			}
 
-			~VulkanBufferedDescriptorSet()
+			~VulkanTransientDescriptorSet()
 			{
-				VulkanRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<VulkanRenderer>();
-				for(int i = 0; i < _descriptorSets.size(); i++)
-				{
-					renderer->_internals->descriptorPool.Free(_descriptorSetLayouts[i], _descriptorSets[i]);
-				}
 			}
 
-			void UpdateLayout(VkDescriptorSetLayout layout, size_t currentFrame)
+			void SetLayout(VkDescriptorSetLayout layout)
 			{
 				_layout = layout;
-				_resetFrame = currentFrame;
 			}
 
-			void Advance(size_t currentFrame, size_t completedFrame)
+			void Allocate(VulkanRenderer *renderer)
 			{
-				if(_descriptorSets.size() == 0)
-				{
-					VulkanRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<VulkanRenderer>();
-					VkDescriptorSet descriptorSet = renderer->_internals->descriptorPool.Allocate(_layout);
-
-					_descriptorSets.push_back(descriptorSet);
-					_descriptorSetLayouts.push_back(_layout);
-					_usedFrames.push_back(currentFrame);
-
-					return;
-				}
-
-				_currentIndex = (_currentIndex + 1) % _descriptorSets.size();
-
-				if(_usedFrames[_currentIndex] <= completedFrame && _usedFrames[_currentIndex] <= _resetFrame && completedFrame != -1)
-				{
-					VulkanRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<VulkanRenderer>();
-					renderer->_internals->descriptorPool.Free(_descriptorSetLayouts[_currentIndex], _descriptorSets[_currentIndex]);
-					_descriptorSets[_currentIndex] = renderer->_internals->descriptorPool.Allocate(_layout);
-					_descriptorSetLayouts[_currentIndex] = _layout;
-				}
-
-				if(_usedFrames[_currentIndex] > completedFrame || completedFrame == -1)
-				{
-					VulkanRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<VulkanRenderer>();
-					VkDescriptorSet descriptorSet = renderer->_internals->descriptorPool.Allocate(_layout);
-
-					_currentIndex += 1;
-					if(_currentIndex >= _descriptorSets.size())
-					{
-						_descriptorSets.push_back(descriptorSet);
-						_descriptorSetLayouts.push_back(_layout);
-						_usedFrames.push_back(currentFrame);
-					}
-					else
-					{
-						_descriptorSets.insert(_descriptorSets.begin() + _currentIndex, descriptorSet);
-						_descriptorSetLayouts.insert(_descriptorSetLayouts.begin() + _currentIndex, _layout);
-						_usedFrames.insert(_usedFrames.begin() + _currentIndex, currentFrame);
-					}
-				}
-				else
-				{
-					_usedFrames[_currentIndex] = currentFrame;
-				}
+				_activeDescriptorSet = renderer->_internals->descriptorPool.Allocate(renderer, _layout);
 			}
 
 			VkDescriptorSet GetActiveDescriptorSet()
 			{
-				return _descriptorSets[_currentIndex];
+				return _activeDescriptorSet;
 			}
 
 		private:
 			VkDescriptorSetLayout _layout;
-
-			size_t _currentIndex;
-			size_t _resetFrame;
-			std::vector<VkDescriptorSet> _descriptorSets;
-			std::vector<VkDescriptorSetLayout> _descriptorSetLayouts;
-			std::vector<size_t> _usedFrames;
+			VkDescriptorSet _activeDescriptorSet;
 	};
 
 	//Based on https://zeux.io/2019/07/17/serializing-pipeline-cache/

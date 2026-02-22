@@ -273,6 +273,7 @@ namespace RN
 						_completedFrame = completedFrameValue;
 					}
 					ReleaseFrameResources(completedFrameValue);
+					_internals->descriptorPool.ResetFramePool(this, index);
 					RNVulkanValidate(vk::ResetFences(GetVulkanDevice()->GetDevice(), 1, &fence));
 
 					_frameFenceValues[index] = -1;
@@ -301,6 +302,7 @@ namespace RN
 		}
 
 		_currentFrameFenceIndex = freeFenceIndex;
+		_internals->descriptorPool.SetActiveFramePool(this, _currentFrameFenceIndex);
 	}
 
 	void VulkanRenderer::ReleaseFrameResources(uint32 frame)
@@ -2107,12 +2109,10 @@ namespace RN
 				RN_ASSERT(pipelineState && uniformState, "Failed to create pipeline or uniform state for drawable!");
 				drawable->UpdateRenderingState(_internals->currentDrawableResourceIndex, renderPass.cameraInfo.camera, pipelineState, uniformState);
 
-				if(!cameraSpecifics.descriptorSet)
+				if(cameraSpecifics.descriptorSet)
 				{
-					cameraSpecifics.descriptorSet = new VulkanBufferedDescriptorSet();
+					cameraSpecifics.descriptorSet->SetLayout(pipelineState->rootSignature->descriptorSetLayout);
 				}
-
-				cameraSpecifics.descriptorSet->UpdateLayout(pipelineState->rootSignature->descriptorSetLayout, _currentFrame);
 			}
 
 			//Vertex and fragment shaders need to explicitly be marked to support instancing in the shader library json
@@ -2166,7 +2166,12 @@ namespace RN
 				_frameStatistics.back().numberOfDrawCalls += 1;
 
 				//This stuff should only be needed per draw call and not for any additional instances... hopefully
-				cameraSpecifics.descriptorSet->Advance(_currentFrame, _completedFrame);
+				if(!cameraSpecifics.descriptorSet)
+				{
+					cameraSpecifics.descriptorSet = new VulkanTransientDescriptorSet();
+					cameraSpecifics.descriptorSet->SetLayout(cameraSpecifics.pipelineState->rootSignature->descriptorSetLayout);
+				}
+				cameraSpecifics.descriptorSet->Allocate(this);
 				_internals->totalDescriptorTables += cameraSpecifics.pipelineState->rootSignature->textureCount;
 				_internals->totalDescriptorTables += cameraSpecifics.pipelineState->rootSignature->constantBufferCount;
 			}

@@ -28,7 +28,7 @@ namespace RN
 	class VulkanDynamicBufferReference;
 	class VulkanStaticGPUBuffer;
 	class VulkanDynamicGPUBuffer;
-	class VulkanBufferedDescriptorSet;
+	class VulkanTransientDescriptorSet;
 
 	class VulkanRenderer : public Renderer
 	{
@@ -38,7 +38,7 @@ namespace RN
 		friend VulkanStaticGPUBuffer;
 		friend VulkanDynamicGPUBuffer;
 		friend VulkanTexture;
-		friend VulkanBufferedDescriptorSet;
+		friend VulkanTransientDescriptorSet;
 
 		VKAPI VulkanRenderer(VulkanRendererDescriptor *descriptor, VulkanDevice *device);
 		VKAPI ~VulkanRenderer();
