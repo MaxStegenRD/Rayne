@@ -231,6 +231,7 @@ namespace RN
 		std::vector<Matrix> views;
 		std::vector<Matrix> projs;
 		std::vector<Matrix> viewProjs;
+		std::vector<Vector3> viewPositions;
 		if(mv && mv->GetCount() > 0)
 		{
 			for(size_t i = 0; i < mv->GetCount(); ++i)
@@ -242,6 +243,7 @@ namespace RN
 				views.push_back(v);
 				projs.push_back(p);
 				viewProjs.push_back(p * v);
+				viewPositions.push_back(eye->GetWorldPosition());
 			}
 		}
 		else
@@ -249,6 +251,7 @@ namespace RN
 			views.push_back(parentView);
 			projs.push_back(parentProj);
 			viewProjs.push_back(parentProj * parentView);
+			viewPositions.push_back(camera->GetWorldPosition());
 		}
 		const size_t viewCount = views.size();
 		std::vector<float> projAbsX(viewCount);
@@ -512,6 +515,42 @@ namespace RN
 			if(span.y1 < span.y0) std::swap(span.y0, span.y1);
 			return span;
 		};
+		auto computePointClusterSpan = [&](const Vector3 &position, float range) -> ClusterSpan {
+			const float lightRadiusSq = range * range;
+			bool cameraInsideLight = false;
+			float maxInfluenceDepth = 0.0f;
+			for(const Vector3 &viewPosition : viewPositions)
+			{
+				const float distanceToCamera = position.GetDistance(viewPosition);
+				maxInfluenceDepth = std::max(maxInfluenceDepth, distanceToCamera + range);
+				if(position.GetSquaredDistance(viewPosition) <= lightRadiusSq)
+				{
+					cameraInsideLight = true;
+				}
+			}
+
+			if(cameraInsideLight)
+			{
+				// The tangent-silhouette formula below assumes the eye is outside the sphere.
+				// If any eye is inside, the sphere subtends all screen directions.
+				ClusterSpan span {};
+				span.x0 = 0;
+				span.y0 = 0;
+				span.x1 = tilesX - 1;
+				span.y1 = tilesY - 1;
+				span.zMin = 0;
+				const float clampedDepth = std::clamp(maxInfluenceDepth, zNear, zFar);
+				span.zMax = uint32(ComputeZSlice(camera, clampedDepth));
+				return span;
+			}
+
+			return computeClusterSpan(position, range, [&](size_t vi, float depthv, float &rNdcXv, float &rNdcYv) {
+				const float denom = std::max(depthv * depthv - range * range, 1e-6f);
+				const float rSil = range / std::sqrt(denom);
+				rNdcXv = projAbsX[vi] * rSil;
+				rNdcYv = projAbsY[vi] * rSil;
+			});
+		};
 
 		// Reuse scratch buffers to avoid per-frame per-cluster allocations.
 		const size_t perClusterCapacity = static_cast<size_t>(_maxLightsPerCluster);
@@ -533,12 +572,7 @@ namespace RN
 
 			const Vector3 position(pl.positionRange.x, pl.positionRange.y, pl.positionRange.z);
 			const float range = pl.positionRange.w;
-			const ClusterSpan span = computeClusterSpan(position, range, [&](size_t vi, float depthv, float &rNdcXv, float &rNdcYv) {
-				const float denom = std::max(depthv * depthv - range * range, 1e-6f);
-				const float rSil = range / std::sqrt(denom);
-				rNdcXv = projAbsX[vi] * rSil;
-				rNdcYv = projAbsY[vi] * rSil;
-			});
+			const ClusterSpan span = computePointClusterSpan(position, range);
 
 			for(uint32 z = span.zMin; z <= span.zMax; ++z)
 			{
