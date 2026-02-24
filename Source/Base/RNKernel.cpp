@@ -258,6 +258,8 @@ namespace RN
 
 		_logger->Flush();
 		delete _logger;
+		delete _application;
+		_application = nullptr;
 
 		__ExtensionPointBase::TeardownExtensionPoints();
 
