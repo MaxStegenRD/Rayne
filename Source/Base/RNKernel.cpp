@@ -235,6 +235,8 @@ namespace RN
 	{
 		RN_UNUSED ScopeAllocator rootAllocator(BumpAllocator::GetThreadAllocator());
 		_application->WillExit();
+		delete _application;
+		_application = nullptr;
 
 		Screen::TeardownScreens();
 		WorkQueue::TearDownQueues();
@@ -258,8 +260,6 @@ namespace RN
 
 		_logger->Flush();
 		delete _logger;
-		delete _application;
-		_application = nullptr;
 
 		__ExtensionPointBase::TeardownExtensionPoints();
 
