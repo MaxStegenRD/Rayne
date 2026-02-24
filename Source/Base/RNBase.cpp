@@ -353,7 +353,11 @@ namespace RN
 
 		__TearDownKernel(result);
 
+#if RN_PLATFORM_ANDROID
+		return;
+#else
 		std::exit(EXIT_SUCCESS);
+#endif
 	}
 
 	void __Assert(const char *func, const char *file, int line, const char *expression, const char *message, ...)

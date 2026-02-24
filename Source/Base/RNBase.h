@@ -156,7 +156,7 @@ namespace RN
 	class Kernel;
 	class Application;
 
-	RN_NORETURN RNAPI void Initialize(int argc, const char *argv[], Application *app, void *object = nullptr);
+	RNAPI void Initialize(int argc, const char *argv[], Application *app, void *object = nullptr);
 	RN_NORETURN RNAPI void __Assert(const char *func, const char *file, int line, const char *expression, const char *message, ...);
 
 	/**
