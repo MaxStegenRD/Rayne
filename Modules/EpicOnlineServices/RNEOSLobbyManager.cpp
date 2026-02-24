@@ -326,7 +326,7 @@ namespace RN
 		{
 			connectedLobby->Release();
 		}
-		EOS_Lobby_RemoveNotifyLobbyMemberStatusReceived(_lobbyInterfaceHandle, _memberStatusReceivedNotificationID);
+		if(_lobbyInterfaceHandle && _memberStatusReceivedNotificationID != EOS_INVALID_NOTIFICATIONID) EOS_Lobby_RemoveNotifyLobbyMemberStatusReceived(_lobbyInterfaceHandle, _memberStatusReceivedNotificationID);
 	}
 
 	size_t EOSLobbyManager::GetConnectedLobbyCount() const

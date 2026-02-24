@@ -49,8 +49,11 @@ namespace RN
 	EOSServer::~EOSServer()
 	{
 		EOSWorld *world = EOSWorld::GetInstance();
-		EOS_P2P_RemoveNotifyPeerConnectionClosed(world->GetP2PHandle(), _connectionClosedNotificationID);
-		EOS_P2P_RemoveNotifyPeerConnectionRequest(world->GetP2PHandle(), _connectionRequestNotificationID);
+		if(world && world->GetP2PHandle())
+		{
+			if(_connectionClosedNotificationID != EOS_INVALID_NOTIFICATIONID) EOS_P2P_RemoveNotifyPeerConnectionClosed(world->GetP2PHandle(), _connectionClosedNotificationID);
+			if(_connectionRequestNotificationID != EOS_INVALID_NOTIFICATIONID) EOS_P2P_RemoveNotifyPeerConnectionRequest(world->GetP2PHandle(), _connectionRequestNotificationID);
+		}
 	}
 
 	uint8 EOSServer::GetUserID()

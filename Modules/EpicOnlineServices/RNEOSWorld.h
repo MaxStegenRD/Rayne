@@ -106,6 +106,8 @@ namespace RN
 		EOS_HPlatform _platformHandle;
 		EOS_HConnect _connectInterfaceHandle;
 		EOS_HP2P _p2pInterfaceHandle;
+		EOS_NotificationId _authExpirationNotificationID;
+		EOS_NotificationId _loginStatusChangedNotificationID;
 
 		EOSLobbyManager *_lobbyManager;
 		std::function<void(bool)> _loginCallback;

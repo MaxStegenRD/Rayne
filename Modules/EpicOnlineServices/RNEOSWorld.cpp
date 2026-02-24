@@ -46,7 +46,7 @@ namespace RN
 	}
 
 	EOSWorld::EOSWorld(String *productName, String *productVersion, String *productID, String *sandboxID, String *deploymentID, String *clientID, String *clientSecret, std::function<void(std::function<void(String *, const String *, EOSAuthServiceType)>)> externalLoginCallback, bool allowFallbackToDeviceID) :
-		_hosts(new Dictionary()), _externalLoginCallback(nullptr), _loginState(LoginStateIsNotLoggedIn), _loggedInUserID(nullptr), _lobbyManager(nullptr), _allowFallbackToDeviceID(allowFallbackToDeviceID)
+		_hosts(new Dictionary()), _externalLoginCallback(nullptr), _loginState(LoginStateIsNotLoggedIn), _loggedInUserID(nullptr), _platformHandle(nullptr), _connectInterfaceHandle(nullptr), _p2pInterfaceHandle(nullptr), _authExpirationNotificationID(EOS_INVALID_NOTIFICATIONID), _loginStatusChangedNotificationID(EOS_INVALID_NOTIFICATIONID), _lobbyManager(nullptr), _allowFallbackToDeviceID(allowFallbackToDeviceID)
 	{
 		RN_ASSERT(!_instance, "There already is an EOSWorld!");
 
@@ -125,11 +125,11 @@ namespace RN
 
 		EOS_Connect_AddNotifyAuthExpirationOptions authExpirationOptions = {0};
 		authExpirationOptions.ApiVersion = EOS_CONNECT_ADDNOTIFYAUTHEXPIRATION_API_LATEST;
-		EOS_Connect_AddNotifyAuthExpiration(_connectInterfaceHandle, &authExpirationOptions, this, ConnectOnAuthExpirationCallback);
+		_authExpirationNotificationID = EOS_Connect_AddNotifyAuthExpiration(_connectInterfaceHandle, &authExpirationOptions, this, ConnectOnAuthExpirationCallback);
 
 		EOS_Connect_AddNotifyLoginStatusChangedOptions loginStatusChangedOptions = {0};
 		loginStatusChangedOptions.ApiVersion = EOS_CONNECT_ADDNOTIFYLOGINSTATUSCHANGED_API_LATEST;
-		EOS_Connect_AddNotifyLoginStatusChanged(_connectInterfaceHandle, &loginStatusChangedOptions, this, ConnectOnLoginStatusChangedCallback);
+		_loginStatusChangedNotificationID = EOS_Connect_AddNotifyLoginStatusChanged(_connectInterfaceHandle, &loginStatusChangedOptions, this, ConnectOnLoginStatusChangedCallback);
 
 		//#if !RN_PLATFORM_ANDROID
 		EOS_P2P_SetRelayControlOptions relayControlOptions = {};
@@ -145,8 +145,28 @@ namespace RN
 
 	EOSWorld::~EOSWorld()
 	{
-		_hosts->Release();
-		EOS_Platform_Release(_platformHandle);
+		SafeRelease(_lobbyManager);
+		SafeRelease(_hosts);
+
+		if(_connectInterfaceHandle)
+		{
+			if(_authExpirationNotificationID != EOS_INVALID_NOTIFICATIONID)
+			{
+				EOS_Connect_RemoveNotifyAuthExpiration(_connectInterfaceHandle, _authExpirationNotificationID);
+				_authExpirationNotificationID = EOS_INVALID_NOTIFICATIONID;
+			}
+
+			if(_loginStatusChangedNotificationID != EOS_INVALID_NOTIFICATIONID)
+			{
+				EOS_Connect_RemoveNotifyLoginStatusChanged(_connectInterfaceHandle, _loginStatusChangedNotificationID);
+				_loginStatusChangedNotificationID = EOS_INVALID_NOTIFICATIONID;
+			}
+		}
+
+		_connectInterfaceHandle = nullptr;
+		_p2pInterfaceHandle = nullptr;
+		if(_platformHandle) EOS_Platform_Release(_platformHandle);
+		_platformHandle = nullptr;
 
 		_instance = nullptr;
 		EOS_Shutdown();

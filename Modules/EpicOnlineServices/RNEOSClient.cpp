@@ -42,7 +42,7 @@ namespace RN
 	EOSClient::~EOSClient()
 	{
 		EOSWorld *world = EOSWorld::GetInstance();
-		if(world) EOS_P2P_RemoveNotifyPeerConnectionClosed(world->GetP2PHandle(), _connectionClosedNotificationID);
+		if(world && world->GetP2PHandle() && _connectionClosedNotificationID != EOS_INVALID_NOTIFICATIONID) EOS_P2P_RemoveNotifyPeerConnectionClosed(world->GetP2PHandle(), _connectionClosedNotificationID);
 	}
 
 	void EOSClient::Connect(EOS_ProductUserId serverProductID)
