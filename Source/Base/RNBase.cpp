@@ -245,10 +245,6 @@ namespace RN
 
 		static void TearDownKernel(Kernel *kernel)
 		{
-#if RN_PLATFORM_ANDROID
-			kernel->GetAndroidApp()->activity->vm->DetachCurrentThread();
-#endif
-
 #if RN_PLATFORM_MAC_OS || RN_PLATFORM_IOS || RN_PLATFORM_VISIONOS
 			@autoreleasepool
 			{
@@ -256,6 +252,15 @@ namespace RN
 			}
 #else
 			kernel->TearDown();
+#endif
+
+#if RN_PLATFORM_ANDROID
+			android_app *androidApp = kernel->GetAndroidApp();
+			if(androidApp && androidApp->activity)
+			{
+				JavaVM *javaVM = androidApp->activity->vm;
+				if(javaVM) javaVM->DetachCurrentThread();
+			}
 #endif
 
 			delete __functionPool;
