@@ -50,8 +50,8 @@ namespace RN
 	class StreamLoggingEngine : public LoggingEngine
 	{
 	public:
-		RNAPI StreamLoggingEngine();
 		RNAPI StreamLoggingEngine(std::ostream &stream, bool threadBound);
+		RNAPI StreamLoggingEngine(const char *path = nullptr, bool threadBound = true);
 
 		RNAPI void Open() final;
 		RNAPI void Close() final;
@@ -64,7 +64,9 @@ namespace RN
 
 	private:
 		bool _open;
-		std::ostream &_stream;
+		std::string _path;
+		std::ofstream _ownedStream;
+		std::ostream *_stream;
 
 		__RNDeclareMetaInternal(StreamLoggingEngine)
 	};
@@ -73,8 +75,8 @@ namespace RN
 	class WideCharStreamLoggingEngine : public LoggingEngine
 	{
 	public:
-		RNAPI WideCharStreamLoggingEngine();
 		RNAPI WideCharStreamLoggingEngine(std::wostream &stream, bool threadBound);
+		RNAPI WideCharStreamLoggingEngine(const char *path = nullptr, bool threadBound = true);
 
 		RNAPI void Open() final;
 		RNAPI void Close() final;
@@ -89,7 +91,9 @@ namespace RN
 		void Log(const char *string);
 
 		bool _open;
-		std::wostream &_stream;
+		std::string _path;
+		std::wofstream _ownedStream;
+		std::wostream *_stream;
 
 		__RNDeclareMetaInternal(WideCharStreamLoggingEngine)
 	};

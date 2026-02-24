@@ -50,11 +50,7 @@ namespace RN
 
 	private:
 		void __PrepareForWillFinishLaunching(Kernel *kernel);
-#if RN_PLATFORM_WINDOWS
-		std::wofstream _fileStream;
-#else
-		std::ofstream _fileStream;
-#endif
+		String *GetDefaultLogFilePath() const;
 
 		String *_title;
 	};

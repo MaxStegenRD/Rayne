@@ -29,34 +29,50 @@ namespace RN
 		_formatter = SafeRetain(formatter);
 	}
 
-	const char *kLogLevelStrings[] = {
-	"(dbg)",
-	"(info)",
-	"(warn)",
-	"(error)"};
-
-	StreamLoggingEngine::StreamLoggingEngine() :
-		StreamLoggingEngine(std::cout, true)
-	{}
-
 	StreamLoggingEngine::StreamLoggingEngine(std::ostream &stream, bool threadBound) :
 		LoggingEngine(threadBound),
 		_open(true),
-		_stream(stream)
+		_stream(&stream)
 	{}
+
+	StreamLoggingEngine::StreamLoggingEngine(const char *path, bool threadBound) :
+		LoggingEngine(threadBound),
+		_open(false),
+		_path(path ? path : ""),
+		_stream(path ? &_ownedStream : &std::cout)
+	{
+		if(!path) _open = true;
+	}
 
 	void StreamLoggingEngine::Open()
 	{
-		_open = true;
+		if(_stream == &_ownedStream)
+		{
+			if(!_ownedStream.is_open())
+				_ownedStream.open(_path.c_str(), std::ios::out | std::ios::trunc);
+
+			_open = _ownedStream.is_open();
+			return;
+		}
+
+		_open = (_stream != nullptr);
 	}
 	void StreamLoggingEngine::Close()
 	{
 		_open = false;
-		_stream.flush();
+		if(_stream == &_ownedStream)
+		{
+			if(_ownedStream.is_open())
+				_ownedStream.close();
+		}
+		else if(_stream)
+		{
+			_stream->flush();
+		}
 	}
 	void StreamLoggingEngine::Flush()
 	{
-		//_stream.flush();
+		if(_stream) _stream->flush();
 	}
 
 	bool StreamLoggingEngine::IsOpen() const
@@ -66,7 +82,8 @@ namespace RN
 
 	void StreamLoggingEngine::Log(const String *message)
 	{
-		_stream << message->GetUTF8String() << std::endl; //endl will automatically flush it
+		if(!_open || !_stream) return;
+		*_stream << message->GetUTF8String() << std::endl; //endl will automatically flush it
 	}
 	void StreamLoggingEngine::LogBreak()
 	{}
@@ -75,28 +92,50 @@ namespace RN
 #if RN_PLATFORM_WINDOWS
 	RNDefineMeta(WideCharStreamLoggingEngine, LoggingEngine)
 
-	WideCharStreamLoggingEngine::WideCharStreamLoggingEngine() :
-		WideCharStreamLoggingEngine(std::wcout, true)
-	{}
-
 	WideCharStreamLoggingEngine::WideCharStreamLoggingEngine(std::wostream &stream, bool threadBound) :
 		LoggingEngine(threadBound),
-		_stream(stream),
+		_stream(&stream),
 		_open(true)
 	{}
 
+	WideCharStreamLoggingEngine::WideCharStreamLoggingEngine(const char *path, bool threadBound) :
+		LoggingEngine(threadBound),
+		_open(false),
+		_path(path ? path : ""),
+		_stream(path ? &_ownedStream : &std::wcout)
+	{
+		if(!path) _open = true;
+	}
+
 	void WideCharStreamLoggingEngine::Open()
 	{
-		_open = true;
+		if(_stream == &_ownedStream)
+		{
+			if(!_ownedStream.is_open())
+				_ownedStream.open(_path.c_str(), std::ios::out | std::ios::trunc);
+
+			_open = _ownedStream.is_open();
+			return;
+		}
+
+		_open = (_stream != nullptr);
 	}
 	void WideCharStreamLoggingEngine::Close()
 	{
 		_open = false;
-		//_stream.flush();
+		if(_stream == &_ownedStream)
+		{
+			if(_ownedStream.is_open())
+				_ownedStream.close();
+		}
+		else if(_stream)
+		{
+			_stream->flush();
+		}
 	}
 	void WideCharStreamLoggingEngine::Flush()
 	{
-		//_stream.flush();
+		if(_stream) _stream->flush();
 	}
 
 	bool WideCharStreamLoggingEngine::IsOpen() const
@@ -121,7 +160,7 @@ namespace RN
 
 		if(result != 0)
 		{
-			_stream << buffer;
+			if(_stream) *_stream << buffer;
 		}
 		else
 		{
@@ -130,13 +169,13 @@ namespace RN
 				wchar_t *allocBuffer = new wchar_t[result + 1];
 				result = ::MultiByteToWideChar(CP_UTF8, 0, string, -1, allocBuffer, result + 1);
 
-				if(result != 0)
-					_stream << allocBuffer;
+				if(result != 0 && _stream)
+					*_stream << allocBuffer;
 
 				delete[] allocBuffer;
 			}
 		}
-		_stream.flush(); //Flush after every message to not miss anything on crash
+		if(_stream) _stream->flush(); //Flush after every message to not miss anything on crash
 	}
 #endif
 } // namespace RN

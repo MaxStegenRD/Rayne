@@ -21,12 +21,6 @@ namespace RN
 	Application::~Application()
 	{
 		SafeRelease(_title);
-
-#if RN_PLATFORM_WINDOWS
-		_fileStream.close();
-#else
-		_fileStream.close();
-#endif
 	}
 
 	void Application::__PrepareForWillFinishLaunching(Kernel *kernel)
@@ -47,13 +41,7 @@ namespace RN
 	void Application::DidUpdate(float delta)
 	{}
 	void Application::DidStep(float delta)
-	{
-#if RN_PLATFORM_WINDOWS && !RN_BUILD_DEBUG
-		_fileStream.flush();
-#else
-		_fileStream.flush();
-#endif
-	}
+	{}
 
 	void Application::WillBecomeActive()
 	{}
@@ -74,34 +62,32 @@ namespace RN
 		return devices->GetFirstObject<RenderingDevice>();
 	}
 
+	String *Application::GetDefaultLogFilePath() const
+	{
+		String *loggingFilePath = FileManager::GetSharedInstance()->GetPathForLocation(FileManager::Location::ExternalSaveDirectory);
+		loggingFilePath->AppendPathComponent(RNCSTR("logs"));
+		FileManager::GetSharedInstance()->CreateDirectory(loggingFilePath); //Only does something if the directories don`t exist yet!
+		loggingFilePath->AppendPathComponent(RNCSTR("RNLogs.txt"));
+		return loggingFilePath;
+	}
+
 	Array *Application::GetLoggingEngines()
 	{
 		DebugLogFormatter *formatter = new DebugLogFormatter();
 
 #if RN_PLATFORM_WINDOWS
 	#if RN_BUILD_DEBUG
-		LoggingEngine *engine = new WideCharStreamLoggingEngine(std::wcout, true);
+		LoggingEngine *engine = new WideCharStreamLoggingEngine(nullptr, true);
 	#else
-		String *loggingFilePath = FileManager::GetSharedInstance()->GetPathForLocation(FileManager::Location::ExternalSaveDirectory);
-		loggingFilePath->AppendPathComponent(RNCSTR("logs"));
-		FileManager::GetSharedInstance()->CreateDirectory(loggingFilePath); //Only does something if the directories don`t exist yet!
-		loggingFilePath->AppendPathComponent(RNCSTR("RNLogs.txt"));
-
-		_fileStream.open(loggingFilePath->GetUTF8String());
-		LoggingEngine *engine = new WideCharStreamLoggingEngine(_fileStream, true);
+		LoggingEngine *engine = new WideCharStreamLoggingEngine(GetDefaultLogFilePath()->GetUTF8String(), true);
 	#endif
 		engine->SetLogFormatter(formatter->Autorelease());
 		return Array::WithObjects({engine->Autorelease()});
 #else
-		LoggingEngine *engine = new StreamLoggingEngine(std::cout, true);
+		LoggingEngine *engine = new StreamLoggingEngine(nullptr, true);
 		engine->SetLogFormatter(formatter->Autorelease());
 
-		String *loggingFilePath = FileManager::GetSharedInstance()->GetPathForLocation(FileManager::Location::ExternalSaveDirectory);
-		loggingFilePath->AppendPathComponent(RNCSTR("logs"));
-		FileManager::GetSharedInstance()->CreateDirectory(loggingFilePath); //Only does something if the directories don`t exist yet!
-		loggingFilePath->AppendPathComponent(RNCSTR("RNLogs.txt"));
-		_fileStream.open(loggingFilePath->GetUTF8String());
-		LoggingEngine *engine2 = new StreamLoggingEngine(_fileStream, true);
+		LoggingEngine *engine2 = new StreamLoggingEngine(GetDefaultLogFilePath()->GetUTF8String(), true);
 		engine2->SetLogFormatter(formatter);
 
 		return Array::WithObjects({engine->Autorelease(), engine2->Autorelease()});
