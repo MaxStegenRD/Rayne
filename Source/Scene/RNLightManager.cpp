@@ -64,12 +64,9 @@ namespace RN
 		pointPerClusterEstimate = std::max<uint16_t>(1, std::min<uint16_t>(pointPerClusterEstimate, _maxLightsPerCluster));
 		spotPerClusterEstimate = std::max<uint16_t>(1, std::min<uint16_t>(spotPerClusterEstimate, _maxLightsPerCluster));
 
-		// Metal requires uniform buffers to be at least as large as the declared array sizes in HLSL
-		const uint32 kLightsPointMax = 256; // must match Base.hlsl
-		const uint32 kLightsSpotMax  = 256; // must match Base.hlsl
-
-		size_t pointBytes = std::max<size_t>(pointEstimate, kLightsPointMax) * sizeof(PointLightPacked);
-		size_t spotBytes  = std::max<size_t>(spotEstimate,  kLightsSpotMax)  * sizeof(SpotLightPacked);
+		// Metal requires uniform buffers to be at least as large as the declared array sizes in HLSL.
+		size_t pointBytes = std::max<size_t>(pointEstimate, kLightManagerShaderMaxPointLights) * sizeof(PointLightPacked);
+		size_t spotBytes  = std::max<size_t>(spotEstimate,  kLightManagerShaderMaxSpotLights)  * sizeof(SpotLightPacked);
 		size_t indexBytes = clusterCount * (pointPerClusterEstimate + spotPerClusterEstimate) * sizeof(uint16);
 		size_t headerBytes = sizeof(ClusterGridInfo);
 
@@ -745,10 +742,8 @@ namespace RN
 
 	void LightManager::UploadBuffers()
 	{
-		const uint32 kLightsPointMax = 256; // must match Base.hlsl
-		const uint32 kLightsSpotMax  = 256; // must match Base.hlsl
-		size_t pointBytes = std::max<size_t>(_packedPointLights.size(), kLightsPointMax) * sizeof(PointLightPacked);
-		size_t spotBytes = std::max<size_t>(_packedSpotLights.size(),  kLightsSpotMax)  * sizeof(SpotLightPacked);
+		size_t pointBytes = std::max<size_t>(_packedPointLights.size(), kLightManagerShaderMaxPointLights) * sizeof(PointLightPacked);
+		size_t spotBytes = std::max<size_t>(_packedSpotLights.size(),  kLightManagerShaderMaxSpotLights)  * sizeof(SpotLightPacked);
 		size_t indexBytes = _clusterLightIndices.size() * sizeof(uint16);
 		size_t headerBytes = sizeof(ClusterGridInfo);
 		size_t recordsBytes = _clusterRecords.size() * sizeof(ClusterRecord);
