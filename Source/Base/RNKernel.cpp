@@ -234,6 +234,7 @@ namespace RN
 	void Kernel::TearDown()
 	{
 		RN_UNUSED ScopeAllocator rootAllocator(BumpAllocator::GetThreadAllocator());
+		AutoreleasePool pool;
 		_application->WillExit();
 		delete _application;
 		_application = nullptr;
