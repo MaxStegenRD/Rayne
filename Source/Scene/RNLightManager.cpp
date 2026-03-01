@@ -229,6 +229,11 @@ namespace RN
 		std::vector<Matrix> projs;
 		std::vector<Matrix> viewProjs;
 		std::vector<Vector3> viewPositions;
+		const size_t expectedViewCount = (mv && mv->GetCount() > 0) ? mv->GetCount() : 1;
+		views.reserve(expectedViewCount);
+		projs.reserve(expectedViewCount);
+		viewProjs.reserve(expectedViewCount);
+		viewPositions.reserve(expectedViewCount);
 		if(mv && mv->GetCount() > 0)
 		{
 			for(size_t i = 0; i < mv->GetCount(); ++i)
@@ -445,11 +450,10 @@ namespace RN
 
 		auto screenToCluster = [&](float ndcX, float ndcY, uint32 &cx, uint32 &cy)
 		{
-			// Map NDC [-1,1] to pixel coords with bottom-left origin to match shader formula
-			float sx = (ndcX * 0.5f + 0.5f) * framebufferSize.x; // [0..W]
-			float syBottomLeft = (ndcY * 0.5f + 0.5f) * framebufferSize.y; // [0..H], y up from bottom
-			cx = std::clamp(uint32(sx * tilesX / std::max(1.0f, framebufferSize.x)), 0u, tilesX - 1u);
-			cy = std::clamp(uint32(syBottomLeft * tilesY / std::max(1.0f, framebufferSize.y)), 0u, tilesY - 1u);
+			const float tileX = (ndcX * 0.5f + 0.5f) * float(tilesX);
+			const float tileY = (ndcY * 0.5f + 0.5f) * float(tilesY);
+			cx = std::clamp(uint32(tileX), 0u, tilesX - 1u);
+			cy = std::clamp(uint32(tileY), 0u, tilesY - 1u);
 		};
 		struct ClusterSpan
 		{
