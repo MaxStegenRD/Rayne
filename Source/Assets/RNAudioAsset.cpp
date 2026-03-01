@@ -158,6 +158,17 @@ namespace RN
 		return asset->Autorelease();
 	}
 
+	AudioAsset *AudioAsset::WithRecommendedRingbuffer(uint32 sampleRate, uint32 channels, uint32 bytesPerChannel, uint32 jitterMs, uint32 minBufferMs)
+	{
+		const uint32 bytesPerSample = bytesPerChannel * channels;
+		const uint32 jitterTargetMs = (jitterMs * 4 > minBufferMs) ? (jitterMs * 4) : minBufferMs;
+		const uint64 totalBytes = (static_cast<uint64>(sampleRate) * static_cast<uint64>(bytesPerSample) * static_cast<uint64>(jitterTargetMs) + 999) / 1000;
+		size_t bufferSize = static_cast<size_t>(totalBytes);
+		if(bufferSize < bytesPerSample) bufferSize = bytesPerSample;
+		AudioAsset *asset = new AudioAsset(Type::Ringbuffer, bufferSize, static_cast<int>(bytesPerSample), static_cast<int>(sampleRate), static_cast<int>(channels));
+		return asset->Autorelease();
+	}
+
 	AudioAsset *AudioAsset::WithDecoder(AudioDecoder *decoder, size_t bufferSize, int bytesPerSample, int sampleRate, int channels)
 	{
 		AudioAsset *asset = new AudioAsset(decoder, bufferSize, bytesPerSample, sampleRate, channels);
