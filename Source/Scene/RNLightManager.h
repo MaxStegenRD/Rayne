@@ -62,10 +62,6 @@ namespace RN
 			float zLogFactor; //0..1 blend between linear/log slicing
 			float clipNear;
 			float clipFar;
-			float viewportWidth;
-			float viewportHeight;
-			float padFloat0;
-			float padFloat1;
 		};
 		struct SpotClusterBound
 		{
@@ -133,8 +129,6 @@ namespace RN
 		GPUBuffer *_clusterRecordsBuffer;
 
 		// Cached per-camera parameters for cluster header
-		float _lastViewportWidth;
-		float _lastViewportHeight;
 		float _lastClipNear;
 		float _lastClipFar;
 

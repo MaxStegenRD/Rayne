@@ -25,8 +25,6 @@ namespace RN
 		_spotLightBuffer(nullptr),
 		_clusterIndexBuffer(nullptr),
 		_clusterRecordsBuffer(nullptr),
-		_lastViewportWidth(0.0f),
-		_lastViewportHeight(0.0f),
 		_lastClipNear(0.0f),
 		_lastClipFar(0.0f),
 		_hasSpotClusterBoundsCache(false),
@@ -267,10 +265,6 @@ namespace RN
 		const float zNear = camera->GetClipNear();
 		const float zFar = camera->GetClipFar();
 		const bool clipPlanesMatch = Math::Compare(_lastClipNear, zNear) && Math::Compare(_lastClipFar, zFar);
-
-		Vector2 framebufferSize = camera->GetRenderPass()->GetFrame().GetSize();
-		_lastViewportWidth = framebufferSize.x;
-		_lastViewportHeight = framebufferSize.y;
 		uint32 tilesX = _grid.clustersX;
 		uint32 tilesY = _grid.clustersY;
 		uint32 tilesZ = _grid.clustersZ;
@@ -785,10 +779,6 @@ namespace RN
 			// Write header
 			_grid.clipNear = _lastClipNear;
 			_grid.clipFar = _lastClipFar;
-			_grid.viewportWidth = _lastViewportWidth;
-			_grid.viewportHeight = _lastViewportHeight;
-			_grid.padFloat0 = 0.0f;
-			_grid.padFloat1 = 0.0f;
 			memcpy(dst, &_grid, headerBytes);
 			memcpy(static_cast<uint8 *>(dst) + headerBytes, _clusterRecords.data(), recordsBytes);
 			_clusterRecordsBuffer->FlushRange(Range(0, headerBytes + recordsBytes));
