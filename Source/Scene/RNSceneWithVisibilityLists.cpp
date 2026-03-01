@@ -156,11 +156,6 @@ namespace RN
 					lightMember = lightMember->GetNext();
 				}
 
-				if(LightManager *lm = camera->GetLightManager())
-				{
-					lm->BuildForCamera(camera, visibleLights);
-				}
-
 				const Volume *volume = nullptr;
 				_volumes->Enumerate<Volume>([&](Volume *object, size_t index, bool &stop) {
 					if(object->ContainsPosition(cameraPosition))
@@ -171,6 +166,10 @@ namespace RN
 				});
 
 				renderer->SubmitCamera(camera, [&] {
+					if(LightManager *lm = camera->GetLightManager())
+					{
+						lm->BuildForCamera(camera, visibleLights);
+					}
 					RenderVolumeList(renderer, camera, _defaultVolume);
 					if(volume)
 					{
