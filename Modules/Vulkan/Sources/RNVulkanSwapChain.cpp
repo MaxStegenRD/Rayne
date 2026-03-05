@@ -139,15 +139,15 @@ VulkanSwapChain::VulkanSwapChain(const Vector2& size, VulkanRenderer* renderer, 
         RNVulkanValidate(result);
 #endif
 
-		VkBool32 surfaceSupported;
-		vk::GetPhysicalDeviceSurfaceSupportKHR(device->GetPhysicalDevice(), 0, _surface, &surfaceSupported);
-
+		VkBool32 surfaceSupported = VK_FALSE;
+		RNVulkanValidate(vk::GetPhysicalDeviceSurfaceSupportKHR(device->GetPhysicalDevice(), device->GetWorkQueue(), _surface, &surfaceSupported));
 		RN_ASSERT(surfaceSupported == VK_TRUE, "VkSurface unsupported!");
 
 		std::vector<VkSurfaceFormatKHR> formats;
 		device->GetSurfaceFormats(_surface, formats);
+		RN_ASSERT(!formats.empty(), "No Vulkan surface formats reported for swapchain surface!");
 
-		_format = formats.at(0);
+		_format = formats[0];
 		VkSurfaceFormatKHR fallbackFormat = _format;
 		bool isSupportedFormat = false;
 		VkFormat requestedFormat = SwapChainFormatFromTextureFormat(_descriptor.colorFormat);
