@@ -269,7 +269,21 @@ namespace RN
 			deviceExtensions.erase(std::remove_if(deviceExtensions.begin(), deviceExtensions.end(), [](const char *name){
 				return std::strcmp(name, VK_EXT_FRAGMENT_DENSITY_MAP_EXTENSION_NAME) == 0;
 			}), deviceExtensions.end());
+
+			multiviewFeatures.pNext = nullptr;
 		}
+
+		std::vector<const char *> deduplicatedDeviceExtensions;
+		deduplicatedDeviceExtensions.reserve(deviceExtensions.size());
+		std::unordered_set<std::string> uniqueDeviceExtensions;
+		for(const char *name : deviceExtensions)
+		{
+			if(uniqueDeviceExtensions.insert(name).second)
+			{
+				deduplicatedDeviceExtensions.push_back(name);
+			}
+		}
+		deviceExtensions.swap(deduplicatedDeviceExtensions);
 
 		const std::vector<float> queuePriorities(1, 0.0f);
 		VkDeviceQueueCreateInfo queueInfo = {};
