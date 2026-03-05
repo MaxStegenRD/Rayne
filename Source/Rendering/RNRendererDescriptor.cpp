@@ -151,6 +151,9 @@ namespace RN
 		try
 		{
 			renderer = descriptor->CreateRenderer(device);
+			if(!renderer)
+				throw InconsistencyException("Renderer creation failed");
+
 			renderer->Activate();
 
 			RNInfo("Using renderer: " << renderer << ", device: " << device);
