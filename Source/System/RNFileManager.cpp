@@ -45,12 +45,13 @@ namespace RN
 		if(_parent)
 			SetPath(_parent->GetPath()->StringByAppendingPathComponent(name));
 
-		Range range = name->GetRangeOfString(RNCSTR("~"), String::ComparisonMode::Reverse);
-		if(range.origin != kRNNotFound)
-		{
-			String *extension = name->GetPathExtension();
+		String *extension = _name->GetPathExtension();
+		size_t stemEnd = _name->GetLength() - (extension ? (extension->GetLength() + 1) : 0);
 
-			size_t modifierLength = _name->GetLength() - range.origin - extension->GetLength() - 1;
+		Range range = _name->GetRangeOfString(RNCSTR("~"), String::ComparisonMode::Reverse, Range(0, stemEnd));
+		if(range.origin != kRNNotFound && (range.origin + 1) < stemEnd)
+		{
+			size_t modifierLength = stemEnd - range.origin;
 
 			_modifier = _name->GetSubstring(Range(range.origin, modifierLength))->Retain();
 			_name->DeleteCharacters(Range(range.origin, modifierLength));
