@@ -458,6 +458,11 @@ namespace RN
 
 	UTF8String *UTF8String::GetSubstring(const Range &range) const
 	{
+		bool validRange = (range.origin <= _length) && (range.length <= (_length - range.origin));
+		RN_DEBUG_ASSERT(validRange, "GetSubstring() called with invalid range");
+		if(!validRange)
+			return (new UTF8String())->Autorelease();
+
 		if(!IsMutable())
 		{
 			size_t start = SkipCharacters(_constStorage, range.origin);
@@ -479,6 +484,11 @@ namespace RN
 
 	void UTF8String::ReplaceCharactersInRange(const Range &range, UTF8String *string)
 	{
+		bool validRange = (range.origin <= _length) && (range.length <= (_length - range.origin));
+		RN_DEBUG_ASSERT(validRange, "ReplaceCharactersInRange() called with invalid range");
+		if(!validRange)
+			return;
+
 		if(!IsMutable())
 			MakeMutable();
 
