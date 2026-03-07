@@ -733,26 +733,13 @@ namespace RN
 				return _applicationDirectory->Copy()->Autorelease();
 #endif
 #if RN_PLATFORM_ANDROID
-				android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
-				JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
-
-				//Check for and clear any pending jni exceptions that would prevent the previous code from working
-				jboolean flag = env->ExceptionCheck();
-				if(flag)
+				const AndroidState *androidState = Kernel::GetSharedInstance()->GetAndroidState();
+				std::string packageCodePath = androidState? androidState->GetPackageCodePath() : std::string();
+				if(!packageCodePath.empty())
 				{
-					env->ExceptionDescribe();
-					env->ExceptionClear();
+					_applicationDirectory = SafeRetain(RNSTR(packageCodePath));
+					return _applicationDirectory->Copy()->Autorelease();
 				}
-
-				jclass clazz = env->GetObjectClass(app->activity->clazz);
-				jmethodID methodID = env->GetMethodID(clazz, "getPackageCodePath", "()Ljava/lang/String;");
-				jobject result = env->CallObjectMethod(app->activity->clazz, methodID);
-
-				jboolean isCopy;
-				std::string res = env->GetStringUTFChars((jstring)result, &isCopy);
-
-				_applicationDirectory = SafeRetain(RNSTR(res));
-				return _applicationDirectory->Copy()->Autorelease();
 #endif
 
 				break;
@@ -869,7 +856,7 @@ namespace RN
 				return path;
 #endif
 #if RN_PLATFORM_ANDROID
-				const char *dataPath = Kernel::GetSharedInstance()->GetAndroidApp()->activity->internalDataPath;
+				const char *dataPath = Kernel::GetSharedInstance()->GetAndroidState()->GetInternalDataPath();
 				return RNSTR(dataPath);
 #endif
 			}
@@ -877,13 +864,15 @@ namespace RN
 			case Location::ExternalSaveDirectory:
 			{
 #if RN_PLATFORM_ANDROID
-				const char *dataPath = Kernel::GetSharedInstance()->GetAndroidApp()->activity->externalDataPath;
+				const char *dataPath = Kernel::GetSharedInstance()->GetAndroidState()->GetExternalDataPath();
 				return RNSTR(dataPath);
 #else
 				return GetPathForLocation(Location::InternalSaveDirectory);
 #endif
 			}
 		}
+
+		return nullptr;
 	}
 
 	FileManager::Directory *FileManager::WalkableDirectory(const String *path)

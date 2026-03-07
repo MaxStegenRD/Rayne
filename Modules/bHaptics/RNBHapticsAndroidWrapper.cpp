@@ -52,53 +52,53 @@ namespace RN
 	void BHapticsAndroidWrapper::Initialize(const String *applicationID, const String *apiKey, const String *defaultConfig, bool requestPermission)
 	{
 #if RN_PLATFORM_ANDROID
-		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
-		JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
-
-		if(env)
+		const AndroidState *androidState = Kernel::GetSharedInstance()->GetAndroidState();
+		if(androidState)
 		{
-			jclass activityClass = env->GetObjectClass(app->activity->clazz);
+			androidState->PerformWithCurrentThreadJNIContext([&](JNIEnv *env, jobject activity) {
+				jclass activityClass = env->GetObjectClass(activity);
 
-			PlayMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_Play", "(Ljava/lang/String;FFFF)I");
-			PlayDotMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_PlayDot", "(II[I)I");
-			PlayGloveMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_PlayGlove", "(I[I[I[I)I");
-			PlayLoopMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_PlayLoop", "(Ljava/lang/String;FFFFII)I");
+				PlayMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_Play", "(Ljava/lang/String;FFFF)I");
+				PlayDotMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_PlayDot", "(II[I)I");
+				PlayGloveMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_PlayGlove", "(I[I[I[I)I");
+				PlayLoopMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_PlayLoop", "(Ljava/lang/String;FFFFII)I");
 
-			InitializeMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_Initialize", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
-			InitializePermissionMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_InitializeWithPermission", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Z)V");
-			IsBhapticsAvailableMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_IsBhapticsAvailable", "()Z");
+				InitializeMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_Initialize", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
+				InitializePermissionMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_InitializeWithPermission", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Z)V");
+				IsBhapticsAvailableMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_IsBhapticsAvailable", "()Z");
 
-			IsPlayingByEventIdMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_IsPlayingByEventId", "(Ljava/lang/String;)Z");
-			IsPlayingByRequestIdMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_IsPlayingByRequestId", "(I)Z");
-			IsPlayingMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_IsPlaying", "()Z");
+				IsPlayingByEventIdMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_IsPlayingByEventId", "(Ljava/lang/String;)Z");
+				IsPlayingByRequestIdMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_IsPlayingByRequestId", "(I)Z");
+				IsPlayingMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_IsPlaying", "()Z");
 
-			SwapPositionMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_SwapPosition", "(Ljava/lang/String;)V");
-			PingMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_Ping", "(Ljava/lang/String;)V");
-			PingAllMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_PingAll", "()V");
+				SwapPositionMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_SwapPosition", "(Ljava/lang/String;)V");
+				PingMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_Ping", "(Ljava/lang/String;)V");
+				PingAllMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_PingAll", "()V");
 
-			GetDevicesMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_getDeviceList", "()Ljava/lang/String;");
+				GetDevicesMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_getDeviceList", "()Ljava/lang/String;");
 
-			StopAllMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_StopAll", "()Z");
-			StopByRequestIdMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_StopByRequestId", "(I)Z");
-			StopByEventIdMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_StopByEventId", "(Ljava/lang/String;)Z");
+				StopAllMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_StopAll", "()Z");
+				StopByRequestIdMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_StopByRequestId", "(I)Z");
+				StopByEventIdMethodId = env->GetMethodID(activityClass, "AndroidThunkJava_StopByEventId", "(Ljava/lang/String;)Z");
 
+				jstring appStrJava = env->NewStringUTF(applicationID->GetUTF8String());
+				jstring keyStrJava = env->NewStringUTF(apiKey->GetUTF8String());
+				jstring defaultConfigJava = env->NewStringUTF(defaultConfig->GetUTF8String());
 
-			jstring appStrJava = env->NewStringUTF(applicationID->GetUTF8String());
-			jstring keyStrJava = env->NewStringUTF(apiKey->GetUTF8String());
-			jstring defaultConfigJava = env->NewStringUTF(defaultConfig->GetUTF8String());
+				env->CallVoidMethod(activity, InitializePermissionMethodId, appStrJava, keyStrJava, defaultConfigJava, requestPermission);
 
-			env->CallVoidMethod(app->activity->clazz, InitializePermissionMethodId, appStrJava, keyStrJava, defaultConfigJava, requestPermission);
+				env->DeleteLocalRef(appStrJava);
+				env->DeleteLocalRef(keyStrJava);
+				env->DeleteLocalRef(defaultConfigJava);
+				env->DeleteLocalRef(activityClass);
 
-			env->DeleteLocalRef(appStrJava);
-			env->DeleteLocalRef(keyStrJava);
-			env->DeleteLocalRef(defaultConfigJava);
+				IsBhapticsAvailable();
 
-			IsBhapticsAvailable();
-
-			NotificationManager::GetSharedInstance()->AddSubscriber(kRNAndroidOnResume, [](Notification *notification) {
-				BHapticsAndroidWrapper::_isBhapticsAvailableChecked = false;
-				BHapticsAndroidWrapper::_isBhapticsAvailable = false;
-				BHapticsAndroidWrapper::IsBhapticsAvailable(); }, RNCSTR("BHapticsAndroidWrapper"));
+				NotificationManager::GetSharedInstance()->AddSubscriber(kRNAndroidOnResume, [](Notification *notification) {
+					BHapticsAndroidWrapper::_isBhapticsAvailableChecked = false;
+					BHapticsAndroidWrapper::_isBhapticsAvailable = false;
+					BHapticsAndroidWrapper::IsBhapticsAvailable(); }, RNCSTR("BHapticsAndroidWrapper"));
+			});
 		}
 #endif
 	}
@@ -111,12 +111,13 @@ namespace RN
 			return _isBhapticsAvailable;
 		}
 
-		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
-		JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
-		if(env)
+		const AndroidState *androidState = Kernel::GetSharedInstance()->GetAndroidState();
+		if(androidState)
 		{
-			_isBhapticsAvailable = env->CallBooleanMethod(app->activity->clazz, IsBhapticsAvailableMethodId);
-			_isBhapticsAvailableChecked = true;
+			androidState->PerformWithCurrentThreadJNIContext([&](JNIEnv *env, jobject activity) {
+				_isBhapticsAvailable = env->CallBooleanMethod(activity, IsBhapticsAvailableMethodId);
+				_isBhapticsAvailableChecked = true;
+			});
 		}
 
 		return _isBhapticsAvailable;
@@ -135,42 +136,47 @@ namespace RN
 		}
 
 #if RN_PLATFORM_ANDROID
-		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
-		JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
-		if(env)
+		const AndroidState *androidState = Kernel::GetSharedInstance()->GetAndroidState();
+		if(androidState)
 		{
-			jstring jstr = (jstring)env->CallObjectMethod(app->activity->clazz, GetDevicesMethodId);
-			if(jstr == nullptr) return devices;
+			androidState->PerformWithCurrentThreadJNIContext([&](JNIEnv *env, jobject activity) {
+				jstring jstr = (jstring)env->CallObjectMethod(activity, GetDevicesMethodId);
+				if(jstr == nullptr) return;
 
-			jsize stringLength = env->GetStringUTFLength(jstr);
-			if(stringLength == 0) return devices;
+				jsize stringLength = env->GetStringUTFLength(jstr);
+				if(stringLength == 0)
+				{
+					env->DeleteLocalRef(jstr);
+					return;
+				}
 
-			const char *nativeDeviceListString = env->GetStringUTFChars(jstr, 0);
-			const String *deviceListString = RN::String::WithBytes(nativeDeviceListString, stringLength, RN::Encoding::UTF8);
-			env->ReleaseStringUTFChars(jstr, nativeDeviceListString);
-			env->DeleteLocalRef(jstr);
+				const char *nativeDeviceListString = env->GetStringUTFChars(jstr, 0);
+				const String *deviceListString = RN::String::WithBytes(nativeDeviceListString, stringLength, RN::Encoding::UTF8);
+				env->ReleaseStringUTFChars(jstr, nativeDeviceListString);
+				env->DeleteLocalRef(jstr);
 
-			const Array *jsonDevices = JSONSerialization::ObjectFromString<RN::Array>(deviceListString);
-			if(jsonDevices && jsonDevices->GetCount() > 0)
-			{
-				devices = new RN::Array(jsonDevices->GetCount());
-				jsonDevices->Enumerate<Dictionary>([&](Dictionary *dict, size_t index, bool &stop) {
-					BHapticsDevice *device = new BHapticsDevice();
+				const Array *jsonDevices = JSONSerialization::ObjectFromString<RN::Array>(deviceListString);
+				if(jsonDevices && jsonDevices->GetCount() > 0)
+				{
+					devices = new RN::Array(jsonDevices->GetCount());
+					jsonDevices->Enumerate<Dictionary>([&](Dictionary *dict, size_t index, bool &stop) {
+						BHapticsDevice *device = new BHapticsDevice();
 
-					device->deviceName = SafeRetain(dict->GetObjectForKey<String>(RNCSTR("DeviceName")));
-					device->address = SafeRetain(dict->GetObjectForKey<String>(RNCSTR("Address")));
+						device->deviceName = SafeRetain(dict->GetObjectForKey<String>(RNCSTR("DeviceName")));
+						device->address = SafeRetain(dict->GetObjectForKey<String>(RNCSTR("Address")));
 
-					device->position = BHapticsDevice::StringToDevicePosition(dict->GetObjectForKey<String>(RNCSTR("Position")));
+						device->position = BHapticsDevice::StringToDevicePosition(dict->GetObjectForKey<String>(RNCSTR("Position")));
 
-					const Number *isConnectedNumber = dict->GetObjectForKey<Number>(RNCSTR("IsConnected"));
-					device->isConnected = isConnectedNumber->GetBoolValue();
+						const Number *isConnectedNumber = dict->GetObjectForKey<Number>(RNCSTR("IsConnected"));
+						device->isConnected = isConnectedNumber->GetBoolValue();
 
-					const Number *isPairedNumber = dict->GetObjectForKey<Number>(RNCSTR("IsPaired"));
-					device->isPaired = isPairedNumber->GetBoolValue();
+						const Number *isPairedNumber = dict->GetObjectForKey<Number>(RNCSTR("IsPaired"));
+						device->isPaired = isPairedNumber->GetBoolValue();
 
-					devices->AddObject(device);
-				});
-			}
+						devices->AddObject(device);
+					});
+				}
+			});
 		}
 #endif
 
@@ -191,14 +197,16 @@ namespace RN
 			return false;
 		}
 
-		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
-		JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
-		if(env)
+		const AndroidState *androidState = Kernel::GetSharedInstance()->GetAndroidState();
+		if(androidState)
 		{
-			jstring eventIdJava = env->NewStringUTF(eventName->GetUTF8String());
-			int res = env->CallIntMethod(app->activity->clazz, PlayMethodId, eventIdJava, intensity, duration, angleX, offsetY);
-			env->DeleteLocalRef(eventIdJava);
-			return res;
+			bool result = false;
+			androidState->PerformWithCurrentThreadJNIContext([&](JNIEnv *env, jobject activity) {
+				jstring eventIdJava = env->NewStringUTF(eventName->GetUTF8String());
+				result = env->CallIntMethod(activity, PlayMethodId, eventIdJava, intensity, duration, angleX, offsetY);
+				env->DeleteLocalRef(eventIdJava);
+			});
+			return result;
 		}
 #endif
 
@@ -333,12 +341,14 @@ namespace RN
 
 
 #if RN_PLATFORM_ANDROID
-		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
-		JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
-		if(env)
+		const AndroidState *androidState = Kernel::GetSharedInstance()->GetAndroidState();
+		if(androidState)
 		{
-			bool res = env->CallBooleanMethod(app->activity->clazz, IsPlayingMethodId);
-			return res;
+			bool result = false;
+			androidState->PerformWithCurrentThreadJNIContext([&](JNIEnv *env, jobject activity) {
+				result = env->CallBooleanMethod(activity, IsPlayingMethodId);
+			});
+			return result;
 		}
 #endif
 
@@ -372,14 +382,16 @@ namespace RN
 		}
 
 #if RN_PLATFORM_ANDROID
-		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
-		JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
-		if(env)
+		const AndroidState *androidState = Kernel::GetSharedInstance()->GetAndroidState();
+		if(androidState)
 		{
-			jstring eventIdJava = env->NewStringUTF(eventName->GetUTF8String());
-			bool res = env->CallBooleanMethod(app->activity->clazz, IsPlayingByEventIdMethodId, eventIdJava);
-			env->DeleteLocalRef(eventIdJava);
-			return res;
+			bool result = false;
+			androidState->PerformWithCurrentThreadJNIContext([&](JNIEnv *env, jobject activity) {
+				jstring eventIdJava = env->NewStringUTF(eventName->GetUTF8String());
+				result = env->CallBooleanMethod(activity, IsPlayingByEventIdMethodId, eventIdJava);
+				env->DeleteLocalRef(eventIdJava);
+			});
+			return result;
 		}
 #endif
 
@@ -394,13 +406,14 @@ namespace RN
 		}
 
 #if RN_PLATFORM_ANDROID
-		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
-		JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
-		if(env)
+		const AndroidState *androidState = Kernel::GetSharedInstance()->GetAndroidState();
+		if(androidState)
 		{
-			jstring deviceIdJava = env->NewStringUTF(deviceAddress->GetUTF8String());
-			env->CallVoidMethod(app->activity->clazz, PingMethodId, deviceIdJava);
-			env->DeleteLocalRef(deviceIdJava);
+			androidState->PerformWithCurrentThreadJNIContext([&](JNIEnv *env, jobject activity) {
+				jstring deviceIdJava = env->NewStringUTF(deviceAddress->GetUTF8String());
+				env->CallVoidMethod(activity, PingMethodId, deviceIdJava);
+				env->DeleteLocalRef(deviceIdJava);
+			});
 		}
 #endif
 	}
@@ -413,11 +426,12 @@ namespace RN
 		}
 
 #if RN_PLATFORM_ANDROID
-		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
-		JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
-		if(env)
+		const AndroidState *androidState = Kernel::GetSharedInstance()->GetAndroidState();
+		if(androidState)
 		{
-			env->CallVoidMethod(app->activity->clazz, PingAllMethodId);
+			androidState->PerformWithCurrentThreadJNIContext([&](JNIEnv *env, jobject activity) {
+				env->CallVoidMethod(activity, PingAllMethodId);
+			});
 		}
 #endif
 	}
@@ -452,14 +466,16 @@ namespace RN
 
 		//UE_LOG(BhapticsPlugin, Log, TEXT("BhapticsRequest::StopByEventId"));
 #if RN_PLATFORM_ANDROID
-		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
-		JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
-		if(env)
+		const AndroidState *androidState = Kernel::GetSharedInstance()->GetAndroidState();
+		if(androidState)
 		{
-			jstring eventIdJava = env->NewStringUTF(eventName->GetUTF8String());
-			bool res = env->CallBooleanMethod(app->activity->clazz, StopByEventIdMethodId, eventIdJava);
-			env->DeleteLocalRef(eventIdJava);
-			return res;
+			bool result = false;
+			androidState->PerformWithCurrentThreadJNIContext([&](JNIEnv *env, jobject activity) {
+				jstring eventIdJava = env->NewStringUTF(eventName->GetUTF8String());
+				result = env->CallBooleanMethod(activity, StopByEventIdMethodId, eventIdJava);
+				env->DeleteLocalRef(eventIdJava);
+			});
+			return result;
 		}
 #endif
 
@@ -497,12 +513,14 @@ namespace RN
 
 		//UE_LOG(BhapticsPlugin, Log, TEXT("BhapticsRequest::Stop"));
 #if RN_PLATFORM_ANDROID
-		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
-		JNIEnv *env = Kernel::GetSharedInstance()->GetJNIEnvForRayneMainThread();
-		if(env)
+		const AndroidState *androidState = Kernel::GetSharedInstance()->GetAndroidState();
+		if(androidState)
 		{
-			bool res = env->CallBooleanMethod(app->activity->clazz, StopAllMethodId);
-			return res;
+			bool result = false;
+			androidState->PerformWithCurrentThreadJNIContext([&](JNIEnv *env, jobject activity) {
+				result = env->CallBooleanMethod(activity, StopAllMethodId);
+			});
+			return result;
 		}
 #endif
 

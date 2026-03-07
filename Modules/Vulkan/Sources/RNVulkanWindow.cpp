@@ -209,7 +209,7 @@ namespace RN
         _swapChain = new VulkanSwapChain(actualSize, _window, renderer, descriptor);
 #endif
 #if RN_PLATFORM_ANDROID
-		_window = hwnd? static_cast<ANativeWindow*>(hwnd) : Kernel::GetSharedInstance()->GetAndroidApp()->window;
+		_window = hwnd? static_cast<ANativeWindow*>(hwnd) : Kernel::GetSharedInstance()->GetAndroidState()->GetWindow();
 
 		// Create the swap chain
         _swapChain = new VulkanSwapChain(GetSize(), _window, renderer, descriptor);

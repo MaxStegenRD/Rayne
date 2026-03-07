@@ -61,13 +61,13 @@ namespace RN
 		SDKOptions.ProductVersion = productVersion->GetUTF8String();
 
 #if RN_PLATFORM_ANDROID
-		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
+		const AndroidState *androidState = Kernel::GetSharedInstance()->GetAndroidState();
 
 		static EOS_Android_InitializeOptions JNIOptions = {0};
 		JNIOptions.ApiVersion = EOS_ANDROID_INITIALIZEOPTIONS_API_LATEST;
 
-		JNIOptions.OptionalInternalDirectory = app->activity->internalDataPath;
-		JNIOptions.OptionalExternalDirectory = app->activity->externalDataPath;
+		JNIOptions.OptionalInternalDirectory = androidState? androidState->GetInternalDataPath() : nullptr;
+		JNIOptions.OptionalExternalDirectory = androidState? androidState->GetExternalDataPath() : nullptr;
 
 		SDKOptions.SystemInitializeOptions = &JNIOptions;
 #endif

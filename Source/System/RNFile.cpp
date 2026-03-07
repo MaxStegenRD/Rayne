@@ -329,9 +329,10 @@ namespace RN
 				String *rootResourcesDirectory = fileManager->GetPathForLocation(FileManager::Location::RootResourcesDirectory);
 				if(path->HasPrefix(rootResourcesDirectory))
 				{
-					android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
+					const AndroidState *androidState = Kernel::GetSharedInstance()->GetAndroidState();
+					AAssetManager *assetManager = androidState? androidState->GetAssetManager() : nullptr;
 					String *assetsPath = path->GetSubstring(Range(rootResourcesDirectory->GetLength(), path->GetLength() - rootResourcesDirectory->GetLength()));
-					AAsset *asset = AAssetManager_open(app->activity->assetManager, assetsPath->GetUTF8String(), 0);
+					AAsset *asset = assetManager? AAssetManager_open(assetManager, assetsPath->GetUTF8String(), 0) : nullptr;
 
 					if(asset)
 					{

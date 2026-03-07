@@ -64,6 +64,7 @@
 	#define kRNAndroidWindowDidChange RNCSTR("kRNAndroidWindowDidChange")
 	#define kRNAndroidOnResume RNCSTR("kRNAndroidOnResume")
 	#define kRNAndroidOnDestroy RNCSTR("kRNAndroidOnDestroy")
+	#define kRNAndroidOnLowMemory RNCSTR("kRNAndroidOnLowMemory")
 #endif
 
 // ---------------------------

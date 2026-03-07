@@ -37,13 +37,20 @@ namespace RN
 	Kernel::Kernel(Application *application, const ArgumentParser &arguments) :
 		_arguments(arguments),
 		_application(application),
+#if RN_PLATFORM_ANDROID
+		_androidState(new AndroidState()),
+#endif
 		_exit(false),
 		_isActive(true),
 		_wantsToExit(false)
 	{}
 
 	Kernel::~Kernel()
-	{}
+	{
+#if RN_PLATFORM_ANDROID
+		delete _androidState;
+#endif
+	}
 
 	Kernel *Kernel::GetSharedInstance()
 	{
@@ -290,14 +297,27 @@ namespace RN
 #endif
 
 #if RN_PLATFORM_ANDROID
-	void Kernel::SetAndroidApp(android_app *app)
+	void Kernel::InitializeAndroid(android_app *app, JNIEnv *jniEnv)
 	{
-		_androidApp = app;
+		_androidState->SetApp(app);
+		_androidState->SetRayneMainThreadJNIEnv(jniEnv);
 	}
 
-	void Kernel::SetJNIEnvForRayneMainThread(JNIEnv *jniEnv)
+	void Kernel::DrainAndroidStateChanges()
 	{
-		_jniEnv = jniEnv;
+		_androidState->DrainPendingState([&](bool windowChanged, bool didResume, bool didDestroy, bool didLowMemory) {
+			if(windowChanged)
+				NotificationManager::GetSharedInstance()->PostNotification(kRNAndroidWindowDidChange, nullptr);
+
+			if(didResume)
+				NotificationManager::GetSharedInstance()->PostNotification(kRNAndroidOnResume, nullptr);
+
+			if(didDestroy)
+				NotificationManager::GetSharedInstance()->PostNotification(kRNAndroidOnDestroy, nullptr);
+
+			if(didLowMemory)
+				NotificationManager::GetSharedInstance()->PostNotification(kRNAndroidOnLowMemory, nullptr);
+		});
 	}
 #endif
 
@@ -355,7 +375,7 @@ namespace RN
 
 #if RN_PLATFORM_ANDROID
 		//Wait for android app window to be available before finishing the boostrap which is usually followed by RN::Window creation
-		if(RN_EXPECT_FALSE(_firstFrame)) // && _androidApp->window)
+		if(RN_EXPECT_FALSE(_firstFrame)) // && GetAndroidState()->GetWindow()
 #else
 		if(RN_EXPECT_FALSE(_firstFrame))
 #endif
@@ -505,11 +525,13 @@ namespace RN
 		{
 			if(source != nullptr)
 			{
-				source->process(_androidApp, source);
+				_androidState->ProcessSource(source);
 			}
+
+			DrainAndroidStateChanges();
 		}
 
-		if(_androidApp && _androidApp->destroyRequested) _wantsToExit = true;
+		if(GetAndroidState()->GetDestroyRequested()) _wantsToExit = true;
 #endif
 	}
 

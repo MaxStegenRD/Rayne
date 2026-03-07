@@ -21,6 +21,7 @@
 #include "../Threads/RNRunLoop.h"
 #include "../Threads/RNThread.h"
 #include "../Threads/RNWorkQueue.h"
+#include "RNAndroidState.h"
 #include "RNApplication.h"
 #include "RNArgumentParser.h"
 #include "RNBase.h"
@@ -80,10 +81,7 @@ namespace RN
 #endif
 
 #if RN_PLATFORM_ANDROID
-		RNAPI void SetAndroidApp(android_app *app);
-		android_app *GetAndroidApp() const { return _androidApp; }
-		RNAPI void SetJNIEnvForRayneMainThread(JNIEnv *jniEnv);
-		JNIEnv *GetJNIEnvForRayneMainThread() const { return _jniEnv; }
+		const AndroidState *GetAndroidState() const { return _androidState; }
 #endif
 
 #if RN_PLATFORM_IOS
@@ -132,8 +130,9 @@ namespace RN
 		xcb_connection_t *_connection;
 #endif
 #if RN_PLATFORM_ANDROID
-		android_app *_androidApp;
-		JNIEnv *_jniEnv;
+		void InitializeAndroid(android_app *app, JNIEnv *jniEnv);
+		void DrainAndroidStateChanges();
+		AndroidState *_androidState;
 #endif
 #if RN_PLATFORM_IOS
 		void *_metalLayer;

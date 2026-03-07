@@ -23,6 +23,7 @@ set(VERSION_STRING "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 set(RAYNE_SOURCES
     Base/RNMemory.cpp # RNMemory should come first
     Base/RNApplication.cpp
+    Base/RNAndroidState.cpp
     Base/RNArgumentParser.cpp
     Base/RNBase.cpp
     Base/RNBumpAllocator.cpp
@@ -133,6 +134,7 @@ set(RAYNE_HEADERS
     Assets/RNBitmap.h
     Assets/RNAudioAsset.h
     Base/RNApplication.h
+    Base/RNAndroidState.h
     Base/RNArgumentParser.h
     Base/RNBase.h
     Base/RNBumpAllocator.h

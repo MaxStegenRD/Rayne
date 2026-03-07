@@ -7,6 +7,7 @@
 //
 
 #include "RNBaseInternal.h"
+#include "RNAndroidState.h"
 #include "RNKernel.h"
 
 #if RN_PLATFORM_WINDOWS
@@ -91,30 +92,17 @@
 #endif
 
 #if RN_PLATFORM_ANDROID
-void Android_handle_cmd(android_app *app, int32_t cmd)
+static void Android_enqueue_cmd(android_app *app, int32_t cmd)
 {
-	switch(cmd)
-	{
-		case APP_CMD_INIT_WINDOW:
-			// The window is being shown, get it ready.
-			RN::NotificationManager::GetSharedInstance()->PostNotification(kRNAndroidWindowDidChange, nullptr);
-			break;
-		case APP_CMD_TERM_WINDOW:
-			// The window is being hidden or closed, clean it up.
-			RN::NotificationManager::GetSharedInstance()->PostNotification(kRNAndroidWindowDidChange, nullptr);
-			break;
-		case APP_CMD_RESUME:
-			// The window is being hidden or closed, clean it up.
-			RN::NotificationManager::GetSharedInstance()->PostNotification(kRNAndroidOnResume, nullptr);
-			break;
-		case APP_CMD_DESTROY:
-			RN::NotificationManager::GetSharedInstance()->PostNotification(kRNAndroidOnDestroy, nullptr);
-			break;
-		default:
-			RNDebug("event not handled: " << cmd);
-	}
-}
+	RN::AndroidState *androidState = static_cast<RN::AndroidState *>(app->userData);
+	if(!androidState)
+		return;
 
+	androidState->HandleTransientCommand(cmd);
+}
+#endif
+
+#if RN_PLATFORM_ANDROID
 // Helpder class to forward the cout/cerr output to logcat derived from:
 // http://stackoverflow.com/questions/8870174/is-stdcout-usable-in-android-ndk
 class AndroidBuffer : public std::streambuf
@@ -203,16 +191,14 @@ namespace RN
 			android_app *androidApp = static_cast<android_app *>(object);
 			RN_ASSERT(androidApp, "Object needs to be a pointer to the android_app object for Android builds.");
 
-			androidApp->onAppCmd = Android_handle_cmd;
-			result->SetAndroidApp(androidApp);
-
 			JNIEnv *env = nullptr;
 			androidApp->activity->vm->AttachCurrentThread(&env, nullptr);
 
 			// Note that AttachCurrentThread will reset the thread name.
 			prctl(PR_SET_NAME, (long)"RN::Main", 0, 0, 0);
 
-			result->SetJNIEnvForRayneMainThread(env);
+			result->InitializeAndroid(androidApp, env);
+			androidApp->onAppCmd = Android_enqueue_cmd;
 #endif
 
 #if RN_PLATFORM_MAC_OS
@@ -255,11 +241,11 @@ namespace RN
 #endif
 
 #if RN_PLATFORM_ANDROID
-			android_app *androidApp = kernel->GetAndroidApp();
-			if(androidApp && androidApp->activity)
+			const AndroidState *androidState = kernel->GetAndroidState();
+			JavaVM *javaVM = androidState? androidState->GetJavaVM() : nullptr;
+			if(javaVM)
 			{
-				JavaVM *javaVM = androidApp->activity->vm;
-				if(javaVM) javaVM->DetachCurrentThread();
+				javaVM->DetachCurrentThread();
 			}
 #endif
 
