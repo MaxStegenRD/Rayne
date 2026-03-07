@@ -179,7 +179,9 @@ namespace RN
 				options.queue->YieldWithFuture(future);
 
 
-				texture = future.get()->Downcast<Texture>();
+				StrongRef<Asset> asset = future.get();
+				if(!asset) throw InconsistencyException(RNSTR("Failed loading texture for model " << filepath));
+				texture = asset->Downcast<Texture>();
 			}
 			else
 			{
@@ -338,7 +340,7 @@ namespace RN
 		return mesh->Autorelease();
 	}
 
-	std::shared_future<StrongRef<Asset>> AssimpAssetLoader::LoadAsyncTexture(aiMaterial *material, const String *path, aiTextureType aitexturetype, uint8 index)
+	AssetLoadFuture AssimpAssetLoader::LoadAsyncTexture(aiMaterial *material, const String *path, aiTextureType aitexturetype, uint8 index)
 	{
 		aiString aipath;
 		material->GetTexture(aitexturetype, index, &aipath);

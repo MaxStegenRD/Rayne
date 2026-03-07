@@ -32,7 +32,7 @@ namespace RN
 		}
 
 		template<class T>
-		std::shared_future<StrongRef<Asset>> GetFutureAssetWithName(const String *name, const Dictionary *settings, WorkQueue *queue = nullptr)
+		AssetLoadFuture GetFutureAssetWithName(const String *name, const Dictionary *settings, WorkQueue *queue = nullptr)
 		{
 			return __GetFutureAssetWithName(T::GetMetaClass(), name, settings, queue);
 		}
@@ -56,14 +56,14 @@ namespace RN
 		Asset *ValidateAsset(MetaClass *base, Asset *asset);
 
 		void __RemoveAsset(Asset *asset, String *name);
-		void __FinishLoadingAsset(void *token, Expected<Asset *> asset);
+		void __FinishLoadingAsset(void *token, Asset *asset);
 		void PrepareAsset(Asset *asset, String *name, MetaClass *meta, Dictionary *settings);
 
 		Asset *__GetAssetMatching(MetaClass *base, String *name);
-		Expected<std::shared_future<StrongRef<Asset>>> __GetFutureMatching(MetaClass *base, String *name);
+		AssetLoadFuture __GetFutureMatching(MetaClass *base, String *name);
 
 		RNAPI Asset *__GetAssetWithName(MetaClass *base, const String *tname, const Dictionary *tsettings);
-		RNAPI std::shared_future<StrongRef<Asset>> __GetFutureAssetWithName(MetaClass *base, const String *name, const Dictionary *settings, WorkQueue *queue);
+		RNAPI AssetLoadFuture __GetFutureAssetWithName(MetaClass *base, const String *name, const Dictionary *settings, WorkQueue *queue);
 
 		Lockable _lock;
 		Array *_loaders;

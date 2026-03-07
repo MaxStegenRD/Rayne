@@ -85,7 +85,7 @@ namespace RN
 			StrongRef<Skeleton> skeleton;
 			if(options.queue)
 			{
-				std::shared_future<StrongRef<Asset>> future = AssetManager::GetSharedInstance()->GetFutureAssetWithName<Skeleton>(normalized, nullptr);
+				AssetLoadFuture future = AssetManager::GetSharedInstance()->GetFutureAssetWithName<Skeleton>(normalized, nullptr);
 				WorkQueue *queue = WorkQueue::GetCurrentWorkQueue();
 
 				if(queue)
@@ -93,7 +93,9 @@ namespace RN
 				else
 					future.wait();
 
-				skeleton = future.get()->Downcast<Skeleton>();
+				StrongRef<Asset> asset = future.get();
+				if(!asset) throw InconsistencyException(RNSTR("Failed loading skeleton " << normalized << " while loading model " << path));
+				skeleton = asset->Downcast<Skeleton>();
 			}
 			else
 			{
@@ -245,7 +247,7 @@ namespace RN
 
 				if(options.queue)
 				{
-					std::shared_future<StrongRef<Asset>> future = AssetManager::GetSharedInstance()->GetFutureAssetWithName<Texture>(file, nullptr);
+					AssetLoadFuture future = AssetManager::GetSharedInstance()->GetFutureAssetWithName<Texture>(file, nullptr);
 					WorkQueue *queue = WorkQueue::GetCurrentWorkQueue();
 
 					if(queue)
@@ -253,7 +255,9 @@ namespace RN
 					else
 						future.wait();
 
-					texture = future.get()->Downcast<Texture>();
+					StrongRef<Asset> asset = future.get();
+					if(!asset) throw InconsistencyException(RNSTR("Failed loading texture " << file << " while loading model " << path));
+					texture = asset->Downcast<Texture>();
 				}
 				else
 				{

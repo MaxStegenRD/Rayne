@@ -15,6 +15,8 @@
 namespace RN
 {
 	class AssetManager;
+	class Asset;
+	using AssetLoadFuture = std::shared_future<StrongRef<Asset>>;
 	class Asset : public Object
 	{
 	public:

@@ -204,7 +204,7 @@ namespace RN
 		return asset;
 	}
 
-	Expected<std::shared_future<StrongRef<Asset>>> AssetManager::__GetFutureMatching(MetaClass *base, String *name)
+	AssetLoadFuture AssetManager::__GetFutureMatching(MetaClass *base, String *name)
 	{
 		// Check if there is a pending request for the resource
 		Array *requests = _requests->GetObjectForKey<Array>(name);
@@ -221,7 +221,7 @@ namespace RN
 			}
 		}
 
-		return InconsistencyException("No matching future found");
+		return AssetLoadFuture();
 	}
 
 	Asset *AssetManager::__GetAssetWithName(MetaClass *base, const String *tname, const Dictionary *tsettings)
@@ -241,23 +241,26 @@ namespace RN
 			}
 		}
 
-		Expected<std::shared_future<StrongRef<Asset>>> future = __GetFutureMatching(base, name);
+		AssetLoadFuture future = __GetFutureMatching(base, name);
 
-		if(future.IsValid())
+		if(future.valid())
 		{
 			lock.Unlock();
-
-			name->Release();
 
 			WorkQueue *queue = WorkQueue::GetCurrentWorkQueue();
 
 			if(queue)
-			{
-				queue->YieldWithFuture(future.Get());
-				return future.Get().get();
-			}
+				queue->YieldWithFuture(future);
 
-			return future.Get().get();
+			StrongRef<Asset> pendingAsset = future.get();
+			if(!pendingAsset)
+			{
+				name->Autorelease();
+				throw InconsistencyException(RNSTR("Failed loading resource " << name));
+			}
+			name->Release();
+			pendingAsset->Retain();
+			return pendingAsset->Autorelease();
 		}
 
 		RNDebug("Loading asset " << name);
@@ -328,12 +331,16 @@ namespace RN
 		{
 			lock.Unlock();
 			RNWarning("Failed loading resource: " << name);
-			wrapper->SetException(asset.GetException());
+			wrapper->SetAsset(nullptr);
+			wrapper->Release();
+			name->Release();
 			std::rethrow_exception(asset.GetException());
 		}
 
+		Asset *result = asset.Get();
+
 		// Send the result out
-		Asset *result = asset.Get()->Retain();
+		result->Retain();
 
 		PrepareAsset(result, name, base, settings);
 		lock.Unlock();
@@ -346,7 +353,7 @@ namespace RN
 		return result->Autorelease();
 	}
 
-	std::shared_future<StrongRef<Asset>> AssetManager::__GetFutureAssetWithName(MetaClass *base, const String *tname, const Dictionary *tsettings, WorkQueue *queue)
+	AssetLoadFuture AssetManager::__GetFutureAssetWithName(MetaClass *base, const String *tname, const Dictionary *tsettings, WorkQueue *queue)
 	{
 		String *name = tname->GetNormalizedPath()->Retain();
 		UniqueLock<Lockable> lock(_lock);
@@ -358,27 +365,30 @@ namespace RN
 			lock.Unlock();
 
 			std::promise<StrongRef<Asset>> promise;
-			std::shared_future<StrongRef<Asset>> future = promise.get_future().share();
+			AssetLoadFuture future = promise.get_future().share();
 
 			try
 			{
 				asset = ValidateAsset(base, asset);
-				promise.set_value(asset);
+				promise.set_value(StrongRef<Asset>(asset));
 			}
 			catch(Exception &)
 			{
-				promise.set_exception(std::current_exception());
+				promise.set_value(StrongRef<Asset>());
 			}
+
+			asset->Release();
+			name->Release();
 
 			return future;
 		}
 
-		Expected<std::shared_future<StrongRef<Asset>>> future = __GetFutureMatching(base, name);
-		if(future.IsValid())
+		AssetLoadFuture future = __GetFutureMatching(base, name);
+		if(future.valid())
 		{
 			name->Release();
 
-			return future.Get();
+			return future;
 		}
 
 		// Load the resource
@@ -415,6 +425,7 @@ namespace RN
 			options.queue = WorkQueue::GetGlobalQueue(WorkQueue::Priority::Default);
 
 		loader->__LoadInBackground(fileOrName, options, wrapper);
+		settings->Release();
 
 
 		Array *requests = _requests->GetObjectForKey<Array>(name);
@@ -427,11 +438,12 @@ namespace RN
 
 		requests->AddObject(wrapper);
 		wrapper->Release();
+		name->Release();
 
 		return wrapper->GetFuture();
 	}
 
-	void AssetManager::__FinishLoadingAsset(void *token, Expected<Asset *> asset)
+	void AssetManager::__FinishLoadingAsset(void *token, Asset *asset)
 	{
 		PendingAsset *wrapper = reinterpret_cast<PendingAsset *>(token);
 		String *name = wrapper->GetName();
@@ -441,8 +453,8 @@ namespace RN
 		{
 			LockGuard<Lockable> lock(_lock);
 
-			if(asset.IsValid())
-				PrepareAsset(asset.Get(), name, wrapper->GetMeta(), nullptr);
+			if(asset)
+				PrepareAsset(asset, name, wrapper->GetMeta(), nullptr);
 
 			Array *requests = _requests->GetObjectForKey<Array>(name);
 
@@ -455,10 +467,7 @@ namespace RN
 			}
 		}
 
-		if(asset.IsValid())
-			wrapper->SetAsset(asset.Get());
-		else
-			wrapper->SetException(asset.GetException());
+		wrapper->SetAsset(asset);
 
 		wrapper->Release();
 	}

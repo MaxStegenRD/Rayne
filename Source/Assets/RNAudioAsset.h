@@ -67,7 +67,7 @@ namespace RN
 		Type GetType() const { return _type; }
 
 		RNAPI static AudioAsset *WithName(const String *name, const Dictionary *settings = nullptr);
-		RNAPI static std::shared_future<StrongRef<Asset>> WithNameAsync(const String *name, const Dictionary *settings = nullptr);
+		RNAPI static AssetLoadFuture WithNameAsync(const String *name, const Dictionary *settings = nullptr);
 
 		RNAPI static AudioAsset *WithRingbuffer(size_t size, int bytesPerSample, int sampleRate, int channels);
 		RNAPI static AudioAsset *WithRecommendedRingbuffer(uint32 sampleRate, uint32 channels, uint32 bytesPerChannel, uint32 jitterMs = 30, uint32 minBufferMs = 100);

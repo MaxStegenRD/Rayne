@@ -56,16 +56,23 @@ namespace RN
 	{
 		try
 		{
+			Asset *asset = nullptr;
+
 			if(fileOrName->IsKindOfClass(File::GetMetaClass()))
 			{
 				File *file = static_cast<File *>(fileOrName);
-				return Load(file, options);
+				asset = Load(file, options);
 			}
 			else
 			{
 				String *name = static_cast<String *>(fileOrName);
-				return Load(name, options);
+				asset = Load(name, options);
 			}
+
+			if(!asset)
+				return InconsistencyException(RNSTR("Loader returned null asset while loading " << fileOrName));
+
+			return asset;
 		}
 		catch(...)
 		{
@@ -94,7 +101,20 @@ namespace RN
 			}
 			else
 			{
-				manager->__FinishLoadingAsset(token, std::move(asset));
+				try
+				{
+					std::rethrow_exception(asset.GetException());
+				}
+				catch(std::exception &e)
+				{
+					RNError("Encountered exception " << e << " while loading asset " << fileOrName);
+				}
+				catch(...)
+				{
+					RNError("Encountered unknown exception while loading asset " << fileOrName);
+				}
+
+				manager->__FinishLoadingAsset(token, nullptr);
 			}
 
 			fileOrName->Release();

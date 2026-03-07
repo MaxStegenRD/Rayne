@@ -28,10 +28,6 @@ namespace RN
 
 	void PendingAsset::SetAsset(Asset *asset)
 	{
-		_promise.set_value(asset);
-	}
-	void PendingAsset::SetException(std::exception_ptr exception)
-	{
-		_promise.set_exception(exception);
+		_promise.set_value(StrongRef<Asset>(asset));
 	}
 } // namespace RN

@@ -31,7 +31,7 @@ namespace RN
 
 		Mesh *LoadAssimpMesh(const aiScene *scene, size_t index);
 
-		std::shared_future<StrongRef<Asset>> LoadAsyncTexture(aiMaterial *material, const String *path, aiTextureType aitexturetype, uint8 index);
+		AssetLoadFuture LoadAsyncTexture(aiMaterial *material, const String *path, aiTextureType aitexturetype, uint8 index);
 		Texture *LoadTexture(aiMaterial *material, const String *path, aiTextureType aitexturetype, uint8 index);
 
 		RNDeclareMetaAPI(AssimpAssetLoader, ASAPI)
