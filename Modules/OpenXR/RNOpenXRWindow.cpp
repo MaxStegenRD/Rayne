@@ -156,26 +156,28 @@ namespace RN
 		XrBaseInStructure *platformSpecificInstanceCreateInfo = nullptr;
 
 #if RN_PLATFORM_ANDROID
-		android_app *app = Kernel::GetSharedInstance()->GetAndroidApp();
-		ANativeActivity_setWindowFlags(app->activity, AWINDOW_FLAG_KEEP_SCREEN_ON, 0);
+		const AndroidState *androidState = Kernel::GetSharedInstance()->GetAndroidState();
+		JavaVM *javaVM = androidState? androidState->GetJavaVM() : nullptr;
+		jobject activityObject = androidState? androidState->GetActivityObject() : nullptr;
+		if(androidState) androidState->SetWindowFlags(AWINDOW_FLAG_KEEP_SCREEN_ON, 0);
 
 		PFN_xrInitializeLoaderKHR initializeLoader = nullptr;
-		if(XR_SUCCEEDED(xrGetInstanceProcAddr(XR_NULL_HANDLE, "xrInitializeLoaderKHR", (PFN_xrVoidFunction *)(&initializeLoader))))
+		if(javaVM && activityObject && XR_SUCCEEDED(xrGetInstanceProcAddr(XR_NULL_HANDLE, "xrInitializeLoaderKHR", (PFN_xrVoidFunction *)(&initializeLoader))))
 		{
 			XrLoaderInitInfoAndroidKHR loaderInitInfoAndroid;
 			memset(&loaderInitInfoAndroid, 0, sizeof(loaderInitInfoAndroid));
 			loaderInitInfoAndroid.type = XR_TYPE_LOADER_INIT_INFO_ANDROID_KHR;
 			loaderInitInfoAndroid.next = nullptr;
-			loaderInitInfoAndroid.applicationVM = app->activity->vm;
-			loaderInitInfoAndroid.applicationContext = app->activity->clazz;
+			loaderInitInfoAndroid.applicationVM = javaVM;
+			loaderInitInfoAndroid.applicationContext = activityObject;
 			initializeLoader((const XrLoaderInitInfoBaseHeaderKHR *)&loaderInitInfoAndroid);
 		}
 
 		extensions.push_back(XR_KHR_ANDROID_CREATE_INSTANCE_EXTENSION_NAME);
 
 		XrInstanceCreateInfoAndroidKHR instanceCreateInfo = {XR_TYPE_INSTANCE_CREATE_INFO_ANDROID_KHR};
-		instanceCreateInfo.applicationVM = app->activity->vm;
-		instanceCreateInfo.applicationActivity = app->activity->clazz;
+		instanceCreateInfo.applicationVM = javaVM;
+		instanceCreateInfo.applicationActivity = activityObject;
 
 		platformSpecificInstanceCreateInfo = reinterpret_cast<XrBaseInStructure *>(&instanceCreateInfo);
 		_mainThreadID = gettid();
