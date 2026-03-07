@@ -212,6 +212,8 @@ namespace RN
 	{
 		LockGuard<Lockable> lock(_lock);
 
+		if(!_asset) return;
+
 		UpdatePosition(0.0f);
 
 		for(auto &pair : _source)
