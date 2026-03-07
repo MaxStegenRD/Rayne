@@ -78,35 +78,24 @@ namespace RN
 		fileOrName->Retain();
 
 		options.queue->Perform([=]() {
-			Asset *result;
+			Expected<Asset *> asset;
+			Asset *result = nullptr;
 
-			try
-			{
-				AutoreleasePool::PerformBlock([&] {
-					if(fileOrName->IsKindOfClass(File::GetMetaClass()))
-					{
-						File *file = static_cast<File *>(fileOrName);
-						result = SafeRetain(Load(file, options));
-					}
-					else
-					{
-						String *name = static_cast<String *>(fileOrName);
-						result = SafeRetain(Load(name, options));
-					}
-				});
-			}
-			catch(std::exception &e)
-			{
-				RNError("Encountered exception " << e << " while loading asset");
-
-				AssetManager *manager = AssetManager::GetSharedInstance();
-				manager->__FinishLoadingAsset(token, e);
-
-				fileOrName->Release();
-			}
+			AutoreleasePool::PerformBlock([&] {
+				asset = __Load(fileOrName, options);
+				if(asset.IsValid()) result = SafeRetain(asset.Get());
+			});
 
 			AssetManager *manager = AssetManager::GetSharedInstance();
-			manager->__FinishLoadingAsset(token, result);
+			if(result)
+			{
+				manager->__FinishLoadingAsset(token, result);
+				result->Release();
+			}
+			else
+			{
+				manager->__FinishLoadingAsset(token, std::move(asset));
+			}
 
 			fileOrName->Release();
 		});
