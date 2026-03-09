@@ -82,7 +82,7 @@ namespace RN
 
 			delete[] buffer;
 
-			Skeleton *skeleton = nullptr;
+			StrongRef<Skeleton> skeleton;
 			if(options.queue)
 			{
 				std::shared_future<StrongRef<Asset>> future = AssetManager::GetSharedInstance()->GetFutureAssetWithName<Skeleton>(normalized, nullptr);
@@ -241,7 +241,7 @@ namespace RN
 			bool wantsDiscard = false;
 
 			textures->Enumerate<String>([&](String *file, size_t index, bool &stop) {
-				Texture *texture;
+				StrongRef<Texture> texture;
 
 				if(options.queue)
 				{
