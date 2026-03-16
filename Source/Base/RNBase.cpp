@@ -157,7 +157,11 @@ namespace RN
 	struct __KernelBootstrapHelper
 	{
 	public:
-		static Kernel *BootstrapKernel(Application *app, const ArgumentParser &arguments, void *object)
+		static Kernel *BootstrapKernel(Application *app, const ArgumentParser &arguments, void *object
+#if RN_PLATFORM_ANDROID
+									   , AndroidState *androidState
+#endif
+		)
 		{
 			__GetFunctionPool();
 
@@ -185,11 +189,17 @@ namespace RN
 			}
 #endif
 
-			Kernel *result = new Kernel(app, arguments);
+			Kernel *result =
+#if RN_PLATFORM_ANDROID
+				new Kernel(app, arguments, androidState);
+#else
+				new Kernel(app, arguments);
+#endif
 
 #if RN_PLATFORM_ANDROID
 			android_app *androidApp = static_cast<android_app *>(object);
 			RN_ASSERT(androidApp, "Object needs to be a pointer to the android_app object for Android builds.");
+			RN_ASSERT(androidState, "AndroidState must be available before bootstrapping on Android.");
 
 			JNIEnv *env = nullptr;
 			androidApp->activity->vm->AttachCurrentThread(&env, nullptr);
@@ -197,8 +207,7 @@ namespace RN
 			// Note that AttachCurrentThread will reset the thread name.
 			prctl(PR_SET_NAME, (long)"RN::Main", 0, 0, 0);
 
-			result->InitializeAndroid(androidApp, env);
-			androidApp->onAppCmd = Android_enqueue_cmd;
+			result->InitializeAndroid(env);
 #endif
 
 #if RN_PLATFORM_MAC_OS
@@ -229,6 +238,64 @@ namespace RN
 			return result;
 		}
 
+#if RN_PLATFORM_ANDROID
+		static AndroidState *CreateAndroidState(android_app *androidApp)
+		{
+			AndroidState *androidState = new AndroidState();
+			androidState->SetApp(androidApp);
+			androidApp->onAppCmd = Android_enqueue_cmd;
+
+			return androidState;
+		}
+
+		static void ProcessAndroidEvents(AndroidState *androidState, int timeout)
+		{
+			int ident;
+			int events;
+			android_poll_source *source = nullptr;
+			bool shouldWait = true;
+
+			do
+			{
+				ident = ALooper_pollOnce(shouldWait? timeout : 0, nullptr, &events, reinterpret_cast<void **>(&source));
+				shouldWait = false;
+
+				if(ident >= 0 && source)
+				{
+					androidState->ProcessSource(source);
+				}
+			} while(ident >= 0);
+		}
+
+		static bool WaitForAndroidStartup(android_app *androidApp, AndroidState *androidState)
+		{
+			while(androidApp && !androidApp->destroyRequested && (!androidApp->window || androidApp->activityState != APP_CMD_RESUME))
+			{
+				ProcessAndroidEvents(androidState, -1);
+			}
+
+			if(androidApp && !androidApp->destroyRequested)
+			{
+				ANativeWindow *previousWindow = androidState->GetWindow();
+				int32 previousActivityState = androidState->GetActivityState();
+				bool previousDestroyRequested = androidState->GetDestroyRequested();
+
+				androidState->SetApp(androidApp);
+				androidState->SynchronizeState(previousWindow != androidApp->window,
+											   previousActivityState != APP_CMD_RESUME && androidApp->activityState == APP_CMD_RESUME,
+											   !previousDestroyRequested && (androidApp->destroyRequested != 0));
+				return true;
+			}
+
+			return false;
+		}
+
+		static void DestroyAndroidState(AndroidState *androidState)
+		{
+			delete androidState;
+		}
+#endif
+
 		static void TearDownKernel(Kernel *kernel)
 		{
 #if RN_PLATFORM_MAC_OS || RN_PLATFORM_IOS || RN_PLATFORM_VISIONOS
@@ -254,7 +321,11 @@ namespace RN
 		}
 	};
 
-	RNAPI Kernel *__BootstrapKernel(Application *app, const ArgumentParser &arguments, void *object);
+	RNAPI Kernel *__BootstrapKernel(Application *app, const ArgumentParser &arguments, void *object
+#if RN_PLATFORM_ANDROID
+									 , AndroidState *androidState
+#endif
+	);
 	RNAPI void __TearDownKernel(Kernel *kernel);
 
 
@@ -268,9 +339,17 @@ namespace RN
 		return __functionPool;
 	}
 
-	Kernel *__BootstrapKernel(Application *app, const ArgumentParser &arguments, void *object)
+	Kernel *__BootstrapKernel(Application *app, const ArgumentParser &arguments, void *object
+#if RN_PLATFORM_ANDROID
+								, AndroidState *androidState
+#endif
+	)
 	{
-		Kernel *result = __KernelBootstrapHelper::BootstrapKernel(app, arguments, object);
+		Kernel *result = __KernelBootstrapHelper::BootstrapKernel(app, arguments, object
+#if RN_PLATFORM_ANDROID
+																 , androidState
+#endif
+		);
 		return result;
 	}
 
@@ -335,6 +414,66 @@ namespace RN
 
 		ArgumentParser arguments(argc, argv);
 
+#if RN_PLATFORM_ANDROID
+		android_app *androidApp = static_cast<android_app *>(object);
+		RN_ASSERT(androidApp, "Object needs to be a pointer to the android_app object for Android builds.");
+		prctl(PR_SET_NAME, (long)"RN::Android", 0, 0, 0);
+
+		AndroidState *androidState = __KernelBootstrapHelper::CreateAndroidState(androidApp);
+		if(!__KernelBootstrapHelper::WaitForAndroidStartup(androidApp, androidState))
+		{
+			androidApp->onAppCmd = nullptr;
+			__KernelBootstrapHelper::DestroyAndroidState(androidState);
+			return;
+		}
+
+		std::atomic<bool> didFinishGameThread(false);
+		std::exception_ptr gameThreadException;
+		ALooper *platformLooper = ALooper_forThread();
+		Thread *gameThread = new Thread([&] {
+			try
+			{
+				Kernel *result = __BootstrapKernel(app, arguments, object, androidState);
+				result->Run();
+				__TearDownKernel(result);
+			}
+			catch(...)
+			{
+				gameThreadException = std::current_exception();
+			}
+
+			didFinishGameThread.store(true, std::memory_order_release);
+			if(platformLooper) ALooper_wake(platformLooper);
+		});
+
+		while(!didFinishGameThread.load(std::memory_order_acquire))
+		{
+			__KernelBootstrapHelper::ProcessAndroidEvents(androidState, -1);
+		}
+
+		gameThread->WaitForExit();
+		gameThread->Release();
+
+		if(!androidApp->destroyRequested && androidApp->activity)
+		{
+			ANativeActivity_finish(androidApp->activity);
+		}
+
+		while(!androidApp->destroyRequested)
+		{
+			__KernelBootstrapHelper::ProcessAndroidEvents(androidState, -1);
+		}
+
+		androidApp->onAppCmd = nullptr;
+		__KernelBootstrapHelper::DestroyAndroidState(androidState);
+
+		if(gameThreadException)
+		{
+			std::rethrow_exception(gameThreadException);
+		}
+
+		return;
+#else
 		Kernel *result = __BootstrapKernel(app, arguments, object);
 #if RN_PLATFORM_MAC_OS
 		[(RNApplication *)[RNApplication sharedApplication] setKernel:result];
@@ -344,9 +483,6 @@ namespace RN
 
 		__TearDownKernel(result);
 
-#if RN_PLATFORM_ANDROID
-		return;
-#else
 		std::exit(EXIT_SUCCESS);
 #endif
 	}

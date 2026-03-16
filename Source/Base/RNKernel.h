@@ -95,7 +95,11 @@ namespace RN
 #endif
 
 	private:
+#if RN_PLATFORM_ANDROID
+		Kernel(Application *app, const ArgumentParser &arguments, AndroidState *androidState);
+#else
 		Kernel(Application *app, const ArgumentParser &arguments);
+#endif
 		~Kernel();
 
 		void Bootstrap();
@@ -130,7 +134,7 @@ namespace RN
 		xcb_connection_t *_connection;
 #endif
 #if RN_PLATFORM_ANDROID
-		void InitializeAndroid(android_app *app, JNIEnv *jniEnv);
+		void InitializeAndroid(JNIEnv *jniEnv);
 		void DrainAndroidStateChanges();
 		AndroidState *_androidState;
 #endif

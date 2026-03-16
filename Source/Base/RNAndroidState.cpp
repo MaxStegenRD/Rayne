@@ -17,7 +17,7 @@ namespace RN
 		_activityState(APP_CMD_STOP),
 		_destroyRequested(false),
 		_rayneMainThreadJNIEnv(nullptr),
-		_pendingState{nullptr, APP_CMD_STOP, false, false, false}
+		_pendingState{nullptr, APP_CMD_STOP, false, false, false, false, false, false}
 	{}
 
 	AndroidState::~AndroidState()
@@ -208,17 +208,31 @@ namespace RN
 
 	void AndroidState::SynchronizeState()
 	{
+		SynchronizeState(false, false, false);
+	}
+
+	void AndroidState::SynchronizeState(bool windowChanged, bool didResume, bool didDestroy)
+	{
 		android_app *app = _app.load(std::memory_order_acquire);
 		PendingState state = {
 			app? app->window : nullptr,
 			app? app->activityState : APP_CMD_STOP,
 			app? (app->destroyRequested != 0) : false,
+			windowChanged,
+			didResume,
+			didDestroy,
 			false,
 			true
 		};
 
 		LockGuard<Lockable> lock(_pendingStateLock);
 		state.didLowMemory = _pendingState.didLowMemory;
+		if(_pendingState.hasPendingState)
+		{
+			state.windowChanged = state.windowChanged || _pendingState.windowChanged;
+			state.didResume = state.didResume || _pendingState.didResume;
+			state.didDestroy = state.didDestroy || _pendingState.didDestroy;
+		}
 		_pendingState = state;
 	}
 
@@ -323,7 +337,7 @@ namespace RN
 
 	bool AndroidState::DrainPendingState(const std::function<void(bool, bool, bool, bool)> &callback)
 	{
-		PendingState state = {nullptr, APP_CMD_STOP, false, false, false};
+		PendingState state = {nullptr, APP_CMD_STOP, false, false, false, false, false, false};
 
 		{
 			LockGuard<Lockable> lock(_pendingStateLock);
@@ -345,9 +359,9 @@ namespace RN
 		_destroyRequested.store(state.destroyRequested, std::memory_order_release);
 		if(callback)
 		{
-			callback(previousWindow != state.window,
-					 previousActivityState != APP_CMD_RESUME && state.activityState == APP_CMD_RESUME,
-					 !previousDestroyRequested && state.destroyRequested,
+			callback(state.windowChanged || previousWindow != state.window,
+					 state.didResume || (previousActivityState != APP_CMD_RESUME && state.activityState == APP_CMD_RESUME),
+					 state.didDestroy || (!previousDestroyRequested && state.destroyRequested),
 					 state.didLowMemory);
 		}
 

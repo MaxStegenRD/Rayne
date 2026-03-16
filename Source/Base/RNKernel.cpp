@@ -34,23 +34,27 @@ namespace RN
 
 #endif
 
-	Kernel::Kernel(Application *application, const ArgumentParser &arguments) :
+	#if RN_PLATFORM_ANDROID
+	Kernel::Kernel(Application *application, const ArgumentParser &arguments, AndroidState *androidState) :
 		_arguments(arguments),
 		_application(application),
-#if RN_PLATFORM_ANDROID
-		_androidState(new AndroidState()),
-#endif
+		_androidState(androidState),
 		_exit(false),
 		_isActive(true),
 		_wantsToExit(false)
 	{}
+	#else
+	Kernel::Kernel(Application *application, const ArgumentParser &arguments) :
+		_arguments(arguments),
+		_application(application),
+		_exit(false),
+		_isActive(true),
+		_wantsToExit(false)
+	{}
+	#endif
 
 	Kernel::~Kernel()
-	{
-#if RN_PLATFORM_ANDROID
-		delete _androidState;
-#endif
-	}
+	{}
 
 	Kernel *Kernel::GetSharedInstance()
 	{
@@ -297,9 +301,8 @@ namespace RN
 #endif
 
 #if RN_PLATFORM_ANDROID
-	void Kernel::InitializeAndroid(android_app *app, JNIEnv *jniEnv)
+	void Kernel::InitializeAndroid(JNIEnv *jniEnv)
 	{
-		_androidState->SetApp(app);
 		_androidState->SetRayneMainThreadJNIEnv(jniEnv);
 	}
 
@@ -373,12 +376,7 @@ namespace RN
 		auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(now - _lastFrame).count();
 		_delta = milliseconds / 1000.0;
 
-#if RN_PLATFORM_ANDROID
-		//Wait for android app window to be available before finishing the boostrap which is usually followed by RN::Window creation
-		if(RN_EXPECT_FALSE(_firstFrame)) // && GetAndroidState()->GetWindow()
-#else
 		if(RN_EXPECT_FALSE(_firstFrame))
-#endif
 		{
 			HandleSystemEvents();
 
@@ -516,21 +514,7 @@ namespace RN
 		}
 #endif
 #if RN_PLATFORM_ANDROID
-		int ident;
-		int events;
-		android_poll_source *source;
-
-		// Poll all pending events.
-		while((ident = ALooper_pollOnce(0, nullptr, &events, reinterpret_cast<void**>(&source))) >= 0)
-		{
-			if(source != nullptr)
-			{
-				_androidState->ProcessSource(source);
-			}
-
-			DrainAndroidStateChanges();
-		}
-
+		DrainAndroidStateChanges();
 		if(GetAndroidState()->GetDestroyRequested()) _wantsToExit = true;
 #endif
 	}

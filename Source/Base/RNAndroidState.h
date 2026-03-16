@@ -14,6 +14,7 @@
 namespace RN
 {
 	class Kernel;
+	struct __KernelBootstrapHelper;
 
 #if RN_PLATFORM_ANDROID
 	class AndroidState
@@ -53,10 +54,10 @@ namespace RN
 		bool RequestPermission(const char *permission, int32 requestCode) const;
 		int32 CheckSelfPermission(const char *permission) const;
 		void HandleTransientCommand(int32 cmd);
-		void SynchronizeState();
 
 	private:
 		friend class Kernel;
+		friend struct __KernelBootstrapHelper;
 
 		ANativeActivity *GetActivity() const
 		{
@@ -79,6 +80,8 @@ namespace RN
 		void ProcessSource(android_poll_source *source);
 		void SetApp(android_app *app);
 		void SetRayneMainThreadJNIEnv(JNIEnv *jniEnv);
+		void SynchronizeState();
+		void SynchronizeState(bool windowChanged, bool didResume, bool didDestroy);
 		bool DrainPendingState(const std::function<void(bool, bool, bool, bool)> &callback);
 
 		struct PendingState
@@ -86,6 +89,9 @@ namespace RN
 			ANativeWindow *window;
 			int32 activityState;
 			bool destroyRequested;
+			bool windowChanged;
+			bool didResume;
+			bool didDestroy;
 			bool didLowMemory;
 			bool hasPendingState;
 		};
