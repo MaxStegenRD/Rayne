@@ -149,7 +149,6 @@ private:
 
 namespace RN
 {
-	static MemoryPool *__functionPool;
 #if RN_ENABLE_VTUNE
 	__itt_domain *VTuneDomain;
 #endif
@@ -163,8 +162,6 @@ namespace RN
 #endif
 		)
 		{
-			__GetFunctionPool();
-
 #if RN_PLATFORM_WINDOWS
 			if(!arguments.HasArgument("no-locale", '\0'))
 			{
@@ -315,9 +312,6 @@ namespace RN
 				javaVM->DetachCurrentThread();
 			}
 #endif
-
-			delete __functionPool;
-			__functionPool = nullptr;
 		}
 	};
 
@@ -327,17 +321,6 @@ namespace RN
 #endif
 	);
 	RNAPI void __TearDownKernel(Kernel *kernel);
-
-
-	MemoryPool *__GetFunctionPool()
-	{
-		if(RN_EXPECT_FALSE(!__functionPool))
-		{
-			__functionPool = new MemoryPool();
-		}
-		
-		return __functionPool;
-	}
 
 	Kernel *__BootstrapKernel(Application *app, const ArgumentParser &arguments, void *object
 #if RN_PLATFORM_ANDROID
