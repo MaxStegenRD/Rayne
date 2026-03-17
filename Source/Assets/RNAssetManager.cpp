@@ -409,9 +409,19 @@ namespace RN
 		if(!settings)
 			settings = new Dictionary();
 
-		Object *fileOrName = file ? static_cast<Object *>(file) : static_cast<Object *>(name);
-
 		PendingAsset *wrapper = new PendingAsset(base, name);
+		Array *requests = _requests->GetObjectForKey<Array>(name);
+		if(!requests)
+		{
+			requests = new Array();
+			_requests->SetObjectForKey(requests, name);
+			requests->Release();
+		}
+
+		requests->AddObject(wrapper);
+		future = wrapper->GetFuture();
+
+		Object *fileOrName = file ? static_cast<Object *>(file) : static_cast<Object *>(name);
 
 		AssetLoader::LoadOptions options;
 		options.settings = settings;
@@ -426,21 +436,10 @@ namespace RN
 
 		loader->__LoadInBackground(fileOrName, options, wrapper);
 		settings->Release();
-
-
-		Array *requests = _requests->GetObjectForKey<Array>(name);
-		if(!requests)
-		{
-			requests = new Array();
-			_requests->SetObjectForKey(requests, name);
-			requests->Release();
-		}
-
-		requests->AddObject(wrapper);
 		wrapper->Release();
 		name->Release();
 
-		return wrapper->GetFuture();
+		return future;
 	}
 
 	void AssetManager::__FinishLoadingAsset(void *token, Asset *asset)
