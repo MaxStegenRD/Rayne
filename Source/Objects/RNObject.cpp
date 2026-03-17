@@ -48,8 +48,6 @@
 
 namespace RN
 {
-	void *__kRNObjectMetaClass = nullptr;
-
 	Object::Object() :
 #if RN_ZOMBIE_ALLOCATION
 		_isZombie(false),
@@ -106,13 +104,12 @@ namespace RN
 	}
 	MetaClass *Object::GetMetaClass()
 	{
-		if(!__kRNObjectMetaClass)
-		{
+		static MetaType *meta = []() -> MetaType * {
 			__InitWeakTables();
-			__kRNObjectMetaClass = new MetaType();
-		}
+			return new MetaType();
+		}();
 
-		return reinterpret_cast<Object::MetaType *>(__kRNObjectMetaClass);
+		return meta;
 	}
 
 #if RN_BUILD_DEBUG || RN_BUILD_DEBUG_REFCOUNT

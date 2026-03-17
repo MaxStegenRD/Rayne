@@ -227,153 +227,149 @@ namespace RN
 		mutable std::vector<std::tuple<void *, ObservableProperty *, Connection *>> _cookies;
 	};
 
-#define __RNDeclareMetaPrivateWithTraits(cls, super, ...)                  \
-	class cls##MetaType : public RN::__ConcreteMetaClass<cls, __VA_ARGS__> \
-	{                                                                      \
-	public:                                                                \
-		cls##MetaType(const char *signature) :                             \
-			MetaClass(super::GetMetaClass(), #cls, signature)              \
-		{}                                                                 \
+#define __RNDeclareMetaPrivateWithTraits(cls, super, ...)\
+	class cls##MetaType : public RN::__ConcreteMetaClass<cls, __VA_ARGS__>\
+	{\
+	public:\
+		cls##MetaType(const char *signature) :\
+			MetaClass(super::GetMetaClass(), #cls, signature)\
+		{}\
 	};
-#define __RNDeclareScopedMetaPrivateWithTraits(scope, cls, super, ...)                   \
-	class scope##cls##MetaType : public RN::__ConcreteMetaClass<scope::cls, __VA_ARGS__> \
-	{                                                                                    \
-	public:                                                                              \
-		scope##cls##MetaType(const char *signature) :                                    \
-			MetaClass(super::GetMetaClass(), #cls, signature)                            \
-		{}                                                                               \
+
+#define __RNDeclareScopedMetaPrivateWithTraits(scope, cls, super, ...)\
+	class scope##cls##MetaType : public RN::__ConcreteMetaClass<scope::cls, __VA_ARGS__>\
+	{\
+	public:\
+		scope##cls##MetaType(const char *signature) :\
+			MetaClass(super::GetMetaClass(), #cls, signature)\
+		{}\
 	};
 
 #if RN_BUILD_DEBUG || RN_BUILD_DEBUG_REFCOUNT
-#define __RNDeclareMetaPublic(cls)                              \
-public:                                                         \
-RN_INLINE cls *Retain(const std::source_location &loc = std::source_location::current())                                               \
-	{                                                           \
-		return static_cast<cls *>(Object::Retain(loc));            \
-	}                                                           \
-	RN_INLINE const cls *Retain(const std::source_location &loc = std::source_location::current()) const                                   \
-	{                                                           \
-		return static_cast<const cls *>(Object::Retain(loc));      \
-	}                                                           \
-	RN_INLINE cls *Autorelease(const std::source_location &loc = std::source_location::current())                                          \
-	{                                                           \
-		return static_cast<cls *>(Object::Autorelease(loc));       \
-	}                                                           \
-	RN_INLINE const cls *Autorelease(const std::source_location &loc = std::source_location::current()) const                              \
-	{                                                           \
-		return static_cast<const cls *>(Object::Autorelease(loc)); \
-	}                                                           \
-	RN_INLINE cls *Copy() const                                           \
-	{                                                           \
-		return static_cast<cls *>(Object::Copy());              \
+#define __RNDeclareMetaPublic(cls)\
+public:\
+	RN_INLINE cls *Retain(const std::source_location &loc = std::source_location::current())\
+	{\
+		return static_cast<cls *>(Object::Retain(loc));\
+	}\
+	RN_INLINE const cls *Retain(const std::source_location &loc = std::source_location::current()) const\
+	{\
+		return static_cast<const cls *>(Object::Retain(loc));\
+	}\
+	RN_INLINE cls *Autorelease(const std::source_location &loc = std::source_location::current())\
+	{\
+		return static_cast<cls *>(Object::Autorelease(loc));\
+	}\
+	RN_INLINE const cls *Autorelease(const std::source_location &loc = std::source_location::current()) const\
+	{\
+		return static_cast<const cls *>(Object::Autorelease(loc));\
+	}\
+	RN_INLINE cls *Copy() const\
+	{\
+		return static_cast<cls *>(Object::Copy());\
 	}
 #else
-#define __RNDeclareMetaPublic(cls)                              \
-public:                                                         \
-	cls *Retain()                                               \
-	{                                                           \
-		return static_cast<cls *>(Object::Retain());            \
-	}                                                           \
-	const cls *Retain() const                                   \
-	{                                                           \
-		return static_cast<const cls *>(Object::Retain());      \
-	}                                                           \
-	cls *Autorelease()                                          \
-	{                                                           \
-		return static_cast<cls *>(Object::Autorelease());       \
-	}                                                           \
-	const cls *Autorelease() const                              \
-	{                                                           \
-		return static_cast<const cls *>(Object::Autorelease()); \
-	}                                                           \
-	cls *Copy() const                                           \
-	{                                                           \
-		return static_cast<cls *>(Object::Copy());              \
+#define __RNDeclareMetaPublic(cls)\
+public:\
+	cls *Retain()\
+	{\
+		return static_cast<cls *>(Object::Retain());\
+	}\
+	const cls *Retain() const\
+	{\
+		return static_cast<const cls *>(Object::Retain());\
+	}\
+	cls *Autorelease()\
+	{\
+		return static_cast<cls *>(Object::Autorelease());\
+	}\
+	const cls *Autorelease() const\
+	{\
+		return static_cast<const cls *>(Object::Autorelease());\
+	}\
+	cls *Copy() const\
+	{\
+		return static_cast<cls *>(Object::Copy());\
 	}
 #endif
 
-
-#define __RNDeclareMetaInternal(cls) \
-	__RNDeclareMetaPublic(cls)       \
-	RNAPI MetaClass *                \
-	GetClass() const override;       \
+#define __RNDeclareMetaInternal(cls)\
+	__RNDeclareMetaPublic(cls)\
+	RNAPI MetaClass *GetClass() const override;\
 	RNAPI static MetaClass *GetMetaClass();
 
-#define RNDeclareMeta(cls)     \
-	__RNDeclareMetaPublic(cls) \
-	RN::MetaClass *            \
-	GetClass() const override; \
+#define RNDeclareMeta(cls)\
+	__RNDeclareMetaPublic(cls)\
+	RN::MetaClass *GetClass() const override;\
 	static RN::MetaClass *GetMetaClass();
 
-#define RNDeclareMetaAPI(cls, apiVisibility) \
-	__RNDeclareMetaPublic(cls)               \
-	apiVisibility RN::MetaClass *            \
-	GetClass() const override;               \
+#define RNDeclareMetaAPI(cls, apiVisibility)\
+	__RNDeclareMetaPublic(cls)\
+	apiVisibility RN::MetaClass *GetClass() const override;\
 	apiVisibility static RN::MetaClass *GetMetaClass();
 
 #if RN_BUILD_LIBRARY
-	#define __RNObjectInitializer(cls, name) \
-		RN_REGISTER_INITIALIZER(name##Init, cls::InitialWakeUp(cls::GetMetaClass()))
+#define __RNObjectInitializer(cls, name)\
+	RN_REGISTER_INITIALIZER(name##Init, cls::InitialWakeUp(cls::GetMetaClass()))
 #else
-	#define __RNObjectInitializer(cls, name)                                                    \
-		namespace                                                                               \
-		{                                                                                       \
-			static void *__RN##name##Register()                                                 \
-			{                                                                                   \
-				cls::InitialWakeUp(cls::GetMetaClass());                                        \
-				return reinterpret_cast<void *>(&cls::GetMetaClass);                            \
-			}                                                                                   \
-			RN_REGISTER_INITIALIZER(name##init, RN::__RegisterMetaClass(&__RN##name##Register)) \
-		}
+#define __RNObjectInitializer(cls, name)\
+	namespace\
+	{\
+		static void *__RN##name##Register()\
+		{\
+			cls::InitialWakeUp(cls::GetMetaClass());\
+			return reinterpret_cast<void *>(&cls::GetMetaClass);\
+		}\
+		RN_REGISTER_INITIALIZER(name##init, RN::__RegisterMetaClass(&__RN##name##Register))\
+	}
 #endif
 
-#define RNDefineMeta(cls, super)                                                                                                                                                                                                                        \
-	static_assert(std::is_base_of<super, cls>::value, "RNDefineMeta() with an invalid object inheritance");                                                                                                                                             \
-	__RNDeclareMetaPrivateWithTraits(cls, super,                                                                                                                                                                                                        \
-									 std::conditional<std::is_default_constructible<cls>::value && !std::is_abstract<cls>::value, RN::MetaClassTraitConstructable<cls>, RN::__MetaClassTraitNull0<cls>>::type,                                          \
-									 std::conditional<std::is_constructible<cls, RN::Deserializer *>::value && !std::is_abstract<cls>::value, RN::MetaClassTraitSerializable<cls>, RN::__MetaClassTraitNull1<cls>>::type,                               \
-									 std::conditional<std::is_constructible<cls, const cls *>::value && !std::is_abstract<cls>::value, RN::MetaClassTraitCopyable<cls>, RN::__MetaClassTraitNull2<cls>>::type) void *__kRN##cls##__metaClass = nullptr; \
-	RN::MetaClass *cls::GetClass() const                                                                                                                                                                                                                \
-	{                                                                                                                                                                                                                                                   \
-		return cls::GetMetaClass();                                                                                                                                                                                                                     \
-	}                                                                                                                                                                                                                                                   \
-	RN::MetaClass *cls::GetMetaClass()                                                                                                                                                                                                                  \
-	{                                                                                                                                                                                                                                                   \
-		if(!__kRN##cls##__metaClass)                                                                                                                                                                                                                    \
-			__kRN##cls##__metaClass = new cls##MetaType(RN_FUNCTION_SIGNATURE);                                                                                                                                                                         \
-		return reinterpret_cast<cls##MetaType *>(__kRN##cls##__metaClass);                                                                                                                                                                              \
-	}                                                                                                                                                                                                                                                   \
+#define RNDefineMeta(cls, super)\
+	static_assert(std::is_base_of<super, cls>::value, "RNDefineMeta() with an invalid object inheritance");\
+	__RNDeclareMetaPrivateWithTraits(\
+		cls, super,\
+		std::conditional<std::is_default_constructible<cls>::value && !std::is_abstract<cls>::value, RN::MetaClassTraitConstructable<cls>, RN::__MetaClassTraitNull0<cls>>::type,\
+		std::conditional<std::is_constructible<cls, RN::Deserializer *>::value && !std::is_abstract<cls>::value, RN::MetaClassTraitSerializable<cls>, RN::__MetaClassTraitNull1<cls>>::type,\
+		std::conditional<std::is_constructible<cls, const cls *>::value && !std::is_abstract<cls>::value, RN::MetaClassTraitCopyable<cls>, RN::__MetaClassTraitNull2<cls>>::type)\
+	RN::MetaClass *cls::GetClass() const\
+	{\
+		return cls::GetMetaClass();\
+	}\
+	RN::MetaClass *cls::GetMetaClass()\
+	{\
+		static cls##MetaType *meta = new cls##MetaType(RN_FUNCTION_SIGNATURE);\
+		return meta;\
+	}\
 	__RNObjectInitializer(cls, cls)
 
-#define RNDefineScopedMeta(scope, cls, super)                                                                                                                                                                                                                                                           \
-	__RNDeclareScopedMetaPrivateWithTraits(scope, cls, super,                                                                                                                                                                                                                                           \
-										   std::conditional<std::is_default_constructible<scope::cls>::value && !std::is_abstract<scope::cls>::value, RN::MetaClassTraitConstructable<scope::cls>, RN::__MetaClassTraitNull0<scope::cls>>::type,                                                        \
-										   std::conditional<std::is_constructible<scope::cls, RN::Deserializer *>::value && !std::is_abstract<scope::cls>::value, RN::MetaClassTraitSerializable<scope::cls>, RN::__MetaClassTraitNull1<scope::cls>>::type,                                             \
-										   std::conditional<std::is_constructible<scope::cls, const scope::cls *>::value && !std::is_abstract<scope::cls>::value, RN::MetaClassTraitCopyable<scope::cls>, RN::__MetaClassTraitNull2<scope::cls>>::type) void *__kRN##scope##cls##__metaClass = nullptr; \
-	RN::MetaClass *scope::cls::GetClass() const                                                                                                                                                                                                                                                         \
-	{                                                                                                                                                                                                                                                                                                   \
-		return scope::cls::GetMetaClass();                                                                                                                                                                                                                                                              \
-	}                                                                                                                                                                                                                                                                                                   \
-	RN::MetaClass *scope::cls::GetMetaClass()                                                                                                                                                                                                                                                           \
-	{                                                                                                                                                                                                                                                                                                   \
-		if(!__kRN##scope##cls##__metaClass)                                                                                                                                                                                                                                                             \
-			__kRN##scope##cls##__metaClass = new scope##cls##MetaType(RN_FUNCTION_SIGNATURE);                                                                                                                                                                                                           \
-		return reinterpret_cast<scope##cls##MetaType *>(__kRN##scope##cls##__metaClass);                                                                                                                                                                                                                \
-	}                                                                                                                                                                                                                                                                                                   \
+#define RNDefineScopedMeta(scope, cls, super)\
+	__RNDeclareScopedMetaPrivateWithTraits(\
+		scope, cls, super,\
+		std::conditional<std::is_default_constructible<scope::cls>::value && !std::is_abstract<scope::cls>::value, RN::MetaClassTraitConstructable<scope::cls>, RN::__MetaClassTraitNull0<scope::cls>>::type,\
+		std::conditional<std::is_constructible<scope::cls, RN::Deserializer *>::value && !std::is_abstract<scope::cls>::value, RN::MetaClassTraitSerializable<scope::cls>, RN::__MetaClassTraitNull1<scope::cls>>::type,\
+		std::conditional<std::is_constructible<scope::cls, const scope::cls *>::value && !std::is_abstract<scope::cls>::value, RN::MetaClassTraitCopyable<scope::cls>, RN::__MetaClassTraitNull2<scope::cls>>::type)\
+	RN::MetaClass *scope::cls::GetClass() const\
+	{\
+		return scope::cls::GetMetaClass();\
+	}\
+	RN::MetaClass *scope::cls::GetMetaClass()\
+	{\
+		static scope##cls##MetaType *meta = new scope##cls##MetaType(RN_FUNCTION_SIGNATURE);\
+		return meta;\
+	}\
 	__RNObjectInitializer(scope::cls, cls)
 
-#define __RNDefineMetaAndGFYMSVC(cls, super)                                                                                                                                              \
-	__RNDeclareMetaPrivateWithTraits(cls, super, RN::__MetaClassTraitNull0<cls>, RN::__MetaClassTraitNull1<cls>, RN::__MetaClassTraitNull2<cls>) void *__kRN##cls##__metaClass = nullptr; \
-	RN::MetaClass *cls::GetClass() const                                                                                                                                                  \
-	{                                                                                                                                                                                     \
-		return cls::GetMetaClass();                                                                                                                                                       \
-	}                                                                                                                                                                                     \
-	RN::MetaClass *cls::GetMetaClass()                                                                                                                                                    \
-	{                                                                                                                                                                                     \
-		if(!__kRN##cls##__metaClass)                                                                                                                                                      \
-			__kRN##cls##__metaClass = new cls##MetaType(RN_FUNCTION_SIGNATURE);                                                                                                           \
-		return reinterpret_cast<cls##MetaType *>(__kRN##cls##__metaClass);                                                                                                                \
-	}                                                                                                                                                                                     \
+#define __RNDefineMetaAndGFYMSVC(cls, super)\
+	__RNDeclareMetaPrivateWithTraits(cls, super, RN::__MetaClassTraitNull0<cls>, RN::__MetaClassTraitNull1<cls>, RN::__MetaClassTraitNull2<cls>)\
+	RN::MetaClass *cls::GetClass() const\
+	{\
+		return cls::GetMetaClass();\
+	}\
+	RN::MetaClass *cls::GetMetaClass()\
+	{\
+		static cls##MetaType *meta = new cls##MetaType(RN_FUNCTION_SIGNATURE);\
+		return meta;\
+	}\
 	RN_REGISTER_INITIALIZER(cls##Init, cls::GetMetaClass(); cls::InitialWakeUp(cls::GetMetaClass()))
 
 #if RN_BUILD_DEBUG || RN_BUILD_DEBUG_REFCOUNT
@@ -692,11 +688,11 @@ public:                                                         \
 	};
 #endif
 
-#define RNObjectClass(name)                \
-	using name##Ref = RN::StrongRef<name>; \
+#define RNObjectClass(name)\
+	using name##Ref = RN::StrongRef<name>;\
 	using Weak##name = RN::WeakRef<name>;
 
-#define RNObjectTransferRef(t) \
+#define RNObjectTransferRef(t)\
 	const_cast<decltype(t)>((t)->Autorelease())
 } // namespace RN
 
