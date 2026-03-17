@@ -18,6 +18,8 @@ namespace RN
 	class Deserializer;
 	class Module;
 
+	typedef void *(*__ClassInitializer)();
+
 	class MetaClass
 	{
 	public:
@@ -111,6 +113,7 @@ namespace RN
 		friend class Module;
 
 		RNAPI static Catalogue *GetSharedInstance();
+		RNAPI void RegisterMetaClass(__ClassInitializer initializer);
 
 		RNAPI MetaClass *GetClassWithName(const std::string &name) const;
 		RNAPI void EnumerateClasses(const std::function<void(MetaClass *meta, bool &stop)> &enumerator);
@@ -130,11 +133,10 @@ namespace RN
 
 		static void ParsePrettyFunction(const char *string, std::vector<std::string> &namespaces);
 
+		mutable RecursiveLockable _lock;
 		std::unordered_map<std::string, MetaClass *> _metaClasses;
 		std::vector<Module *> _modules;
 	};
-
-	typedef void *(*__ClassInitializer)();
 
 	RNAPI void __RegisterMetaClass(__ClassInitializer initializer);
 } // namespace RN

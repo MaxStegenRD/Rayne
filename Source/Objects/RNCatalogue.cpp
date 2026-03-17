@@ -29,6 +29,13 @@ namespace RN
 
 	void __RegisterMetaClass(__ClassInitializer initializer)
 	{
+		Catalogue::GetSharedInstance()->RegisterMetaClass(initializer);
+	}
+
+	void Catalogue::RegisterMetaClass(__ClassInitializer initializer)
+	{
+		LockGuard<RecursiveLockable> lock(_lock);
+
 		if(RN_EXPECT_TRUE(__immediatelyHandlePendingClasses))
 		{
 			initializer();
@@ -89,26 +96,22 @@ namespace RN
 	}
 
 
-	static Catalogue *__sharedInstance = nullptr;
-
 	Catalogue::Catalogue()
 	{}
 	Catalogue::~Catalogue()
-	{
-		__sharedInstance = nullptr;
-	}
+	{}
 
 
 	Catalogue *Catalogue::GetSharedInstance()
 	{
-		if(RN_EXPECT_FALSE(!__sharedInstance))
-			__sharedInstance = new Catalogue();
-
-		return __sharedInstance;
+		static Catalogue *instance = new Catalogue();
+		return instance;
 	}
 
 	MetaClass *Catalogue::GetClassWithName(const std::string &name) const
 	{
+		LockGuard<RecursiveLockable> lock(_lock);
+
 		auto iterator = _metaClasses.find(name);
 		if(iterator != _metaClasses.end())
 			return iterator->second;
@@ -118,6 +121,7 @@ namespace RN
 
 	void Catalogue::EnumerateClasses(const std::function<void(MetaClass *meta, bool &stop)> &enumerator)
 	{
+		LockGuard<RecursiveLockable> lock(_lock);
 		bool stop = false;
 
 		for(auto i = _metaClasses.begin(); i != _metaClasses.end(); i++)
@@ -131,15 +135,18 @@ namespace RN
 
 	void Catalogue::PushModule(Module *module)
 	{
+		LockGuard<RecursiveLockable> lock(_lock);
 		_modules.push_back(module);
 	}
 	void Catalogue::PopModule()
 	{
+		LockGuard<RecursiveLockable> lock(_lock);
 		_modules.pop_back();
 	}
 
 	void Catalogue::RegisterPendingClasses()
 	{
+		LockGuard<RecursiveLockable> lock(_lock);
 		__immediatelyHandlePendingClasses = true;
 
 		for(size_t i = 0; i < __pendingClassesCount; i++)
@@ -151,6 +158,7 @@ namespace RN
 
 	void Catalogue::DoClassesPreFlight()
 	{
+		LockGuard<RecursiveLockable> lock(_lock);
 		ModuleManager *coordinator = ModuleManager::GetSharedInstance();
 
 		for(size_t i = 0; i < __pendingClassesCount; i++)
@@ -167,6 +175,8 @@ namespace RN
 
 	void Catalogue::AddMetaClass(MetaClass *meta)
 	{
+		LockGuard<RecursiveLockable> lock(_lock);
+
 		auto iterator = _metaClasses.find(meta->GetFullname());
 		if(iterator != _metaClasses.end())
 			throw InvalidArgumentException(RNSTR("A MetaClass of the same name '" << meta->GetFullname() << "' already exists!"));
@@ -179,6 +189,7 @@ namespace RN
 
 	void Catalogue::RemoveMetaClass(MetaClass *meta)
 	{
+		LockGuard<RecursiveLockable> lock(_lock);
 		_metaClasses.erase(meta->GetFullname());
 	}
 
