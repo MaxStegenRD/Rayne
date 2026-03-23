@@ -431,6 +431,7 @@ rayne_add_library(Rayne "${TARGET_SOURCES}" "${TARGET_HEADERS}" "${RAYNE_LIBRARI
 target_include_directories(Rayne SYSTEM PRIVATE "${INCLUDE_DIRECTORIES}")
 target_link_libraries(Rayne PUBLIC ${LINK_LIBRARIES})
 target_compile_definitions(Rayne PRIVATE "${COMPILE_DEFINITIONS}")
+target_compile_definitions(Rayne PUBLIC $<$<CONFIG:RelWithDebInfo>:RN_BUILD_PROFILING=1>)
 target_compile_options(Rayne PRIVATE ${COMPILE_OPTIONS})
 
 # Conditionally wire profiler backend
