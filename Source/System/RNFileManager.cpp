@@ -712,8 +712,8 @@ namespace RN
 				return _applicationDirectory->Copy()->Autorelease();
 #endif
 #if RN_PLATFORM_LINUX
-				char buffer[PATH_MAX];
-				std::fill(buffer, buffer + PATH_MAX, 0);
+				char buffer[PATH_MAX + 1];
+				std::fill(buffer, buffer + PATH_MAX + 1, 0);
 				size_t size = PATH_MAX;
 				readlink("/proc/self/exe", buffer, size);
 
@@ -793,8 +793,8 @@ namespace RN
 				return RNSTR(buffer);
 #endif
 #if RN_PLATFORM_LINUX
-				char buffer[PATH_MAX];
-				std::fill(buffer, buffer + PATH_MAX, 0);
+				char buffer[PATH_MAX + 1];
+				std::fill(buffer, buffer + PATH_MAX + 1, 0);
 				size_t size = PATH_MAX;
 				readlink("/proc/self/exe", buffer, size);
 
