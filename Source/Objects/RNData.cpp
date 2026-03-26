@@ -31,6 +31,32 @@
 
 namespace RN
 {
+	static inline int8 GetBase64DecodedValue(unsigned char character, bool urlSafe)
+	{
+		if(character >= 'A' && character <= 'Z') return character - 'A';
+		if(character >= 'a' && character <= 'z') return character - 'a' + 26;
+		if(character >= '0' && character <= '9') return character - '0' + 52;
+		if(urlSafe)
+		{
+			if(character == '-') return 62;
+			if(character == '_') return 63;
+		}
+		else
+		{
+			if(character == '+') return 62;
+			if(character == '/') return 63;
+		}
+
+		return -1;
+	}
+
+	static inline char GetBase64EncodedValue(uint8 value, bool urlSafe)
+	{
+		static const char *base64Characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+		static const char *base64URLCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+		return urlSafe ? base64URLCharacters[value] : base64Characters[value];
+	}
+
 	RNDefineMeta(Data, Object)
 
 	Data::Data()
@@ -112,6 +138,43 @@ namespace RN
 		return data->Autorelease();
 	}
 
+	Data *Data::WithBase64EncodedString(const String *string, bool urlSafe)
+	{
+		if(!string) return nullptr;
+
+		std::string input(string->GetUTF8String());
+		std::string output;
+		output.reserve((input.length() / 4) * 3 + 3);
+
+		int value = 0;
+		int bits = -8;
+		for(unsigned char character : input)
+		{
+			if(character == '=')
+			{
+				break;
+			}
+
+			if(character == ' ' || character == '\n' || character == '\r' || character == '\t')
+			{
+				continue;
+			}
+
+			int decodedValue = GetBase64DecodedValue(character, urlSafe);
+			if(decodedValue < 0) return nullptr;
+
+			value = (value << 6) + decodedValue;
+			bits += 6;
+			if(bits >= 0)
+			{
+				output.push_back(static_cast<char>((value >> bits) & 0xFF));
+				bits -= 8;
+			}
+		}
+
+		return Data::WithBytes(reinterpret_cast<const uint8 *>(output.data()), output.length());
+	}
+
 	Expected<Data *> Data::WithContentsOfFile(const String *path)
 	{
 		File *file = File::WithName(path, File::Mode::Read | File::Mode::NoCreate);
@@ -191,6 +254,26 @@ namespace RN
 			throw InvalidArgumentException(RNSTR("Couldn't create file " << path));
 
 		return file->Write(_bytes, _length);
+	}
+
+	String *Data::GetBase64EncodedString(bool urlSafe) const
+	{
+		std::string output;
+		output.reserve(((_length + 2) / 3) * 4);
+
+		for(size_t index = 0; index < _length; index += 3)
+		{
+			uint8 first = _bytes[index];
+			uint8 second = (index + 1 < _length) ? _bytes[index + 1] : 0;
+			uint8 third = (index + 2 < _length) ? _bytes[index + 2] : 0;
+
+			output.push_back(GetBase64EncodedValue((first >> 2) & 0x3F, urlSafe));
+			output.push_back(GetBase64EncodedValue(((first & 0x03) << 4) | ((second >> 4) & 0x0F), urlSafe));
+			output.push_back((index + 1 < _length) ? GetBase64EncodedValue(((second & 0x0F) << 2) | ((third >> 6) & 0x03), urlSafe) : '=');
+			output.push_back((index + 2 < _length) ? GetBase64EncodedValue(third & 0x3F, urlSafe) : '=');
+		}
+
+		return String::WithBytes(output.data(), output.length(), Encoding::UTF8);
 	}
 
 

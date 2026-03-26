@@ -30,7 +30,10 @@ namespace RN
 		RNAPI String *GetSha256Hash() const;
 
 		RNAPI static Data *WithBytes(const uint8 *bytes, size_t length);
+		RNAPI static Data *WithBase64EncodedString(const String *string, bool urlSafe = false);
 		RNAPI static Expected<Data *> WithContentsOfFile(const String *file);
+
+		RNAPI String *GetBase64EncodedString(bool urlSafe = false) const;
 
 		RNAPI void Append(const void *bytes, size_t length);
 		RNAPI void Append(Data *other);
