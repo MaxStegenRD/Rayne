@@ -236,11 +236,11 @@ namespace RN
 				extensions.push_back(extension.extensionName);
 				_supportsDynamicResolution = true;
 			}
-/*			else if(std::strcmp(extension.extensionName, XR_META_VULKAN_SWAPCHAIN_CREATE_INFO_EXTENSION_NAME) == 0)
+			else if(std::strcmp(extension.extensionName, XR_META_VULKAN_SWAPCHAIN_CREATE_INFO_EXTENSION_NAME) == 0)
 			{
 				extensions.push_back(extension.extensionName);
 				_supportsVulkanSwapchainCreateInfoMETA = true;
-			}*/
+			}
 #if XR_USE_PLATFORM_ANDROID
 			else if(std::strcmp(extension.extensionName, XR_KHR_ANDROID_THREAD_SETTINGS_EXTENSION_NAME) == 0)
 			{

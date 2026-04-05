@@ -42,6 +42,13 @@ namespace RN
 		foveationSwapChainCreateInfo.next = nullptr;
 		foveationSwapChainCreateInfo.flags = XR_SWAPCHAIN_CREATE_FOVEATION_FRAGMENT_DENSITY_MAP_BIT_FB;
 
+		VulkanRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<VulkanRenderer>();
+		VulkanDevice *vulkanDevice = renderer->GetVulkanDevice();
+		if(supportFoveation && !vulkanDevice->GetSupportsFragmentDensityMaps())
+		{
+			supportFoveation = false;
+		}
+
 		if(_xrWindow->_supportsFoveatedRendering && supportFoveation)
 		{
 			RNDebug("Foveated Rendering is enabled.");
@@ -54,9 +61,9 @@ namespace RN
 		vulkanSwapChainCreateInfoMeta.additionalCreateFlags = VK_IMAGE_CREATE_SUBSAMPLED_BIT_EXT;
 		vulkanSwapChainCreateInfoMeta.additionalUsageFlags = 0;
 
-		if(_xrWindow->_supportsVulkanSwapchainCreateInfoMETA && _xrWindow->_supportsFoveatedRendering && supportFoveation)
+		if(_xrWindow->_supportsVulkanSwapchainCreateInfoMETA && _xrWindow->_supportsFoveatedRendering && supportFoveation && vulkanDevice->GetSupportsFragmentDensityMaps2())
 		{
-			RNDebug("Subsampled Foveated Rendering is enabled.");
+			RNInfo("Subsampled Foveated Rendering is enabled.");
 			foveationSwapChainCreateInfo.next = &vulkanSwapChainCreateInfoMeta;
 		}
 
@@ -120,8 +127,8 @@ namespace RN
 			_renderSemaphores.push_back(renderSemaphore);
 		}
 
-		VulkanRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<VulkanRenderer>();
 		_framebuffer = new VulkanFramebuffer(_size, _descriptor.layerCount, this, renderer, _descriptor.colorFormat, _descriptor.depthStencilFormat, _swapchainFoveationImages ? Texture::Format::RG_8 : Texture::Format::Invalid);
+		
 	}
 
 	OpenXRVulkanSwapChain::~OpenXRVulkanSwapChain()
