@@ -43,6 +43,7 @@ namespace RN
 		bool GetSupportsMultiview() const { return _maxMultiviewViewCount > 1; }
 		uint32 GetMaxMultiviewViewCount() const { return _maxMultiviewViewCount; }
 		bool GetSupportsFragmentDensityMaps() const { return _supportsFragmentDensityMaps; }
+		bool GetSupportsFragmentDensityMaps2() const { return _supportsFragmentDensityMaps2; }
 		bool GetSupportsSamplerAnisotropy() const { return _supportsSamplerAnisotropy; }
 		float GetMaxSamplerAnisotropy() const { return _maxSamplerAnisotropy; }
 		bool GetSupportsFullscreenExclusive() const { return _supportsFullscreenExclusive; }
@@ -60,6 +61,11 @@ namespace RN
 		bool _supportsFragmentDensityMaps;
 		Vector2 _minFragmentDensityTexelSize;
 		Vector2 _maxFragmentDensityTexelSize;
+		bool _supportsFragmentDensityMaps2;
+		bool _hasFragmentDensitySubsampledLoads;
+		bool _hasFragmentDensitySubsampledCoarseReconstructionEarlyAccess;
+		uint32 _maxFragmentDensitySubsampledLayers;
+		uint32 _maxFragmentDensitySubsampledSamplers;
 		bool _supportsSamplerAnisotropy;
 		bool _supportsFullscreenExclusive;
 		float _maxSamplerAnisotropy;

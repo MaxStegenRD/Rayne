@@ -63,6 +63,11 @@ namespace RN
 		_deviceExtensions(nullptr),
 		_maxMultiviewViewCount(1),
 		_supportsFragmentDensityMaps(false),
+		_supportsFragmentDensityMaps2(false),
+		_hasFragmentDensitySubsampledLoads(false),
+		_hasFragmentDensitySubsampledCoarseReconstructionEarlyAccess(false),
+		_maxFragmentDensitySubsampledLayers(0),
+		_maxFragmentDensitySubsampledSamplers(0),
 		_supportsSamplerAnisotropy(false),
 		_supportsFullscreenExclusive(false),
 		_maxSamplerAnisotropy(1.0f)
@@ -238,10 +243,34 @@ namespace RN
 				_maxFragmentDensityTexelSize.y = fragmentDensityMapProperties.maxFragmentDensityTexelSize.height;
 				_supportsFragmentDensityMaps = true;
 			}
+			//check for fragment density map 2 extension
+			else if(std::strcmp(extension.extensionName, VK_EXT_FRAGMENT_DENSITY_MAP_2_EXTENSION_NAME) == 0)
+			{
+				deviceExtensions.push_back(extension.extensionName);
+
+				VkPhysicalDeviceFragmentDensityMap2PropertiesEXT fragmentDensityMap2Properties;
+				fragmentDensityMap2Properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_2_PROPERTIES_EXT;
+				fragmentDensityMap2Properties.pNext = NULL;
+
+				VkPhysicalDeviceProperties2 deviceProperties;
+				deviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+				deviceProperties.pNext = &fragmentDensityMap2Properties;
+
+				vk::GetPhysicalDeviceProperties2KHR(_physicalDevice, &deviceProperties);
+				_hasFragmentDensitySubsampledLoads = fragmentDensityMap2Properties.subsampledLoads;
+				_hasFragmentDensitySubsampledCoarseReconstructionEarlyAccess = fragmentDensityMap2Properties.subsampledCoarseReconstructionEarlyAccess;
+				_maxFragmentDensitySubsampledLayers = fragmentDensityMap2Properties.maxSubsampledArrayLayers;
+				_maxFragmentDensitySubsampledSamplers = fragmentDensityMap2Properties.maxDescriptorSetSubsampledSamplers;
+				_supportsFragmentDensityMaps2 = true;
+			}
 		}
+
+		VkPhysicalDeviceFragmentDensityMap2FeaturesEXT fragmentDensityMap2Features = {};
+		fragmentDensityMap2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_2_FEATURES_EXT;
 
 		VkPhysicalDeviceFragmentDensityMapFeaturesEXT fragmentDensityMapFeatures = {};
 		fragmentDensityMapFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_FEATURES_EXT;
+		fragmentDensityMapFeatures.pNext = &fragmentDensityMap2Features;
 
 		VkPhysicalDeviceMultiviewFeaturesKHR multiviewFeatures = {};
 		multiviewFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR;
@@ -272,6 +301,8 @@ namespace RN
 
 			multiviewFeatures.pNext = nullptr;
 		}
+
+		//fragment density maps 2 doesn't have a bool for the extension itself, only for the deferred feature that is part of it, but not used by Rayne right now
 
 		std::vector<const char *> deduplicatedDeviceExtensions;
 		deduplicatedDeviceExtensions.reserve(deviceExtensions.size());
