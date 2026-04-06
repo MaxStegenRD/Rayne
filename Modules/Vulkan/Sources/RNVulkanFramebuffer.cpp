@@ -295,6 +295,12 @@ namespace RN
 
 	const std::vector<VkTilePropertiesQCOM> &VulkanFramebuffer::GetCurrentVariantTileProperties() const
 	{
+		static const std::vector<VkTilePropertiesQCOM> emptyTileProperties;
+		if(_currentVariantIndex >= _framebufferVariants.size())
+		{
+			return emptyTileProperties;
+		}
+
 		return _framebufferVariants[_currentVariantIndex].tileProperties;
 	}
 
