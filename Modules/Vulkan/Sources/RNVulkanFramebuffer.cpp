@@ -293,6 +293,11 @@ namespace RN
 		return _sampleCount;
 	}
 
+	const std::vector<VkTilePropertiesQCOM> &VulkanFramebuffer::GetCurrentVariantTileProperties() const
+	{
+		return _framebufferVariants[_currentVariantIndex].tileProperties;
+	}
+
 	void VulkanFramebuffer::PrepareAsRendertargetForFrame(const VulkanRenderPass *renderPass)
 	{
 		VulkanFramebuffer *resolveFramebuffer = renderPass->resolveFramebuffer;
@@ -438,7 +443,17 @@ namespace RN
 		frameBufferCreateInfo.layers = 1; //Must be 1 for multiview, so this is ok for now, but will need to be the actual layer count when rendering to multiple layers with selection in the shader
 
 		RNVulkanValidate(vk::CreateFramebuffer(device, &frameBufferCreateInfo, _renderer->GetAllocatorCallback(), &newVariant.framebuffer));
-        _framebufferVariants.push_back(newVariant);
+
+		if(_renderer->GetVulkanDevice()->GetSupportsTileProperties())
+		{
+			uint32 subpassCount = 1;
+			vk::GetFramebufferTilePropertiesQCOM(device, newVariant.framebuffer, &subpassCount, nullptr);
+			newVariant.tileProperties.resize(subpassCount, {.sType = VK_STRUCTURE_TYPE_TILE_PROPERTIES_QCOM});
+			vk::GetFramebufferTilePropertiesQCOM(device, newVariant.framebuffer, &subpassCount, newVariant.tileProperties.data());
+			//RNInfo("Tile properties: " << newVariant.tileProperties.front().tileSize.height << ", " << newVariant.tileProperties.front().tileSize.height);
+		}
+
+		_framebufferVariants.push_back(newVariant);
 	}
 
 	void VulkanFramebuffer::SetAsRendertarget(VkCommandBuffer commandBuffer, VulkanFramebuffer *resolveFramebuffer, const Color &clearColor, float depth, uint8 stencil) const

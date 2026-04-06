@@ -47,6 +47,7 @@ namespace RN
 		bool GetSupportsSamplerAnisotropy() const { return _supportsSamplerAnisotropy; }
 		float GetMaxSamplerAnisotropy() const { return _maxSamplerAnisotropy; }
 		bool GetSupportsFullscreenExclusive() const { return _supportsFullscreenExclusive; }
+		bool GetSupportsTileProperties() const { return _supportsTileProperties; }
 
 		VKAPI void SetExtensions(Array *extensions) final;
 
@@ -69,6 +70,7 @@ namespace RN
 		bool _supportsSamplerAnisotropy;
 		bool _supportsFullscreenExclusive;
 		float _maxSamplerAnisotropy;
+		bool _supportsTileProperties;
 
 		VulkanInstance *_instance;
 		VkPhysicalDevice _physicalDevice;

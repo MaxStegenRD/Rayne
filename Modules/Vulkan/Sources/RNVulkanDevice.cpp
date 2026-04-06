@@ -68,6 +68,7 @@ namespace RN
 		_hasFragmentDensitySubsampledCoarseReconstructionEarlyAccess(false),
 		_maxFragmentDensitySubsampledLayers(0),
 		_maxFragmentDensitySubsampledSamplers(0),
+		_supportsTileProperties(false),
 		_supportsSamplerAnisotropy(false),
 		_supportsFullscreenExclusive(false),
 		_maxSamplerAnisotropy(1.0f)
@@ -263,10 +264,20 @@ namespace RN
 				_maxFragmentDensitySubsampledSamplers = fragmentDensityMap2Properties.maxDescriptorSetSubsampledSamplers;
 				_supportsFragmentDensityMaps2 = true;
 			}
+			//check for qualcomm tile properties extension
+			else if(std::strcmp(extension.extensionName, VK_QCOM_TILE_PROPERTIES_EXTENSION_NAME) == 0)
+			{
+				deviceExtensions.push_back(extension.extensionName);
+				_supportsTileProperties = true;
+			}
 		}
+
+		VkPhysicalDeviceTilePropertiesFeaturesQCOM tilePropertiesFeatures = {};
+		tilePropertiesFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_PROPERTIES_FEATURES_QCOM;
 
 		VkPhysicalDeviceFragmentDensityMap2FeaturesEXT fragmentDensityMap2Features = {};
 		fragmentDensityMap2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_2_FEATURES_EXT;
+		fragmentDensityMap2Features.pNext = &tilePropertiesFeatures;
 
 		VkPhysicalDeviceFragmentDensityMapFeaturesEXT fragmentDensityMapFeatures = {};
 		fragmentDensityMapFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_FEATURES_EXT;
@@ -299,10 +310,27 @@ namespace RN
 				return std::strcmp(name, VK_EXT_FRAGMENT_DENSITY_MAP_EXTENSION_NAME) == 0;
 			}), deviceExtensions.end());
 
-			multiviewFeatures.pNext = nullptr;
+			multiviewFeatures.pNext = fragmentDensityMap2Features.pNext;
 		}
 
 		//fragment density maps 2 doesn't have a bool for the extension itself, only for the deferred feature that is part of it, but not used by Rayne right now
+
+		_supportsTileProperties = _supportsTileProperties && (tilePropertiesFeatures.tileProperties == VK_TRUE);
+		if(!_supportsTileProperties)
+		{
+			deviceExtensions.erase(std::remove_if(deviceExtensions.begin(), deviceExtensions.end(), [](const char *name){
+				return std::strcmp(name, VK_QCOM_TILE_PROPERTIES_EXTENSION_NAME) == 0;
+			}), deviceExtensions.end());
+
+			if(multiviewFeatures.pNext == &fragmentDensityMapFeatures)
+			{
+				fragmentDensityMap2Features.pNext = nullptr;
+			}
+			else
+			{
+				multiviewFeatures.pNext = nullptr;
+			}
+		}
 
 		std::vector<const char *> deduplicatedDeviceExtensions;
 		deduplicatedDeviceExtensions.reserve(deviceExtensions.size());

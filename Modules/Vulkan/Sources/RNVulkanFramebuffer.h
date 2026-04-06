@@ -44,6 +44,8 @@ namespace RN
 			VkRenderPass renderPass;
 			VkFramebuffer framebuffer;
 
+			std::vector<VkTilePropertiesQCOM> tileProperties;
+
 			std::vector<VkImageView> attachments;
 		};
 
@@ -58,6 +60,8 @@ namespace RN
 		VKAPI Texture *GetColorTexture(uint32 index = 0) const final;
 		VKAPI Texture *GetDepthStencilTexture() const final;
 		VKAPI uint8 GetSampleCount() const final;
+
+		VKAPI const std::vector<VkTilePropertiesQCOM> &GetCurrentVariantTileProperties() const;
 
 		VulkanSwapChain *GetSwapChain() const { return _swapChain; }
 

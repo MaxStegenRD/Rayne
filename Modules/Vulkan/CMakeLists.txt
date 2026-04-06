@@ -24,7 +24,7 @@ ExternalProject_Add(spirvcross
 
 FetchContent_Declare(VulkanHeaders
         GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Headers.git
-        GIT_TAG refs/tags/v1.3.210
+        GIT_TAG refs/tags/v1.4.348
         GIT_SHALLOW TRUE
         GIT_PROGRESS ON)
 FetchContent_MakeAvailable(VulkanHeaders)

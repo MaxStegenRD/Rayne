@@ -43,7 +43,7 @@ target("RayneVulkan")
         local vkheaders_dir = path.join(depsdir, "vulkan-headers")
         ensure_repo("https://github.com/KhronosGroup/Vulkan-Headers.git", vkheaders_dir, {
             depth = 1,
-            tag = "v1.3.210",
+            tag = "v1.4.348",
             outputdir = vkheaders_dir
         })
 
