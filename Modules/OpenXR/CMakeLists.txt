@@ -7,7 +7,7 @@ include(ExternalProject)
 
 ExternalProject_Add(OpenXRSDK
 	GIT_REPOSITORY https://github.com/KhronosGroup/OpenXR-SDK.git
-	GIT_TAG refs/tags/release-1.1.53
+	GIT_TAG refs/tags/release-1.1.58
 	GIT_SHALLOW ON
 	GIT_PROGRESS ON
 	UPDATE_COMMAND ""

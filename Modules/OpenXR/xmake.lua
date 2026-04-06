@@ -1,4 +1,4 @@
-add_requires("openxr-local 1.1.53", {system = false})
+add_requires("openxr-local 1.1.58", {system = false})
 
 target("RayneOpenXR")
 
@@ -47,4 +47,3 @@ target("RayneOpenXR")
     if is_plat("linux") then
         add_links("dl", "pthread")
     end
-

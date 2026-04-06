@@ -82,6 +82,8 @@ namespace RN
 		void InitializeInput();
 		const String *GetHMDInfoDescription() const;
 		void InitializeHandTracking();
+		void ResetTilePropertiesHintCache();
+		void UpdateTilePropertiesHint();
 
 		int _mainThreadID;
 		OpenXRWindowInternals *_internals;
@@ -128,6 +130,7 @@ namespace RN
 		bool _supportsPassthrough;
 		bool _supportsCompositionLayerSettings;
 		bool _supportsDynamicResolution;
+		bool _supportsTilePropertiesHint;
 		bool _supportsControllerInteractionPICO;
 		bool _supportsHandTracking;
 

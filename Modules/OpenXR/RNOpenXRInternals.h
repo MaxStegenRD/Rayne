@@ -104,6 +104,7 @@ namespace RN
 
 		PFN_xrGetVisibilityMaskKHR GetVisibilityMaskKHR;
 		PFN_xrGetRecommendedLayerResolutionMETA GetRecommendedLayerResolutionMETA;
+		PFN_xrSetTilePropertiesHintMETA SetTilePropertiesHintMETA;
 
 		PFN_xrCreatePassthroughFB CreatePassthroughFB;
 		PFN_xrDestroyPassthroughFB DestroyPassthroughFB;
@@ -124,6 +125,7 @@ namespace RN
 		PFN_xrDestroyHandTrackerEXT DestroyHandTrackerEXT;
 		PFN_xrLocateHandJointsEXT LocateHandJointsEXT;
 		XrHandTrackerEXT handTracker[2];
+		std::vector<XrTilePropertiesMETA> currentTilePropertiesHint;
 	};
 
 	struct OpenXRSwapchainInternals

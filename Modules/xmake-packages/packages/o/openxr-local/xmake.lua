@@ -10,6 +10,7 @@ package("openxr-local")
 
     add_versions("git:1.1.49", "release-1.1.49")
     add_versions("git:1.1.53", "release-1.1.53")
+    add_versions("git:1.1.58", "release-1.1.58")
 
     --add_patches("1.1.49", "patches/1.1.49/fix-mingw.diff", "8cc18048e3be5f64e6f2038303bcfff7137290cf60785ff795d3d57ef1a717b3")
     --add_patches("1.1.49", "patches/1.1.49/fix-freebsd.diff", "f4b63875a75609d2c4ce112f67e74713edb25eb238e9a544441f534a87b523b9")
@@ -107,4 +108,3 @@ package("openxr-local")
             }
         ]]}, {configs = {languages = "c++11"}}))
     end)
-

@@ -103,6 +103,7 @@ namespace RN
 		_supportsPassthrough = false;
 		_supportsCompositionLayerSettings = false;
 		_supportsDynamicResolution = false;
+		_supportsTilePropertiesHint = false;
 		_supportsControllerInteractionPICO = false;
 		_supportsHandTracking = false;
 
@@ -134,6 +135,7 @@ namespace RN
 		_internals->UpdateSwapchainFB = nullptr;
 		_internals->GetSwapchainStateFB = nullptr;
 
+		_internals->SetTilePropertiesHintMETA = nullptr;
 		_internals->CreatePassthroughFB = nullptr;
 		_internals->DestroyPassthroughFB = nullptr;
 		_internals->PassthroughStartFB = nullptr;
@@ -235,6 +237,11 @@ namespace RN
 			{
 				extensions.push_back(extension.extensionName);
 				_supportsDynamicResolution = true;
+			}
+			else if(std::strcmp(extension.extensionName, XR_META_TILE_PROPERTIES_HINT_EXTENSION_NAME) == 0)
+			{
+				extensions.push_back(extension.extensionName);
+				_supportsTilePropertiesHint = true;
 			}
 			else if(std::strcmp(extension.extensionName, XR_META_VULKAN_SWAPCHAIN_CREATE_INFO_EXTENSION_NAME) == 0)
 			{
@@ -485,6 +492,15 @@ namespace RN
 			}
 		}
 
+		if(_supportsTilePropertiesHint)
+		{
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrSetTilePropertiesHintMETA", (PFN_xrVoidFunction *)(&_internals->SetTilePropertiesHintMETA))))
+			{
+				_internals->SetTilePropertiesHintMETA = nullptr;
+				_supportsTilePropertiesHint = false;
+			}
+		}
+
 		if(_supportsPassthrough)
 		{
 			//XR_FB_PASSTHROUGH_EXTENSION_NAME
@@ -536,6 +552,87 @@ namespace RN
 		SafeRelease(_runtimeName);
 		xrDestroyInstance(_internals->instance);
 		delete _internals;
+	}
+
+	void OpenXRWindow::ResetTilePropertiesHintCache()
+	{
+		_internals->currentTilePropertiesHint.clear();
+	}
+
+	void OpenXRWindow::UpdateTilePropertiesHint()
+	{
+		if(!_supportsTilePropertiesHint || !_internals->SetTilePropertiesHintMETA || _internals->session == XR_NULL_HANDLE)
+		{
+			return;
+		}
+
+#if XR_USE_GRAPHICS_API_VULKAN
+		if(!_mainLayer || !_mainLayer->_swapChain || _mainLayer->_swapChain->_swapChainType != OpenXRSwapChain::SwapChainType::Vulkan)
+		{
+			return;
+		}
+
+		OpenXRVulkanSwapChain *swapChain = static_cast<OpenXRVulkanSwapChain *>(_mainLayer->_swapChain);
+		VulkanFramebuffer *framebuffer = swapChain->GetFramebuffer();
+		if(!framebuffer)
+		{
+			return;
+		}
+
+		const std::vector<VkTilePropertiesQCOM> &tileProperties = framebuffer->GetCurrentVariantTileProperties();
+		if(tileProperties.empty())
+		{
+			return;
+		}
+
+		std::vector<XrTilePropertiesMETA> xrProperties(tileProperties.size());
+		for(size_t i = 0; i < tileProperties.size(); i++)
+		{
+			xrProperties[i].type = XR_TYPE_TILE_PROPERTIES_META;
+			xrProperties[i].next = nullptr;
+			xrProperties[i].tileDimensions.width = tileProperties[i].tileSize.width;
+			xrProperties[i].tileDimensions.height = tileProperties[i].tileSize.height;
+			xrProperties[i].tileDimensions.depth = tileProperties[i].tileSize.depth;
+			xrProperties[i].apronDimensions.width = tileProperties[i].apronSize.width;
+			xrProperties[i].apronDimensions.height = tileProperties[i].apronSize.height;
+			xrProperties[i].origin.x = tileProperties[i].origin.x;
+			xrProperties[i].origin.y = tileProperties[i].origin.y;
+		}
+
+		uint32 propertyCount = static_cast<uint32>(xrProperties.size());
+		const std::vector<XrTilePropertiesMETA> &currentTilePropertiesHint = _internals->currentTilePropertiesHint;
+		bool hasMatchingTilePropertiesHint = (propertyCount == static_cast<uint32>(currentTilePropertiesHint.size()));
+		for(uint32 i = 0; i < propertyCount && hasMatchingTilePropertiesHint; i++)
+		{
+			const XrTilePropertiesMETA &lhs = xrProperties[i];
+			const XrTilePropertiesMETA &rhs = currentTilePropertiesHint[i];
+			hasMatchingTilePropertiesHint = (lhs.tileDimensions.width == rhs.tileDimensions.width &&
+				lhs.tileDimensions.height == rhs.tileDimensions.height &&
+				lhs.tileDimensions.depth == rhs.tileDimensions.depth &&
+				lhs.apronDimensions.width == rhs.apronDimensions.width &&
+				lhs.apronDimensions.height == rhs.apronDimensions.height &&
+				lhs.origin.x == rhs.origin.x &&
+				lhs.origin.y == rhs.origin.y);
+		}
+
+		if(hasMatchingTilePropertiesHint)
+		{
+			return;
+		}
+
+		XrTilePropertiesHintMETA hint = {XR_TYPE_TILE_PROPERTIES_HINT_META};
+		hint.propertiesCount = propertyCount;
+		hint.properties = xrProperties.data();
+
+		XrResult result = _internals->SetTilePropertiesHintMETA(_internals->session, &hint);
+		if(XR_FAILED(result))
+		{
+			RNDebug("Failed setting tile properties hint: " << result);
+			return;
+		}
+
+		_internals->currentTilePropertiesHint.swap(xrProperties);
+#endif
 	}
 
 	void OpenXRWindow::InitializeInput()
@@ -1570,6 +1667,8 @@ namespace RN
 		_mainLayer->_swapChain->_presentEvent = [this]() {
 			if(_internals->session != XR_NULL_HANDLE && _isSessionRunning)
 			{
+				UpdateTilePropertiesHint();
+
 				std::vector<XrCompositionLayerBaseHeader *> layers;
 
 				auto insertLayer = [&](OpenXRCompositorLayer *layer) {
@@ -1719,6 +1818,8 @@ namespace RN
 
 	void OpenXRWindow::StopRendering()
 	{
+		ResetTilePropertiesHintCache();
+
 		if(_internals->session != XR_NULL_HANDLE)
 		{
 			xrDestroySession(_internals->session);
@@ -1957,10 +2058,12 @@ namespace RN
 								layer->SetSessionActive(false);
 							});
 							xrEndSession(_internals->session);
+							ResetTilePropertiesHintCache();
 						}
 						else if(sessionStateChangedEvent.state == XR_SESSION_STATE_EXITING || sessionStateChangedEvent.state == XR_SESSION_STATE_LOSS_PENDING)
 						{
 							RNInfo("Session State: Exiting");
+							ResetTilePropertiesHintCache();
 							xrDestroySession(_internals->session);
 							_internals->session = XR_NULL_HANDLE;
 
