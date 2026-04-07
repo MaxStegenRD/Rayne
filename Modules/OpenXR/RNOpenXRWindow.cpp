@@ -243,11 +243,6 @@ namespace RN
 				extensions.push_back(extension.extensionName);
 				_supportsTilePropertiesHint = true;
 			}
-			else if(std::strcmp(extension.extensionName, XR_META_VULKAN_SWAPCHAIN_CREATE_INFO_EXTENSION_NAME) == 0)
-			{
-				extensions.push_back(extension.extensionName);
-				_supportsVulkanSwapchainCreateInfoMETA = true;
-			}
 #if XR_USE_PLATFORM_ANDROID
 			else if(std::strcmp(extension.extensionName, XR_KHR_ANDROID_THREAD_SETTINGS_EXTENSION_NAME) == 0)
 			{
@@ -280,6 +275,11 @@ namespace RN
 			{
 				extensions.push_back(extension.extensionName);
 				numberOfSupportedFoveationExtensions += 1;
+			}
+			else if(std::strcmp(extension.extensionName, XR_META_VULKAN_SWAPCHAIN_CREATE_INFO_EXTENSION_NAME) == 0)
+			{
+				extensions.push_back(extension.extensionName);
+				_supportsVulkanSwapchainCreateInfoMETA = true;
 			}
 #endif
 			//Needed to apply foveation profiles to the swapchain
