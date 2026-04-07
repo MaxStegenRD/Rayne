@@ -192,6 +192,7 @@ namespace RN
 		MetalFramebuffer *resolveFramebuffer;
 
 		Camera *camera;
+		Camera *lightingCamera;
 		Vector3 viewPosition;
 		Matrix viewMatrix;
 		Matrix inverseViewMatrix;

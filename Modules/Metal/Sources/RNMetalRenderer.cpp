@@ -32,7 +32,8 @@ namespace RN
 		_ppConvertMaterial(nullptr),
 		_defaultShaderLibrary(nullptr),
 		_currentMultiviewLayer(0),
-		_currentMultiviewFallbackRenderPass(nullptr)
+		_currentMultiviewFallbackRenderPass(nullptr),
+		_currentMultiviewLightingCamera(nullptr)
 	{
 		RN_PROFILE_SCOPE();
 		_internals->device = device->GetDevice();
@@ -366,10 +367,13 @@ namespace RN
 				multiviewCameras->Enumerate<Camera>([&](Camera *multiviewCamera, size_t index, bool &stop){
 					_currentMultiviewLayer = index;
 					_currentMultiviewFallbackRenderPass = camera->GetRenderPass();
+					Camera *previousMultiviewLightingCamera = _currentMultiviewLightingCamera;
+					_currentMultiviewLightingCamera = camera;
 
 					RN::Function submission = RN::MakeFunction([&function](){ function(); });
 					SubmitCamera(multiviewCamera, std::move(submission));
 
+					_currentMultiviewLightingCamera = previousMultiviewLightingCamera;
 					_currentMultiviewLayer = 0;
 					_currentMultiviewFallbackRenderPass = nullptr;
 				});
@@ -419,6 +423,7 @@ namespace RN
 		renderPass.previousStoredFramebuffer = nullptr;
 
 		renderPass.camera = camera;
+		renderPass.lightingCamera = _currentMultiviewLightingCamera ? _currentMultiviewLightingCamera : camera;
 		renderPass.currentInstanceDrawable = nullptr;
 		
 		renderPass.viewPosition = camera->GetWorldPosition();
@@ -567,6 +572,7 @@ namespace RN
 		metalRenderPass.directionalShadowDepthTexture = nullptr;
 		metalRenderPass.multiviewLayer = previousRenderPass.multiviewLayer;
 		metalRenderPass.camera = previousRenderPass.camera;
+		metalRenderPass.lightingCamera = previousRenderPass.lightingCamera;
 		metalRenderPass.currentInstanceDrawable = nullptr;
 		
 		metalRenderPass.cameraAmbientColor = previousRenderPass.cameraAmbientColor;
@@ -1502,9 +1508,9 @@ namespace RN
 			}
 
 			// Bind LightManager buffers (reflected) by semantic
-			if(renderPass.shaderHint == Shader::UsageHint::Default && metalFragmentShader && renderPass.camera)
+			if(renderPass.shaderHint == Shader::UsageHint::Default && metalFragmentShader && renderPass.lightingCamera)
 			{
-				LightManager *lightManager = renderPass.camera->GetLightManager();
+				LightManager *lightManager = renderPass.lightingCamera->GetLightManager();
 				if(lightManager)
 				{
 					metalFragmentShader->GetSignature()->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *arg, size_t index, bool &stop) {

@@ -97,6 +97,7 @@ namespace RN
 		
 		uint8 _currentMultiviewLayer;
 		RenderPass *_currentMultiviewFallbackRenderPass;
+		Camera *_currentMultiviewLightingCamera;
 
 		RNDeclareMetaAPI(MetalRenderer, MTLAPI)
 	};
