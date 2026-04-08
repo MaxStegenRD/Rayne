@@ -13,6 +13,8 @@
 
 namespace RN
 {
+	constexpr size_t kRNApplicationLogArchiveCount = 2;
+
 	Application::Application() :
 		_title(nullptr)
 	{
@@ -71,6 +73,40 @@ namespace RN
 		return loggingFilePath;
 	}
 
+	String *Application::GetArchivedLogFilePath(const String *path, size_t index) const
+	{
+		String *directoryPath = path->StringByDeletingLastPathComponent();
+		String *baseName = path->GetLastPathComponent();
+		String *baseFileName = baseName->StringByDeletingPathExtension();
+		String *extension = baseName->GetPathExtension();
+		String *archiveFileName = extension ? RNSTRF("%s.%llu.%s", baseFileName->GetUTF8String(), static_cast<unsigned long long>(index), extension->GetUTF8String()) : RNSTRF("%s.%llu", baseFileName->GetUTF8String(), static_cast<unsigned long long>(index));
+		return directoryPath->StringByAppendingPathComponent(archiveFileName);
+	}
+
+	void Application::RotateLogFiles(const String *path) const
+	{
+		if(!FileManager::PathExists(path))
+			return;
+
+		FileManager *fileManager = FileManager::GetSharedInstance();
+		String *oldestArchivePath = GetArchivedLogFilePath(path, kRNApplicationLogArchiveCount);
+		if(FileManager::PathExists(oldestArchivePath))
+			fileManager->DeleteFile(oldestArchivePath);
+
+		for(size_t index = kRNApplicationLogArchiveCount; index > 1; index--)
+		{
+			String *sourcePath = GetArchivedLogFilePath(path, index - 1);
+			if(FileManager::PathExists(sourcePath))
+			{
+				String *destinationPath = GetArchivedLogFilePath(path, index);
+				fileManager->RenameFile(sourcePath, destinationPath);
+			}
+		}
+
+		String *firstArchivePath = GetArchivedLogFilePath(path, 1);
+		fileManager->RenameFile(path, firstArchivePath);
+	}
+
 	Array *Application::GetLoggingEngines()
 	{
 		DebugLogFormatter *formatter = new DebugLogFormatter();
@@ -79,7 +115,9 @@ namespace RN
 	#if RN_BUILD_DEBUG
 		LoggingEngine *engine = new WideCharStreamLoggingEngine(nullptr, true);
 	#else
-		LoggingEngine *engine = new WideCharStreamLoggingEngine(GetDefaultLogFilePath()->GetUTF8String(), true);
+		String *logFilePath = GetDefaultLogFilePath();
+		RotateLogFiles(logFilePath);
+		LoggingEngine *engine = new WideCharStreamLoggingEngine(logFilePath->GetUTF8String(), true);
 	#endif
 		engine->SetLogFormatter(formatter->Autorelease());
 		return Array::WithObjects({engine->Autorelease()});
@@ -87,7 +125,9 @@ namespace RN
 		LoggingEngine *engine = new StreamLoggingEngine(nullptr, true);
 		engine->SetLogFormatter(formatter->Autorelease());
 
-		LoggingEngine *engine2 = new StreamLoggingEngine(GetDefaultLogFilePath()->GetUTF8String(), true);
+		String *logFilePath = GetDefaultLogFilePath();
+		RotateLogFiles(logFilePath);
+		LoggingEngine *engine2 = new StreamLoggingEngine(logFilePath->GetUTF8String(), true);
 		engine2->SetLogFormatter(formatter);
 
 		return Array::WithObjects({engine->Autorelease(), engine2->Autorelease()});

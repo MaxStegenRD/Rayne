@@ -51,6 +51,8 @@ namespace RN
 	private:
 		void __PrepareForWillFinishLaunching(Kernel *kernel);
 		String *GetDefaultLogFilePath() const;
+		String *GetArchivedLogFilePath(const String *path, size_t index) const;
+		void RotateLogFiles(const String *path) const;
 
 		String *_title;
 	};
