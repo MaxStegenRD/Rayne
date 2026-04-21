@@ -340,7 +340,7 @@ namespace RN
 		return results;
 	}
 
-	PhysXContactInfo PhysXWorld::CastSweep(PhysXShape *shape, const Quaternion &rotation, const Vector3 &from, const Vector3 &to, float inflation, uint32 filterGroup, uint32 filterMask)
+	PhysXContactInfo PhysXWorld::CastSweep(PhysXShape *shape, const Quaternion &rotation, const Vector3 &from, const Vector3 &to, float inflation, uint32 filterGroup, uint32 filterMask, bool withDepenetration)
 	{
 		PhysXContactInfo hit;
 		hit.distance = -1.0f;
@@ -363,7 +363,10 @@ namespace RN
 		physx::PxTransform pose = physx::PxTransform(physx::PxVec3(from.x, from.y, from.z), physx::PxQuat(rotation.x, rotation.y, rotation.z, rotation.w));
 		if(shape->GetPhysXShape())
 		{
-			if(_scene->sweep(shape->GetPhysXShape()->getGeometry().any(), pose, physx::PxVec3(diff.x, diff.y, diff.z), distance, callback, physx::PxHitFlags(physx::PxHitFlag::eDEFAULT), physx::PxQueryFilterData(filterData, physx::PxQueryFlag::eDYNAMIC | physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::ePREFILTER), &queryFilter, 0, inflation))
+			physx::PxHitFlags hitFlags = physx::PxHitFlag::eDEFAULT;
+			if(withDepenetration) hitFlags |= physx::PxHitFlag::eMTD;
+
+			if(_scene->sweep(shape->GetPhysXShape()->getGeometry().any(), pose, physx::PxVec3(diff.x, diff.y, diff.z), distance, callback, hitFlags, physx::PxQueryFilterData(filterData, physx::PxQueryFlag::eDYNAMIC | physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::ePREFILTER), &queryFilter, 0, inflation))
 			{
 				hit.distance = callback.block.distance;
 				hit.position.x = callback.block.position.x;
