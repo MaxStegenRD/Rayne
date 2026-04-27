@@ -31,6 +31,8 @@
 
 namespace RN
 {
+	class RenderPass;
+
 	struct Drawable
 	{
 		Drawable()
@@ -44,6 +46,37 @@ namespace RN
 		}
 		virtual ~Drawable()
 		{}
+
+		struct PipelineKey
+		{
+			Camera *camera = nullptr;
+			Mesh *mesh = nullptr;
+			uint64 meshPipelineVersion = 0;
+			Material *material = nullptr;
+			uint64 materialPipelineVersion = 0;
+			Framebuffer *framebuffer = nullptr;
+			Shader::UsageHint shaderHint = Shader::UsageHint::Default;
+			Material *overrideMaterial = nullptr;
+			uint64 overrideMaterialPipelineVersion = 0;
+			RenderPass *renderPass = nullptr;
+			uint32 subpassIndex = 0;
+
+			bool operator==(const PipelineKey &other) const
+			{
+				return camera == other.camera &&
+					mesh == other.mesh &&
+					meshPipelineVersion == other.meshPipelineVersion &&
+					material == other.material &&
+					materialPipelineVersion == other.materialPipelineVersion &&
+					framebuffer == other.framebuffer &&
+					shaderHint == other.shaderHint &&
+					overrideMaterial == other.overrideMaterial &&
+					overrideMaterialPipelineVersion == other.overrideMaterialPipelineVersion &&
+					renderPass == other.renderPass &&
+					subpassIndex == other.subpassIndex;
+			}
+			bool operator!=(const PipelineKey &other) const { return !(*this == other); }
+		};
 
 		void Update(Mesh *tmesh, Material *tmaterial, Skeleton *tskeleton, const SceneNode *node)
 		{

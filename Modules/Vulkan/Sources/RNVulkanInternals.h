@@ -129,52 +129,21 @@ namespace RN
 
 	struct VulkanDrawable : public Drawable
 	{
-		struct PipelineKey
-		{
-			Camera *camera = nullptr;
-			Mesh *mesh = nullptr;
-			uint64 meshPipelineVersion = 0;
-			Material *material = nullptr;
-			uint64 materialPipelineVersion = 0;
-			const VulkanFramebuffer *framebuffer = nullptr;
-			Shader::UsageHint shaderHint = Shader::UsageHint::Default;
-			Material *overrideMaterial = nullptr;
-			uint64 overrideMaterialPipelineVersion = 0;
-			RenderPass *renderPass = nullptr;
-			uint32 subpassIndex = 0;
-
-			bool operator==(const PipelineKey &other) const
-			{
-				return camera == other.camera &&
-					mesh == other.mesh &&
-					meshPipelineVersion == other.meshPipelineVersion &&
-					material == other.material &&
-					materialPipelineVersion == other.materialPipelineVersion &&
-					framebuffer == other.framebuffer &&
-					shaderHint == other.shaderHint &&
-					overrideMaterial == other.overrideMaterial &&
-					overrideMaterialPipelineVersion == other.overrideMaterialPipelineVersion &&
-					renderPass == other.renderPass &&
-					subpassIndex == other.subpassIndex;
-			}
-			bool operator!=(const PipelineKey &other) const { return !(*this == other); }
-		};
-
-		struct CameraSpecific
+		struct RenderResources
 		{
 			const VulkanPipelineState *pipelineState = nullptr; //No need for cleanup here as it's shared, but maybe add reference counting to clear later.
 			VulkanUniformState *uniformState = nullptr;
 			VulkanTransientDescriptorSet *descriptorSet = nullptr;
-			PipelineKey pipelineKey;
+			Drawable::PipelineKey pipelineKey;
 		};
 
 		~VulkanDrawable()
 		{
 			VulkanRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<VulkanRenderer>();
-			for(CameraSpecific &specific : _cameraSpecifics)
+			for(RenderResources &resources : _renderResources)
 			{
-				VulkanTransientDescriptorSet *descriptorSet = specific.descriptorSet;
-				VulkanUniformState *uniformState = specific.uniformState;
+				VulkanTransientDescriptorSet *descriptorSet = resources.descriptorSet;
+				VulkanUniformState *uniformState = resources.uniformState;
 
 				renderer->AddFrameFinishedCallback([descriptorSet, uniformState](){
 					if(descriptorSet)
@@ -189,17 +158,20 @@ namespace RN
 			}
 		}
 
-		void AddCameraSpecificsIfNeeded(size_t cameraID)
+		RenderResources &EnsureRenderResources(size_t resourceIndex)
 		{
-			if(_cameraSpecifics.size() > cameraID) return;
-			_cameraSpecifics.resize(cameraID + 1);
+			if(_renderResources.size() <= resourceIndex)
+				_renderResources.resize(resourceIndex + 1);
+
+			return _renderResources[resourceIndex];
 		}
 
-		void UpdateRenderingState(size_t cameraID, const VulkanPipelineState *pipelineState, VulkanUniformState *uniformState, const PipelineKey &pipelineKey)
+		void UpdateRenderingState(size_t resourceIndex, const VulkanPipelineState *pipelineState, VulkanUniformState *uniformState, const Drawable::PipelineKey &pipelineKey)
 		{
-			_cameraSpecifics[cameraID].pipelineState = pipelineState;
-			_cameraSpecifics[cameraID].pipelineKey = pipelineKey;
-			VulkanUniformState *oldUniformState = _cameraSpecifics[cameraID].uniformState;
+			RenderResources &resources = _renderResources[resourceIndex];
+			resources.pipelineState = pipelineState;
+			resources.pipelineKey = pipelineKey;
+			VulkanUniformState *oldUniformState = resources.uniformState;
 			if(oldUniformState)
 			{
 				VulkanRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<VulkanRenderer>();
@@ -207,11 +179,11 @@ namespace RN
 					delete oldUniformState;
 				});
 			}
-			_cameraSpecifics[cameraID].uniformState = uniformState;
+			resources.uniformState = uniformState;
 		}
 
 		//TODO: This can get somewhat big with lots of post processing stages...
-		std::vector<CameraSpecific> _cameraSpecifics;
+		std::vector<RenderResources> _renderResources;
 	};
 
 	struct VulkanDirectionalLight
