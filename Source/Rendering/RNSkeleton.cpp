@@ -514,6 +514,16 @@ namespace RN
 		return out;
 	}
 
+	void Skeleton::DrawSnapshot::Reset()
+	{
+		_matrices.clear();
+	}
+
+	void Skeleton::GetDrawSnapshot(DrawSnapshot &snapshot) const
+	{
+		snapshot._matrices = _matrices;
+	}
+
 	Skeleton *Skeleton::WithName(const String *name, const Dictionary *settings)
 	{
 		AssetManager *coordinator = AssetManager::GetSharedInstance();

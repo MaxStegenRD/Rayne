@@ -111,6 +111,8 @@ namespace RN
 			RNAPI Object *GetCustomShaderUniform(size_t nameHash) const;
 
 		private:
+			void ClearCustomShaderUniforms();
+
 			std::map<const size_t, Object *> _customShaderUniforms; //WARNING: The key is the hash of the string, which could potentially have conflicts!
 		};
 		
@@ -143,6 +145,37 @@ namespace RN
 			BlendFactor blendFactorDestinationAlpha;
 
 			RNAPI void CopyFromPipelineProperties(const PipelineProperties &properties);
+		};
+
+		class DrawSnapshot
+		{
+		public:
+			DrawSnapshot() = default;
+			DrawSnapshot(const DrawSnapshot &snapshot) = delete;
+
+			DrawSnapshot &operator=(const DrawSnapshot &snapshot) = delete;
+
+			RNAPI void Reset();
+
+			RNAPI Shader *GetFragmentShader(Shader::UsageHint type = Shader::UsageHint::Default) const;
+			RNAPI Shader *GetVertexShader(Shader::UsageHint type = Shader::UsageHint::Default) const;
+
+			const Array *GetTextures() const { return _textures.Get(); }
+			RNAPI void SetTextures(const Array *textures);
+
+			RNAPI void GetMergedProperties(Material *overrideMaterial, Properties &properties) const;
+			RNAPI void GetMergedPipelineProperties(Material *overrideMaterial, PipelineProperties &properties) const;
+
+		private:
+			StrongRef<Shader> _fragmentShader[static_cast<uint8>(Shader::UsageHint::COUNT)];
+			StrongRef<Shader> _vertexShader[static_cast<uint8>(Shader::UsageHint::COUNT)];
+
+			StrongRef<Array> _textures;
+
+			uint32 _override = 0;
+
+			Properties _properties;
+			PipelineProperties _pipelineProperties;
 		};
 
 		RN_OPTIONS(Override, uint32,
@@ -245,7 +278,12 @@ namespace RN
 		const PipelineProperties &GetPipelineProperties() const { return _pipelineProperties; }
 		RNAPI const PipelineProperties &GetMergedPipelineProperties(Material *overrideMaterial);
 
+		RNAPI void GetDrawSnapshot(DrawSnapshot &snapshot) const;
+
 	private:
+		static void GetMergedProperties(const Properties &properties, uint32 override, Material *overrideMaterial, Properties &result);
+		static void GetMergedPipelineProperties(const PipelineProperties &properties, uint32 override, Material *overrideMaterial, PipelineProperties &result);
+
 		Override _override;
 
 		Shader *_fragmentShader[static_cast<uint8>(Shader::UsageHint::COUNT)];

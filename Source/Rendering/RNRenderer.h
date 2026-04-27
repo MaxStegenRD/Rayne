@@ -35,9 +35,6 @@ namespace RN
 	{
 		Drawable()
 		{
-			mesh = nullptr;
-			material = nullptr;
-			skeleton = nullptr;
 			renderGroup = 0xffff;
 			_transformNode = nullptr;
 			_transformVersion = 0;
@@ -47,21 +44,28 @@ namespace RN
 
 		void Update(Mesh *tmesh, Material *tmaterial, Skeleton *tskeleton, const SceneNode *node)
 		{
-			if(mesh != tmesh)
+			if(_sourceMesh.Get() != tmesh || _sourceMaterial.Get() != tmaterial || _sourceSkeleton.Get() != tskeleton)
 			{
 				MakeDirty();
-				mesh = tmesh;
+				_sourceMesh = tmesh;
+				_sourceMaterial = tmaterial;
+				_sourceSkeleton = tskeleton;
 			}
-			if(material != tmaterial)
-			{
-				MakeDirty();
-				material = tmaterial;
-			}
-			if(skeleton != tskeleton)
-			{
-				MakeDirty();
-				skeleton = tskeleton;
-			}
+
+			if(tmesh)
+				tmesh->GetDrawSnapshot(mesh);
+			else
+				mesh.Reset();
+
+			if(tmaterial)
+				tmaterial->GetDrawSnapshot(material);
+			else
+				material.Reset();
+
+			if(tskeleton)
+				tskeleton->GetDrawSnapshot(skeleton);
+			else
+				skeleton.Reset();
 
 			if(node)
 				Update(node);
@@ -91,10 +95,18 @@ namespace RN
 		}
 		virtual void MakeDirty() {}
 
-		//Comments are all related to making this independent of what happens in the update loop to put rendering on a separate thread!
-		Mesh *mesh; //Relatively static, maybe all data used during rendering can be const and only set when creating the mesh. Mesh updates that change more than the mesh data require a new mesh already anyway. GPU buffers already use multibuffering and should be fine!?
-		Material *material; //Could consider just copying and updating that copy if something changed!?
-		Skeleton *skeleton; //Can just store the matrices instead to lose dependency on the skeleton for multithreading!
+		Mesh *GetSourceMesh() const { return _sourceMesh.Get(); }
+		Material *GetSourceMaterial() const { return _sourceMaterial.Get(); }
+
+		// Source objects are kept for identity checks and pipeline/cache lookup. Rendering should use the snapshots below.
+		StrongRef<Mesh> _sourceMesh;
+		StrongRef<Material> _sourceMaterial;
+		StrongRef<Skeleton> _sourceSkeleton;
+
+		// Captured on the main thread before submit, so encoding does not have to read mutable Mesh/Material/Skeleton state.
+		Mesh::DrawSnapshot mesh;
+		Material::DrawSnapshot material;
+		Skeleton::DrawSnapshot skeleton;
 		Matrix modelMatrix;
 		Matrix inverseModelMatrix;
 		uint16 renderGroup;

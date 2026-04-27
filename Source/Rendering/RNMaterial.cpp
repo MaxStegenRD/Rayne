@@ -15,8 +15,7 @@ namespace RN
 
 	Material::Properties::Properties() :
 		ambientColor(Color(0.5f, 0.5f, 0.5f, 1.0f)), diffuseColor(Color(1.0f, 1.0f, 1.0f, 1.0f)), specularColor(Color(1.0f, 1.0f, 1.0f, 4.0f)), emissiveColor(Color(0.0f, 0.0f, 0.0f, 0.0f)), alphaToCoverageClamp(1.0f), textureTileFactor(1.0f)
-	{
-	}
+	{}
 
 	Material::Properties::Properties(const Properties &properties)
 	{
@@ -25,14 +24,22 @@ namespace RN
 
 	Material::Properties::~Properties()
 	{
+		ClearCustomShaderUniforms();
+	}
+
+	void Material::Properties::ClearCustomShaderUniforms()
+	{
 		for(auto const &data : _customShaderUniforms)
 		{
 			data.second->Release();
 		}
+		_customShaderUniforms.clear();
 	}
 
 	void Material::Properties::CopyFromProperties(const Properties &properties)
 	{
+		if(this == &properties) return;
+
 		ambientColor = properties.ambientColor;
 		diffuseColor = properties.diffuseColor;
 		specularColor = properties.specularColor;
@@ -47,7 +54,7 @@ namespace RN
 		uiOffset = properties.uiOffset;
 		uiOutlineColor = properties.uiOutlineColor;
 
-		_customShaderUniforms.clear();
+		ClearCustomShaderUniforms();
 		_customShaderUniforms.insert(properties._customShaderUniforms.begin(), properties._customShaderUniforms.end());
 
 		for(auto const &data : _customShaderUniforms)
@@ -58,12 +65,18 @@ namespace RN
 
 	void Material::Properties::SetCustomShaderUniform(const String *name, Value *value)
 	{
-		_customShaderUniforms[name->GetHash()] = value->Retain();
+		const size_t nameHash = name->GetHash();
+		Object *oldValue = _customShaderUniforms[nameHash];
+		_customShaderUniforms[nameHash] = value->Retain();
+		SafeRelease(oldValue);
 	}
 
 	void Material::Properties::SetCustomShaderUniform(const String *name, Number *number)
 	{
-		_customShaderUniforms[name->GetHash()] = number->Retain();
+		const size_t nameHash = name->GetHash();
+		Object *oldValue = _customShaderUniforms[nameHash];
+		_customShaderUniforms[nameHash] = number->Retain();
+		SafeRelease(oldValue);
 	}
 
 	Object *Material::Properties::GetCustomShaderUniform(const String *name) const
@@ -90,8 +103,7 @@ namespace RN
 
 	Material::PipelineProperties::PipelineProperties() :
 		colorWriteMask(0xf), depthMode(DepthMode::Greater), depthWriteEnabled(true), usePolygonOffset(false), polygonOffsetFactor(-1.1f), polygonOffsetUnits(-0.1f), useAlphaToCoverage(false), cullMode(CullMode::BackFace), blendOperationRGB(BlendOperation::None), blendOperationAlpha(BlendOperation::None), blendFactorSourceRGB(BlendFactor::SourceAlpha), blendFactorDestinationRGB(BlendFactor::OneMinusSourceAlpha), blendFactorSourceAlpha(BlendFactor::One), blendFactorDestinationAlpha(BlendFactor::One)
-	{
-	}
+	{}
 
 	Material::PipelineProperties::PipelineProperties(const PipelineProperties &properties)
 	{
@@ -105,6 +117,8 @@ namespace RN
 
 	void Material::PipelineProperties::CopyFromPipelineProperties(const PipelineProperties &properties)
 	{
+		if(this == &properties) return;
+
 		colorWriteMask = properties.colorWriteMask;
 		depthMode = properties.depthMode;
 		depthWriteEnabled = properties.depthWriteEnabled;
@@ -119,6 +133,60 @@ namespace RN
 		blendFactorDestinationRGB = properties.blendFactorDestinationRGB;
 		blendFactorSourceAlpha = properties.blendFactorSourceAlpha;
 		blendFactorDestinationAlpha = properties.blendFactorDestinationAlpha;
+	}
+
+	void Material::DrawSnapshot::Reset()
+	{
+		_textures = nullptr;
+
+		for(uint8 i = 0; i < static_cast<uint8>(Shader::UsageHint::COUNT); i++)
+		{
+			_vertexShader[i] = nullptr;
+			_fragmentShader[i] = nullptr;
+		}
+
+		_override = 0;
+
+		Properties defaultProperties;
+		_properties.CopyFromProperties(defaultProperties);
+
+		PipelineProperties defaultPipelineProperties;
+		_pipelineProperties.CopyFromPipelineProperties(defaultPipelineProperties);
+	}
+
+	Shader *Material::DrawSnapshot::GetFragmentShader(Shader::UsageHint type) const
+	{
+		uint8 index = static_cast<uint8>(type);
+		if(!_fragmentShader[index].Get() && !_vertexShader[index].Get())
+			return _fragmentShader[static_cast<uint8>(Shader::UsageHint::Default)].Get();
+
+		return _fragmentShader[index].Get();
+	}
+
+	Shader *Material::DrawSnapshot::GetVertexShader(Shader::UsageHint type) const
+	{
+		uint8 index = static_cast<uint8>(type);
+		if(!_vertexShader[index].Get())
+			return _vertexShader[static_cast<uint8>(Shader::UsageHint::Default)].Get();
+
+		return _vertexShader[index].Get();
+	}
+
+	void Material::DrawSnapshot::SetTextures(const Array *textures)
+	{
+		Array *copy = SafeCopy(textures);
+		_textures = copy;
+		SafeRelease(copy);
+	}
+
+	void Material::DrawSnapshot::GetMergedProperties(Material *overrideMaterial, Properties &properties) const
+	{
+		Material::GetMergedProperties(_properties, _override, overrideMaterial, properties);
+	}
+
+	void Material::DrawSnapshot::GetMergedPipelineProperties(Material *overrideMaterial, PipelineProperties &properties) const
+	{
+		Material::GetMergedPipelineProperties(_pipelineProperties, _override, overrideMaterial, properties);
 	}
 
 	Material::Material(Shader *vertexShader, Shader *fragmentShader) :
@@ -369,144 +437,179 @@ namespace RN
 	{
 		if(!overrideMaterial) return _properties;
 
-		if(!(overrideMaterial->GetOverride() & Override::GroupColors) && !(_override & Override::GroupColors))
+		GetMergedProperties(_properties, _override, overrideMaterial, _mergedProperties);
+		return _mergedProperties;
+	}
+
+	void Material::GetMergedProperties(const Properties &properties, uint32 override, Material *overrideMaterial, Properties &result)
+	{
+		if(!overrideMaterial)
 		{
-			_mergedProperties.ambientColor = overrideMaterial->_properties.ambientColor;
-			_mergedProperties.diffuseColor = overrideMaterial->_properties.diffuseColor;
-			_mergedProperties.specularColor = overrideMaterial->_properties.specularColor;
-			_mergedProperties.emissiveColor = overrideMaterial->_properties.emissiveColor;
+			result.CopyFromProperties(properties);
+			return;
+		}
+
+		if(!(overrideMaterial->GetOverride() & Override::GroupColors) && !(override & Override::GroupColors))
+		{
+			result.ambientColor = overrideMaterial->_properties.ambientColor;
+			result.diffuseColor = overrideMaterial->_properties.diffuseColor;
+			result.specularColor = overrideMaterial->_properties.specularColor;
+			result.emissiveColor = overrideMaterial->_properties.emissiveColor;
 		}
 		else
 		{
-			_mergedProperties.ambientColor = _properties.ambientColor;
-			_mergedProperties.diffuseColor = _properties.diffuseColor;
-			_mergedProperties.specularColor = _properties.specularColor;
-			_mergedProperties.emissiveColor = _properties.emissiveColor;
+			result.ambientColor = properties.ambientColor;
+			result.diffuseColor = properties.diffuseColor;
+			result.specularColor = properties.specularColor;
+			result.emissiveColor = properties.emissiveColor;
 		}
 
-		if(!(overrideMaterial->GetOverride() & Override::GroupAlphaToCoverage) && !(_override & Override::GroupAlphaToCoverage))
+		if(!(overrideMaterial->GetOverride() & Override::GroupAlphaToCoverage) && !(override & Override::GroupAlphaToCoverage))
 		{
-			_mergedProperties.alphaToCoverageClamp = overrideMaterial->_properties.alphaToCoverageClamp;
+			result.alphaToCoverageClamp = overrideMaterial->_properties.alphaToCoverageClamp;
 		}
 		else
 		{
-			_mergedProperties.alphaToCoverageClamp = _properties.alphaToCoverageClamp;
+			result.alphaToCoverageClamp = properties.alphaToCoverageClamp;
 		}
 
-		if(!(overrideMaterial->GetOverride() & Override::TextureTileFactor) && !(_override & Override::TextureTileFactor))
+		if(!(overrideMaterial->GetOverride() & Override::TextureTileFactor) && !(override & Override::TextureTileFactor))
 		{
-			_mergedProperties.textureTileFactor = overrideMaterial->_properties.textureTileFactor;
+			result.textureTileFactor = overrideMaterial->_properties.textureTileFactor;
 		}
 		else
 		{
-			_mergedProperties.textureTileFactor = _properties.textureTileFactor;
+			result.textureTileFactor = properties.textureTileFactor;
 		}
 
-		_mergedProperties.customMatrix1 = _properties.customMatrix1;
-		_mergedProperties.customMatrix2 = _properties.customMatrix2;
+		result.customMatrix1 = properties.customMatrix1;
+		result.customMatrix2 = properties.customMatrix2;
 
-		_mergedProperties.uiClippingRect = _properties.uiClippingRect;
-		_mergedProperties.uiOffset = _properties.uiOffset;
-		_mergedProperties.uiOutlineColor = _properties.uiOutlineColor;
+		result.uiClippingRect = properties.uiClippingRect;
+		result.uiOffset = properties.uiOffset;
+		result.uiOutlineColor = properties.uiOutlineColor;
 
-		_mergedProperties._customShaderUniforms.clear();
-		_mergedProperties._customShaderUniforms.insert(_properties._customShaderUniforms.begin(), _properties._customShaderUniforms.end());
-		if(!(overrideMaterial->GetOverride() & Override::CustomUniforms) && !(_override & Override::CustomUniforms) && overrideMaterial->_properties._customShaderUniforms.size() > 0)
+		result.ClearCustomShaderUniforms();
+		result._customShaderUniforms.insert(properties._customShaderUniforms.begin(), properties._customShaderUniforms.end());
+		if(!(overrideMaterial->GetOverride() & Override::CustomUniforms) && !(override & Override::CustomUniforms) && overrideMaterial->_properties._customShaderUniforms.size() > 0)
 		{
 			for(auto const &data : overrideMaterial->_properties._customShaderUniforms)
 			{
-				_mergedProperties._customShaderUniforms[data.first] = data.second;
+				result._customShaderUniforms[data.first] = data.second;
 			}
 		}
-		for(auto const &data : _mergedProperties._customShaderUniforms)
+		for(auto const &data : result._customShaderUniforms)
 		{
 			data.second->Retain();
 		}
-
-		return _mergedProperties;
 	}
 
 	const Material::PipelineProperties &Material::GetMergedPipelineProperties(Material *overrideMaterial)
 	{
 		if(!overrideMaterial) return _pipelineProperties;
 
-		if(!(overrideMaterial->GetOverride() & Override::ColorWriteMask) && !(_override & Override::ColorWriteMask))
-		{
-			_mergedPipelineProperties.colorWriteMask = overrideMaterial->_pipelineProperties.colorWriteMask;
-		}
-		else
-		{
-			_mergedPipelineProperties.colorWriteMask = _pipelineProperties.colorWriteMask;
-		}
-
-		if(!(overrideMaterial->GetOverride() & Override::DepthWrite) && !(_override & Override::DepthWrite))
-		{
-			_mergedPipelineProperties.depthWriteEnabled = overrideMaterial->_pipelineProperties.depthWriteEnabled;
-		}
-		else
-		{
-			_mergedPipelineProperties.depthWriteEnabled = _pipelineProperties.depthWriteEnabled;
-		}
-
-		if(!(overrideMaterial->GetOverride() & Override::GroupDepth) && !(_override & Override::GroupDepth))
-		{
-			_mergedPipelineProperties.depthMode = overrideMaterial->_pipelineProperties.depthMode;
-		}
-		else
-		{
-			_mergedPipelineProperties.depthMode = _pipelineProperties.depthMode;
-		}
-
-		if(!(overrideMaterial->GetOverride() & Override::GroupAlphaToCoverage) && !(_override & Override::GroupAlphaToCoverage))
-		{
-			_mergedPipelineProperties.useAlphaToCoverage = overrideMaterial->_pipelineProperties.useAlphaToCoverage;
-		}
-		else
-		{
-			_mergedPipelineProperties.useAlphaToCoverage = _pipelineProperties.useAlphaToCoverage;
-		}
-
-		if(!(overrideMaterial->GetOverride() & Override::GroupBlending) && !(_override & Override::GroupBlending))
-		{
-			_mergedPipelineProperties.blendOperationRGB = overrideMaterial->_pipelineProperties.blendOperationRGB;
-			_mergedPipelineProperties.blendOperationAlpha = overrideMaterial->_pipelineProperties.blendOperationAlpha;
-			_mergedPipelineProperties.blendFactorSourceRGB = overrideMaterial->_pipelineProperties.blendFactorSourceRGB;
-			_mergedPipelineProperties.blendFactorSourceAlpha = overrideMaterial->_pipelineProperties.blendFactorSourceAlpha;
-			_mergedPipelineProperties.blendFactorDestinationRGB = overrideMaterial->_pipelineProperties.blendFactorDestinationRGB;
-			_mergedPipelineProperties.blendFactorDestinationAlpha = overrideMaterial->_pipelineProperties.blendFactorDestinationAlpha;
-		}
-		else
-		{
-			_mergedPipelineProperties.blendOperationRGB = _pipelineProperties.blendOperationRGB;
-			_mergedPipelineProperties.blendOperationAlpha = _pipelineProperties.blendOperationAlpha;
-			_mergedPipelineProperties.blendFactorSourceRGB = _pipelineProperties.blendFactorSourceRGB;
-			_mergedPipelineProperties.blendFactorSourceAlpha = _pipelineProperties.blendFactorSourceAlpha;
-			_mergedPipelineProperties.blendFactorDestinationRGB = _pipelineProperties.blendFactorDestinationRGB;
-			_mergedPipelineProperties.blendFactorDestinationAlpha = _pipelineProperties.blendFactorDestinationAlpha;
-		}
-
-		if(!(overrideMaterial->GetOverride() & Override::GroupPolygonOffset) && !(_override & Override::GroupPolygonOffset))
-		{
-			_mergedPipelineProperties.usePolygonOffset = overrideMaterial->_pipelineProperties.usePolygonOffset;
-			_mergedPipelineProperties.polygonOffsetFactor = overrideMaterial->_pipelineProperties.polygonOffsetFactor;
-			_mergedPipelineProperties.polygonOffsetUnits = overrideMaterial->_pipelineProperties.polygonOffsetUnits;
-		}
-		else
-		{
-			_mergedPipelineProperties.usePolygonOffset = _pipelineProperties.usePolygonOffset;
-			_mergedPipelineProperties.polygonOffsetFactor = _pipelineProperties.polygonOffsetFactor;
-			_mergedPipelineProperties.polygonOffsetUnits = _pipelineProperties.polygonOffsetUnits;
-		}
-
-		if(!(overrideMaterial->GetOverride() & Override::CullMode) && !(_override & Override::CullMode))
-		{
-			_mergedPipelineProperties.cullMode = overrideMaterial->_pipelineProperties.cullMode;
-		}
-		else
-		{
-			_mergedPipelineProperties.cullMode = _pipelineProperties.cullMode;
-		}
-
+		GetMergedPipelineProperties(_pipelineProperties, _override, overrideMaterial, _mergedPipelineProperties);
 		return _mergedPipelineProperties;
+	}
+
+	void Material::GetMergedPipelineProperties(const PipelineProperties &properties, uint32 override, Material *overrideMaterial, PipelineProperties &result)
+	{
+		if(!overrideMaterial)
+		{
+			result.CopyFromPipelineProperties(properties);
+			return;
+		}
+
+		if(!(overrideMaterial->GetOverride() & Override::ColorWriteMask) && !(override & Override::ColorWriteMask))
+		{
+			result.colorWriteMask = overrideMaterial->_pipelineProperties.colorWriteMask;
+		}
+		else
+		{
+			result.colorWriteMask = properties.colorWriteMask;
+		}
+
+		if(!(overrideMaterial->GetOverride() & Override::DepthWrite) && !(override & Override::DepthWrite))
+		{
+			result.depthWriteEnabled = overrideMaterial->_pipelineProperties.depthWriteEnabled;
+		}
+		else
+		{
+			result.depthWriteEnabled = properties.depthWriteEnabled;
+		}
+
+		if(!(overrideMaterial->GetOverride() & Override::GroupDepth) && !(override & Override::GroupDepth))
+		{
+			result.depthMode = overrideMaterial->_pipelineProperties.depthMode;
+		}
+		else
+		{
+			result.depthMode = properties.depthMode;
+		}
+
+		if(!(overrideMaterial->GetOverride() & Override::GroupAlphaToCoverage) && !(override & Override::GroupAlphaToCoverage))
+		{
+			result.useAlphaToCoverage = overrideMaterial->_pipelineProperties.useAlphaToCoverage;
+		}
+		else
+		{
+			result.useAlphaToCoverage = properties.useAlphaToCoverage;
+		}
+
+		if(!(overrideMaterial->GetOverride() & Override::GroupBlending) && !(override & Override::GroupBlending))
+		{
+			result.blendOperationRGB = overrideMaterial->_pipelineProperties.blendOperationRGB;
+			result.blendOperationAlpha = overrideMaterial->_pipelineProperties.blendOperationAlpha;
+			result.blendFactorSourceRGB = overrideMaterial->_pipelineProperties.blendFactorSourceRGB;
+			result.blendFactorSourceAlpha = overrideMaterial->_pipelineProperties.blendFactorSourceAlpha;
+			result.blendFactorDestinationRGB = overrideMaterial->_pipelineProperties.blendFactorDestinationRGB;
+			result.blendFactorDestinationAlpha = overrideMaterial->_pipelineProperties.blendFactorDestinationAlpha;
+		}
+		else
+		{
+			result.blendOperationRGB = properties.blendOperationRGB;
+			result.blendOperationAlpha = properties.blendOperationAlpha;
+			result.blendFactorSourceRGB = properties.blendFactorSourceRGB;
+			result.blendFactorSourceAlpha = properties.blendFactorSourceAlpha;
+			result.blendFactorDestinationRGB = properties.blendFactorDestinationRGB;
+			result.blendFactorDestinationAlpha = properties.blendFactorDestinationAlpha;
+		}
+
+		if(!(overrideMaterial->GetOverride() & Override::GroupPolygonOffset) && !(override & Override::GroupPolygonOffset))
+		{
+			result.usePolygonOffset = overrideMaterial->_pipelineProperties.usePolygonOffset;
+			result.polygonOffsetFactor = overrideMaterial->_pipelineProperties.polygonOffsetFactor;
+			result.polygonOffsetUnits = overrideMaterial->_pipelineProperties.polygonOffsetUnits;
+		}
+		else
+		{
+			result.usePolygonOffset = properties.usePolygonOffset;
+			result.polygonOffsetFactor = properties.polygonOffsetFactor;
+			result.polygonOffsetUnits = properties.polygonOffsetUnits;
+		}
+
+		if(!(overrideMaterial->GetOverride() & Override::CullMode) && !(override & Override::CullMode))
+		{
+			result.cullMode = overrideMaterial->_pipelineProperties.cullMode;
+		}
+		else
+		{
+			result.cullMode = properties.cullMode;
+		}
+	}
+
+	void Material::GetDrawSnapshot(DrawSnapshot &snapshot) const
+	{
+		snapshot._override = _override;
+		snapshot.SetTextures(_textures);
+
+		snapshot._properties.CopyFromProperties(_properties);
+		snapshot._pipelineProperties.CopyFromPipelineProperties(_pipelineProperties);
+
+		for(uint8 i = 0; i < static_cast<uint8>(Shader::UsageHint::COUNT); i++)
+		{
+			snapshot._vertexShader[i] = _vertexShader[i];
+			snapshot._fragmentShader[i] = _fragmentShader[i];
+		}
 	}
 } // namespace RN

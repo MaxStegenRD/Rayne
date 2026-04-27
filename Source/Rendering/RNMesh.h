@@ -187,6 +187,38 @@ namespace RN
 		class Chunk;
 		friend class Chunk;
 
+		class DrawSnapshot
+		{
+		public:
+			DrawSnapshot() = default;
+			DrawSnapshot(const DrawSnapshot &snapshot) = delete;
+
+			DrawSnapshot &operator=(const DrawSnapshot &snapshot) = delete;
+
+			RNAPI void Reset();
+
+			GPUBuffer *GetVertexBuffer() const { return _vertexBuffer.Get(); }
+			GPUBuffer *GetIndicesBuffer() const { return _indicesBuffer.Get(); }
+			size_t GetVerticesCount() const { return _verticesCount; }
+			size_t GetIndicesCount() const { return _indicesCount; }
+			size_t GetVertexPositionsSeparatedSize() const { return _vertexPositionsSeparatedSize; }
+			DrawMode GetDrawMode() const { return _drawMode; }
+			PrimitiveType GetIndexType() const { return _indexType; }
+
+		private:
+			friend class Mesh;
+
+			StrongRef<GPUBuffer> _vertexBuffer;
+			StrongRef<GPUBuffer> _indicesBuffer;
+
+			size_t _vertexPositionsSeparatedSize = 0;
+			size_t _verticesCount = 0;
+			size_t _indicesCount = 0;
+
+			DrawMode _drawMode = DrawMode::Triangle;
+			PrimitiveType _indexType = PrimitiveType::Invalid;
+		};
+
 		class __ChunkFriend
 		{
 		protected:
@@ -446,6 +478,7 @@ namespace RN
 		RNAPI const VertexAttribute *GetAttribute(const String *name) const;
 
 		RNAPI void CalculateBoundingVolumes();
+		RNAPI void GetDrawSnapshot(DrawSnapshot &snapshot) const;
 
 		//TODO: Having the two types is a bit confusing since they result in different iterator behaviour
 		Chunk GetChunk() { return Chunk(this, false); }

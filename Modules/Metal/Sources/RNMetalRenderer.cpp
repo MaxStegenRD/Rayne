@@ -217,7 +217,8 @@ namespace RN
 								if(instance > 0 && argument->GetType() != Shader::ArgumentBuffer::Type::StorageBuffer) break;
 								
 								MetalDrawable *drawable = renderPass.drawables[i + instance];
-								Material::Properties mergedMaterialProperties = drawable->material->GetMergedProperties(renderPass.overrideMaterial);
+								Material::Properties mergedMaterialProperties;
+								drawable->material.GetMergedProperties(renderPass.overrideMaterial, mergedMaterialProperties);
 								
 								MetalUniformBufferReference *bufferReference = drawable->_cameraSpecifics[_internals->currentRenderPassIndex].vertexShaderUniformBuffers[n];
 								UpdateUniformBufferReference(bufferReference, instance == 0);
@@ -237,7 +238,8 @@ namespace RN
 								if(instance > 0 && argument->GetType() != Shader::ArgumentBuffer::Type::StorageBuffer) break;
 								
 								MetalDrawable *drawable = renderPass.drawables[i + instance];
-								Material::Properties mergedMaterialProperties = drawable->material->GetMergedProperties(renderPass.overrideMaterial);
+								Material::Properties mergedMaterialProperties;
+								drawable->material.GetMergedProperties(renderPass.overrideMaterial, mergedMaterialProperties);
 								
 								MetalUniformBufferReference *bufferReference = drawable->_cameraSpecifics[_internals->currentRenderPassIndex].fragmentShaderUniformBuffers[n];
 								UpdateUniformBufferReference(bufferReference, instance == 0);
@@ -289,8 +291,7 @@ namespace RN
 				MetalFramebuffer *sourceFramebuffer = renderPass.previousStoredFramebuffer;
 				Texture *sourceTexture = sourceFramebuffer->GetColorTexture(0);
 				
-				renderPass.drawables[0]->material->RemoveAllTextures();
-				renderPass.drawables[0]->material->AddTexture(sourceTexture);
+				renderPass.drawables[0]->material.SetTextures(Array::WithObjects({sourceTexture}));
 				RenderDrawable(renderPass.drawables[0], 1);
 				break;
 			}
@@ -632,8 +633,7 @@ namespace RN
 					
 					_lock.Lock();
 					_defaultPostProcessingDrawable = static_cast<MetalDrawable*>(CreateDrawable());
-					_defaultPostProcessingDrawable->mesh = planeMesh->Retain();
-					_defaultPostProcessingDrawable->material = planeMaterial->Retain();
+					_defaultPostProcessingDrawable->Update(planeMesh, planeMaterial, nullptr, nullptr);
 					_lock.Unlock();
 				}
 				SubmitDrawable(_defaultPostProcessingDrawable);
@@ -1153,13 +1153,14 @@ namespace RN
 					
 				case Shader::UniformDescriptor::Identifier::BoneMatrices:
 				{
-					if(drawable->skeleton)
+					const std::vector<Matrix> &boneMatrices = drawable->skeleton.GetMatrices();
+					if(boneMatrices.size() > 0)
 					{
 						//TODO: Don't hardcode limit here
-						size_t matrixCount = std::min(drawable->skeleton->_matrices.size(), descriptor->GetElementCount());
+						size_t matrixCount = std::min(boneMatrices.size(), descriptor->GetElementCount());
 						if(matrixCount > 0)
 						{
-							std::memcpy(buffer + descriptor->GetOffset(), &drawable->skeleton->_matrices[0].m[0], 64 * matrixCount);
+							std::memcpy(buffer + descriptor->GetOffset(), &boneMatrices[0].m[0], 64 * matrixCount);
 						}
 					}
 					break;
@@ -1402,13 +1403,15 @@ namespace RN
 			if(cameraSpecific.dirty || cameraSpecific.camera != pass.camera)
 			{
 				_lock.Lock();
-				const MetalRenderingState *state = _internals->stateCoordinator.GetRenderPipelineState(drawable->material, drawable->mesh, pass.framebuffer, pass.shaderHint, pass.overrideMaterial, pass.renderPass);
+				const MetalRenderingState *state = _internals->stateCoordinator.GetRenderPipelineState(drawable->GetSourceMaterial(), drawable->GetSourceMesh(), pass.framebuffer, pass.shaderHint, pass.overrideMaterial, pass.renderPass);
 				_lock.Unlock();
 
 				drawable->UpdateRenderingState(_internals->currentRenderPassIndex, pass.camera, this, state);
 			}
 
-			bool canUseInstancing = drawable->material->GetVertexShader()->GetHasInstancing() && drawable->material->GetFragmentShader()->GetHasInstancing();
+			Shader *vertexShader = drawable->material.GetVertexShader();
+			Shader *fragmentShader = drawable->material.GetFragmentShader();
+			bool canUseInstancing = vertexShader && fragmentShader && vertexShader->GetHasInstancing() && fragmentShader->GetHasInstancing();
 
 			if(canUseInstancing && pass.currentInstanceDrawable && drawable->_cameraSpecifics[_internals->currentRenderPassIndex].vertexShaderUniformBuffers.size() == pass.currentInstanceDrawable->_cameraSpecifics[_internals->currentRenderPassIndex].vertexShaderUniformBuffers.size() && drawable->_cameraSpecifics[_internals->currentRenderPassIndex].fragmentShaderUniformBuffers.size() == pass.currentInstanceDrawable->_cameraSpecifics[_internals->currentRenderPassIndex].fragmentShaderUniformBuffers.size())
 			{
@@ -1430,7 +1433,7 @@ namespace RN
 				}
 			}
 
-			if(canUseInstancing && pass.currentPipelineState == cameraSpecific.pipelineState && pass.currentInstanceDrawable && drawable->mesh == pass.currentInstanceDrawable->mesh && drawable->material->GetTextures()->IsEqual(pass.currentInstanceDrawable->material->GetTextures()))
+			if(canUseInstancing && pass.currentPipelineState == cameraSpecific.pipelineState && pass.currentInstanceDrawable && drawable->GetSourceMesh() == pass.currentInstanceDrawable->GetSourceMesh() && drawable->material.GetTextures()->IsEqual(pass.currentInstanceDrawable->material.GetTextures()))
 			{
 				pass.instanceSteps.back() += 1;
 			}
@@ -1443,8 +1446,8 @@ namespace RN
 			}
 
 			_frameStatistics.back().numberOfDrawables += 1;
-			_frameStatistics.back().numberOfVertices += drawable->mesh->GetVerticesCount();
-			_frameStatistics.back().numberOfIndices += drawable->mesh->GetIndicesCount();
+			_frameStatistics.back().numberOfVertices += drawable->mesh.GetVerticesCount();
+			_frameStatistics.back().numberOfIndices += drawable->mesh.GetIndicesCount();
 
 			_lock.Lock();
 			pass.drawables.push_back(drawable);
@@ -1480,7 +1483,8 @@ namespace RN
 		}
 		
 		MetalRenderPass &renderPass = _internals->renderPasses[_internals->currentRenderPassIndex];
-		Material::PipelineProperties mergedMaterialProperties = drawable->material->GetMergedPipelineProperties(renderPass.overrideMaterial);
+		Material::PipelineProperties mergedMaterialProperties;
+		drawable->material.GetMergedPipelineProperties(renderPass.overrideMaterial, mergedMaterialProperties);
 		[encoder setDepthStencilState:_internals->stateCoordinator.GetDepthStencilStateForMaterial(mergedMaterialProperties, _internals->currentRenderState)];
 		[encoder setCullMode:static_cast<MTLCullMode>(mergedMaterialProperties.cullMode)];
 		if(mergedMaterialProperties.usePolygonOffset)
@@ -1550,7 +1554,7 @@ namespace RN
 
 		// Set textures
 		//TODO: Support vertex shader textures
-		const Array *textures = drawable->material->GetTextures();
+		const Array *textures = drawable->material.GetTextures();
 		metalFragmentShader->GetSignature()->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop){
 			if(argument->GetMaterialTextureIndex() == Shader::ArgumentTexture::IndexDirectionalShadowTexture)
 			{
@@ -1668,7 +1672,7 @@ namespace RN
 		}
 
 		// Mesh
-		MetalGPUBuffer *buffer = static_cast<MetalGPUBuffer *>(drawable->mesh->GetGPUVertexBuffer());
+		MetalGPUBuffer *buffer = static_cast<MetalGPUBuffer *>(drawable->mesh.GetVertexBuffer());
 		
 		if(_internals->currentRenderState->vertexPositionBufferShaderResourceIndex <= 30)
 		{
@@ -1677,10 +1681,10 @@ namespace RN
 		
 		if(_internals->currentRenderState->vertexBufferShaderResourceIndex <= 30)
 		{
-			[encoder setVertexBuffer:(id<MTLBuffer>)buffer->_buffer offset:drawable->mesh->GetVertexPositionsSeparatedSize() atIndex:_internals->currentRenderState->vertexBufferShaderResourceIndex];
+			[encoder setVertexBuffer:(id<MTLBuffer>)buffer->_buffer offset:drawable->mesh.GetVertexPositionsSeparatedSize() atIndex:_internals->currentRenderState->vertexBufferShaderResourceIndex];
 		}
 		
-		DrawMode drawMode = drawable->mesh->GetDrawMode();
+		DrawMode drawMode = drawable->mesh.GetDrawMode();
 		MTLPrimitiveType primitiveType;
 		
 		switch(drawMode)
@@ -1702,29 +1706,29 @@ namespace RN
 				break;
 		}
 		
-		if(drawable->mesh->GetIndicesCount() > 0)
+		if(drawable->mesh.GetIndicesCount() > 0)
 		{
-			MetalGPUBuffer *indexBuffer = static_cast<MetalGPUBuffer *>(drawable->mesh->GetGPUIndicesBuffer());
-			MTLIndexType indexType = drawable->mesh->GetAttribute(Mesh::VertexAttribute::Feature::Indices)->GetType() == PrimitiveType::Uint16? MTLIndexTypeUInt16 : MTLIndexTypeUInt32;
+			MetalGPUBuffer *indexBuffer = static_cast<MetalGPUBuffer *>(drawable->mesh.GetIndicesBuffer());
+			MTLIndexType indexType = drawable->mesh.GetIndexType() == PrimitiveType::Uint16? MTLIndexTypeUInt16 : MTLIndexTypeUInt32;
 
 			if(instanceCount == 1)
 			{
-				[encoder drawIndexedPrimitives:primitiveType indexCount:drawable->mesh->GetIndicesCount() indexType:indexType indexBuffer:(id <MTLBuffer>)indexBuffer->_buffer indexBufferOffset:0];
+				[encoder drawIndexedPrimitives:primitiveType indexCount:drawable->mesh.GetIndicesCount() indexType:indexType indexBuffer:(id <MTLBuffer>)indexBuffer->_buffer indexBufferOffset:0];
 			}
 			else
 			{
-				[encoder drawIndexedPrimitives:primitiveType indexCount:drawable->mesh->GetIndicesCount() indexType:indexType indexBuffer:(id <MTLBuffer>)indexBuffer->_buffer indexBufferOffset:0 instanceCount:instanceCount];
+				[encoder drawIndexedPrimitives:primitiveType indexCount:drawable->mesh.GetIndicesCount() indexType:indexType indexBuffer:(id <MTLBuffer>)indexBuffer->_buffer indexBufferOffset:0 instanceCount:instanceCount];
 			}
 		}
 		else
 		{
 			if(instanceCount == 1)
 			{
-				[encoder drawPrimitives:primitiveType vertexStart:0 vertexCount:drawable->mesh->GetVerticesCount()];
+				[encoder drawPrimitives:primitiveType vertexStart:0 vertexCount:drawable->mesh.GetVerticesCount()];
 			}
 			else
 			{
-				[encoder drawPrimitives:primitiveType vertexStart:0 vertexCount:drawable->mesh->GetVerticesCount() instanceCount:instanceCount];
+				[encoder drawPrimitives:primitiveType vertexStart:0 vertexCount:drawable->mesh.GetVerticesCount() instanceCount:instanceCount];
 			}
 		}
 	}

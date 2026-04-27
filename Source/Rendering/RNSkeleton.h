@@ -92,6 +92,24 @@ namespace RN
 	class Skeleton : public Asset
 	{
 	public:
+		class DrawSnapshot
+		{
+		public:
+			DrawSnapshot() = default;
+			DrawSnapshot(const DrawSnapshot &snapshot) = delete;
+
+			DrawSnapshot &operator=(const DrawSnapshot &snapshot) = delete;
+
+			RNAPI void Reset();
+
+			const std::vector<Matrix> &GetMatrices() const { return _matrices; }
+
+		private:
+			friend class Skeleton;
+
+			std::vector<Matrix> _matrices;
+		};
+
 		RNAPI Skeleton();
 		RNAPI Skeleton(const Skeleton *other);
 
@@ -114,6 +132,7 @@ namespace RN
 		RNAPI std::vector<Bone *> GetBones(const String *name);
 		RNAPI uint16 GetBoneCount() const { return bones.size(); }
 		RNAPI const std::vector<Matrix> &GetMatrices() const { return _matrices; }
+		RNAPI void GetDrawSnapshot(DrawSnapshot &snapshot) const;
 
 		std::vector<Bone> bones;
 		Dictionary *animations;

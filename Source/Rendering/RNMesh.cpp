@@ -88,6 +88,18 @@ namespace RN
 			free(_indicesBufferCPU);
 	}
 
+	void Mesh::DrawSnapshot::Reset()
+	{
+		_vertexBuffer = nullptr;
+		_indicesBuffer = nullptr;
+
+		_vertexPositionsSeparatedSize = 0;
+		_verticesCount = 0;
+		_indicesCount = 0;
+		_drawMode = DrawMode::Triangle;
+		_indexType = PrimitiveType::Invalid;
+	}
+
 	void Mesh::ParseAttributes()
 	{
 		bool hasIndices = false;
@@ -341,6 +353,20 @@ namespace RN
 		}
 
 		return nullptr;
+	}
+
+	void Mesh::GetDrawSnapshot(DrawSnapshot &snapshot) const
+	{
+		snapshot._vertexBuffer = _vertexBuffer;
+		snapshot._indicesBuffer = _indicesBuffer;
+
+		snapshot._vertexPositionsSeparatedSize = _vertexPositionsSeparatedSize;
+		snapshot._verticesCount = _verticesCount;
+		snapshot._indicesCount = _indicesCount;
+		snapshot._drawMode = _drawMode;
+
+		const VertexAttribute *indicesAttribute = GetAttribute(VertexAttribute::Feature::Indices);
+		snapshot._indexType = indicesAttribute ? indicesAttribute->GetType() : PrimitiveType::Invalid;
 	}
 
 	void Mesh::CalculateBoundingVolumes()
