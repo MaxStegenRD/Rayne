@@ -60,13 +60,40 @@ namespace RN
 
 	struct MetalDrawable : public Drawable
 	{
-		//TODO: Maybe store these per camera/renderpass!?
+		struct PipelineKey
+		{
+			Camera *camera = nullptr;
+			Mesh *mesh = nullptr;
+			uint64 meshPipelineVersion = 0;
+			Material *material = nullptr;
+			uint64 materialPipelineVersion = 0;
+			Framebuffer *framebuffer = nullptr;
+			Shader::UsageHint shaderHint = Shader::UsageHint::Default;
+			Material *overrideMaterial = nullptr;
+			uint64 overrideMaterialPipelineVersion = 0;
+			RenderPass *renderPass = nullptr;
+
+			bool operator==(const PipelineKey &other) const
+			{
+				return camera == other.camera &&
+					mesh == other.mesh &&
+					meshPipelineVersion == other.meshPipelineVersion &&
+					material == other.material &&
+					materialPipelineVersion == other.materialPipelineVersion &&
+					framebuffer == other.framebuffer &&
+					shaderHint == other.shaderHint &&
+					overrideMaterial == other.overrideMaterial &&
+					overrideMaterialPipelineVersion == other.overrideMaterialPipelineVersion &&
+					renderPass == other.renderPass;
+			}
+			bool operator!=(const PipelineKey &other) const { return !(*this == other); }
+		};
+
 		struct CameraSpecific
 		{
-			Camera *camera;
-			const MetalRenderingState *pipelineState;
-			bool dirty;
-			
+			const MetalRenderingState *pipelineState = nullptr;
+			PipelineKey pipelineKey;
+
 			std::vector<Shader::ArgumentBuffer*> argumentBufferToUniformBufferMapping;
 			std::vector<MetalUniformBufferReference*> vertexShaderUniformBuffers;
 			std::vector<MetalUniformBufferReference*> fragmentShaderUniformBuffers;
@@ -74,7 +101,7 @@ namespace RN
 
 		~MetalDrawable()
 		{
-			for(CameraSpecific specific : _cameraSpecifics)
+			for(CameraSpecific &specific : _cameraSpecifics)
 			{
 				for(MetalUniformBufferReference *buffer : specific.vertexShaderUniformBuffers)
 					delete buffer;
@@ -91,29 +118,29 @@ namespace RN
 		{
 			while(_cameraSpecifics.size() <= cameraID)
 			{
-				_cameraSpecifics.push_back({nullptr, nullptr, true});
+				_cameraSpecifics.push_back(CameraSpecific());
 			}
 		}
 
-		void UpdateRenderingState(size_t cameraID, Camera * camera, Renderer *renderer, const MetalRenderingState *state)
+		void UpdateRenderingState(size_t cameraID, Renderer *renderer, const MetalRenderingState *state, const PipelineKey &pipelineKey)
 		{
-			_cameraSpecifics[cameraID].camera = camera;
 			_cameraSpecifics[cameraID].pipelineState = state;
-			
+			_cameraSpecifics[cameraID].pipelineKey = pipelineKey;
+
 			for(Shader::ArgumentBuffer *buffer : _cameraSpecifics[cameraID].argumentBufferToUniformBufferMapping)
 				buffer->Release();
 			_cameraSpecifics[cameraID].argumentBufferToUniformBufferMapping.clear();
-			
+
 			for(MetalUniformBufferReference *buffer : _cameraSpecifics[cameraID].vertexShaderUniformBuffers)
 				buffer->Release();
 			_cameraSpecifics[cameraID].vertexShaderUniformBuffers.clear();
-			
+
 			for(MetalUniformBufferReference *buffer : _cameraSpecifics[cameraID].fragmentShaderUniformBuffers)
 				buffer->Release();
 			_cameraSpecifics[cameraID].fragmentShaderUniformBuffers.clear();
 
 			MetalRenderer *metalRenderer = renderer->Downcast<MetalRenderer>();
-			
+
 			const Shader::Signature *vertexShaderSignature = state->vertexShader->GetSignature();
 			vertexShaderSignature->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *buffer, size_t index, bool &stop){
 				size_t totalSize = buffer->GetTotalUniformSize();
@@ -123,7 +150,7 @@ namespace RN
 					_cameraSpecifics[cameraID].vertexShaderUniformBuffers.push_back(metalRenderer->GetUniformBufferReference(totalSize, buffer->GetIndex())->Retain());
 				}
 			});
-			
+
 			const Shader::Signature *fragmentShaderSignature = state->fragmentShader->GetSignature();
 			fragmentShaderSignature->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *buffer, size_t index, bool &stop){
 				size_t totalSize = buffer->GetTotalUniformSize();
@@ -133,16 +160,6 @@ namespace RN
 					_cameraSpecifics[cameraID].fragmentShaderUniformBuffers.push_back(metalRenderer->GetUniformBufferReference(totalSize, buffer->GetIndex())->Retain());
 				}
 			});
-			
-			_cameraSpecifics[cameraID].dirty = false;
-		}
-		
-		virtual void MakeDirty() override
-		{
-			for(int i = 0; i < _cameraSpecifics.size(); i++)
-			{
-				_cameraSpecifics[i].dirty = true;
-			}
 		}
 
 		std::vector<CameraSpecific> _cameraSpecifics;

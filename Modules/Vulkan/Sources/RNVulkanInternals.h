@@ -129,13 +129,43 @@ namespace RN
 
 	struct VulkanDrawable : public Drawable
 	{
+		struct PipelineKey
+		{
+			Camera *camera = nullptr;
+			Mesh *mesh = nullptr;
+			uint64 meshPipelineVersion = 0;
+			Material *material = nullptr;
+			uint64 materialPipelineVersion = 0;
+			const VulkanFramebuffer *framebuffer = nullptr;
+			Shader::UsageHint shaderHint = Shader::UsageHint::Default;
+			Material *overrideMaterial = nullptr;
+			uint64 overrideMaterialPipelineVersion = 0;
+			RenderPass *renderPass = nullptr;
+			uint32 subpassIndex = 0;
+
+			bool operator==(const PipelineKey &other) const
+			{
+				return camera == other.camera &&
+					mesh == other.mesh &&
+					meshPipelineVersion == other.meshPipelineVersion &&
+					material == other.material &&
+					materialPipelineVersion == other.materialPipelineVersion &&
+					framebuffer == other.framebuffer &&
+					shaderHint == other.shaderHint &&
+					overrideMaterial == other.overrideMaterial &&
+					overrideMaterialPipelineVersion == other.overrideMaterialPipelineVersion &&
+					renderPass == other.renderPass &&
+					subpassIndex == other.subpassIndex;
+			}
+			bool operator!=(const PipelineKey &other) const { return !(*this == other); }
+		};
+
 		struct CameraSpecific
 		{
-			const VulkanPipelineState *pipelineState; //No need for cleanup here as it's shared, but maybe add reference counting to clear later.
-			VulkanUniformState *uniformState;
-			bool dirty;
-			VulkanTransientDescriptorSet *descriptorSet;
-			Camera *camera;
+			const VulkanPipelineState *pipelineState = nullptr; //No need for cleanup here as it's shared, but maybe add reference counting to clear later.
+			VulkanUniformState *uniformState = nullptr;
+			VulkanTransientDescriptorSet *descriptorSet = nullptr;
+			PipelineKey pipelineKey;
 		};
 
 		~VulkanDrawable()
@@ -143,14 +173,17 @@ namespace RN
 			VulkanRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<VulkanRenderer>();
 			for(CameraSpecific &specific : _cameraSpecifics)
 			{
-				renderer->AddFrameFinishedCallback([specific](){
-					if(specific.descriptorSet)
+				VulkanTransientDescriptorSet *descriptorSet = specific.descriptorSet;
+				VulkanUniformState *uniformState = specific.uniformState;
+
+				renderer->AddFrameFinishedCallback([descriptorSet, uniformState](){
+					if(descriptorSet)
 					{
-						delete specific.descriptorSet;
+						delete descriptorSet;
 					}
-					if(specific.uniformState)
+					if(uniformState)
 					{
-						delete specific.uniformState;
+						delete uniformState;
 					}
 				});
 			}
@@ -159,37 +192,22 @@ namespace RN
 		void AddCameraSpecificsIfNeeded(size_t cameraID)
 		{
 			if(_cameraSpecifics.size() > cameraID) return;
-			_cameraSpecifics.resize(cameraID + 1, { nullptr, nullptr, true, nullptr });
+			_cameraSpecifics.resize(cameraID + 1);
 		}
 
-		void UpdateRenderingState(size_t cameraID, Camera *camera, const VulkanPipelineState *pipelineState, VulkanUniformState *uniformState)
+		void UpdateRenderingState(size_t cameraID, const VulkanPipelineState *pipelineState, VulkanUniformState *uniformState, const PipelineKey &pipelineKey)
 		{
 			_cameraSpecifics[cameraID].pipelineState = pipelineState;
-			_cameraSpecifics[cameraID].camera = camera;
-			if(_cameraSpecifics[cameraID].uniformState)
+			_cameraSpecifics[cameraID].pipelineKey = pipelineKey;
+			VulkanUniformState *oldUniformState = _cameraSpecifics[cameraID].uniformState;
+			if(oldUniformState)
 			{
-				VulkanUniformState *oldUniformState = _cameraSpecifics[cameraID].uniformState;
-				if(oldUniformState)
-				{
-					VulkanRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<VulkanRenderer>();
-					renderer->AddFrameFinishedCallback([oldUniformState](){
-						if(oldUniformState)
-						{
-							delete oldUniformState;
-						}
-					});
-				}
+				VulkanRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<VulkanRenderer>();
+				renderer->AddFrameFinishedCallback([oldUniformState](){
+					delete oldUniformState;
+				});
 			}
 			_cameraSpecifics[cameraID].uniformState = uniformState;
-			_cameraSpecifics[cameraID].dirty = false;
-		}
-
-		virtual void MakeDirty() override
-		{
-			for(int i = 0; i < _cameraSpecifics.size(); i++)
-			{
-				_cameraSpecifics[i].dirty = true;
-			}
 		}
 
 		//TODO: This can get somewhat big with lots of post processing stages...

@@ -478,6 +478,7 @@ namespace RN
 		RNAPI const VertexAttribute *GetAttribute(const String *name) const;
 
 		RNAPI void CalculateBoundingVolumes();
+		uint64 GetPipelineVersion() const { return _pipelineVersion; }
 		RNAPI void GetDrawSnapshot(DrawSnapshot &snapshot) const;
 
 		//TODO: Having the two types is a bit confusing since they result in different iterator behaviour
@@ -508,6 +509,11 @@ namespace RN
 		bool changedIndices;
 
 	private:
+		void MarkPipelineDirty()
+		{
+			_pipelineVersion += 1;
+		}
+
 		void ParseAttributes();
 		void SubmitIndices(const Range &range);
 		void SubmitVertices(const Range &range);
@@ -536,6 +542,8 @@ namespace RN
 		VertexDescriptor _descriptor;
 
 		uint32 _changeCounter;
+
+		uint64 _pipelineVersion;
 
 		AABB _boundingBox;
 		Sphere _boundingSphere;

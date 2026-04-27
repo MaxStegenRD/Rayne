@@ -285,12 +285,14 @@ namespace RN
 
 
 	Skeleton::Skeleton() :
+		_drawSnapshotVersion(1),
 		_blendanim(0), _curranim(0)
 	{
 		animations = new Dictionary();
 	}
 
 	Skeleton::Skeleton(const Skeleton *other) :
+		_drawSnapshotVersion(1),
 		_blendanim(0), _curranim(0)
 	{
 		for(int i = 0; i < other->bones.size(); i++)
@@ -310,6 +312,7 @@ namespace RN
 		{
 			_matrices.push_back(bones[i].finalMatrix);
 		}
+		MarkDrawSnapshotDirty();
 	}
 
 	Skeleton::~Skeleton()
@@ -341,6 +344,7 @@ namespace RN
 				bones[i].Init();
 			}
 		}
+		MarkDrawSnapshotDirty();
 	}
 
 	bool Skeleton::Update(float timestep, bool restart)
@@ -364,6 +368,7 @@ namespace RN
 		{
 			_matrices[i] = bones[i].finalMatrix;
 		}
+		MarkDrawSnapshotDirty();
 
 		if(!running && _blendanim)
 		{

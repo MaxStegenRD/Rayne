@@ -60,6 +60,8 @@ namespace RN
 		_indicesBuffer(nullptr),
 		_vertexBufferCPU(nullptr),
 		_indicesBufferCPU(nullptr),
+		_isStreamed(streamed),
+		_skipCPUBuffer(false),
 		_vertexPositionsSeparatedSize(0),
 		_vertexPositionsSeparatedStride(0),
 		_verticesCount(verticesCount),
@@ -68,8 +70,7 @@ namespace RN
 		_vertexAttributes(attributes),
 		_descriptor(attributes),
 		_changeCounter(0),
-		_isStreamed(streamed),
-		_skipCPUBuffer(false)
+		_pipelineVersion(1)
 	{
 		_boundingBox = AABB(Vector3(0.0f), Vector3(0.0f));
 		_boundingSphere = Sphere(_boundingBox);
@@ -237,6 +238,7 @@ namespace RN
 	void Mesh::SetDrawMode(DrawMode mode)
 	{
 		_drawMode = mode;
+		MarkPipelineDirty();
 	}
 
 	void Mesh::SetElementData(VertexAttribute::Feature feature, const void *tdata)

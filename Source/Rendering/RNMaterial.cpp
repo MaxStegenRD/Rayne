@@ -168,7 +168,9 @@ namespace RN
 	Material::Material(Shader *vertexShader, Shader *fragmentShader) :
 		_override(0),
 		_textures(new Array()),
-		_skipRendering(false)
+		_skipRendering(false),
+		_drawSnapshotVersion(1),
+		_pipelineVersion(1)
 	{
 		for(uint8 i = 0; i < static_cast<uint8>(Shader::UsageHint::COUNT); i++)
 		{
@@ -192,6 +194,8 @@ namespace RN
 		_override(other->_override),
 		_textures(SafeCopy(other->_textures)),
 		_skipRendering(other->_skipRendering),
+		_drawSnapshotVersion(1),
+		_pipelineVersion(1),
 		_properties(other->_properties),
 		_pipelineProperties(other->_pipelineProperties)
 	{
@@ -229,21 +233,25 @@ namespace RN
 	{
 		SafeRelease(_textures);
 		_textures = textures->Copy();
+		MarkDrawSnapshotDirty();
 	}
 
 	void Material::AddTexture(Framebuffer *texture)
 	{
 		_textures->AddObject(texture);
+		MarkDrawSnapshotDirty();
 	}
 
 	void Material::AddTexture(Texture *texture)
 	{
 		_textures->AddObject(texture);
+		MarkDrawSnapshotDirty();
 	}
 
 	void Material::RemoveAllTextures()
 	{
 		_textures->RemoveAllObjects();
+		MarkDrawSnapshotDirty();
 	}
 
 	void Material::SetFragmentShader(Shader *shader, Shader::UsageHint type)
@@ -252,6 +260,7 @@ namespace RN
 		SafeRelease(_fragmentShader[type]);
 		_fragmentShader[type] = SafeRetain(shader);
 		RN_ASSERT(!_fragmentShader[type] || _fragmentShader[type]->GetType() == Shader::Type::Fragment, "Fragment shader must be a fragment shader");
+		MarkPipelineDirty();
 	}
 
 	void Material::SetVertexShader(Shader *shader, Shader::UsageHint type)
@@ -260,11 +269,13 @@ namespace RN
 		SafeRelease(_vertexShader[type]);
 		_vertexShader[type] = SafeRetain(shader);
 		RN_ASSERT(!_vertexShader[type] || _vertexShader[type]->GetType() == Shader::Type::Vertex, "Vertex shader must be a vertex shader");
+		MarkPipelineDirty();
 	}
 
 	void Material::SetOverride(Override override)
 	{
 		_override = override;
+		MarkPipelineDirty();
 	}
 
 	void Material::SetColorWriteMask(bool writeRed, bool writeGreen, bool writeBlue, bool writeAlpha)
@@ -279,51 +290,62 @@ namespace RN
 			_pipelineProperties.colorWriteMask |= (1 << 2);
 		if(writeAlpha)
 			_pipelineProperties.colorWriteMask |= (1 << 3);
+		MarkPipelineDirty();
 	}
 
 	void Material::SetDepthWriteEnabled(bool depthWrite)
 	{
 		_pipelineProperties.depthWriteEnabled = depthWrite;
+		MarkPipelineDirty();
 	}
 	void Material::SetDepthMode(DepthMode mode)
 	{
 		_pipelineProperties.depthMode = mode;
+		MarkPipelineDirty();
 	}
 
 	void Material::SetTextureTileFactor(float factor)
 	{
 		_properties.textureTileFactor = factor;
+		MarkDrawSnapshotDirty();
 	}
 
 	void Material::SetAmbientColor(const Color &color)
 	{
 		_properties.ambientColor = color;
+		MarkDrawSnapshotDirty();
 	}
 	void Material::SetDiffuseColor(const Color &color)
 	{
 		_properties.diffuseColor = color;
+		MarkDrawSnapshotDirty();
 	}
 	void Material::SetSpecularColor(const Color &color)
 	{
 		_properties.specularColor = color;
+		MarkDrawSnapshotDirty();
 	}
 	void Material::SetEmissiveColor(const Color &color)
 	{
 		_properties.emissiveColor = color;
+		MarkDrawSnapshotDirty();
 	}
 
 	void Material::SetCustomMatrix1(const Matrix &matrix)
 	{
 		_properties.customMatrix1 = matrix;
+		MarkDrawSnapshotDirty();
 	}
 	void Material::SetCustomMatrix2(const Matrix &matrix)
 	{
 		_properties.customMatrix2 = matrix;
+		MarkDrawSnapshotDirty();
 	}
 
 	void Material::SetCullMode(CullMode mode)
 	{
 		_pipelineProperties.cullMode = mode;
+		MarkPipelineDirty();
 	}
 
 	void Material::SetPolygonOffset(bool enable, float factor, float units)
@@ -331,6 +353,7 @@ namespace RN
 		_pipelineProperties.usePolygonOffset = enable;
 		_pipelineProperties.polygonOffsetFactor = -factor;
 		_pipelineProperties.polygonOffsetUnits = -units;
+		MarkPipelineDirty();
 	}
 
 	void Material::SetAlphaToCoverage(bool enabled, float min, float max)
@@ -338,21 +361,25 @@ namespace RN
 		_pipelineProperties.useAlphaToCoverage = enabled;
 		_properties.alphaToCoverageClamp.x = min;
 		_properties.alphaToCoverageClamp.y = max;
+		MarkPipelineDirty();
 	}
 
 	void Material::SetUIClippingRect(Vector4 rect)
 	{
 		_properties.uiClippingRect = rect;
+		MarkDrawSnapshotDirty();
 	}
 
 	void Material::SetUIOffset(Vector2 offset)
 	{
 		_properties.uiOffset = offset;
+		MarkDrawSnapshotDirty();
 	}
 
 	void Material::SetUIOutlineColor(Color color)
 	{
 		_properties.uiOutlineColor = color;
+		MarkDrawSnapshotDirty();
 	}
 
 	void Material::SetBlendOperation(BlendOperation blendOperationRGB, BlendOperation blendOperationAlpha)
@@ -360,28 +387,33 @@ namespace RN
 		RN_ASSERT((blendOperationRGB != BlendOperation::None && blendOperationAlpha != BlendOperation::None) || blendOperationAlpha == blendOperationRGB, "Blend operation None can not be mixed with any of the others.");
 		_pipelineProperties.blendOperationRGB = blendOperationRGB;
 		_pipelineProperties.blendOperationAlpha = blendOperationAlpha;
+		MarkPipelineDirty();
 	}
 
 	void Material::SetBlendFactorSource(BlendFactor blendFactorRGB, BlendFactor blendFactorAlpha)
 	{
 		_pipelineProperties.blendFactorSourceRGB = blendFactorRGB;
 		_pipelineProperties.blendFactorSourceAlpha = blendFactorAlpha;
+		MarkPipelineDirty();
 	}
 
 	void Material::SetBlendFactorDestination(BlendFactor blendFactorRGB, BlendFactor blendFactorAlpha)
 	{
 		_pipelineProperties.blendFactorDestinationRGB = blendFactorRGB;
 		_pipelineProperties.blendFactorDestinationAlpha = blendFactorAlpha;
+		MarkPipelineDirty();
 	}
 
 	void Material::SetCustomShaderUniform(const String *name, Value *value)
 	{
 		_properties.SetCustomShaderUniform(name, value);
+		MarkDrawSnapshotDirty();
 	}
 
 	void Material::SetCustomShaderUniform(const String *name, Number *number)
 	{
 		_properties.SetCustomShaderUniform(name, number);
+		MarkDrawSnapshotDirty();
 	}
 
 	Object *Material::GetCustomShaderUniform(const String *name) const

@@ -276,9 +276,18 @@ namespace RN
 		const PipelineProperties &GetPipelineProperties() const { return _pipelineProperties; }
 		RNAPI const PipelineProperties &GetMergedPipelineProperties(Material *overrideMaterial);
 
+		uint64 GetDrawSnapshotVersion() const { return _drawSnapshotVersion; }
+		uint64 GetPipelineVersion() const { return _pipelineVersion; }
 		RNAPI void GetDrawSnapshot(DrawSnapshot &snapshot) const;
 
 	private:
+		void MarkDrawSnapshotDirty() { _drawSnapshotVersion += 1; }
+		void MarkPipelineDirty()
+		{
+			_pipelineVersion += 1;
+			MarkDrawSnapshotDirty();
+		}
+
 		static void GetMergedProperties(const Properties &properties, uint32 override, Material *overrideMaterial, Properties &result);
 		static void GetMergedPipelineProperties(const PipelineProperties &properties, uint32 override, Material *overrideMaterial, PipelineProperties &result);
 
@@ -290,6 +299,9 @@ namespace RN
 		Array *_textures;
 
 		bool _skipRendering;
+
+		uint64 _drawSnapshotVersion;
+		uint64 _pipelineVersion;
 
 		Properties _properties;
 		PipelineProperties _pipelineProperties;

@@ -2101,14 +2101,28 @@ namespace RN
 			auto &cameraSpecifics = drawable->_cameraSpecifics[_internals->currentDrawableResourceIndex];
 
 			Material *material = drawable->GetSourceMaterial();
-			if(cameraSpecifics.dirty || cameraSpecifics.camera != renderPass.cameraInfo.camera)
+			Mesh *mesh = drawable->GetSourceMesh();
+			VulkanDrawable::PipelineKey pipelineKey;
+			pipelineKey.camera = renderPass.cameraInfo.camera;
+			pipelineKey.mesh = mesh;
+			pipelineKey.meshPipelineVersion = mesh ? mesh->GetPipelineVersion() : 0;
+			pipelineKey.material = material;
+			pipelineKey.materialPipelineVersion = material ? material->GetPipelineVersion() : 0;
+			pipelineKey.framebuffer = renderPass.framebuffer;
+			pipelineKey.shaderHint = renderSubPass.shaderHint;
+			pipelineKey.overrideMaterial = renderSubPass.overrideMaterial;
+			pipelineKey.overrideMaterialPipelineVersion = renderSubPass.overrideMaterial ? renderSubPass.overrideMaterial->GetPipelineVersion() : 0;
+			pipelineKey.renderPass = renderSubPass.renderPass;
+			pipelineKey.subpassIndex = subpassIndex;
+
+			if(!cameraSpecifics.pipelineState || cameraSpecifics.pipelineKey != pipelineKey)
 			{
 				//TODO: Fix the camera situation...
-				const VulkanPipelineState *pipelineState = _internals->stateCoordinator.GetRenderPipelineState(material, drawable->GetSourceMesh(), renderSubPass.shaderHint, renderSubPass.overrideMaterial, &renderPass, subpassIndex);
+				const VulkanPipelineState *pipelineState = _internals->stateCoordinator.GetRenderPipelineState(material, mesh, renderSubPass.shaderHint, renderSubPass.overrideMaterial, &renderPass, subpassIndex);
 				VulkanUniformState *uniformState = _internals->stateCoordinator.GetUniformStateForPipelineState(pipelineState);
 
 				RN_ASSERT(pipelineState && uniformState, "Failed to create pipeline or uniform state for drawable!");
-				drawable->UpdateRenderingState(_internals->currentDrawableResourceIndex, renderPass.cameraInfo.camera, pipelineState, uniformState);
+				drawable->UpdateRenderingState(_internals->currentDrawableResourceIndex, pipelineState, uniformState, pipelineKey);
 
 				if(cameraSpecifics.descriptorSet)
 				{

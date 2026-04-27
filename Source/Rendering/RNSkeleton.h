@@ -132,6 +132,7 @@ namespace RN
 		RNAPI std::vector<Bone *> GetBones(const String *name);
 		RNAPI uint16 GetBoneCount() const { return bones.size(); }
 		RNAPI const std::vector<Matrix> &GetMatrices() const { return _matrices; }
+		uint64 GetDrawSnapshotVersion() const { return _drawSnapshotVersion; }
 		RNAPI void GetDrawSnapshot(DrawSnapshot &snapshot) const;
 
 		std::vector<Bone> bones;
@@ -139,6 +140,10 @@ namespace RN
 		std::vector<Matrix> _matrices;
 
 	private:
+		void MarkDrawSnapshotDirty() { _drawSnapshotVersion += 1; }
+
+		uint64 _drawSnapshotVersion;
+
 		Animation *_blendanim;
 		float _blendtime;
 		Animation *_curranim;

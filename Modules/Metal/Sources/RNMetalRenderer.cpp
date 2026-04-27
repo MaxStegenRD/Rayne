@@ -1400,13 +1400,27 @@ namespace RN
 			drawable->AddCameraSepecificsIfNeeded(_internals->currentRenderPassIndex);
 			MetalDrawable::CameraSpecific &cameraSpecific = drawable->_cameraSpecifics[_internals->currentRenderPassIndex];
 
-			if(cameraSpecific.dirty || cameraSpecific.camera != pass.camera)
+			Mesh *sourceMesh = drawable->GetSourceMesh();
+			Material *sourceMaterial = drawable->GetSourceMaterial();
+			MetalDrawable::PipelineKey pipelineKey;
+			pipelineKey.camera = pass.camera;
+			pipelineKey.mesh = sourceMesh;
+			pipelineKey.meshPipelineVersion = sourceMesh ? sourceMesh->GetPipelineVersion() : 0;
+			pipelineKey.material = sourceMaterial;
+			pipelineKey.materialPipelineVersion = sourceMaterial ? sourceMaterial->GetPipelineVersion() : 0;
+			pipelineKey.framebuffer = pass.framebuffer;
+			pipelineKey.shaderHint = pass.shaderHint;
+			pipelineKey.overrideMaterial = pass.overrideMaterial;
+			pipelineKey.overrideMaterialPipelineVersion = pass.overrideMaterial ? pass.overrideMaterial->GetPipelineVersion() : 0;
+			pipelineKey.renderPass = pass.renderPass;
+
+			if(!cameraSpecific.pipelineState || cameraSpecific.pipelineKey != pipelineKey)
 			{
 				_lock.Lock();
-				const MetalRenderingState *state = _internals->stateCoordinator.GetRenderPipelineState(drawable->GetSourceMaterial(), drawable->GetSourceMesh(), pass.framebuffer, pass.shaderHint, pass.overrideMaterial, pass.renderPass);
+				const MetalRenderingState *state = _internals->stateCoordinator.GetRenderPipelineState(sourceMaterial, sourceMesh, pass.framebuffer, pass.shaderHint, pass.overrideMaterial, pass.renderPass);
 				_lock.Unlock();
 
-				drawable->UpdateRenderingState(_internals->currentRenderPassIndex, pass.camera, this, state);
+				drawable->UpdateRenderingState(_internals->currentRenderPassIndex, this, state, pipelineKey);
 			}
 
 			Shader *vertexShader = drawable->material.GetVertexShader();
