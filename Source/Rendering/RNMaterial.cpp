@@ -22,19 +22,7 @@ namespace RN
 		CopyFromProperties(properties);
 	}
 
-	Material::Properties::~Properties()
-	{
-		ClearCustomShaderUniforms();
-	}
-
-	void Material::Properties::ClearCustomShaderUniforms()
-	{
-		for(auto const &data : _customShaderUniforms)
-		{
-			data.second->Release();
-		}
-		_customShaderUniforms.clear();
-	}
+	Material::Properties::~Properties() = default;
 
 	void Material::Properties::CopyFromProperties(const Properties &properties)
 	{
@@ -54,29 +42,17 @@ namespace RN
 		uiOffset = properties.uiOffset;
 		uiOutlineColor = properties.uiOutlineColor;
 
-		ClearCustomShaderUniforms();
-		_customShaderUniforms.insert(properties._customShaderUniforms.begin(), properties._customShaderUniforms.end());
-
-		for(auto const &data : _customShaderUniforms)
-		{
-			data.second->Retain();
-		}
+		_customShaderUniforms = properties._customShaderUniforms;
 	}
 
 	void Material::Properties::SetCustomShaderUniform(const String *name, Value *value)
 	{
-		const size_t nameHash = name->GetHash();
-		Object *oldValue = _customShaderUniforms[nameHash];
-		_customShaderUniforms[nameHash] = value->Retain();
-		SafeRelease(oldValue);
+		_customShaderUniforms[name->GetHash()] = value;
 	}
 
 	void Material::Properties::SetCustomShaderUniform(const String *name, Number *number)
 	{
-		const size_t nameHash = name->GetHash();
-		Object *oldValue = _customShaderUniforms[nameHash];
-		_customShaderUniforms[nameHash] = number->Retain();
-		SafeRelease(oldValue);
+		_customShaderUniforms[name->GetHash()] = number;
 	}
 
 	Object *Material::Properties::GetCustomShaderUniform(const String *name) const
@@ -84,7 +60,7 @@ namespace RN
 		const auto result = _customShaderUniforms.find(name->GetHash());
 		if(result != _customShaderUniforms.end())
 		{
-			return result->second;
+			return result->second.Get();
 		}
 
 		return nullptr;
@@ -95,7 +71,7 @@ namespace RN
 		const auto result = _customShaderUniforms.find(nameHash);
 		if(result != _customShaderUniforms.end())
 		{
-			return result->second;
+			return result->second.Get();
 		}
 
 		return nullptr;
@@ -489,18 +465,13 @@ namespace RN
 		result.uiOffset = properties.uiOffset;
 		result.uiOutlineColor = properties.uiOutlineColor;
 
-		result.ClearCustomShaderUniforms();
-		result._customShaderUniforms.insert(properties._customShaderUniforms.begin(), properties._customShaderUniforms.end());
+		result._customShaderUniforms = properties._customShaderUniforms;
 		if(!(overrideMaterial->GetOverride() & Override::CustomUniforms) && !(override & Override::CustomUniforms) && overrideMaterial->_properties._customShaderUniforms.size() > 0)
 		{
 			for(auto const &data : overrideMaterial->_properties._customShaderUniforms)
 			{
 				result._customShaderUniforms[data.first] = data.second;
 			}
-		}
-		for(auto const &data : result._customShaderUniforms)
-		{
-			data.second->Retain();
 		}
 	}
 

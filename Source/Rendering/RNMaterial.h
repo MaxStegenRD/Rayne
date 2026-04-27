@@ -111,9 +111,7 @@ namespace RN
 			RNAPI Object *GetCustomShaderUniform(size_t nameHash) const;
 
 		private:
-			void ClearCustomShaderUniforms();
-
-			std::map<const size_t, Object *> _customShaderUniforms; //WARNING: The key is the hash of the string, which could potentially have conflicts!
+			std::map<const size_t, StrongRef<Object>> _customShaderUniforms; //WARNING: The key is the hash of the string, which could potentially have conflicts!
 		};
 		
 		class PipelineProperties
