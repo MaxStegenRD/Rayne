@@ -149,9 +149,9 @@ namespace RN
 		{
 		public:
 			DrawSnapshot() = default;
-			DrawSnapshot(const DrawSnapshot &snapshot) = delete;
+			DrawSnapshot(const DrawSnapshot &snapshot) = default;
 
-			DrawSnapshot &operator=(const DrawSnapshot &snapshot) = delete;
+			DrawSnapshot &operator=(const DrawSnapshot &snapshot) = default;
 
 			RNAPI void Reset();
 
@@ -162,7 +162,9 @@ namespace RN
 			RNAPI void SetTextures(const Array *textures);
 
 			RNAPI void GetMergedProperties(Material *overrideMaterial, Properties &properties) const;
+			RNAPI void GetMergedProperties(const DrawSnapshot *overrideMaterial, Properties &properties) const;
 			RNAPI void GetMergedPipelineProperties(Material *overrideMaterial, PipelineProperties &properties) const;
+			RNAPI void GetMergedPipelineProperties(const DrawSnapshot *overrideMaterial, PipelineProperties &properties) const;
 
 		private:
 			friend class Material;
@@ -290,8 +292,8 @@ namespace RN
 			MarkDrawSnapshotDirty();
 		}
 
-		static void GetMergedProperties(const Properties &properties, uint32 override, Material *overrideMaterial, Properties &result);
-		static void GetMergedPipelineProperties(const PipelineProperties &properties, uint32 override, Material *overrideMaterial, PipelineProperties &result);
+		static void GetMergedProperties(const Properties &properties, uint32 override, const Properties *overrideProperties, uint32 overrideMaterialOverride, Properties &result);
+		static void GetMergedPipelineProperties(const PipelineProperties &properties, uint32 override, const PipelineProperties *overridePipelineProperties, uint32 overrideMaterialOverride, PipelineProperties &result);
 
 		Override _override;
 

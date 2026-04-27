@@ -218,7 +218,7 @@ namespace RN
 								
 								MetalDrawable *drawable = renderPass.drawables[i + instance];
 								Material::Properties mergedMaterialProperties;
-								drawable->material.GetMergedProperties(renderPass.overrideMaterial, mergedMaterialProperties);
+								drawable->material.GetMergedProperties(renderPass.GetOverrideMaterialSnapshot(), mergedMaterialProperties);
 								
 								MetalUniformBufferReference *bufferReference = drawable->_renderResources[_internals->currentRenderPassIndex].vertexShaderUniformBuffers[n];
 								UpdateUniformBufferReference(bufferReference, instance == 0);
@@ -239,7 +239,7 @@ namespace RN
 								
 								MetalDrawable *drawable = renderPass.drawables[i + instance];
 								Material::Properties mergedMaterialProperties;
-								drawable->material.GetMergedProperties(renderPass.overrideMaterial, mergedMaterialProperties);
+								drawable->material.GetMergedProperties(renderPass.GetOverrideMaterialSnapshot(), mergedMaterialProperties);
 								
 								MetalUniformBufferReference *bufferReference = drawable->_renderResources[_internals->currentRenderPassIndex].fragmentShaderUniformBuffers[n];
 								UpdateUniformBufferReference(bufferReference, instance == 0);
@@ -419,7 +419,7 @@ namespace RN
 			renderPass.shaderHint = cameraRenderPass->GetShaderHint();
 		}
 
-		renderPass.overrideMaterial = cameraRenderPass->GetOverrideMaterial();
+		renderPass.SetOverrideMaterial(cameraRenderPass->GetOverrideMaterial());
 		renderPass.resolveFramebuffer = nullptr;
 		renderPass.previousStoredFramebuffer = nullptr;
 
@@ -507,7 +507,7 @@ namespace RN
 		if(!apiStage)
 		{
 			metalRenderPass.type = MetalRenderPass::Type::Default;
-			metalRenderPass.overrideMaterial = ppStage? ppStage->GetMaterial() : renderPass->GetOverrideMaterial();
+			metalRenderPass.SetOverrideMaterial(ppStage? ppStage->GetMaterial() : renderPass->GetOverrideMaterial());
 		}
 		else
 		{
@@ -527,7 +527,7 @@ namespace RN
 					{
 						_ppConvertMaterial = Material::WithShaders(_defaultShaderLibrary->GetShaderWithName(RNCSTR("pp_vertex")), _defaultShaderLibrary->GetShaderWithName(RNCSTR("pp_blit_fragment")))->Retain();
 					}
-					metalRenderPass.overrideMaterial = _ppConvertMaterial;
+					metalRenderPass.SetOverrideMaterial(_ppConvertMaterial);
 					break;
 				}
 				
@@ -1501,7 +1501,7 @@ namespace RN
 		
 		MetalRenderPass &renderPass = _internals->renderPasses[_internals->currentRenderPassIndex];
 		Material::PipelineProperties mergedMaterialProperties;
-		drawable->material.GetMergedPipelineProperties(renderPass.overrideMaterial, mergedMaterialProperties);
+		drawable->material.GetMergedPipelineProperties(renderPass.GetOverrideMaterialSnapshot(), mergedMaterialProperties);
 		[encoder setDepthStencilState:_internals->stateCoordinator.GetDepthStencilStateForMaterial(mergedMaterialProperties, _internals->currentRenderState)];
 		[encoder setCullMode:static_cast<MTLCullMode>(mergedMaterialProperties.cullMode)];
 		if(mergedMaterialProperties.usePolygonOffset)

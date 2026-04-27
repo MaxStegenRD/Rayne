@@ -887,7 +887,7 @@ namespace RN
 		renderPass.resolveFramebuffer = nullptr;
 
 		renderPass.shaderHint = cameraRenderPass->GetShaderHint();
-		renderPass.overrideMaterial = cameraRenderPass->GetOverrideMaterial();
+		renderPass.SetOverrideMaterial(cameraRenderPass->GetOverrideMaterial());
 
 		renderPass.cameraInfo.camera = camera;
 
@@ -1039,7 +1039,7 @@ namespace RN
 		vulkanRenderPass.resolveFramebuffer = nullptr;
 
 		vulkanRenderPass.shaderHint = renderPass->GetShaderHint();
-		vulkanRenderPass.overrideMaterial = ppStage ? ppStage->GetMaterial() : renderPass->GetOverrideMaterial();
+		vulkanRenderPass.SetOverrideMaterial(ppStage ? ppStage->GetMaterial() : renderPass->GetOverrideMaterial());
 
 		if(!apiStage)
 		{
@@ -1344,10 +1344,9 @@ namespace RN
 	{
 		uint8 *buffer = reinterpret_cast<uint8 *>(dynamicBufferReference->dynamicBuffer->GetBuffer()) + dynamicBufferReference->offset;
 
-		Material *overrideMaterial = _internals->renderPasses[_internals->currentRenderPassIndex].overrideMaterial;
 		Material::Properties mergedMaterialProperties;
-		drawable->material.GetMergedProperties(overrideMaterial, mergedMaterialProperties);
 		const VulkanRenderPass &renderPass = _internals->renderPasses[_internals->currentRenderPassIndex];
+		drawable->material.GetMergedProperties(renderPass.GetOverrideMaterialSnapshot(), mergedMaterialProperties);
 
 		const RN::Array *uniformDescriptors = argumentBuffer->GetUniformDescriptors();
 		size_t count = uniformDescriptors->GetCount();
@@ -2064,7 +2063,7 @@ namespace RN
 		warmupRenderPass.framebuffer = vulkanFramebuffer;
 		warmupRenderPass.resolveFramebuffer = resolveFramebuffer;
 		warmupRenderPass.shaderHint = renderPass->GetShaderHint();
-		warmupRenderPass.overrideMaterial = renderPass->GetOverrideMaterial();
+		warmupRenderPass.SetOverrideMaterial(renderPass->GetOverrideMaterial());
 		warmupRenderPass.subpassSignature = 0; // no subpasses in warmup
 		warmupRenderPass.multiviewLayer = 0;
 		warmupRenderPass.subpasses.clear();

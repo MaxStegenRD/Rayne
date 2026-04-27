@@ -179,7 +179,9 @@ namespace RN
 
 		MetalFramebuffer *framebuffer;
 		Shader::UsageHint shaderHint;
-		Material *overrideMaterial;
+		Material *overrideMaterial = nullptr;
+		Material::DrawSnapshot overrideMaterialSnapshot;
+		uint64 overrideMaterialDrawSnapshotVersion = 0;
 		MetalFramebuffer *resolveFramebuffer;
 
 		Camera *camera;
@@ -215,6 +217,33 @@ namespace RN
 		std::vector<Matrix> directionalShadowMatrices;
 		MetalTexture *directionalShadowDepthTexture;
 		Vector2 directionalShadowInfo;
+
+		void SetOverrideMaterial(Material *material)
+		{
+			bool sourceChanged = overrideMaterial != material;
+			if(sourceChanged)
+			{
+				overrideMaterial = material;
+				overrideMaterialDrawSnapshotVersion = 0;
+			}
+			if(!overrideMaterial)
+			{
+				if(sourceChanged)
+					overrideMaterialSnapshot.Reset();
+				return;
+			}
+
+			uint64 snapshotVersion = overrideMaterial->GetDrawSnapshotVersion();
+			if(overrideMaterialDrawSnapshotVersion == snapshotVersion) return;
+
+			overrideMaterial->GetDrawSnapshot(overrideMaterialSnapshot);
+			overrideMaterialDrawSnapshotVersion = snapshotVersion;
+		}
+
+		const Material::DrawSnapshot *GetOverrideMaterialSnapshot() const
+		{
+			return overrideMaterial ? &overrideMaterialSnapshot : nullptr;
+		}
 	};
 
 
