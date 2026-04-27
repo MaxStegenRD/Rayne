@@ -248,7 +248,6 @@ namespace RN
 		Shader::UsageHint shaderHint;
 		Material *overrideMaterial = nullptr;
 		Material::DrawSnapshot overrideMaterialSnapshot;
-		uint64 overrideMaterialDrawSnapshotVersion = 0;
 
 		Color cameraAmbientColor;
 		Vector4 cameraCustomData;
@@ -276,24 +275,11 @@ namespace RN
 
 		void SetOverrideMaterial(Material *material)
 		{
-			bool sourceChanged = overrideMaterial != material;
-			if(sourceChanged)
-			{
-				overrideMaterial = material;
-				overrideMaterialDrawSnapshotVersion = 0;
-			}
-			if(!overrideMaterial)
-			{
-				if(sourceChanged)
-					overrideMaterialSnapshot.Reset();
-				return;
-			}
-
-			uint64 snapshotVersion = overrideMaterial->GetDrawSnapshotVersion();
-			if(overrideMaterialDrawSnapshotVersion == snapshotVersion) return;
-
-			overrideMaterial->GetDrawSnapshot(overrideMaterialSnapshot);
-			overrideMaterialDrawSnapshotVersion = snapshotVersion;
+			overrideMaterial = material;
+			if(overrideMaterial)
+				overrideMaterial->GetDrawSnapshot(overrideMaterialSnapshot);
+			else
+				overrideMaterialSnapshot.Reset();
 		}
 
 		const Material::DrawSnapshot *GetOverrideMaterialSnapshot() const
