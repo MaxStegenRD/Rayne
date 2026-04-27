@@ -111,7 +111,7 @@ namespace RN
 			RNAPI Object *GetCustomShaderUniform(size_t nameHash) const;
 
 		private:
-			std::map<const size_t, StrongRef<Object>> _customShaderUniforms; //WARNING: The key is the hash of the string, which could potentially have conflicts!
+			std::map<size_t, StrongRef<Object>> _customShaderUniforms; //WARNING: The key is the hash of the string, which could potentially have conflicts!
 		};
 		
 		class PipelineProperties
@@ -165,6 +165,8 @@ namespace RN
 			RNAPI void GetMergedPipelineProperties(Material *overrideMaterial, PipelineProperties &properties) const;
 
 		private:
+			friend class Material;
+
 			StrongRef<Shader> _fragmentShader[static_cast<uint8>(Shader::UsageHint::COUNT)];
 			StrongRef<Shader> _vertexShader[static_cast<uint8>(Shader::UsageHint::COUNT)];
 
