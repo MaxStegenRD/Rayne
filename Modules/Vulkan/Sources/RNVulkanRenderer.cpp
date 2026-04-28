@@ -2067,6 +2067,8 @@ namespace RN
 		warmupRenderPass.subpasses.clear();
 
 		//TODO: Support subpasses
+		Mesh::DrawSnapshot meshSnapshot;
+		mesh->GetDrawSnapshot(meshSnapshot);
 		Material::DrawSnapshot materialSnapshot;
 		material->GetDrawSnapshot(materialSnapshot);
 		const Material::DrawSnapshot *overrideMaterialSnapshot = warmupRenderPass.GetOverrideMaterialSnapshot();
@@ -2074,7 +2076,7 @@ namespace RN
 		Shader *fragmentShader = materialSnapshot.GetSelectedFragmentShader(warmupRenderPass.shaderHint, overrideMaterialSnapshot);
 		Material::PipelineProperties materialProperties;
 		materialSnapshot.GetMergedPipelineProperties(overrideMaterialSnapshot, materialProperties);
-		_internals->stateCoordinator.GetRenderPipelineState(vertexShader, fragmentShader, mesh, materialProperties, &warmupRenderPass, 0);
+		_internals->stateCoordinator.GetRenderPipelineState(vertexShader, fragmentShader, meshSnapshot, materialProperties, &warmupRenderPass, 0);
 	}
 
 	void VulkanRenderer::SubmitDrawable(Drawable *tdrawable)
@@ -2103,12 +2105,10 @@ namespace RN
 
 			auto &renderResources = drawable->EnsureRenderResources(_internals->currentDrawableResourceIndex);
 
-			Mesh *mesh = drawable->GetSourceMesh();
 			const Material::DrawSnapshot *overrideMaterialSnapshot = renderSubPass.GetOverrideMaterialSnapshot();
 			renderResources.mergedMaterialSnapshot.Update(*drawable, renderSubPass.shaderHint, overrideMaterialSnapshot, renderSubPass.GetOverrideMaterialSnapshotVersion());
 			Drawable::PipelineKey pipelineKey;
-			pipelineKey.mesh = mesh;
-			pipelineKey.meshPipelineVersion = mesh ? mesh->GetPipelineVersion() : 0;
+			pipelineKey.meshPipelineHash = drawable->mesh.GetPipelineHash();
 			pipelineKey.framebuffer = renderPass.framebuffer;
 			pipelineKey.vertexShader = renderResources.mergedMaterialSnapshot.vertexShader;
 			pipelineKey.fragmentShader = renderResources.mergedMaterialSnapshot.fragmentShader;
@@ -2121,7 +2121,7 @@ namespace RN
 			if(!renderResources.pipelineState || renderResources.pipelineKey != pipelineKey)
 			{
 				//TODO: Fix the camera situation...
-				const VulkanPipelineState *pipelineState = _internals->stateCoordinator.GetRenderPipelineState(pipelineKey.vertexShader, pipelineKey.fragmentShader, mesh, pipelineKey.materialProperties, &renderPass, subpassIndex);
+				const VulkanPipelineState *pipelineState = _internals->stateCoordinator.GetRenderPipelineState(pipelineKey.vertexShader, pipelineKey.fragmentShader, drawable->mesh, pipelineKey.materialProperties, &renderPass, subpassIndex);
 				VulkanUniformState *uniformState = _internals->stateCoordinator.GetUniformStateForPipelineState(pipelineState);
 
 				RN_ASSERT(pipelineState && uniformState, "Failed to create pipeline or uniform state for drawable!");
@@ -2174,7 +2174,7 @@ namespace RN
 				canUseInstancing = false;
 			}
 
-			if(canUseInstancing && renderSubPass.currentPipelineState == renderResources.pipelineState && renderSubPass.currentInstanceDrawable && renderResources.pipelineKey.mesh == renderSubPass.currentInstanceDrawable->_renderResources[_internals->currentDrawableResourceIndex].pipelineKey.mesh && drawable->material.GetTextures()->IsEqualLite(renderSubPass.currentInstanceDrawable->material.GetTextures()))
+			if(canUseInstancing && renderSubPass.currentPipelineState == renderResources.pipelineState && renderSubPass.currentInstanceDrawable && drawable->mesh.CanInstanceWith(renderSubPass.currentInstanceDrawable->mesh) && drawable->material.GetTextures()->IsEqualLite(renderSubPass.currentInstanceDrawable->material.GetTextures()))
 			{
 				renderSubPass.instanceSteps.back() += 1; //Increase counter if the rendering state is the same
 			}

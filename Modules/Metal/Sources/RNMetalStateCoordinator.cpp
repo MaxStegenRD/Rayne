@@ -212,9 +212,9 @@ namespace RN
 		return sampler;
 	}
 
-	const MetalRenderingState *MetalStateCoordinator::GetRenderPipelineState(Shader *vertexShader, Shader *fragmentShader, Mesh *mesh, Framebuffer *framebuffer, const Material::PipelineProperties &materialProperties, const RenderPass::DrawSnapshot &drawSnapshot)
+	const MetalRenderingState *MetalStateCoordinator::GetRenderPipelineState(Shader *vertexShader, Shader *fragmentShader, const Mesh::DrawSnapshot &mesh, Framebuffer *framebuffer, const Material::PipelineProperties &materialProperties, const RenderPass::DrawSnapshot &drawSnapshot)
 	{
-		const Mesh::VertexDescriptor &descriptor = mesh->GetVertexDescriptor();
+		const Mesh::VertexDescriptor &descriptor = mesh.GetVertexDescriptor();
 
 		MetalShader *metalVertexShader = static_cast<MetalShader *>(vertexShader);
 		MetalShader *metalFragmentShader = static_cast<MetalShader *>(fragmentShader);
@@ -236,7 +236,7 @@ namespace RN
 		return GetRenderPipelineStateInCollection(collection, mesh, framebuffer, materialProperties, drawSnapshot);
 	}
 
-	const MetalRenderingState *MetalStateCoordinator::GetRenderPipelineStateInCollection(MetalRenderingStateCollection *collection, Mesh *mesh, Framebuffer *framebuffer, const Material::PipelineProperties &materialProperties, const RenderPass::DrawSnapshot &drawSnapshot)
+	const MetalRenderingState *MetalStateCoordinator::GetRenderPipelineStateInCollection(MetalRenderingStateCollection *collection, const Mesh::DrawSnapshot &mesh, Framebuffer *framebuffer, const Material::PipelineProperties &materialProperties, const RenderPass::DrawSnapshot &drawSnapshot)
 	{
 		MetalFramebuffer *metalFramebuffer = framebuffer->Downcast<MetalFramebuffer>();
 		const RenderPass::SubpassSnapshot &subpass = drawSnapshot.GetSubpass();
@@ -260,7 +260,7 @@ namespace RN
 				return state;
 		}
 
-		MTLVertexDescriptor *vertexDescriptor = CreateVertexDescriptorFromMesh(mesh, static_cast<MetalShader*>(collection->vertexShader));
+		MTLVertexDescriptor *vertexDescriptor = CreateVertexDescriptor(mesh, static_cast<MetalShader*>(collection->vertexShader));
 
 		MTLRenderPipelineDescriptor *pipelineStateDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
 		pipelineStateDescriptor.vertexFunction = static_cast<id>(collection->vertexShader->_shader);
@@ -268,7 +268,7 @@ namespace RN
 		pipelineStateDescriptor.vertexDescriptor = vertexDescriptor;
 		pipelineStateDescriptor.sampleCount = sampleCount;
 
-		switch(mesh->GetDrawMode())
+		switch(mesh.GetDrawMode())
 		{
 			case DrawMode::Point:
 				pipelineStateDescriptor.inputPrimitiveTopology = MTLPrimitiveTopologyClassPoint;
@@ -356,8 +356,8 @@ namespace RN
 		state->sampleCount = sampleCount;
 		state->vertexShader = collection->vertexShader;
 		state->fragmentShader = collection->fragmentShader;
-		state->vertexPositionBufferShaderResourceIndex = mesh->GetVertexPositionsSeparatedSize() > 0? 29 : 255; //Hardcoded to match value CreateVertexDescriptorFromMesh
-		state->vertexBufferShaderResourceIndex = 30; //Hardcoded to match value CreateVertexDescriptorFromMesh
+		state->vertexPositionBufferShaderResourceIndex = mesh.GetVertexPositionsSeparatedSize() > 0? 29 : 255; //Hardcoded to match value CreateVertexDescriptor
+		state->vertexBufferShaderResourceIndex = 30; //Hardcoded to match value CreateVertexDescriptor
 		state->wantsAlphaToCoverage = materialProperties.useAlphaToCoverage;
 		state->colorWriteMask = materialProperties.colorWriteMask;
 		state->blendOperationRGB = materialProperties.blendOperationRGB;
@@ -372,17 +372,17 @@ namespace RN
 		return state;
 	}
 
-	MTLVertexDescriptor *MetalStateCoordinator::CreateVertexDescriptorFromMesh(Mesh *mesh, MetalShader *shader)
+	MTLVertexDescriptor *MetalStateCoordinator::CreateVertexDescriptor(const Mesh::DrawSnapshot &mesh, MetalShader *shader)
 	{
 		MTLVertexDescriptor *descriptor = [[MTLVertexDescriptor alloc] init];
 		
 		//Hardcoding the binding index to 29 for positions and 30 for everything else here as there is no way to figure out the ones in use before reflection, but need to create the pipeline for reflection to be available... 30 is the highest index allowed!
 		
-		if(mesh->GetVertexPositionsSeparatedSize() > 0)
+		if(mesh.GetVertexPositionsSeparatedSize() > 0)
 		{
 			bool didSetBufferAttributes = false;
 			
-			const std::vector<Mesh::VertexAttribute> &attributes = mesh->GetVertexAttributes();
+			const std::vector<Mesh::VertexAttribute> &attributes = mesh.GetVertexAttributes();
 			for(const Mesh::VertexAttribute &attribute : attributes)
 			{
 				if(attribute.GetFeature() != Mesh::VertexAttribute::Feature::Vertices) continue;
@@ -402,18 +402,18 @@ namespace RN
 			
 			if(didSetBufferAttributes)
 			{
-				descriptor.layouts[29].stride = mesh->GetVertexPositionsSeparatedStride();
+				descriptor.layouts[29].stride = mesh.GetVertexPositionsSeparatedStride();
 				descriptor.layouts[29].stepFunction = MTLVertexStepFunctionPerVertex;
 				descriptor.layouts[29].stepRate = 1;
 			}
 		}
 
 		bool didSetBufferAttributes = false;
-		const std::vector<Mesh::VertexAttribute> &attributes = mesh->GetVertexAttributes();
+		const std::vector<Mesh::VertexAttribute> &attributes = mesh.GetVertexAttributes();
 		for(const Mesh::VertexAttribute &attribute : attributes)
 		{
 			if(attribute.GetFeature() == Mesh::VertexAttribute::Feature::Indices) continue;
-			if(mesh->GetVertexPositionsSeparatedSize() > 0 && attribute.GetFeature() == Mesh::VertexAttribute::Feature::Vertices) continue;
+			if(mesh.GetVertexPositionsSeparatedSize() > 0 && attribute.GetFeature() == Mesh::VertexAttribute::Feature::Vertices) continue;
 
 			uint32 attributeIndex = shader->_hasInputVertexAttribute[static_cast<int>(attribute.GetFeature())];
 			if(attributeIndex == -1) continue;
@@ -428,7 +428,7 @@ namespace RN
 		
 		if(didSetBufferAttributes)
 		{
-			descriptor.layouts[30].stride = mesh->GetStride();
+			descriptor.layouts[30].stride = mesh.GetStride();
 			descriptor.layouts[30].stepFunction = MTLVertexStepFunctionPerVertex;
 			descriptor.layouts[30].stepRate = 1;
 		}

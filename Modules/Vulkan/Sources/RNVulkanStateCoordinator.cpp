@@ -546,11 +546,11 @@ namespace RN
 		return signature;
 	}
 
-	const VulkanPipelineState *VulkanStateCoordinator::GetRenderPipelineState(Shader *vertexShader, Shader *fragmentShader, Mesh *mesh, const Material::PipelineProperties &mergedMaterialProperties, const VulkanRenderPass *rootVulkanPass, uint32 subpassIndex)
+	const VulkanPipelineState *VulkanStateCoordinator::GetRenderPipelineState(Shader *vertexShader, Shader *fragmentShader, const Mesh::DrawSnapshot &mesh, const Material::PipelineProperties &mergedMaterialProperties, const VulkanRenderPass *rootVulkanPass, uint32 subpassIndex)
 	{
 		const VulkanFramebuffer *framebuffer = rootVulkanPass->framebuffer;
 
-		const Mesh::VertexDescriptor &descriptor = mesh->GetVertexDescriptor();
+		const Mesh::VertexDescriptor &descriptor = mesh.GetVertexDescriptor();
 		VulkanPipelineStateDescriptor pipelineDescriptor;
 		pipelineDescriptor.depthStencilFormat = (framebuffer->_depthStencilTarget) ? framebuffer->_depthStencilTarget->vulkanTargetViewDescriptor.format : VK_FORMAT_UNDEFINED;
 		pipelineDescriptor.sampleCount = framebuffer->GetSampleCount();
@@ -604,7 +604,7 @@ namespace RN
 		return GetRenderPipelineStateInCollection(collection, mesh, pipelineDescriptor);
 	}
 
-	const VulkanPipelineState *VulkanStateCoordinator::GetRenderPipelineStateInCollection(VulkanPipelineStateCollection *collection, Mesh *mesh, const VulkanPipelineStateDescriptor &descriptor)
+	const VulkanPipelineState *VulkanStateCoordinator::GetRenderPipelineStateInCollection(VulkanPipelineStateCollection *collection, const Mesh::DrawSnapshot &mesh, const VulkanPipelineStateDescriptor &descriptor)
 	{
 		const VulkanRootSignature *rootSignature = GetRootSignature(descriptor);
 
@@ -634,14 +634,14 @@ namespace RN
 		//Handle vertex attributes
         bool vertexPositionsOnly = false;
 		bool hasInstancing = vertexShaderRayne->GetHasInstancing() && vertexShaderRayne->_instancingAttributes != nullptr;
-        const std::vector<VkVertexInputAttributeDescription> &attributeDescriptions = CreateVertexElementDescriptorsFromMesh(mesh, vertexShaderRayne, vertexPositionsOnly);
+        const std::vector<VkVertexInputAttributeDescription> &attributeDescriptions = CreateVertexElementDescriptors(mesh, vertexShaderRayne, vertexPositionsOnly);
         std::vector<VkVertexInputBindingDescription> vertexBindingDescriptions;
-		if(mesh->GetVertexPositionsSeparatedSize() > 0)
+		if(mesh.GetVertexPositionsSeparatedSize() > 0)
 		{
 			//Positions buffer
 			VkVertexInputBindingDescription bindingDescription = {};
 			bindingDescription.binding = vertexBindingDescriptions.size();
-			bindingDescription.stride = mesh->GetVertexPositionsSeparatedStride();
+			bindingDescription.stride = mesh.GetVertexPositionsSeparatedStride();
 			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 			vertexBindingDescriptions.push_back(bindingDescription);
 		}
@@ -650,7 +650,7 @@ namespace RN
 			//Interleaved buffer
 			VkVertexInputBindingDescription bindingDescription = {};
 			bindingDescription.binding = vertexBindingDescriptions.size();
-			bindingDescription.stride = mesh->GetStride();
+			bindingDescription.stride = mesh.GetStride();
 			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 			vertexBindingDescriptions.push_back(bindingDescription);
 		}
@@ -675,7 +675,7 @@ namespace RN
 		VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = {};
 		inputAssemblyState.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 		inputAssemblyState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-		switch(mesh->GetDrawMode())
+		switch(mesh.GetDrawMode())
         {
             case DrawMode::Point:
                 inputAssemblyState.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
@@ -881,13 +881,13 @@ namespace RN
 		}*/
 	}
 
-	std::vector<VkVertexInputAttributeDescription> VulkanStateCoordinator::CreateVertexElementDescriptorsFromMesh(Mesh *mesh, VulkanShader *vertexShader, bool &vertexPositionsOnly)
+	std::vector<VkVertexInputAttributeDescription> VulkanStateCoordinator::CreateVertexElementDescriptors(const Mesh::DrawSnapshot &mesh, VulkanShader *vertexShader, bool &vertexPositionsOnly)
 	{
 		std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
         vertexPositionsOnly = true;
 
 		uint8 vertexBinding = 0;
-		const std::vector<Mesh::VertexAttribute> &attributes = mesh->GetVertexAttributes();
+		const std::vector<Mesh::VertexAttribute> &attributes = mesh.GetVertexAttributes();
 		for(const Mesh::VertexAttribute &attribute : attributes)
 		{
 			if(attribute.GetFeature() == Mesh::VertexAttribute::Feature::Indices)
@@ -904,7 +904,7 @@ namespace RN
 
 				attributeDescriptions.push_back(attributeDescription);
 
-				if(attribute.GetFeature() == Mesh::VertexAttribute::Feature::Vertices && mesh->GetVertexPositionsSeparatedSize() > 0)
+				if(attribute.GetFeature() == Mesh::VertexAttribute::Feature::Vertices && mesh.GetVertexPositionsSeparatedSize() > 0)
 				{
 					//Vertex positions are always the first attribute if GetVertexPositionsSeparatedSize is > 0, so just increasing the binding here like this should be fine
 					vertexBinding += 1;

@@ -51,8 +51,7 @@ namespace RN
 
 		struct PipelineKey
 		{
-			Mesh *mesh = nullptr;
-			uint64 meshPipelineVersion = 0;
+			size_t meshPipelineHash = 0;
 			Framebuffer *framebuffer = nullptr;
 			Shader *vertexShader = nullptr;
 			Shader *fragmentShader = nullptr;
@@ -64,8 +63,7 @@ namespace RN
 
 			bool operator==(const PipelineKey &other) const
 			{
-				return mesh == other.mesh &&
-					meshPipelineVersion == other.meshPipelineVersion &&
+				return meshPipelineHash == other.meshPipelineHash &&
 					framebuffer == other.framebuffer &&
 					vertexShader == other.vertexShader &&
 					fragmentShader == other.fragmentShader &&
@@ -194,9 +192,7 @@ namespace RN
 			_skeletonDrawSnapshotVersion = 0;
 		}
 
-		Mesh *GetSourceMesh() const { return _sourceMesh.Get(); }
-
-		// Source objects are kept for snapshot refresh/version checks. Mesh is also used as pipeline layout identity.
+		// Source objects are kept for snapshot refresh/version checks.
 		StrongRef<Mesh> _sourceMesh;
 		StrongRef<Material> _sourceMaterial;
 		StrongRef<Skeleton> _sourceSkeleton;

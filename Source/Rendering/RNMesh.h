@@ -52,13 +52,42 @@ namespace RN
 			VertexAttribute(Feature feature, PrimitiveType type) :
 				_type(type),
 				_feature(feature),
-				_name(nullptr)
+				_name(nullptr),
+				_offset(0),
+				_size(0),
+				_typeSize(0)
 			{}
 			VertexAttribute(const String *name, PrimitiveType type) :
 				_type(type),
 				_feature(Feature::Custom),
-				_name(name->Copy())
+				_name(name->Copy()),
+				_offset(0),
+				_size(0),
+				_typeSize(0)
 			{}
+			VertexAttribute(const VertexAttribute &other) :
+				_type(other._type),
+				_feature(other._feature),
+				_name(SafeRetain(other._name)),
+				_offset(other._offset),
+				_size(other._size),
+				_typeSize(other._typeSize)
+			{}
+			VertexAttribute &operator=(const VertexAttribute &other)
+			{
+				if(this == &other) return *this;
+
+				SafeRelease(_name);
+
+				_type = other._type;
+				_feature = other._feature;
+				_name = SafeRetain(other._name);
+				_offset = other._offset;
+				_size = other._size;
+				_typeSize = other._typeSize;
+
+				return *this;
+			}
 			~VertexAttribute()
 			{
 				SafeRelease(_name);
@@ -75,7 +104,13 @@ namespace RN
 
 			bool IsEqual(const VertexAttribute &other) const
 			{
-				return (_type == other._type && _feature == other._feature);
+				if(_type != other._type || _feature != other._feature || _offset != other._offset || _size != other._size)
+					return false;
+
+				if(_name || other._name)
+					return _name && other._name && _name->IsEqual(other._name);
+
+				return true;
 			}
 
 			PrimitiveType GetType() const { return _type; }
@@ -99,61 +134,31 @@ namespace RN
 		class VertexDescriptor
 		{
 		public:
+			VertexDescriptor() :
+				_hash(0)
+			{}
+
 			VertexDescriptor(const std::vector<VertexAttribute> &attributes) :
 				_attributes(attributes),
-				_featureSet(0),
-				_names(nullptr)
+				_hash(attributes.size())
 			{
 				for(auto &attribute : _attributes)
 				{
-					_featureSet |= (1 << static_cast<uint32>(attribute.GetFeature()));
-
-					if(attribute.GetFeature() == VertexAttribute::Feature::Custom)
-					{
-						if(!_names)
-							_names = new Array();
-
-						_names->AddObject(attribute.GetName()->Copy()->Autorelease());
-					}
+					HashCombine(_hash, static_cast<uint32>(attribute.GetFeature()));
+					HashCombine(_hash, static_cast<uint32>(attribute.GetType()));
+					HashCombine(_hash, attribute.GetOffset());
+					HashCombine(_hash, attribute.GetSize());
+					if(attribute.GetName()) HashCombine(_hash, attribute.GetName()->GetHash());
 				}
-
-				_hash = _featureSet;
-				if(_names)
-					HashCombine(_hash, _names->GetHash());
 			}
 
-			VertexDescriptor(const VertexDescriptor &other) :
-				_attributes(other._attributes),
-				_featureSet(other._featureSet),
-				_names(SafeRetain(other._names)),
-				_hash(other._hash)
-			{}
-
-			VertexDescriptor &operator=(const VertexDescriptor &other)
-			{
-				SafeRelease(_names);
-
-				_attributes = other._attributes;
-				_featureSet = other._featureSet;
-				_hash = other._hash;
-				_names = SafeRetain(other._names);
-
-				return *this;
-			}
-
-			~VertexDescriptor()
-			{
-				SafeRelease(_names);
-			}
-
-
-			bool operator==(VertexDescriptor &other) const
+			bool operator==(const VertexDescriptor &other) const
 			{
 				return IsEqual(other);
 			}
-			bool operator!=(VertexDescriptor &other) const
+			bool operator!=(const VertexDescriptor &other) const
 			{
-				return IsEqual(other);
+				return !IsEqual(other);
 			}
 
 
@@ -161,6 +166,8 @@ namespace RN
 			{
 				return _hash;
 			}
+			const std::vector<VertexAttribute> &GetAttributes() const { return _attributes; }
+
 			bool IsEqual(const VertexDescriptor &other) const
 			{
 				if(GetHash() != other.GetHash() || _attributes.size() != other._attributes.size())
@@ -178,8 +185,6 @@ namespace RN
 
 		private:
 			std::vector<VertexAttribute> _attributes;
-			uint32 _featureSet;
-			Array *_names;
 			size_t _hash;
 		};
 
@@ -202,18 +207,40 @@ namespace RN
 			size_t GetVerticesCount() const { return _verticesCount; }
 			size_t GetIndicesCount() const { return _indicesCount; }
 			size_t GetVertexPositionsSeparatedSize() const { return _vertexPositionsSeparatedSize; }
+			size_t GetVertexPositionsSeparatedStride() const { return _vertexPositionsSeparatedStride; }
+			size_t GetStride() const { return _stride; }
+			const VertexDescriptor &GetVertexDescriptor() const { return _descriptor; }
+			const std::vector<VertexAttribute> &GetVertexAttributes() const { return _descriptor.GetAttributes(); }
+			size_t GetPipelineHash() const { return _pipelineHash; }
 			DrawMode GetDrawMode() const { return _drawMode; }
 			PrimitiveType GetIndexType() const { return _indexType; }
+			bool CanInstanceWith(const DrawSnapshot &other) const
+			{
+				return _vertexBuffer.Get() == other._vertexBuffer.Get() &&
+					_indicesBuffer.Get() == other._indicesBuffer.Get() &&
+					_vertexPositionsSeparatedSize == other._vertexPositionsSeparatedSize &&
+					_vertexPositionsSeparatedStride == other._vertexPositionsSeparatedStride &&
+					_stride == other._stride &&
+					_verticesCount == other._verticesCount &&
+					_indicesCount == other._indicesCount &&
+					_pipelineHash == other._pipelineHash &&
+					_drawMode == other._drawMode &&
+					_indexType == other._indexType;
+			}
 
 		private:
 			friend class Mesh;
 
 			StrongRef<GPUBuffer> _vertexBuffer;
 			StrongRef<GPUBuffer> _indicesBuffer;
+			VertexDescriptor _descriptor;
 
 			size_t _vertexPositionsSeparatedSize = 0;
+			size_t _vertexPositionsSeparatedStride = 0;
+			size_t _stride = 0;
 			size_t _verticesCount = 0;
 			size_t _indicesCount = 0;
+			size_t _pipelineHash = 0;
 
 			DrawMode _drawMode = DrawMode::Triangle;
 			PrimitiveType _indexType = PrimitiveType::Invalid;

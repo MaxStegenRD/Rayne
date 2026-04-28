@@ -172,7 +172,7 @@ namespace RN
 		~VulkanStateCoordinator();
 
 		const VulkanRootSignature *GetRootSignature(const VulkanPipelineStateDescriptor &pipelineDescriptor);
-		const VulkanPipelineState *GetRenderPipelineState(Shader *vertexShader, Shader *fragmentShader, Mesh *mesh, const Material::PipelineProperties &mergedMaterialProperties, const VulkanRenderPass *rootVulkanPass, uint32 subpassIndex);
+		const VulkanPipelineState *GetRenderPipelineState(Shader *vertexShader, Shader *fragmentShader, const Mesh::DrawSnapshot &mesh, const Material::PipelineProperties &mergedMaterialProperties, const VulkanRenderPass *rootVulkanPass, uint32 subpassIndex);
 		VulkanUniformState *GetUniformStateForPipelineState(const VulkanPipelineState *pipelineState);
 		VulkanRenderPassState *GetRenderPassState(const VulkanRenderPass *rootVulkanPass);
 
@@ -181,8 +181,8 @@ namespace RN
 		void DestroyPipelineCache(VulkanDevice *device, VkAllocationCallbacks *allocatorCallbacks);
 
 	private:
-		std::vector<VkVertexInputAttributeDescription> CreateVertexElementDescriptorsFromMesh(Mesh *mesh, VulkanShader *vertexShader, bool &vertexPositionsOnly);
-		const VulkanPipelineState *GetRenderPipelineStateInCollection(VulkanPipelineStateCollection *collection, Mesh *mesh, const VulkanPipelineStateDescriptor &pipelineDescriptor);
+		std::vector<VkVertexInputAttributeDescription> CreateVertexElementDescriptors(const Mesh::DrawSnapshot &mesh, VulkanShader *vertexShader, bool &vertexPositionsOnly);
+		const VulkanPipelineState *GetRenderPipelineStateInCollection(VulkanPipelineStateCollection *collection, const Mesh::DrawSnapshot &mesh, const VulkanPipelineStateDescriptor &pipelineDescriptor);
 
 		std::vector<VulkanDepthStencilState *> _depthStencilStates;
 		const VulkanDepthStencilState *_lastDepthStencilState;

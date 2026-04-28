@@ -1403,12 +1403,10 @@ namespace RN
 			_internals->currentRenderPassIndex = pi;
 			MetalDrawable::RenderResources &renderResources = drawable->EnsureRenderResources(_internals->currentRenderPassIndex);
 
-			Mesh *sourceMesh = drawable->GetSourceMesh();
 			const Material::DrawSnapshot *overrideMaterialSnapshot = pass.GetOverrideMaterialSnapshot();
 			renderResources.mergedMaterialSnapshot.Update(*drawable, pass.shaderHint, overrideMaterialSnapshot, pass.GetOverrideMaterialSnapshotVersion());
 			Drawable::PipelineKey pipelineKey;
-			pipelineKey.mesh = sourceMesh;
-			pipelineKey.meshPipelineVersion = sourceMesh ? sourceMesh->GetPipelineVersion() : 0;
+			pipelineKey.meshPipelineHash = drawable->mesh.GetPipelineHash();
 			pipelineKey.framebuffer = pass.framebuffer;
 			pipelineKey.vertexShader = renderResources.mergedMaterialSnapshot.vertexShader;
 			pipelineKey.fragmentShader = renderResources.mergedMaterialSnapshot.fragmentShader;
@@ -1418,7 +1416,7 @@ namespace RN
 			if(!renderResources.pipelineState || renderResources.pipelineKey != pipelineKey)
 			{
 				_lock.Lock();
-				const MetalRenderingState *state = _internals->stateCoordinator.GetRenderPipelineState(pipelineKey.vertexShader, pipelineKey.fragmentShader, sourceMesh, pass.framebuffer, pipelineKey.materialProperties, pass.renderPassResources->GetDrawSnapshot());
+				const MetalRenderingState *state = _internals->stateCoordinator.GetRenderPipelineState(pipelineKey.vertexShader, pipelineKey.fragmentShader, drawable->mesh, pass.framebuffer, pipelineKey.materialProperties, pass.renderPassResources->GetDrawSnapshot());
 				_lock.Unlock();
 
 				drawable->UpdateRenderingState(_internals->currentRenderPassIndex, this, state, pipelineKey);
@@ -1452,7 +1450,7 @@ namespace RN
 				}
 			}
 
-			if(canUseInstancing && pass.currentPipelineState == renderResources.pipelineState && pass.currentInstanceDrawable && renderResources.pipelineKey.mesh == pass.currentInstanceDrawable->_renderResources[_internals->currentRenderPassIndex].pipelineKey.mesh && drawable->material.GetTextures()->IsEqual(pass.currentInstanceDrawable->material.GetTextures()))
+			if(canUseInstancing && pass.currentPipelineState == renderResources.pipelineState && pass.currentInstanceDrawable && drawable->mesh.CanInstanceWith(pass.currentInstanceDrawable->mesh) && drawable->material.GetTextures()->IsEqual(pass.currentInstanceDrawable->material.GetTextures()))
 			{
 				pass.instanceSteps.back() += 1;
 			}

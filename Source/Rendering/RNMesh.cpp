@@ -68,7 +68,7 @@ namespace RN
 		_indicesCount(indicesCount),
 		_drawMode(DrawMode::Triangle),
 		_vertexAttributes(attributes),
-		_descriptor(attributes),
+		_descriptor(),
 		_changeCounter(0),
 		_pipelineVersion(1)
 	{
@@ -76,6 +76,7 @@ namespace RN
 		_boundingSphere = Sphere(_boundingBox);
 
 		ParseAttributes();
+		_descriptor = VertexDescriptor(_vertexAttributes);
 	}
 
 	Mesh::~Mesh()
@@ -93,10 +94,14 @@ namespace RN
 	{
 		_vertexBuffer = nullptr;
 		_indicesBuffer = nullptr;
+		_descriptor = VertexDescriptor();
 
 		_vertexPositionsSeparatedSize = 0;
+		_vertexPositionsSeparatedStride = 0;
+		_stride = 0;
 		_verticesCount = 0;
 		_indicesCount = 0;
+		_pipelineHash = 0;
 		_drawMode = DrawMode::Triangle;
 		_indexType = PrimitiveType::Invalid;
 	}
@@ -361,14 +366,24 @@ namespace RN
 	{
 		snapshot._vertexBuffer = _vertexBuffer;
 		snapshot._indicesBuffer = _indicesBuffer;
+		snapshot._descriptor = _descriptor;
 
 		snapshot._vertexPositionsSeparatedSize = _vertexPositionsSeparatedSize;
+		snapshot._vertexPositionsSeparatedStride = _vertexPositionsSeparatedStride;
+		snapshot._stride = _stride;
 		snapshot._verticesCount = _verticesCount;
 		snapshot._indicesCount = _indicesCount;
 		snapshot._drawMode = _drawMode;
 
 		const VertexAttribute *indicesAttribute = GetAttribute(VertexAttribute::Feature::Indices);
 		snapshot._indexType = indicesAttribute ? indicesAttribute->GetType() : PrimitiveType::Invalid;
+
+		size_t pipelineHash = snapshot._descriptor.GetHash();
+		HashCombine(pipelineHash, snapshot._vertexPositionsSeparatedSize);
+		HashCombine(pipelineHash, snapshot._vertexPositionsSeparatedStride);
+		HashCombine(pipelineHash, snapshot._stride);
+		HashCombine(pipelineHash, static_cast<uint32>(snapshot._drawMode));
+		snapshot._pipelineHash = pipelineHash;
 	}
 
 	void Mesh::CalculateBoundingVolumes()
