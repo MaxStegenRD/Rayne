@@ -175,6 +175,12 @@ namespace RN
 			return _renderResources[resourceIndex];
 		}
 
+		RenderResources &GetRenderResources(size_t resourceIndex)
+		{
+			RN_DEBUG_ASSERT(resourceIndex < _renderResources.size(), "Invalid render resources index");
+			return _renderResources[resourceIndex];
+		}
+
 		void UpdateRenderingState(RenderResources &resources, const VulkanPipelineState *pipelineState, VulkanUniformState *uniformState, const Drawable::PipelineKey &pipelineKey)
 		{
 			resources.pipelineState = pipelineState;
@@ -209,6 +215,7 @@ namespace RN
 		RenderPass *renderPass;
 		RenderPass *previousRenderPass;
 		size_t renderFramePassIndex = RenderFrame::InvalidPassIndex;
+		size_t preparedRenderPassIndex = RenderFrame::InvalidPassIndex;
 		size_t frameStatisticsIndex = static_cast<size_t>(-1);
 		VulkanFramebuffer *previousStoredFramebuffer;
 
@@ -222,10 +229,21 @@ namespace RN
 		LightManager *lightManager = nullptr;
 		uint8 multiviewLayer;
 
-		std::vector<uint32> instanceSteps; //Number of draw items that use the same pipeline state and can be rendered with the same draw call.
-
 		std::vector<VulkanTexture *> renderTargetsUsedInShader;
 
+	};
+
+	struct VulkanPreparedDrawItem
+	{
+		const RenderFrame::DrawItem *drawItem = nullptr;
+		const VulkanDrawable::RenderResources *renderResources = nullptr;
+	};
+
+	struct VulkanPreparedRenderPass
+	{
+		std::vector<VulkanPreparedDrawItem> drawItems;
+		std::vector<uint32> instanceSteps; //Number of draw items that use the same pipeline state and can be rendered with the same draw call.
+		size_t resourceIndex = 0;
 	};
 
 	struct VulkanFrameResource
@@ -293,13 +311,13 @@ namespace RN
 	{
 		RenderFrame renderFrame;
 		std::vector<VulkanRenderPass> renderPasses;
+		std::vector<VulkanPreparedRenderPass> preparedRenderPasses;
 		VulkanStateCoordinator stateCoordinator;
 
 		std::vector<VulkanSwapChain*> swapChains;
 		std::vector<VulkanFrameResource> frameResources;
 
 		size_t currentRenderPassIndex;
-		size_t currentDrawableResourceIndex;
 		size_t totalDrawableCount;
 
 		size_t totalDescriptorTables;

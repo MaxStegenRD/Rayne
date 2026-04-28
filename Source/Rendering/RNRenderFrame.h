@@ -175,7 +175,7 @@ namespace RN
 				_materialSnapshotVersion(sourceDrawable->GetMaterialSnapshotVersion())
 			{}
 
-			Drawable *GetSourceDrawable() const { return _sourceDrawable; }
+			Drawable *GetSourceDrawableForPreparation() const { return _sourceDrawable; }
 			const Mesh::DrawSnapshot &GetMesh() const { return _mesh; }
 			const Material::DrawSnapshot &GetMaterial() const { return _material; }
 			const Skeleton::DrawSnapshot &GetSkeleton() const { return _skeleton; }

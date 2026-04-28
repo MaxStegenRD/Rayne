@@ -44,7 +44,7 @@ public:
 	RNMetalLayerContainer(CAMetalLayer *metalLayer);
 	id<CAMetalDrawable> GetNextDrawable();
 	RN::Vector2 GetSize();
-	
+
 private:
 	CAMetalLayer *_metalLayer;
 };
@@ -97,6 +97,12 @@ namespace RN
 		}
 
 		const RenderResources &GetRenderResources(size_t resourceIndex) const
+		{
+			RN_DEBUG_ASSERT(resourceIndex < _renderResources.size(), "Invalid render resources index");
+			return _renderResources[resourceIndex];
+		}
+
+		RenderResources &GetRenderResources(size_t resourceIndex)
 		{
 			RN_DEBUG_ASSERT(resourceIndex < _renderResources.size(), "Invalid render resources index");
 			return _renderResources[resourceIndex];
@@ -168,9 +174,25 @@ namespace RN
 		MetalFramebuffer *resolveFramebuffer;
 
 		Camera *lightingCamera = nullptr;
-		
-		uint8 multiviewLayer;
 
+		uint8 multiviewLayer;
+	};
+
+	struct MetalPreparedDrawItem
+	{
+		const RenderFrame::DrawItem *drawItem = nullptr;
+		const MetalDrawable::RenderResources *renderResources = nullptr;
+	};
+
+	struct MetalPreparedRenderPass
+	{
+		void Clear()
+		{
+			drawItems.clear();
+			instanceSteps.clear();
+		}
+
+		std::vector<MetalPreparedDrawItem> drawItems;
 		std::vector<uint32> instanceSteps; //Number of draw items that use the same pipeline state and can be rendered with the same draw call.
 	};
 
@@ -179,6 +201,7 @@ namespace RN
 	{
 		RenderFrame renderFrame;
 		std::vector<MetalRenderPass> renderPasses;
+		std::vector<MetalPreparedRenderPass> preparedRenderPasses;
 		MetalStateCoordinator stateCoordinator;
 
 		id<MTLDevice> device;

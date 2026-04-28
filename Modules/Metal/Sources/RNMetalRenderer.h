@@ -16,6 +16,7 @@ namespace RN
 {
 	struct MetalRendererInternals;
 	struct MetalDrawable;
+	struct MetalPreparedDrawItem;
 
 	class MetalRendererDescriptor;
 	class MetalDevice;
@@ -76,7 +77,7 @@ namespace RN
 	protected:
 		void SubmitRenderPass(RenderPass *renderPass, MetalRenderPass &previousRenderPass);
 		void PrepareRenderFrame();
-		void RenderDrawable(MetalDrawable *drawable, const RenderFrame::DrawItem &drawItem, uint32 instanceCount);
+		void RenderDrawable(const MetalPreparedDrawItem &drawItem, uint32 instanceCount);
 		void RenderAPIRenderPass(const MetalRenderPass &renderPass);
 		void FillUniformBuffer(Shader::ArgumentBuffer *argument, MetalUniformBufferReference *uniformBufferReference, const RenderFrame::DrawItem &drawItem, const Material::Properties &materialProperties);
 

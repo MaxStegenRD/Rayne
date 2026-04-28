@@ -19,6 +19,7 @@ namespace RN
 	struct VulkanRendererInternals;
 	struct VulkanDrawable;
 	struct VulkanRenderPass;
+	struct VulkanPreparedDrawItem;
 	class VulkanTexture;
 	class VulkanCommandBuffer;
 	class VulkanCommandBufferWithCallback;
@@ -95,7 +96,7 @@ namespace RN
 		void SubmitRenderPass(RenderPass *renderPass, VulkanRenderPass &previousRenderPass);
 		void PrepareRenderFrame();
 		void UpdateDescriptorSets();
-		void RenderDrawable(VkCommandBuffer commandBuffer, VulkanDrawable *drawable, const RenderFrame::DrawItem &drawItem, uint32 instanceCount);
+		void RenderDrawable(VkCommandBuffer commandBuffer, const VulkanPreparedDrawItem &drawItem, uint32 instanceCount);
 		void FillUniformBuffer(Shader::ArgumentBuffer *argumentBuffer, VulkanDynamicBufferReference *dynamicBufferReference, const RenderFrame::DrawItem &drawItem, const Material::Properties &mergedMaterialProperties, size_t renderFramePassIndex);
 		void ResetDrawBindStateCache();
 

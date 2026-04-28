@@ -39,7 +39,7 @@ namespace RN
 		_internals->device = device->GetDevice();
 		_internals->commandQueue = [_internals->device newCommandQueue];
 		_internals->stateCoordinator.SetDevice(_internals->device);
-		
+
 		_defaultShaderLibrary = CreateShaderLibraryWithFile(RNCSTR(":RayneMetal:/Shaders.json"));
 		_uniformBufferPool = new MetalUniformBufferPool();
 	}
@@ -52,7 +52,7 @@ namespace RN
 
 		SafeRelease(_mipMapTextures);
 		SafeRelease(_defaultShaderLibrary);
-		
+
 		delete _uniformBufferPool;
 	}
 
@@ -72,7 +72,7 @@ namespace RN
 		RN_PROFILE_SCOPE();
 		return _mainWindow;
 	}
-	
+
 	void MetalRenderer::SetMainWindow(Window *window)
 	{
 		RN_PROFILE_SCOPE();
@@ -124,30 +124,31 @@ namespace RN
 		@autoreleasepool {
 			_internals->renderFrame.Clear();
 			_internals->renderPasses.clear();
+			_internals->preparedRenderPasses.clear();
 			_internals->swapChains.clear();
 			_internals->currentRenderPassIndex = 0;
-			
+
 			CreateMipMaps();
-			
+
 			_frameStatistics.clear();
-			
+
 			//Submit camera is called for each camera and creates draw items per camera
 			function();
 
 			PrepareRenderFrame();
-			
+
 			//Advance to next gpu buffer for uniforms and create new uniform buffer if pool is not big enough for any new objects
 			_uniformBufferPool->Update(this); //This will also reset all reference offsets into the buffer
-			
+
 			for(MetalSwapChain *swapChain : _internals->swapChains)
 			{
 				//TODO: do this the first time the swap chain is actually used
 				swapChain->AcquireBackBuffer();
 				swapChain->Prepare();
 			}
-			
+
 			_internals->commandBuffer = [_internals->commandQueue commandBuffer];
-			
+
 			_internals->currentRenderPassIndex = 0;
 			for(MetalRenderPass &renderPass : _internals->renderPasses)
 			{
@@ -156,7 +157,7 @@ namespace RN
 					_internals->currentRenderPassIndex += 1;
 					continue;
 				}
-				
+
 				if(renderPass.type != MetalRenderPass::Type::Default && renderPass.type != MetalRenderPass::Type::Convert)
 				{
 					RenderAPIRenderPass(renderPass);
@@ -171,12 +172,12 @@ namespace RN
 					_internals->currentRenderPassIndex += 1;
 					continue;
 				}
-				
+
 				_internals->currentRenderState = nullptr; //This is a property of the encoder and needs to be set to nullptr here to force setting it again.
 				MTLRenderPassDescriptor *descriptor = renderPass.framebuffer->GetRenderPassDescriptor(drawSnapshot, renderPass.resolveFramebuffer, renderPass.multiviewLayer, 0);
 				_internals->commandEncoder = [_internals->commandBuffer renderCommandEncoderWithDescriptor:descriptor];
 				[descriptor release];
-				
+
 				Rect cameraRect = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex).GetCameraSnapshot().GetFrame();
 				if(cameraRect.width < 0.5f || cameraRect.height < 0.5f)
 				{
@@ -194,97 +195,97 @@ namespace RN
 				viewPort.znear = 0.0f;
 				viewPort.zfar = 1.0f;
 				[_internals->commandEncoder setViewport:viewPort];
-				
+
 				if(renderPass.type == MetalRenderPass::Type::Convert)
 				{
 					RenderAPIRenderPass(renderPass);
 				}
 				else
 				{
-					const std::vector<RenderFrame::DrawItem> &drawItems = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex).GetDrawItems();
+					const MetalPreparedRenderPass &preparedPass = _internals->preparedRenderPasses[_internals->currentRenderPassIndex];
+					const std::vector<MetalPreparedDrawItem> &drawItems = preparedPass.drawItems;
 					uint32 stepSize = 0;
 					uint32 stepSizeIndex = 0;
-					for(size_t i = 0; i < drawItems.size(); i+= stepSize)
+					for(size_t i = 0; i < drawItems.size(); i += stepSize)
 					{
-						stepSize = renderPass.instanceSteps[stepSizeIndex];
-						stepSizeIndex += 1;
-						
+						stepSize = preparedPass.instanceSteps[stepSizeIndex++];
+
 						uint32 counter = 0;
-						MetalDrawable *baseDrawable = static_cast<MetalDrawable *>(drawItems[i].GetSourceDrawable());
-						const MetalDrawable::RenderResources &renderResources = baseDrawable->GetRenderResources(_internals->currentRenderPassIndex);
+						const MetalPreparedDrawItem &baseDrawItem = drawItems[i];
+						const MetalDrawable::RenderResources &renderResources = *baseDrawItem.renderResources;
 						for(size_t n = 0; n < renderResources.vertexShaderUniformBuffers.size(); n++)
 						{
 							for(size_t instance = 0; instance < stepSize; instance++)
 							{
 								Shader::ArgumentBuffer *argument = renderResources.argumentBufferToUniformBufferMapping[counter];
-								
+
 								//TODO: Somehow find a better way to know if an argument buffer contains instance data or not
 								//Assume that only storage buffers can contain per instance data
 								if(instance > 0 && argument->GetType() != Shader::ArgumentBuffer::Type::StorageBuffer) break;
-								
-								const RenderFrame::DrawItem &drawItem = drawItems[i + instance];
-								MetalDrawable *drawable = static_cast<MetalDrawable *>(drawItem.GetSourceDrawable());
-								const MetalDrawable::RenderResources &drawableRenderResources = drawable->GetRenderResources(_internals->currentRenderPassIndex);
+
+								const MetalPreparedDrawItem &preparedDrawItem = drawItems[i + instance];
+								const RenderFrame::DrawItem &drawItem = *preparedDrawItem.drawItem;
+								const MetalDrawable::RenderResources &drawableRenderResources = *preparedDrawItem.renderResources;
 								const Material::Properties &mergedMaterialProperties = drawableRenderResources.mergedMaterialSnapshot.GetProperties();
-								
+
 								MetalUniformBufferReference *bufferReference = drawableRenderResources.vertexShaderUniformBuffers[n];
 								UpdateUniformBufferReference(bufferReference, instance == 0);
 								FillUniformBuffer(argument, bufferReference, drawItem, mergedMaterialProperties);
 							}
 							counter += 1;
 						}
-						
+
 						for(size_t n = 0; n < renderResources.fragmentShaderUniformBuffers.size(); n++)
 						{
 							for(size_t instance = 0; instance < stepSize; instance++)
 							{
 								Shader::ArgumentBuffer *argument = renderResources.argumentBufferToUniformBufferMapping[counter];
-								
+
 								//TODO: Somehow find a better way to know if an argument buffer contains instance data or not
 								//Assume that only storage buffers can contain per instance data
 								if(instance > 0 && argument->GetType() != Shader::ArgumentBuffer::Type::StorageBuffer) break;
-								
-								const RenderFrame::DrawItem &drawItem = drawItems[i + instance];
-								MetalDrawable *drawable = static_cast<MetalDrawable *>(drawItem.GetSourceDrawable());
-								const MetalDrawable::RenderResources &drawableRenderResources = drawable->GetRenderResources(_internals->currentRenderPassIndex);
+
+								const MetalPreparedDrawItem &preparedDrawItem = drawItems[i + instance];
+								const RenderFrame::DrawItem &drawItem = *preparedDrawItem.drawItem;
+								const MetalDrawable::RenderResources &drawableRenderResources = *preparedDrawItem.renderResources;
 								const Material::Properties &mergedMaterialProperties = drawableRenderResources.mergedMaterialSnapshot.GetProperties();
-								
+
 								MetalUniformBufferReference *bufferReference = drawableRenderResources.fragmentShaderUniformBuffers[n];
 								UpdateUniformBufferReference(bufferReference, instance == 0);
 								FillUniformBuffer(argument, bufferReference, drawItem, mergedMaterialProperties);
 							}
-							
+
 							counter += 1;
 						}
-						
-						RenderDrawable(baseDrawable, drawItems[i], stepSize);
+
+						RenderDrawable(baseDrawItem, stepSize);
 					}
 				}
-				
+
 				[_internals->commandEncoder endEncoding];
 				_internals->commandEncoder = nil;
-				
+
 				_internals->currentRenderPassIndex += 1;
 			}
-			
+
 			for(MetalSwapChain *swapChain : _internals->swapChains)
 			{
 				swapChain->Finalize();
 				swapChain->PresentBackBuffer(_internals->commandBuffer);
 			}
-			
+
 			//Flush all uniform buffers to make the GPU get the latest changes from CPU
 			_uniformBufferPool->FlushAllBuffers();
-			
+
 			[_internals->commandBuffer commit];
-			
+
 			for(MetalSwapChain *swapChain : _internals->swapChains)
 			{
 				swapChain->PostPresent(_internals->commandBuffer);
 			}
-			
+
 			RN_PROFILE_FRAME();
-			
+
 			_internals->commandBuffer = nil;
 		}
 	}
@@ -294,14 +295,15 @@ namespace RN
 		RN_PROFILE_SCOPE();
 		switch(renderPass.type)
 		{
-			case MetalRenderPass::Type::Convert:
-			{
-				RN_DEBUG_ASSERT(renderPass.previousStoredFramebuffer, "Convert render pass requires a previous framebuffer");
-				const RenderFrame::DrawItem &drawItem = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex).GetDrawItems()[0];
-				RenderDrawable(static_cast<MetalDrawable *>(drawItem.GetSourceDrawable()), drawItem, 1);
-				break;
-			}
-				
+				case MetalRenderPass::Type::Convert:
+				{
+					RN_DEBUG_ASSERT(renderPass.previousStoredFramebuffer, "Convert render pass requires a previous framebuffer");
+					const MetalPreparedRenderPass &preparedPass = _internals->preparedRenderPasses[_internals->currentRenderPassIndex];
+					RN_DEBUG_ASSERT(!preparedPass.drawItems.empty(), "Convert render pass requires a prepared draw item");
+					RenderDrawable(preparedPass.drawItems[0], 1);
+					break;
+				}
+
 			case MetalRenderPass::Type::Blit:
 			{
 				//TODO: Handle multiple and not existing textures
@@ -309,12 +311,12 @@ namespace RN
 				Texture *sourceTexture = sourceFramebuffer->GetColorTexture(0);
 				MetalFramebuffer *destinationFramebuffer = renderPass.framebuffer;
 				Texture *destinationTexture = destinationFramebuffer->GetColorTexture(0);
-				
+
 				id<MTLTexture> sourceMTLTexture = nullptr;
 				id<MTLTexture> destinationMTLTexture = nullptr;
-				
+
 				RN::Vector3 sourceTextureSize;
-				
+
 				if(sourceTexture)
 				{
 					sourceMTLTexture = static_cast< id<MTLTexture> >(sourceTexture->Downcast<MetalTexture>()->__GetUnderlyingTexture());
@@ -329,7 +331,7 @@ namespace RN
 					sourceTextureSize.y = sourceFramebuffer->GetSize().y;
 					sourceTextureSize.z = 0;
 				}
-				
+
 				if(destinationTexture)
 				{
 					destinationMTLTexture = static_cast< id<MTLTexture> >(destinationTexture->Downcast<MetalTexture>()->__GetUnderlyingTexture());
@@ -338,20 +340,20 @@ namespace RN
 				{
 					destinationMTLTexture = destinationFramebuffer->GetSwapChain()->GetMetalColorTexture();
 				}
-				
+
 				MTLRenderPassDescriptor *descriptor = renderPass.framebuffer->GetRenderPassDescriptor(_internals->renderFrame.GetPass(renderPass.renderFramePassIndex).GetDrawSnapshot(), nullptr, 0, 0);
 				id<MTLBlitCommandEncoder> commandEncoder = [[_internals->commandBuffer blitCommandEncoder] retain];
 				[descriptor release];
-				
+
 				Rect targetRect = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex).GetCameraSnapshot().GetFrame();
 				[commandEncoder copyFromTexture:sourceMTLTexture sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(0, 0, 0) sourceSize:MTLSizeMake(sourceTextureSize.x, sourceTextureSize.y, sourceTextureSize.z) toTexture:destinationMTLTexture destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(targetRect.x, targetRect.y, 0)];
-				
+
 				[commandEncoder endEncoding];
 				[commandEncoder release];
-				
+
 				break;
 			}
-			
+
 			default:
 				break;
 		}
@@ -388,12 +390,12 @@ namespace RN
 				return;
 			}
 		}
-		
+
 		const size_t frameStatisticsIndex = _frameStatistics.size();
 		_frameStatistics.push_back({0, 0, 0, 0});
-		
+
 		RenderPass *cameraRenderPass = _currentMultiviewFallbackRenderPass? _currentMultiviewFallbackRenderPass : camera->GetRenderPass();
-		
+
 		// Ensure subpass clearing plan is computed for root containers
 		cameraRenderPass->UpdateSubpassChain();
 		RenderPassResources *renderPassResources = cameraRenderPass->GetRenderResources(this);
@@ -460,7 +462,7 @@ namespace RN
 		size_t previousRenderPassIndex = _internals->renderPasses.size();
 		_internals->currentRenderPassIndex = previousRenderPassIndex;
 		_internals->renderPasses.push_back(renderPass);
-		
+
 		const Array *nextRenderPasses = cameraRenderPass->GetNextRenderPasses();
 		nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
 			SubmitRenderPass(nextPass, renderPass);
@@ -470,7 +472,7 @@ namespace RN
 		_internals->currentRenderPassIndex = previousRenderPassIndex;
 		function();
 	}
-	
+
 	void MetalRenderer::SubmitRenderPass(RenderPass *renderPass, MetalRenderPass &previousRenderPass)
 	{
 		RN_PROFILE_SCOPE();
@@ -484,10 +486,10 @@ namespace RN
 		metalRenderPass.previousRenderPass = previousRenderPass.renderPass;
 		metalRenderPass.frameStatisticsIndex = previousRenderPass.frameStatisticsIndex;
 		metalRenderPass.previousStoredFramebuffer = nullptr;
-		
+
 		metalRenderPass.framebuffer = nullptr;
 		metalRenderPass.resolveFramebuffer = nullptr;
-		
+
 		PostProcessingAPIStage *apiStage = renderPass->Downcast<PostProcessingAPIStage>();
 		bool isPostProcessingStage = renderPass->IsKindOfClass(PostProcessingStage::GetMetaClass());
 		Material *rendererOverrideMaterial = nullptr;
@@ -504,11 +506,11 @@ namespace RN
 					metalRenderPass.type = MetalRenderPass::Type::ResolveMSAA;
 					break;
 				}
-					
+
 				case PostProcessingAPIStage::Type::Convert:
 				{
 					metalRenderPass.type = MetalRenderPass::Type::Convert;
-					
+
 					if(!_ppConvertMaterial)
 					{
 						_ppConvertMaterial = Material::WithShaders(_defaultShaderLibrary->GetShaderWithName(RNCSTR("pp_vertex")), _defaultShaderLibrary->GetShaderWithName(RNCSTR("pp_blit_fragment")))->Retain();
@@ -516,7 +518,7 @@ namespace RN
 					rendererOverrideMaterial = _ppConvertMaterial;
 					break;
 				}
-				
+
 				case PostProcessingAPIStage::Type::Blit:
 				{
 					metalRenderPass.type = MetalRenderPass::Type::Blit;
@@ -527,12 +529,12 @@ namespace RN
 		Material *effectiveOverrideMaterial = rendererOverrideMaterial ? rendererOverrideMaterial : renderPass->GetEffectiveOverrideMaterial();
 		RenderPassResources *renderPassResources = renderPass->GetRenderResources(this, effectiveOverrideMaterial);
 		const RenderPass::DrawSnapshot &drawSnapshot = renderPassResources->GetDrawSnapshot();
-		
+
 		if(previousRenderPass.renderPass)
 		{
 			metalRenderPass.previousStoredFramebuffer = previousRenderPass.resolveFramebuffer ? previousRenderPass.resolveFramebuffer : previousRenderPass.framebuffer;
 		}
-		
+
 		//This forces passes to not use multiview
 		if(drawSnapshot.GetShaderHint() == Shader::UsageHint::Multiview)
 		{
@@ -550,10 +552,10 @@ namespace RN
 		{
 			metalRenderPass.shaderHint = drawSnapshot.GetShaderHint();
 		}
-		
+
 		metalRenderPass.multiviewLayer = previousRenderPass.multiviewLayer;
 		metalRenderPass.lightingCamera = previousRenderPass.lightingCamera;
-		
+
 		Framebuffer *framebuffer = nullptr;
 		if(drawSnapshot.IsSubpass())
 		{
@@ -567,7 +569,7 @@ namespace RN
 		MetalSwapChain *newSwapChain = nullptr;
 		newSwapChain = framebuffer? framebuffer->Downcast<MetalFramebuffer>()->GetSwapChain() : nullptr;
 		metalRenderPass.framebuffer = framebuffer? framebuffer->Downcast<MetalFramebuffer>() : nullptr;
-		
+
 		if(newSwapChain)
 		{
 			bool notIncluded = true;
@@ -584,7 +586,7 @@ namespace RN
 				_internals->swapChains.push_back(newSwapChain);
 			}
 		}
-		
+
 		if(metalRenderPass.type != MetalRenderPass::Type::ResolveMSAA)
 		{
 			metalRenderPass.renderFramePassIndex = _internals->renderFrame.AddPass(drawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetOverrideMaterialSnapshotVersion());
@@ -592,7 +594,7 @@ namespace RN
 			framePass.SetCameraSnapshot(_internals->renderFrame.GetPass(previousRenderPass.renderFramePassIndex).GetCameraSnapshot());
 			_internals->currentRenderPassIndex = _internals->renderPasses.size();
 			_internals->renderPasses.push_back(metalRenderPass);
-			
+
 			if(isPostProcessingStage || metalRenderPass.type == MetalRenderPass::Type::Convert)
 			{
 				//Submit fullscreen quad drawable
@@ -600,7 +602,7 @@ namespace RN
 				{
 					Mesh *planeMesh = Mesh::WithTexturedPlane(Quaternion::WithEulerAngle(Vector3(0.0f, 90.0f, 0.0f)), Vector3(0.0f), Vector2(1.0f, 1.0f));
 					Material *planeMaterial = Material::WithShaders(GetDefaultShader(Shader::Type::Vertex, nullptr), GetDefaultShader(Shader::Type::Fragment, nullptr));
-					
+
 					_lock.Lock();
 					_defaultPostProcessingDrawable = static_cast<MetalDrawable*>(CreateDrawable());
 					_defaultPostProcessingDrawable->Update(planeMesh, planeMaterial, nullptr, nullptr);
@@ -613,7 +615,7 @@ namespace RN
 		{
 			_internals->renderPasses[_internals->currentRenderPassIndex].resolveFramebuffer = metalRenderPass.framebuffer;
 		}
-		
+
 		const Array *nextRenderPasses = renderPass->GetNextRenderPasses();
 		nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop){
 				SubmitRenderPass(nextPass, metalRenderPass);
@@ -661,7 +663,7 @@ namespace RN
 		if(!buffer) return nullptr;
 		return (new MetalGPUBuffer(buffer));
 	}
-	
+
 	MetalUniformBufferReference *MetalRenderer::GetUniformBufferReference(size_t size, size_t index)
 	{
 		RN_PROFILE_SCOPE();
@@ -688,7 +690,7 @@ namespace RN
 		MetalShaderLibrary *lib = new MetalShaderLibrary(_internals->device, nullptr, &_internals->stateCoordinator);
 		return lib;
 	}
-	
+
 	ShaderLibrary *MetalRenderer::GetDefaultShaderLibrary()
 	{
 		RN_PROFILE_SCOPE();
@@ -742,7 +744,7 @@ namespace RN
 			case PrimitiveType::Color:
 				return 16;
 		}
-		
+
 		return 1;
 	}
 
@@ -780,11 +782,11 @@ namespace RN
 
 			case PrimitiveType::Matrix3x3:
 				return 48; //Stored as 3 x float4
-				
+
 			case PrimitiveType::Matrix4x4:
 				return 64;
 		}
-		
+
 		return 1;
 	}
 
@@ -797,14 +799,14 @@ namespace RN
 
 		return new MetalTexture(this, texture, descriptor);
 	}
-	
+
 	Texture *MetalRenderer::CreateTextureWithDescriptorAndIOSurface(const Texture::Descriptor &descriptor, IOSurfaceRef ioSurface)
 	{
 		RN_PROFILE_SCOPE();
 		MTLTextureDescriptor *metalDescriptor = MetalTexture::DescriptorForTextureDescriptor(descriptor, true);
 		id<MTLTexture> texture = [_internals->device newTextureWithDescriptor:metalDescriptor iosurface:ioSurface plane:0];
 		[metalDescriptor release];
-		
+
 		return new MetalTexture(this, texture, descriptor);
 	}
 
@@ -854,7 +856,7 @@ namespace RN
 					std::memcpy(buffer + descriptor->GetOffset(), modelMatrix.m, descriptor->GetSize());
 					break;
 				}
-					
+
 				case Shader::UniformDescriptor::Identifier::NormalMatrix:
 				{
 					Matrix normalMatrix = inverseModelMatrix.GetTransposed();
@@ -957,31 +959,31 @@ namespace RN
 					std::memcpy(buffer + descriptor->GetOffset(), &materialProperties.emissiveColor.r, descriptor->GetSize());
 					break;
 				}
-					
+
 				case Shader::UniformDescriptor::Identifier::CustomMatrix1:
 				{
 					std::memcpy(buffer + descriptor->GetOffset(), materialProperties.customMatrix1.m, descriptor->GetSize());
 					break;
 				}
-					
+
 				case Shader::UniformDescriptor::Identifier::CustomMatrix2:
 				{
 					std::memcpy(buffer + descriptor->GetOffset(), materialProperties.customMatrix2.m, descriptor->GetSize());
 					break;
 				}
-					
+
 				case Shader::UniformDescriptor::Identifier::UIClippingRect:
 				{
 					std::memcpy(buffer + descriptor->GetOffset(), &materialProperties.uiClippingRect.x, descriptor->GetSize());
 					break;
 				}
-					
+
 				case Shader::UniformDescriptor::Identifier::UIOffset:
 				{
 					std::memcpy(buffer + descriptor->GetOffset(), &materialProperties.uiOffset.x, descriptor->GetSize());
 					break;
 				}
-					
+
 				case Shader::UniformDescriptor::Identifier::UIOutlineColor:
 				{
 					std::memcpy(buffer + descriptor->GetOffset(), &materialProperties.uiOutlineColor.r, descriptor->GetSize());
@@ -1007,19 +1009,19 @@ namespace RN
 					std::memcpy(buffer + descriptor->GetOffset(), &cameraPosition.x, descriptor->GetSize());
 					break;
 				}
-					
+
 				case Shader::UniformDescriptor::Identifier::CameraClipDistance:
 				{
 					std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot.GetClipDistance().x, descriptor->GetSize());
 					break;
 				}
-					
+
 				case Shader::UniformDescriptor::Identifier::CameraFogDistance:
 				{
 					std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot.GetFogDistance().x, descriptor->GetSize());
 					break;
 				}
-					
+
 				case Shader::UniformDescriptor::Identifier::CameraTag:
 				{
 					std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot.GetTag(), descriptor->GetSize());
@@ -1031,7 +1033,7 @@ namespace RN
 					std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot.GetFrame().x, descriptor->GetSize());
 					break;
 				}
-					
+
 				case Shader::UniformDescriptor::Identifier::CameraAmbientColor:
 				{
 					std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot.GetAmbientColor().r, descriptor->GetSize());
@@ -1042,13 +1044,13 @@ namespace RN
 					std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot.GetCustomData().x, descriptor->GetSize());
 					break;
 				}
-					
+
 				case Shader::UniformDescriptor::Identifier::CameraFogColor0:
 				{
 					std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot.GetFogColor0().r, descriptor->GetSize());
 					break;
 				}
-					
+
 				case Shader::UniformDescriptor::Identifier::CameraFogColor1:
 				{
 					std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot.GetFogColor1().r, descriptor->GetSize());
@@ -1095,7 +1097,7 @@ namespace RN
 					std::memcpy(buffer + descriptor->GetOffset(), &framePass.GetDirectionalShadowInfo().x, descriptor->GetSize());
 					break;
 				}
-					
+
 				case Shader::UniformDescriptor::Identifier::PointLights:
 				{
 					size_t lightCount = std::min(framePass.GetPointLights().size(), descriptor->GetElementCount());
@@ -1109,7 +1111,7 @@ namespace RN
 					}
 					break;
 				}
-				
+
 				case Shader::UniformDescriptor::Identifier::SpotLights:
 				{
 					size_t lightCount = std::min(framePass.GetSpotLights().size(), descriptor->GetElementCount());
@@ -1121,10 +1123,10 @@ namespace RN
 					{
 						std::memset(buffer + descriptor->GetOffset() + (12 + 4 + 12 + 4 + 16) * lightCount, 0, (12 + 4 + 12 + 4 + 16) * (descriptor->GetElementCount() - lightCount));
 					}
-					
+
 					break;
 				}
-					
+
 				case Shader::UniformDescriptor::Identifier::BoneMatrices:
 				{
 					const std::vector<Matrix> &boneMatrices = drawItem.GetSkeleton().GetMatrices();
@@ -1356,11 +1358,28 @@ namespace RN
 	{
 		RN_PROFILE_SCOPE();
 
+		_internals->preparedRenderPasses.resize(_internals->renderPasses.size());
 		for(size_t pi = 0; pi < _internals->renderPasses.size(); pi += 1)
 		{
 			MetalRenderPass &pass = _internals->renderPasses[pi];
-			pass.instanceSteps.clear();
+			MetalPreparedRenderPass &preparedPass = _internals->preparedRenderPasses[pi];
+			preparedPass.Clear();
 
+			if(pass.type != MetalRenderPass::Type::Default && pass.type != MetalRenderPass::Type::Convert)
+				continue;
+
+			RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(pass.renderFramePassIndex);
+			const std::vector<RenderFrame::DrawItem> &drawItems = framePass.GetDrawItems();
+			for(const RenderFrame::DrawItem &drawItem : drawItems)
+			{
+				MetalDrawable *drawable = static_cast<MetalDrawable *>(drawItem.GetSourceDrawableForPreparation());
+				drawable->EnsureRenderResources(pi);
+			}
+		}
+
+		for(size_t pi = 0; pi < _internals->renderPasses.size(); pi += 1)
+		{
+			MetalRenderPass &pass = _internals->renderPasses[pi];
 			if(pass.type != MetalRenderPass::Type::Default && pass.type != MetalRenderPass::Type::Convert)
 				continue;
 
@@ -1370,17 +1389,20 @@ namespace RN
 			if(drawItems.empty())
 				continue;
 
+			MetalPreparedRenderPass &preparedPass = _internals->preparedRenderPasses[pi];
+			preparedPass.drawItems.reserve(drawItems.size());
+
 			const RenderFrame::DrawItem *currentInstanceDrawItem = nullptr;
 			const MetalRenderingState *currentPipelineState = nullptr;
-			const MetalDrawable *currentInstanceDrawable = nullptr;
+			const MetalDrawable::RenderResources *currentInstanceRenderResources = nullptr;
 			RN_DEBUG_ASSERT(pass.frameStatisticsIndex < _frameStatistics.size(), "Invalid frame statistics index");
 			CameraStatistics &statistics = _frameStatistics[pass.frameStatisticsIndex];
 
 			const size_t renderResourceIndex = pi;
 			for(const RenderFrame::DrawItem &drawItem : drawItems)
 			{
-				MetalDrawable *drawable = static_cast<MetalDrawable *>(drawItem.GetSourceDrawable());
-				MetalDrawable::RenderResources &renderResources = drawable->EnsureRenderResources(renderResourceIndex);
+				MetalDrawable *drawable = static_cast<MetalDrawable *>(drawItem.GetSourceDrawableForPreparation());
+				MetalDrawable::RenderResources &renderResources = drawable->GetRenderResources(renderResourceIndex);
 
 				const Material::DrawSnapshot *overrideMaterialSnapshot = framePass.GetOverrideMaterialSnapshot();
 				renderResources.mergedMaterialSnapshot.Update(drawItem.GetMaterial(), drawItem.GetMaterialSnapshotVersion(), pass.shaderHint, overrideMaterialSnapshot, framePass.GetOverrideMaterialSnapshotVersion());
@@ -1405,7 +1427,7 @@ namespace RN
 				Shader *fragmentShader = renderResources.pipelineState->fragmentShader;
 				bool canUseInstancing = vertexShader && fragmentShader && vertexShader->GetHasInstancing() && fragmentShader->GetHasInstancing();
 				const RenderFrame::DrawItem *instanceDrawItem = currentInstanceDrawItem;
-				const MetalDrawable::RenderResources *instanceRenderResources = currentInstanceDrawable? &currentInstanceDrawable->GetRenderResources(renderResourceIndex) : nullptr;
+				const MetalDrawable::RenderResources *instanceRenderResources = currentInstanceRenderResources;
 
 				if(canUseInstancing && instanceRenderResources)
 				{
@@ -1435,16 +1457,21 @@ namespace RN
 
 				if(canUseInstancing && currentPipelineState == renderResources.pipelineState && instanceRenderResources && drawItem.GetMesh().CanInstanceWith(instanceDrawItem->GetMesh()) && renderResources.mergedMaterialSnapshot.IsTextureSetEqual(instanceRenderResources->mergedMaterialSnapshot))
 				{
-					pass.instanceSteps.back() += 1;
+					preparedPass.instanceSteps.back() += 1;
 				}
 				else
 				{
 					currentPipelineState = renderResources.pipelineState;
-					currentInstanceDrawable = drawable;
+					currentInstanceRenderResources = &renderResources;
 					currentInstanceDrawItem = &drawItem;
-					pass.instanceSteps.push_back(1);
+					preparedPass.instanceSteps.push_back(1);
 					statistics.numberOfDrawCalls += 1;
 				}
+
+				MetalPreparedDrawItem preparedDrawItem;
+				preparedDrawItem.drawItem = &drawItem;
+				preparedDrawItem.renderResources = &renderResources;
+				preparedPass.drawItems.push_back(preparedDrawItem);
 
 				statistics.numberOfDrawables += 1;
 				statistics.numberOfVertices += drawItem.GetMesh().GetVerticesCount();
@@ -1475,18 +1502,19 @@ namespace RN
 		}
 	}
 
-	void MetalRenderer::RenderDrawable(MetalDrawable *drawable, const RenderFrame::DrawItem &drawItem, uint32 instanceCount)
+	void MetalRenderer::RenderDrawable(const MetalPreparedDrawItem &preparedDrawItem, uint32 instanceCount)
 	{
 		RN_PROFILE_SCOPE();
-		const MetalDrawable::RenderResources &renderResources = drawable->GetRenderResources(_internals->currentRenderPassIndex);
+		const RenderFrame::DrawItem &drawItem = *preparedDrawItem.drawItem;
+		const MetalDrawable::RenderResources &renderResources = *preparedDrawItem.renderResources;
 
 		id<MTLRenderCommandEncoder> encoder = _internals->commandEncoder;
 		if(_internals->currentRenderState != renderResources.pipelineState)
 		{
 			_internals->currentRenderState = renderResources.pipelineState;
-			[encoder setRenderPipelineState: _internals->currentRenderState->state];
+			[encoder setRenderPipelineState:_internals->currentRenderState->state];
 		}
-		
+
 		Shader *vertexShader = _internals->currentRenderState->vertexShader;
 		Shader *fragmentShader = _internals->currentRenderState->fragmentShader;
 		MetalShader *metalVertexShader = nullptr;
@@ -1499,7 +1527,7 @@ namespace RN
 		{
 			metalFragmentShader = fragmentShader->Downcast<MetalShader>();
 		}
-		
+
 		MetalRenderPass &renderPass = _internals->renderPasses[_internals->currentRenderPassIndex];
 		const RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex);
 		const Material::PipelineProperties &mergedMaterialProperties = renderResources.pipelineKey.materialProperties;
@@ -1513,7 +1541,7 @@ namespace RN
 		{
 			[encoder setDepthBias:0.0f slopeScale:0.0f clamp:FLT_MAX];
 		}
-		
+
 		// Update uniform buffers and set them for rendering
 		{
 			for(MetalUniformBufferReference *uniformBufferReference : renderResources.vertexShaderUniformBuffers)
@@ -1521,7 +1549,7 @@ namespace RN
 				MetalGPUBuffer *buffer = static_cast<MetalGPUBuffer *>(uniformBufferReference->uniformBuffer->GetActiveBuffer());
 				[encoder setVertexBuffer:(id <MTLBuffer>)buffer->_buffer offset:uniformBufferReference->offset atIndex:uniformBufferReference->shaderResourceIndex];
 			}
-			
+
 			for(MetalUniformBufferReference *uniformBufferReference : renderResources.fragmentShaderUniformBuffers)
 			{
 				MetalGPUBuffer *buffer = static_cast<MetalGPUBuffer *>(uniformBufferReference->uniformBuffer->GetActiveBuffer());
@@ -1625,7 +1653,7 @@ namespace RN
 						if(framebuffer->GetSwapChain()) texture = framebuffer->GetSwapChain()->GetMetalColorTexture();
 						else texture = (id<MTLTexture>)framebuffer->GetColorTexture()->Downcast<MetalTexture>()->__GetUnderlyingTexture();
 					}
-					
+
 					[encoder setFragmentTexture:texture atIndex:argument->GetIndex()];
 				}
 				else
@@ -1634,18 +1662,18 @@ namespace RN
 				}
 			}
 		});
-		
+
 		metalFragmentShader->GetSignature()->GetSubpassInputs()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop){
 			uint8 materialTextureIndex = argument->GetMaterialTextureIndex();
 			bool isDepthInput = materialTextureIndex >= 128;
 			materialTextureIndex = isDepthInput ? materialTextureIndex - 128 : materialTextureIndex;
-			
+
 			if(!renderPass.framebuffer)
 			{
 				[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
 				return;
 			}
-			
+
 			const RenderPass::DrawSnapshot &drawSnapshot = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex).GetDrawSnapshot();
 			if(!isDepthInput && drawSnapshot.IsSubpass())
 			{
@@ -1664,16 +1692,16 @@ namespace RN
 					}
 				}
 			}
-			
+
 			Texture *texture = isDepthInput ? renderPass.framebuffer->GetDepthStencilTexture() : renderPass.framebuffer->GetColorTexture(materialTextureIndex);
 			MetalTexture *framebufferTexture = texture ? texture->Downcast<MetalTexture>() : nullptr;
-			
+
 			if(!framebufferTexture)
 			{
 				[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
 				return;
 			}
-			
+
 			[encoder setFragmentTexture:(id<MTLTexture>)framebufferTexture->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
 		});
 
@@ -1694,20 +1722,20 @@ namespace RN
 		// Mesh
 		const Mesh::DrawSnapshot &mesh = drawItem.GetMesh();
 		MetalGPUBuffer *buffer = static_cast<MetalGPUBuffer *>(mesh.GetVertexBuffer());
-		
+
 		if(_internals->currentRenderState->vertexPositionBufferShaderResourceIndex <= 30)
 		{
 			[encoder setVertexBuffer:(id<MTLBuffer>)buffer->_buffer offset:0 atIndex:_internals->currentRenderState->vertexPositionBufferShaderResourceIndex];
 		}
-		
+
 		if(_internals->currentRenderState->vertexBufferShaderResourceIndex <= 30)
 		{
 			[encoder setVertexBuffer:(id<MTLBuffer>)buffer->_buffer offset:mesh.GetVertexPositionsSeparatedSize() atIndex:_internals->currentRenderState->vertexBufferShaderResourceIndex];
 		}
-		
+
 		DrawMode drawMode = mesh.GetDrawMode();
 		MTLPrimitiveType primitiveType;
-		
+
 		switch(drawMode)
 		{
 			case DrawMode::Point:
@@ -1726,7 +1754,7 @@ namespace RN
 				primitiveType = MTLPrimitiveTypeTriangleStrip;
 				break;
 		}
-		
+
 		if(mesh.GetIndicesCount() > 0)
 		{
 			MetalGPUBuffer *indexBuffer = static_cast<MetalGPUBuffer *>(mesh.GetIndicesBuffer());
