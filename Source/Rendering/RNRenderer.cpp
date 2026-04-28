@@ -19,18 +19,19 @@ namespace RN
 
 	static Renderer *_activeRenderer = nullptr;
 
-	void Drawable::MergedMaterialSnapshot::Update(const Drawable &drawable, Shader::UsageHint hint, const Material::DrawSnapshot *overrideMaterial, uint64 overrideMaterialSnapshotVersion)
+	void Drawable::MergedMaterialSnapshot::Update(const Drawable &drawable, Shader::UsageHint hint, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialSnapshotVersion)
 	{
-		if(isValid && materialSnapshotVersion == drawable._materialSnapshotVersion && overrideSnapshotVersion == overrideMaterialSnapshotVersion && shaderHint == hint)
+		if(isValid && materialSnapshotVersion == drawable._materialSnapshotVersion && overrideSnapshot == overrideMaterialSnapshot && overrideSnapshotVersion == overrideMaterialSnapshotVersion && shaderHint == hint)
 			return;
 
 		materialSnapshotVersion = drawable._materialSnapshotVersion;
+		overrideSnapshot = overrideMaterialSnapshot;
 		overrideSnapshotVersion = overrideMaterialSnapshotVersion;
 		shaderHint = hint;
-		vertexShader = drawable.material.GetSelectedVertexShader(hint, overrideMaterial);
-		fragmentShader = drawable.material.GetSelectedFragmentShader(hint, overrideMaterial);
-		drawable.material.GetMergedProperties(overrideMaterial, properties);
-		drawable.material.GetMergedPipelineProperties(overrideMaterial, pipelineProperties);
+		vertexShader = drawable.material.GetSelectedVertexShader(hint, overrideMaterialSnapshot);
+		fragmentShader = drawable.material.GetSelectedFragmentShader(hint, overrideMaterialSnapshot);
+		drawable.material.GetMergedProperties(overrideMaterialSnapshot, properties);
+		drawable.material.GetMergedPipelineProperties(overrideMaterialSnapshot, pipelineProperties);
 		isValid = true;
 	}
 

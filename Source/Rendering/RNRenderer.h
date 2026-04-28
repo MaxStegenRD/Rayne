@@ -78,10 +78,11 @@ namespace RN
 
 		struct MergedMaterialSnapshot
 		{
-			void Update(const Drawable &drawable, Shader::UsageHint shaderHint, const Material::DrawSnapshot *overrideMaterial, uint64 overrideMaterialSnapshotVersion);
+			void Update(const Drawable &drawable, Shader::UsageHint shaderHint, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialSnapshotVersion);
 
 			bool isValid = false;
 			uint64 materialSnapshotVersion = 0;
+			const Material::DrawSnapshot *overrideSnapshot = nullptr;
 			uint64 overrideSnapshotVersion = 0;
 			Shader::UsageHint shaderHint = Shader::UsageHint::Default;
 			Shader *vertexShader = nullptr;
