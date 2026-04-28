@@ -1382,6 +1382,28 @@ namespace RN
 			}
 		};
 
+		auto appendPreparedDrawItem = [](MetalPreparedRenderPass &preparedPass, const RenderFrame::DrawItem &drawItem, const MetalDrawable::RenderResources &renderResources, CameraStatistics &statistics) {
+			MetalPreparedDrawItem preparedDrawItem;
+			preparedDrawItem.drawItem = &drawItem;
+			preparedDrawItem.renderResources = &renderResources;
+			preparedPass.drawItems.push_back(preparedDrawItem);
+
+			statistics.numberOfDrawables += 1;
+			statistics.numberOfVertices += drawItem.GetMesh().GetVerticesCount();
+			statistics.numberOfIndices += drawItem.GetMesh().GetIndicesCount();
+		};
+
+		auto getPipelineKey = [](const RenderFrame::DrawItem &drawItem, const MetalRenderPass &renderPass, const Drawable::MergedMaterialSnapshot &mergedMaterialSnapshot) {
+			Drawable::PipelineKey pipelineKey;
+			pipelineKey.meshPipelineHash = drawItem.GetMesh().GetPipelineHash();
+			pipelineKey.framebuffer = renderPass.framebuffer;
+			pipelineKey.vertexShader = mergedMaterialSnapshot.GetVertexShader();
+			pipelineKey.fragmentShader = mergedMaterialSnapshot.GetFragmentShader();
+			pipelineKey.materialProperties = mergedMaterialSnapshot.GetPipelineProperties();
+			pipelineKey.renderPass = renderPass.renderPass;
+			return pipelineKey;
+		};
+
 		for(MetalRenderPass &renderPass : _internals->renderPasses)
 		{
 			ensureRenderPassResources(renderPass);
@@ -1413,13 +1435,7 @@ namespace RN
 
 				const Material::DrawSnapshot *overrideMaterialSnapshot = framePass.GetOverrideMaterialSnapshot();
 				renderResources.mergedMaterialSnapshot.Update(drawItem.GetMaterial(), drawItem.GetMaterialSnapshotVersion(), renderPass.shaderHint, overrideMaterialSnapshot, framePass.GetOverrideMaterialCacheIdentity(), framePass.GetOverrideMaterialSnapshotVersion());
-				Drawable::PipelineKey pipelineKey;
-				pipelineKey.meshPipelineHash = drawItem.GetMesh().GetPipelineHash();
-				pipelineKey.framebuffer = renderPass.framebuffer;
-				pipelineKey.vertexShader = renderResources.mergedMaterialSnapshot.GetVertexShader();
-				pipelineKey.fragmentShader = renderResources.mergedMaterialSnapshot.GetFragmentShader();
-				pipelineKey.materialProperties = renderResources.mergedMaterialSnapshot.GetPipelineProperties();
-				pipelineKey.renderPass = renderPass.renderPass;
+				Drawable::PipelineKey pipelineKey = getPipelineKey(drawItem, renderPass, renderResources.mergedMaterialSnapshot);
 
 				if(!renderResources.pipelineState || renderResources.pipelineKey != pipelineKey)
 				{
@@ -1475,14 +1491,7 @@ namespace RN
 					statistics.numberOfDrawCalls += 1;
 				}
 
-				MetalPreparedDrawItem preparedDrawItem;
-				preparedDrawItem.drawItem = &drawItem;
-				preparedDrawItem.renderResources = &renderResources;
-				preparedPass.drawItems.push_back(preparedDrawItem);
-
-				statistics.numberOfDrawables += 1;
-				statistics.numberOfVertices += drawItem.GetMesh().GetVerticesCount();
-				statistics.numberOfIndices += drawItem.GetMesh().GetIndicesCount();
+				appendPreparedDrawItem(preparedPass, drawItem, renderResources, statistics);
 			}
 		};
 

@@ -2098,6 +2098,31 @@ namespace RN
 			}
 		};
 
+		auto appendPreparedDrawItem = [](VulkanPreparedRenderPass &preparedPass, const RenderFrame::DrawItem &drawItem, const VulkanDrawable::RenderResources &renderResources, CameraStatistics &statistics) {
+			VulkanPreparedDrawItem preparedDrawItem;
+			preparedDrawItem.drawItem = &drawItem;
+			preparedDrawItem.renderResources = &renderResources;
+			preparedPass.drawItems.push_back(preparedDrawItem);
+
+			statistics.numberOfDrawables += 1;
+			statistics.numberOfVertices += drawItem.GetMesh().GetVerticesCount();
+			statistics.numberOfIndices += drawItem.GetMesh().GetIndicesCount();
+		};
+
+		auto getPipelineKey = [](const RenderFrame::DrawItem &drawItem, const VulkanRenderPass &renderPass, const VulkanRenderPass &renderSubPass, const Drawable::MergedMaterialSnapshot &mergedMaterialSnapshot, uint8 renderViewCount, uint32 subpassIndex) {
+			Drawable::PipelineKey pipelineKey;
+			pipelineKey.meshPipelineHash = drawItem.GetMesh().GetPipelineHash();
+			pipelineKey.framebuffer = renderPass.framebuffer;
+			pipelineKey.vertexShader = mergedMaterialSnapshot.GetVertexShader();
+			pipelineKey.fragmentShader = mergedMaterialSnapshot.GetFragmentShader();
+			pipelineKey.materialProperties = mergedMaterialSnapshot.GetPipelineProperties();
+			pipelineKey.renderPass = renderSubPass.renderPass;
+			pipelineKey.renderPassSignature = renderPass.subpassSignature;
+			pipelineKey.renderViewCount = renderViewCount;
+			pipelineKey.subpassIndex = subpassIndex;
+			return pipelineKey;
+		};
+
 		for(VulkanRenderPass &renderPass : _internals->renderPasses)
 		{
 			if(!renderPass.UsesDrawItems())
@@ -2143,16 +2168,7 @@ namespace RN
 
 				const Material::DrawSnapshot *overrideMaterialSnapshot = framePass.GetOverrideMaterialSnapshot();
 				renderResources.mergedMaterialSnapshot.Update(drawItem.GetMaterial(), drawItem.GetMaterialSnapshotVersion(), renderSubPass.shaderHint, overrideMaterialSnapshot, framePass.GetOverrideMaterialCacheIdentity(), framePass.GetOverrideMaterialSnapshotVersion());
-				Drawable::PipelineKey pipelineKey;
-				pipelineKey.meshPipelineHash = drawItem.GetMesh().GetPipelineHash();
-				pipelineKey.framebuffer = renderPass.framebuffer;
-				pipelineKey.vertexShader = renderResources.mergedMaterialSnapshot.GetVertexShader();
-				pipelineKey.fragmentShader = renderResources.mergedMaterialSnapshot.GetFragmentShader();
-				pipelineKey.materialProperties = renderResources.mergedMaterialSnapshot.GetPipelineProperties();
-				pipelineKey.renderPass = renderSubPass.renderPass;
-				pipelineKey.renderPassSignature = renderPass.subpassSignature;
-				pipelineKey.renderViewCount = framePass.GetMultiviewCameraCount();
-				pipelineKey.subpassIndex = subpassIndex;
+				Drawable::PipelineKey pipelineKey = getPipelineKey(drawItem, renderPass, renderSubPass, renderResources.mergedMaterialSnapshot, framePass.GetMultiviewCameraCount(), subpassIndex);
 
 				if(!renderResources.pipelineState || renderResources.pipelineKey != pipelineKey)
 				{
@@ -2236,14 +2252,7 @@ namespace RN
 					_internals->totalDescriptorTables += renderResources.pipelineState->rootSignature->constantBufferCount;
 				}
 
-				VulkanPreparedDrawItem preparedDrawItem;
-				preparedDrawItem.drawItem = &drawItem;
-				preparedDrawItem.renderResources = &renderResources;
-				preparedPass.drawItems.push_back(preparedDrawItem);
-
-				statistics.numberOfDrawables += 1;
-				statistics.numberOfVertices += drawItem.GetMesh().GetVerticesCount();
-				statistics.numberOfIndices += drawItem.GetMesh().GetIndicesCount();
+				appendPreparedDrawItem(preparedPass, drawItem, renderResources, statistics);
 			}
 		};
 
