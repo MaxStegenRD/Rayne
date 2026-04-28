@@ -1405,9 +1405,7 @@ namespace RN
 			pipelineKey.mesh = sourceMesh;
 			pipelineKey.meshPipelineVersion = sourceMesh ? sourceMesh->GetPipelineVersion() : 0;
 			pipelineKey.framebuffer = pass.framebuffer;
-			pipelineKey.vertexShader = drawable->material.GetSelectedVertexShader(pass.shaderHint, overrideMaterialSnapshot);
-			pipelineKey.fragmentShader = drawable->material.GetSelectedFragmentShader(pass.shaderHint, overrideMaterialSnapshot);
-			drawable->material.GetMergedPipelineProperties(overrideMaterialSnapshot, pipelineKey.materialProperties);
+			drawable->FillPipelineKeyMaterialState(pipelineKey, pass.shaderHint, overrideMaterialSnapshot);
 			pipelineKey.renderPass = pass.renderPass;
 
 			if(!renderResources.pipelineState || renderResources.pipelineKey != pipelineKey)
@@ -1447,7 +1445,7 @@ namespace RN
 				}
 			}
 
-			if(canUseInstancing && pass.currentPipelineState == renderResources.pipelineState && pass.currentInstanceDrawable && drawable->GetSourceMesh() == pass.currentInstanceDrawable->GetSourceMesh() && drawable->material.GetTextures()->IsEqual(pass.currentInstanceDrawable->material.GetTextures()))
+			if(canUseInstancing && pass.currentPipelineState == renderResources.pipelineState && pass.currentInstanceDrawable && renderResources.pipelineKey.mesh == pass.currentInstanceDrawable->_renderResources[_internals->currentRenderPassIndex].pipelineKey.mesh && drawable->material.GetTextures()->IsEqual(pass.currentInstanceDrawable->material.GetTextures()))
 			{
 				pass.instanceSteps.back() += 1;
 			}

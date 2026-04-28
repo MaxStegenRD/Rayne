@@ -76,6 +76,13 @@ namespace RN
 			bool operator!=(const PipelineKey &other) const { return !(*this == other); }
 		};
 
+		void FillPipelineKeyMaterialState(PipelineKey &pipelineKey, Shader::UsageHint shaderHint, const Material::DrawSnapshot *overrideMaterial) const
+		{
+			pipelineKey.vertexShader = material.GetSelectedVertexShader(shaderHint, overrideMaterial);
+			pipelineKey.fragmentShader = material.GetSelectedFragmentShader(shaderHint, overrideMaterial);
+			material.GetMergedPipelineProperties(overrideMaterial, pipelineKey.materialProperties);
+		}
+
 		void Update(Mesh *tmesh, Material *tmaterial, Skeleton *tskeleton, const SceneNode *node)
 		{
 			bool meshSourceChanged = _sourceMesh.Get() != tmesh;

@@ -173,12 +173,12 @@ namespace RN
 
 	void Material::DrawSnapshot::GetMergedProperties(const DrawSnapshot *overrideMaterial, Properties &properties) const
 	{
-		Material::GetMergedProperties(_properties, _override, overrideMaterial ? &overrideMaterial->_properties : nullptr, overrideMaterial ? overrideMaterial->_override : 0, properties);
+		Material::MergeProperties(_properties, _override, overrideMaterial ? &overrideMaterial->_properties : nullptr, overrideMaterial ? overrideMaterial->_override : 0, properties);
 	}
 
 	void Material::DrawSnapshot::GetMergedPipelineProperties(const DrawSnapshot *overrideMaterial, PipelineProperties &properties) const
 	{
-		Material::GetMergedPipelineProperties(_pipelineProperties, _override, overrideMaterial ? &overrideMaterial->_pipelineProperties : nullptr, overrideMaterial ? overrideMaterial->_override : 0, properties);
+		Material::MergePipelineProperties(_pipelineProperties, _override, overrideMaterial ? &overrideMaterial->_pipelineProperties : nullptr, overrideMaterial ? overrideMaterial->_override : 0, properties);
 	}
 
 	Material::Material(Shader *vertexShader, Shader *fragmentShader) :
@@ -457,15 +457,7 @@ namespace RN
 		return _vertexShader[static_cast<uint8>(type)];
 	}
 
-	const Material::Properties &Material::GetMergedProperties(Material *overrideMaterial)
-	{
-		if(!overrideMaterial) return _properties;
-
-		GetMergedProperties(_properties, _override, &overrideMaterial->_properties, overrideMaterial->GetOverride(), _mergedProperties);
-		return _mergedProperties;
-	}
-
-	void Material::GetMergedProperties(const Properties &properties, uint32 override, const Properties *overrideProperties, uint32 overrideMaterialOverride, Properties &result)
+	void Material::MergeProperties(const Properties &properties, uint32 override, const Properties *overrideProperties, uint32 overrideMaterialOverride, Properties &result)
 	{
 		if(!overrideProperties)
 		{
@@ -523,15 +515,7 @@ namespace RN
 		}
 	}
 
-	const Material::PipelineProperties &Material::GetMergedPipelineProperties(Material *overrideMaterial)
-	{
-		if(!overrideMaterial) return _pipelineProperties;
-
-		GetMergedPipelineProperties(_pipelineProperties, _override, &overrideMaterial->_pipelineProperties, overrideMaterial->GetOverride(), _mergedPipelineProperties);
-		return _mergedPipelineProperties;
-	}
-
-	void Material::GetMergedPipelineProperties(const PipelineProperties &properties, uint32 override, const PipelineProperties *overridePipelineProperties, uint32 overrideMaterialOverride, PipelineProperties &result)
+	void Material::MergePipelineProperties(const PipelineProperties &properties, uint32 override, const PipelineProperties *overridePipelineProperties, uint32 overrideMaterialOverride, PipelineProperties &result)
 	{
 		if(!overridePipelineProperties)
 		{

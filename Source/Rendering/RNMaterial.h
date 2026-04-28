@@ -292,10 +292,8 @@ namespace RN
 		bool GetUseAlphaToCoverage() const { return _pipelineProperties.useAlphaToCoverage; }
 
 		const Properties &GetProperties() const { return _properties; }
-		RNAPI const Properties &GetMergedProperties(Material *overrideMaterial);
 		
 		const PipelineProperties &GetPipelineProperties() const { return _pipelineProperties; }
-		RNAPI const PipelineProperties &GetMergedPipelineProperties(Material *overrideMaterial);
 
 		uint64 GetDrawSnapshotVersion() const { return _drawSnapshotVersion; }
 		uint64 GetPipelineVersion() const { return _pipelineVersion; }
@@ -309,8 +307,8 @@ namespace RN
 			MarkDrawSnapshotDirty();
 		}
 
-		static void GetMergedProperties(const Properties &properties, uint32 override, const Properties *overrideProperties, uint32 overrideMaterialOverride, Properties &result);
-		static void GetMergedPipelineProperties(const PipelineProperties &properties, uint32 override, const PipelineProperties *overridePipelineProperties, uint32 overrideMaterialOverride, PipelineProperties &result);
+		static void MergeProperties(const Properties &properties, uint32 override, const Properties *overrideProperties, uint32 overrideMaterialOverride, Properties &result);
+		static void MergePipelineProperties(const PipelineProperties &properties, uint32 override, const PipelineProperties *overridePipelineProperties, uint32 overrideMaterialOverride, PipelineProperties &result);
 
 		Override _override;
 
@@ -326,10 +324,6 @@ namespace RN
 
 		Properties _properties;
 		PipelineProperties _pipelineProperties;
-		
-		//Used as temporary storage for the merged properties, to prevent reallocation, but could be reused between materials too...
-		Properties _mergedProperties;
-		PipelineProperties _mergedPipelineProperties;
 
 		__RNDeclareMetaInternal(Material)
 	};

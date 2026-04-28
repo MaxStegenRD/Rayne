@@ -2111,9 +2111,7 @@ namespace RN
 			pipelineKey.mesh = mesh;
 			pipelineKey.meshPipelineVersion = mesh ? mesh->GetPipelineVersion() : 0;
 			pipelineKey.framebuffer = renderPass.framebuffer;
-			pipelineKey.vertexShader = drawable->material.GetSelectedVertexShader(renderSubPass.shaderHint, overrideMaterialSnapshot);
-			pipelineKey.fragmentShader = drawable->material.GetSelectedFragmentShader(renderSubPass.shaderHint, overrideMaterialSnapshot);
-			drawable->material.GetMergedPipelineProperties(overrideMaterialSnapshot, pipelineKey.materialProperties);
+			drawable->FillPipelineKeyMaterialState(pipelineKey, renderSubPass.shaderHint, overrideMaterialSnapshot);
 			pipelineKey.renderPass = renderSubPass.renderPass;
 			pipelineKey.renderPassSignature = renderPass.subpassSignature;
 			pipelineKey.renderViewCount = static_cast<uint8>(renderPass.multiviewCameraInfo.size());
@@ -2175,7 +2173,7 @@ namespace RN
 				canUseInstancing = false;
 			}
 
-			if(canUseInstancing && renderSubPass.currentPipelineState == renderResources.pipelineState && renderSubPass.currentInstanceDrawable && drawable->GetSourceMesh() == renderSubPass.currentInstanceDrawable->GetSourceMesh() && drawable->material.GetTextures()->IsEqualLite(renderSubPass.currentInstanceDrawable->material.GetTextures()))
+			if(canUseInstancing && renderSubPass.currentPipelineState == renderResources.pipelineState && renderSubPass.currentInstanceDrawable && renderResources.pipelineKey.mesh == renderSubPass.currentInstanceDrawable->_renderResources[_internals->currentDrawableResourceIndex].pipelineKey.mesh && drawable->material.GetTextures()->IsEqualLite(renderSubPass.currentInstanceDrawable->material.GetTextures()))
 			{
 				renderSubPass.instanceSteps.back() += 1; //Increase counter if the rendering state is the same
 			}
