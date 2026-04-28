@@ -49,18 +49,17 @@ namespace RN
 
 		RNAPI void Delete();
 		RNAPI void Update(RenderPass *renderPass, Material *effectiveOverrideMaterial);
-		RNAPI void UpdateOverrideMaterial(Material *effectiveOverrideMaterial);
 
-		const DrawPacket &GetDrawPacket() const { return _drawPackets[_activeDrawPacketIndex]; }
-		const Material::DrawSnapshot *GetOverrideMaterialSnapshot() const { return GetDrawPacket().GetOverrideMaterialSnapshot(); }
-		uint64 GetOverrideMaterialSnapshotVersion() const { return GetDrawPacket().GetOverrideMaterialSnapshotVersion(); }
-		const RenderPass::DrawSnapshot &GetDrawSnapshot() const { return GetDrawPacket().GetDrawSnapshot(); }
+		const Material::DrawSnapshot *GetOverrideMaterialSnapshot(uint8 packetSlot) const { return GetDrawPacket(packetSlot).GetOverrideMaterialSnapshot(); }
+		uint64 GetOverrideMaterialSnapshotVersion(uint8 packetSlot) const { return GetDrawPacket(packetSlot).GetOverrideMaterialSnapshotVersion(); }
+		const RenderPass::DrawSnapshot &GetDrawSnapshot(uint8 packetSlot) const { return GetDrawPacket(packetSlot).GetDrawSnapshot(); }
 
 	private:
-		DrawPacket &GetMutableDrawPacket() { return _drawPackets[_activeDrawPacketIndex]; }
+		RNAPI const DrawPacket &GetDrawPacket(uint8 packetSlot) const;
+		DrawPacket &GetUpdateDrawPacket();
+		void UpdateOverrideMaterial(Material *effectiveOverrideMaterial, DrawPacket &drawPacket);
 
 		DrawPacket _drawPackets[RN_RENDERING_PACKET_SLOT_COUNT];
-		uint8 _activeDrawPacketIndex = 0;
 
 		StrongRef<Material> overrideMaterialSource;
 		uint64 overrideMaterialSourceSequence = 0;

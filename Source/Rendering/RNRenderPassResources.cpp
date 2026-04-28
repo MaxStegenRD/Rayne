@@ -23,9 +23,23 @@ namespace RN
 		_renderer->DeleteRenderPassResources(this);
 	}
 
+	const RenderPassResources::DrawPacket &RenderPassResources::GetDrawPacket(uint8 packetSlot) const
+	{
+		RN_DEBUG_ASSERT(packetSlot < RN_RENDERING_PACKET_SLOT_COUNT, "Invalid render pass packet slot");
+		return _drawPackets[packetSlot];
+	}
+
+	RenderPassResources::DrawPacket &RenderPassResources::GetUpdateDrawPacket()
+	{
+		RN_ASSERT(_renderer, "RenderPassResources needs a renderer to update draw packets");
+		uint8 updatePacketSlot = _renderer->GetUpdatePacketSlot();
+		RN_DEBUG_ASSERT(updatePacketSlot < RN_RENDERING_PACKET_SLOT_COUNT, "Invalid render pass packet slot");
+		return _drawPackets[updatePacketSlot];
+	}
+
 	void RenderPassResources::Update(RenderPass *renderPass, Material *effectiveOverrideMaterial)
 	{
-		DrawPacket &drawPacket = GetMutableDrawPacket();
+		DrawPacket &drawPacket = GetUpdateDrawPacket();
 		uint64 snapshotVersion = renderPass->GetDrawSnapshotVersion();
 		if(drawPacket._drawSnapshotSourceVersion != snapshotVersion)
 		{
@@ -43,12 +57,11 @@ namespace RN
 			drawPacket._drawSnapshot._frame = Rect();
 		}
 
-		UpdateOverrideMaterial(effectiveOverrideMaterial);
+		UpdateOverrideMaterial(effectiveOverrideMaterial, drawPacket);
 	}
 
-	void RenderPassResources::UpdateOverrideMaterial(Material *effectiveOverrideMaterial)
+	void RenderPassResources::UpdateOverrideMaterial(Material *effectiveOverrideMaterial, DrawPacket &drawPacket)
 	{
-		DrawPacket &drawPacket = GetMutableDrawPacket();
 		bool overrideMaterialSourceChanged = overrideMaterialSource.Get() != effectiveOverrideMaterial;
 		uint64 overrideSourceVersion = effectiveOverrideMaterial ? effectiveOverrideMaterial->GetDrawSnapshotVersion() : 0;
 		if(overrideMaterialSourceChanged)

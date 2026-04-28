@@ -60,6 +60,10 @@ namespace RN
 
 	struct MetalDrawable : public Drawable
 	{
+		MetalDrawable(Renderer *renderer) :
+			Drawable(renderer)
+		{}
+
 		struct RenderResources
 		{
 			const MetalRenderingState *pipelineState = nullptr;
@@ -217,14 +221,14 @@ namespace RN
 		MetalTexture *directionalShadowDepthTexture;
 		Vector2 directionalShadowInfo;
 
-		const Material::DrawSnapshot *GetOverrideMaterialSnapshot() const
+		const Material::DrawSnapshot *GetOverrideMaterialSnapshot(uint8 packetSlot) const
 		{
-			return renderPassResources ? renderPassResources->GetOverrideMaterialSnapshot() : nullptr;
+			return renderPassResources ? renderPassResources->GetOverrideMaterialSnapshot(packetSlot) : nullptr;
 		}
 
-		uint64 GetOverrideMaterialSnapshotVersion() const
+		uint64 GetOverrideMaterialSnapshotVersion(uint8 packetSlot) const
 		{
-			return renderPassResources ? renderPassResources->GetOverrideMaterialSnapshotVersion() : 0;
+			return renderPassResources ? renderPassResources->GetOverrideMaterialSnapshotVersion(packetSlot) : 0;
 		}
 	};
 

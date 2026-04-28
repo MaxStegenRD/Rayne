@@ -22,11 +22,12 @@
 namespace RN
 {
 	class RenderPass;
+	class Renderer;
 	class SceneNode;
 
 	struct Drawable
 	{
-		RNAPI Drawable();
+		RNAPI Drawable(Renderer *renderer);
 		RNAPI virtual ~Drawable();
 
 		struct PipelineKey
@@ -107,13 +108,14 @@ namespace RN
 		RNAPI void Update(Mesh *tmesh, Material *tmaterial, Skeleton *tskeleton, const SceneNode *node);
 		RNAPI virtual void Update(const SceneNode *node);
 		RNAPI void MakeDirty();
-		const DrawPacket &GetDrawPacket() const { return _drawPackets[_activeDrawPacketIndex]; }
+		RNAPI const DrawPacket &GetDrawPacket(uint8 packetSlot) const;
 
 	private:
-		DrawPacket &GetMutableDrawPacket() { return _drawPackets[_activeDrawPacketIndex]; }
+		DrawPacket &GetUpdateDrawPacket();
+		void UpdateTransform(const SceneNode *node, DrawPacket &drawPacket);
 
+		Renderer *_renderer;
 		DrawPacket _drawPackets[RN_RENDERING_PACKET_SLOT_COUNT];
-		uint8 _activeDrawPacketIndex = 0;
 
 		// Source objects are kept for snapshot refresh/version checks.
 		StrongRef<Mesh> _sourceMesh;

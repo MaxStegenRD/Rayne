@@ -7,13 +7,30 @@
 //
 
 #include "RNDrawable.h"
+#include "RNRenderer.h"
 #include "../Scene/RNSceneNode.h"
 
 namespace RN
 {
-	Drawable::Drawable() = default;
+	Drawable::Drawable(Renderer *renderer) :
+		_renderer(renderer)
+	{}
 
 	Drawable::~Drawable() = default;
+
+	const Drawable::DrawPacket &Drawable::GetDrawPacket(uint8 packetSlot) const
+	{
+		RN_DEBUG_ASSERT(packetSlot < RN_RENDERING_PACKET_SLOT_COUNT, "Invalid draw packet slot");
+		return _drawPackets[packetSlot];
+	}
+
+	Drawable::DrawPacket &Drawable::GetUpdateDrawPacket()
+	{
+		RN_ASSERT(_renderer, "Drawable needs a renderer to update draw packets");
+		uint8 updatePacketSlot = _renderer->GetUpdatePacketSlot();
+		RN_DEBUG_ASSERT(updatePacketSlot < RN_RENDERING_PACKET_SLOT_COUNT, "Invalid draw packet slot");
+		return _drawPackets[updatePacketSlot];
+	}
 
 	bool Drawable::PipelineKey::operator==(const PipelineKey &other) const
 	{
@@ -68,7 +85,7 @@ namespace RN
 
 	void Drawable::Update(Mesh *tmesh, Material *tmaterial, Skeleton *tskeleton, const SceneNode *node)
 	{
-		DrawPacket &drawPacket = GetMutableDrawPacket();
+		DrawPacket &drawPacket = GetUpdateDrawPacket();
 
 		bool meshSourceChanged = _sourceMesh.Get() != tmesh;
 		bool materialSourceChanged = _sourceMaterial.Get() != tmaterial;
@@ -149,12 +166,16 @@ namespace RN
 			drawPacket._skeletonDrawSnapshotVersion = 0;
 		}
 
-		Update(node);
+		UpdateTransform(node, drawPacket);
 	}
 
 	void Drawable::Update(const SceneNode *node)
 	{
-		DrawPacket &drawPacket = GetMutableDrawPacket();
+		UpdateTransform(node, GetUpdateDrawPacket());
+	}
+
+	void Drawable::UpdateTransform(const SceneNode *node, DrawPacket &drawPacket)
+	{
 		if(_transformNode != node)
 		{
 			_transformNode = node;

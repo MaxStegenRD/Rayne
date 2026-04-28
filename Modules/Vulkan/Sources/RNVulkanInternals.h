@@ -129,6 +129,10 @@ namespace RN
 
 	struct VulkanDrawable : public Drawable
 	{
+		VulkanDrawable(Renderer *renderer) :
+			Drawable(renderer)
+		{}
+
 		struct RenderResources
 		{
 			const VulkanPipelineState *pipelineState = nullptr; //No need for cleanup here as it's shared, but maybe add reference counting to clear later.
@@ -273,14 +277,14 @@ namespace RN
 		VulkanTexture *directionalShadowDepthTexture;
 		Vector2 directionalShadowInfo;
 
-		const Material::DrawSnapshot *GetOverrideMaterialSnapshot() const
+		const Material::DrawSnapshot *GetOverrideMaterialSnapshot(uint8 packetSlot) const
 		{
-			return renderPassResources ? renderPassResources->GetOverrideMaterialSnapshot() : nullptr;
+			return renderPassResources ? renderPassResources->GetOverrideMaterialSnapshot(packetSlot) : nullptr;
 		}
 
-		uint64 GetOverrideMaterialSnapshotVersion() const
+		uint64 GetOverrideMaterialSnapshotVersion(uint8 packetSlot) const
 		{
-			return renderPassResources ? renderPassResources->GetOverrideMaterialSnapshotVersion() : 0;
+			return renderPassResources ? renderPassResources->GetOverrideMaterialSnapshotVersion(packetSlot) : 0;
 		}
 	};
 

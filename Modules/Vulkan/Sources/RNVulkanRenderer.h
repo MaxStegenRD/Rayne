@@ -93,15 +93,15 @@ namespace RN
 
 	private:
 		void SubmitRenderPass(RenderPass *renderPass, VulkanRenderPass &previousRenderPass);
-		void UpdateDescriptorSets();
-		void RenderDrawable(VkCommandBuffer commandBuffer, VulkanDrawable *drawable, uint32 instanceCount);
-		void FillUniformBuffer(Shader::ArgumentBuffer *argumentBuffer, VulkanDynamicBufferReference *dynamicBufferReference, VulkanDrawable *drawable);
+		void UpdateDescriptorSets(uint8 renderPacketSlot);
+		void RenderDrawable(VkCommandBuffer commandBuffer, VulkanDrawable *drawable, uint32 instanceCount, uint8 renderPacketSlot);
+		void FillUniformBuffer(Shader::ArgumentBuffer *argumentBuffer, VulkanDynamicBufferReference *dynamicBufferReference, VulkanDrawable *drawable, uint8 renderPacketSlot);
 		void ResetDrawBindStateCache();
 
-		void RenderAPIRenderPass(VulkanCommandBuffer *commandBuffer, const VulkanRenderPass &renderPass);
+		void RenderAPIRenderPass(VulkanCommandBuffer *commandBuffer, const VulkanRenderPass &renderPass, uint8 renderPacketSlot);
 
-		void SetupRendertargets(VkCommandBuffer commandBuffer, const VulkanRenderPass &renderpass);
-		VkRenderPass GetVulkanRenderPass(const VulkanRenderPass *renderPass);
+		void SetupRendertargets(VkCommandBuffer commandBuffer, const VulkanRenderPass &renderpass, uint8 renderPacketSlot);
+		VkRenderPass GetVulkanRenderPass(const VulkanRenderPass *renderPass, uint8 renderPacketSlot);
 
 		void CreateVulkanCommandBuffers(size_t count, std::vector<VkCommandBuffer> &buffers);
 		VkCommandBuffer CreateVulkanCommandBuffer();

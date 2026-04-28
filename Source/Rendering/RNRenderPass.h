@@ -197,6 +197,7 @@ namespace RN
 		Material *GetOverrideMaterial() const { return _overrideMaterial; }
 		RNAPI virtual Material *GetEffectiveOverrideMaterial() const;
 		RNAPI RenderPassResources *GetRenderResources(Renderer *renderer);
+		RNAPI RenderPassResources *GetRenderResources(Renderer *renderer, Material *effectiveOverrideMaterial);
 		uint64 GetDrawSnapshotVersion() const { return _drawSnapshotVersion; }
 		RNAPI void GetDrawSnapshot(DrawSnapshot &snapshot) const;
 

@@ -546,7 +546,7 @@ namespace RN
 		return signature;
 	}
 
-	const VulkanPipelineState *VulkanStateCoordinator::GetRenderPipelineState(Shader *vertexShader, Shader *fragmentShader, const Mesh::DrawSnapshot &mesh, const Material::PipelineProperties &mergedMaterialProperties, const VulkanRenderPass *rootVulkanPass, uint32 subpassIndex)
+	const VulkanPipelineState *VulkanStateCoordinator::GetRenderPipelineState(Shader *vertexShader, Shader *fragmentShader, const Mesh::DrawSnapshot &mesh, const Material::PipelineProperties &mergedMaterialProperties, const VulkanRenderPass *rootVulkanPass, uint32 subpassIndex, uint8 packetSlot)
 	{
 		const VulkanFramebuffer *framebuffer = rootVulkanPass->framebuffer;
 
@@ -555,7 +555,7 @@ namespace RN
 		pipelineDescriptor.depthStencilFormat = (framebuffer->_depthStencilTarget) ? framebuffer->_depthStencilTarget->vulkanTargetViewDescriptor.format : VK_FORMAT_UNDEFINED;
 		pipelineDescriptor.sampleCount = framebuffer->GetSampleCount();
 		//pipelineDescriptor.sampleQuality = 0;//(framebuffer->_colorTargets.size() > 0 && !framebuffer->GetSwapChain()) ? framebuffer->_colorTargets[0]->targetView texture->GetDescriptor().sampleQuality : 0;
-		pipelineDescriptor.renderPass = GetRenderPassState(rootVulkanPass)->renderPass;
+		pipelineDescriptor.renderPass = GetRenderPassState(rootVulkanPass, packetSlot)->renderPass;
 		pipelineDescriptor.vertexShader = vertexShader;
 		pipelineDescriptor.fragmentShader = fragmentShader;
 		pipelineDescriptor.depthWriteEnabled = mergedMaterialProperties.depthWriteEnabled;
@@ -582,7 +582,7 @@ namespace RN
 			if(rootVulkanPass && rootVulkanPass->subpasses.size() > 0 && subpassIndex < rootVulkanPass->subpasses.size())
 			{
 				const VulkanRenderPass &subpass = rootVulkanPass->subpasses[subpassIndex];
-				countForPipeline = subpass.renderPassResources->GetDrawSnapshot().GetSubpass().GetWritesColorAttachmentCount();
+				countForPipeline = subpass.renderPassResources->GetDrawSnapshot(packetSlot).GetSubpass().GetWritesColorAttachmentCount();
 			}
 			pipelineDescriptor.colorAttachmentCount = static_cast<uint8>(countForPipeline);
 		}
@@ -976,11 +976,11 @@ namespace RN
 		return state;
 	}
 
-	VulkanRenderPassState *VulkanStateCoordinator::GetRenderPassState(const VulkanRenderPass *rootVulkanPass)
+	VulkanRenderPassState *VulkanStateCoordinator::GetRenderPassState(const VulkanRenderPass *rootVulkanPass, uint8 packetSlot)
 	{
 		const VulkanFramebuffer *framebuffer = rootVulkanPass->framebuffer;
 		const VulkanFramebuffer *resolveFramebuffer = rootVulkanPass->resolveFramebuffer;
-		const RenderPass::DrawSnapshot &rootDrawSnapshot = rootVulkanPass->renderPassResources->GetDrawSnapshot();
+		const RenderPass::DrawSnapshot &rootDrawSnapshot = rootVulkanPass->renderPassResources->GetDrawSnapshot(packetSlot);
 		const RenderPass::SubpassSnapshot &rootSubpassSnapshot = rootDrawSnapshot.GetSubpass();
 		RenderPass::Flags flags = rootDrawSnapshot.GetFlags();
 		uint8 multiviewCount = rootVulkanPass->multiviewCameraInfo.size();
@@ -1225,7 +1225,7 @@ namespace RN
 
 			for(size_t si = 0; si < rootVulkanPass->subpasses.size(); si++)
 			{
-				const RenderPass::SubpassSnapshot &subpassSnapshot = rootVulkanPass->subpasses[si].renderPassResources->GetDrawSnapshot().GetSubpass();
+				const RenderPass::SubpassSnapshot &subpassSnapshot = rootVulkanPass->subpasses[si].renderPassResources->GetDrawSnapshot(packetSlot).GetSubpass();
 
 				VkSubpassDescription sp = {};
 				sp.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;

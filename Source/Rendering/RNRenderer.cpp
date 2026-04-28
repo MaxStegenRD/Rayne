@@ -22,7 +22,9 @@ namespace RN
 
 	Renderer::Renderer(RendererDescriptor *descriptor, RenderingDevice *device) :
 		_device(device),
-		_descriptor(descriptor)
+		_descriptor(descriptor),
+		_updatePacketSlot(0),
+		_renderPacketSlot(0)
 	{
 		RN_ASSERT(descriptor, "Descriptor mustn't be NULL");
 		RN_ASSERT(device, "Device mustn't be NULL");

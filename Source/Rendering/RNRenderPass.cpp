@@ -100,10 +100,15 @@ namespace RN
 
 	RenderPassResources *RenderPass::GetRenderResources(Renderer *renderer)
 	{
+		return GetRenderResources(renderer, GetEffectiveOverrideMaterial());
+	}
+
+	RenderPassResources *RenderPass::GetRenderResources(Renderer *renderer, Material *effectiveOverrideMaterial)
+	{
 		if(!_renderResources)
 			_renderResources = renderer->CreateRenderPassResources();
 
-		_renderResources->Update(this, GetEffectiveOverrideMaterial());
+		_renderResources->Update(this, effectiveOverrideMaterial);
 		return _renderResources;
 	}
 
