@@ -39,36 +39,76 @@ namespace RN
 			bool GetReadsDepthStencil() const { return _readsDepthStencil; }
 			bool GetWritesDepthStencil() const { return _writesDepthStencil; }
 			bool GetUsesDepthStencil() const { return _readsDepthStencil || _writesDepthStencil; }
-			bool GetReadsColorAttachment(uint32 index) const { return std::find(_readColorAttachments.begin(), _readColorAttachments.end(), index) != _readColorAttachments.end(); }
-			bool GetWritesColorAttachment(uint32 index) const { return std::find(_writesColorAttachments.begin(), _writesColorAttachments.end(), index) != _writesColorAttachments.end(); }
-			bool GetUsesColorAttachment(uint32 index) const { return GetReadsColorAttachment(index) || GetWritesColorAttachment(index); }
-			bool GetIsFirstColorWriteAttachment(uint32 index) const { return std::find(_firstColorWriteAttachments.begin(), _firstColorWriteAttachments.end(), index) != _firstColorWriteAttachments.end(); }
-			bool GetIsLastColorWriteAttachment(uint32 index) const { return std::find(_lastColorWriteAttachments.begin(), _lastColorWriteAttachments.end(), index) != _lastColorWriteAttachments.end(); }
-			bool GetNeedsToStoreColorAttachment(uint32 index) const { return std::find(_colorAttachmentsToStore.begin(), _colorAttachmentsToStore.end(), index) != _colorAttachmentsToStore.end(); }
+			bool GetReadsColorAttachment(uint32 index) const { return GetColorAttachmentFlag(index, ColorAttachmentReads); }
+			bool GetWritesColorAttachment(uint32 index) const { return GetColorAttachmentFlag(index, ColorAttachmentWrites); }
+			bool GetUsesColorAttachment(uint32 index) const { return GetColorAttachmentFlag(index, ColorAttachmentReads | ColorAttachmentWrites); }
+			bool GetIsFirstColorWriteAttachment(uint32 index) const { return GetColorAttachmentFlag(index, ColorAttachmentFirstWrite); }
+			bool GetIsLastColorWriteAttachment(uint32 index) const { return GetColorAttachmentFlag(index, ColorAttachmentLastWrite); }
+			bool GetNeedsToStoreColorAttachment(uint32 index) const { return GetColorAttachmentFlag(index, ColorAttachmentNeedsStore); }
 			bool GetIsFirstDepthStencilWrite() const { return _firstDepthStencilWrite; }
 			bool GetIsLastDepthStencilWrite() const { return _lastDepthStencilWrite; }
 			bool GetNeedsToStoreDepthStencil() const { return _depthStencilNeedsStore; }
-			bool GetFirstUseIsRead(uint32 index) const { return (index < _firstUseIsRead.size())? _firstUseIsRead[index] : false; }
-			bool GetLastUseIsRead(uint32 index) const { return (index < _lastUseIsRead.size())? _lastUseIsRead[index] : false; }
+			bool GetFirstUseIsRead(uint32 index) const { return GetColorAttachmentFlag(index, ColorAttachmentFirstUseIsRead); }
+			bool GetLastUseIsRead(uint32 index) const { return GetColorAttachmentFlag(index, ColorAttachmentLastUseIsRead); }
 			bool GetDepthFirstUseIsRead() const { return _depthFirstUseIsRead; }
 			bool GetDepthLastUseIsRead() const { return _depthLastUseIsRead; }
-			size_t GetWritesColorAttachmentCount() const { return _writesColorAttachments.size(); }
+			size_t GetWritesColorAttachmentCount() const { return _writesColorAttachmentCount; }
 
 		private:
 			friend class RenderPass;
 
-			std::vector<uint32> _writesColorAttachments;
-			std::vector<uint32> _readColorAttachments;
-			std::vector<uint32> _firstColorWriteAttachments;
-			std::vector<uint32> _lastColorWriteAttachments;
-			std::vector<uint32> _colorAttachmentsToStore;
+			enum ColorAttachmentFlag : uint8
+			{
+				ColorAttachmentReads = (1 << 0),
+				ColorAttachmentWrites = (1 << 1),
+				ColorAttachmentFirstWrite = (1 << 2),
+				ColorAttachmentLastWrite = (1 << 3),
+				ColorAttachmentNeedsStore = (1 << 4),
+				ColorAttachmentFirstUseIsRead = (1 << 5),
+				ColorAttachmentLastUseIsRead = (1 << 6)
+			};
+
+			bool GetColorAttachmentFlag(uint32 index, uint8 flag) const { return (index < _colorAttachmentFlags.size()) && (_colorAttachmentFlags[index] & flag); }
+			void SetColorAttachmentFlag(uint32 index, uint8 flag)
+			{
+				if(index >= _colorAttachmentFlags.size()) _colorAttachmentFlags.resize(index + 1, 0);
+				_colorAttachmentFlags[index] |= flag;
+			}
+			void SetColorAttachmentFlags(const std::vector<uint32> &attachments, uint8 flag)
+			{
+				for(uint32 index : attachments)
+					SetColorAttachmentFlag(index, flag);
+			}
+			void SetColorAttachmentStates(const std::vector<uint32> &writes, const std::vector<uint32> &reads, const std::vector<uint32> &firstWrites, const std::vector<uint32> &lastWrites, const std::vector<uint32> &needsStore,
+										  const std::vector<bool> &firstUseIsRead, const std::vector<bool> &lastUseIsRead)
+			{
+				_colorAttachmentFlags.clear();
+				_writesColorAttachmentCount = writes.size();
+				size_t colorAttachmentCount = firstUseIsRead.size();
+				if(lastUseIsRead.size() > colorAttachmentCount) colorAttachmentCount = lastUseIsRead.size();
+				_colorAttachmentFlags.resize(colorAttachmentCount, 0);
+				SetColorAttachmentFlags(writes, ColorAttachmentWrites);
+				SetColorAttachmentFlags(reads, ColorAttachmentReads);
+				SetColorAttachmentFlags(firstWrites, ColorAttachmentFirstWrite);
+				SetColorAttachmentFlags(lastWrites, ColorAttachmentLastWrite);
+				SetColorAttachmentFlags(needsStore, ColorAttachmentNeedsStore);
+				for(size_t i = 0; i < firstUseIsRead.size(); i++)
+				{
+					if(firstUseIsRead[i]) SetColorAttachmentFlag(static_cast<uint32>(i), ColorAttachmentFirstUseIsRead);
+				}
+				for(size_t i = 0; i < lastUseIsRead.size(); i++)
+				{
+					if(lastUseIsRead[i]) SetColorAttachmentFlag(static_cast<uint32>(i), ColorAttachmentLastUseIsRead);
+				}
+			}
+
+			std::vector<uint8> _colorAttachmentFlags;
+			size_t _writesColorAttachmentCount = 0;
 			bool _writesDepthStencil = false;
 			bool _readsDepthStencil = false;
 			bool _firstDepthStencilWrite = false;
 			bool _lastDepthStencilWrite = false;
 			bool _depthStencilNeedsStore = false;
-			std::vector<bool> _firstUseIsRead;
-			std::vector<bool> _lastUseIsRead;
 			bool _depthFirstUseIsRead = false;
 			bool _depthLastUseIsRead = false;
 		};

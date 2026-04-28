@@ -117,18 +117,13 @@ namespace RN
 		snapshot._shaderHint = _shaderHint;
 		snapshot._isSubpass = _isSubpass;
 		snapshot._isRoot = _isRoot;
-		snapshot._subpass._writesColorAttachments = _subpassWritesColorAttachments;
-		snapshot._subpass._readColorAttachments = _subpassReadColorAttachments;
-		snapshot._subpass._firstColorWriteAttachments = _subpassFirstColorWriteAttachment;
-		snapshot._subpass._lastColorWriteAttachments = _subpassLastColorWriteAttachment;
-		snapshot._subpass._colorAttachmentsToStore = _subpassNeedToStoreColorAttachment;
+		snapshot._subpass.SetColorAttachmentStates(_subpassWritesColorAttachments, _subpassReadColorAttachments, _subpassFirstColorWriteAttachment, _subpassLastColorWriteAttachment, _subpassNeedToStoreColorAttachment,
+												   _subpassFirstUseIsRead, _subpassLastUseIsRead);
 		snapshot._subpass._writesDepthStencil = _subpassWritesDepthStencil;
 		snapshot._subpass._readsDepthStencil = _subpassReadDepthStencilAttachment;
 		snapshot._subpass._firstDepthStencilWrite = _subpassFirstDepthStencilWrite;
 		snapshot._subpass._lastDepthStencilWrite = _subpassLastDepthStencilWrite;
 		snapshot._subpass._depthStencilNeedsStore = _subpassNeedToStoreDepthStencil;
-		snapshot._subpass._firstUseIsRead = _subpassFirstUseIsRead;
-		snapshot._subpass._lastUseIsRead = _subpassLastUseIsRead;
 		snapshot._subpass._depthFirstUseIsRead = _depthFirstUseIsRead;
 		snapshot._subpass._depthLastUseIsRead = _depthLastUseIsRead;
 		if(!_isSubpass)
