@@ -549,6 +549,7 @@ namespace RN
 					{
 						//TODO: Sort drawables by camera and root signature? Maybe not...
 						//Draw drawables
+						RN_DEBUG_ASSERT(subpass.preparedRenderPassIndex < _internals->preparedRenderPasses.size(), "Invalid prepared render pass index");
 						const VulkanPreparedRenderPass &preparedPass = _internals->preparedRenderPasses[subpass.preparedRenderPassIndex];
 						const std::vector<VulkanPreparedDrawItem> &drawItems = preparedPass.drawItems;
 						uint32 stepSize = 0;
@@ -571,6 +572,7 @@ namespace RN
 				}
 				else
 				{
+					RN_DEBUG_ASSERT(renderPass.preparedRenderPassIndex < _internals->preparedRenderPasses.size(), "Invalid prepared render pass index");
 					const VulkanPreparedRenderPass &preparedPass = _internals->preparedRenderPasses[renderPass.preparedRenderPassIndex];
 					const std::vector<VulkanPreparedDrawItem> &drawItems = preparedPass.drawItems;
 					if(!drawItems.empty())
@@ -591,6 +593,7 @@ namespace RN
 					}
 				}
 
+				RN_DEBUG_ASSERT(renderPass.subpasses.size() > 0 || renderPass.preparedRenderPassIndex < _internals->preparedRenderPasses.size(), "Invalid prepared render pass index");
 				if(renderPass.subpasses.size() > 0 || !_internals->preparedRenderPasses[renderPass.preparedRenderPassIndex].drawItems.empty())
 				{
 					vk::CmdEndRenderPass(commandBuffer);
@@ -2314,6 +2317,7 @@ namespace RN
 		uint32 totalSubpassInputCount = 0;
 
 		auto accumulateDescriptorCounts = [&](const VulkanRenderPass &renderPass, const VulkanRenderPass &rootRenderPass) {
+			RN_DEBUG_ASSERT(renderPass.preparedRenderPassIndex < _internals->preparedRenderPasses.size(), "Invalid prepared render pass index");
 			const VulkanPreparedRenderPass &preparedPass = _internals->preparedRenderPasses[renderPass.preparedRenderPassIndex];
 			const std::vector<VulkanPreparedDrawItem> &drawItems = preparedPass.drawItems;
 			if(drawItems.empty())
@@ -2370,6 +2374,7 @@ namespace RN
 		subpassInputDescriptorInfoArray.reserve(totalSubpassInputCount);
 
 		auto updateDescriptorSets = [&](const VulkanRenderPass &renderPass, VulkanRenderPass &rootRenderPass) {
+			RN_DEBUG_ASSERT(renderPass.preparedRenderPassIndex < _internals->preparedRenderPasses.size(), "Invalid prepared render pass index");
 			const VulkanPreparedRenderPass &preparedPass = _internals->preparedRenderPasses[renderPass.preparedRenderPassIndex];
 			const std::vector<VulkanPreparedDrawItem> &drawItems = preparedPass.drawItems;
 			if(!drawItems.empty())

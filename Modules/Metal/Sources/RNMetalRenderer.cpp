@@ -202,7 +202,7 @@ namespace RN
 				}
 				else
 				{
-					RN_DEBUG_ASSERT(renderPass.preparedRenderPassIndex != RenderFrame::InvalidPassIndex, "Invalid prepared render pass index");
+					RN_DEBUG_ASSERT(renderPass.preparedRenderPassIndex < _internals->preparedRenderPasses.size(), "Invalid prepared render pass index");
 					const MetalPreparedRenderPass &preparedPass = _internals->preparedRenderPasses[renderPass.preparedRenderPassIndex];
 					const std::vector<MetalPreparedDrawItem> &drawItems = preparedPass.drawItems;
 					uint32 stepSize = 0;
@@ -299,7 +299,7 @@ namespace RN
 				case MetalRenderPass::Type::Convert:
 				{
 					RN_DEBUG_ASSERT(renderPass.previousStoredFramebuffer, "Convert render pass requires a previous framebuffer");
-					RN_DEBUG_ASSERT(renderPass.preparedRenderPassIndex != RenderFrame::InvalidPassIndex, "Invalid prepared render pass index");
+					RN_DEBUG_ASSERT(renderPass.preparedRenderPassIndex < _internals->preparedRenderPasses.size(), "Invalid prepared render pass index");
 					const MetalPreparedRenderPass &preparedPass = _internals->preparedRenderPasses[renderPass.preparedRenderPassIndex];
 					RN_DEBUG_ASSERT(!preparedPass.drawItems.empty(), "Convert render pass requires a prepared draw item");
 					RenderDrawable(preparedPass.drawItems[0], 1);
