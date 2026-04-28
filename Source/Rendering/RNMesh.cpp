@@ -90,6 +90,29 @@ namespace RN
 			free(_indicesBufferCPU);
 	}
 
+	Mesh::DrawSnapshot::DrawSnapshot(const DrawSnapshot &snapshot)
+	{
+		*this = snapshot;
+	}
+
+	Mesh::DrawSnapshot &Mesh::DrawSnapshot::operator=(const DrawSnapshot &snapshot)
+	{
+		_vertexBuffer = snapshot._vertexBuffer;
+		_indicesBuffer = snapshot._indicesBuffer;
+		_descriptor = snapshot._descriptor;
+
+		_vertexPositionsSeparatedSize = snapshot._vertexPositionsSeparatedSize;
+		_vertexPositionsSeparatedStride = snapshot._vertexPositionsSeparatedStride;
+		_stride = snapshot._stride;
+		_verticesCount = snapshot._verticesCount;
+		_indicesCount = snapshot._indicesCount;
+		_pipelineHash = snapshot._pipelineHash;
+		_drawMode = snapshot._drawMode;
+		_indexType = snapshot._indexType;
+
+		return *this;
+	}
+
 	void Mesh::DrawSnapshot::Reset()
 	{
 		_vertexBuffer = nullptr;

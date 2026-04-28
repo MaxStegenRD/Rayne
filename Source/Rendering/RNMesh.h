@@ -196,9 +196,9 @@ namespace RN
 		{
 		public:
 			DrawSnapshot() = default;
-			DrawSnapshot(const DrawSnapshot &snapshot) = delete;
+			RNAPI DrawSnapshot(const DrawSnapshot &snapshot);
 
-			DrawSnapshot &operator=(const DrawSnapshot &snapshot) = delete;
+			RNAPI DrawSnapshot &operator=(const DrawSnapshot &snapshot);
 
 			RNAPI void Reset();
 

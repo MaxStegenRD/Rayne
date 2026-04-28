@@ -519,6 +519,17 @@ namespace RN
 		return out;
 	}
 
+	Skeleton::DrawSnapshot::DrawSnapshot(const DrawSnapshot &snapshot)
+	{
+		*this = snapshot;
+	}
+
+	Skeleton::DrawSnapshot &Skeleton::DrawSnapshot::operator=(const DrawSnapshot &snapshot)
+	{
+		_matrices = snapshot._matrices;
+		return *this;
+	}
+
 	void Skeleton::DrawSnapshot::Reset()
 	{
 		_matrices.clear();

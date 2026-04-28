@@ -84,6 +84,7 @@
 #include "Rendering/RNModel.h"
 #include "Rendering/RNDrawable.h"
 #include "Rendering/RNPostProcessing.h"
+#include "Rendering/RNRenderFrame.h"
 #include "Rendering/RNRenderPass.h"
 #include "Rendering/RNRenderPassResources.h"
 #include "Rendering/RNRenderer.h"

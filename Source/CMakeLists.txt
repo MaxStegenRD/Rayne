@@ -218,6 +218,7 @@ set(RAYNE_HEADERS
     Rendering/RNSkeleton.h
     Rendering/RNShadowVolume.h
     Rendering/RNPostProcessing.h
+    Rendering/RNRenderFrame.h
     Rendering/RNRenderer.h
     Rendering/RNRendererDescriptor.h
     Rendering/RNRenderingConfig.h

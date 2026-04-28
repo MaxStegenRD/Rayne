@@ -258,6 +258,7 @@ namespace RN
 		Type type;
 		RenderPass *renderPass;
 		RenderPass *previousRenderPass;
+		size_t renderFramePassIndex = RenderFrame::InvalidPassIndex;
 		VulkanFramebuffer *previousStoredFramebuffer;
 
 		const VulkanPipelineState *currentPipelineState;
@@ -283,8 +284,7 @@ namespace RN
 		std::vector<VulkanRenderPassCameraInfo> multiviewCameraInfo;
 		uint8 multiviewLayer;
 
-		std::vector<uint32> instanceSteps; //number of drawables in the drawables list that use the same pipeline state and can all be rendered with the same draw call as result
-		std::vector<VulkanDrawable *> drawables;
+		std::vector<uint32> instanceSteps; //Number of draw items that use the same pipeline state and can be rendered with the same draw call.
 		std::vector<VulkanDirectionalLight> directionalLights;
 		std::vector<VulkanPointLight> pointLights;
 		std::vector<VulkanSpotLight> spotLights;
@@ -295,15 +295,6 @@ namespace RN
 		VulkanTexture *directionalShadowDepthTexture;
 		Vector2 directionalShadowInfo;
 
-		const Material::DrawSnapshot *GetOverrideMaterialSnapshot(uint8 packetSlot) const
-		{
-			return renderPassResources ? renderPassResources->GetOverrideMaterialSnapshot(packetSlot) : nullptr;
-		}
-
-		uint64 GetOverrideMaterialSnapshotVersion(uint8 packetSlot) const
-		{
-			return renderPassResources ? renderPassResources->GetOverrideMaterialSnapshotVersion(packetSlot) : 0;
-		}
 	};
 
 	struct VulkanFrameResource
@@ -369,6 +360,7 @@ namespace RN
 
 	struct VulkanRendererInternals
 	{
+		RenderFrame renderFrame;
 		std::vector<VulkanRenderPass> renderPasses;
 		VulkanStateCoordinator stateCoordinator;
 

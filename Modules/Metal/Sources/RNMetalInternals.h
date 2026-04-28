@@ -196,6 +196,7 @@ namespace RN
 		Type type;
 		RenderPass *renderPass;
 		RenderPass *previousRenderPass;
+		size_t renderFramePassIndex = RenderFrame::InvalidPassIndex;
 		MetalFramebuffer *previousStoredFramebuffer;
 
 		MetalFramebuffer *framebuffer;
@@ -224,8 +225,7 @@ namespace RN
 		uint8 multiviewLayer;
 		Rect frameRect;
 
-		std::vector<uint32> instanceSteps; //number of drawables in the drawables list that use the same pipeline state and can all be rendered with the same draw call as result
-		std::vector<MetalDrawable *> drawables;
+		std::vector<uint32> instanceSteps; //Number of draw items that use the same pipeline state and can be rendered with the same draw call.
 		const MetalRenderingState *currentPipelineState;
 		const MetalDrawable *currentInstanceDrawable;
 
@@ -236,21 +236,12 @@ namespace RN
 		std::vector<Matrix> directionalShadowMatrices;
 		MetalTexture *directionalShadowDepthTexture;
 		Vector2 directionalShadowInfo;
-
-		const Material::DrawSnapshot *GetOverrideMaterialSnapshot(uint8 packetSlot) const
-		{
-			return renderPassResources ? renderPassResources->GetOverrideMaterialSnapshot(packetSlot) : nullptr;
-		}
-
-		uint64 GetOverrideMaterialSnapshotVersion(uint8 packetSlot) const
-		{
-			return renderPassResources ? renderPassResources->GetOverrideMaterialSnapshotVersion(packetSlot) : 0;
-		}
 	};
 
 
 	struct MetalRendererInternals
 	{
+		RenderFrame renderFrame;
 		std::vector<MetalRenderPass> renderPasses;
 		MetalStateCoordinator stateCoordinator;
 
