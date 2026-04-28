@@ -243,7 +243,7 @@ namespace RN
 		std::vector<MTLPixelFormat> pixelFormats;
 		for(uint32 i = 0; i < metalFramebuffer->GetColorTargetCount(); i++)
 		{
-			if(drawSnapshot.IsSubpass() && !subpass.GetUsesColorAttachment(i))
+			if(drawSnapshot.IsSubpass() && !subpass.GetColorAttachment(i).GetUses())
 			{
 				continue;
 			}
@@ -287,7 +287,7 @@ namespace RN
 		pipelineStateDescriptor.colorAttachments[0].pixelFormat = MTLPixelFormatInvalid;
 		for(uint32 targetCounter = 0; targetCounter < metalFramebuffer->GetColorTargetCount(); targetCounter++)
 		{
-			if(drawSnapshot.IsSubpass() && !subpass.GetUsesColorAttachment(targetCounter))
+			if(drawSnapshot.IsSubpass() && !subpass.GetColorAttachment(targetCounter).GetUses())
 			{
 				continue;
 			}

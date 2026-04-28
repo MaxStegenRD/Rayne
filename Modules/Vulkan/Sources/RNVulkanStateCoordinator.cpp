@@ -1060,8 +1060,9 @@ namespace RN
 			attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 			if(rootVulkanPass && rootVulkanPass->subpasses.size() > 0)
 			{
-				attachment.initialLayout = rootSubpassSnapshot.GetFirstUseIsRead(counter)? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-				attachment.finalLayout = rootSubpassSnapshot.GetLastUseIsRead(counter)? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+				const auto colorAttachment = rootSubpassSnapshot.GetColorAttachment(counter);
+				attachment.initialLayout = colorAttachment.GetFirstUseIsRead()? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+				attachment.finalLayout = colorAttachment.GetLastUseIsRead()? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 			}
 			else
 			{
@@ -1231,12 +1232,13 @@ namespace RN
 
 				for(uint32 ci = 0; ci < colorAttachmentRefs.size(); ci++)
 				{
-					if(subpassSnapshot.GetWritesColorAttachment(ci))
+					const auto colorAttachment = subpassSnapshot.GetColorAttachment(ci);
+					if(colorAttachment.GetWrites())
 					{
 						perSubpassColorRefs[si].push_back({ colorAttachmentRefs[ci].attachment, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
 						perSubpassColorIndices[si].push_back(ci);
 					}
-					else if(subpassSnapshot.GetReadsColorAttachment(ci))
+					else if(colorAttachment.GetReads())
 					{
 						perSubpassInputRefs[si].push_back({ colorAttachmentRefs[ci].attachment, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
 					}
@@ -1269,42 +1271,23 @@ namespace RN
 				// Color attachments
 				for(uint32 ci = 0; ci < colorAttachmentRefs.size(); ci++)
 				{
-					bool used = subpassSnapshot.GetUsesColorAttachment(ci);
-					if(!used)
+					if(subpassSnapshot.GetColorAttachment(ci).GetNeedsPreserve())
 					{
-						// Check if any future subpass uses this attachment
-						for(size_t next = si + 1; next < rootVulkanPass->subpasses.size(); next++)
-						{
-							const RenderPass::SubpassSnapshot &nextSubpassSnapshot = rootVulkanPass->subpasses[next].renderPassResources->GetDrawSnapshot().GetSubpass();
-							if(nextSubpassSnapshot.GetUsesColorAttachment(ci))
-							{
-								preserveAttachments.push_back(colorAttachmentRefs[ci].attachment);
-								break;
-							}
-						}
+						preserveAttachments.push_back(colorAttachmentRefs[ci].attachment);
 					}
 				}
 				// Depth attachment
 				if(framebuffer->_depthStencilTarget)
 				{
-					bool usesDepth = subpassSnapshot.GetUsesDepthStencil();
-					if(!usesDepth)
+					if(subpassSnapshot.GetNeedsToPreserveDepthStencil())
 					{
-						for(size_t next = si + 1; next < rootVulkanPass->subpasses.size(); next++)
-						{
-							const RenderPass::SubpassSnapshot &nextSubpassSnapshot = rootVulkanPass->subpasses[next].renderPassResources->GetDrawSnapshot().GetSubpass();
-							if(nextSubpassSnapshot.GetUsesDepthStencil())
-							{
-								preserveAttachments.push_back(depthReference.attachment);
-								break;
-							}
-						}
+						preserveAttachments.push_back(depthReference.attachment);
 					}
 				}
 
-				perSubpassPreserveAttachments.push_back(preserveAttachments);
+				perSubpassPreserveAttachments[si] = preserveAttachments;
 				sp.preserveAttachmentCount = preserveAttachments.size();
-				sp.pPreserveAttachments = (preserveAttachments.size() > 0)? perSubpassPreserveAttachments.back().data() : nullptr;
+				sp.pPreserveAttachments = (preserveAttachments.size() > 0)? perSubpassPreserveAttachments[si].data() : nullptr;
 
 				// Resolve attachments only on last writer subpasses
 				if(resolveFramebuffer && sp.colorAttachmentCount > 0)
@@ -1314,7 +1297,7 @@ namespace RN
 					for(size_t k = 0; k < perSubpassColorIndices[si].size(); ++k)
 					{
 						uint32 ci = perSubpassColorIndices[si][k];
-						if(subpassSnapshot.GetIsLastColorWriteAttachment(ci))
+						if(subpassSnapshot.GetColorAttachment(ci).GetIsLastWrite())
 						{
 							perSubpassResolveRefs[si].push_back({ resolveAttachmentRefs[ci].attachment, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
 							anyLast = true;

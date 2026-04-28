@@ -35,28 +35,7 @@ namespace RN
 
 		class SubpassSnapshot
 		{
-		public:
-			bool GetReadsDepthStencil() const { return _readsDepthStencil; }
-			bool GetWritesDepthStencil() const { return _writesDepthStencil; }
-			bool GetUsesDepthStencil() const { return _readsDepthStencil || _writesDepthStencil; }
-			bool GetReadsColorAttachment(uint32 index) const { return GetColorAttachmentFlag(index, ColorAttachmentReads); }
-			bool GetWritesColorAttachment(uint32 index) const { return GetColorAttachmentFlag(index, ColorAttachmentWrites); }
-			bool GetUsesColorAttachment(uint32 index) const { return GetColorAttachmentFlag(index, ColorAttachmentReads | ColorAttachmentWrites); }
-			bool GetIsFirstColorWriteAttachment(uint32 index) const { return GetColorAttachmentFlag(index, ColorAttachmentFirstWrite); }
-			bool GetIsLastColorWriteAttachment(uint32 index) const { return GetColorAttachmentFlag(index, ColorAttachmentLastWrite); }
-			bool GetNeedsToStoreColorAttachment(uint32 index) const { return GetColorAttachmentFlag(index, ColorAttachmentNeedsStore); }
-			bool GetIsFirstDepthStencilWrite() const { return _firstDepthStencilWrite; }
-			bool GetIsLastDepthStencilWrite() const { return _lastDepthStencilWrite; }
-			bool GetNeedsToStoreDepthStencil() const { return _depthStencilNeedsStore; }
-			bool GetFirstUseIsRead(uint32 index) const { return GetColorAttachmentFlag(index, ColorAttachmentFirstUseIsRead); }
-			bool GetLastUseIsRead(uint32 index) const { return GetColorAttachmentFlag(index, ColorAttachmentLastUseIsRead); }
-			bool GetDepthFirstUseIsRead() const { return _depthFirstUseIsRead; }
-			bool GetDepthLastUseIsRead() const { return _depthLastUseIsRead; }
-			size_t GetWritesColorAttachmentCount() const { return _writesColorAttachmentCount; }
-
 		private:
-			friend class RenderPass;
-
 			enum ColorAttachmentFlag : uint8
 			{
 				ColorAttachmentReads = (1 << 0),
@@ -65,10 +44,50 @@ namespace RN
 				ColorAttachmentLastWrite = (1 << 3),
 				ColorAttachmentNeedsStore = (1 << 4),
 				ColorAttachmentFirstUseIsRead = (1 << 5),
-				ColorAttachmentLastUseIsRead = (1 << 6)
+				ColorAttachmentLastUseIsRead = (1 << 6),
+				ColorAttachmentNeedsPreserve = (1 << 7)
 			};
 
-			bool GetColorAttachmentFlag(uint32 index, uint8 flag) const { return (index < _colorAttachmentFlags.size()) && (_colorAttachmentFlags[index] & flag); }
+		public:
+			class ColorAttachmentSnapshot
+			{
+			public:
+				bool GetReads() const { return _flags & ColorAttachmentReads; }
+				bool GetWrites() const { return _flags & ColorAttachmentWrites; }
+				bool GetUses() const { return _flags & (ColorAttachmentReads | ColorAttachmentWrites); }
+				bool GetIsFirstWrite() const { return _flags & ColorAttachmentFirstWrite; }
+				bool GetIsLastWrite() const { return _flags & ColorAttachmentLastWrite; }
+				bool GetNeedsStore() const { return _flags & ColorAttachmentNeedsStore; }
+				bool GetFirstUseIsRead() const { return _flags & ColorAttachmentFirstUseIsRead; }
+				bool GetLastUseIsRead() const { return _flags & ColorAttachmentLastUseIsRead; }
+				bool GetNeedsPreserve() const { return _flags & ColorAttachmentNeedsPreserve; }
+
+			private:
+				friend class SubpassSnapshot;
+
+				ColorAttachmentSnapshot(uint8 flags) :
+					_flags(flags)
+				{}
+
+				uint8 _flags;
+			};
+
+			bool GetReadsDepthStencil() const { return _readsDepthStencil; }
+			bool GetWritesDepthStencil() const { return _writesDepthStencil; }
+			bool GetUsesDepthStencil() const { return _readsDepthStencil || _writesDepthStencil; }
+			ColorAttachmentSnapshot GetColorAttachment(uint32 index) const { return ColorAttachmentSnapshot(GetColorAttachmentFlags(index)); }
+			bool GetIsFirstDepthStencilWrite() const { return _firstDepthStencilWrite; }
+			bool GetIsLastDepthStencilWrite() const { return _lastDepthStencilWrite; }
+			bool GetNeedsToStoreDepthStencil() const { return _depthStencilNeedsStore; }
+			bool GetNeedsToPreserveDepthStencil() const { return _depthStencilNeedsPreserve; }
+			bool GetDepthFirstUseIsRead() const { return _depthFirstUseIsRead; }
+			bool GetDepthLastUseIsRead() const { return _depthLastUseIsRead; }
+			size_t GetWritesColorAttachmentCount() const { return _writesColorAttachmentCount; }
+
+		private:
+			friend class RenderPass;
+
+			uint8 GetColorAttachmentFlags(uint32 index) const { return (index < _colorAttachmentFlags.size()) ? _colorAttachmentFlags[index] : 0; }
 			void SetColorAttachmentFlag(uint32 index, uint8 flag)
 			{
 				if(index >= _colorAttachmentFlags.size()) _colorAttachmentFlags.resize(index + 1, 0);
@@ -79,7 +98,7 @@ namespace RN
 				for(uint32 index : attachments)
 					SetColorAttachmentFlag(index, flag);
 			}
-			void SetColorAttachmentStates(const std::vector<uint32> &writes, const std::vector<uint32> &reads, const std::vector<uint32> &firstWrites, const std::vector<uint32> &lastWrites, const std::vector<uint32> &needsStore,
+			void SetColorAttachmentStates(const std::vector<uint32> &writes, const std::vector<uint32> &reads, const std::vector<uint32> &firstWrites, const std::vector<uint32> &lastWrites, const std::vector<uint32> &needsStore, const std::vector<uint32> &needsPreserve,
 										  const std::vector<bool> &firstUseIsRead, const std::vector<bool> &lastUseIsRead)
 			{
 				_colorAttachmentFlags.clear();
@@ -92,6 +111,7 @@ namespace RN
 				SetColorAttachmentFlags(firstWrites, ColorAttachmentFirstWrite);
 				SetColorAttachmentFlags(lastWrites, ColorAttachmentLastWrite);
 				SetColorAttachmentFlags(needsStore, ColorAttachmentNeedsStore);
+				SetColorAttachmentFlags(needsPreserve, ColorAttachmentNeedsPreserve);
 				for(size_t i = 0; i < firstUseIsRead.size(); i++)
 				{
 					if(firstUseIsRead[i]) SetColorAttachmentFlag(static_cast<uint32>(i), ColorAttachmentFirstUseIsRead);
@@ -109,6 +129,7 @@ namespace RN
 			bool _firstDepthStencilWrite = false;
 			bool _lastDepthStencilWrite = false;
 			bool _depthStencilNeedsStore = false;
+			bool _depthStencilNeedsPreserve = false;
 			bool _depthFirstUseIsRead = false;
 			bool _depthLastUseIsRead = false;
 		};
@@ -181,12 +202,6 @@ namespace RN
 
 		bool GetIsSubpass() const { return _isSubpass; }
 		bool GetIsRoot() const { return _isRoot; }
-		const std::vector<uint32> &GetSubpassWritesColorAttachments() const { return _subpassWritesColorAttachments; }
-		const std::vector<uint32> &GetSubpassReadColorAttachments() const { return _subpassReadColorAttachments; }
-		bool GetSubpassWritesDepthStencil() const { return _subpassWritesDepthStencil; }
-		bool GetSubpassReadDepthStencilAttachment() const { return _subpassReadDepthStencilAttachment; }
-		bool GetSubpassReadColorAttachment(uint32 index) const { return std::find(_subpassReadColorAttachments.begin(), _subpassReadColorAttachments.end(), index) != _subpassReadColorAttachments.end(); }
-		bool GetSubpassWritesColorAttachment(uint32 index) const { return std::find(_subpassWritesColorAttachments.begin(), _subpassWritesColorAttachments.end(), index) != _subpassWritesColorAttachments.end(); }
 
 		RNAPI void AddRenderPass(RenderPass *renderPass);
 		RNAPI void RemoveRenderPass(RenderPass *renderPass);
@@ -217,9 +232,11 @@ namespace RN
 		std::vector<uint32> _subpassFirstColorWriteAttachment;
 		std::vector<uint32> _subpassLastColorWriteAttachment;
 		std::vector<uint32> _subpassNeedToStoreColorAttachment;
+		std::vector<uint32> _subpassNeedToPreserveColorAttachment;
 		bool _subpassFirstDepthStencilWrite;
 		bool _subpassLastDepthStencilWrite;
 		bool _subpassNeedToStoreDepthStencil;
+		bool _subpassNeedToPreserveDepthStencil;
 		std::vector<bool> _subpassFirstUseIsRead;
 		std::vector<bool> _subpassLastUseIsRead;
 		bool _depthFirstUseIsRead;

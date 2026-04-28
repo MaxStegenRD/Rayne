@@ -506,12 +506,13 @@ namespace RN
 						if(!t) continue;
 
 						VulkanTexture *vulkanTexture = t->Downcast<VulkanTexture>();
-						VkImageLayout initialLayout = subpass.GetFirstUseIsRead(ci)? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-						VkImageLayout targetLayout = subpass.GetLastUseIsRead(ci)? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+						const auto colorAttachment = subpass.GetColorAttachment(ci);
+						VkImageLayout initialLayout = colorAttachment.GetFirstUseIsRead()? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+						VkImageLayout targetLayout = colorAttachment.GetLastUseIsRead()? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 						if(vulkanTexture->GetCurrentLayout() != initialLayout)
 						{
-							VulkanTexture::SetImageLayout(commandBuffer, vulkanTexture->GetVulkanImage(), 0, vulkanTexture->GetDescriptor().mipMaps, 0, vulkanTexture->GetDescriptor().depth, VK_IMAGE_ASPECT_COLOR_BIT, vulkanTexture->GetCurrentLayout(), initialLayout, subpass.GetFirstUseIsRead(ci) ? VulkanTexture::BarrierIntent::ShaderSource : VulkanTexture::BarrierIntent::RenderTarget);
+							VulkanTexture::SetImageLayout(commandBuffer, vulkanTexture->GetVulkanImage(), 0, vulkanTexture->GetDescriptor().mipMaps, 0, vulkanTexture->GetDescriptor().depth, VK_IMAGE_ASPECT_COLOR_BIT, vulkanTexture->GetCurrentLayout(), initialLayout, colorAttachment.GetFirstUseIsRead() ? VulkanTexture::BarrierIntent::ShaderSource : VulkanTexture::BarrierIntent::RenderTarget);
 							vulkanTexture->SetCurrentLayout(initialLayout);
 						}
 					}
@@ -603,7 +604,7 @@ namespace RN
 							Texture *t = fb->GetColorTexture(ci);
 							if(!t) continue;
 							VulkanTexture *vt = t->Downcast<VulkanTexture>();
-							vt->SetCurrentLayout(subpass.GetLastUseIsRead(ci)? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+							vt->SetCurrentLayout(subpass.GetColorAttachment(ci).GetLastUseIsRead()? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 						}
 
 						// Depth-stencil
@@ -989,8 +990,9 @@ namespace RN
 					const RenderPass::SubpassSnapshot &subpassSnapshot = renderpass.subpasses[si].renderPassResources->GetDrawSnapshot().GetSubpass();
 					for(uint32 ci = 0; ci < colorAttachmentCount; ci++)
 					{
-						if(subpassSnapshot.GetWritesColorAttachment(ci)) signature ^= (0x9e3779b97f4a7c15ull + ((static_cast<uint64>(si) << 32) ^ ci));
-						if(subpassSnapshot.GetReadsColorAttachment(ci)) signature ^= (0x85ebca6b + ((static_cast<uint64>(si) << 33) ^ ci));
+						const auto colorAttachment = subpassSnapshot.GetColorAttachment(ci);
+						if(colorAttachment.GetWrites()) signature ^= (0x9e3779b97f4a7c15ull + ((static_cast<uint64>(si) << 32) ^ ci));
+						if(colorAttachment.GetReads()) signature ^= (0x85ebca6b + ((static_cast<uint64>(si) << 33) ^ ci));
 					}
 					if(hasDepth)
 					{
@@ -2326,7 +2328,7 @@ namespace RN
 					uint32 totalColorAttachments = rootFramebuffer->_swapChain ? 1 : static_cast<uint32>(rootFramebuffer->_colorTargets.size());
 					for(uint32 ci = 0; ci < totalColorAttachments; ci++)
 					{
-						if(subpassSnapshot.GetReadsColorAttachment(ci))
+						if(subpassSnapshot.GetColorAttachment(ci).GetReads())
 						{
 							subpassInputColorIndices.push_back(ci);
 						}

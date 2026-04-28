@@ -265,13 +265,9 @@ namespace RN
 		int attachmentCounter = 0;
 		for(MetalTargetView *metalTarget : _colorTargets)
 		{
-			bool readsThisColor = true;
-			bool writesThisColor = true;
-			if(isSubpass)
-			{
-				readsThisColor = subpass.GetReadsColorAttachment(counter);
-				writesThisColor = subpass.GetWritesColorAttachment(counter);
-			}
+			const auto colorAttachmentState = subpass.GetColorAttachment(counter);
+			bool readsThisColor = !isSubpass || colorAttachmentState.GetReads();
+			bool writesThisColor = !isSubpass || colorAttachmentState.GetWrites();
 
 			if(!readsThisColor && !writesThisColor)
 			{
@@ -296,7 +292,7 @@ namespace RN
 			
 			if(isSubpass)
 			{
-				if(subpass.GetIsFirstColorWriteAttachment(counter))
+				if(colorAttachmentState.GetIsFirstWrite())
 				{
 					if(renderPassFlags & RenderPass::Flags::ClearColor)
 					{
@@ -345,7 +341,7 @@ namespace RN
 			{
 				if(isSubpass)
 				{
-					if(renderPassFlags & RenderPass::Flags::StoreColor || !subpass.GetIsLastColorWriteAttachment(counter) || subpass.GetNeedsToStoreColorAttachment(counter))
+					if(renderPassFlags & RenderPass::Flags::StoreColor || !colorAttachmentState.GetIsLastWrite() || colorAttachmentState.GetNeedsStore())
 					{
 						[colorAttachment setStoreAction:MTLStoreActionStore];
 					}

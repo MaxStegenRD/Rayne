@@ -1652,7 +1652,7 @@ namespace RN
 				uint8 targetIndex = materialTextureIndex;
 				for(uint8 i = 0; i < renderPass.framebuffer->GetColorTargetCount(); i++)
 				{
-					if(drawSnapshot.GetSubpass().GetReadsColorAttachment(i))
+					if(drawSnapshot.GetSubpass().GetColorAttachment(i).GetReads())
 					{
 						if(targetIndex == 0)
 						{
