@@ -439,7 +439,7 @@ namespace RN
 			_internals->currentRenderPassIndex = 0;
 			for(const VulkanRenderPass &renderPass : _internals->renderPasses)
 			{
-				if(renderPass.type != VulkanRenderPass::Type::Default && renderPass.type != VulkanRenderPass::Type::Convert)
+				if(!renderPass.UsesDrawItems())
 				{
 					RenderAPIRenderPass(_currentCommandBuffer, renderPass);
 					_internals->currentRenderPassIndex += 1;
@@ -1961,7 +1961,7 @@ namespace RN
 		}
 
 		auto submitLightToRenderPass = [&](VulkanRenderPass &renderPass, VulkanFramebuffer *framebuffer) {
-			if(renderPass.type != VulkanRenderPass::Type::Default && renderPass.type != VulkanRenderPass::Type::Convert) return;
+			if(!renderPass.UsesDrawItems()) return;
 			RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex);
 
 			if(light->GetType() == Light::Type::DirectionalLight)
@@ -2073,38 +2073,31 @@ namespace RN
 	{
 		RN_PROFILE_SCOPE();
 
-		size_t drawableResourceIndex = 0;
 		_internals->preparedRenderPasses.clear();
 
 		auto ensureRenderPassResources = [&](VulkanRenderPass &renderSubPass) {
 			renderSubPass.preparedRenderPassIndex = RenderFrame::InvalidPassIndex;
 
-			if(renderSubPass.type != VulkanRenderPass::Type::Default && renderSubPass.type != VulkanRenderPass::Type::Convert)
+			if(!renderSubPass.UsesDrawItems())
 			{
-				drawableResourceIndex += 1;
 				return;
 			}
 
-			RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderSubPass.renderFramePassIndex);
+			const RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderSubPass.renderFramePassIndex);
 			const std::vector<RenderFrame::DrawItem> &drawItems = framePass.GetDrawItems();
 			renderSubPass.preparedRenderPassIndex = _internals->preparedRenderPasses.size();
 			_internals->preparedRenderPasses.emplace_back();
-			VulkanPreparedRenderPass &preparedPass = _internals->preparedRenderPasses.back();
-			preparedPass.resourceIndex = drawableResourceIndex;
 
 			for(const RenderFrame::DrawItem &drawItem : drawItems)
 			{
 				VulkanDrawable *drawable = static_cast<VulkanDrawable *>(drawItem.GetSourceDrawableForPreparation());
-				drawable->EnsureRenderResources(drawableResourceIndex);
+				drawable->EnsureRenderResources(renderSubPass.preparedRenderPassIndex);
 			}
-
-			drawableResourceIndex += 1;
 		};
 
-		for(size_t pi = 0; pi < _internals->renderPasses.size(); pi += 1)
+		for(VulkanRenderPass &renderPass : _internals->renderPasses)
 		{
-			VulkanRenderPass &renderPass = _internals->renderPasses[pi];
-			if(renderPass.type != VulkanRenderPass::Type::Default && renderPass.type != VulkanRenderPass::Type::Convert)
+			if(!renderPass.UsesDrawItems())
 			{
 				ensureRenderPassResources(renderPass);
 			}
@@ -2127,7 +2120,7 @@ namespace RN
 				return;
 
 			VulkanPreparedRenderPass &preparedPass = _internals->preparedRenderPasses[renderSubPass.preparedRenderPassIndex];
-			RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderSubPass.renderFramePassIndex);
+			const RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderSubPass.renderFramePassIndex);
 			const std::vector<RenderFrame::DrawItem> &drawItems = framePass.GetDrawItems();
 			if(drawItems.empty())
 				return;
@@ -2143,7 +2136,7 @@ namespace RN
 			for(const RenderFrame::DrawItem &drawItem : drawItems)
 			{
 				VulkanDrawable *drawable = static_cast<VulkanDrawable *>(drawItem.GetSourceDrawableForPreparation());
-				VulkanDrawable::RenderResources &renderResources = drawable->GetRenderResources(preparedPass.resourceIndex);
+				VulkanDrawable::RenderResources &renderResources = drawable->GetRenderResources(renderSubPass.preparedRenderPassIndex);
 
 				const Material::DrawSnapshot *overrideMaterialSnapshot = framePass.GetOverrideMaterialSnapshot();
 				renderResources.mergedMaterialSnapshot.Update(drawItem.GetMaterial(), drawItem.GetMaterialSnapshotVersion(), renderSubPass.shaderHint, overrideMaterialSnapshot, framePass.GetOverrideMaterialCacheIdentity(), framePass.GetOverrideMaterialSnapshotVersion());
@@ -2251,10 +2244,9 @@ namespace RN
 			}
 		};
 
-		for(size_t pi = 0; pi < _internals->renderPasses.size(); pi += 1)
+		for(VulkanRenderPass &renderPass : _internals->renderPasses)
 		{
-			VulkanRenderPass &renderPass = _internals->renderPasses[pi];
-			if(renderPass.type != VulkanRenderPass::Type::Default && renderPass.type != VulkanRenderPass::Type::Convert)
+			if(!renderPass.UsesDrawItems())
 			{
 				continue;
 			}
@@ -2278,7 +2270,7 @@ namespace RN
 		VulkanDrawable *drawable = static_cast<VulkanDrawable *>(tdrawable);
 
 		auto submitDrawable = [&](VulkanRenderPass &renderSubPass) {
-			if(renderSubPass.type != VulkanRenderPass::Type::Default && renderSubPass.type != VulkanRenderPass::Type::Convert)
+			if(!renderSubPass.UsesDrawItems())
 				return;
 
 			if((renderSubPass.type == VulkanRenderPass::Type::Convert || renderSubPass.renderPass->IsKindOfClass(PostProcessingStage::GetMetaClass())) && drawable != _defaultPostProcessingDrawable)
@@ -2295,7 +2287,7 @@ namespace RN
 		for(size_t pi = _internals->currentRenderPassIndex; pi < _internals->renderPasses.size(); pi += 1)
 		{
 			VulkanRenderPass &renderPass = _internals->renderPasses[pi];
-			if(renderPass.type != VulkanRenderPass::Type::Default && renderPass.type != VulkanRenderPass::Type::Convert)
+			if(!renderPass.UsesDrawItems())
 			{
 				continue;
 			}
@@ -2350,7 +2342,7 @@ namespace RN
 		for(const VulkanRenderPass &renderPass : _internals->renderPasses)
 		{
 			RN_PROFILE_SCOPE();
-			if(renderPass.type != VulkanRenderPass::Type::Default && renderPass.type != VulkanRenderPass::Type::Convert)
+			if(!renderPass.UsesDrawItems())
 			{
 				continue;
 			}
@@ -2768,7 +2760,7 @@ namespace RN
 			RN_PROFILE_SCOPE();
 			renderPass.renderTargetsUsedInShader.clear();
 
-			if(renderPass.type != VulkanRenderPass::Type::Default && renderPass.type != VulkanRenderPass::Type::Convert)
+			if(!renderPass.UsesDrawItems())
 			{
 				continue;
 			}

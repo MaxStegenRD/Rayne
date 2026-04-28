@@ -162,6 +162,8 @@ namespace RN
 			Convert
 		};
 
+		bool UsesDrawItems() const { return type == Type::Default || type == Type::Convert; }
+
 		Type type;
 		RenderPass *renderPass;
 		RenderPass *previousRenderPass;
@@ -187,7 +189,6 @@ namespace RN
 
 	struct MetalPreparedRenderPass
 	{
-		size_t resourceIndex = 0;
 		std::vector<MetalPreparedDrawItem> drawItems;
 		std::vector<uint32> instanceSteps; //Number of draw items that use the same pipeline state and can be rendered with the same draw call.
 	};
