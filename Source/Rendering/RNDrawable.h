@@ -72,14 +72,14 @@ namespace RN
 		RNAPI void Update(Mesh *tmesh, Material *tmaterial, Skeleton *tskeleton, const SceneNode *node);
 		RNAPI virtual void Update(const SceneNode *node);
 		RNAPI void MakeDirty();
+		const Matrix &GetModelMatrix() const { return _modelMatrix; }
+		const Matrix &GetInverseModelMatrix() const { return _inverseModelMatrix; }
+		uint16 GetRenderGroup() const { return _renderGroup; }
 
 		// Captured on the main thread before submit, so encoding does not have to read mutable Mesh/Material/Skeleton state.
 		Mesh::DrawSnapshot mesh;
 		Material::DrawSnapshot material;
 		Skeleton::DrawSnapshot skeleton;
-		Matrix modelMatrix;
-		Matrix inverseModelMatrix;
-		uint16 renderGroup;
 
 	private:
 		// Source objects are kept for snapshot refresh/version checks.
@@ -87,12 +87,17 @@ namespace RN
 		StrongRef<Material> _sourceMaterial;
 		StrongRef<Skeleton> _sourceSkeleton;
 
-		uint64 _meshPipelineVersion;
-		uint64 _materialDrawSnapshotVersion;
-		uint64 _materialSnapshotVersion;
-		uint64 _skeletonDrawSnapshotVersion;
-		const SceneNode *_transformNode;
-		uint64 _transformVersion;
+		// Captured node state, refreshed on the main thread from _transformNode/_transformVersion.
+		Matrix _modelMatrix;
+		Matrix _inverseModelMatrix;
+		uint16 _renderGroup = 0xffff;
+
+		uint64 _meshPipelineVersion = 0;
+		uint64 _materialDrawSnapshotVersion = 0;
+		uint64 _materialSnapshotVersion = 0;
+		uint64 _skeletonDrawSnapshotVersion = 0;
+		const SceneNode *_transformNode = nullptr;
+		uint64 _transformVersion = 0;
 	};
 } // namespace RN
 

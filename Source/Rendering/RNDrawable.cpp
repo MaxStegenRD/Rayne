@@ -11,19 +11,9 @@
 
 namespace RN
 {
-	Drawable::Drawable()
-	{
-		renderGroup = 0xffff;
-		_meshPipelineVersion = 0;
-		_materialDrawSnapshotVersion = 0;
-		_materialSnapshotVersion = 0;
-		_skeletonDrawSnapshotVersion = 0;
-		_transformNode = nullptr;
-		_transformVersion = 0;
-	}
+	Drawable::Drawable() = default;
 
-	Drawable::~Drawable()
-	{}
+	Drawable::~Drawable() = default;
 
 	bool Drawable::PipelineKey::operator==(const PipelineKey &other) const
 	{
@@ -145,31 +135,34 @@ namespace RN
 			_skeletonDrawSnapshotVersion = 0;
 		}
 
-		if(node)
-			Update(node);
+		Update(node);
 	}
 
 	void Drawable::Update(const SceneNode *node)
 	{
 		if(!node)
 		{
-			modelMatrix = Matrix();
-			inverseModelMatrix = Matrix();
-			_transformNode = nullptr;
-			_transformVersion = 0;
-		}
-		else
-		{
-			renderGroup = node->GetRenderGroup();
-
-			uint64 transformVersion = node->GetTransformVersion();
-			if(_transformNode != node || _transformVersion != transformVersion)
+			if(_transformNode)
 			{
-				modelMatrix = node->GetWorldTransform();
-				inverseModelMatrix = node->GetInverseWorldTransform();
-				_transformNode = node;
-				_transformVersion = transformVersion;
+				_modelMatrix = Matrix();
+				_inverseModelMatrix = Matrix();
+				_renderGroup = 0xffff;
+				_transformNode = nullptr;
+				_transformVersion = 0;
 			}
+
+			return;
+		}
+
+		_renderGroup = node->GetRenderGroup();
+
+		uint64 transformVersion = node->GetTransformVersion();
+		if(_transformNode != node || _transformVersion != transformVersion)
+		{
+			_modelMatrix = node->GetWorldTransform();
+			_inverseModelMatrix = node->GetInverseWorldTransform();
+			_transformNode = node;
+			_transformVersion = transformVersion;
 		}
 	}
 

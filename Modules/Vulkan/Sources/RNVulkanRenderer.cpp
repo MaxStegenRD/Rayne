@@ -1345,6 +1345,8 @@ namespace RN
 		uint8 *buffer = reinterpret_cast<uint8 *>(dynamicBufferReference->dynamicBuffer->GetBuffer()) + dynamicBufferReference->offset;
 
 		const Material::Properties &mergedMaterialProperties = drawable->_renderResources[_internals->currentDrawableResourceIndex].mergedMaterialSnapshot.GetProperties();
+		const Matrix &modelMatrix = drawable->GetModelMatrix();
+		const Matrix &inverseModelMatrix = drawable->GetInverseModelMatrix();
 
 		const RN::Array *uniformDescriptors = argumentBuffer->GetUniformDescriptors();
 		size_t count = uniformDescriptors->GetCount();
@@ -1362,19 +1364,19 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::ModelMatrix:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), drawable->modelMatrix.m, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), modelMatrix.m, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::InverseModelMatrix:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), drawable->inverseModelMatrix.m, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), inverseModelMatrix.m, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::NormalMatrix:
 				{
-					Matrix normalMatrix = drawable->inverseModelMatrix.GetTransposed();
+					Matrix normalMatrix = inverseModelMatrix.GetTransposed();
 					std::memcpy(buffer + descriptor->GetOffset(), &normalMatrix.m[0], 12);
 					std::memcpy(buffer + descriptor->GetOffset() + 16, &normalMatrix.m[4], 12);
 					std::memcpy(buffer + descriptor->GetOffset() + 32, &normalMatrix.m[8], 12);
@@ -1383,7 +1385,7 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::ModelViewMatrix:
 				{
-					Matrix result = renderPass.cameraInfo.viewMatrix * drawable->modelMatrix;
+					Matrix result = renderPass.cameraInfo.viewMatrix * modelMatrix;
 					std::memcpy(buffer + descriptor->GetOffset(), result.m, descriptor->GetSize());
 					break;
 				}
@@ -1395,7 +1397,7 @@ namespace RN
 						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
 						for(int i = 0; i < viewCount; i++)
 						{
-							Matrix result = renderPass.multiviewCameraInfo[i].viewMatrix * drawable->modelMatrix;
+							Matrix result = renderPass.multiviewCameraInfo[i].viewMatrix * modelMatrix;
 							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, result.m, 64);
 						}
 					}
@@ -1404,7 +1406,7 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::ModelViewProjectionMatrix:
 				{
-					Matrix result = renderPass.cameraInfo.projectionViewMatrix * drawable->modelMatrix;
+					Matrix result = renderPass.cameraInfo.projectionViewMatrix * modelMatrix;
 					std::memcpy(buffer + descriptor->GetOffset(), result.m, descriptor->GetSize());
 					break;
 				}
@@ -1416,7 +1418,7 @@ namespace RN
 						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
 						for(int i = 0; i < viewCount; i++)
 						{
-							Matrix result = renderPass.multiviewCameraInfo[i].projectionViewMatrix * drawable->modelMatrix;
+							Matrix result = renderPass.multiviewCameraInfo[i].projectionViewMatrix * modelMatrix;
 							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, result.m, 64);
 						}
 					}
@@ -1482,7 +1484,7 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::InverseModelViewMatrix:
 				{
-					Matrix result = renderPass.cameraInfo.inverseViewMatrix * drawable->inverseModelMatrix;
+					Matrix result = renderPass.cameraInfo.inverseViewMatrix * inverseModelMatrix;
 					std::memcpy(buffer + descriptor->GetOffset(), result.m, descriptor->GetSize());
 					break;
 				}
@@ -1494,7 +1496,7 @@ namespace RN
 						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
 						for(int i = 0; i < viewCount; i++)
 						{
-							Matrix result = renderPass.multiviewCameraInfo[i].inverseViewMatrix * drawable->inverseModelMatrix;
+							Matrix result = renderPass.multiviewCameraInfo[i].inverseViewMatrix * inverseModelMatrix;
 							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, result.m, 64);
 						}
 					}
@@ -1503,7 +1505,7 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::InverseModelViewProjectionMatrix:
 				{
-					Matrix result = renderPass.cameraInfo.inverseProjectionViewMatrix * drawable->inverseModelMatrix;
+					Matrix result = renderPass.cameraInfo.inverseProjectionViewMatrix * inverseModelMatrix;
 					std::memcpy(buffer + descriptor->GetOffset(), result.m, descriptor->GetSize());
 					break;
 				}
@@ -1515,7 +1517,7 @@ namespace RN
 						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
 						for(int i = 0; i < viewCount; i++)
 						{
-							Matrix result = renderPass.multiviewCameraInfo[i].inverseProjectionViewMatrix * drawable->inverseModelMatrix;
+							Matrix result = renderPass.multiviewCameraInfo[i].inverseProjectionViewMatrix * inverseModelMatrix;
 							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, result.m, 64);
 						}
 					}
@@ -2095,7 +2097,7 @@ namespace RN
 				_internals->currentDrawableResourceIndex += 1;
 				return;
 			}
-			if((drawable->renderGroup & renderSubPass.renderPassResources->GetDrawSnapshot().GetRenderGroupMask()) == 0)
+			if((drawable->GetRenderGroup() & renderSubPass.renderPassResources->GetDrawSnapshot().GetRenderGroupMask()) == 0)
 			{
 				_internals->currentDrawableResourceIndex += 1;
 				return;

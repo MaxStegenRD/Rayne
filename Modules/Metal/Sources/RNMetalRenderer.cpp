@@ -868,6 +868,8 @@ namespace RN
 		uint8 *buffer = reinterpret_cast<uint8 *>(gpuBuffer->GetBuffer()) + uniformBufferReference->offset;
 
 		const MetalRenderPass &renderPass = _internals->renderPasses[_internals->currentRenderPassIndex];
+		const Matrix &modelMatrix = drawable->GetModelMatrix();
+		const Matrix &inverseModelMatrix = drawable->GetInverseModelMatrix();
 
 		argument->GetUniformDescriptors()->Enumerate<Shader::UniformDescriptor>([&](Shader::UniformDescriptor *descriptor, size_t index, bool &stop) {
 			switch(descriptor->GetIdentifier())
@@ -881,13 +883,13 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::ModelMatrix:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), drawable->modelMatrix.m, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), modelMatrix.m, descriptor->GetSize());
 					break;
 				}
 					
 				case Shader::UniformDescriptor::Identifier::NormalMatrix:
 				{
-					Matrix normalMatrix = drawable->inverseModelMatrix.GetTransposed();
+					Matrix normalMatrix = inverseModelMatrix.GetTransposed();
 					std::memcpy(buffer + descriptor->GetOffset(), &normalMatrix.m[0], 12);
 					std::memcpy(buffer + descriptor->GetOffset() + 16, &normalMatrix.m[4], 12);
 					std::memcpy(buffer + descriptor->GetOffset() + 32, &normalMatrix.m[8], 12);
@@ -896,14 +898,14 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::ModelViewMatrix:
 				{
-					Matrix result = renderPass.viewMatrix * drawable->modelMatrix;
+					Matrix result = renderPass.viewMatrix * modelMatrix;
 					std::memcpy(buffer + descriptor->GetOffset(), result.m, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::ModelViewProjectionMatrix:
 				{
-					Matrix result = renderPass.projectionViewMatrix * drawable->modelMatrix;
+					Matrix result = renderPass.projectionViewMatrix * modelMatrix;
 					std::memcpy(buffer + descriptor->GetOffset(), result.m, descriptor->GetSize());
 					break;
 				}
@@ -928,20 +930,20 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::InverseModelMatrix:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), drawable->inverseModelMatrix.m, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), inverseModelMatrix.m, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::InverseModelViewMatrix:
 				{
-					Matrix result = renderPass.inverseViewMatrix * drawable->inverseModelMatrix;
+					Matrix result = renderPass.inverseViewMatrix * inverseModelMatrix;
 					std::memcpy(buffer + descriptor->GetOffset(), result.m, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::InverseModelViewProjectionMatrix:
 				{
-					Matrix result = renderPass.inverseProjectionViewMatrix * drawable->inverseModelMatrix;
+					Matrix result = renderPass.inverseProjectionViewMatrix * inverseModelMatrix;
 					std::memcpy(buffer + descriptor->GetOffset(), result.m, descriptor->GetSize());
 					break;
 				}
@@ -1397,7 +1399,7 @@ namespace RN
 			// For post processing/convert passes, render only the injected fullscreen quad.
 			if((pass.type == MetalRenderPass::Type::Convert || pass.renderPass->IsKindOfClass(PostProcessingStage::GetMetaClass())) && drawable != _defaultPostProcessingDrawable) continue;
 			// Filter by render group mask
-			if((drawable->renderGroup & pass.renderPassResources->GetDrawSnapshot().GetRenderGroupMask()) == 0) continue;
+			if((drawable->GetRenderGroup() & pass.renderPassResources->GetDrawSnapshot().GetRenderGroupMask()) == 0) continue;
 
 			// Ensure render resources align with this pass index
 			_internals->currentRenderPassIndex = pi;
