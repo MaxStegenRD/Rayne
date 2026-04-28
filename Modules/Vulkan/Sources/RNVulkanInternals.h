@@ -209,42 +209,6 @@ namespace RN
 		RenderPacket _renderPackets[RN_RENDERING_PACKET_SLOT_COUNT];
 	};
 
-	struct VulkanDirectionalLight
-	{
-		Vector3 direction;
-		float padding;
-		Vector4 color;
-	};
-
-	struct VulkanPointLight
-	{
-		Vector3 position;
-		float range;
-		Vector4 color;
-	};
-
-	struct VulkanSpotLight
-	{
-		Vector3 position;
-		float range;
-		Vector3 direction;
-		float angle;
-		Vector4 color;
-	};
-
-	struct VulkanRenderPassCameraInfo
-	{
-		Camera *camera;
-		Vector3 viewPosition;
-		Matrix viewMatrix;
-		Matrix inverseViewMatrix;
-		Matrix projectionMatrix;
-		Matrix inverseProjectionMatrix;
-		Matrix projectionViewMatrix;
-		Matrix inverseProjectionViewMatrix;
-		LightManager *lightManager;
-	};
-
 	struct VulkanRenderPass
 	{
 		enum Type
@@ -270,28 +234,12 @@ namespace RN
 		Shader::UsageHint shaderHint;
 		RenderPassResources *renderPassResources = nullptr;
 
-		Color cameraAmbientColor;
-		Vector4 cameraCustomData;
-		Color cameraFogColor0;
-		Color cameraFogColor1;
-		Vector2 cameraClipDistance;
-		Vector2 cameraFogDistance;
-		uint32 cameraTag;
-		Rect cameraViewport;
-		VulkanRenderPassCameraInfo cameraInfo;
-		std::vector<VulkanRenderPassCameraInfo> multiviewCameraInfo;
+		LightManager *lightManager = nullptr;
 		uint8 multiviewLayer;
 
 		std::vector<uint32> instanceSteps; //Number of draw items that use the same pipeline state and can be rendered with the same draw call.
-		std::vector<VulkanDirectionalLight> directionalLights;
-		std::vector<VulkanPointLight> pointLights;
-		std::vector<VulkanSpotLight> spotLights;
 
 		std::vector<VulkanTexture *> renderTargetsUsedInShader;
-
-		std::vector<Matrix> directionalShadowMatrices;
-		VulkanTexture *directionalShadowDepthTexture;
-		Vector2 directionalShadowInfo;
 
 	};
 

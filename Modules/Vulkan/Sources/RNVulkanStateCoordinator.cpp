@@ -546,7 +546,7 @@ namespace RN
 		return signature;
 	}
 
-	const VulkanPipelineState *VulkanStateCoordinator::GetRenderPipelineState(Shader *vertexShader, Shader *fragmentShader, const Mesh::DrawSnapshot &mesh, const Material::PipelineProperties &mergedMaterialProperties, const VulkanRenderPass *rootVulkanPass, uint32 subpassIndex, uint8 packetSlot)
+	const VulkanPipelineState *VulkanStateCoordinator::GetRenderPipelineState(Shader *vertexShader, Shader *fragmentShader, const Mesh::DrawSnapshot &mesh, const Material::PipelineProperties &mergedMaterialProperties, const VulkanRenderPass *rootVulkanPass, uint32 subpassIndex, uint8 packetSlot, uint8 multiviewCount)
 	{
 		const VulkanFramebuffer *framebuffer = rootVulkanPass->framebuffer;
 
@@ -555,7 +555,7 @@ namespace RN
 		pipelineDescriptor.depthStencilFormat = (framebuffer->_depthStencilTarget) ? framebuffer->_depthStencilTarget->vulkanTargetViewDescriptor.format : VK_FORMAT_UNDEFINED;
 		pipelineDescriptor.sampleCount = framebuffer->GetSampleCount();
 		//pipelineDescriptor.sampleQuality = 0;//(framebuffer->_colorTargets.size() > 0 && !framebuffer->GetSwapChain()) ? framebuffer->_colorTargets[0]->targetView texture->GetDescriptor().sampleQuality : 0;
-		pipelineDescriptor.renderPass = GetRenderPassState(rootVulkanPass, packetSlot)->renderPass;
+		pipelineDescriptor.renderPass = GetRenderPassState(rootVulkanPass, packetSlot, multiviewCount)->renderPass;
 		pipelineDescriptor.vertexShader = vertexShader;
 		pipelineDescriptor.fragmentShader = fragmentShader;
 		pipelineDescriptor.depthWriteEnabled = mergedMaterialProperties.depthWriteEnabled;
@@ -976,15 +976,13 @@ namespace RN
 		return state;
 	}
 
-	VulkanRenderPassState *VulkanStateCoordinator::GetRenderPassState(const VulkanRenderPass *rootVulkanPass, uint8 packetSlot)
+	VulkanRenderPassState *VulkanStateCoordinator::GetRenderPassState(const VulkanRenderPass *rootVulkanPass, uint8 packetSlot, uint8 multiviewCount)
 	{
 		const VulkanFramebuffer *framebuffer = rootVulkanPass->framebuffer;
 		const VulkanFramebuffer *resolveFramebuffer = rootVulkanPass->resolveFramebuffer;
 		const RenderPass::DrawSnapshot &rootDrawSnapshot = rootVulkanPass->renderPassResources->GetDrawSnapshot(packetSlot);
 		const RenderPass::SubpassSnapshot &rootSubpassSnapshot = rootDrawSnapshot.GetSubpass();
 		RenderPass::Flags flags = rootDrawSnapshot.GetFlags();
-		uint8 multiviewCount = rootVulkanPass->multiviewCameraInfo.size();
-
 		//TODO: Maybe handle swapchain case better...
 		RN_ASSERT(!resolveFramebuffer || framebuffer->_colorTargets.size() <= resolveFramebuffer->_colorTargets.size(), "Resolve framebuffer needs a target for each target in the framebuffer!");
 

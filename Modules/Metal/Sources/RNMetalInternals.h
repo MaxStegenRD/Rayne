@@ -160,29 +160,6 @@ namespace RN
 		RenderPacket _renderPackets[RN_RENDERING_PACKET_SLOT_COUNT];
 	};
 
-	struct MetalPointLight
-	{
-		Vector3 position;
-		float range;
-		Vector4 color;
-	};
-
-	struct MetalSpotLight
-	{
-		Vector3 position;
-		float range;
-		Vector3 direction;
-		float angle;
-		Vector4 color;
-	};
-
-	struct MetalDirectionalLight
-	{
-		Vector3 direction;
-		float padding;
-		Vector4 color;
-	};
-
 	struct MetalRenderPass
 	{
 		enum Type
@@ -205,36 +182,11 @@ namespace RN
 		RenderPassResources *renderPassResources = nullptr;
 		MetalFramebuffer *resolveFramebuffer;
 
-		Camera *camera;
-		Camera *lightingCamera;
-		Vector3 viewPosition;
-		Matrix viewMatrix;
-		Matrix inverseViewMatrix;
-		Matrix projectionMatrix;
-		Matrix inverseProjectionMatrix;
-		Matrix projectionViewMatrix;
-		Matrix inverseProjectionViewMatrix;
-		
-		Color cameraAmbientColor;
-		Vector4 cameraCustomData;
-		Color cameraFogColor0;
-		Color cameraFogColor1;
-		Vector2 cameraClipDistance;
-		Vector2 cameraFogDistance;
-		int32 cameraTag;
+		Camera *lightingCamera = nullptr;
 		
 		uint8 multiviewLayer;
-		Rect frameRect;
 
 		std::vector<uint32> instanceSteps; //Number of draw items that use the same pipeline state and can be rendered with the same draw call.
-
-		std::vector<MetalPointLight> pointLights;
-		std::vector<MetalSpotLight> spotLights;
-		std::vector<MetalDirectionalLight> directionalLights;
-
-		std::vector<Matrix> directionalShadowMatrices;
-		MetalTexture *directionalShadowDepthTexture;
-		Vector2 directionalShadowInfo;
 	};
 
 

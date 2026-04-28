@@ -178,7 +178,7 @@ namespace RN
 				_internals->commandEncoder = [_internals->commandBuffer renderCommandEncoderWithDescriptor:descriptor];
 				[descriptor release];
 				
-				Rect cameraRect = renderPass.frameRect;
+				Rect cameraRect = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex).GetCameraSnapshot().GetFrame();
 				if(cameraRect.width < 0.5f || cameraRect.height < 0.5f)
 				{
 					Vector2 framebufferSize = renderPass.framebuffer->GetSize();
@@ -344,7 +344,7 @@ namespace RN
 				id<MTLBlitCommandEncoder> commandEncoder = [[_internals->commandBuffer blitCommandEncoder] retain];
 				[descriptor release];
 				
-				Rect targetRect = renderPass.frameRect;
+				Rect targetRect = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex).GetCameraSnapshot().GetFrame();
 				[commandEncoder copyFromTexture:sourceMTLTexture sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(0, 0, 0) sourceSize:MTLSizeMake(sourceTextureSize.x, sourceTextureSize.y, sourceTextureSize.z) toTexture:destinationMTLTexture destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(targetRect.x, targetRect.y, 0)];
 				
 				[commandEncoder endEncoding];
@@ -434,30 +434,16 @@ namespace RN
 		renderPass.resolveFramebuffer = nullptr;
 		renderPass.previousStoredFramebuffer = nullptr;
 
-		renderPass.camera = camera;
 		renderPass.lightingCamera = _currentMultiviewLightingCamera ? _currentMultiviewLightingCamera : camera;
-		
-		renderPass.viewPosition = camera->GetWorldPosition();
-		renderPass.viewMatrix = camera->GetViewMatrix();
-		renderPass.inverseViewMatrix = camera->GetInverseViewMatrix();
 
-		renderPass.projectionMatrix = camera->GetProjectionMatrix();
-		renderPass.inverseProjectionMatrix = camera->GetInverseProjectionMatrix();
-
-		renderPass.projectionViewMatrix = renderPass.projectionMatrix * renderPass.viewMatrix;
-		renderPass.directionalShadowDepthTexture = nullptr;
-		
-		renderPass.cameraAmbientColor = camera->GetAmbientColor();
-		renderPass.cameraCustomData = camera->GetCustomData();
-		
-		renderPass.cameraClipDistance = Vector2(camera->GetClipNear(), camera->GetClipFar());
-		renderPass.cameraFogDistance = Vector2(camera->GetFogNear(), camera->GetFogFar());
-		renderPass.cameraFogColor0 = camera->GetFogColor0();
-		renderPass.cameraFogColor1 = camera->GetFogColor1();
-		renderPass.cameraTag = camera->GetTag();
+		Matrix viewMatrix = camera->GetViewMatrix();
+		Matrix inverseViewMatrix = camera->GetInverseViewMatrix();
+		Matrix projectionMatrix = camera->GetProjectionMatrix();
+		Matrix inverseProjectionMatrix = camera->GetInverseProjectionMatrix();
+		RenderFrame::CameraSnapshot cameraSnapshot(camera->GetWorldPosition(), viewMatrix, inverseViewMatrix, projectionMatrix, inverseProjectionMatrix, projectionMatrix * viewMatrix, inverseViewMatrix * inverseProjectionMatrix, camera->GetAmbientColor(), camera->GetCustomData(), camera->GetFogColor0(), camera->GetFogColor1(), Vector2(camera->GetClipNear(), camera->GetClipFar()), Vector2(camera->GetFogNear(), camera->GetFogFar()), camera->GetTag(), drawSnapshot.GetFrame());
+		_internals->renderFrame.GetPass(renderPass.renderFramePassIndex).SetCameraSnapshot(cameraSnapshot);
 
 		Framebuffer *framebuffer = drawSnapshot.GetFramebuffer();
-		renderPass.frameRect = drawSnapshot.GetFrame();
 		MetalSwapChain *newSwapChain = nullptr;
 		newSwapChain = framebuffer->Downcast<MetalFramebuffer>()->GetSwapChain();
 		renderPass.framebuffer = framebuffer->Downcast<MetalFramebuffer>();
@@ -575,39 +561,18 @@ namespace RN
 			metalRenderPass.shaderHint = drawSnapshot.GetShaderHint();
 		}
 		
-		metalRenderPass.viewPosition = previousRenderPass.viewPosition;
-		metalRenderPass.viewMatrix = previousRenderPass.viewMatrix;
-		metalRenderPass.inverseViewMatrix = previousRenderPass.inverseViewMatrix;
-		
-		metalRenderPass.projectionMatrix = previousRenderPass.projectionMatrix;
-		metalRenderPass.inverseProjectionMatrix = previousRenderPass.inverseProjectionMatrix;
-		
-		metalRenderPass.projectionViewMatrix = previousRenderPass.projectionViewMatrix;
-		metalRenderPass.directionalShadowDepthTexture = nullptr;
 		metalRenderPass.multiviewLayer = previousRenderPass.multiviewLayer;
-		metalRenderPass.camera = previousRenderPass.camera;
 		metalRenderPass.lightingCamera = previousRenderPass.lightingCamera;
-		
-		metalRenderPass.cameraAmbientColor = previousRenderPass.cameraAmbientColor;
-		metalRenderPass.cameraCustomData = previousRenderPass.cameraCustomData;
-		
-		metalRenderPass.cameraClipDistance = previousRenderPass.cameraClipDistance;
-		metalRenderPass.cameraFogDistance = previousRenderPass.cameraFogDistance;
-		metalRenderPass.cameraFogColor0 = previousRenderPass.cameraFogColor0;
-		metalRenderPass.cameraFogColor1 = previousRenderPass.cameraFogColor1;
-		metalRenderPass.cameraTag = previousRenderPass.cameraTag;
 		
 		Framebuffer *framebuffer = nullptr;
 		if(drawSnapshot.IsSubpass())
 		{
 			// Subpass inherits root framebuffer
 			framebuffer = previousRenderPass.framebuffer;
-			metalRenderPass.frameRect = previousRenderPass.frameRect; // inherit root frame rect through the chain
 		}
 		else
 		{
 			framebuffer = drawSnapshot.GetFramebuffer();
-			metalRenderPass.frameRect = drawSnapshot.GetFrame();
 		}
 		MetalSwapChain *newSwapChain = nullptr;
 		newSwapChain = framebuffer? framebuffer->Downcast<MetalFramebuffer>()->GetSwapChain() : nullptr;
@@ -633,6 +598,8 @@ namespace RN
 		if(metalRenderPass.type != MetalRenderPass::Type::ResolveMSAA)
 		{
 			metalRenderPass.renderFramePassIndex = _internals->renderFrame.AddPass(drawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(updatePacketSlot), renderPassResources->GetOverrideMaterialSnapshotVersion(updatePacketSlot));
+			RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(metalRenderPass.renderFramePassIndex);
+			framePass.SetCameraSnapshot(_internals->renderFrame.GetPass(previousRenderPass.renderFramePassIndex).GetCameraSnapshot());
 			_internals->currentRenderPassIndex = _internals->renderPasses.size();
 			_internals->renderPasses.push_back(metalRenderPass);
 			
@@ -877,6 +844,8 @@ namespace RN
 		uint8 *buffer = reinterpret_cast<uint8 *>(gpuBuffer->GetBuffer()) + uniformBufferReference->offset;
 
 		const MetalRenderPass &renderPass = _internals->renderPasses[_internals->currentRenderPassIndex];
+		const RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex);
+		const RenderFrame::CameraSnapshot &cameraSnapshot = framePass.GetCameraSnapshot();
 		const Matrix &modelMatrix = drawPacket.GetModelMatrix();
 		const Matrix &inverseModelMatrix = drawPacket.GetInverseModelMatrix();
 
@@ -907,33 +876,33 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::ModelViewMatrix:
 				{
-					Matrix result = renderPass.viewMatrix * modelMatrix;
+					Matrix result = cameraSnapshot.GetViewMatrix() * modelMatrix;
 					std::memcpy(buffer + descriptor->GetOffset(), result.m, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::ModelViewProjectionMatrix:
 				{
-					Matrix result = renderPass.projectionViewMatrix * modelMatrix;
+					Matrix result = cameraSnapshot.GetProjectionViewMatrix() * modelMatrix;
 					std::memcpy(buffer + descriptor->GetOffset(), result.m, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::ViewMatrix:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), renderPass.viewMatrix.m, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), cameraSnapshot.GetViewMatrix().m, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::ViewProjectionMatrix:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), renderPass.projectionViewMatrix.m, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), cameraSnapshot.GetProjectionViewMatrix().m, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::ProjectionMatrix:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), renderPass.projectionMatrix.m, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), cameraSnapshot.GetProjectionMatrix().m, descriptor->GetSize());
 					break;
 				}
 
@@ -945,33 +914,33 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::InverseModelViewMatrix:
 				{
-					Matrix result = renderPass.inverseViewMatrix * inverseModelMatrix;
+					Matrix result = cameraSnapshot.GetInverseViewMatrix() * inverseModelMatrix;
 					std::memcpy(buffer + descriptor->GetOffset(), result.m, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::InverseModelViewProjectionMatrix:
 				{
-					Matrix result = renderPass.inverseProjectionViewMatrix * inverseModelMatrix;
+					Matrix result = cameraSnapshot.GetInverseProjectionViewMatrix() * inverseModelMatrix;
 					std::memcpy(buffer + descriptor->GetOffset(), result.m, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::InverseViewMatrix:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), renderPass.inverseViewMatrix.m, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), cameraSnapshot.GetInverseViewMatrix().m, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::InverseViewProjectionMatrix:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), renderPass.inverseProjectionViewMatrix.m, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), cameraSnapshot.GetInverseProjectionViewMatrix().m, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::InverseProjectionMatrix:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), renderPass.inverseProjectionMatrix.m, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), cameraSnapshot.GetInverseProjectionMatrix().m, descriptor->GetSize());
 					break;
 				}
 
@@ -1044,71 +1013,71 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::CameraPosition:
 				{
-					Vector4 cameraPosition = Vector4(renderPass.viewPosition, 0.0f);
+					Vector4 cameraPosition = Vector4(cameraSnapshot.GetViewPosition(), 0.0f);
 					std::memcpy(buffer + descriptor->GetOffset(), &cameraPosition.x, descriptor->GetSize());
 					break;
 				}
 					
 				case Shader::UniformDescriptor::Identifier::CameraClipDistance:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.cameraClipDistance.x, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot.GetClipDistance().x, descriptor->GetSize());
 					break;
 				}
 					
 				case Shader::UniformDescriptor::Identifier::CameraFogDistance:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.cameraFogDistance.x, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot.GetFogDistance().x, descriptor->GetSize());
 					break;
 				}
 					
 				case Shader::UniformDescriptor::Identifier::CameraTag:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.cameraTag, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot.GetTag(), descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::CameraViewport:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.frameRect.x, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot.GetFrame().x, descriptor->GetSize());
 					break;
 				}
 					
 				case Shader::UniformDescriptor::Identifier::CameraAmbientColor:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.cameraAmbientColor.r, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot.GetAmbientColor().r, descriptor->GetSize());
 					break;
 				}
 				case Shader::UniformDescriptor::Identifier::CameraCustomData:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.cameraCustomData.x, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot.GetCustomData().x, descriptor->GetSize());
 					break;
 				}
 					
 				case Shader::UniformDescriptor::Identifier::CameraFogColor0:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.cameraFogColor0.r, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot.GetFogColor0().r, descriptor->GetSize());
 					break;
 				}
 					
 				case Shader::UniformDescriptor::Identifier::CameraFogColor1:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.cameraFogColor1.r, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot.GetFogColor1().r, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::DirectionalLightsCount:
 				{
-					uint32 lightCount = std::min(renderPass.directionalLights.size(), descriptor->GetElementCount());
+					uint32 lightCount = std::min(framePass.GetDirectionalLights().size(), descriptor->GetElementCount());
 					std::memcpy(buffer + descriptor->GetOffset(), &lightCount, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::DirectionalLights:
 				{
-					size_t lightCount = std::min(renderPass.directionalLights.size(), descriptor->GetElementCount());
+					size_t lightCount = std::min(framePass.GetDirectionalLights().size(), descriptor->GetElementCount());
 					if(lightCount > 0)
 					{
-						std::memcpy(buffer + descriptor->GetOffset(), &renderPass.directionalLights[0], (16 + 16) * lightCount);
+						std::memcpy(buffer + descriptor->GetOffset(), &framePass.GetDirectionalLights()[0], (16 + 16) * lightCount);
 					}
 					break;
 				}
@@ -1116,33 +1085,33 @@ namespace RN
 				case Shader::UniformDescriptor::Identifier::DirectionalShadowMatricesCount:
 				{
 					//TODO: Limit matrixCount to descriptor->GetElementCount() of Shader::UniformDescriptor::Identifier::DirectionalShadowMatrices
-					uint32 matrixCount = renderPass.directionalShadowMatrices.size();
+					uint32 matrixCount = framePass.GetDirectionalShadowMatrices().size();
 					std::memcpy(buffer + descriptor->GetOffset(), &matrixCount, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::DirectionalShadowMatrices:
 				{
-					size_t matrixCount = std::min(renderPass.directionalShadowMatrices.size(), descriptor->GetElementCount());
+					size_t matrixCount = std::min(framePass.GetDirectionalShadowMatrices().size(), descriptor->GetElementCount());
 					if(matrixCount > 0)
 					{
-						std::memcpy(buffer + descriptor->GetOffset(), &renderPass.directionalShadowMatrices[0].m[0], 64 * matrixCount);
+						std::memcpy(buffer + descriptor->GetOffset(), &framePass.GetDirectionalShadowMatrices()[0].m[0], 64 * matrixCount);
 					}
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::DirectionalShadowInfo:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.directionalShadowInfo.x, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), &framePass.GetDirectionalShadowInfo().x, descriptor->GetSize());
 					break;
 				}
 					
 				case Shader::UniformDescriptor::Identifier::PointLights:
 				{
-					size_t lightCount = std::min(renderPass.pointLights.size(), descriptor->GetElementCount());
+					size_t lightCount = std::min(framePass.GetPointLights().size(), descriptor->GetElementCount());
 					if(lightCount > 0)
 					{
-						std::memcpy(buffer + descriptor->GetOffset(), &renderPass.pointLights[0], (12 + 4 + 16) * lightCount);
+						std::memcpy(buffer + descriptor->GetOffset(), &framePass.GetPointLights()[0], (12 + 4 + 16) * lightCount);
 					}
 					if(lightCount < descriptor->GetElementCount()) //TODO: Think about how max number of lights is filled up...
 					{
@@ -1153,10 +1122,10 @@ namespace RN
 				
 				case Shader::UniformDescriptor::Identifier::SpotLights:
 				{
-					size_t lightCount = std::min(renderPass.spotLights.size(), descriptor->GetElementCount());
+					size_t lightCount = std::min(framePass.GetSpotLights().size(), descriptor->GetElementCount());
 					if(lightCount > 0)
 					{
-						std::memcpy(buffer + descriptor->GetOffset(), &renderPass.spotLights[0], (12 + 4 + 12 + 4 + 16) * lightCount);
+						std::memcpy(buffer + descriptor->GetOffset(), &framePass.GetSpotLights()[0], (12 + 4 + 12 + 4 + 16) * lightCount);
 					}
 					if(lightCount < descriptor->GetElementCount()) //TODO: Think about how max number of lights is filled up...
 					{
@@ -1353,10 +1322,11 @@ namespace RN
 			MetalRenderPass &renderPass = _internals->renderPasses[pi];
 			// Only apply to real draw passes
 			if(renderPass.type != MetalRenderPass::Type::Default && renderPass.type != MetalRenderPass::Type::Convert) continue;
+			RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex);
 
 			if(light->GetType() == Light::Type::DirectionalLight)
 			{
-				renderPass.directionalLights.push_back(MetalDirectionalLight{light->GetForward(), 0.0f, light->GetFinalColor()});
+				framePass.AddDirectionalLight(light->GetForward(), light->GetFinalColor());
 
 				// Attach shadow texture/matrices to all non-shadow-camera passes
 				if(light->HasShadows())
@@ -1373,19 +1343,19 @@ namespace RN
 
 					if(!isShadowCamera)
 					{
-						renderPass.directionalShadowDepthTexture = light->GetShadowDepthTexture()->Downcast<MetalTexture>();
-						renderPass.directionalShadowMatrices = light->GetShadowMatrices();
-						renderPass.directionalShadowInfo = Vector2(1.0f / light->GetShadowParameters().resolution);
+						framePass.SetDirectionalShadowDepthTexture(light->GetShadowDepthTexture());
+						framePass.SetDirectionalShadowMatrices(light->GetShadowMatrices());
+						framePass.SetDirectionalShadowInfo(Vector2(1.0f / light->GetShadowParameters().resolution));
 					}
 				}
 			}
 			else if(light->GetType() == Light::Type::PointLight)
 			{
-				renderPass.pointLights.push_back(MetalPointLight{light->GetWorldPosition(), light->GetRange(), light->GetFinalColor()});
+				framePass.AddPointLight(light->GetWorldPosition(), light->GetRange(), light->GetFinalColor());
 			}
 			else if(light->GetType() == Light::Type::SpotLight)
 			{
-				renderPass.spotLights.push_back(MetalSpotLight{light->GetWorldPosition(), light->GetRange(), light->GetForward(), light->GetAngleCos(), light->GetFinalColor()});
+				framePass.AddSpotLight(light->GetWorldPosition(), light->GetRange(), light->GetForward(), light->GetAngleCos(), light->GetFinalColor());
 			}
 		}
 
@@ -1544,6 +1514,7 @@ namespace RN
 		}
 		
 		MetalRenderPass &renderPass = _internals->renderPasses[_internals->currentRenderPassIndex];
+		const RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex);
 		const Material::PipelineProperties &mergedMaterialProperties = renderResources.pipelineKey.materialProperties;
 		[encoder setDepthStencilState:_internals->stateCoordinator.GetDepthStencilStateForMaterial(mergedMaterialProperties, _internals->currentRenderState)];
 		[encoder setCullMode:static_cast<MTLCullMode>(mergedMaterialProperties.cullMode)];
@@ -1617,9 +1588,11 @@ namespace RN
 		metalFragmentShader->GetSignature()->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop){
 			if(argument->GetMaterialTextureIndex() == Shader::ArgumentTexture::IndexDirectionalShadowTexture)
 			{
-				if(renderPass.directionalShadowDepthTexture)
+				Texture *directionalShadowDepthTexture = framePass.GetDirectionalShadowDepthTexture();
+				if(directionalShadowDepthTexture)
 				{
-					[encoder setFragmentTexture:(id<MTLTexture>)renderPass.directionalShadowDepthTexture->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
+					MetalTexture *metalTexture = directionalShadowDepthTexture->Downcast<MetalTexture>();
+					[encoder setFragmentTexture:(id<MTLTexture>)metalTexture->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
 				}
 				else
 				{

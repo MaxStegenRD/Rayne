@@ -172,9 +172,9 @@ namespace RN
 		~VulkanStateCoordinator();
 
 		const VulkanRootSignature *GetRootSignature(const VulkanPipelineStateDescriptor &pipelineDescriptor);
-		const VulkanPipelineState *GetRenderPipelineState(Shader *vertexShader, Shader *fragmentShader, const Mesh::DrawSnapshot &mesh, const Material::PipelineProperties &mergedMaterialProperties, const VulkanRenderPass *rootVulkanPass, uint32 subpassIndex, uint8 packetSlot);
+		const VulkanPipelineState *GetRenderPipelineState(Shader *vertexShader, Shader *fragmentShader, const Mesh::DrawSnapshot &mesh, const Material::PipelineProperties &mergedMaterialProperties, const VulkanRenderPass *rootVulkanPass, uint32 subpassIndex, uint8 packetSlot, uint8 multiviewCount);
 		VulkanUniformState *GetUniformStateForPipelineState(const VulkanPipelineState *pipelineState);
-		VulkanRenderPassState *GetRenderPassState(const VulkanRenderPass *rootVulkanPass, uint8 packetSlot);
+		VulkanRenderPassState *GetRenderPassState(const VulkanRenderPass *rootVulkanPass, uint8 packetSlot, uint8 multiviewCount);
 
 		void LoadPipelineCache(uint64 buildNumber, VulkanDevice *device, VkAllocationCallbacks *allocatorCallbacks);
 		void SavePipelineCache(uint64 buildNumber, VulkanDevice *device);

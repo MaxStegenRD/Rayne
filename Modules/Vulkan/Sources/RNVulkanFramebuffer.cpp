@@ -308,7 +308,8 @@ namespace RN
 	{
 		VulkanFramebuffer *resolveFramebuffer = renderPass->resolveFramebuffer;
 		RenderPass::Flags flags = renderPass->renderPassResources->GetDrawSnapshot(packetSlot).GetFlags();
-		uint8 multiviewCount = renderPass->multiviewCameraInfo.size();
+		const RenderFrame::Pass &framePass = _renderer->_internals->renderFrame.GetPass(renderPass->renderFramePassIndex);
+		uint8 multiviewCount = framePass.GetMultiviewCameraCount();
 		uint8 multiviewLayer = renderPass->multiviewLayer;
 
 		//Check if there is already a cached variant for this framebuffer

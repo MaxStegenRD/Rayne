@@ -96,7 +96,7 @@ namespace RN
 		void PrepareRenderFrame();
 		void UpdateDescriptorSets(uint8 renderPacketSlot);
 		void RenderDrawable(VkCommandBuffer commandBuffer, VulkanDrawable *drawable, const Drawable::DrawPacket &drawPacket, uint32 instanceCount, uint8 renderPacketSlot);
-		void FillUniformBuffer(Shader::ArgumentBuffer *argumentBuffer, VulkanDynamicBufferReference *dynamicBufferReference, const Drawable::DrawPacket &drawPacket, const Material::Properties &mergedMaterialProperties);
+		void FillUniformBuffer(Shader::ArgumentBuffer *argumentBuffer, VulkanDynamicBufferReference *dynamicBufferReference, const Drawable::DrawPacket &drawPacket, const Material::Properties &mergedMaterialProperties, size_t renderFramePassIndex);
 		void ResetDrawBindStateCache();
 
 		void RenderAPIRenderPass(VulkanCommandBuffer *commandBuffer, const VulkanRenderPass &renderPass, uint8 renderPacketSlot);

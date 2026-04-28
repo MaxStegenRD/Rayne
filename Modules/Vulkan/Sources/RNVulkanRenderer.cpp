@@ -133,7 +133,9 @@ namespace RN
 
 	VkRenderPass VulkanRenderer::GetVulkanRenderPass(const VulkanRenderPass *renderPass, uint8 renderPacketSlot)
 	{
-		return _internals->stateCoordinator.GetRenderPassState(renderPass, renderPacketSlot)->renderPass;
+		const RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderPass->renderFramePassIndex);
+		uint8 multiviewCount = framePass.GetMultiviewCameraCount();
+		return _internals->stateCoordinator.GetRenderPassState(renderPass, renderPacketSlot, multiviewCount)->renderPass;
 	}
 
 	void VulkanRenderer::CreateVulkanCommandBuffers(size_t count, std::vector<VkCommandBuffer> &buffers)
@@ -448,10 +450,12 @@ namespace RN
 				}
 
 				//Set shadow depth texture layout for reading
-				if(renderPass.directionalShadowDepthTexture)
+				Texture *directionalShadowDepthTexture = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex).GetDirectionalShadowDepthTexture();
+				VulkanTexture *directionalShadowVulkanTexture = directionalShadowDepthTexture ? directionalShadowDepthTexture->Downcast<VulkanTexture>() : nullptr;
+				if(directionalShadowVulkanTexture)
 				{
-					VulkanTexture::SetImageLayout(commandBuffer, renderPass.directionalShadowDepthTexture->GetVulkanImage(), 0, renderPass.directionalShadowDepthTexture->GetDescriptor().mipMaps, 0, renderPass.directionalShadowDepthTexture->GetDescriptor().depth, VK_IMAGE_ASPECT_DEPTH_BIT, renderPass.directionalShadowDepthTexture->GetCurrentLayout(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VulkanTexture::BarrierIntent::ShaderSource);
-					renderPass.directionalShadowDepthTexture->SetCurrentLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+					VulkanTexture::SetImageLayout(commandBuffer, directionalShadowVulkanTexture->GetVulkanImage(), 0, directionalShadowVulkanTexture->GetDescriptor().mipMaps, 0, directionalShadowVulkanTexture->GetDescriptor().depth, VK_IMAGE_ASPECT_DEPTH_BIT, directionalShadowVulkanTexture->GetCurrentLayout(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VulkanTexture::BarrierIntent::ShaderSource);
+					directionalShadowVulkanTexture->SetCurrentLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
 				}
 
 				//Set textures layout for reading for render targets that are used in this frame
@@ -626,10 +630,12 @@ namespace RN
 				}
 
 				//Set shadow depth texture layout for writing
-				if(renderPass.directionalShadowDepthTexture)
+				Texture *writeDirectionalShadowDepthTexture = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex).GetDirectionalShadowDepthTexture();
+				VulkanTexture *writeDirectionalShadowVulkanTexture = writeDirectionalShadowDepthTexture ? writeDirectionalShadowDepthTexture->Downcast<VulkanTexture>() : nullptr;
+				if(writeDirectionalShadowVulkanTexture)
 				{
-					VulkanTexture::SetImageLayout(commandBuffer, renderPass.directionalShadowDepthTexture->GetVulkanImage(), 0, renderPass.directionalShadowDepthTexture->GetDescriptor().mipMaps, 0, renderPass.directionalShadowDepthTexture->GetDescriptor().depth, VK_IMAGE_ASPECT_DEPTH_BIT, renderPass.directionalShadowDepthTexture->GetCurrentLayout(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VulkanTexture::BarrierIntent::RenderTarget);
-					renderPass.directionalShadowDepthTexture->SetCurrentLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+					VulkanTexture::SetImageLayout(commandBuffer, writeDirectionalShadowVulkanTexture->GetVulkanImage(), 0, writeDirectionalShadowVulkanTexture->GetDescriptor().mipMaps, 0, writeDirectionalShadowVulkanTexture->GetDescriptor().depth, VK_IMAGE_ASPECT_DEPTH_BIT, writeDirectionalShadowVulkanTexture->GetCurrentLayout(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VulkanTexture::BarrierIntent::RenderTarget);
+					writeDirectionalShadowVulkanTexture->SetCurrentLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 				}
 
 				//Set textures layout for writing for render targets that are used in this frame
@@ -769,7 +775,12 @@ namespace RN
 		ResetDrawBindStateCache();
 
 		//Setup viewport and scissor rect
-		Rect cameraRect = renderpass.cameraViewport;
+		Rect cameraRect = _internals->renderFrame.GetPass(renderpass.renderFramePassIndex).GetCameraSnapshot().GetFrame();
+		if(renderpass.resolveFramebuffer)
+		{
+			if(cameraRect.width > renderpass.resolveFramebuffer->_size.x) cameraRect.width = renderpass.resolveFramebuffer->_size.x;
+			if(cameraRect.height > renderpass.resolveFramebuffer->_size.y) cameraRect.height = renderpass.resolveFramebuffer->_size.y;
+		}
 
 		// Update dynamic viewport state
 		VkViewport viewport = {};
@@ -798,6 +809,7 @@ namespace RN
 		RN_PROFILE_SCOPE();
 		VulkanRenderPass renderPass;
 		renderPass.previousStoredFramebuffer = nullptr;
+		std::vector<Camera *> multiviewSnapshotCameras;
 
 		const Array *multiviewCameras = camera->GetMultiviewCameras();
 		if(multiviewCameras && multiviewCameras->GetCount() > 0)
@@ -814,21 +826,7 @@ namespace RN
 							return;
 						}
 
-						VulkanRenderPassCameraInfo cameraInfo;
-
-						cameraInfo.viewPosition = multiviewCamera->GetWorldPosition();
-						cameraInfo.viewMatrix = multiviewCamera->GetViewMatrix();
-						cameraInfo.inverseViewMatrix = multiviewCamera->GetInverseViewMatrix();
-
-						Matrix clipSpaceCorrectionMatrix;
-						clipSpaceCorrectionMatrix.m[5] = -1.0f;
-						cameraInfo.projectionMatrix = clipSpaceCorrectionMatrix * multiviewCamera->GetProjectionMatrix();
-						cameraInfo.inverseProjectionMatrix = multiviewCamera->GetInverseProjectionMatrix();
-						cameraInfo.projectionViewMatrix = cameraInfo.projectionMatrix * cameraInfo.viewMatrix;
-
-						cameraInfo.lightManager = multiviewCamera->GetLightManager();
-
-						renderPass.multiviewCameraInfo.push_back(cameraInfo);
+						multiviewSnapshotCameras.push_back(multiviewCamera);
 					});
 				}
 				else
@@ -904,29 +902,24 @@ namespace RN
 		renderPass.renderPassResources = renderPassResources;
 		renderPass.renderFramePassIndex = _internals->renderFrame.AddPass(rootDrawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(updatePacketSlot), renderPassResources->GetOverrideMaterialSnapshotVersion(updatePacketSlot));
 
-		renderPass.cameraInfo.camera = camera;
-
-		renderPass.cameraInfo.viewPosition = camera->GetWorldPosition();
-		renderPass.cameraInfo.viewMatrix = camera->GetViewMatrix();
-		renderPass.cameraInfo.inverseViewMatrix = camera->GetInverseViewMatrix();
-
 		Matrix clipSpaceCorrectionMatrix;
 		clipSpaceCorrectionMatrix.m[5] = -1.0f;
-		renderPass.cameraInfo.projectionMatrix = clipSpaceCorrectionMatrix * camera->GetProjectionMatrix();
-		renderPass.cameraInfo.inverseProjectionMatrix = camera->GetInverseProjectionMatrix();
-
-		renderPass.cameraInfo.projectionViewMatrix = renderPass.cameraInfo.projectionMatrix * renderPass.cameraInfo.viewMatrix;
-		renderPass.cameraInfo.lightManager = camera->GetLightManager();
-		renderPass.directionalShadowDepthTexture = nullptr;
-
-		renderPass.cameraAmbientColor = camera->GetAmbientColor();
-		renderPass.cameraCustomData = camera->GetCustomData();
-
-		renderPass.cameraClipDistance = Vector2(camera->GetClipNear(), camera->GetClipFar());
-		renderPass.cameraFogDistance = Vector2(camera->GetFogNear(), camera->GetFogFar());
-		renderPass.cameraFogColor0 = camera->GetFogColor0();
-		renderPass.cameraFogColor1 = camera->GetFogColor1();
-		renderPass.cameraTag = camera->GetTag();
+		Matrix viewMatrix = camera->GetViewMatrix();
+		Matrix inverseViewMatrix = camera->GetInverseViewMatrix();
+		Matrix projectionMatrix = clipSpaceCorrectionMatrix * camera->GetProjectionMatrix();
+		Matrix inverseProjectionMatrix = camera->GetInverseProjectionMatrix();
+		RenderFrame::CameraSnapshot cameraSnapshot(camera->GetWorldPosition(), viewMatrix, inverseViewMatrix, projectionMatrix, inverseProjectionMatrix, projectionMatrix * viewMatrix, inverseViewMatrix * inverseProjectionMatrix, camera->GetAmbientColor(), camera->GetCustomData(), camera->GetFogColor0(), camera->GetFogColor1(), Vector2(camera->GetClipNear(), camera->GetClipFar()), Vector2(camera->GetFogNear(), camera->GetFogFar()), camera->GetTag(), rootDrawSnapshot.GetFrame());
+		RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex);
+		framePass.SetCameraSnapshot(cameraSnapshot);
+		for(Camera *multiviewCamera : multiviewSnapshotCameras)
+		{
+			Matrix multiviewViewMatrix = multiviewCamera->GetViewMatrix();
+			Matrix multiviewInverseViewMatrix = multiviewCamera->GetInverseViewMatrix();
+			Matrix multiviewProjectionMatrix = clipSpaceCorrectionMatrix * multiviewCamera->GetProjectionMatrix();
+			Matrix multiviewInverseProjectionMatrix = multiviewCamera->GetInverseProjectionMatrix();
+			framePass.AddMultiviewCameraSnapshot(RenderFrame::CameraSnapshot(multiviewCamera->GetWorldPosition(), multiviewViewMatrix, multiviewInverseViewMatrix, multiviewProjectionMatrix, multiviewInverseProjectionMatrix, multiviewProjectionMatrix * multiviewViewMatrix, multiviewInverseViewMatrix * multiviewInverseProjectionMatrix, multiviewCamera->GetAmbientColor(), multiviewCamera->GetCustomData(), multiviewCamera->GetFogColor0(), multiviewCamera->GetFogColor1(), Vector2(multiviewCamera->GetClipNear(), multiviewCamera->GetClipFar()), Vector2(multiviewCamera->GetFogNear(), multiviewCamera->GetFogFar()), multiviewCamera->GetTag(), rootDrawSnapshot.GetFrame()));
+		}
+		renderPass.lightManager = camera->GetLightManager();
 
 		Framebuffer *framebuffer = rootDrawSnapshot.GetFramebuffer();
 		if(!framebuffer) return;
@@ -966,20 +959,7 @@ namespace RN
 
 		for(size_t i = previousRenderPassIndex; i < _internals->renderPasses.size(); i++)
 		{
-			//Calculate viewport size
 			VulkanRenderPass &renderpass = _internals->renderPasses[i];
-			renderpass.cameraViewport = _internals->renderFrame.GetPass(renderpass.renderFramePassIndex).GetDrawSnapshot().GetFrame();
-			if(renderpass.resolveFramebuffer)
-			{
-				if(renderpass.cameraViewport.width > renderpass.resolveFramebuffer->_size.x) renderpass.cameraViewport.width = renderpass.resolveFramebuffer->_size.x;
-				if(renderpass.cameraViewport.height > renderpass.resolveFramebuffer->_size.y) renderpass.cameraViewport.height = renderpass.resolveFramebuffer->_size.y;
-			}
-
-			for(VulkanRenderPass &subpass : renderpass.subpasses)
-			{
-				subpass.cameraViewport = renderpass.cameraViewport;
-			}
-
 			renderpass.subpassSignature = 0;
 			if(renderpass.subpasses.size() > 0)
 			{
@@ -1052,16 +1032,14 @@ namespace RN
 
 		if(vulkanRenderPass.type != VulkanRenderPass::Type::ResolveMSAA && !isPostProcessingStage && vulkanRenderPass.type != VulkanRenderPass::Type::Convert)
 		{
-			vulkanRenderPass.cameraInfo = previousRenderPass.cameraInfo;
-			vulkanRenderPass.multiviewCameraInfo = previousRenderPass.multiviewCameraInfo;
+			vulkanRenderPass.lightManager = previousRenderPass.lightManager;
 			vulkanRenderPass.multiviewLayer = previousRenderPass.multiviewLayer;
 		}
 		else
 		{
+			vulkanRenderPass.lightManager = nullptr;
 			vulkanRenderPass.multiviewLayer = 0;
 		}
-		
-		vulkanRenderPass.directionalShadowDepthTexture = nullptr;
 
 		vulkanRenderPass.renderPass = renderPass;
 		vulkanRenderPass.previousRenderPass = previousRenderPass.renderPass;
@@ -1108,6 +1086,13 @@ namespace RN
 		if(vulkanRenderPass.type != VulkanRenderPass::Type::ResolveMSAA)
 		{
 			vulkanRenderPass.renderFramePassIndex = _internals->renderFrame.AddPass(drawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(updatePacketSlot), renderPassResources->GetOverrideMaterialSnapshotVersion(updatePacketSlot));
+			RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(vulkanRenderPass.renderFramePassIndex);
+			const RenderFrame::Pass &previousFramePass = _internals->renderFrame.GetPass(previousRenderPass.renderFramePassIndex);
+			framePass.SetCameraSnapshot(previousFramePass.GetCameraSnapshot());
+			for(const RenderFrame::CameraSnapshot &multiviewCameraSnapshot : previousFramePass.GetMultiviewCameraSnapshots())
+			{
+				framePass.AddMultiviewCameraSnapshot(multiviewCameraSnapshot);
+			}
 			if(drawSnapshot.IsSubpass())
 			{
 				previousRenderPass.subpasses.push_back(vulkanRenderPass);
@@ -1341,11 +1326,13 @@ namespace RN
 		return new VulkanFramebuffer(size, this);
 	}
 
-	void VulkanRenderer::FillUniformBuffer(Shader::ArgumentBuffer *argumentBuffer, VulkanDynamicBufferReference *dynamicBufferReference, const Drawable::DrawPacket &drawPacket, const Material::Properties &mergedMaterialProperties)
+	void VulkanRenderer::FillUniformBuffer(Shader::ArgumentBuffer *argumentBuffer, VulkanDynamicBufferReference *dynamicBufferReference, const Drawable::DrawPacket &drawPacket, const Material::Properties &mergedMaterialProperties, size_t renderFramePassIndex)
 	{
 		uint8 *buffer = reinterpret_cast<uint8 *>(dynamicBufferReference->dynamicBuffer->GetBuffer()) + dynamicBufferReference->offset;
 
-		const VulkanRenderPass &renderPass = _internals->renderPasses[_internals->currentRenderPassIndex];
+		const RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderFramePassIndex);
+		const RenderFrame::CameraSnapshot &cameraSnapshot = framePass.GetCameraSnapshot();
+		const std::vector<RenderFrame::CameraSnapshot> &multiviewCameraSnapshots = framePass.GetMultiviewCameraSnapshots();
 		const Matrix &modelMatrix = drawPacket.GetModelMatrix();
 		const Matrix &inverseModelMatrix = drawPacket.GetInverseModelMatrix();
 
@@ -1386,19 +1373,19 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::ModelViewMatrix:
 				{
-					Matrix result = renderPass.cameraInfo.viewMatrix * modelMatrix;
+					Matrix result = cameraSnapshot.GetViewMatrix() * modelMatrix;
 					std::memcpy(buffer + descriptor->GetOffset(), result.m, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::ModelViewMatrixMultiview:
 				{
-					if(renderPass.multiviewCameraInfo.size() > 0)
+					if(multiviewCameraSnapshots.size() > 0)
 					{
-						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
+						size_t viewCount = std::min(multiviewCameraSnapshots.size(), descriptor->GetElementCount());
 						for(int i = 0; i < viewCount; i++)
 						{
-							Matrix result = renderPass.multiviewCameraInfo[i].viewMatrix * modelMatrix;
+							Matrix result = multiviewCameraSnapshots[i].GetViewMatrix() * modelMatrix;
 							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, result.m, 64);
 						}
 					}
@@ -1407,19 +1394,19 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::ModelViewProjectionMatrix:
 				{
-					Matrix result = renderPass.cameraInfo.projectionViewMatrix * modelMatrix;
+					Matrix result = cameraSnapshot.GetProjectionViewMatrix() * modelMatrix;
 					std::memcpy(buffer + descriptor->GetOffset(), result.m, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::ModelViewProjectionMatrixMultiview:
 				{
-					if(renderPass.multiviewCameraInfo.size() > 0)
+					if(multiviewCameraSnapshots.size() > 0)
 					{
-						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
+						size_t viewCount = std::min(multiviewCameraSnapshots.size(), descriptor->GetElementCount());
 						for(int i = 0; i < viewCount; i++)
 						{
-							Matrix result = renderPass.multiviewCameraInfo[i].projectionViewMatrix * modelMatrix;
+							Matrix result = multiviewCameraSnapshots[i].GetProjectionViewMatrix() * modelMatrix;
 							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, result.m, 64);
 						}
 					}
@@ -1428,18 +1415,18 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::ViewMatrix:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), renderPass.cameraInfo.viewMatrix.m, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), cameraSnapshot.GetViewMatrix().m, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::ViewMatrixMultiview:
 				{
-					if(renderPass.multiviewCameraInfo.size() > 0)
+					if(multiviewCameraSnapshots.size() > 0)
 					{
-						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
+						size_t viewCount = std::min(multiviewCameraSnapshots.size(), descriptor->GetElementCount());
 						for(int i = 0; i < viewCount; i++)
 						{
-							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, renderPass.multiviewCameraInfo[i].viewMatrix.m, 64);
+							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, multiviewCameraSnapshots[i].GetViewMatrix().m, 64);
 						}
 					}
 					break;
@@ -1447,18 +1434,18 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::ViewProjectionMatrix:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), renderPass.cameraInfo.projectionViewMatrix.m, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), cameraSnapshot.GetProjectionViewMatrix().m, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::ViewProjectionMatrixMultiview:
 				{
-					if(renderPass.multiviewCameraInfo.size() > 0)
+					if(multiviewCameraSnapshots.size() > 0)
 					{
-						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
+						size_t viewCount = std::min(multiviewCameraSnapshots.size(), descriptor->GetElementCount());
 						for(int i = 0; i < viewCount; i++)
 						{
-							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, renderPass.multiviewCameraInfo[i].projectionViewMatrix.m, 64);
+							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, multiviewCameraSnapshots[i].GetProjectionViewMatrix().m, 64);
 						}
 					}
 					break;
@@ -1466,18 +1453,18 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::ProjectionMatrix:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), renderPass.cameraInfo.projectionMatrix.m, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), cameraSnapshot.GetProjectionMatrix().m, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::ProjectionMatrixMultiview:
 				{
-					if(renderPass.multiviewCameraInfo.size() > 0)
+					if(multiviewCameraSnapshots.size() > 0)
 					{
-						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
+						size_t viewCount = std::min(multiviewCameraSnapshots.size(), descriptor->GetElementCount());
 						for(int i = 0; i < viewCount; i++)
 						{
-							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, renderPass.multiviewCameraInfo[i].projectionMatrix.m, 64);
+							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, multiviewCameraSnapshots[i].GetProjectionMatrix().m, 64);
 						}
 					}
 					break;
@@ -1485,19 +1472,19 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::InverseModelViewMatrix:
 				{
-					Matrix result = renderPass.cameraInfo.inverseViewMatrix * inverseModelMatrix;
+					Matrix result = cameraSnapshot.GetInverseViewMatrix() * inverseModelMatrix;
 					std::memcpy(buffer + descriptor->GetOffset(), result.m, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::InverseModelViewMatrixMultiview:
 				{
-					if(renderPass.multiviewCameraInfo.size() > 0)
+					if(multiviewCameraSnapshots.size() > 0)
 					{
-						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
+						size_t viewCount = std::min(multiviewCameraSnapshots.size(), descriptor->GetElementCount());
 						for(int i = 0; i < viewCount; i++)
 						{
-							Matrix result = renderPass.multiviewCameraInfo[i].inverseViewMatrix * inverseModelMatrix;
+							Matrix result = multiviewCameraSnapshots[i].GetInverseViewMatrix() * inverseModelMatrix;
 							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, result.m, 64);
 						}
 					}
@@ -1506,19 +1493,19 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::InverseModelViewProjectionMatrix:
 				{
-					Matrix result = renderPass.cameraInfo.inverseProjectionViewMatrix * inverseModelMatrix;
+					Matrix result = cameraSnapshot.GetInverseProjectionViewMatrix() * inverseModelMatrix;
 					std::memcpy(buffer + descriptor->GetOffset(), result.m, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::InverseModelViewProjectionMatrixMultiview:
 				{
-					if(renderPass.multiviewCameraInfo.size() > 0)
+					if(multiviewCameraSnapshots.size() > 0)
 					{
-						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
+						size_t viewCount = std::min(multiviewCameraSnapshots.size(), descriptor->GetElementCount());
 						for(int i = 0; i < viewCount; i++)
 						{
-							Matrix result = renderPass.multiviewCameraInfo[i].inverseProjectionViewMatrix * inverseModelMatrix;
+							Matrix result = multiviewCameraSnapshots[i].GetInverseProjectionViewMatrix() * inverseModelMatrix;
 							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, result.m, 64);
 						}
 					}
@@ -1527,18 +1514,18 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::InverseViewMatrix:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), renderPass.cameraInfo.inverseViewMatrix.m, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), cameraSnapshot.GetInverseViewMatrix().m, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::InverseViewMatrixMultiview:
 				{
-					if(renderPass.multiviewCameraInfo.size() > 0)
+					if(multiviewCameraSnapshots.size() > 0)
 					{
-						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
+						size_t viewCount = std::min(multiviewCameraSnapshots.size(), descriptor->GetElementCount());
 						for(int i = 0; i < viewCount; i++)
 						{
-							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, renderPass.multiviewCameraInfo[i].inverseViewMatrix.m, 64);
+							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, multiviewCameraSnapshots[i].GetInverseViewMatrix().m, 64);
 						}
 					}
 					break;
@@ -1546,18 +1533,18 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::InverseViewProjectionMatrix:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), renderPass.cameraInfo.inverseProjectionViewMatrix.m, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), cameraSnapshot.GetInverseProjectionViewMatrix().m, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::InverseViewProjectionMatrixMultiview:
 				{
-					if(renderPass.multiviewCameraInfo.size() > 0)
+					if(multiviewCameraSnapshots.size() > 0)
 					{
-						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
+						size_t viewCount = std::min(multiviewCameraSnapshots.size(), descriptor->GetElementCount());
 						for(int i = 0; i < viewCount; i++)
 						{
-							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, renderPass.multiviewCameraInfo[i].inverseProjectionViewMatrix.m, 64);
+							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, multiviewCameraSnapshots[i].GetInverseProjectionViewMatrix().m, 64);
 						}
 					}
 					break;
@@ -1565,18 +1552,18 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::InverseProjectionMatrix:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), renderPass.cameraInfo.inverseProjectionMatrix.m, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), cameraSnapshot.GetInverseProjectionMatrix().m, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::InverseProjectionMatrixMultiview:
 				{
-					if(renderPass.multiviewCameraInfo.size() > 0)
+					if(multiviewCameraSnapshots.size() > 0)
 					{
-						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
+						size_t viewCount = std::min(multiviewCameraSnapshots.size(), descriptor->GetElementCount());
 						for(int i = 0; i < viewCount; i++)
 						{
-							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, renderPass.multiviewCameraInfo[i].inverseProjectionMatrix.m, 64);
+							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, multiviewCameraSnapshots[i].GetInverseProjectionMatrix().m, 64);
 						}
 					}
 					break;
@@ -1584,19 +1571,20 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::CameraPosition:
 				{
-					Vector4 cameraPosition(renderPass.cameraInfo.viewPosition, 0.0f);
+					Vector4 cameraPosition(cameraSnapshot.GetViewPosition(), 0.0f);
 					std::memcpy(buffer + descriptor->GetOffset(), &cameraPosition.x, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::CameraPositionMultiview:
 				{
-					if(renderPass.multiviewCameraInfo.size() > 0)
+					if(multiviewCameraSnapshots.size() > 0)
 					{
-						size_t viewCount = std::min(renderPass.multiviewCameraInfo.size(), descriptor->GetElementCount());
+						size_t viewCount = std::min(multiviewCameraSnapshots.size(), descriptor->GetElementCount());
 						for(int i = 0; i < viewCount; i++)
 						{
-							std::memcpy(buffer + descriptor->GetOffset() + 16 * i, &renderPass.multiviewCameraInfo[i].viewPosition.x, 16);
+							Vector4 cameraPosition(multiviewCameraSnapshots[i].GetViewPosition(), 0.0f);
+							std::memcpy(buffer + descriptor->GetOffset() + 16 * i, &cameraPosition.x, 16);
 						}
 					}
 					break;
@@ -1670,64 +1658,64 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::CameraClipDistance:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.cameraClipDistance.x, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot.GetClipDistance().x, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::CameraFogDistance:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.cameraFogDistance.x, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot.GetFogDistance().x, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::CameraTag:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.cameraTag, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot.GetTag(), descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::CameraViewport:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.cameraViewport.x, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot.GetFrame().x, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::CameraAmbientColor:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.cameraAmbientColor.r, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot.GetAmbientColor().r, descriptor->GetSize());
 					break;
 				}
 				case Shader::UniformDescriptor::Identifier::CameraCustomData:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.cameraCustomData.x, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot.GetCustomData().x, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::CameraFogColor0:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.cameraFogColor0.r, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot.GetFogColor0().r, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::CameraFogColor1:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.cameraFogColor1.r, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot.GetFogColor1().r, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::DirectionalLightsCount:
 				{
-					uint32 lightCount = std::min(renderPass.directionalLights.size(), descriptor->GetElementCount());
+					uint32 lightCount = std::min(framePass.GetDirectionalLights().size(), descriptor->GetElementCount());
 					std::memcpy(buffer + descriptor->GetOffset(), &lightCount, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::DirectionalLights:
 				{
-					size_t lightCount = std::min(renderPass.directionalLights.size(), descriptor->GetElementCount());
+					size_t lightCount = std::min(framePass.GetDirectionalLights().size(), descriptor->GetElementCount());
 					if(lightCount > 0)
 					{
-						std::memcpy(buffer + descriptor->GetOffset(), &renderPass.directionalLights[0], (16 + 16) * lightCount);
+						std::memcpy(buffer + descriptor->GetOffset(), &framePass.GetDirectionalLights()[0], (16 + 16) * lightCount);
 					}
 					break;
 				}
@@ -1735,33 +1723,33 @@ namespace RN
 				case Shader::UniformDescriptor::Identifier::DirectionalShadowMatricesCount:
 				{
 					//TODO: Limit matrixCount to descriptor->GetElementCount() of Shader::UniformDescriptor::Identifier::DirectionalShadowMatrices
-					uint32 matrixCount = renderPass.directionalShadowMatrices.size();
+					uint32 matrixCount = framePass.GetDirectionalShadowMatrices().size();
 					std::memcpy(buffer + descriptor->GetOffset(), &matrixCount, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::DirectionalShadowMatrices:
 				{
-					size_t matrixCount = std::min(renderPass.directionalShadowMatrices.size(), descriptor->GetElementCount());
+					size_t matrixCount = std::min(framePass.GetDirectionalShadowMatrices().size(), descriptor->GetElementCount());
 					if(matrixCount > 0)
 					{
-						std::memcpy(buffer + descriptor->GetOffset(), &renderPass.directionalShadowMatrices[0].m[0], 64 * matrixCount);
+						std::memcpy(buffer + descriptor->GetOffset(), &framePass.GetDirectionalShadowMatrices()[0].m[0], 64 * matrixCount);
 					}
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::DirectionalShadowInfo:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), &renderPass.directionalShadowInfo.x, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), &framePass.GetDirectionalShadowInfo().x, descriptor->GetSize());
 					break;
 				}
 
 				case Shader::UniformDescriptor::Identifier::PointLights:
 				{
-					size_t lightCount = std::min(renderPass.pointLights.size(), descriptor->GetElementCount());
+					size_t lightCount = std::min(framePass.GetPointLights().size(), descriptor->GetElementCount());
 					if(lightCount > 0)
 					{
-						std::memcpy(buffer + descriptor->GetOffset(), &renderPass.pointLights[0], (12 + 4 + 16) * lightCount);
+						std::memcpy(buffer + descriptor->GetOffset(), &framePass.GetPointLights()[0], (12 + 4 + 16) * lightCount);
 					}
 					if(lightCount < descriptor->GetElementCount())
 					{
@@ -1772,10 +1760,10 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::SpotLights:
 				{
-					size_t lightCount = std::min(renderPass.spotLights.size(), descriptor->GetElementCount());
+					size_t lightCount = std::min(framePass.GetSpotLights().size(), descriptor->GetElementCount());
 					if(lightCount > 0)
 					{
-						std::memcpy(buffer + descriptor->GetOffset(), &renderPass.spotLights[0], (12 + 4 + 12 + 4 + 16) * lightCount);
+						std::memcpy(buffer + descriptor->GetOffset(), &framePass.GetSpotLights()[0], (12 + 4 + 12 + 4 + 16) * lightCount);
 					}
 					if(lightCount < descriptor->GetElementCount())
 					{
@@ -1974,21 +1962,33 @@ namespace RN
 		size_t startIndex = _internals->currentRenderPassIndex;
 		size_t originalIndex = _internals->currentRenderPassIndex;
 
-		for(size_t pi = startIndex; pi < _internals->renderPasses.size(); pi++)
+		std::vector<Matrix> directionalShadowMatrices;
+		Vector2 directionalShadowInfo;
+		if(light->GetType() == Light::Type::DirectionalLight && light->HasShadows())
 		{
-			VulkanRenderPass &renderPass = _internals->renderPasses[pi];
-			// Only real draw passes
-			if(renderPass.type != VulkanRenderPass::Type::Default && renderPass.type != VulkanRenderPass::Type::Convert) continue;
+			light->GetShadowDepthCameras()->Enumerate<Camera>([&](Camera *camera, size_t index, bool &stop) {
+				Matrix clipSpaceCorrectionMatrix;
+				clipSpaceCorrectionMatrix.m[5] = 1.0f;
+				Matrix shadowMatrix = clipSpaceCorrectionMatrix * camera->GetProjectionMatrix();
+				shadowMatrix = shadowMatrix * camera->GetWorldTransform().GetInverse();
+				directionalShadowMatrices.push_back(shadowMatrix);
+			});
+			directionalShadowInfo = Vector2(1.0f / light->GetShadowParameters().resolution);
+		}
+
+		auto submitLightToRenderPass = [&](VulkanRenderPass &renderPass, VulkanFramebuffer *framebuffer) {
+			if(renderPass.type != VulkanRenderPass::Type::Default && renderPass.type != VulkanRenderPass::Type::Convert) return;
+			RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex);
 
 			if(light->GetType() == Light::Type::DirectionalLight)
 			{
-				renderPass.directionalLights.push_back(VulkanDirectionalLight{ light->GetForward(), 0.0f, light->GetFinalColor() });
+				framePass.AddDirectionalLight(light->GetForward(), light->GetFinalColor());
 
 				if(light->HasShadows())
 				{
 					bool isShadowCamera = false;
 					light->GetShadowDepthCameras()->Enumerate<Camera>([&](Camera *camera, size_t index, bool &stop) {
-						if (renderPass.framebuffer == camera->GetRenderPass()->GetFramebuffer())
+						if(framebuffer == camera->GetRenderPass()->GetFramebuffer())
 						{
 							stop = true;
 							isShadowCamera = true;
@@ -1997,28 +1997,30 @@ namespace RN
 
 					if(!isShadowCamera)
 					{
-						renderPass.directionalShadowDepthTexture = light->GetShadowDepthTexture()->Downcast<VulkanTexture>();
+						framePass.SetDirectionalShadowDepthTexture(light->GetShadowDepthTexture());
 					}
 
-					renderPass.directionalShadowMatrices.clear();
-					light->GetShadowDepthCameras()->Enumerate<Camera>([&](Camera *camera, size_t index, bool &stop) {
-						Matrix clipSpaceCorrectionMatrix;
-						clipSpaceCorrectionMatrix.m[5] = 1.0f;
-						Matrix shadowMatrix = clipSpaceCorrectionMatrix * camera->GetProjectionMatrix();
-						shadowMatrix = shadowMatrix * camera->GetWorldTransform().GetInverse();
-						renderPass.directionalShadowMatrices.push_back(shadowMatrix);
-					});
-
-					renderPass.directionalShadowInfo = Vector2(1.0f / light->GetShadowParameters().resolution);
+					framePass.SetDirectionalShadowMatrices(directionalShadowMatrices);
+					framePass.SetDirectionalShadowInfo(directionalShadowInfo);
 				}
 			}
 			else if(light->GetType() == Light::Type::PointLight)
 			{
-				renderPass.pointLights.push_back(VulkanPointLight{ light->GetWorldPosition(), light->GetRange(), light->GetFinalColor() });
+				framePass.AddPointLight(light->GetWorldPosition(), light->GetRange(), light->GetFinalColor());
 			}
 			else if(light->GetType() == Light::Type::SpotLight)
 			{
-				renderPass.spotLights.push_back(VulkanSpotLight{ light->GetWorldPosition(), light->GetRange(), light->GetForward(), light->GetAngleCos(), light->GetFinalColor() });
+				framePass.AddSpotLight(light->GetWorldPosition(), light->GetRange(), light->GetForward(), light->GetAngleCos(), light->GetFinalColor());
+			}
+		};
+
+		for(size_t pi = startIndex; pi < _internals->renderPasses.size(); pi++)
+		{
+			VulkanRenderPass &renderPass = _internals->renderPasses[pi];
+			submitLightToRenderPass(renderPass, renderPass.framebuffer);
+			for(VulkanRenderPass &subpass : renderPass.subpasses)
+			{
+				submitLightToRenderPass(subpass, renderPass.framebuffer);
 			}
 		}
 
@@ -2079,7 +2081,7 @@ namespace RN
 		const Material::DrawSnapshot *overrideMaterialSnapshot = renderPassResources->GetOverrideMaterialSnapshot(updatePacketSlot);
 		Drawable::MergedMaterialSnapshot mergedMaterialSnapshot;
 		mergedMaterialSnapshot.Update(materialSnapshot, material->GetDrawSnapshotVersion(), warmupRenderPass.shaderHint, overrideMaterialSnapshot, renderPassResources->GetOverrideMaterialSnapshotVersion(updatePacketSlot));
-		_internals->stateCoordinator.GetRenderPipelineState(mergedMaterialSnapshot.GetVertexShader(), mergedMaterialSnapshot.GetFragmentShader(), meshSnapshot, mergedMaterialSnapshot.GetPipelineProperties(), &warmupRenderPass, 0, updatePacketSlot);
+		_internals->stateCoordinator.GetRenderPipelineState(mergedMaterialSnapshot.GetVertexShader(), mergedMaterialSnapshot.GetFragmentShader(), meshSnapshot, mergedMaterialSnapshot.GetPipelineProperties(), &warmupRenderPass, 0, updatePacketSlot, static_cast<uint8>(multiviewCameraCount));
 	}
 
 	void VulkanRenderer::PrepareRenderFrame()
@@ -2128,13 +2130,12 @@ namespace RN
 				pipelineKey.materialProperties = renderResources.mergedMaterialSnapshot.GetPipelineProperties();
 				pipelineKey.renderPass = renderSubPass.renderPass;
 				pipelineKey.renderPassSignature = renderPass.subpassSignature;
-				pipelineKey.renderViewCount = static_cast<uint8>(renderPass.multiviewCameraInfo.size());
+				pipelineKey.renderViewCount = framePass.GetMultiviewCameraCount();
 				pipelineKey.subpassIndex = subpassIndex;
 
 				if(!renderResources.pipelineState || renderResources.pipelineKey != pipelineKey)
 				{
-					//TODO: Fix the camera situation...
-					const VulkanPipelineState *pipelineState = _internals->stateCoordinator.GetRenderPipelineState(pipelineKey.vertexShader, pipelineKey.fragmentShader, drawPacket.GetMesh(), pipelineKey.materialProperties, &renderPass, subpassIndex, updatePacketSlot);
+					const VulkanPipelineState *pipelineState = _internals->stateCoordinator.GetRenderPipelineState(pipelineKey.vertexShader, pipelineKey.fragmentShader, drawPacket.GetMesh(), pipelineKey.materialProperties, &renderPass, subpassIndex, updatePacketSlot, pipelineKey.renderViewCount);
 					VulkanUniformState *uniformState = _internals->stateCoordinator.GetUniformStateForPipelineState(pipelineState);
 
 					RN_ASSERT(pipelineState && uniformState, "Failed to create pipeline or uniform state for drawable!");
@@ -2326,7 +2327,7 @@ namespace RN
 							totalConstantBufferCount += uniformState->vertexConstantBuffers.size();
 							totalConstantBufferCount += uniformState->fragmentConstantBuffers.size();
 
-							if(renderPass.cameraInfo.lightManager) totalConstantBufferCount += 4;
+							if(renderPass.lightManager) totalConstantBufferCount += 4;
 		
 							totalTextureCount += pipelineState->rootSignature->textureCount;
 							totalSubpassInputCount += pipelineState->rootSignature->subpassInputCount;
@@ -2354,7 +2355,7 @@ namespace RN
 						totalConstantBufferCount += uniformState->vertexConstantBuffers.size();
 						totalConstantBufferCount += uniformState->fragmentConstantBuffers.size();
 
-						if(renderPass.cameraInfo.lightManager) totalConstantBufferCount += 4;
+						if(renderPass.lightManager) totalConstantBufferCount += 4;
 
 						totalTextureCount += pipelineState->rootSignature->textureCount;
 					}
@@ -2466,7 +2467,7 @@ namespace RN
 							VulkanUniformState *instanceUniformState = instanceRenderResources.uniformState;
 							VulkanDynamicBufferReference *instanceAttributesBuffer = instanceUniformState->instanceAttributesBuffer;
 							_dynamicBufferPool->UpdateDynamicBufferReference(instanceAttributesBuffer, instance == 0);
-							FillUniformBuffer(argument, instanceAttributesBuffer, instanceDrawItem.GetDrawPacket(), instanceRenderResources.mergedMaterialSnapshot.GetProperties());
+							FillUniformBuffer(argument, instanceAttributesBuffer, instanceDrawItem.GetDrawPacket(), instanceRenderResources.mergedMaterialSnapshot.GetProperties(), renderPass.renderFramePassIndex);
 						}
 					}
 
@@ -2485,7 +2486,7 @@ namespace RN
 							const VulkanDrawable::RenderResources &instanceRenderResources = instanceDrawable->GetRenderResources(drawableResourceIndex, renderPacketSlot);
 							VulkanUniformState *instanceUniformState = instanceRenderResources.uniformState;
 							_dynamicBufferPool->UpdateDynamicBufferReference(instanceUniformState->vertexConstantBuffers[bufferIndex], instance == 0);
-							FillUniformBuffer(argument, instanceUniformState->vertexConstantBuffers[bufferIndex], instanceDrawItem.GetDrawPacket(), instanceRenderResources.mergedMaterialSnapshot.GetProperties());
+							FillUniformBuffer(argument, instanceUniformState->vertexConstantBuffers[bufferIndex], instanceDrawItem.GetDrawPacket(), instanceRenderResources.mergedMaterialSnapshot.GetProperties(), renderPass.renderFramePassIndex);
 						}
 
 						VulkanDynamicBufferReference *constantBuffer = uniformState->vertexConstantBuffers[bufferIndex];
@@ -2525,7 +2526,7 @@ namespace RN
 							_dynamicBufferPool->UpdateDynamicBufferReference(
 									instanceUniformState->fragmentConstantBuffers[bufferIndex],
 									instance == 0);
-							FillUniformBuffer(argument, instanceUniformState->fragmentConstantBuffers[bufferIndex], instanceDrawItem.GetDrawPacket(), instanceRenderResources.mergedMaterialSnapshot.GetProperties());
+							FillUniformBuffer(argument, instanceUniformState->fragmentConstantBuffers[bufferIndex], instanceDrawItem.GetDrawPacket(), instanceRenderResources.mergedMaterialSnapshot.GetProperties(), renderPass.renderFramePassIndex);
 						}
 
 						VulkanDynamicBufferReference *constantBuffer = uniformState->fragmentConstantBuffers[bufferIndex];
@@ -2550,7 +2551,7 @@ namespace RN
 					}
 
 					// Bind LightManager buffers by semantic for forward rendering
-					if(renderPass.cameraInfo.lightManager)
+					if(renderPass.lightManager)
 					{
 						const Shader::Signature *signature = pipelineState->descriptor.fragmentShader ? pipelineState->descriptor.fragmentShader->GetSignature() : nullptr;
 						if(signature)
@@ -2568,7 +2569,7 @@ namespace RN
 								{
 									case Shader::ArgumentBuffer::Semantic::LightClusterPointLights:
 									{
-										GPUBuffer *pointlightBuffer = renderPass.cameraInfo.lightManager->GetPointLightBuffer();
+										GPUBuffer *pointlightBuffer = renderPass.lightManager->GetPointLightBuffer();
 										if(pointlightBuffer)
 										{
 											bufferInfo.buffer = pointlightBuffer->Downcast<VulkanDynamicGPUBuffer>()->GetVulkanBuffer();
@@ -2583,7 +2584,7 @@ namespace RN
 									}
 									case Shader::ArgumentBuffer::Semantic::LightClusterSpotLights:
 									{
-										GPUBuffer *spotlightBuffer = renderPass.cameraInfo.lightManager->GetSpotLightBuffer();
+										GPUBuffer *spotlightBuffer = renderPass.lightManager->GetSpotLightBuffer();
 										if(spotlightBuffer)
 										{
 											bufferInfo.buffer = spotlightBuffer->Downcast<VulkanDynamicGPUBuffer>()->GetVulkanBuffer();
@@ -2598,7 +2599,7 @@ namespace RN
 									}
 									case Shader::ArgumentBuffer::Semantic::LightClusterRecords:
 									{
-										GPUBuffer *clusterRecordsBuffer = renderPass.cameraInfo.lightManager->GetClusterRecordsBuffer();
+										GPUBuffer *clusterRecordsBuffer = renderPass.lightManager->GetClusterRecordsBuffer();
 										if(clusterRecordsBuffer)
 										{
 											bufferInfo.buffer = clusterRecordsBuffer->Downcast<VulkanDynamicGPUBuffer>()->GetVulkanBuffer();
@@ -2613,7 +2614,7 @@ namespace RN
 									}
 									case Shader::ArgumentBuffer::Semantic::LightClusterIndices:
 									{
-										GPUBuffer *clusterIndexBuffer = renderPass.cameraInfo.lightManager->GetClusterIndexBuffer();
+										GPUBuffer *clusterIndexBuffer = renderPass.lightManager->GetClusterIndexBuffer();
 										if(clusterIndexBuffer)
 										{
 											bufferInfo.buffer = clusterIndexBuffer->Downcast<VulkanDynamicGPUBuffer>()->GetVulkanBuffer();
@@ -2693,9 +2694,10 @@ namespace RN
 						signature->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop) {
 
 							VkImageView imageView = VK_NULL_HANDLE;
-							if(argument->GetMaterialTextureIndex() == Shader::ArgumentTexture::IndexDirectionalShadowTexture && rootRenderPass.directionalShadowDepthTexture)
+							Texture *directionalShadowDepthTexture = _internals->renderFrame.GetPass(rootRenderPass.renderFramePassIndex).GetDirectionalShadowDepthTexture();
+							if(argument->GetMaterialTextureIndex() == Shader::ArgumentTexture::IndexDirectionalShadowTexture && directionalShadowDepthTexture)
 							{
-								const VulkanTexture *materialTexture = rootRenderPass.directionalShadowDepthTexture;
+								const VulkanTexture *materialTexture = directionalShadowDepthTexture->Downcast<VulkanTexture>();
 								imageView = materialTexture->_imageView;
 							}
 							else if(argument->GetMaterialTextureIndex() == Shader::ArgumentTexture::IndexFramebufferTexture)
