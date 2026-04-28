@@ -15,6 +15,7 @@ namespace RN
 		for(uint32 i = 0; i < kBufferCount; ++i)
 		{
 			_buffers[i] = [device newBufferWithLength:length options:options];
+			_activeBuffers[i] = new MetalGPUBuffer([_buffers[i] retain]);
 		}
 
 		_buffer = _buffers[_activeIndex];
@@ -24,6 +25,7 @@ namespace RN
 	{
 		for(uint32 i = 0; i < kBufferCount; ++i)
 		{
+			SafeRelease(_activeBuffers[i]);
 			[_buffers[i] release];
 		}
 		_buffer = nullptr;
@@ -58,6 +60,9 @@ namespace RN
 		// Advance write index for the next frame
 		_writeIndex = (_writeIndex + 1) % kBufferCount;
 	}
+
+	GPUBuffer *MetalDynamicGPUBuffer::GetActiveBuffer() const
+	{
+		return _activeBuffers[_activeIndex];
+	}
 }
-
-

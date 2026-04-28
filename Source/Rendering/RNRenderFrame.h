@@ -13,6 +13,7 @@
 #include "RNRenderPass.h"
 #include "../Scene/RNCamera.h"
 #include "../Scene/RNLight.h"
+#include "../Scene/RNLightManager.h"
 
 namespace RN
 {
@@ -223,6 +224,8 @@ namespace RN
 			const std::vector<DirectionalLight> &GetDirectionalLights() const { return _directionalLights; }
 			const std::vector<PointLight> &GetPointLights() const { return _pointLights; }
 			const std::vector<SpotLight> &GetSpotLights() const { return _spotLights; }
+			void SetLightClusterSnapshot(const LightManager::DrawSnapshot &snapshot) { _lightClusterSnapshot = snapshot; }
+			const LightManager::DrawSnapshot &GetLightClusterSnapshot() const { return _lightClusterSnapshot; }
 
 			void SetDirectionalShadowDepthTexture(Texture *texture) { _directionalShadowDepthTexture = texture; }
 			Texture *GetDirectionalShadowDepthTexture() const { return _directionalShadowDepthTexture; }
@@ -249,6 +252,7 @@ namespace RN
 			std::vector<DirectionalLight> _directionalLights;
 			std::vector<PointLight> _pointLights;
 			std::vector<SpotLight> _spotLights;
+			LightManager::DrawSnapshot _lightClusterSnapshot;
 			std::vector<Matrix> _directionalShadowMatrices;
 			Texture *_directionalShadowDepthTexture = nullptr;
 			Vector2 _directionalShadowInfo;

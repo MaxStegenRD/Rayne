@@ -75,6 +75,7 @@ namespace RN
 		MTLAPI id GetCommandQueue() const;
 
 	protected:
+		void SubmitCamera(Camera *camera, Camera *lightClusterCamera, Function &&function);
 		void SubmitRenderPass(RenderPass *renderPass, MetalRenderPass &previousRenderPass);
 		void PrepareRenderFrame();
 		void RenderDrawable(const MetalPreparedDrawItem &drawItem, uint32 instanceCount);
@@ -99,7 +100,6 @@ namespace RN
 		
 		uint8 _currentMultiviewLayer;
 		RenderPass *_currentMultiviewFallbackRenderPass;
-		Camera *_currentMultiviewLightingCamera;
 
 		RNDeclareMetaAPI(MetalRenderer, MTLAPI)
 	};

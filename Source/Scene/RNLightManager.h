@@ -19,6 +19,30 @@ namespace RN
 	class LightManager : public Object
 	{
 	public:
+		class DrawSnapshot
+		{
+		public:
+			DrawSnapshot() = default;
+			DrawSnapshot(GPUBuffer *pointLightBuffer, GPUBuffer *spotLightBuffer, GPUBuffer *clusterRecordsBuffer, GPUBuffer *clusterIndexBuffer) :
+				_pointLightBuffer(pointLightBuffer ? pointLightBuffer->GetActiveBuffer() : nullptr),
+				_spotLightBuffer(spotLightBuffer ? spotLightBuffer->GetActiveBuffer() : nullptr),
+				_clusterRecordsBuffer(clusterRecordsBuffer ? clusterRecordsBuffer->GetActiveBuffer() : nullptr),
+				_clusterIndexBuffer(clusterIndexBuffer ? clusterIndexBuffer->GetActiveBuffer() : nullptr)
+			{}
+
+			bool IsValid() const { return _pointLightBuffer.Get() || _spotLightBuffer.Get() || _clusterRecordsBuffer.Get() || _clusterIndexBuffer.Get(); }
+			GPUBuffer *GetPointLightBuffer() const { return _pointLightBuffer.Get(); }
+			GPUBuffer *GetSpotLightBuffer() const { return _spotLightBuffer.Get(); }
+			GPUBuffer *GetClusterRecordsBuffer() const { return _clusterRecordsBuffer.Get(); }
+			GPUBuffer *GetClusterIndexBuffer() const { return _clusterIndexBuffer.Get(); }
+
+		private:
+			StrongRef<GPUBuffer> _pointLightBuffer;
+			StrongRef<GPUBuffer> _spotLightBuffer;
+			StrongRef<GPUBuffer> _clusterRecordsBuffer;
+			StrongRef<GPUBuffer> _clusterIndexBuffer;
+		};
+
 		struct ClusterRecord
 		{
 			// Packed record for 6 clusters: 4 bytes base offset + 12 bytes counts
@@ -85,6 +109,7 @@ namespace RN
 		RNAPI GPUBuffer *GetSpotLightBuffer() const { return _spotLightBuffer; }
 		RNAPI GPUBuffer *GetClusterIndexBuffer() const { return _clusterIndexBuffer; }
 		RNAPI GPUBuffer *GetClusterRecordsBuffer() const { return _clusterRecordsBuffer; }
+		DrawSnapshot GetDrawSnapshot() const { return DrawSnapshot(_pointLightBuffer, _spotLightBuffer, _clusterRecordsBuffer, _clusterIndexBuffer); }
 
 		// CPU accessors (for debugging or CPU-driven pipelines)
 		RNAPI const std::vector<PointLightPacked> &GetPackedPointLights() const { return _packedPointLights; }

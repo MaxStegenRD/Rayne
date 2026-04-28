@@ -32,8 +32,7 @@ namespace RN
 		_ppConvertMaterial(nullptr),
 		_defaultShaderLibrary(nullptr),
 		_currentMultiviewLayer(0),
-		_currentMultiviewFallbackRenderPass(nullptr),
-		_currentMultiviewLightingCamera(nullptr)
+		_currentMultiviewFallbackRenderPass(nullptr)
 	{
 		RN_PROFILE_SCOPE();
 		_internals->device = device->GetDevice();
@@ -363,6 +362,11 @@ namespace RN
 
 	void MetalRenderer::SubmitCamera(Camera *camera, Function &&function)
 	{
+		SubmitCamera(camera, camera, std::move(function));
+	}
+
+	void MetalRenderer::SubmitCamera(Camera *camera, Camera *lightClusterCamera, Function &&function)
+	{
 		RN_PROFILE_SCOPE();
 		const Array *multiviewCameras = camera->GetMultiviewCameras();
 		if(multiviewCameras && multiviewCameras->GetCount() > 0)
@@ -378,13 +382,10 @@ namespace RN
 				multiviewCameras->Enumerate<Camera>([&](Camera *multiviewCamera, size_t index, bool &stop){
 					_currentMultiviewLayer = index;
 					_currentMultiviewFallbackRenderPass = camera->GetRenderPass();
-					Camera *previousMultiviewLightingCamera = _currentMultiviewLightingCamera;
-					_currentMultiviewLightingCamera = camera;
 
 					RN::Function submission = RN::MakeFunction([&function](){ function(); });
-					SubmitCamera(multiviewCamera, std::move(submission));
+					SubmitCamera(multiviewCamera, lightClusterCamera, std::move(submission));
 
-					_currentMultiviewLightingCamera = previousMultiviewLightingCamera;
 					_currentMultiviewLayer = 0;
 					_currentMultiviewFallbackRenderPass = nullptr;
 				});
@@ -434,8 +435,6 @@ namespace RN
 		renderPass.resolveFramebuffer = nullptr;
 		renderPass.previousStoredFramebuffer = nullptr;
 
-		renderPass.lightingCamera = _currentMultiviewLightingCamera ? _currentMultiviewLightingCamera : camera;
-
 		RenderFrame::CameraSnapshot cameraSnapshot = RenderFrame::CameraSnapshot::WithCamera(camera, drawSnapshot.GetFrame());
 		_internals->renderFrame.GetPass(renderPass.renderFramePassIndex).SetCameraSnapshot(cameraSnapshot);
 
@@ -470,9 +469,27 @@ namespace RN
 			SubmitRenderPass(nextPass, renderPass);
 		});
 
+		const size_t submittedRenderPassEndIndex = _internals->renderPasses.size();
+
 		// Now distribute drawables across the newly created passes for this camera.
 		_internals->currentRenderPassIndex = previousRenderPassIndex;
 		function();
+
+		LightManager::DrawSnapshot lightClusterSnapshot;
+		if(LightManager *lightManager = lightClusterCamera ? lightClusterCamera->GetLightManager() : nullptr)
+		{
+			lightClusterSnapshot = lightManager->GetDrawSnapshot();
+		}
+
+		for(size_t pi = previousRenderPassIndex; pi < submittedRenderPassEndIndex; pi++)
+		{
+			MetalRenderPass &submittedRenderPass = _internals->renderPasses[pi];
+			if(!submittedRenderPass.UsesDrawItems())
+				continue;
+
+			RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(submittedRenderPass.renderFramePassIndex);
+			framePass.SetLightClusterSnapshot(lightClusterSnapshot);
+		}
 	}
 
 	void MetalRenderer::SubmitRenderPass(RenderPass *renderPass, MetalRenderPass &previousRenderPass)
@@ -556,8 +573,6 @@ namespace RN
 		}
 
 		metalRenderPass.multiviewLayer = previousRenderPass.multiviewLayer;
-		metalRenderPass.lightingCamera = previousRenderPass.lightingCamera;
-
 		Framebuffer *framebuffer = nullptr;
 		if(drawSnapshot.IsSubpass())
 		{
@@ -1578,43 +1593,40 @@ namespace RN
 			}
 
 			// Bind LightManager buffers (reflected) by semantic
-			if(renderPass.shaderHint == Shader::UsageHint::Default && metalFragmentShader && renderPass.lightingCamera)
+			const LightManager::DrawSnapshot &lightClusterSnapshot = framePass.GetLightClusterSnapshot();
+			if(renderPass.shaderHint == Shader::UsageHint::Default && metalFragmentShader && lightClusterSnapshot.IsValid())
 			{
-				LightManager *lightManager = renderPass.lightingCamera->GetLightManager();
-				if(lightManager)
-				{
-					metalFragmentShader->GetSignature()->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *arg, size_t index, bool &stop) {
-						uint32 bindIndex = arg->GetIndex();
-						switch(arg->GetSemantic())
+				metalFragmentShader->GetSignature()->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *arg, size_t index, bool &stop) {
+					uint32 bindIndex = arg->GetIndex();
+					switch(arg->GetSemantic())
+					{
+						case Shader::ArgumentBuffer::Semantic::LightClusterPointLights:
 						{
-							case Shader::ArgumentBuffer::Semantic::LightClusterPointLights:
-							{
-								GPUBuffer *pl = lightManager->GetPointLightBuffer();
-								if(pl) [encoder setFragmentBuffer:(id<MTLBuffer>)static_cast<MetalGPUBuffer *>(pl)->_buffer offset:0 atIndex:bindIndex];
-								break;
-							}
-							case Shader::ArgumentBuffer::Semantic::LightClusterSpotLights:
-							{
-								GPUBuffer *sl = lightManager->GetSpotLightBuffer();
-								if(sl) [encoder setFragmentBuffer:(id<MTLBuffer>)static_cast<MetalGPUBuffer *>(sl)->_buffer offset:0 atIndex:bindIndex];
-								break;
-							}
-							case Shader::ArgumentBuffer::Semantic::LightClusterRecords:
-							{
-								GPUBuffer *cr = lightManager->GetClusterRecordsBuffer();
-								if(cr) [encoder setFragmentBuffer:(id<MTLBuffer>)static_cast<MetalGPUBuffer *>(cr)->_buffer offset:0 atIndex:bindIndex];
-								break;
-							}
-							case Shader::ArgumentBuffer::Semantic::LightClusterIndices:
-							{
-								GPUBuffer *ci = lightManager->GetClusterIndexBuffer();
-								if(ci) [encoder setFragmentBuffer:(id<MTLBuffer>)static_cast<MetalGPUBuffer *>(ci)->_buffer offset:0 atIndex:bindIndex];
-								break;
-							}
-							default: break;
+							GPUBuffer *pl = lightClusterSnapshot.GetPointLightBuffer();
+							if(pl) [encoder setFragmentBuffer:(id<MTLBuffer>)static_cast<MetalGPUBuffer *>(pl)->_buffer offset:0 atIndex:bindIndex];
+							break;
 						}
-					});
-				}
+						case Shader::ArgumentBuffer::Semantic::LightClusterSpotLights:
+						{
+							GPUBuffer *sl = lightClusterSnapshot.GetSpotLightBuffer();
+							if(sl) [encoder setFragmentBuffer:(id<MTLBuffer>)static_cast<MetalGPUBuffer *>(sl)->_buffer offset:0 atIndex:bindIndex];
+							break;
+						}
+						case Shader::ArgumentBuffer::Semantic::LightClusterRecords:
+						{
+							GPUBuffer *cr = lightClusterSnapshot.GetClusterRecordsBuffer();
+							if(cr) [encoder setFragmentBuffer:(id<MTLBuffer>)static_cast<MetalGPUBuffer *>(cr)->_buffer offset:0 atIndex:bindIndex];
+							break;
+						}
+						case Shader::ArgumentBuffer::Semantic::LightClusterIndices:
+						{
+							GPUBuffer *ci = lightClusterSnapshot.GetClusterIndexBuffer();
+							if(ci) [encoder setFragmentBuffer:(id<MTLBuffer>)static_cast<MetalGPUBuffer *>(ci)->_buffer offset:0 atIndex:bindIndex];
+							break;
+						}
+						default: break;
+					}
+				});
 			}
 		}
 

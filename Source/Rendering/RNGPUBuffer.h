@@ -26,6 +26,7 @@ namespace RN
 		RNAPI virtual void Flush();
 		RNAPI virtual void FlushRange(const Range &range) = 0;
 		RNAPI virtual size_t GetLength() const = 0;
+		RNAPI virtual GPUBuffer *GetActiveBuffer() const;
 
 	protected:
 		RNAPI GPUBuffer();

@@ -176,8 +176,6 @@ namespace RN
 		Shader::UsageHint shaderHint;
 		MetalFramebuffer *resolveFramebuffer;
 
-		Camera *lightingCamera = nullptr;
-
 		uint8 multiviewLayer;
 	};
 

@@ -13,7 +13,6 @@
 #include "RNVulkanStateCoordinator.h"
 #include "RNVulkanRenderer.h"
 #include "RNVulkanSwapChain.h"
-#include "../../../Source/Scene/RNLightManager.h"
 
 #include <vk_mem_alloc.h>
 
@@ -228,7 +227,6 @@ namespace RN
 		VulkanFramebuffer *resolveFramebuffer;
 		Shader::UsageHint shaderHint;
 
-		LightManager *lightManager = nullptr;
 		uint8 multiviewLayer;
 
 		std::vector<VulkanTexture *> renderTargetsUsedInShader;

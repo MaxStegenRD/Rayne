@@ -27,4 +27,9 @@ namespace RN
 	{
 		FlushRange(Range(0, GetLength()));
 	}
+
+	GPUBuffer *GPUBuffer::GetActiveBuffer() const
+	{
+		return const_cast<GPUBuffer *>(this);
+	}
 } // namespace RN

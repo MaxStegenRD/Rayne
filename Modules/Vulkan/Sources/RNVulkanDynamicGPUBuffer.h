@@ -40,6 +40,7 @@ namespace RN
 		VKAPI void FlushRange(const Range &range) override;
 		void FlushInternal(); //Used internally by the dynamic buffer pool for flushing without advancing
 		virtual size_t GetLength() const override { return _totalSize; }
+		GPUBuffer *GetActiveBuffer() const final { return GetActiveGPUBuffer(); }
 
 		virtual VkBuffer GetVulkanBuffer() const override { return _buffers[_bufferIndex]->GetVulkanBuffer(); }
 

@@ -93,6 +93,7 @@ namespace RN
 		VKAPI void UpdateDynamicBufferReference(VulkanDynamicBufferReference *reference, bool align);
 
 	private:
+		void SubmitCamera(Camera *camera, Camera *lightClusterCamera, Function &&function);
 		void SubmitRenderPass(RenderPass *renderPass, VulkanRenderPass &previousRenderPass);
 		void PrepareRenderFrame();
 		void UpdateDescriptorSets();

@@ -24,6 +24,7 @@ namespace RN
 		MTLAPI void InvalidateRange(const Range &range) final;
 		MTLAPI void FlushRange(const Range &range) final;
 		MTLAPI size_t GetLength() const final { return _length; }
+		MTLAPI GPUBuffer *GetActiveBuffer() const final;
 		
 	protected:
 		MTLAPI MetalDynamicGPUBuffer(id<MTLDevice> device, size_t length, MTLResourceOptions options);
@@ -32,6 +33,7 @@ namespace RN
 	private:
 		static constexpr uint32 kBufferCount = 3;
 		id<MTLBuffer> _buffers[kBufferCount];
+		MetalGPUBuffer *_activeBuffers[kBufferCount];
 		size_t _length;
 		uint32 _activeIndex;
 		uint32 _writeIndex;
@@ -39,5 +41,3 @@ namespace RN
 }
 
 #endif /* __RAYNE_METALDYNAMICGPUBUFFER_H_ */
-
-
