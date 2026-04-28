@@ -75,6 +75,7 @@ namespace RN
 
 	protected:
 		void SubmitRenderPass(RenderPass *renderPass, MetalRenderPass &previousRenderPass);
+		void PrepareRenderFrame();
 		void RenderDrawable(MetalDrawable *drawable, const Drawable::DrawPacket &drawPacket, uint32 instanceCount, uint8 renderPacketSlot);
 		void RenderAPIRenderPass(const MetalRenderPass &renderPass, uint8 renderPacketSlot);
 		void FillUniformBuffer(Shader::ArgumentBuffer *argument, MetalUniformBufferReference *uniformBufferReference, const Drawable::DrawPacket &drawPacket, const Material::Properties &materialProperties);

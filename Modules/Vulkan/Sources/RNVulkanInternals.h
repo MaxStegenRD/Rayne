@@ -259,10 +259,8 @@ namespace RN
 		RenderPass *renderPass;
 		RenderPass *previousRenderPass;
 		size_t renderFramePassIndex = RenderFrame::InvalidPassIndex;
+		size_t frameStatisticsIndex = static_cast<size_t>(-1);
 		VulkanFramebuffer *previousStoredFramebuffer;
-
-		const VulkanPipelineState *currentPipelineState;
-		VulkanDrawable *currentInstanceDrawable;
 
 		std::vector<VulkanRenderPass> subpasses;
 		uint64 subpassSignature;

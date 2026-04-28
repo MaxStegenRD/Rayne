@@ -93,6 +93,7 @@ namespace RN
 
 	private:
 		void SubmitRenderPass(RenderPass *renderPass, VulkanRenderPass &previousRenderPass);
+		void PrepareRenderFrame();
 		void UpdateDescriptorSets(uint8 renderPacketSlot);
 		void RenderDrawable(VkCommandBuffer commandBuffer, VulkanDrawable *drawable, const Drawable::DrawPacket &drawPacket, uint32 instanceCount, uint8 renderPacketSlot);
 		void FillUniformBuffer(Shader::ArgumentBuffer *argumentBuffer, VulkanDynamicBufferReference *dynamicBufferReference, const Drawable::DrawPacket &drawPacket, const Material::Properties &mergedMaterialProperties);

@@ -197,6 +197,7 @@ namespace RN
 		RenderPass *renderPass;
 		RenderPass *previousRenderPass;
 		size_t renderFramePassIndex = RenderFrame::InvalidPassIndex;
+		size_t frameStatisticsIndex = static_cast<size_t>(-1);
 		MetalFramebuffer *previousStoredFramebuffer;
 
 		MetalFramebuffer *framebuffer;
@@ -226,8 +227,6 @@ namespace RN
 		Rect frameRect;
 
 		std::vector<uint32> instanceSteps; //Number of draw items that use the same pipeline state and can be rendered with the same draw call.
-		const MetalRenderingState *currentPipelineState;
-		const MetalDrawable *currentInstanceDrawable;
 
 		std::vector<MetalPointLight> pointLights;
 		std::vector<MetalSpotLight> spotLights;

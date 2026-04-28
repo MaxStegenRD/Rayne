@@ -133,6 +133,8 @@ namespace RN
 			
 			//Submit camera is called for each camera and creates draw items per camera
 			function();
+
+			PrepareRenderFrame();
 			
 			//Advance to next gpu buffer for uniforms and create new uniform buffer if pool is not big enough for any new objects
 			_uniformBufferPool->Update(this); //This will also reset all reference offsets into the buffer
@@ -388,6 +390,7 @@ namespace RN
 			}
 		}
 		
+		const size_t frameStatisticsIndex = _frameStatistics.size();
 		_frameStatistics.push_back({0, 0, 0, 0});
 		
 		RenderPass *cameraRenderPass = _currentMultiviewFallbackRenderPass? _currentMultiviewFallbackRenderPass : camera->GetRenderPass();
@@ -403,6 +406,7 @@ namespace RN
 		renderPass.type = MetalRenderPass::Type::Default;
 		renderPass.renderPass = cameraRenderPass;
 		renderPass.previousRenderPass = nullptr;
+		renderPass.frameStatisticsIndex = frameStatisticsIndex;
 
 		renderPass.multiviewLayer = _currentMultiviewLayer;
 
@@ -432,7 +436,6 @@ namespace RN
 
 		renderPass.camera = camera;
 		renderPass.lightingCamera = _currentMultiviewLightingCamera ? _currentMultiviewLightingCamera : camera;
-		renderPass.currentInstanceDrawable = nullptr;
 		
 		renderPass.viewPosition = camera->GetWorldPosition();
 		renderPass.viewMatrix = camera->GetViewMatrix();
@@ -501,12 +504,11 @@ namespace RN
 		metalRenderPass.type = MetalRenderPass::Type::Default;
 		metalRenderPass.renderPass = renderPass;
 		metalRenderPass.previousRenderPass = previousRenderPass.renderPass;
+		metalRenderPass.frameStatisticsIndex = previousRenderPass.frameStatisticsIndex;
 		metalRenderPass.previousStoredFramebuffer = nullptr;
 		
 		metalRenderPass.framebuffer = nullptr;
 		metalRenderPass.resolveFramebuffer = nullptr;
-		
-		_internals->currentRenderState = nullptr; //This is used when submitting drawables to build instance groups and needs to be reset per render pass.
 		
 		PostProcessingAPIStage *apiStage = renderPass->Downcast<PostProcessingAPIStage>();
 		bool isPostProcessingStage = renderPass->IsKindOfClass(PostProcessingStage::GetMetaClass());
@@ -585,7 +587,6 @@ namespace RN
 		metalRenderPass.multiviewLayer = previousRenderPass.multiviewLayer;
 		metalRenderPass.camera = previousRenderPass.camera;
 		metalRenderPass.lightingCamera = previousRenderPass.lightingCamera;
-		metalRenderPass.currentInstanceDrawable = nullptr;
 		
 		metalRenderPass.cameraAmbientColor = previousRenderPass.cameraAmbientColor;
 		metalRenderPass.cameraCustomData = previousRenderPass.cameraCustomData;
@@ -1391,107 +1392,130 @@ namespace RN
 		_internals->currentRenderPassIndex = originalIndex;
 	}
 
+	void MetalRenderer::PrepareRenderFrame()
+	{
+		RN_PROFILE_SCOPE();
+		const uint8 updatePacketSlot = GetUpdatePacketSlot();
+
+		for(size_t pi = 0; pi < _internals->renderPasses.size(); pi += 1)
+		{
+			MetalRenderPass &pass = _internals->renderPasses[pi];
+			pass.instanceSteps.clear();
+
+			if(pass.type != MetalRenderPass::Type::Default && pass.type != MetalRenderPass::Type::Convert)
+				continue;
+
+			RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(pass.renderFramePassIndex);
+			const RenderPass::DrawSnapshot &passDrawSnapshot = framePass.GetDrawSnapshot();
+			const std::vector<RenderFrame::DrawItem> &drawItems = framePass.GetDrawItems();
+			if(drawItems.empty())
+				continue;
+
+			const Drawable::DrawPacket *currentInstanceDrawPacket = nullptr;
+			const MetalRenderingState *currentPipelineState = nullptr;
+			const MetalDrawable *currentInstanceDrawable = nullptr;
+			RN_DEBUG_ASSERT(pass.frameStatisticsIndex < _frameStatistics.size(), "Invalid frame statistics index");
+			CameraStatistics &statistics = _frameStatistics[pass.frameStatisticsIndex];
+
+			const size_t renderResourceIndex = pi;
+			for(const RenderFrame::DrawItem &drawItem : drawItems)
+			{
+				MetalDrawable *drawable = static_cast<MetalDrawable *>(drawItem.GetSourceDrawable());
+				const Drawable::DrawPacket &drawPacket = drawItem.GetDrawPacket();
+				MetalDrawable::RenderResources &renderResources = drawable->EnsureUpdateRenderResources(renderResourceIndex, updatePacketSlot);
+
+				const Material::DrawSnapshot *overrideMaterialSnapshot = framePass.GetOverrideMaterialSnapshot();
+				renderResources.mergedMaterialSnapshot.Update(drawPacket, pass.shaderHint, overrideMaterialSnapshot, framePass.GetOverrideMaterialSnapshotVersion());
+				Drawable::PipelineKey pipelineKey;
+				pipelineKey.meshPipelineHash = drawPacket.GetMesh().GetPipelineHash();
+				pipelineKey.framebuffer = pass.framebuffer;
+				pipelineKey.vertexShader = renderResources.mergedMaterialSnapshot.GetVertexShader();
+				pipelineKey.fragmentShader = renderResources.mergedMaterialSnapshot.GetFragmentShader();
+				pipelineKey.materialProperties = renderResources.mergedMaterialSnapshot.GetPipelineProperties();
+				pipelineKey.renderPass = pass.renderPass;
+
+				if(!renderResources.pipelineState || renderResources.pipelineKey != pipelineKey)
+				{
+					_lock.Lock();
+					const MetalRenderingState *state = _internals->stateCoordinator.GetRenderPipelineState(pipelineKey.vertexShader, pipelineKey.fragmentShader, drawPacket.GetMesh(), pass.framebuffer, pipelineKey.materialProperties, passDrawSnapshot);
+					_lock.Unlock();
+
+					drawable->UpdateRenderingState(renderResources, this, state, pipelineKey);
+				}
+
+				Shader *vertexShader = renderResources.pipelineState->vertexShader;
+				Shader *fragmentShader = renderResources.pipelineState->fragmentShader;
+				bool canUseInstancing = vertexShader && fragmentShader && vertexShader->GetHasInstancing() && fragmentShader->GetHasInstancing();
+				const Drawable::DrawPacket *instanceDrawPacket = currentInstanceDrawPacket;
+				const MetalDrawable::RenderResources *instanceRenderResources = currentInstanceDrawable? &currentInstanceDrawable->GetRenderResources(renderResourceIndex, updatePacketSlot) : nullptr;
+
+				if(canUseInstancing && instanceRenderResources)
+				{
+					if(renderResources.vertexShaderUniformBuffers.size() != instanceRenderResources->vertexShaderUniformBuffers.size() || renderResources.fragmentShaderUniformBuffers.size() != instanceRenderResources->fragmentShaderUniformBuffers.size())
+					{
+						canUseInstancing = false;
+					}
+					else
+					{
+						for(int i = 0; i < renderResources.vertexShaderUniformBuffers.size() && canUseInstancing; i++)
+						{
+							if(renderResources.vertexShaderUniformBuffers[i]->uniformBuffer != instanceRenderResources->vertexShaderUniformBuffers[i]->uniformBuffer)
+							{
+								canUseInstancing = false;
+							}
+						}
+
+						for(int i = 0; i < renderResources.fragmentShaderUniformBuffers.size() && canUseInstancing; i++)
+						{
+							if(renderResources.fragmentShaderUniformBuffers[i]->uniformBuffer != instanceRenderResources->fragmentShaderUniformBuffers[i]->uniformBuffer)
+							{
+								canUseInstancing = false;
+							}
+						}
+					}
+				}
+
+				if(canUseInstancing && currentPipelineState == renderResources.pipelineState && instanceRenderResources && drawPacket.GetMesh().CanInstanceWith(instanceDrawPacket->GetMesh()) && renderResources.mergedMaterialSnapshot.IsTextureSetEqual(instanceRenderResources->mergedMaterialSnapshot))
+				{
+					pass.instanceSteps.back() += 1;
+				}
+				else
+				{
+					currentPipelineState = renderResources.pipelineState;
+					currentInstanceDrawable = drawable;
+					currentInstanceDrawPacket = &drawPacket;
+					pass.instanceSteps.push_back(1);
+					statistics.numberOfDrawCalls += 1;
+				}
+
+				statistics.numberOfDrawables += 1;
+				statistics.numberOfVertices += drawPacket.GetMesh().GetVerticesCount();
+				statistics.numberOfIndices += drawPacket.GetMesh().GetIndicesCount();
+			}
+		}
+	}
+
 	void MetalRenderer::SubmitDrawable(Drawable *tdrawable)
 	{
 		RN_PROFILE_SCOPE();
 		MetalDrawable *drawable = static_cast<MetalDrawable *>(tdrawable);
-		const uint8 updatePacketSlot = GetUpdatePacketSlot();
-		const Drawable::DrawPacket &drawPacket = drawable->GetDrawPacket(updatePacketSlot);
+		const Drawable::DrawPacket &drawPacket = drawable->GetDrawPacket(GetUpdatePacketSlot());
 
-		// Distribute across all relevant passes created for the current camera
 		size_t startIndex = _internals->currentRenderPassIndex;
-		size_t originalIndex = _internals->currentRenderPassIndex;
-		for(size_t pi = startIndex; pi < _internals->renderPasses.size(); pi++)
+		for(size_t pi = startIndex; pi < _internals->renderPasses.size(); pi += 1)
 		{
 			MetalRenderPass &pass = _internals->renderPasses[pi];
-			// Only accept real draw passes
 			if(pass.type != MetalRenderPass::Type::Default && pass.type != MetalRenderPass::Type::Convert) continue;
-			// For post processing/convert passes, render only the injected fullscreen quad.
 			if((pass.type == MetalRenderPass::Type::Convert || pass.renderPass->IsKindOfClass(PostProcessingStage::GetMetaClass())) && drawable != _defaultPostProcessingDrawable) continue;
-			// Filter by render group mask
+
 			RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(pass.renderFramePassIndex);
 			const RenderPass::DrawSnapshot &passDrawSnapshot = framePass.GetDrawSnapshot();
 			if((drawPacket.GetRenderGroup() & passDrawSnapshot.GetRenderGroupMask()) == 0) continue;
-
-			// Ensure render resources align with this pass index
-			_internals->currentRenderPassIndex = pi;
-			MetalDrawable::RenderResources &renderResources = drawable->EnsureUpdateRenderResources(_internals->currentRenderPassIndex, updatePacketSlot);
-
-			const Material::DrawSnapshot *overrideMaterialSnapshot = framePass.GetOverrideMaterialSnapshot();
-			renderResources.mergedMaterialSnapshot.Update(drawPacket, pass.shaderHint, overrideMaterialSnapshot, framePass.GetOverrideMaterialSnapshotVersion());
-			Drawable::PipelineKey pipelineKey;
-			pipelineKey.meshPipelineHash = drawPacket.GetMesh().GetPipelineHash();
-			pipelineKey.framebuffer = pass.framebuffer;
-			pipelineKey.vertexShader = renderResources.mergedMaterialSnapshot.GetVertexShader();
-			pipelineKey.fragmentShader = renderResources.mergedMaterialSnapshot.GetFragmentShader();
-			pipelineKey.materialProperties = renderResources.mergedMaterialSnapshot.GetPipelineProperties();
-			pipelineKey.renderPass = pass.renderPass;
-
-			if(!renderResources.pipelineState || renderResources.pipelineKey != pipelineKey)
-			{
-				_lock.Lock();
-				const MetalRenderingState *state = _internals->stateCoordinator.GetRenderPipelineState(pipelineKey.vertexShader, pipelineKey.fragmentShader, drawPacket.GetMesh(), pass.framebuffer, pipelineKey.materialProperties, passDrawSnapshot);
-				_lock.Unlock();
-
-				drawable->UpdateRenderingState(renderResources, this, state, pipelineKey);
-			}
-
-			Shader *vertexShader = renderResources.pipelineState->vertexShader;
-			Shader *fragmentShader = renderResources.pipelineState->fragmentShader;
-			bool canUseInstancing = vertexShader && fragmentShader && vertexShader->GetHasInstancing() && fragmentShader->GetHasInstancing();
-			const MetalDrawable *instanceDrawable = pass.currentInstanceDrawable;
-			const Drawable::DrawPacket *instanceDrawPacket = instanceDrawable ? &instanceDrawable->GetDrawPacket(updatePacketSlot) : nullptr;
-			const MetalDrawable::RenderResources *instanceRenderResources = instanceDrawable? &instanceDrawable->GetRenderResources(_internals->currentRenderPassIndex, updatePacketSlot) : nullptr;
-
-			if(canUseInstancing && instanceRenderResources)
-			{
-				if(renderResources.vertexShaderUniformBuffers.size() != instanceRenderResources->vertexShaderUniformBuffers.size() || renderResources.fragmentShaderUniformBuffers.size() != instanceRenderResources->fragmentShaderUniformBuffers.size())
-				{
-					canUseInstancing = false;
-				}
-				else
-				{
-					for(int i = 0; i < renderResources.vertexShaderUniformBuffers.size() && canUseInstancing; i++)
-					{
-						if(renderResources.vertexShaderUniformBuffers[i]->uniformBuffer != instanceRenderResources->vertexShaderUniformBuffers[i]->uniformBuffer)
-						{
-							canUseInstancing = false;
-						}
-					}
-
-					for(int i = 0; i < renderResources.fragmentShaderUniformBuffers.size() && canUseInstancing; i++)
-					{
-						if(renderResources.fragmentShaderUniformBuffers[i]->uniformBuffer != instanceRenderResources->fragmentShaderUniformBuffers[i]->uniformBuffer)
-						{
-							canUseInstancing = false;
-						}
-					}
-				}
-			}
-
-			if(canUseInstancing && pass.currentPipelineState == renderResources.pipelineState && instanceRenderResources && drawPacket.GetMesh().CanInstanceWith(instanceDrawPacket->GetMesh()) && renderResources.mergedMaterialSnapshot.IsTextureSetEqual(instanceRenderResources->mergedMaterialSnapshot))
-			{
-				pass.instanceSteps.back() += 1;
-			}
-			else
-			{
-				pass.currentPipelineState = renderResources.pipelineState;
-				pass.currentInstanceDrawable = drawable;
-				pass.instanceSteps.push_back(1);
-				_frameStatistics.back().numberOfDrawCalls += 1;
-			}
-
-			_frameStatistics.back().numberOfDrawables += 1;
-			_frameStatistics.back().numberOfVertices += drawPacket.GetMesh().GetVerticesCount();
-			_frameStatistics.back().numberOfIndices += drawPacket.GetMesh().GetIndicesCount();
 
 			_lock.Lock();
 			framePass.AddDrawItem(drawable, drawPacket);
 			_lock.Unlock();
 		}
-
-		// Restore original index
-		_internals->currentRenderPassIndex = originalIndex;
 	}
 
 	void MetalRenderer::RenderDrawable(MetalDrawable *drawable, const Drawable::DrawPacket &drawPacket, uint32 instanceCount, uint8 renderPacketSlot)

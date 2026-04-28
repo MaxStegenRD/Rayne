@@ -409,6 +409,8 @@ namespace RN
 		//SubmitCamera is called for each camera and creates draw items per camera
 		function();
 
+		PrepareRenderFrame();
+
 		const uint8 renderPacketSlot = GetRenderPacketSlot();
 		_dynamicBufferPool->Update(this, _currentFrame, _completedFrame);
 		UpdateDescriptorSets(renderPacketSlot);
@@ -880,6 +882,7 @@ namespace RN
 			}
 		}
 
+		const size_t frameStatisticsIndex = _frameStatistics.size();
 		_frameStatistics.push_back({0, 0, 0, 0});
 
 		RenderPass *cameraRenderPass = _currentMultiviewFallbackRenderPass? _currentMultiviewFallbackRenderPass : camera->GetRenderPass();
@@ -893,8 +896,7 @@ namespace RN
 		renderPass.type = VulkanRenderPass::Type::Default;
 		renderPass.renderPass = cameraRenderPass;
 		renderPass.previousRenderPass = nullptr;
-		renderPass.currentPipelineState = nullptr;
-		renderPass.currentInstanceDrawable = nullptr;
+		renderPass.frameStatisticsIndex = frameStatisticsIndex;
 
 		renderPass.resolveFramebuffer = nullptr;
 
@@ -956,17 +958,11 @@ namespace RN
 		_internals->renderPasses.push_back(renderPass);
 
 		const Array *nextRenderPasses = renderPass.renderPass->GetNextRenderPasses();
-
-		size_t previousDrawableResourceIndex = _internals->currentDrawableResourceIndex;
-
-		if(!rootDrawSnapshot.IsSubpass() && !rootDrawSnapshot.IsRoot()) _internals->currentDrawableResourceIndex += 1;
 		nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
 			SubmitRenderPass(nextPass, _internals->renderPasses[previousRenderPassIndex]);
 		});
 
-		size_t newDrawableResourceIndex = _internals->currentDrawableResourceIndex;
 		_internals->currentRenderPassIndex = previousRenderPassIndex;
-		_internals->currentDrawableResourceIndex = previousDrawableResourceIndex;
 
 		for(size_t i = previousRenderPassIndex; i < _internals->renderPasses.size(); i++)
 		{
@@ -1014,8 +1010,6 @@ namespace RN
 		_lock.Lock();
 		function();
 		_lock.Unlock();
-
-		_internals->currentDrawableResourceIndex = newDrawableResourceIndex;
 	}
 
 	void VulkanRenderer::SubmitRenderPass(RenderPass *renderPass, VulkanRenderPass &previousRenderPass)
@@ -1071,9 +1065,8 @@ namespace RN
 
 		vulkanRenderPass.renderPass = renderPass;
 		vulkanRenderPass.previousRenderPass = previousRenderPass.renderPass;
+		vulkanRenderPass.frameStatisticsIndex = previousRenderPass.frameStatisticsIndex;
 		vulkanRenderPass.previousStoredFramebuffer = nullptr;
-		vulkanRenderPass.currentPipelineState = nullptr;
-		vulkanRenderPass.currentInstanceDrawable = nullptr;
 
 		vulkanRenderPass.framebuffer = nullptr;
 		vulkanRenderPass.resolveFramebuffer = nullptr;
@@ -1142,7 +1135,6 @@ namespace RN
 				}
 			}
 
-			if(!drawSnapshot.IsRoot()) _internals->currentDrawableResourceIndex += 1;
 		}
 		else
 		{
@@ -2090,158 +2082,207 @@ namespace RN
 		_internals->stateCoordinator.GetRenderPipelineState(mergedMaterialSnapshot.GetVertexShader(), mergedMaterialSnapshot.GetFragmentShader(), meshSnapshot, mergedMaterialSnapshot.GetPipelineProperties(), &warmupRenderPass, 0, updatePacketSlot);
 	}
 
-	void VulkanRenderer::SubmitDrawable(Drawable *tdrawable)
+	void VulkanRenderer::PrepareRenderFrame()
 	{
-		VulkanDrawable *drawable = static_cast<VulkanDrawable *>(tdrawable);
+		RN_PROFILE_SCOPE();
 		const uint8 updatePacketSlot = GetUpdatePacketSlot();
-		const Drawable::DrawPacket &drawPacket = drawable->GetDrawPacket(updatePacketSlot);
 
-		size_t drawableResourceIndex = _internals->currentDrawableResourceIndex;
+		size_t drawableResourceIndex = 0;
 
-		auto submitDrawable = [&](VulkanRenderPass &renderPass, VulkanRenderPass &renderSubPass, uint32 subpassIndex){
+		auto prepareRenderPass = [&](VulkanRenderPass &renderPass, VulkanRenderPass &renderSubPass, uint32 subpassIndex){
+			renderSubPass.instanceSteps.clear();
+
 			if(renderSubPass.type != VulkanRenderPass::Type::Default && renderSubPass.type != VulkanRenderPass::Type::Convert)
 			{
-				_internals->currentDrawableResourceIndex += 1;
+				drawableResourceIndex += 1;
 				return;
 			}
-			// Post processing passes should only render the injected fullscreen quad.
-			if((renderSubPass.type == VulkanRenderPass::Type::Convert || renderSubPass.renderPass->IsKindOfClass(PostProcessingStage::GetMetaClass())) && drawable != _defaultPostProcessingDrawable)
-			{
-				_internals->currentDrawableResourceIndex += 1;
-				return;
-			}
+
 			RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderSubPass.renderFramePassIndex);
-			const RenderPass::DrawSnapshot &renderSubPassDrawSnapshot = framePass.GetDrawSnapshot();
-			if((drawPacket.GetRenderGroup() & renderSubPassDrawSnapshot.GetRenderGroupMask()) == 0)
+			const std::vector<RenderFrame::DrawItem> &drawItems = framePass.GetDrawItems();
+			if(drawItems.empty())
 			{
-				_internals->currentDrawableResourceIndex += 1;
+				drawableResourceIndex += 1;
 				return;
 			}
 
-			auto &renderResources = drawable->EnsureUpdateRenderResources(_internals->currentDrawableResourceIndex, updatePacketSlot);
+			const Drawable::DrawPacket *currentInstanceDrawPacket = nullptr;
+			const VulkanPipelineState *currentPipelineState = nullptr;
+			VulkanDrawable *currentInstanceDrawable = nullptr;
+			RN_DEBUG_ASSERT(renderSubPass.frameStatisticsIndex < _frameStatistics.size(), "Invalid frame statistics index");
+			CameraStatistics &statistics = _frameStatistics[renderSubPass.frameStatisticsIndex];
 
-			const Material::DrawSnapshot *overrideMaterialSnapshot = framePass.GetOverrideMaterialSnapshot();
-			renderResources.mergedMaterialSnapshot.Update(drawPacket, renderSubPass.shaderHint, overrideMaterialSnapshot, framePass.GetOverrideMaterialSnapshotVersion());
-			Drawable::PipelineKey pipelineKey;
-			pipelineKey.meshPipelineHash = drawPacket.GetMesh().GetPipelineHash();
-			pipelineKey.framebuffer = renderPass.framebuffer;
-			pipelineKey.vertexShader = renderResources.mergedMaterialSnapshot.GetVertexShader();
-			pipelineKey.fragmentShader = renderResources.mergedMaterialSnapshot.GetFragmentShader();
-			pipelineKey.materialProperties = renderResources.mergedMaterialSnapshot.GetPipelineProperties();
-			pipelineKey.renderPass = renderSubPass.renderPass;
-			pipelineKey.renderPassSignature = renderPass.subpassSignature;
-			pipelineKey.renderViewCount = static_cast<uint8>(renderPass.multiviewCameraInfo.size());
-			pipelineKey.subpassIndex = subpassIndex;
-
-			if(!renderResources.pipelineState || renderResources.pipelineKey != pipelineKey)
+			for(const RenderFrame::DrawItem &drawItem : drawItems)
 			{
-				//TODO: Fix the camera situation...
-				const VulkanPipelineState *pipelineState = _internals->stateCoordinator.GetRenderPipelineState(pipelineKey.vertexShader, pipelineKey.fragmentShader, drawPacket.GetMesh(), pipelineKey.materialProperties, &renderPass, subpassIndex, updatePacketSlot);
-				VulkanUniformState *uniformState = _internals->stateCoordinator.GetUniformStateForPipelineState(pipelineState);
+				VulkanDrawable *drawable = static_cast<VulkanDrawable *>(drawItem.GetSourceDrawable());
+				const Drawable::DrawPacket &drawPacket = drawItem.GetDrawPacket();
+				auto &renderResources = drawable->EnsureUpdateRenderResources(drawableResourceIndex, updatePacketSlot);
 
-				RN_ASSERT(pipelineState && uniformState, "Failed to create pipeline or uniform state for drawable!");
-				drawable->UpdateRenderingState(renderResources, pipelineState, uniformState, pipelineKey);
+				const Material::DrawSnapshot *overrideMaterialSnapshot = framePass.GetOverrideMaterialSnapshot();
+				renderResources.mergedMaterialSnapshot.Update(drawPacket, renderSubPass.shaderHint, overrideMaterialSnapshot, framePass.GetOverrideMaterialSnapshotVersion());
+				Drawable::PipelineKey pipelineKey;
+				pipelineKey.meshPipelineHash = drawPacket.GetMesh().GetPipelineHash();
+				pipelineKey.framebuffer = renderPass.framebuffer;
+				pipelineKey.vertexShader = renderResources.mergedMaterialSnapshot.GetVertexShader();
+				pipelineKey.fragmentShader = renderResources.mergedMaterialSnapshot.GetFragmentShader();
+				pipelineKey.materialProperties = renderResources.mergedMaterialSnapshot.GetPipelineProperties();
+				pipelineKey.renderPass = renderSubPass.renderPass;
+				pipelineKey.renderPassSignature = renderPass.subpassSignature;
+				pipelineKey.renderViewCount = static_cast<uint8>(renderPass.multiviewCameraInfo.size());
+				pipelineKey.subpassIndex = subpassIndex;
 
-				if(renderResources.descriptorSet)
+				if(!renderResources.pipelineState || renderResources.pipelineKey != pipelineKey)
 				{
-					renderResources.descriptorSet->SetLayout(pipelineState->rootSignature->descriptorSetLayout);
+					//TODO: Fix the camera situation...
+					const VulkanPipelineState *pipelineState = _internals->stateCoordinator.GetRenderPipelineState(pipelineKey.vertexShader, pipelineKey.fragmentShader, drawPacket.GetMesh(), pipelineKey.materialProperties, &renderPass, subpassIndex, updatePacketSlot);
+					VulkanUniformState *uniformState = _internals->stateCoordinator.GetUniformStateForPipelineState(pipelineState);
+
+					RN_ASSERT(pipelineState && uniformState, "Failed to create pipeline or uniform state for drawable!");
+					drawable->UpdateRenderingState(renderResources, pipelineState, uniformState, pipelineKey);
+
+					if(renderResources.descriptorSet)
+					{
+						renderResources.descriptorSet->SetLayout(pipelineState->rootSignature->descriptorSetLayout);
+					}
 				}
-			}
 
-			//Vertex and fragment shaders need to explicitly be marked to support instancing in the shader library json
-			RN::Shader *vertexShader = renderResources.pipelineState->descriptor.vertexShader;
-			RN::Shader *fragmentShader = renderResources.pipelineState->descriptor.fragmentShader;
-			bool canUseInstancing = (!vertexShader || vertexShader->GetHasInstancing()) && (!fragmentShader || fragmentShader->GetHasInstancing());
+				//Vertex and fragment shaders need to explicitly be marked to support instancing in the shader library json
+				RN::Shader *vertexShader = renderResources.pipelineState->descriptor.vertexShader;
+				RN::Shader *fragmentShader = renderResources.pipelineState->descriptor.fragmentShader;
+				bool canUseInstancing = (!vertexShader || vertexShader->GetHasInstancing()) && (!fragmentShader || fragmentShader->GetHasInstancing());
 
-			auto *vertexConstantBuffers = renderResources.uniformState->vertexConstantBuffers.data();
-			auto *fragmentConstantBuffers = renderResources.uniformState->fragmentConstantBuffers.data();
-			size_t vertexConstantBuffersCount = renderResources.uniformState->vertexConstantBuffers.size();
-			size_t fragmentConstantBuffersCount = renderResources.uniformState->fragmentConstantBuffers.size();
-			VulkanDrawable *instanceDrawable = renderSubPass.currentInstanceDrawable;
-			const Drawable::DrawPacket *instanceDrawPacket = instanceDrawable ? &instanceDrawable->GetDrawPacket(updatePacketSlot) : nullptr;
-			auto *instanceRenderResources = instanceDrawable? &instanceDrawable->GetRenderResources(_internals->currentDrawableResourceIndex, updatePacketSlot) : nullptr;
+				auto *vertexConstantBuffers = renderResources.uniformState->vertexConstantBuffers.data();
+				auto *fragmentConstantBuffers = renderResources.uniformState->fragmentConstantBuffers.data();
+				size_t vertexConstantBuffersCount = renderResources.uniformState->vertexConstantBuffers.size();
+				size_t fragmentConstantBuffersCount = renderResources.uniformState->fragmentConstantBuffers.size();
+				const Drawable::DrawPacket *instanceDrawPacket = currentInstanceDrawPacket;
+				auto *instanceRenderResources = currentInstanceDrawable? &currentInstanceDrawable->GetRenderResources(drawableResourceIndex, updatePacketSlot) : nullptr;
 
-			//TODO: Use binding and type arrays in vulkan root signatures pipeline layout instead
-			//Check if uniform buffers are the same, the object can't be part of the same instanced draw call if it doesn't share the same buffers (because they are full for example)
-			if(canUseInstancing && instanceRenderResources)
-			{
-				if(vertexConstantBuffersCount != instanceRenderResources->uniformState->vertexConstantBuffers.size() || fragmentConstantBuffersCount != instanceRenderResources->uniformState->fragmentConstantBuffers.size())
+				//TODO: Use binding and type arrays in vulkan root signatures pipeline layout instead
+				//Check if uniform buffers are the same, the object can't be part of the same instanced draw call if it doesn't share the same buffers (because they are full for example)
+				if(canUseInstancing && instanceRenderResources)
+				{
+					if(vertexConstantBuffersCount != instanceRenderResources->uniformState->vertexConstantBuffers.size() || fragmentConstantBuffersCount != instanceRenderResources->uniformState->fragmentConstantBuffers.size())
+					{
+						canUseInstancing = false;
+					}
+					else
+					{
+						for(int i = 0; i < vertexConstantBuffersCount && canUseInstancing; i++)
+						{
+							if(vertexConstantBuffers[i]->dynamicBuffer != instanceRenderResources->uniformState->vertexConstantBuffers[i]->dynamicBuffer)
+							{
+								canUseInstancing = false;
+							}
+						}
+
+						for(int i = 0; i < fragmentConstantBuffersCount && canUseInstancing; i++)
+						{
+							if(fragmentConstantBuffers[i]->dynamicBuffer != instanceRenderResources->uniformState->fragmentConstantBuffers[i]->dynamicBuffer)
+							{
+								canUseInstancing = false;
+							}
+						}
+					}
+				}
+
+				if(canUseInstancing && renderSubPass.instanceSteps.size() > 0 && renderSubPass.instanceSteps.back() >= std::min(vertexShader->GetMaxInstanceCount(), fragmentShader? fragmentShader->GetMaxInstanceCount() : -1))
 				{
 					canUseInstancing = false;
 				}
+
+				if(canUseInstancing && currentPipelineState == renderResources.pipelineState && instanceRenderResources && drawPacket.GetMesh().CanInstanceWith(instanceDrawPacket->GetMesh()) && renderResources.mergedMaterialSnapshot.IsTextureSetEqualLite(instanceRenderResources->mergedMaterialSnapshot))
+				{
+					renderSubPass.instanceSteps.back() += 1; //Increase counter if the rendering state is the same
+				}
 				else
 				{
-					for(int i = 0; i < vertexConstantBuffersCount && canUseInstancing; i++)
+					currentPipelineState = renderResources.pipelineState;
+					currentInstanceDrawable = drawable;
+					currentInstanceDrawPacket = &drawPacket;
+					renderSubPass.instanceSteps.push_back(1); //Add new entry if the rendering state changed
+					statistics.numberOfDrawCalls += 1;
+
+					//This stuff should only be needed per draw call and not for any additional instances... hopefully
+					if(!renderResources.descriptorSet)
 					{
-						if(vertexConstantBuffers[i]->dynamicBuffer != instanceRenderResources->uniformState->vertexConstantBuffers[i]->dynamicBuffer)
-						{
-							canUseInstancing = false;
-						}
+						renderResources.descriptorSet = new VulkanTransientDescriptorSet();
+						renderResources.descriptorSet->SetLayout(renderResources.pipelineState->rootSignature->descriptorSetLayout);
 					}
-
-					for(int i = 0; i < fragmentConstantBuffersCount && canUseInstancing; i++)
-					{
-						if(fragmentConstantBuffers[i]->dynamicBuffer != instanceRenderResources->uniformState->fragmentConstantBuffers[i]->dynamicBuffer)
-						{
-							canUseInstancing = false;
-						}
-					}
+					renderResources.descriptorSet->Allocate(this);
+					_internals->totalDescriptorTables += renderResources.pipelineState->rootSignature->textureCount;
+					_internals->totalDescriptorTables += renderResources.pipelineState->rootSignature->constantBufferCount;
 				}
+
+				statistics.numberOfDrawables += 1;
+				statistics.numberOfVertices += drawPacket.GetMesh().GetVerticesCount();
+				statistics.numberOfIndices += drawPacket.GetMesh().GetIndicesCount();
 			}
 
-			if(canUseInstancing && renderSubPass.instanceSteps.size() > 0 && renderSubPass.instanceSteps.back() >= std::min(vertexShader->GetMaxInstanceCount(), fragmentShader? fragmentShader->GetMaxInstanceCount() : -1))
-			{
-				canUseInstancing = false;
-			}
-
-			if(canUseInstancing && renderSubPass.currentPipelineState == renderResources.pipelineState && instanceRenderResources && drawPacket.GetMesh().CanInstanceWith(instanceDrawPacket->GetMesh()) && renderResources.mergedMaterialSnapshot.IsTextureSetEqualLite(instanceRenderResources->mergedMaterialSnapshot))
-			{
-				renderSubPass.instanceSteps.back() += 1; //Increase counter if the rendering state is the same
-			}
-			else
-			{
-				renderSubPass.currentPipelineState = renderResources.pipelineState;
-				renderSubPass.currentInstanceDrawable = drawable;
-				renderSubPass.instanceSteps.push_back(1); //Add new entry if the rendering state changed
-				_frameStatistics.back().numberOfDrawCalls += 1;
-
-				//This stuff should only be needed per draw call and not for any additional instances... hopefully
-				if(!renderResources.descriptorSet)
-				{
-					renderResources.descriptorSet = new VulkanTransientDescriptorSet();
-					renderResources.descriptorSet->SetLayout(renderResources.pipelineState->rootSignature->descriptorSetLayout);
-				}
-				renderResources.descriptorSet->Allocate(this);
-				_internals->totalDescriptorTables += renderResources.pipelineState->rootSignature->textureCount;
-				_internals->totalDescriptorTables += renderResources.pipelineState->rootSignature->constantBufferCount;
-			}
-
-			// Push into the queue
-			framePass.AddDrawItem(drawable, drawPacket);
-			_internals->currentDrawableResourceIndex += 1;
-
-			_frameStatistics.back().numberOfDrawables += 1;
-			_frameStatistics.back().numberOfVertices += drawPacket.GetMesh().GetVerticesCount();
-			_frameStatistics.back().numberOfIndices += drawPacket.GetMesh().GetIndicesCount();
+			drawableResourceIndex += 1;
 		};
 
-		for(size_t pi = _internals->currentRenderPassIndex; pi < _internals->renderPasses.size(); pi++)
+		for(size_t pi = 0; pi < _internals->renderPasses.size(); pi += 1)
 		{
 			VulkanRenderPass &renderPass = _internals->renderPasses[pi];
-			if(renderPass.subpasses.size() > 0)
+			if(renderPass.type != VulkanRenderPass::Type::Default && renderPass.type != VulkanRenderPass::Type::Convert)
 			{
-				size_t subpassIndex = 0;
+				drawableResourceIndex += 1;
+			}
+			else if(renderPass.subpasses.size() > 0)
+			{
+				uint32 subpassIndex = 0;
 				for(VulkanRenderPass &renderSubPass : renderPass.subpasses)
 				{
-					submitDrawable(renderPass, renderSubPass, subpassIndex++);
+					prepareRenderPass(renderPass, renderSubPass, subpassIndex++);
 				}
 			}
 			else
 			{
-				submitDrawable(renderPass, renderPass, 0);
+				prepareRenderPass(renderPass, renderPass, 0);
 			}
 		}
-		_internals->currentDrawableResourceIndex = drawableResourceIndex;
+	}
+
+	void VulkanRenderer::SubmitDrawable(Drawable *tdrawable)
+	{
+		VulkanDrawable *drawable = static_cast<VulkanDrawable *>(tdrawable);
+		const Drawable::DrawPacket &drawPacket = drawable->GetDrawPacket(GetUpdatePacketSlot());
+
+		auto submitDrawable = [&](VulkanRenderPass &renderSubPass) {
+			if(renderSubPass.type != VulkanRenderPass::Type::Default && renderSubPass.type != VulkanRenderPass::Type::Convert)
+				return;
+
+			if((renderSubPass.type == VulkanRenderPass::Type::Convert || renderSubPass.renderPass->IsKindOfClass(PostProcessingStage::GetMetaClass())) && drawable != _defaultPostProcessingDrawable)
+				return;
+
+			RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderSubPass.renderFramePassIndex);
+			const RenderPass::DrawSnapshot &renderSubPassDrawSnapshot = framePass.GetDrawSnapshot();
+			if((drawPacket.GetRenderGroup() & renderSubPassDrawSnapshot.GetRenderGroupMask()) == 0)
+				return;
+
+			framePass.AddDrawItem(drawable, drawPacket);
+		};
+
+		for(size_t pi = _internals->currentRenderPassIndex; pi < _internals->renderPasses.size(); pi += 1)
+		{
+			VulkanRenderPass &renderPass = _internals->renderPasses[pi];
+			if(renderPass.type != VulkanRenderPass::Type::Default && renderPass.type != VulkanRenderPass::Type::Convert)
+			{
+				continue;
+			}
+			else if(renderPass.subpasses.size() > 0)
+			{
+				for(VulkanRenderPass &renderSubPass : renderPass.subpasses)
+				{
+					submitDrawable(renderSubPass);
+				}
+			}
+			else
+			{
+				submitDrawable(renderPass);
+			}
+		}
 	}
 
 	void VulkanRenderer::UpdateDescriptorSets(uint8 renderPacketSlot)
