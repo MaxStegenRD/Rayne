@@ -287,10 +287,7 @@ namespace RN
 		{
 			case MetalRenderPass::Type::Convert:
 			{
-				MetalFramebuffer *sourceFramebuffer = renderPass.previousStoredFramebuffer;
-				Texture *sourceTexture = sourceFramebuffer->GetColorTexture(0);
-				
-				renderPass.drawables[0]->material.SetTextures(Array::WithObjects({sourceTexture}));
+				RN_ASSERT(renderPass.previousStoredFramebuffer, "Convert render pass requires a previous framebuffer");
 				RenderDrawable(renderPass.drawables[0], 1);
 				break;
 			}
@@ -1593,7 +1590,7 @@ namespace RN
 					[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
 				}
 			}
-			else if(argument->GetMaterialTextureIndex() == Shader::ArgumentTexture::IndexFramebufferTexture && renderPass.previousStoredFramebuffer)
+			else if(argument->GetMaterialTextureIndex() == Shader::ArgumentTexture::IndexFramebufferTexture)
 			{
 				MetalFramebuffer *previousFramebuffer = renderPass.previousStoredFramebuffer;
 				if(previousFramebuffer)
