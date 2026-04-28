@@ -28,9 +28,9 @@ namespace RN
 			subpassIndex == other.subpassIndex;
 	}
 
-	void Drawable::MergedMaterialSnapshot::Update(const Drawable &drawable, Shader::UsageHint hint, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialSnapshotVersion)
+	void Drawable::MergedMaterialSnapshot::Update(const DrawPacket &drawPacket, Shader::UsageHint hint, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialSnapshotVersion)
 	{
-		Update(drawable.material, drawable._materialSnapshotVersion, hint, overrideMaterialSnapshot, overrideMaterialSnapshotVersion);
+		Update(drawPacket._material, drawPacket._materialSnapshotVersion, hint, overrideMaterialSnapshot, overrideMaterialSnapshotVersion);
 	}
 
 	void Drawable::MergedMaterialSnapshot::Update(const Material::DrawSnapshot &material, uint64 materialVersion, Shader::UsageHint hint, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialSnapshotVersion)
@@ -68,6 +68,8 @@ namespace RN
 
 	void Drawable::Update(Mesh *tmesh, Material *tmaterial, Skeleton *tskeleton, const SceneNode *node)
 	{
+		DrawPacket &drawPacket = GetMutableDrawPacket();
+
 		bool meshSourceChanged = _sourceMesh.Get() != tmesh;
 		bool materialSourceChanged = _sourceMaterial.Get() != tmaterial;
 		bool skeletonSourceChanged = _sourceSkeleton.Get() != tskeleton;
@@ -75,64 +77,76 @@ namespace RN
 		if(meshSourceChanged)
 		{
 			_sourceMesh = tmesh;
-			_meshPipelineVersion = 0;
+			_meshSourceSequence += 1;
 		}
 		if(materialSourceChanged)
 		{
 			_sourceMaterial = tmaterial;
-			_materialDrawSnapshotVersion = 0;
+			_materialSourceSequence += 1;
 		}
 		if(skeletonSourceChanged)
 		{
 			_sourceSkeleton = tskeleton;
-			_skeletonDrawSnapshotVersion = 0;
+			_skeletonSourceSequence += 1;
 		}
 
+		uint64 meshPipelineVersion = tmesh ? tmesh->GetPipelineVersion() : 0;
 		if(tmesh)
 		{
-			uint64 pipelineVersion = tmesh->GetPipelineVersion();
-			if(_meshPipelineVersion != pipelineVersion)
+			if(drawPacket._meshSourceSequence != _meshSourceSequence || drawPacket._meshPipelineVersion != meshPipelineVersion)
 			{
-				tmesh->GetDrawSnapshot(mesh);
-				_meshPipelineVersion = pipelineVersion;
+				tmesh->GetDrawSnapshot(drawPacket._mesh);
+				drawPacket._meshSourceSequence = _meshSourceSequence;
+				drawPacket._meshPipelineVersion = meshPipelineVersion;
 			}
 		}
-		else if(meshSourceChanged)
+		else if(drawPacket._meshSourceSequence != _meshSourceSequence || drawPacket._meshPipelineVersion != 0)
 		{
-			mesh.Reset();
-			_meshPipelineVersion = 0;
+			drawPacket._mesh.Reset();
+			drawPacket._meshSourceSequence = _meshSourceSequence;
+			drawPacket._meshPipelineVersion = 0;
+		}
+
+		uint64 materialDrawSnapshotVersion = tmaterial ? tmaterial->GetDrawSnapshotVersion() : 0;
+		if(materialSourceChanged || _materialDrawSnapshotVersion != materialDrawSnapshotVersion)
+		{
+			_materialDrawSnapshotVersion = materialDrawSnapshotVersion;
+			_materialSnapshotVersion += 1;
 		}
 
 		if(tmaterial)
 		{
-			uint64 snapshotVersion = tmaterial->GetDrawSnapshotVersion();
-			if(_materialDrawSnapshotVersion != snapshotVersion)
+			if(drawPacket._materialSourceSequence != _materialSourceSequence || drawPacket._materialDrawSnapshotVersion != _materialDrawSnapshotVersion)
 			{
-				tmaterial->GetDrawSnapshot(material);
-				_materialDrawSnapshotVersion = snapshotVersion;
-				_materialSnapshotVersion += 1;
+				tmaterial->GetDrawSnapshot(drawPacket._material);
+				drawPacket._materialSourceSequence = _materialSourceSequence;
+				drawPacket._materialDrawSnapshotVersion = _materialDrawSnapshotVersion;
+				drawPacket._materialSnapshotVersion = _materialSnapshotVersion;
 			}
 		}
-		else if(materialSourceChanged)
+		else if(drawPacket._materialSourceSequence != _materialSourceSequence || drawPacket._materialDrawSnapshotVersion != 0)
 		{
-			material.Reset();
-			_materialDrawSnapshotVersion = 0;
-			_materialSnapshotVersion += 1;
+			drawPacket._material.Reset();
+			drawPacket._materialSourceSequence = _materialSourceSequence;
+			drawPacket._materialDrawSnapshotVersion = 0;
+			drawPacket._materialSnapshotVersion = _materialSnapshotVersion;
 		}
 
+		uint64 skeletonDrawSnapshotVersion = tskeleton ? tskeleton->GetDrawSnapshotVersion() : 0;
 		if(tskeleton)
 		{
-			uint64 snapshotVersion = tskeleton->GetDrawSnapshotVersion();
-			if(_skeletonDrawSnapshotVersion != snapshotVersion)
+			if(drawPacket._skeletonSourceSequence != _skeletonSourceSequence || drawPacket._skeletonDrawSnapshotVersion != skeletonDrawSnapshotVersion)
 			{
-				tskeleton->GetDrawSnapshot(skeleton);
-				_skeletonDrawSnapshotVersion = snapshotVersion;
+				tskeleton->GetDrawSnapshot(drawPacket._skeleton);
+				drawPacket._skeletonSourceSequence = _skeletonSourceSequence;
+				drawPacket._skeletonDrawSnapshotVersion = skeletonDrawSnapshotVersion;
 			}
 		}
-		else if(skeletonSourceChanged)
+		else if(drawPacket._skeletonSourceSequence != _skeletonSourceSequence || drawPacket._skeletonDrawSnapshotVersion != 0)
 		{
-			skeleton.Reset();
-			_skeletonDrawSnapshotVersion = 0;
+			drawPacket._skeleton.Reset();
+			drawPacket._skeletonSourceSequence = _skeletonSourceSequence;
+			drawPacket._skeletonDrawSnapshotVersion = 0;
 		}
 
 		Update(node);
@@ -140,36 +154,44 @@ namespace RN
 
 	void Drawable::Update(const SceneNode *node)
 	{
+		DrawPacket &drawPacket = GetMutableDrawPacket();
+		if(_transformNode != node)
+		{
+			_transformNode = node;
+			_transformSourceSequence += 1;
+		}
+
 		if(!node)
 		{
-			if(_transformNode)
+			if(drawPacket._transformSourceSequence != _transformSourceSequence || drawPacket._transformVersion != 0 || drawPacket._renderGroup != 0xffff)
 			{
-				_modelMatrix = Matrix();
-				_inverseModelMatrix = Matrix();
-				_renderGroup = 0xffff;
-				_transformNode = nullptr;
-				_transformVersion = 0;
+				drawPacket._modelMatrix = Matrix();
+				drawPacket._inverseModelMatrix = Matrix();
+				drawPacket._renderGroup = 0xffff;
+				drawPacket._transformSourceSequence = _transformSourceSequence;
+				drawPacket._transformVersion = 0;
 			}
 
 			return;
 		}
 
-		_renderGroup = node->GetRenderGroup();
+		drawPacket._renderGroup = node->GetRenderGroup();
 
 		uint64 transformVersion = node->GetTransformVersion();
-		if(_transformNode != node || _transformVersion != transformVersion)
+		if(drawPacket._transformSourceSequence != _transformSourceSequence || drawPacket._transformVersion != transformVersion)
 		{
-			_modelMatrix = node->GetWorldTransform();
-			_inverseModelMatrix = node->GetInverseWorldTransform();
-			_transformNode = node;
-			_transformVersion = transformVersion;
+			drawPacket._modelMatrix = node->GetWorldTransform();
+			drawPacket._inverseModelMatrix = node->GetInverseWorldTransform();
+			drawPacket._transformSourceSequence = _transformSourceSequence;
+			drawPacket._transformVersion = transformVersion;
 		}
 	}
 
 	void Drawable::MakeDirty()
 	{
-		_meshPipelineVersion = 0;
+		_meshSourceSequence += 1;
+		_materialSourceSequence += 1;
 		_materialDrawSnapshotVersion = 0;
-		_skeletonDrawSnapshotVersion = 0;
+		_skeletonSourceSequence += 1;
 	}
 } // namespace RN

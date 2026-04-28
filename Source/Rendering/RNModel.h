@@ -6,13 +6,12 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
-#define RN_MODEL_LOD_DISABLED 1
-
 #ifndef __RAYNE_MODEL_H_
 	#define __RAYNE_MODEL_H_
 
 	#include "../Assets/RNAsset.h"
 	#include "../Base/RNBase.h"
+	#include "RNRenderingConfig.h"
 	#include "RNMaterial.h"
 	#include "RNMesh.h"
 

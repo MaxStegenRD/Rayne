@@ -868,8 +868,9 @@ namespace RN
 		uint8 *buffer = reinterpret_cast<uint8 *>(gpuBuffer->GetBuffer()) + uniformBufferReference->offset;
 
 		const MetalRenderPass &renderPass = _internals->renderPasses[_internals->currentRenderPassIndex];
-		const Matrix &modelMatrix = drawable->GetModelMatrix();
-		const Matrix &inverseModelMatrix = drawable->GetInverseModelMatrix();
+		const Drawable::DrawPacket &drawPacket = drawable->GetDrawPacket();
+		const Matrix &modelMatrix = drawPacket.GetModelMatrix();
+		const Matrix &inverseModelMatrix = drawPacket.GetInverseModelMatrix();
 
 		argument->GetUniformDescriptors()->Enumerate<Shader::UniformDescriptor>([&](Shader::UniformDescriptor *descriptor, size_t index, bool &stop) {
 			switch(descriptor->GetIdentifier())
@@ -1159,7 +1160,7 @@ namespace RN
 					
 				case Shader::UniformDescriptor::Identifier::BoneMatrices:
 				{
-					const std::vector<Matrix> &boneMatrices = drawable->skeleton.GetMatrices();
+					const std::vector<Matrix> &boneMatrices = drawPacket.GetSkeleton().GetMatrices();
 					if(boneMatrices.size() > 0)
 					{
 						//TODO: Don't hardcode limit here
@@ -1387,6 +1388,7 @@ namespace RN
 	{
 		RN_PROFILE_SCOPE();
 		MetalDrawable *drawable = static_cast<MetalDrawable *>(tdrawable);
+		const Drawable::DrawPacket &drawPacket = drawable->GetDrawPacket();
 
 		// Distribute across all relevant passes created for the current camera
 		size_t startIndex = _internals->currentRenderPassIndex;
@@ -1399,16 +1401,16 @@ namespace RN
 			// For post processing/convert passes, render only the injected fullscreen quad.
 			if((pass.type == MetalRenderPass::Type::Convert || pass.renderPass->IsKindOfClass(PostProcessingStage::GetMetaClass())) && drawable != _defaultPostProcessingDrawable) continue;
 			// Filter by render group mask
-			if((drawable->GetRenderGroup() & pass.renderPassResources->GetDrawSnapshot().GetRenderGroupMask()) == 0) continue;
+			if((drawPacket.GetRenderGroup() & pass.renderPassResources->GetDrawSnapshot().GetRenderGroupMask()) == 0) continue;
 
 			// Ensure render resources align with this pass index
 			_internals->currentRenderPassIndex = pi;
 			MetalDrawable::RenderResources &renderResources = drawable->EnsureRenderResources(_internals->currentRenderPassIndex);
 
 			const Material::DrawSnapshot *overrideMaterialSnapshot = pass.GetOverrideMaterialSnapshot();
-			renderResources.mergedMaterialSnapshot.Update(*drawable, pass.shaderHint, overrideMaterialSnapshot, pass.GetOverrideMaterialSnapshotVersion());
+			renderResources.mergedMaterialSnapshot.Update(drawPacket, pass.shaderHint, overrideMaterialSnapshot, pass.GetOverrideMaterialSnapshotVersion());
 			Drawable::PipelineKey pipelineKey;
-			pipelineKey.meshPipelineHash = drawable->mesh.GetPipelineHash();
+			pipelineKey.meshPipelineHash = drawPacket.GetMesh().GetPipelineHash();
 			pipelineKey.framebuffer = pass.framebuffer;
 			pipelineKey.vertexShader = renderResources.mergedMaterialSnapshot.GetVertexShader();
 			pipelineKey.fragmentShader = renderResources.mergedMaterialSnapshot.GetFragmentShader();
@@ -1418,7 +1420,7 @@ namespace RN
 			if(!renderResources.pipelineState || renderResources.pipelineKey != pipelineKey)
 			{
 				_lock.Lock();
-				const MetalRenderingState *state = _internals->stateCoordinator.GetRenderPipelineState(pipelineKey.vertexShader, pipelineKey.fragmentShader, drawable->mesh, pass.framebuffer, pipelineKey.materialProperties, pass.renderPassResources->GetDrawSnapshot());
+				const MetalRenderingState *state = _internals->stateCoordinator.GetRenderPipelineState(pipelineKey.vertexShader, pipelineKey.fragmentShader, drawPacket.GetMesh(), pass.framebuffer, pipelineKey.materialProperties, pass.renderPassResources->GetDrawSnapshot());
 				_lock.Unlock();
 
 				drawable->UpdateRenderingState(_internals->currentRenderPassIndex, this, state, pipelineKey);
@@ -1428,6 +1430,7 @@ namespace RN
 			Shader *fragmentShader = renderResources.pipelineState->fragmentShader;
 			bool canUseInstancing = vertexShader && fragmentShader && vertexShader->GetHasInstancing() && fragmentShader->GetHasInstancing();
 			const MetalDrawable *instanceDrawable = pass.currentInstanceDrawable;
+			const Drawable::DrawPacket *instanceDrawPacket = instanceDrawable ? &instanceDrawable->GetDrawPacket() : nullptr;
 			const MetalDrawable::RenderResources *instanceRenderResources = instanceDrawable? &instanceDrawable->_renderResources[_internals->currentRenderPassIndex] : nullptr;
 
 			if(canUseInstancing && instanceRenderResources)
@@ -1456,7 +1459,7 @@ namespace RN
 				}
 			}
 
-			if(canUseInstancing && pass.currentPipelineState == renderResources.pipelineState && instanceRenderResources && drawable->mesh.CanInstanceWith(instanceDrawable->mesh) && renderResources.mergedMaterialSnapshot.IsTextureSetEqual(instanceRenderResources->mergedMaterialSnapshot))
+			if(canUseInstancing && pass.currentPipelineState == renderResources.pipelineState && instanceRenderResources && drawPacket.GetMesh().CanInstanceWith(instanceDrawPacket->GetMesh()) && renderResources.mergedMaterialSnapshot.IsTextureSetEqual(instanceRenderResources->mergedMaterialSnapshot))
 			{
 				pass.instanceSteps.back() += 1;
 			}
@@ -1469,8 +1472,8 @@ namespace RN
 			}
 
 			_frameStatistics.back().numberOfDrawables += 1;
-			_frameStatistics.back().numberOfVertices += drawable->mesh.GetVerticesCount();
-			_frameStatistics.back().numberOfIndices += drawable->mesh.GetIndicesCount();
+			_frameStatistics.back().numberOfVertices += drawPacket.GetMesh().GetVerticesCount();
+			_frameStatistics.back().numberOfIndices += drawPacket.GetMesh().GetIndicesCount();
 
 			_lock.Lock();
 			pass.drawables.push_back(drawable);
@@ -1484,6 +1487,7 @@ namespace RN
 	void MetalRenderer::RenderDrawable(MetalDrawable *drawable, uint32 instanceCount)
 	{
 		RN_PROFILE_SCOPE();
+		const Drawable::DrawPacket &drawPacket = drawable->GetDrawPacket();
 
 		id<MTLRenderCommandEncoder> encoder = _internals->commandEncoder;
 		if(_internals->currentRenderState != drawable->_renderResources[_internals->currentRenderPassIndex].pipelineState)
@@ -1695,7 +1699,8 @@ namespace RN
 		}
 
 		// Mesh
-		MetalGPUBuffer *buffer = static_cast<MetalGPUBuffer *>(drawable->mesh.GetVertexBuffer());
+		const Mesh::DrawSnapshot &mesh = drawPacket.GetMesh();
+		MetalGPUBuffer *buffer = static_cast<MetalGPUBuffer *>(mesh.GetVertexBuffer());
 		
 		if(_internals->currentRenderState->vertexPositionBufferShaderResourceIndex <= 30)
 		{
@@ -1704,10 +1709,10 @@ namespace RN
 		
 		if(_internals->currentRenderState->vertexBufferShaderResourceIndex <= 30)
 		{
-			[encoder setVertexBuffer:(id<MTLBuffer>)buffer->_buffer offset:drawable->mesh.GetVertexPositionsSeparatedSize() atIndex:_internals->currentRenderState->vertexBufferShaderResourceIndex];
+			[encoder setVertexBuffer:(id<MTLBuffer>)buffer->_buffer offset:mesh.GetVertexPositionsSeparatedSize() atIndex:_internals->currentRenderState->vertexBufferShaderResourceIndex];
 		}
 		
-		DrawMode drawMode = drawable->mesh.GetDrawMode();
+		DrawMode drawMode = mesh.GetDrawMode();
 		MTLPrimitiveType primitiveType;
 		
 		switch(drawMode)
@@ -1729,29 +1734,29 @@ namespace RN
 				break;
 		}
 		
-		if(drawable->mesh.GetIndicesCount() > 0)
+		if(mesh.GetIndicesCount() > 0)
 		{
-			MetalGPUBuffer *indexBuffer = static_cast<MetalGPUBuffer *>(drawable->mesh.GetIndicesBuffer());
-			MTLIndexType indexType = drawable->mesh.GetIndexType() == PrimitiveType::Uint16? MTLIndexTypeUInt16 : MTLIndexTypeUInt32;
+			MetalGPUBuffer *indexBuffer = static_cast<MetalGPUBuffer *>(mesh.GetIndicesBuffer());
+			MTLIndexType indexType = mesh.GetIndexType() == PrimitiveType::Uint16? MTLIndexTypeUInt16 : MTLIndexTypeUInt32;
 
 			if(instanceCount == 1)
 			{
-				[encoder drawIndexedPrimitives:primitiveType indexCount:drawable->mesh.GetIndicesCount() indexType:indexType indexBuffer:(id <MTLBuffer>)indexBuffer->_buffer indexBufferOffset:0];
+				[encoder drawIndexedPrimitives:primitiveType indexCount:mesh.GetIndicesCount() indexType:indexType indexBuffer:(id <MTLBuffer>)indexBuffer->_buffer indexBufferOffset:0];
 			}
 			else
 			{
-				[encoder drawIndexedPrimitives:primitiveType indexCount:drawable->mesh.GetIndicesCount() indexType:indexType indexBuffer:(id <MTLBuffer>)indexBuffer->_buffer indexBufferOffset:0 instanceCount:instanceCount];
+				[encoder drawIndexedPrimitives:primitiveType indexCount:mesh.GetIndicesCount() indexType:indexType indexBuffer:(id <MTLBuffer>)indexBuffer->_buffer indexBufferOffset:0 instanceCount:instanceCount];
 			}
 		}
 		else
 		{
 			if(instanceCount == 1)
 			{
-				[encoder drawPrimitives:primitiveType vertexStart:0 vertexCount:drawable->mesh.GetVerticesCount()];
+				[encoder drawPrimitives:primitiveType vertexStart:0 vertexCount:mesh.GetVerticesCount()];
 			}
 			else
 			{
-				[encoder drawPrimitives:primitiveType vertexStart:0 vertexCount:drawable->mesh.GetVerticesCount() instanceCount:instanceCount];
+				[encoder drawPrimitives:primitiveType vertexStart:0 vertexCount:mesh.GetVerticesCount() instanceCount:instanceCount];
 			}
 		}
 	}

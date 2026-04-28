@@ -25,21 +25,22 @@ namespace RN
 
 	void RenderPassResources::Update(RenderPass *renderPass, Material *effectiveOverrideMaterial)
 	{
+		DrawPacket &drawPacket = GetMutableDrawPacket();
 		uint64 snapshotVersion = renderPass->GetDrawSnapshotVersion();
-		if(drawSnapshotVersion != snapshotVersion)
+		if(drawPacket._drawSnapshotSourceVersion != snapshotVersion)
 		{
-			renderPass->GetDrawSnapshot(_drawSnapshot);
-			drawSnapshotVersion = snapshotVersion;
+			renderPass->GetDrawSnapshot(drawPacket._drawSnapshot);
+			drawPacket._drawSnapshotSourceVersion = snapshotVersion;
 		}
-		else if(!_drawSnapshot.IsSubpass())
+		else if(!drawPacket._drawSnapshot.IsSubpass())
 		{
-			_drawSnapshot._framebuffer = renderPass->GetFramebuffer();
-			_drawSnapshot._frame = renderPass->GetFrame();
+			drawPacket._drawSnapshot._framebuffer = renderPass->GetFramebuffer();
+			drawPacket._drawSnapshot._frame = renderPass->GetFrame();
 		}
 		else
 		{
-			_drawSnapshot._framebuffer = nullptr;
-			_drawSnapshot._frame = Rect();
+			drawPacket._drawSnapshot._framebuffer = nullptr;
+			drawPacket._drawSnapshot._frame = Rect();
 		}
 
 		UpdateOverrideMaterial(effectiveOverrideMaterial);
@@ -47,16 +48,32 @@ namespace RN
 
 	void RenderPassResources::UpdateOverrideMaterial(Material *effectiveOverrideMaterial)
 	{
+		DrawPacket &drawPacket = GetMutableDrawPacket();
+		bool overrideMaterialSourceChanged = overrideMaterialSource.Get() != effectiveOverrideMaterial;
 		uint64 overrideSourceVersion = effectiveOverrideMaterial ? effectiveOverrideMaterial->GetDrawSnapshotVersion() : 0;
-		if(overrideMaterialSource.Get() != effectiveOverrideMaterial || overrideMaterialSourceVersion != overrideSourceVersion)
+		if(overrideMaterialSourceChanged)
 		{
 			overrideMaterialSource = effectiveOverrideMaterial;
+			overrideMaterialSourceSequence += 1;
+		}
+
+		if(overrideMaterialSourceChanged || overrideMaterialSourceVersion != overrideSourceVersion)
+		{
 			overrideMaterialSourceVersion = overrideSourceVersion;
 			overrideMaterialSnapshotVersion += 1;
+		}
+
+		if(drawPacket._overrideMaterialSourceSequence != overrideMaterialSourceSequence || drawPacket._overrideMaterialSourceVersion != overrideMaterialSourceVersion)
+		{
+			drawPacket._hasOverrideMaterial = effectiveOverrideMaterial != nullptr;
+			drawPacket._overrideMaterialSourceSequence = overrideMaterialSourceSequence;
+			drawPacket._overrideMaterialSourceVersion = overrideMaterialSourceVersion;
+			drawPacket._overrideMaterialSnapshotVersion = overrideMaterialSnapshotVersion;
+
 			if(effectiveOverrideMaterial)
-				effectiveOverrideMaterial->GetDrawSnapshot(overrideMaterialSnapshot);
+				effectiveOverrideMaterial->GetDrawSnapshot(drawPacket._overrideMaterialSnapshot);
 			else
-				overrideMaterialSnapshot.Reset();
+				drawPacket._overrideMaterialSnapshot.Reset();
 		}
 	}
 } // namespace RN

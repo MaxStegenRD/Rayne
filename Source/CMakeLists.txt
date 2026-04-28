@@ -220,6 +220,7 @@ set(RAYNE_HEADERS
     Rendering/RNPostProcessing.h
     Rendering/RNRenderer.h
     Rendering/RNRendererDescriptor.h
+    Rendering/RNRenderingConfig.h
     Rendering/RNRendererTypes.h
     Rendering/RNRenderingDevice.h
     Rendering/RNRenderPass.h

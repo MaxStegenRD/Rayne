@@ -75,6 +75,7 @@
 #include "Objects/RNString.h"
 #include "Objects/RNValue.h"
 
+#include "Rendering/RNRenderingConfig.h"
 #include "Rendering/RNFramebuffer.h"
 #include "Rendering/RNGPUBuffer.h"
 #include "Rendering/RNGPUResource.h"

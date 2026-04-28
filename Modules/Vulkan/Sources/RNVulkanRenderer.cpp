@@ -1345,8 +1345,9 @@ namespace RN
 		uint8 *buffer = reinterpret_cast<uint8 *>(dynamicBufferReference->dynamicBuffer->GetBuffer()) + dynamicBufferReference->offset;
 
 		const Material::Properties &mergedMaterialProperties = drawable->_renderResources[_internals->currentDrawableResourceIndex].mergedMaterialSnapshot.GetProperties();
-		const Matrix &modelMatrix = drawable->GetModelMatrix();
-		const Matrix &inverseModelMatrix = drawable->GetInverseModelMatrix();
+		const Drawable::DrawPacket &drawPacket = drawable->GetDrawPacket();
+		const Matrix &modelMatrix = drawPacket.GetModelMatrix();
+		const Matrix &inverseModelMatrix = drawPacket.GetInverseModelMatrix();
 
 		const RN::Array *uniformDescriptors = argumentBuffer->GetUniformDescriptors();
 		size_t count = uniformDescriptors->GetCount();
@@ -1785,7 +1786,7 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::BoneMatrices:
 				{
-					const std::vector<Matrix> &boneMatrices = drawable->skeleton.GetMatrices();
+					const std::vector<Matrix> &boneMatrices = drawPacket.GetSkeleton().GetMatrices();
 					if(boneMatrices.size() > 0)
 					{
 						size_t matrixCount = std::min(boneMatrices.size(), descriptor->GetElementCount());
@@ -2082,6 +2083,7 @@ namespace RN
 	void VulkanRenderer::SubmitDrawable(Drawable *tdrawable)
 	{
 		VulkanDrawable *drawable = static_cast<VulkanDrawable *>(tdrawable);
+		const Drawable::DrawPacket &drawPacket = drawable->GetDrawPacket();
 
 		size_t drawableResourceIndex = _internals->currentDrawableResourceIndex;
 
@@ -2097,7 +2099,7 @@ namespace RN
 				_internals->currentDrawableResourceIndex += 1;
 				return;
 			}
-			if((drawable->GetRenderGroup() & renderSubPass.renderPassResources->GetDrawSnapshot().GetRenderGroupMask()) == 0)
+			if((drawPacket.GetRenderGroup() & renderSubPass.renderPassResources->GetDrawSnapshot().GetRenderGroupMask()) == 0)
 			{
 				_internals->currentDrawableResourceIndex += 1;
 				return;
@@ -2106,9 +2108,9 @@ namespace RN
 			auto &renderResources = drawable->EnsureRenderResources(_internals->currentDrawableResourceIndex);
 
 			const Material::DrawSnapshot *overrideMaterialSnapshot = renderSubPass.GetOverrideMaterialSnapshot();
-			renderResources.mergedMaterialSnapshot.Update(*drawable, renderSubPass.shaderHint, overrideMaterialSnapshot, renderSubPass.GetOverrideMaterialSnapshotVersion());
+			renderResources.mergedMaterialSnapshot.Update(drawPacket, renderSubPass.shaderHint, overrideMaterialSnapshot, renderSubPass.GetOverrideMaterialSnapshotVersion());
 			Drawable::PipelineKey pipelineKey;
-			pipelineKey.meshPipelineHash = drawable->mesh.GetPipelineHash();
+			pipelineKey.meshPipelineHash = drawPacket.GetMesh().GetPipelineHash();
 			pipelineKey.framebuffer = renderPass.framebuffer;
 			pipelineKey.vertexShader = renderResources.mergedMaterialSnapshot.GetVertexShader();
 			pipelineKey.fragmentShader = renderResources.mergedMaterialSnapshot.GetFragmentShader();
@@ -2121,7 +2123,7 @@ namespace RN
 			if(!renderResources.pipelineState || renderResources.pipelineKey != pipelineKey)
 			{
 				//TODO: Fix the camera situation...
-				const VulkanPipelineState *pipelineState = _internals->stateCoordinator.GetRenderPipelineState(pipelineKey.vertexShader, pipelineKey.fragmentShader, drawable->mesh, pipelineKey.materialProperties, &renderPass, subpassIndex);
+				const VulkanPipelineState *pipelineState = _internals->stateCoordinator.GetRenderPipelineState(pipelineKey.vertexShader, pipelineKey.fragmentShader, drawPacket.GetMesh(), pipelineKey.materialProperties, &renderPass, subpassIndex);
 				VulkanUniformState *uniformState = _internals->stateCoordinator.GetUniformStateForPipelineState(pipelineState);
 
 				RN_ASSERT(pipelineState && uniformState, "Failed to create pipeline or uniform state for drawable!");
@@ -2143,6 +2145,7 @@ namespace RN
 			size_t vertexConstantBuffersCount = renderResources.uniformState->vertexConstantBuffers.size();
 			size_t fragmentConstantBuffersCount = renderResources.uniformState->fragmentConstantBuffers.size();
 			VulkanDrawable *instanceDrawable = renderSubPass.currentInstanceDrawable;
+			const Drawable::DrawPacket *instanceDrawPacket = instanceDrawable ? &instanceDrawable->GetDrawPacket() : nullptr;
 			auto *instanceRenderResources = instanceDrawable? &instanceDrawable->_renderResources[_internals->currentDrawableResourceIndex] : nullptr;
 
 			//TODO: Use binding and type arrays in vulkan root signatures pipeline layout instead
@@ -2178,7 +2181,7 @@ namespace RN
 				canUseInstancing = false;
 			}
 
-			if(canUseInstancing && renderSubPass.currentPipelineState == renderResources.pipelineState && instanceRenderResources && drawable->mesh.CanInstanceWith(instanceDrawable->mesh) && renderResources.mergedMaterialSnapshot.IsTextureSetEqualLite(instanceRenderResources->mergedMaterialSnapshot))
+			if(canUseInstancing && renderSubPass.currentPipelineState == renderResources.pipelineState && instanceRenderResources && drawPacket.GetMesh().CanInstanceWith(instanceDrawPacket->GetMesh()) && renderResources.mergedMaterialSnapshot.IsTextureSetEqualLite(instanceRenderResources->mergedMaterialSnapshot))
 			{
 				renderSubPass.instanceSteps.back() += 1; //Increase counter if the rendering state is the same
 			}
@@ -2205,8 +2208,8 @@ namespace RN
 			_internals->currentDrawableResourceIndex += 1;
 
 			_frameStatistics.back().numberOfDrawables += 1;
-			_frameStatistics.back().numberOfVertices += drawable->mesh.GetVerticesCount();
-			_frameStatistics.back().numberOfIndices += drawable->mesh.GetIndicesCount();
+			_frameStatistics.back().numberOfVertices += drawPacket.GetMesh().GetVerticesCount();
+			_frameStatistics.back().numberOfIndices += drawPacket.GetMesh().GetIndicesCount();
 		};
 
 		for(size_t pi = _internals->currentRenderPassIndex; pi < _internals->renderPasses.size(); pi++)
@@ -2737,6 +2740,8 @@ namespace RN
 		const VulkanPipelineState *pipelineState = renderResource.pipelineState;
 		const VulkanUniformState *uniformState = renderResource.uniformState;
 		const VulkanRootSignature *rootSignature = pipelineState->rootSignature;
+		const Drawable::DrawPacket &drawPacket = drawable->GetDrawPacket();
+		const Mesh::DrawSnapshot &mesh = drawPacket.GetMesh();
 
 		VkDescriptorSet descriptorSet = renderResource.descriptorSet->GetActiveDescriptorSet();
 		if(_internals->drawBindStateCache.pipelineLayout != rootSignature->pipelineLayout || _internals->drawBindStateCache.descriptorSet != descriptorSet)
@@ -2751,8 +2756,8 @@ namespace RN
 			_internals->drawBindStateCache.pipeline = pipelineState->state;
 		}
 
-		VulkanGPUBuffer *buffer = static_cast<VulkanGPUBuffer *>(drawable->mesh.GetVertexBuffer());
-		VulkanGPUBuffer *indices = static_cast<VulkanGPUBuffer *>(drawable->mesh.GetIndicesBuffer());
+		VulkanGPUBuffer *buffer = static_cast<VulkanGPUBuffer *>(mesh.GetVertexBuffer());
+		VulkanGPUBuffer *indices = static_cast<VulkanGPUBuffer *>(mesh.GetIndicesBuffer());
 		VulkanGPUBuffer *instanceAttributesBuffer = uniformState->instanceAttributesBuffer? static_cast<VulkanGPUBuffer *>(uniformState->instanceAttributesBuffer->dynamicBuffer->GetActiveGPUBuffer()) : nullptr;
 
 		//IF positions are separated, they will be in the first part of the buffer, everything else will be bound as the second binding, per instance data if provided through attributes are bound as a third buffer
@@ -2765,7 +2770,7 @@ namespace RN
 
 		if(pipelineState->vertexAttributeBufferCount > 1)
 		{
-			offsets[attributesBufferIndex] = drawable->mesh.GetVertexPositionsSeparatedSize();
+			offsets[attributesBufferIndex] = mesh.GetVertexPositionsSeparatedSize();
 			vertexBuffers[attributesBufferIndex++] = buffer->GetVulkanBuffer();
 		}
 		if(instanceAttributesBuffer)
@@ -2789,10 +2794,10 @@ namespace RN
 				_internals->drawBindStateCache.vertexOffsets[i] = offsets[i];
 			}
 		}
-		if(drawable->mesh.GetIndicesCount() > 0)
+		if(mesh.GetIndicesCount() > 0)
 		{
 			VkBuffer indexBuffer = indices->GetVulkanBuffer();
-			VkIndexType indexType = drawable->mesh.GetIndexType() == PrimitiveType::Uint16? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
+			VkIndexType indexType = mesh.GetIndexType() == PrimitiveType::Uint16? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
 			if(!_internals->drawBindStateCache.hasIndexBufferBinding || _internals->drawBindStateCache.indexBuffer != indexBuffer || _internals->drawBindStateCache.indexOffset != 0 || _internals->drawBindStateCache.indexType != indexType)
 			{
 				// Bind mesh index buffer
@@ -2803,11 +2808,11 @@ namespace RN
 				_internals->drawBindStateCache.indexType = indexType;
 			}
 			// Render mesh vertex buffer using it's indices
-			vk::CmdDrawIndexed(commandBuffer, drawable->mesh.GetIndicesCount(), instanceCount, 0, 0, 0);
+			vk::CmdDrawIndexed(commandBuffer, mesh.GetIndicesCount(), instanceCount, 0, 0, 0);
 		}
 		else
 		{
-			vk::CmdDraw(commandBuffer, drawable->mesh.GetVerticesCount(), instanceCount, 0, 0);
+			vk::CmdDraw(commandBuffer, mesh.GetVerticesCount(), instanceCount, 0, 0);
 		}
 
 		_currentDrawableIndex += 1;

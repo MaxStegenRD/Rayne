@@ -16,6 +16,7 @@
 #include "RNFramebuffer.h"
 #include "RNMaterial.h"
 #include "RNMesh.h"
+#include "RNRenderingConfig.h"
 #include "RNSkeleton.h"
 
 namespace RN
@@ -44,9 +45,43 @@ namespace RN
 			bool operator!=(const PipelineKey &other) const { return !(*this == other); }
 		};
 
+		struct MergedMaterialSnapshot;
+
+		struct DrawPacket
+		{
+			const Mesh::DrawSnapshot &GetMesh() const { return _mesh; }
+			const Material::DrawSnapshot &GetMaterial() const { return _material; }
+			const Skeleton::DrawSnapshot &GetSkeleton() const { return _skeleton; }
+			const Matrix &GetModelMatrix() const { return _modelMatrix; }
+			const Matrix &GetInverseModelMatrix() const { return _inverseModelMatrix; }
+			uint16 GetRenderGroup() const { return _renderGroup; }
+
+		private:
+			friend struct Drawable;
+			friend struct MergedMaterialSnapshot;
+
+			Mesh::DrawSnapshot _mesh;
+			Material::DrawSnapshot _material;
+			Skeleton::DrawSnapshot _skeleton;
+
+			Matrix _modelMatrix;
+			Matrix _inverseModelMatrix;
+			uint16 _renderGroup = 0xffff;
+
+			uint64 _meshSourceSequence = 0;
+			uint64 _meshPipelineVersion = 0;
+			uint64 _materialSourceSequence = 0;
+			uint64 _materialDrawSnapshotVersion = 0;
+			uint64 _materialSnapshotVersion = 0;
+			uint64 _skeletonSourceSequence = 0;
+			uint64 _skeletonDrawSnapshotVersion = 0;
+			uint64 _transformSourceSequence = 0;
+			uint64 _transformVersion = 0;
+		};
+
 		struct MergedMaterialSnapshot
 		{
-			RNAPI void Update(const Drawable &drawable, Shader::UsageHint shaderHint, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialSnapshotVersion);
+			RNAPI void Update(const DrawPacket &drawPacket, Shader::UsageHint shaderHint, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialSnapshotVersion);
 			RNAPI void Update(const Material::DrawSnapshot &material, uint64 materialSnapshotVersion, Shader::UsageHint shaderHint, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialSnapshotVersion);
 			RNAPI bool IsTextureSetEqual(const MergedMaterialSnapshot &other) const;
 			RNAPI bool IsTextureSetEqualLite(const MergedMaterialSnapshot &other) const;
@@ -72,32 +107,26 @@ namespace RN
 		RNAPI void Update(Mesh *tmesh, Material *tmaterial, Skeleton *tskeleton, const SceneNode *node);
 		RNAPI virtual void Update(const SceneNode *node);
 		RNAPI void MakeDirty();
-		const Matrix &GetModelMatrix() const { return _modelMatrix; }
-		const Matrix &GetInverseModelMatrix() const { return _inverseModelMatrix; }
-		uint16 GetRenderGroup() const { return _renderGroup; }
-
-		// Captured on the main thread before submit, so encoding does not have to read mutable Mesh/Material/Skeleton state.
-		Mesh::DrawSnapshot mesh;
-		Material::DrawSnapshot material;
-		Skeleton::DrawSnapshot skeleton;
+		const DrawPacket &GetDrawPacket() const { return _drawPackets[_activeDrawPacketIndex]; }
 
 	private:
+		DrawPacket &GetMutableDrawPacket() { return _drawPackets[_activeDrawPacketIndex]; }
+
+		DrawPacket _drawPackets[RN_RENDERING_PACKET_SLOT_COUNT];
+		uint8 _activeDrawPacketIndex = 0;
+
 		// Source objects are kept for snapshot refresh/version checks.
 		StrongRef<Mesh> _sourceMesh;
 		StrongRef<Material> _sourceMaterial;
 		StrongRef<Skeleton> _sourceSkeleton;
 
-		// Captured node state, refreshed on the main thread from _transformNode/_transformVersion.
-		Matrix _modelMatrix;
-		Matrix _inverseModelMatrix;
-		uint16 _renderGroup = 0xffff;
-
-		uint64 _meshPipelineVersion = 0;
+		uint64 _meshSourceSequence = 0;
+		uint64 _materialSourceSequence = 0;
 		uint64 _materialDrawSnapshotVersion = 0;
 		uint64 _materialSnapshotVersion = 0;
-		uint64 _skeletonDrawSnapshotVersion = 0;
+		uint64 _skeletonSourceSequence = 0;
 		const SceneNode *_transformNode = nullptr;
-		uint64 _transformVersion = 0;
+		uint64 _transformSourceSequence = 0;
 	};
 } // namespace RN
 
