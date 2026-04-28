@@ -1344,6 +1344,7 @@ namespace RN
 	{
 		uint8 *buffer = reinterpret_cast<uint8 *>(dynamicBufferReference->dynamicBuffer->GetBuffer()) + dynamicBufferReference->offset;
 
+		const VulkanRenderPass &renderPass = _internals->renderPasses[_internals->currentRenderPassIndex];
 		const Material::Properties &mergedMaterialProperties = drawable->_renderResources[_internals->currentDrawableResourceIndex].mergedMaterialSnapshot.GetProperties();
 		const Drawable::DrawPacket &drawPacket = drawable->GetDrawPacket();
 		const Matrix &modelMatrix = drawPacket.GetModelMatrix();
