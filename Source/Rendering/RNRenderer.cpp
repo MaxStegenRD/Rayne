@@ -19,6 +19,21 @@ namespace RN
 
 	static Renderer *_activeRenderer = nullptr;
 
+	void Drawable::MergedMaterialSnapshot::Update(const Drawable &drawable, Shader::UsageHint hint, const Material::DrawSnapshot *overrideMaterial, uint64 overrideMaterialSnapshotVersion)
+	{
+		if(isValid && materialSnapshotVersion == drawable._materialSnapshotVersion && overrideSnapshotVersion == overrideMaterialSnapshotVersion && shaderHint == hint)
+			return;
+
+		materialSnapshotVersion = drawable._materialSnapshotVersion;
+		overrideSnapshotVersion = overrideMaterialSnapshotVersion;
+		shaderHint = hint;
+		vertexShader = drawable.material.GetSelectedVertexShader(hint, overrideMaterial);
+		fragmentShader = drawable.material.GetSelectedFragmentShader(hint, overrideMaterial);
+		drawable.material.GetMergedProperties(overrideMaterial, properties);
+		drawable.material.GetMergedPipelineProperties(overrideMaterial, pipelineProperties);
+		isValid = true;
+	}
+
 	Renderer::Renderer(RendererDescriptor *descriptor, RenderingDevice *device) :
 		_device(device),
 		_descriptor(descriptor)

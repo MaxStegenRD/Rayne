@@ -217,8 +217,7 @@ namespace RN
 								if(instance > 0 && argument->GetType() != Shader::ArgumentBuffer::Type::StorageBuffer) break;
 								
 								MetalDrawable *drawable = renderPass.drawables[i + instance];
-								Material::Properties mergedMaterialProperties;
-								drawable->material.GetMergedProperties(renderPass.GetOverrideMaterialSnapshot(), mergedMaterialProperties);
+								const Material::Properties &mergedMaterialProperties = drawable->_renderResources[_internals->currentRenderPassIndex].mergedMaterialSnapshot.properties;
 								
 								MetalUniformBufferReference *bufferReference = drawable->_renderResources[_internals->currentRenderPassIndex].vertexShaderUniformBuffers[n];
 								UpdateUniformBufferReference(bufferReference, instance == 0);
@@ -238,8 +237,7 @@ namespace RN
 								if(instance > 0 && argument->GetType() != Shader::ArgumentBuffer::Type::StorageBuffer) break;
 								
 								MetalDrawable *drawable = renderPass.drawables[i + instance];
-								Material::Properties mergedMaterialProperties;
-								drawable->material.GetMergedProperties(renderPass.GetOverrideMaterialSnapshot(), mergedMaterialProperties);
+								const Material::Properties &mergedMaterialProperties = drawable->_renderResources[_internals->currentRenderPassIndex].mergedMaterialSnapshot.properties;
 								
 								MetalUniformBufferReference *bufferReference = drawable->_renderResources[_internals->currentRenderPassIndex].fragmentShaderUniformBuffers[n];
 								UpdateUniformBufferReference(bufferReference, instance == 0);
@@ -1406,11 +1404,14 @@ namespace RN
 
 			Mesh *sourceMesh = drawable->GetSourceMesh();
 			const Material::DrawSnapshot *overrideMaterialSnapshot = pass.GetOverrideMaterialSnapshot();
+			renderResources.mergedMaterialSnapshot.Update(*drawable, pass.shaderHint, overrideMaterialSnapshot, pass.GetOverrideMaterialSnapshotVersion());
 			Drawable::PipelineKey pipelineKey;
 			pipelineKey.mesh = sourceMesh;
 			pipelineKey.meshPipelineVersion = sourceMesh ? sourceMesh->GetPipelineVersion() : 0;
 			pipelineKey.framebuffer = pass.framebuffer;
-			drawable->FillPipelineKeyMaterialState(pipelineKey, pass.shaderHint, overrideMaterialSnapshot);
+			pipelineKey.vertexShader = renderResources.mergedMaterialSnapshot.vertexShader;
+			pipelineKey.fragmentShader = renderResources.mergedMaterialSnapshot.fragmentShader;
+			pipelineKey.materialProperties = renderResources.mergedMaterialSnapshot.pipelineProperties;
 			pipelineKey.renderPass = pass.renderPass;
 
 			if(!renderResources.pipelineState || renderResources.pipelineKey != pipelineKey)

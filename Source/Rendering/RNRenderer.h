@@ -41,6 +41,7 @@ namespace RN
 			renderGroup = 0xffff;
 			_meshPipelineVersion = 0;
 			_materialDrawSnapshotVersion = 0;
+			_materialSnapshotVersion = 0;
 			_skeletonDrawSnapshotVersion = 0;
 			_transformNode = nullptr;
 			_transformVersion = 0;
@@ -77,12 +78,19 @@ namespace RN
 			bool operator!=(const PipelineKey &other) const { return !(*this == other); }
 		};
 
-		void FillPipelineKeyMaterialState(PipelineKey &pipelineKey, Shader::UsageHint shaderHint, const Material::DrawSnapshot *overrideMaterial) const
+		struct MergedMaterialSnapshot
 		{
-			pipelineKey.vertexShader = material.GetSelectedVertexShader(shaderHint, overrideMaterial);
-			pipelineKey.fragmentShader = material.GetSelectedFragmentShader(shaderHint, overrideMaterial);
-			material.GetMergedPipelineProperties(overrideMaterial, pipelineKey.materialProperties);
-		}
+			void Update(const Drawable &drawable, Shader::UsageHint shaderHint, const Material::DrawSnapshot *overrideMaterial, uint64 overrideMaterialSnapshotVersion);
+
+			bool isValid = false;
+			uint64 materialSnapshotVersion = 0;
+			uint64 overrideSnapshotVersion = 0;
+			Shader::UsageHint shaderHint = Shader::UsageHint::Default;
+			Shader *vertexShader = nullptr;
+			Shader *fragmentShader = nullptr;
+			Material::Properties properties;
+			Material::PipelineProperties pipelineProperties;
+		};
 
 		void Update(Mesh *tmesh, Material *tmaterial, Skeleton *tskeleton, const SceneNode *node)
 		{
@@ -128,12 +136,14 @@ namespace RN
 				{
 					tmaterial->GetDrawSnapshot(material);
 					_materialDrawSnapshotVersion = snapshotVersion;
+					_materialSnapshotVersion += 1;
 				}
 			}
 			else if(materialSourceChanged)
 			{
 				material.Reset();
 				_materialDrawSnapshotVersion = 0;
+				_materialSnapshotVersion += 1;
 			}
 
 			if(tskeleton)
@@ -197,6 +207,7 @@ namespace RN
 		Skeleton::DrawSnapshot skeleton;
 		uint64 _meshPipelineVersion;
 		uint64 _materialDrawSnapshotVersion;
+		uint64 _materialSnapshotVersion;
 		uint64 _skeletonDrawSnapshotVersion;
 		Matrix modelMatrix;
 		Matrix inverseModelMatrix;

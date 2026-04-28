@@ -64,6 +64,7 @@ namespace RN
 		{
 			const MetalRenderingState *pipelineState = nullptr;
 			Drawable::PipelineKey pipelineKey;
+			Drawable::MergedMaterialSnapshot mergedMaterialSnapshot;
 
 			std::vector<Shader::ArgumentBuffer*> argumentBufferToUniformBufferMapping;
 			std::vector<MetalUniformBufferReference*> vertexShaderUniformBuffers;
@@ -219,6 +220,11 @@ namespace RN
 		const Material::DrawSnapshot *GetOverrideMaterialSnapshot() const
 		{
 			return renderPassResources ? renderPassResources->GetOverrideMaterialSnapshot() : nullptr;
+		}
+
+		uint64 GetOverrideMaterialSnapshotVersion() const
+		{
+			return renderPassResources ? renderPassResources->GetOverrideMaterialSnapshotVersion() : 0;
 		}
 	};
 

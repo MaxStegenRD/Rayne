@@ -1337,9 +1337,7 @@ namespace RN
 	{
 		uint8 *buffer = reinterpret_cast<uint8 *>(dynamicBufferReference->dynamicBuffer->GetBuffer()) + dynamicBufferReference->offset;
 
-		Material::Properties mergedMaterialProperties;
-		const VulkanRenderPass &renderPass = _internals->renderPasses[_internals->currentRenderPassIndex];
-		drawable->material.GetMergedProperties(renderPass.GetOverrideMaterialSnapshot(), mergedMaterialProperties);
+		const Material::Properties &mergedMaterialProperties = drawable->_renderResources[_internals->currentDrawableResourceIndex].mergedMaterialSnapshot.properties;
 
 		const RN::Array *uniformDescriptors = argumentBuffer->GetUniformDescriptors();
 		size_t count = uniformDescriptors->GetCount();
@@ -2100,11 +2098,14 @@ namespace RN
 
 			Mesh *mesh = drawable->GetSourceMesh();
 			const Material::DrawSnapshot *overrideMaterialSnapshot = renderSubPass.GetOverrideMaterialSnapshot();
+			renderResources.mergedMaterialSnapshot.Update(*drawable, renderSubPass.shaderHint, overrideMaterialSnapshot, renderSubPass.GetOverrideMaterialSnapshotVersion());
 			Drawable::PipelineKey pipelineKey;
 			pipelineKey.mesh = mesh;
 			pipelineKey.meshPipelineVersion = mesh ? mesh->GetPipelineVersion() : 0;
 			pipelineKey.framebuffer = renderPass.framebuffer;
-			drawable->FillPipelineKeyMaterialState(pipelineKey, renderSubPass.shaderHint, overrideMaterialSnapshot);
+			pipelineKey.vertexShader = renderResources.mergedMaterialSnapshot.vertexShader;
+			pipelineKey.fragmentShader = renderResources.mergedMaterialSnapshot.fragmentShader;
+			pipelineKey.materialProperties = renderResources.mergedMaterialSnapshot.pipelineProperties;
 			pipelineKey.renderPass = renderSubPass.renderPass;
 			pipelineKey.renderPassSignature = renderPass.subpassSignature;
 			pipelineKey.renderViewCount = static_cast<uint8>(renderPass.multiviewCameraInfo.size());

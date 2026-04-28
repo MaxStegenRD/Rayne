@@ -428,11 +428,12 @@ namespace RN
 
 	void RenderPassResources::UpdateOverrideMaterial(Material *effectiveOverrideMaterial)
 	{
-		uint64 overrideSnapshotVersion = effectiveOverrideMaterial ? effectiveOverrideMaterial->GetDrawSnapshotVersion() : 0;
-		if(overrideMaterialSource.Get() != effectiveOverrideMaterial || overrideMaterialSnapshotVersion != overrideSnapshotVersion)
+		uint64 overrideSourceVersion = effectiveOverrideMaterial ? effectiveOverrideMaterial->GetDrawSnapshotVersion() : 0;
+		if(overrideMaterialSource.Get() != effectiveOverrideMaterial || overrideMaterialSourceVersion != overrideSourceVersion)
 		{
 			overrideMaterialSource = effectiveOverrideMaterial;
-			overrideMaterialSnapshotVersion = overrideSnapshotVersion;
+			overrideMaterialSourceVersion = overrideSourceVersion;
+			overrideMaterialSnapshotVersion += 1;
 			if(effectiveOverrideMaterial)
 				effectiveOverrideMaterial->GetDrawSnapshot(overrideMaterialSnapshot);
 			else
