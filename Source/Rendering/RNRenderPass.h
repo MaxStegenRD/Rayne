@@ -160,17 +160,16 @@ namespace RN
 		}
 		uint64 GetOverrideMaterialSnapshotVersion() const { return overrideMaterialSnapshotVersion; }
 
-		uint64 drawSnapshotVersion = 0;
+		RenderPass::DrawSnapshot drawSnapshot;
 
+	private:
+		uint64 drawSnapshotVersion = 0;
 		StrongRef<Material> overrideMaterialSource;
-		// Tracks the source material version we snapshotted; the snapshot version below tracks changes visible to drawable caches.
+		// Source version refreshes the snapshot; snapshot version invalidates drawable caches.
 		uint64 overrideMaterialSourceVersion = 0;
 		uint64 overrideMaterialSnapshotVersion = 0;
 		Material::DrawSnapshot overrideMaterialSnapshot;
 
-		RenderPass::DrawSnapshot drawSnapshot;
-
-	private:
 		Renderer *_renderer;
 	};
 } // namespace RN
