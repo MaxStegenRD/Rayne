@@ -1350,7 +1350,8 @@ namespace RN
 		uint8 *buffer = reinterpret_cast<uint8 *>(dynamicBufferReference->dynamicBuffer->GetBuffer()) + dynamicBufferReference->offset;
 
 		const VulkanRenderPass &renderPass = _internals->renderPasses[_internals->currentRenderPassIndex];
-		const Material::Properties &mergedMaterialProperties = drawable->_renderResources[_internals->currentDrawableResourceIndex].mergedMaterialSnapshot.GetProperties();
+		const VulkanDrawable::RenderResources &renderResources = drawable->GetRenderResources(_internals->currentDrawableResourceIndex, renderPacketSlot);
+		const Material::Properties &mergedMaterialProperties = renderResources.mergedMaterialSnapshot.GetProperties();
 		const Drawable::DrawPacket &drawPacket = drawable->GetDrawPacket(renderPacketSlot);
 		const Matrix &modelMatrix = drawPacket.GetModelMatrix();
 		const Matrix &inverseModelMatrix = drawPacket.GetInverseModelMatrix();
@@ -2115,7 +2116,7 @@ namespace RN
 				return;
 			}
 
-			auto &renderResources = drawable->EnsureRenderResources(_internals->currentDrawableResourceIndex);
+			auto &renderResources = drawable->EnsureUpdateRenderResources(_internals->currentDrawableResourceIndex, updatePacketSlot);
 
 			const Material::DrawSnapshot *overrideMaterialSnapshot = renderSubPass.GetOverrideMaterialSnapshot(updatePacketSlot);
 			renderResources.mergedMaterialSnapshot.Update(drawPacket, renderSubPass.shaderHint, overrideMaterialSnapshot, renderSubPass.GetOverrideMaterialSnapshotVersion(updatePacketSlot));
@@ -2137,7 +2138,7 @@ namespace RN
 				VulkanUniformState *uniformState = _internals->stateCoordinator.GetUniformStateForPipelineState(pipelineState);
 
 				RN_ASSERT(pipelineState && uniformState, "Failed to create pipeline or uniform state for drawable!");
-				drawable->UpdateRenderingState(_internals->currentDrawableResourceIndex, pipelineState, uniformState, pipelineKey);
+				drawable->UpdateRenderingState(renderResources, pipelineState, uniformState, pipelineKey);
 
 				if(renderResources.descriptorSet)
 				{
@@ -2156,7 +2157,7 @@ namespace RN
 			size_t fragmentConstantBuffersCount = renderResources.uniformState->fragmentConstantBuffers.size();
 			VulkanDrawable *instanceDrawable = renderSubPass.currentInstanceDrawable;
 			const Drawable::DrawPacket *instanceDrawPacket = instanceDrawable ? &instanceDrawable->GetDrawPacket(updatePacketSlot) : nullptr;
-			auto *instanceRenderResources = instanceDrawable? &instanceDrawable->_renderResources[_internals->currentDrawableResourceIndex] : nullptr;
+			auto *instanceRenderResources = instanceDrawable? &instanceDrawable->GetRenderResources(_internals->currentDrawableResourceIndex, updatePacketSlot) : nullptr;
 
 			//TODO: Use binding and type arrays in vulkan root signatures pipeline layout instead
 			//Check if uniform buffers are the same, the object can't be part of the same instanced draw call if it doesn't share the same buffers (because they are full for example)
@@ -2273,7 +2274,7 @@ namespace RN
 						{
 							stepSize = subpass.instanceSteps[stepSizeIndex++];
 		
-							const auto &resources = subpass.drawables[i]->_renderResources[_internals->currentDrawableResourceIndex];
+							const auto &resources = subpass.drawables[i]->GetRenderResources(_internals->currentDrawableResourceIndex, renderPacketSlot);
 							const VulkanUniformState *uniformState = resources.uniformState;
 							const VulkanPipelineState *pipelineState = resources.pipelineState;
 		
@@ -2299,7 +2300,7 @@ namespace RN
 					{
 						stepSize = renderPass.instanceSteps[stepSizeIndex++];
 
-						const auto &resources = renderPass.drawables[i]->_renderResources[_internals->currentDrawableResourceIndex];
+						const auto &resources = renderPass.drawables[i]->GetRenderResources(_internals->currentDrawableResourceIndex, renderPacketSlot);
 						const VulkanUniformState *uniformState = resources.uniformState;
 						const VulkanPipelineState *pipelineState = resources.pipelineState;
 
@@ -2394,7 +2395,7 @@ namespace RN
 
 					const size_t drawableResourceIndex = _internals->currentDrawableResourceIndex;
 					VulkanDrawable *drawable = renderPass.drawables[i];
-					VulkanDrawable::RenderResources &renderResource = drawable->_renderResources[drawableResourceIndex];
+					const VulkanDrawable::RenderResources &renderResource = drawable->GetRenderResources(drawableResourceIndex, renderPacketSlot);
 
 					const VulkanPipelineState *pipelineState = renderResource.pipelineState;
 
@@ -2412,7 +2413,7 @@ namespace RN
 						for(size_t instance = 0; instance < instanceCount; instance += 1)
 						{
 							VulkanDrawable *instanceDrawable = renderPass.drawables[i + instance];
-							VulkanUniformState *instanceUniformState = instanceDrawable->_renderResources[drawableResourceIndex].uniformState;
+							VulkanUniformState *instanceUniformState = instanceDrawable->GetRenderResources(drawableResourceIndex, renderPacketSlot).uniformState;
 							VulkanDynamicBufferReference *instanceAttributesBuffer = instanceUniformState->instanceAttributesBuffer;
 							_dynamicBufferPool->UpdateDynamicBufferReference(instanceAttributesBuffer, instance == 0);
 							FillUniformBuffer(argument, instanceAttributesBuffer, instanceDrawable, renderPacketSlot);
@@ -2430,7 +2431,7 @@ namespace RN
 						for(size_t instance = 0; instance < instanceCount; instance += 1)
 						{
 							VulkanDrawable *instanceDrawable = renderPass.drawables[i + instance];
-							VulkanUniformState *instanceUniformState = instanceDrawable->_renderResources[drawableResourceIndex].uniformState;
+							VulkanUniformState *instanceUniformState = instanceDrawable->GetRenderResources(drawableResourceIndex, renderPacketSlot).uniformState;
 							_dynamicBufferPool->UpdateDynamicBufferReference(instanceUniformState->vertexConstantBuffers[bufferIndex], instance == 0);
 							FillUniformBuffer(argument, instanceUniformState->vertexConstantBuffers[bufferIndex], instanceDrawable, renderPacketSlot);
 						}
@@ -2466,7 +2467,7 @@ namespace RN
 						for(size_t instance = 0; instance < instanceCount; instance += 1)
 						{
 							VulkanDrawable *instanceDrawable = renderPass.drawables[i + instance];
-							VulkanUniformState *instanceUniformState = instanceDrawable->_renderResources[drawableResourceIndex].uniformState;
+							VulkanUniformState *instanceUniformState = instanceDrawable->GetRenderResources(drawableResourceIndex, renderPacketSlot).uniformState;
 							_dynamicBufferPool->UpdateDynamicBufferReference(
 									instanceUniformState->fragmentConstantBuffers[bufferIndex],
 									instance == 0);
@@ -2746,7 +2747,7 @@ namespace RN
 	{
 		RN_PROFILE_VULKAN_SCOPE_CMD_N(_internals->tracyVulkanCtx, commandBuffer, "Draw");
 
-		VulkanDrawable::RenderResources &renderResource = drawable->_renderResources[_internals->currentDrawableResourceIndex];
+		const VulkanDrawable::RenderResources &renderResource = drawable->GetRenderResources(_internals->currentDrawableResourceIndex, renderPacketSlot);
 		const VulkanPipelineState *pipelineState = renderResource.pipelineState;
 		const VulkanUniformState *uniformState = renderResource.uniformState;
 		const VulkanRootSignature *rootSignature = pipelineState->rootSignature;

@@ -207,7 +207,7 @@ namespace RN
 						stepSizeIndex += 1;
 						
 						uint32 counter = 0;
-						const MetalDrawable::RenderResources &renderResources = renderPass.drawables[i]->_renderResources[_internals->currentRenderPassIndex];
+						const MetalDrawable::RenderResources &renderResources = renderPass.drawables[i]->GetRenderResources(_internals->currentRenderPassIndex, renderPacketSlot);
 						for(size_t n = 0; n < renderResources.vertexShaderUniformBuffers.size(); n++)
 						{
 							for(size_t instance = 0; instance < stepSize; instance++)
@@ -219,9 +219,10 @@ namespace RN
 								if(instance > 0 && argument->GetType() != Shader::ArgumentBuffer::Type::StorageBuffer) break;
 								
 								MetalDrawable *drawable = renderPass.drawables[i + instance];
-								const Material::Properties &mergedMaterialProperties = drawable->_renderResources[_internals->currentRenderPassIndex].mergedMaterialSnapshot.GetProperties();
+								const MetalDrawable::RenderResources &drawableRenderResources = drawable->GetRenderResources(_internals->currentRenderPassIndex, renderPacketSlot);
+								const Material::Properties &mergedMaterialProperties = drawableRenderResources.mergedMaterialSnapshot.GetProperties();
 								
-								MetalUniformBufferReference *bufferReference = drawable->_renderResources[_internals->currentRenderPassIndex].vertexShaderUniformBuffers[n];
+								MetalUniformBufferReference *bufferReference = drawableRenderResources.vertexShaderUniformBuffers[n];
 								UpdateUniformBufferReference(bufferReference, instance == 0);
 								FillUniformBuffer(argument, bufferReference, drawable, mergedMaterialProperties, renderPacketSlot);
 							}
@@ -239,9 +240,10 @@ namespace RN
 								if(instance > 0 && argument->GetType() != Shader::ArgumentBuffer::Type::StorageBuffer) break;
 								
 								MetalDrawable *drawable = renderPass.drawables[i + instance];
-								const Material::Properties &mergedMaterialProperties = drawable->_renderResources[_internals->currentRenderPassIndex].mergedMaterialSnapshot.GetProperties();
+								const MetalDrawable::RenderResources &drawableRenderResources = drawable->GetRenderResources(_internals->currentRenderPassIndex, renderPacketSlot);
+								const Material::Properties &mergedMaterialProperties = drawableRenderResources.mergedMaterialSnapshot.GetProperties();
 								
-								MetalUniformBufferReference *bufferReference = drawable->_renderResources[_internals->currentRenderPassIndex].fragmentShaderUniformBuffers[n];
+								MetalUniformBufferReference *bufferReference = drawableRenderResources.fragmentShaderUniformBuffers[n];
 								UpdateUniformBufferReference(bufferReference, instance == 0);
 								FillUniformBuffer(argument, bufferReference, drawable, mergedMaterialProperties, renderPacketSlot);
 							}
@@ -1408,7 +1410,7 @@ namespace RN
 
 			// Ensure render resources align with this pass index
 			_internals->currentRenderPassIndex = pi;
-			MetalDrawable::RenderResources &renderResources = drawable->EnsureRenderResources(_internals->currentRenderPassIndex);
+			MetalDrawable::RenderResources &renderResources = drawable->EnsureUpdateRenderResources(_internals->currentRenderPassIndex, updatePacketSlot);
 
 			const Material::DrawSnapshot *overrideMaterialSnapshot = pass.GetOverrideMaterialSnapshot(updatePacketSlot);
 			renderResources.mergedMaterialSnapshot.Update(drawPacket, pass.shaderHint, overrideMaterialSnapshot, pass.GetOverrideMaterialSnapshotVersion(updatePacketSlot));
@@ -1426,7 +1428,7 @@ namespace RN
 				const MetalRenderingState *state = _internals->stateCoordinator.GetRenderPipelineState(pipelineKey.vertexShader, pipelineKey.fragmentShader, drawPacket.GetMesh(), pass.framebuffer, pipelineKey.materialProperties, passDrawSnapshot);
 				_lock.Unlock();
 
-				drawable->UpdateRenderingState(_internals->currentRenderPassIndex, this, state, pipelineKey);
+				drawable->UpdateRenderingState(renderResources, this, state, pipelineKey);
 			}
 
 			Shader *vertexShader = renderResources.pipelineState->vertexShader;
@@ -1434,7 +1436,7 @@ namespace RN
 			bool canUseInstancing = vertexShader && fragmentShader && vertexShader->GetHasInstancing() && fragmentShader->GetHasInstancing();
 			const MetalDrawable *instanceDrawable = pass.currentInstanceDrawable;
 			const Drawable::DrawPacket *instanceDrawPacket = instanceDrawable ? &instanceDrawable->GetDrawPacket(updatePacketSlot) : nullptr;
-			const MetalDrawable::RenderResources *instanceRenderResources = instanceDrawable? &instanceDrawable->_renderResources[_internals->currentRenderPassIndex] : nullptr;
+			const MetalDrawable::RenderResources *instanceRenderResources = instanceDrawable? &instanceDrawable->GetRenderResources(_internals->currentRenderPassIndex, updatePacketSlot) : nullptr;
 
 			if(canUseInstancing && instanceRenderResources)
 			{
@@ -1491,11 +1493,12 @@ namespace RN
 	{
 		RN_PROFILE_SCOPE();
 		const Drawable::DrawPacket &drawPacket = drawable->GetDrawPacket(renderPacketSlot);
+		const MetalDrawable::RenderResources &renderResources = drawable->GetRenderResources(_internals->currentRenderPassIndex, renderPacketSlot);
 
 		id<MTLRenderCommandEncoder> encoder = _internals->commandEncoder;
-		if(_internals->currentRenderState != drawable->_renderResources[_internals->currentRenderPassIndex].pipelineState)
+		if(_internals->currentRenderState != renderResources.pipelineState)
 		{
-			_internals->currentRenderState = drawable->_renderResources[_internals->currentRenderPassIndex].pipelineState;
+			_internals->currentRenderState = renderResources.pipelineState;
 			[encoder setRenderPipelineState: _internals->currentRenderState->state];
 		}
 		
@@ -1513,7 +1516,7 @@ namespace RN
 		}
 		
 		MetalRenderPass &renderPass = _internals->renderPasses[_internals->currentRenderPassIndex];
-		const Material::PipelineProperties &mergedMaterialProperties = drawable->_renderResources[_internals->currentRenderPassIndex].pipelineKey.materialProperties;
+		const Material::PipelineProperties &mergedMaterialProperties = renderResources.pipelineKey.materialProperties;
 		[encoder setDepthStencilState:_internals->stateCoordinator.GetDepthStencilStateForMaterial(mergedMaterialProperties, _internals->currentRenderState)];
 		[encoder setCullMode:static_cast<MTLCullMode>(mergedMaterialProperties.cullMode)];
 		if(mergedMaterialProperties.usePolygonOffset)
@@ -1527,7 +1530,6 @@ namespace RN
 		
 		// Update uniform buffers and set them for rendering
 		{
-			const MetalDrawable::RenderResources &renderResources = drawable->_renderResources[_internals->currentRenderPassIndex];
 			for(MetalUniformBufferReference *uniformBufferReference : renderResources.vertexShaderUniformBuffers)
 			{
 				MetalGPUBuffer *buffer = static_cast<MetalGPUBuffer *>(uniformBufferReference->uniformBuffer->GetActiveBuffer());
@@ -1583,7 +1585,7 @@ namespace RN
 
 		// Set textures
 		//TODO: Support vertex shader textures
-		const Array *textures = drawable->_renderResources[_internals->currentRenderPassIndex].mergedMaterialSnapshot.GetTextures();
+		const Array *textures = renderResources.mergedMaterialSnapshot.GetTextures();
 		metalFragmentShader->GetSignature()->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop){
 			if(argument->GetMaterialTextureIndex() == Shader::ArgumentTexture::IndexDirectionalShadowTexture)
 			{
