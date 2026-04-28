@@ -894,7 +894,7 @@ namespace RN
 		renderPass.resolveFramebuffer = nullptr;
 
 		renderPass.shaderHint = rootDrawSnapshot.GetShaderHint();
-		renderPass.renderFramePassIndex = _internals->renderFrame.AddPass(rootDrawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetOverrideMaterialSnapshotIdentity(), renderPassResources->GetOverrideMaterialSnapshotVersion());
+		renderPass.renderFramePassIndex = _internals->renderFrame.AddPass(rootDrawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetIdentity(), renderPassResources->GetOverrideMaterialSnapshotVersion());
 
 		Matrix clipSpaceCorrectionMatrix;
 		clipSpaceCorrectionMatrix.m[5] = -1.0f;
@@ -1069,7 +1069,7 @@ namespace RN
 
 		if(vulkanRenderPass.type != VulkanRenderPass::Type::ResolveMSAA)
 		{
-			vulkanRenderPass.renderFramePassIndex = _internals->renderFrame.AddPass(drawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetOverrideMaterialSnapshotIdentity(), renderPassResources->GetOverrideMaterialSnapshotVersion());
+			vulkanRenderPass.renderFramePassIndex = _internals->renderFrame.AddPass(drawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetIdentity(), renderPassResources->GetOverrideMaterialSnapshotVersion());
 			RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(vulkanRenderPass.renderFramePassIndex);
 			const RenderFrame::Pass &previousFramePass = _internals->renderFrame.GetPass(previousRenderPass.renderFramePassIndex);
 			framePass.SetCameraSnapshot(previousFramePass.GetCameraSnapshot());
@@ -2055,7 +2055,7 @@ namespace RN
 		warmupRenderPass.multiviewLayer = 0;
 		warmupRenderPass.subpasses.clear();
 		RenderFrame warmupFrame;
-		warmupRenderPass.renderFramePassIndex = warmupFrame.AddPass(drawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetOverrideMaterialSnapshotIdentity(), renderPassResources->GetOverrideMaterialSnapshotVersion());
+		warmupRenderPass.renderFramePassIndex = warmupFrame.AddPass(drawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetIdentity(), renderPassResources->GetOverrideMaterialSnapshotVersion());
 
 		//TODO: Support subpasses
 		Mesh::DrawSnapshot meshSnapshot;
@@ -2063,8 +2063,9 @@ namespace RN
 		Material::DrawSnapshot materialSnapshot;
 		material->GetDrawSnapshot(materialSnapshot);
 		const Material::DrawSnapshot *overrideMaterialSnapshot = renderPassResources->GetOverrideMaterialSnapshot();
+		uint64 overrideMaterialCacheIdentity = overrideMaterialSnapshot ? renderPassResources->GetIdentity() : 0;
 		Drawable::MergedMaterialSnapshot mergedMaterialSnapshot;
-		mergedMaterialSnapshot.Update(materialSnapshot, material->GetDrawSnapshotVersion(), warmupRenderPass.shaderHint, overrideMaterialSnapshot, renderPassResources->GetOverrideMaterialSnapshotIdentity(), renderPassResources->GetOverrideMaterialSnapshotVersion());
+		mergedMaterialSnapshot.Update(materialSnapshot, material->GetDrawSnapshotVersion(), warmupRenderPass.shaderHint, overrideMaterialSnapshot, overrideMaterialCacheIdentity, renderPassResources->GetOverrideMaterialSnapshotVersion());
 		_internals->stateCoordinator.GetRenderPipelineState(mergedMaterialSnapshot.GetVertexShader(), mergedMaterialSnapshot.GetFragmentShader(), meshSnapshot, mergedMaterialSnapshot.GetPipelineProperties(), warmupFrame, &warmupRenderPass, 0, static_cast<uint8>(multiviewCameraCount));
 	}
 
@@ -2145,7 +2146,7 @@ namespace RN
 				VulkanDrawable::RenderResources &renderResources = drawable->GetRenderResources(preparedPass.resourceIndex);
 
 				const Material::DrawSnapshot *overrideMaterialSnapshot = framePass.GetOverrideMaterialSnapshot();
-				renderResources.mergedMaterialSnapshot.Update(drawItem.GetMaterial(), drawItem.GetMaterialSnapshotVersion(), renderSubPass.shaderHint, overrideMaterialSnapshot, framePass.GetOverrideMaterialSnapshotIdentity(), framePass.GetOverrideMaterialSnapshotVersion());
+				renderResources.mergedMaterialSnapshot.Update(drawItem.GetMaterial(), drawItem.GetMaterialSnapshotVersion(), renderSubPass.shaderHint, overrideMaterialSnapshot, framePass.GetOverrideMaterialCacheIdentity(), framePass.GetOverrideMaterialSnapshotVersion());
 				Drawable::PipelineKey pipelineKey;
 				pipelineKey.meshPipelineHash = drawItem.GetMesh().GetPipelineHash();
 				pipelineKey.framebuffer = renderPass.framebuffer;

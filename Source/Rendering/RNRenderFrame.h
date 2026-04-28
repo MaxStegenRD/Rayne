@@ -196,10 +196,10 @@ namespace RN
 		class Pass
 		{
 		public:
-			Pass(const RenderPass::DrawSnapshot &drawSnapshot, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialSnapshotIdentity, uint64 overrideMaterialSnapshotVersion) :
+			Pass(const RenderPass::DrawSnapshot &drawSnapshot, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialCacheIdentity, uint64 overrideMaterialSnapshotVersion) :
 				_drawSnapshot(drawSnapshot),
 				_hasOverrideMaterial(overrideMaterialSnapshot != nullptr),
-				_overrideMaterialSnapshotIdentity(overrideMaterialSnapshot ? overrideMaterialSnapshotIdentity : 0),
+				_overrideMaterialCacheIdentity(overrideMaterialSnapshot ? overrideMaterialCacheIdentity : 0),
 				_overrideMaterialSnapshotVersion(overrideMaterialSnapshot ? overrideMaterialSnapshotVersion : 0)
 			{
 				if(_hasOverrideMaterial)
@@ -233,14 +233,14 @@ namespace RN
 
 			const RenderPass::DrawSnapshot &GetDrawSnapshot() const { return _drawSnapshot; }
 			const Material::DrawSnapshot *GetOverrideMaterialSnapshot() const { return _hasOverrideMaterial ? &_overrideMaterialSnapshot : nullptr; }
-			uint64 GetOverrideMaterialSnapshotIdentity() const { return _overrideMaterialSnapshotIdentity; }
+			uint64 GetOverrideMaterialCacheIdentity() const { return _overrideMaterialCacheIdentity; }
 			uint64 GetOverrideMaterialSnapshotVersion() const { return _overrideMaterialSnapshotVersion; }
 			const std::vector<DrawItem> &GetDrawItems() const { return _drawItems; }
 
 		private:
 			RenderPass::DrawSnapshot _drawSnapshot;
 			bool _hasOverrideMaterial;
-			uint64 _overrideMaterialSnapshotIdentity;
+			uint64 _overrideMaterialCacheIdentity;
 			uint64 _overrideMaterialSnapshotVersion;
 			Material::DrawSnapshot _overrideMaterialSnapshot;
 			std::vector<DrawItem> _drawItems;
@@ -261,9 +261,9 @@ namespace RN
 			_passes.clear();
 		}
 
-		size_t AddPass(const RenderPass::DrawSnapshot &drawSnapshot, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialSnapshotIdentity, uint64 overrideMaterialSnapshotVersion)
+		size_t AddPass(const RenderPass::DrawSnapshot &drawSnapshot, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialCacheIdentity, uint64 overrideMaterialSnapshotVersion)
 		{
-			_passes.emplace_back(drawSnapshot, overrideMaterialSnapshot, overrideMaterialSnapshotIdentity, overrideMaterialSnapshotVersion);
+			_passes.emplace_back(drawSnapshot, overrideMaterialSnapshot, overrideMaterialCacheIdentity, overrideMaterialSnapshotVersion);
 			return _passes.size() - 1;
 		}
 
