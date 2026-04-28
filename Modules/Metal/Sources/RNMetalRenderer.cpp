@@ -1400,30 +1400,27 @@ namespace RN
 			MetalDrawable::RenderResources &renderResources = drawable->EnsureRenderResources(_internals->currentRenderPassIndex);
 
 			Mesh *sourceMesh = drawable->GetSourceMesh();
-			Material *sourceMaterial = drawable->GetSourceMaterial();
+			const Material::DrawSnapshot *overrideMaterialSnapshot = pass.GetOverrideMaterialSnapshot();
 			Drawable::PipelineKey pipelineKey;
-			pipelineKey.camera = pass.camera;
 			pipelineKey.mesh = sourceMesh;
 			pipelineKey.meshPipelineVersion = sourceMesh ? sourceMesh->GetPipelineVersion() : 0;
-			pipelineKey.material = sourceMaterial;
-			pipelineKey.materialPipelineVersion = sourceMaterial ? sourceMaterial->GetPipelineVersion() : 0;
 			pipelineKey.framebuffer = pass.framebuffer;
-			pipelineKey.shaderHint = pass.shaderHint;
-			pipelineKey.overrideMaterial = pass.overrideMaterial;
-			pipelineKey.overrideMaterialPipelineVersion = pass.overrideMaterial ? pass.overrideMaterial->GetPipelineVersion() : 0;
+			pipelineKey.vertexShader = drawable->material.GetSelectedVertexShader(pass.shaderHint, overrideMaterialSnapshot);
+			pipelineKey.fragmentShader = drawable->material.GetSelectedFragmentShader(pass.shaderHint, overrideMaterialSnapshot);
+			drawable->material.GetMergedPipelineProperties(overrideMaterialSnapshot, pipelineKey.materialProperties);
 			pipelineKey.renderPass = pass.renderPass;
 
 			if(!renderResources.pipelineState || renderResources.pipelineKey != pipelineKey)
 			{
 				_lock.Lock();
-				const MetalRenderingState *state = _internals->stateCoordinator.GetRenderPipelineState(sourceMaterial, sourceMesh, pass.framebuffer, pass.shaderHint, pass.overrideMaterial, pass.renderPass);
+				const MetalRenderingState *state = _internals->stateCoordinator.GetRenderPipelineState(pipelineKey.vertexShader, pipelineKey.fragmentShader, sourceMesh, pass.framebuffer, pipelineKey.materialProperties, pass.renderPass);
 				_lock.Unlock();
 
 				drawable->UpdateRenderingState(_internals->currentRenderPassIndex, this, state, pipelineKey);
 			}
 
-			Shader *vertexShader = drawable->material.GetVertexShader();
-			Shader *fragmentShader = drawable->material.GetFragmentShader();
+			Shader *vertexShader = renderResources.pipelineState->vertexShader;
+			Shader *fragmentShader = renderResources.pipelineState->fragmentShader;
 			bool canUseInstancing = vertexShader && fragmentShader && vertexShader->GetHasInstancing() && fragmentShader->GetHasInstancing();
 
 			if(canUseInstancing && pass.currentInstanceDrawable)
@@ -1500,8 +1497,7 @@ namespace RN
 		}
 		
 		MetalRenderPass &renderPass = _internals->renderPasses[_internals->currentRenderPassIndex];
-		Material::PipelineProperties mergedMaterialProperties;
-		drawable->material.GetMergedPipelineProperties(renderPass.GetOverrideMaterialSnapshot(), mergedMaterialProperties);
+		const Material::PipelineProperties &mergedMaterialProperties = drawable->_renderResources[_internals->currentRenderPassIndex].pipelineKey.materialProperties;
 		[encoder setDepthStencilState:_internals->stateCoordinator.GetDepthStencilStateForMaterial(mergedMaterialProperties, _internals->currentRenderState)];
 		[encoder setCullMode:static_cast<MTLCullMode>(mergedMaterialProperties.cullMode)];
 		if(mergedMaterialProperties.usePolygonOffset)

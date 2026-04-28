@@ -143,6 +143,23 @@ namespace RN
 			BlendFactor blendFactorDestinationAlpha;
 
 			RNAPI void CopyFromPipelineProperties(const PipelineProperties &properties);
+			bool operator==(const PipelineProperties &properties) const
+			{
+				return colorWriteMask == properties.colorWriteMask &&
+					depthMode == properties.depthMode &&
+					depthWriteEnabled == properties.depthWriteEnabled &&
+					usePolygonOffset == properties.usePolygonOffset &&
+					polygonOffsetFactor == properties.polygonOffsetFactor &&
+					polygonOffsetUnits == properties.polygonOffsetUnits &&
+					useAlphaToCoverage == properties.useAlphaToCoverage &&
+					cullMode == properties.cullMode &&
+					blendOperationRGB == properties.blendOperationRGB &&
+					blendOperationAlpha == properties.blendOperationAlpha &&
+					blendFactorSourceRGB == properties.blendFactorSourceRGB &&
+					blendFactorDestinationRGB == properties.blendFactorDestinationRGB &&
+					blendFactorSourceAlpha == properties.blendFactorSourceAlpha &&
+					blendFactorDestinationAlpha == properties.blendFactorDestinationAlpha;
+			}
 		};
 
 		class DrawSnapshot
@@ -157,13 +174,13 @@ namespace RN
 
 			RNAPI Shader *GetFragmentShader(Shader::UsageHint type = Shader::UsageHint::Default) const;
 			RNAPI Shader *GetVertexShader(Shader::UsageHint type = Shader::UsageHint::Default) const;
+			RNAPI Shader *GetSelectedFragmentShader(Shader::UsageHint type, const DrawSnapshot *overrideMaterial) const;
+			RNAPI Shader *GetSelectedVertexShader(Shader::UsageHint type, const DrawSnapshot *overrideMaterial) const;
 
 			const Array *GetTextures() const { return _textures.Get(); }
 			RNAPI void SetTextures(const Array *textures);
 
-			RNAPI void GetMergedProperties(Material *overrideMaterial, Properties &properties) const;
 			RNAPI void GetMergedProperties(const DrawSnapshot *overrideMaterial, Properties &properties) const;
-			RNAPI void GetMergedPipelineProperties(Material *overrideMaterial, PipelineProperties &properties) const;
 			RNAPI void GetMergedPipelineProperties(const DrawSnapshot *overrideMaterial, PipelineProperties &properties) const;
 
 		private:

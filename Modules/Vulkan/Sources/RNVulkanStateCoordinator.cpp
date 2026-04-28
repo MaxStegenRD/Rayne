@@ -546,20 +546,18 @@ namespace RN
 		return signature;
 	}
 
-	const VulkanPipelineState *VulkanStateCoordinator::GetRenderPipelineState(Material *material, Mesh *mesh, Shader::UsageHint shaderHint, Material *overrideMaterial, const VulkanRenderPass *rootVulkanPass, uint32 subpassIndex)
+	const VulkanPipelineState *VulkanStateCoordinator::GetRenderPipelineState(Shader *vertexShader, Shader *fragmentShader, Mesh *mesh, const Material::PipelineProperties &mergedMaterialProperties, const VulkanRenderPass *rootVulkanPass, uint32 subpassIndex)
 	{
 		const VulkanFramebuffer *framebuffer = rootVulkanPass->framebuffer;
 
 		const Mesh::VertexDescriptor &descriptor = mesh->GetVertexDescriptor();
-		const Material::PipelineProperties &mergedMaterialProperties = material->GetMergedPipelineProperties(overrideMaterial);
 		VulkanPipelineStateDescriptor pipelineDescriptor;
 		pipelineDescriptor.depthStencilFormat = (framebuffer->_depthStencilTarget) ? framebuffer->_depthStencilTarget->vulkanTargetViewDescriptor.format : VK_FORMAT_UNDEFINED;
 		pipelineDescriptor.sampleCount = framebuffer->GetSampleCount();
 		//pipelineDescriptor.sampleQuality = 0;//(framebuffer->_colorTargets.size() > 0 && !framebuffer->GetSwapChain()) ? framebuffer->_colorTargets[0]->targetView texture->GetDescriptor().sampleQuality : 0;
 		pipelineDescriptor.renderPass = GetRenderPassState(rootVulkanPass)->renderPass;
-		pipelineDescriptor.shaderHint = shaderHint;
-		pipelineDescriptor.vertexShader = (overrideMaterial && !(overrideMaterial->GetOverride() & Material::Override::GroupShaders) && !(material->GetOverride() & Material::Override::GroupShaders))? overrideMaterial->GetVertexShader(pipelineDescriptor.shaderHint) : material->GetVertexShader(pipelineDescriptor.shaderHint);
-		pipelineDescriptor.fragmentShader = (overrideMaterial && !(overrideMaterial->GetOverride() & Material::Override::GroupShaders) && !(material->GetOverride() & Material::Override::GroupShaders)) ? overrideMaterial->GetFragmentShader(pipelineDescriptor.shaderHint) : material->GetFragmentShader(pipelineDescriptor.shaderHint);
+		pipelineDescriptor.vertexShader = vertexShader;
+		pipelineDescriptor.fragmentShader = fragmentShader;
 		pipelineDescriptor.depthWriteEnabled = mergedMaterialProperties.depthWriteEnabled;
 		pipelineDescriptor.colorWriteMask = mergedMaterialProperties.colorWriteMask;
 		pipelineDescriptor.depthMode = mergedMaterialProperties.depthMode;

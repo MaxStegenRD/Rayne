@@ -46,11 +46,6 @@ namespace RN
 
 		DepthMode mode;
 		bool depthWriteEnabled;
-
-		RN_INLINE bool MatchesMaterial(Material *material) const
-		{
-			return (material->GetDepthMode() == mode && material->GetDepthWriteEnabled() == depthWriteEnabled);
-		}
 	};
 
 	struct VulkanRootSignature
@@ -71,8 +66,6 @@ namespace RN
 
 	struct VulkanPipelineStateDescriptor
 	{
-		Shader::UsageHint shaderHint;
-
 		uint8 sampleCount;
 		//uint8 sampleQuality;
 		VkRenderPass renderPass;
@@ -179,7 +172,7 @@ namespace RN
 		~VulkanStateCoordinator();
 
 		const VulkanRootSignature *GetRootSignature(const VulkanPipelineStateDescriptor &pipelineDescriptor);
-		const VulkanPipelineState *GetRenderPipelineState(Material *material, Mesh *mesh, Shader::UsageHint shaderHint, Material *overrideMaterial, const VulkanRenderPass *rootVulkanPass, uint32 subpassIndex);
+		const VulkanPipelineState *GetRenderPipelineState(Shader *vertexShader, Shader *fragmentShader, Mesh *mesh, const Material::PipelineProperties &mergedMaterialProperties, const VulkanRenderPass *rootVulkanPass, uint32 subpassIndex);
 		VulkanUniformState *GetUniformStateForPipelineState(const VulkanPipelineState *pipelineState);
 		VulkanRenderPassState *GetRenderPassState(const VulkanRenderPass *rootVulkanPass);
 

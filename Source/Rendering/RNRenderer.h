@@ -49,30 +49,28 @@ namespace RN
 
 		struct PipelineKey
 		{
-			Camera *camera = nullptr;
 			Mesh *mesh = nullptr;
 			uint64 meshPipelineVersion = 0;
-			Material *material = nullptr;
-			uint64 materialPipelineVersion = 0;
 			Framebuffer *framebuffer = nullptr;
-			Shader::UsageHint shaderHint = Shader::UsageHint::Default;
-			Material *overrideMaterial = nullptr;
-			uint64 overrideMaterialPipelineVersion = 0;
+			Shader *vertexShader = nullptr;
+			Shader *fragmentShader = nullptr;
+			Material::PipelineProperties materialProperties;
 			RenderPass *renderPass = nullptr;
+			uint64 renderPassSignature = 0;
+			uint8 renderViewCount = 0;
 			uint32 subpassIndex = 0;
 
 			bool operator==(const PipelineKey &other) const
 			{
-				return camera == other.camera &&
-					mesh == other.mesh &&
+				return mesh == other.mesh &&
 					meshPipelineVersion == other.meshPipelineVersion &&
-					material == other.material &&
-					materialPipelineVersion == other.materialPipelineVersion &&
 					framebuffer == other.framebuffer &&
-					shaderHint == other.shaderHint &&
-					overrideMaterial == other.overrideMaterial &&
-					overrideMaterialPipelineVersion == other.overrideMaterialPipelineVersion &&
+					vertexShader == other.vertexShader &&
+					fragmentShader == other.fragmentShader &&
+					materialProperties == other.materialProperties &&
 					renderPass == other.renderPass &&
+					renderPassSignature == other.renderPassSignature &&
+					renderViewCount == other.renderViewCount &&
 					subpassIndex == other.subpassIndex;
 			}
 			bool operator!=(const PipelineKey &other) const { return !(*this == other); }
@@ -179,9 +177,8 @@ namespace RN
 		}
 
 		Mesh *GetSourceMesh() const { return _sourceMesh.Get(); }
-		Material *GetSourceMaterial() const { return _sourceMaterial.Get(); }
 
-		// Source objects are kept for identity/version checks and, for mesh/material, pipeline/cache lookup. Rendering should use the snapshots below.
+		// Source objects are kept for snapshot refresh/version checks. Mesh is also used as pipeline layout identity.
 		StrongRef<Mesh> _sourceMesh;
 		StrongRef<Material> _sourceMaterial;
 		StrongRef<Skeleton> _sourceSkeleton;

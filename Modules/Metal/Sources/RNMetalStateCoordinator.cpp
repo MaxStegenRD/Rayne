@@ -212,27 +212,25 @@ namespace RN
 		return sampler;
 	}
 
-	const MetalRenderingState *MetalStateCoordinator::GetRenderPipelineState(Material *material, Mesh *mesh, Framebuffer *framebuffer, Shader::UsageHint shaderHint, Material *overrideMaterial, RenderPass *renderPass)
+	const MetalRenderingState *MetalStateCoordinator::GetRenderPipelineState(Shader *vertexShader, Shader *fragmentShader, Mesh *mesh, Framebuffer *framebuffer, const Material::PipelineProperties &materialProperties, RenderPass *renderPass)
 	{
 		const Mesh::VertexDescriptor &descriptor = mesh->GetVertexDescriptor();
 
-		MetalShader *vertexShader = static_cast<MetalShader *>((overrideMaterial && !(overrideMaterial->GetOverride() & Material::Override::GroupShaders) && !(material->GetOverride() & Material::Override::GroupShaders))? overrideMaterial->GetVertexShader(shaderHint) : material->GetVertexShader(shaderHint));
-		MetalShader *fragmentShader = static_cast<MetalShader *>((overrideMaterial && !(overrideMaterial->GetOverride() & Material::Override::GroupShaders) && !(material->GetOverride() & Material::Override::GroupShaders))? overrideMaterial->GetFragmentShader(shaderHint) : material->GetFragmentShader(shaderHint));
-		
-		Material::PipelineProperties materialProperties = material->GetMergedPipelineProperties(overrideMaterial);
+		MetalShader *metalVertexShader = static_cast<MetalShader *>(vertexShader);
+		MetalShader *metalFragmentShader = static_cast<MetalShader *>(fragmentShader);
 
 		for(MetalRenderingStateCollection *collection : _renderingStates)
 		{
 			if(collection->descriptor.IsEqual(descriptor))
 			{
-				if(collection->fragmentShader->IsEqual(fragmentShader) && collection->vertexShader->IsEqual(vertexShader))
+				if(collection->fragmentShader->IsEqual(metalFragmentShader) && collection->vertexShader->IsEqual(metalVertexShader))
 				{
 					return GetRenderPipelineStateInCollection(collection, mesh, framebuffer, materialProperties, renderPass);
 				}
 			}
 		}
 
-		MetalRenderingStateCollection *collection = new MetalRenderingStateCollection(descriptor, vertexShader, fragmentShader);
+		MetalRenderingStateCollection *collection = new MetalRenderingStateCollection(descriptor, metalVertexShader, metalFragmentShader);
 		_renderingStates.push_back(collection);
 
 		return GetRenderPipelineStateInCollection(collection, mesh, framebuffer, materialProperties, renderPass);

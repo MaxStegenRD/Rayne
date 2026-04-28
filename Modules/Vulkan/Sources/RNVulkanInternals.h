@@ -246,7 +246,7 @@ namespace RN
 		VulkanFramebuffer *framebuffer;
 		VulkanFramebuffer *resolveFramebuffer;
 		Shader::UsageHint shaderHint;
-		Material *overrideMaterial = nullptr;
+		bool hasOverrideMaterial = false;
 		Material::DrawSnapshot overrideMaterialSnapshot;
 
 		Color cameraAmbientColor;
@@ -275,16 +275,16 @@ namespace RN
 
 		void SetOverrideMaterial(Material *material)
 		{
-			overrideMaterial = material;
-			if(overrideMaterial)
-				overrideMaterial->GetDrawSnapshot(overrideMaterialSnapshot);
+			hasOverrideMaterial = (material != nullptr);
+			if(hasOverrideMaterial)
+				material->GetDrawSnapshot(overrideMaterialSnapshot);
 			else
 				overrideMaterialSnapshot.Reset();
 		}
 
 		const Material::DrawSnapshot *GetOverrideMaterialSnapshot() const
 		{
-			return overrideMaterial ? &overrideMaterialSnapshot : nullptr;
+			return hasOverrideMaterial ? &overrideMaterialSnapshot : nullptr;
 		}
 	};
 

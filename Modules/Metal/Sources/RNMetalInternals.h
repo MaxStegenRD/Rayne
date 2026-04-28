@@ -179,7 +179,7 @@ namespace RN
 
 		MetalFramebuffer *framebuffer;
 		Shader::UsageHint shaderHint;
-		Material *overrideMaterial = nullptr;
+		bool hasOverrideMaterial = false;
 		Material::DrawSnapshot overrideMaterialSnapshot;
 		MetalFramebuffer *resolveFramebuffer;
 
@@ -219,16 +219,16 @@ namespace RN
 
 		void SetOverrideMaterial(Material *material)
 		{
-			overrideMaterial = material;
-			if(overrideMaterial)
-				overrideMaterial->GetDrawSnapshot(overrideMaterialSnapshot);
+			hasOverrideMaterial = (material != nullptr);
+			if(hasOverrideMaterial)
+				material->GetDrawSnapshot(overrideMaterialSnapshot);
 			else
 				overrideMaterialSnapshot.Reset();
 		}
 
 		const Material::DrawSnapshot *GetOverrideMaterialSnapshot() const
 		{
-			return overrideMaterial ? &overrideMaterialSnapshot : nullptr;
+			return hasOverrideMaterial ? &overrideMaterialSnapshot : nullptr;
 		}
 	};
 

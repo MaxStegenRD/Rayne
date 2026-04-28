@@ -148,6 +148,22 @@ namespace RN
 		return _vertexShader[index].Get();
 	}
 
+	Shader *Material::DrawSnapshot::GetSelectedFragmentShader(Shader::UsageHint type, const DrawSnapshot *overrideMaterial) const
+	{
+		if(overrideMaterial && !(overrideMaterial->_override & Override::GroupShaders) && !(_override & Override::GroupShaders))
+			return overrideMaterial->GetFragmentShader(type);
+
+		return GetFragmentShader(type);
+	}
+
+	Shader *Material::DrawSnapshot::GetSelectedVertexShader(Shader::UsageHint type, const DrawSnapshot *overrideMaterial) const
+	{
+		if(overrideMaterial && !(overrideMaterial->_override & Override::GroupShaders) && !(_override & Override::GroupShaders))
+			return overrideMaterial->GetVertexShader(type);
+
+		return GetVertexShader(type);
+	}
+
 	void Material::DrawSnapshot::SetTextures(const Array *textures)
 	{
 		Array *copy = SafeCopy(textures);
@@ -155,19 +171,9 @@ namespace RN
 		SafeRelease(copy);
 	}
 
-	void Material::DrawSnapshot::GetMergedProperties(Material *overrideMaterial, Properties &properties) const
-	{
-		Material::GetMergedProperties(_properties, _override, overrideMaterial ? &overrideMaterial->_properties : nullptr, overrideMaterial ? overrideMaterial->GetOverride() : 0, properties);
-	}
-
 	void Material::DrawSnapshot::GetMergedProperties(const DrawSnapshot *overrideMaterial, Properties &properties) const
 	{
 		Material::GetMergedProperties(_properties, _override, overrideMaterial ? &overrideMaterial->_properties : nullptr, overrideMaterial ? overrideMaterial->_override : 0, properties);
-	}
-
-	void Material::DrawSnapshot::GetMergedPipelineProperties(Material *overrideMaterial, PipelineProperties &properties) const
-	{
-		Material::GetMergedPipelineProperties(_pipelineProperties, _override, overrideMaterial ? &overrideMaterial->_pipelineProperties : nullptr, overrideMaterial ? overrideMaterial->GetOverride() : 0, properties);
 	}
 
 	void Material::DrawSnapshot::GetMergedPipelineProperties(const DrawSnapshot *overrideMaterial, PipelineProperties &properties) const
