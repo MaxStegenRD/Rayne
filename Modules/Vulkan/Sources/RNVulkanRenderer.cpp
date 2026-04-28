@@ -1344,7 +1344,7 @@ namespace RN
 	{
 		uint8 *buffer = reinterpret_cast<uint8 *>(dynamicBufferReference->dynamicBuffer->GetBuffer()) + dynamicBufferReference->offset;
 
-		const Material::Properties &mergedMaterialProperties = drawable->_renderResources[_internals->currentDrawableResourceIndex].mergedMaterialSnapshot.properties;
+		const Material::Properties &mergedMaterialProperties = drawable->_renderResources[_internals->currentDrawableResourceIndex].mergedMaterialSnapshot.GetProperties();
 
 		const RN::Array *uniformDescriptors = argumentBuffer->GetUniformDescriptors();
 		size_t count = uniformDescriptors->GetCount();
@@ -2072,11 +2072,9 @@ namespace RN
 		Material::DrawSnapshot materialSnapshot;
 		material->GetDrawSnapshot(materialSnapshot);
 		const Material::DrawSnapshot *overrideMaterialSnapshot = warmupRenderPass.GetOverrideMaterialSnapshot();
-		Shader *vertexShader = materialSnapshot.GetSelectedVertexShader(warmupRenderPass.shaderHint, overrideMaterialSnapshot);
-		Shader *fragmentShader = materialSnapshot.GetSelectedFragmentShader(warmupRenderPass.shaderHint, overrideMaterialSnapshot);
-		Material::PipelineProperties materialProperties;
-		materialSnapshot.GetMergedPipelineProperties(overrideMaterialSnapshot, materialProperties);
-		_internals->stateCoordinator.GetRenderPipelineState(vertexShader, fragmentShader, meshSnapshot, materialProperties, &warmupRenderPass, 0);
+		Drawable::MergedMaterialSnapshot mergedMaterialSnapshot;
+		mergedMaterialSnapshot.Update(materialSnapshot, material->GetDrawSnapshotVersion(), warmupRenderPass.shaderHint, overrideMaterialSnapshot, warmupRenderPass.GetOverrideMaterialSnapshotVersion());
+		_internals->stateCoordinator.GetRenderPipelineState(mergedMaterialSnapshot.GetVertexShader(), mergedMaterialSnapshot.GetFragmentShader(), meshSnapshot, mergedMaterialSnapshot.GetPipelineProperties(), &warmupRenderPass, 0);
 	}
 
 	void VulkanRenderer::SubmitDrawable(Drawable *tdrawable)
@@ -2110,9 +2108,9 @@ namespace RN
 			Drawable::PipelineKey pipelineKey;
 			pipelineKey.meshPipelineHash = drawable->mesh.GetPipelineHash();
 			pipelineKey.framebuffer = renderPass.framebuffer;
-			pipelineKey.vertexShader = renderResources.mergedMaterialSnapshot.vertexShader;
-			pipelineKey.fragmentShader = renderResources.mergedMaterialSnapshot.fragmentShader;
-			pipelineKey.materialProperties = renderResources.mergedMaterialSnapshot.pipelineProperties;
+			pipelineKey.vertexShader = renderResources.mergedMaterialSnapshot.GetVertexShader();
+			pipelineKey.fragmentShader = renderResources.mergedMaterialSnapshot.GetFragmentShader();
+			pipelineKey.materialProperties = renderResources.mergedMaterialSnapshot.GetPipelineProperties();
 			pipelineKey.renderPass = renderSubPass.renderPass;
 			pipelineKey.renderPassSignature = renderPass.subpassSignature;
 			pipelineKey.renderViewCount = static_cast<uint8>(renderPass.multiviewCameraInfo.size());
@@ -2142,18 +2140,22 @@ namespace RN
 			auto *fragmentConstantBuffers = renderResources.uniformState->fragmentConstantBuffers.data();
 			size_t vertexConstantBuffersCount = renderResources.uniformState->vertexConstantBuffers.size();
 			size_t fragmentConstantBuffersCount = renderResources.uniformState->fragmentConstantBuffers.size();
+			VulkanDrawable *instanceDrawable = renderSubPass.currentInstanceDrawable;
+			auto *instanceRenderResources = instanceDrawable? &instanceDrawable->_renderResources[_internals->currentDrawableResourceIndex] : nullptr;
 
 			//TODO: Use binding and type arrays in vulkan root signatures pipeline layout instead
 			//Check if uniform buffers are the same, the object can't be part of the same instanced draw call if it doesn't share the same buffers (because they are full for example)
-			if(canUseInstancing && renderSubPass.currentInstanceDrawable)
+			if(canUseInstancing && instanceRenderResources)
 			{
-				auto &instanceRenderResources = renderSubPass.currentInstanceDrawable->_renderResources[_internals->currentDrawableResourceIndex];
-				if(vertexConstantBuffersCount == instanceRenderResources.uniformState->vertexConstantBuffers.size() && fragmentConstantBuffersCount == instanceRenderResources.uniformState->fragmentConstantBuffers.size())
+				if(vertexConstantBuffersCount != instanceRenderResources->uniformState->vertexConstantBuffers.size() || fragmentConstantBuffersCount != instanceRenderResources->uniformState->fragmentConstantBuffers.size())
 				{
-					canUseInstancing = true;
+					canUseInstancing = false;
+				}
+				else
+				{
 					for(int i = 0; i < vertexConstantBuffersCount && canUseInstancing; i++)
 					{
-						if(vertexConstantBuffers[i]->dynamicBuffer != instanceRenderResources.uniformState->vertexConstantBuffers[i]->dynamicBuffer)
+						if(vertexConstantBuffers[i]->dynamicBuffer != instanceRenderResources->uniformState->vertexConstantBuffers[i]->dynamicBuffer)
 						{
 							canUseInstancing = false;
 						}
@@ -2161,7 +2163,7 @@ namespace RN
 
 					for(int i = 0; i < fragmentConstantBuffersCount && canUseInstancing; i++)
 					{
-						if(fragmentConstantBuffers[i]->dynamicBuffer != instanceRenderResources.uniformState->fragmentConstantBuffers[i]->dynamicBuffer)
+						if(fragmentConstantBuffers[i]->dynamicBuffer != instanceRenderResources->uniformState->fragmentConstantBuffers[i]->dynamicBuffer)
 						{
 							canUseInstancing = false;
 						}
@@ -2174,7 +2176,7 @@ namespace RN
 				canUseInstancing = false;
 			}
 
-			if(canUseInstancing && renderSubPass.currentPipelineState == renderResources.pipelineState && renderSubPass.currentInstanceDrawable && drawable->mesh.CanInstanceWith(renderSubPass.currentInstanceDrawable->mesh) && drawable->material.GetTextures()->IsEqualLite(renderSubPass.currentInstanceDrawable->material.GetTextures()))
+			if(canUseInstancing && renderSubPass.currentPipelineState == renderResources.pipelineState && instanceRenderResources && drawable->mesh.CanInstanceWith(instanceDrawable->mesh) && renderResources.mergedMaterialSnapshot.IsTextureSetEqualLite(instanceRenderResources->mergedMaterialSnapshot))
 			{
 				renderSubPass.instanceSteps.back() += 1; //Increase counter if the rendering state is the same
 			}
@@ -2617,6 +2619,7 @@ namespace RN
 							writeDescriptorSets.push_back(writeImageDescriptorSet);
 						});
 
+						const Array *textures = renderResource.mergedMaterialSnapshot.GetTextures();
 						signature->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop) {
 
 							VkImageView imageView = VK_NULL_HANDLE;
@@ -2633,14 +2636,14 @@ namespace RN
 								}
 								imageView = previousPassColorView;
 							}
-							else if(argument->GetMaterialTextureIndex() >= drawable->material.GetTextures()->GetCount())
+							else if(!textures || argument->GetMaterialTextureIndex() >= textures->GetCount())
 							{
 								stop = true;
 								return;
 							}
 							else
 							{
-								Object *textureObject = drawable->material.GetTextures()->GetObjectAtIndex(argument->GetMaterialTextureIndex());
+								Object *textureObject = textures->GetObjectAtIndex(argument->GetMaterialTextureIndex());
 
 								VulkanTexture *materialTexture = nullptr;
 								if(textureObject->IsKindOfClass(VulkanTexture::GetMetaClass()))

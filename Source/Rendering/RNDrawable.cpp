@@ -40,18 +40,40 @@ namespace RN
 
 	void Drawable::MergedMaterialSnapshot::Update(const Drawable &drawable, Shader::UsageHint hint, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialSnapshotVersion)
 	{
-		if(isValid && materialSnapshotVersion == drawable._materialSnapshotVersion && overrideSnapshot == overrideMaterialSnapshot && overrideSnapshotVersion == overrideMaterialSnapshotVersion && shaderHint == hint)
+		Update(drawable.material, drawable._materialSnapshotVersion, hint, overrideMaterialSnapshot, overrideMaterialSnapshotVersion);
+	}
+
+	void Drawable::MergedMaterialSnapshot::Update(const Material::DrawSnapshot &material, uint64 materialVersion, Shader::UsageHint hint, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialSnapshotVersion)
+	{
+		if(_isValid && _materialSnapshotVersion == materialVersion && _overrideSnapshot == overrideMaterialSnapshot && _overrideSnapshotVersion == overrideMaterialSnapshotVersion && _shaderHint == hint)
 			return;
 
-		materialSnapshotVersion = drawable._materialSnapshotVersion;
-		overrideSnapshot = overrideMaterialSnapshot;
-		overrideSnapshotVersion = overrideMaterialSnapshotVersion;
-		shaderHint = hint;
-		vertexShader = drawable.material.GetSelectedVertexShader(hint, overrideMaterialSnapshot);
-		fragmentShader = drawable.material.GetSelectedFragmentShader(hint, overrideMaterialSnapshot);
-		drawable.material.GetMergedProperties(overrideMaterialSnapshot, properties);
-		drawable.material.GetMergedPipelineProperties(overrideMaterialSnapshot, pipelineProperties);
-		isValid = true;
+		_materialSnapshotVersion = materialVersion;
+		_overrideSnapshot = overrideMaterialSnapshot;
+		_overrideSnapshotVersion = overrideMaterialSnapshotVersion;
+		_shaderHint = hint;
+		_vertexShader = material.GetSelectedVertexShader(hint, overrideMaterialSnapshot);
+		_fragmentShader = material.GetSelectedFragmentShader(hint, overrideMaterialSnapshot);
+		_textures = material.GetTextures();
+		material.GetMergedProperties(overrideMaterialSnapshot, _properties);
+		material.GetMergedPipelineProperties(overrideMaterialSnapshot, _pipelineProperties);
+		_isValid = true;
+	}
+
+	bool Drawable::MergedMaterialSnapshot::IsTextureSetEqual(const MergedMaterialSnapshot &other) const
+	{
+		if(_textures == other._textures) return true;
+		if(!_textures || !other._textures) return false;
+
+		return _textures->IsEqual(other._textures);
+	}
+
+	bool Drawable::MergedMaterialSnapshot::IsTextureSetEqualLite(const MergedMaterialSnapshot &other) const
+	{
+		if(_textures == other._textures) return true;
+		if(!_textures || !other._textures) return false;
+
+		return _textures->IsEqualLite(other._textures);
 	}
 
 	void Drawable::Update(Mesh *tmesh, Material *tmaterial, Skeleton *tskeleton, const SceneNode *node)

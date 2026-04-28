@@ -218,7 +218,7 @@ namespace RN
 								if(instance > 0 && argument->GetType() != Shader::ArgumentBuffer::Type::StorageBuffer) break;
 								
 								MetalDrawable *drawable = renderPass.drawables[i + instance];
-								const Material::Properties &mergedMaterialProperties = drawable->_renderResources[_internals->currentRenderPassIndex].mergedMaterialSnapshot.properties;
+								const Material::Properties &mergedMaterialProperties = drawable->_renderResources[_internals->currentRenderPassIndex].mergedMaterialSnapshot.GetProperties();
 								
 								MetalUniformBufferReference *bufferReference = drawable->_renderResources[_internals->currentRenderPassIndex].vertexShaderUniformBuffers[n];
 								UpdateUniformBufferReference(bufferReference, instance == 0);
@@ -238,7 +238,7 @@ namespace RN
 								if(instance > 0 && argument->GetType() != Shader::ArgumentBuffer::Type::StorageBuffer) break;
 								
 								MetalDrawable *drawable = renderPass.drawables[i + instance];
-								const Material::Properties &mergedMaterialProperties = drawable->_renderResources[_internals->currentRenderPassIndex].mergedMaterialSnapshot.properties;
+								const Material::Properties &mergedMaterialProperties = drawable->_renderResources[_internals->currentRenderPassIndex].mergedMaterialSnapshot.GetProperties();
 								
 								MetalUniformBufferReference *bufferReference = drawable->_renderResources[_internals->currentRenderPassIndex].fragmentShaderUniformBuffers[n];
 								UpdateUniformBufferReference(bufferReference, instance == 0);
@@ -1408,9 +1408,9 @@ namespace RN
 			Drawable::PipelineKey pipelineKey;
 			pipelineKey.meshPipelineHash = drawable->mesh.GetPipelineHash();
 			pipelineKey.framebuffer = pass.framebuffer;
-			pipelineKey.vertexShader = renderResources.mergedMaterialSnapshot.vertexShader;
-			pipelineKey.fragmentShader = renderResources.mergedMaterialSnapshot.fragmentShader;
-			pipelineKey.materialProperties = renderResources.mergedMaterialSnapshot.pipelineProperties;
+			pipelineKey.vertexShader = renderResources.mergedMaterialSnapshot.GetVertexShader();
+			pipelineKey.fragmentShader = renderResources.mergedMaterialSnapshot.GetFragmentShader();
+			pipelineKey.materialProperties = renderResources.mergedMaterialSnapshot.GetPipelineProperties();
 			pipelineKey.renderPass = pass.renderPass;
 
 			if(!renderResources.pipelineState || renderResources.pipelineKey != pipelineKey)
@@ -1425,16 +1425,20 @@ namespace RN
 			Shader *vertexShader = renderResources.pipelineState->vertexShader;
 			Shader *fragmentShader = renderResources.pipelineState->fragmentShader;
 			bool canUseInstancing = vertexShader && fragmentShader && vertexShader->GetHasInstancing() && fragmentShader->GetHasInstancing();
+			const MetalDrawable *instanceDrawable = pass.currentInstanceDrawable;
+			const MetalDrawable::RenderResources *instanceRenderResources = instanceDrawable? &instanceDrawable->_renderResources[_internals->currentRenderPassIndex] : nullptr;
 
-			if(canUseInstancing && pass.currentInstanceDrawable)
+			if(canUseInstancing && instanceRenderResources)
 			{
-				const MetalDrawable::RenderResources &instanceRenderResources = pass.currentInstanceDrawable->_renderResources[_internals->currentRenderPassIndex];
-				if(renderResources.vertexShaderUniformBuffers.size() == instanceRenderResources.vertexShaderUniformBuffers.size() && renderResources.fragmentShaderUniformBuffers.size() == instanceRenderResources.fragmentShaderUniformBuffers.size())
+				if(renderResources.vertexShaderUniformBuffers.size() != instanceRenderResources->vertexShaderUniformBuffers.size() || renderResources.fragmentShaderUniformBuffers.size() != instanceRenderResources->fragmentShaderUniformBuffers.size())
 				{
-					canUseInstancing = true;
+					canUseInstancing = false;
+				}
+				else
+				{
 					for(int i = 0; i < renderResources.vertexShaderUniformBuffers.size() && canUseInstancing; i++)
 					{
-						if(renderResources.vertexShaderUniformBuffers[i]->uniformBuffer != instanceRenderResources.vertexShaderUniformBuffers[i]->uniformBuffer)
+						if(renderResources.vertexShaderUniformBuffers[i]->uniformBuffer != instanceRenderResources->vertexShaderUniformBuffers[i]->uniformBuffer)
 						{
 							canUseInstancing = false;
 						}
@@ -1442,7 +1446,7 @@ namespace RN
 
 					for(int i = 0; i < renderResources.fragmentShaderUniformBuffers.size() && canUseInstancing; i++)
 					{
-						if(renderResources.fragmentShaderUniformBuffers[i]->uniformBuffer != instanceRenderResources.fragmentShaderUniformBuffers[i]->uniformBuffer)
+						if(renderResources.fragmentShaderUniformBuffers[i]->uniformBuffer != instanceRenderResources->fragmentShaderUniformBuffers[i]->uniformBuffer)
 						{
 							canUseInstancing = false;
 						}
@@ -1450,7 +1454,7 @@ namespace RN
 				}
 			}
 
-			if(canUseInstancing && pass.currentPipelineState == renderResources.pipelineState && pass.currentInstanceDrawable && drawable->mesh.CanInstanceWith(pass.currentInstanceDrawable->mesh) && drawable->material.GetTextures()->IsEqual(pass.currentInstanceDrawable->material.GetTextures()))
+			if(canUseInstancing && pass.currentPipelineState == renderResources.pipelineState && instanceRenderResources && drawable->mesh.CanInstanceWith(instanceDrawable->mesh) && renderResources.mergedMaterialSnapshot.IsTextureSetEqual(instanceRenderResources->mergedMaterialSnapshot))
 			{
 				pass.instanceSteps.back() += 1;
 			}
@@ -1570,7 +1574,7 @@ namespace RN
 
 		// Set textures
 		//TODO: Support vertex shader textures
-		const Array *textures = drawable->material.GetTextures();
+		const Array *textures = drawable->_renderResources[_internals->currentRenderPassIndex].mergedMaterialSnapshot.GetTextures();
 		metalFragmentShader->GetSignature()->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop){
 			if(argument->GetMaterialTextureIndex() == Shader::ArgumentTexture::IndexDirectionalShadowTexture)
 			{
@@ -1607,7 +1611,7 @@ namespace RN
 			else
 			{
 				uint8 materialTextureIndex = argument->GetMaterialTextureIndex();
-				if(materialTextureIndex < textures->GetCount())
+				if(textures && materialTextureIndex < textures->GetCount())
 				{
 					Object *textureObject = textures->GetObjectAtIndex(argument->GetMaterialTextureIndex());
 
