@@ -29,13 +29,13 @@ namespace RN
 			subpassIndex == other.subpassIndex;
 	}
 
-	void Drawable::MergedMaterialSnapshot::Update(const Material::DrawSnapshot &material, uint64 materialVersion, Shader::UsageHint hint, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialSnapshotVersion)
+	void Drawable::MergedMaterialSnapshot::Update(const Material::DrawSnapshot &material, uint64 materialVersion, Shader::UsageHint hint, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialSnapshotIdentity, uint64 overrideMaterialSnapshotVersion)
 	{
-		if(_isValid && _materialSnapshotVersion == materialVersion && _overrideSnapshot == overrideMaterialSnapshot && _overrideSnapshotVersion == overrideMaterialSnapshotVersion && _shaderHint == hint)
+		if(_isValid && _materialSnapshotVersion == materialVersion && _overrideSnapshotIdentity == overrideMaterialSnapshotIdentity && _overrideSnapshotVersion == overrideMaterialSnapshotVersion && _shaderHint == hint)
 			return;
 
 		_materialSnapshotVersion = materialVersion;
-		_overrideSnapshot = overrideMaterialSnapshot;
+		_overrideSnapshotIdentity = overrideMaterialSnapshotIdentity;
 		_overrideSnapshotVersion = overrideMaterialSnapshotVersion;
 		_shaderHint = hint;
 		_vertexShader = material.GetSelectedVertexShader(hint, overrideMaterialSnapshot);

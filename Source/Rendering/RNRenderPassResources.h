@@ -27,11 +27,14 @@ namespace RN
 		RNAPI void Update(RenderPass *renderPass, Material *effectiveOverrideMaterial);
 
 		const Material::DrawSnapshot *GetOverrideMaterialSnapshot() const { return _hasOverrideMaterial ? &_overrideMaterialSnapshot : nullptr; }
+		uint64 GetOverrideMaterialSnapshotIdentity() const { return _hasOverrideMaterial ? _identity : 0; }
 		uint64 GetOverrideMaterialSnapshotVersion() const { return _overrideMaterialSnapshotVersion; }
 		const RenderPass::DrawSnapshot &GetDrawSnapshot() const { return _drawSnapshot; }
 
 	private:
 		void UpdateOverrideMaterial(Material *effectiveOverrideMaterial);
+
+		uint64 _identity;
 
 		uint64 _drawSnapshotSourceVersion = 0;
 		RenderPass::DrawSnapshot _drawSnapshot;

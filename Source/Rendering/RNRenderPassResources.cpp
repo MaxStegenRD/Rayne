@@ -11,7 +11,10 @@
 
 namespace RN
 {
+	std::atomic<uint64> __RenderPassResourceIdentities(1);
+
 	RenderPassResources::RenderPassResources(Renderer *renderer) :
+		_identity(__RenderPassResourceIdentities.fetch_add(1)),
 		_renderer(renderer)
 	{}
 

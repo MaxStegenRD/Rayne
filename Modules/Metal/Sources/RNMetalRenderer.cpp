@@ -428,7 +428,7 @@ namespace RN
 		{
 			renderPass.shaderHint = drawSnapshot.GetShaderHint();
 		}
-		renderPass.renderFramePassIndex = _internals->renderFrame.AddPass(drawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetOverrideMaterialSnapshotVersion());
+		renderPass.renderFramePassIndex = _internals->renderFrame.AddPass(drawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetOverrideMaterialSnapshotIdentity(), renderPassResources->GetOverrideMaterialSnapshotVersion());
 		renderPass.resolveFramebuffer = nullptr;
 		renderPass.previousStoredFramebuffer = nullptr;
 
@@ -589,7 +589,7 @@ namespace RN
 
 		if(metalRenderPass.type != MetalRenderPass::Type::ResolveMSAA)
 		{
-			metalRenderPass.renderFramePassIndex = _internals->renderFrame.AddPass(drawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetOverrideMaterialSnapshotVersion());
+			metalRenderPass.renderFramePassIndex = _internals->renderFrame.AddPass(drawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetOverrideMaterialSnapshotIdentity(), renderPassResources->GetOverrideMaterialSnapshotVersion());
 			RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(metalRenderPass.renderFramePassIndex);
 			framePass.SetCameraSnapshot(_internals->renderFrame.GetPass(previousRenderPass.renderFramePassIndex).GetCameraSnapshot());
 			_internals->currentRenderPassIndex = _internals->renderPasses.size();
@@ -1405,7 +1405,7 @@ namespace RN
 				MetalDrawable::RenderResources &renderResources = drawable->GetRenderResources(renderResourceIndex);
 
 				const Material::DrawSnapshot *overrideMaterialSnapshot = framePass.GetOverrideMaterialSnapshot();
-				renderResources.mergedMaterialSnapshot.Update(drawItem.GetMaterial(), drawItem.GetMaterialSnapshotVersion(), pass.shaderHint, overrideMaterialSnapshot, framePass.GetOverrideMaterialSnapshotVersion());
+				renderResources.mergedMaterialSnapshot.Update(drawItem.GetMaterial(), drawItem.GetMaterialSnapshotVersion(), pass.shaderHint, overrideMaterialSnapshot, framePass.GetOverrideMaterialSnapshotIdentity(), framePass.GetOverrideMaterialSnapshotVersion());
 				Drawable::PipelineKey pipelineKey;
 				pipelineKey.meshPipelineHash = drawItem.GetMesh().GetPipelineHash();
 				pipelineKey.framebuffer = pass.framebuffer;

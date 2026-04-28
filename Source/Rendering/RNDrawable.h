@@ -46,7 +46,7 @@ namespace RN
 
 		struct MergedMaterialSnapshot
 		{
-			RNAPI void Update(const Material::DrawSnapshot &material, uint64 materialSnapshotVersion, Shader::UsageHint shaderHint, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialSnapshotVersion);
+			RNAPI void Update(const Material::DrawSnapshot &material, uint64 materialSnapshotVersion, Shader::UsageHint shaderHint, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialSnapshotIdentity, uint64 overrideMaterialSnapshotVersion);
 			RNAPI bool IsTextureSetEqual(const MergedMaterialSnapshot &other) const;
 			RNAPI bool IsTextureSetEqualLite(const MergedMaterialSnapshot &other) const;
 			Shader *GetVertexShader() const { return _vertexShader; }
@@ -58,7 +58,7 @@ namespace RN
 		private:
 			bool _isValid = false;
 			uint64 _materialSnapshotVersion = 0;
-			const Material::DrawSnapshot *_overrideSnapshot = nullptr;
+			uint64 _overrideSnapshotIdentity = 0;
 			uint64 _overrideSnapshotVersion = 0;
 			Shader::UsageHint _shaderHint = Shader::UsageHint::Default;
 			Shader *_vertexShader = nullptr;
