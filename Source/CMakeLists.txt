@@ -80,6 +80,7 @@ set(RAYNE_SOURCES
     Objects/RNSet.cpp
     Objects/RNCountedSet.cpp
     Objects/RNWeakStorage.cpp
+    Rendering/RNDrawable.cpp
     Rendering/RNFramebuffer.cpp
     Rendering/RNGPUBuffer.cpp
     Rendering/RNGPUResource.cpp
@@ -93,6 +94,7 @@ set(RAYNE_SOURCES
     Rendering/RNRendererDescriptor.cpp
     Rendering/RNRenderingDevice.cpp
     Rendering/RNRenderPass.cpp
+    Rendering/RNRenderPassResources.cpp
     Rendering/RNShader.cpp
     Rendering/RNShaderLibrary.cpp
     Rendering/RNTexture.cpp
@@ -206,6 +208,7 @@ set(RAYNE_HEADERS
     Objects/RNString.h
     Objects/RNValue.h
     Objects/RNWeakStorage.h
+    Rendering/RNDrawable.h
     Rendering/RNFramebuffer.h
     Rendering/RNGPUBuffer.h
     Rendering/RNGPUResource.h
@@ -220,6 +223,7 @@ set(RAYNE_HEADERS
     Rendering/RNRendererTypes.h
     Rendering/RNRenderingDevice.h
     Rendering/RNRenderPass.h
+    Rendering/RNRenderPassResources.h
     Rendering/RNShader.h
     Rendering/RNShaderLibrary.h
     Rendering/RNTexture.h

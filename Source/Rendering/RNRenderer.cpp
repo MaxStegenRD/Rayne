@@ -7,6 +7,7 @@
 //
 
 #include "RNRenderer.h"
+#include "RNRenderPassResources.h"
 #include "../Base/RNSettings.h"
 #include "../Base/RNKernel.h"
 #include "../Debug/RNLogger.h"
@@ -18,22 +19,6 @@ namespace RN
 	RNExceptionImp(ShaderCompilation)
 
 	static Renderer *_activeRenderer = nullptr;
-
-	void Drawable::MergedMaterialSnapshot::Update(const Drawable &drawable, Shader::UsageHint hint, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialSnapshotVersion)
-	{
-		if(isValid && materialSnapshotVersion == drawable._materialSnapshotVersion && overrideSnapshot == overrideMaterialSnapshot && overrideSnapshotVersion == overrideMaterialSnapshotVersion && shaderHint == hint)
-			return;
-
-		materialSnapshotVersion = drawable._materialSnapshotVersion;
-		overrideSnapshot = overrideMaterialSnapshot;
-		overrideSnapshotVersion = overrideMaterialSnapshotVersion;
-		shaderHint = hint;
-		vertexShader = drawable.material.GetSelectedVertexShader(hint, overrideMaterialSnapshot);
-		fragmentShader = drawable.material.GetSelectedFragmentShader(hint, overrideMaterialSnapshot);
-		drawable.material.GetMergedProperties(overrideMaterialSnapshot, properties);
-		drawable.material.GetMergedPipelineProperties(overrideMaterialSnapshot, pipelineProperties);
-		isValid = true;
-	}
 
 	Renderer::Renderer(RendererDescriptor *descriptor, RenderingDevice *device) :
 		_device(device),

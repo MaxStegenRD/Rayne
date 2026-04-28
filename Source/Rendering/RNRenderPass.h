@@ -250,34 +250,8 @@ namespace RN
 		__RNDeclareMetaInternal(RenderPass)
 	};
 
-	struct RenderPassResources
-	{
-		RNAPI RenderPassResources(Renderer *renderer);
-		RNAPI virtual ~RenderPassResources();
-
-		RNAPI void Delete();
-		RNAPI void Update(RenderPass *renderPass, Material *effectiveOverrideMaterial);
-		RNAPI void UpdateOverrideMaterial(Material *effectiveOverrideMaterial);
-
-		const Material::DrawSnapshot *GetOverrideMaterialSnapshot() const
-		{
-			return overrideMaterialSource.Get() ? &overrideMaterialSnapshot : nullptr;
-		}
-		uint64 GetOverrideMaterialSnapshotVersion() const { return overrideMaterialSnapshotVersion; }
-		const RenderPass::DrawSnapshot &GetDrawSnapshot() const { return _drawSnapshot; }
-
-	private:
-		uint64 drawSnapshotVersion = 0;
-		RenderPass::DrawSnapshot _drawSnapshot;
-		StrongRef<Material> overrideMaterialSource;
-		// Source version refreshes the snapshot; snapshot version invalidates drawable caches.
-		uint64 overrideMaterialSourceVersion = 0;
-		uint64 overrideMaterialSnapshotVersion = 0;
-		Material::DrawSnapshot overrideMaterialSnapshot;
-
-		Renderer *_renderer;
-	};
 } // namespace RN
 
+#include "RNRenderPassResources.h"
 
 #endif /* __RAYNE_RENDERPASS_H__ */
