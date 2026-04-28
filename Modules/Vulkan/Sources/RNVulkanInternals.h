@@ -129,9 +129,7 @@ namespace RN
 
 	struct VulkanDrawable : public Drawable
 	{
-		VulkanDrawable(Renderer *renderer) :
-			Drawable(renderer)
-		{}
+		VulkanDrawable() = default;
 
 		struct RenderResources
 		{
@@ -142,51 +140,39 @@ namespace RN
 			Drawable::MergedMaterialSnapshot mergedMaterialSnapshot;
 		};
 
-		struct RenderPacket
-		{
-			std::vector<RenderResources> resources;
-		};
-
 		~VulkanDrawable()
 		{
 			VulkanRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<VulkanRenderer>();
-			for(uint8 packetSlot = 0; packetSlot < RN_RENDERING_PACKET_SLOT_COUNT; packetSlot += 1)
+			for(RenderResources &resources : _renderResources)
 			{
-				for(RenderResources &resources : _renderPackets[packetSlot].resources)
-				{
-					VulkanTransientDescriptorSet *descriptorSet = resources.descriptorSet;
-					VulkanUniformState *uniformState = resources.uniformState;
+				VulkanTransientDescriptorSet *descriptorSet = resources.descriptorSet;
+				VulkanUniformState *uniformState = resources.uniformState;
 
-					renderer->AddFrameFinishedCallback([descriptorSet, uniformState](){
-						if(descriptorSet)
-						{
-							delete descriptorSet;
-						}
-						if(uniformState)
-						{
-							delete uniformState;
-						}
-					});
-				}
+				renderer->AddFrameFinishedCallback([descriptorSet, uniformState](){
+					if(descriptorSet)
+					{
+						delete descriptorSet;
+					}
+					if(uniformState)
+					{
+						delete uniformState;
+					}
+				});
 			}
 		}
 
-		RenderResources &EnsureUpdateRenderResources(size_t resourceIndex, uint8 packetSlot)
+		RenderResources &EnsureRenderResources(size_t resourceIndex)
 		{
-			RN_DEBUG_ASSERT(packetSlot < RN_RENDERING_PACKET_SLOT_COUNT, "Invalid render resources packet slot");
-			RenderPacket &packet = _renderPackets[packetSlot];
-			if(packet.resources.size() <= resourceIndex)
-				packet.resources.resize(resourceIndex + 1);
+			if(_renderResources.size() <= resourceIndex)
+				_renderResources.resize(resourceIndex + 1);
 
-			return packet.resources[resourceIndex];
+			return _renderResources[resourceIndex];
 		}
 
-		const RenderResources &GetRenderResources(size_t resourceIndex, uint8 packetSlot) const
+		const RenderResources &GetRenderResources(size_t resourceIndex) const
 		{
-			RN_DEBUG_ASSERT(packetSlot < RN_RENDERING_PACKET_SLOT_COUNT, "Invalid render resources packet slot");
-			const RenderPacket &packet = _renderPackets[packetSlot];
-			RN_DEBUG_ASSERT(resourceIndex < packet.resources.size(), "Invalid render resources index");
-			return packet.resources[resourceIndex];
+			RN_DEBUG_ASSERT(resourceIndex < _renderResources.size(), "Invalid render resources index");
+			return _renderResources[resourceIndex];
 		}
 
 		void UpdateRenderingState(RenderResources &resources, const VulkanPipelineState *pipelineState, VulkanUniformState *uniformState, const Drawable::PipelineKey &pipelineKey)
@@ -206,7 +192,7 @@ namespace RN
 
 	private:
 		//TODO: This can get somewhat big with lots of post processing stages...
-		RenderPacket _renderPackets[RN_RENDERING_PACKET_SLOT_COUNT];
+		std::vector<RenderResources> _renderResources;
 	};
 
 	struct VulkanRenderPass
@@ -232,7 +218,6 @@ namespace RN
 		VulkanFramebuffer *framebuffer;
 		VulkanFramebuffer *resolveFramebuffer;
 		Shader::UsageHint shaderHint;
-		RenderPassResources *renderPassResources = nullptr;
 
 		LightManager *lightManager = nullptr;
 		uint8 multiviewLayer;

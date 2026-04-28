@@ -165,17 +165,32 @@ namespace RN
 		class DrawItem
 		{
 		public:
-			DrawItem(Drawable *sourceDrawable, const Drawable::DrawPacket &drawPacket) :
+			DrawItem(Drawable *sourceDrawable) :
 				_sourceDrawable(sourceDrawable),
-				_drawPacket(drawPacket)
+				_mesh(sourceDrawable->GetMesh()),
+				_material(sourceDrawable->GetMaterial()),
+				_skeleton(sourceDrawable->GetSkeleton()),
+				_modelMatrix(sourceDrawable->GetModelMatrix()),
+				_inverseModelMatrix(sourceDrawable->GetInverseModelMatrix()),
+				_materialSnapshotVersion(sourceDrawable->GetMaterialSnapshotVersion())
 			{}
 
 			Drawable *GetSourceDrawable() const { return _sourceDrawable; }
-			const Drawable::DrawPacket &GetDrawPacket() const { return _drawPacket; }
+			const Mesh::DrawSnapshot &GetMesh() const { return _mesh; }
+			const Material::DrawSnapshot &GetMaterial() const { return _material; }
+			const Skeleton::DrawSnapshot &GetSkeleton() const { return _skeleton; }
+			const Matrix &GetModelMatrix() const { return _modelMatrix; }
+			const Matrix &GetInverseModelMatrix() const { return _inverseModelMatrix; }
+			uint64 GetMaterialSnapshotVersion() const { return _materialSnapshotVersion; }
 
 		private:
 			Drawable *_sourceDrawable;
-			Drawable::DrawPacket _drawPacket;
+			Mesh::DrawSnapshot _mesh;
+			Material::DrawSnapshot _material;
+			Skeleton::DrawSnapshot _skeleton;
+			Matrix _modelMatrix;
+			Matrix _inverseModelMatrix;
+			uint64 _materialSnapshotVersion;
 		};
 
 		class Pass
@@ -190,9 +205,9 @@ namespace RN
 					_overrideMaterialSnapshot = *overrideMaterialSnapshot;
 			}
 
-			void AddDrawItem(Drawable *sourceDrawable, const Drawable::DrawPacket &drawPacket)
+			void AddDrawItem(Drawable *sourceDrawable)
 			{
-				_drawItems.emplace_back(sourceDrawable, drawPacket);
+				_drawItems.emplace_back(sourceDrawable);
 			}
 
 			void SetCameraSnapshot(const CameraSnapshot &cameraSnapshot) { _cameraSnapshot = cameraSnapshot; }

@@ -11,10 +11,6 @@
 
 #include "../Base/RNBase.h"
 
-#ifndef RN_RENDERING_PACKET_SLOT_COUNT
-	#define RN_RENDERING_PACKET_SLOT_COUNT 2
-#endif
-
 #ifndef RN_MODEL_LOD_DISABLED
 	#define RN_MODEL_LOD_DISABLED 1
 #endif

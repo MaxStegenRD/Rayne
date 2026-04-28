@@ -7,30 +7,14 @@
 //
 
 #include "RNDrawable.h"
-#include "RNRenderer.h"
 #include "../Scene/RNSceneNode.h"
 
 namespace RN
 {
-	Drawable::Drawable(Renderer *renderer) :
-		_renderer(renderer)
+	Drawable::Drawable()
 	{}
 
 	Drawable::~Drawable() = default;
-
-	const Drawable::DrawPacket &Drawable::GetDrawPacket(uint8 packetSlot) const
-	{
-		RN_DEBUG_ASSERT(packetSlot < RN_RENDERING_PACKET_SLOT_COUNT, "Invalid draw packet slot");
-		return _drawPackets[packetSlot];
-	}
-
-	Drawable::DrawPacket &Drawable::GetUpdateDrawPacket()
-	{
-		RN_ASSERT(_renderer, "Drawable needs a renderer to update draw packets");
-		uint8 updatePacketSlot = _renderer->GetUpdatePacketSlot();
-		RN_DEBUG_ASSERT(updatePacketSlot < RN_RENDERING_PACKET_SLOT_COUNT, "Invalid draw packet slot");
-		return _drawPackets[updatePacketSlot];
-	}
 
 	bool Drawable::PipelineKey::operator==(const PipelineKey &other) const
 	{
@@ -43,11 +27,6 @@ namespace RN
 			renderPassSignature == other.renderPassSignature &&
 			renderViewCount == other.renderViewCount &&
 			subpassIndex == other.subpassIndex;
-	}
-
-	void Drawable::MergedMaterialSnapshot::Update(const DrawPacket &drawPacket, Shader::UsageHint hint, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialSnapshotVersion)
-	{
-		Update(drawPacket._material, drawPacket._materialSnapshotVersion, hint, overrideMaterialSnapshot, overrideMaterialSnapshotVersion);
 	}
 
 	void Drawable::MergedMaterialSnapshot::Update(const Material::DrawSnapshot &material, uint64 materialVersion, Shader::UsageHint hint, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialSnapshotVersion)
@@ -85,8 +64,6 @@ namespace RN
 
 	void Drawable::Update(Mesh *tmesh, Material *tmaterial, Skeleton *tskeleton, const SceneNode *node)
 	{
-		DrawPacket &drawPacket = GetUpdateDrawPacket();
-
 		bool meshSourceChanged = _sourceMesh.Get() != tmesh;
 		bool materialSourceChanged = _sourceMaterial.Get() != tmaterial;
 		bool skeletonSourceChanged = _sourceSkeleton.Get() != tskeleton;
@@ -94,34 +71,32 @@ namespace RN
 		if(meshSourceChanged)
 		{
 			_sourceMesh = tmesh;
-			_meshSourceSequence += 1;
+			_meshSnapshotDirty = true;
 		}
 		if(materialSourceChanged)
 		{
 			_sourceMaterial = tmaterial;
-			_materialSourceSequence += 1;
+			_materialSnapshotDirty = true;
 		}
 		if(skeletonSourceChanged)
 		{
 			_sourceSkeleton = tskeleton;
-			_skeletonSourceSequence += 1;
+			_skeletonSnapshotDirty = true;
 		}
 
 		uint64 meshPipelineVersion = tmesh ? tmesh->GetPipelineVersion() : 0;
-		if(tmesh)
+		if(_meshPipelineVersion != meshPipelineVersion)
+			_meshSnapshotDirty = true;
+
+		if(_meshSnapshotDirty)
 		{
-			if(drawPacket._meshSourceSequence != _meshSourceSequence || drawPacket._meshPipelineVersion != meshPipelineVersion)
-			{
-				tmesh->GetDrawSnapshot(drawPacket._mesh);
-				drawPacket._meshSourceSequence = _meshSourceSequence;
-				drawPacket._meshPipelineVersion = meshPipelineVersion;
-			}
-		}
-		else if(drawPacket._meshSourceSequence != _meshSourceSequence || drawPacket._meshPipelineVersion != 0)
-		{
-			drawPacket._mesh.Reset();
-			drawPacket._meshSourceSequence = _meshSourceSequence;
-			drawPacket._meshPipelineVersion = 0;
+			if(tmesh)
+				tmesh->GetDrawSnapshot(_mesh);
+			else
+				_mesh.Reset();
+
+			_meshPipelineVersion = meshPipelineVersion;
+			_meshSnapshotDirty = false;
 		}
 
 		uint64 materialDrawSnapshotVersion = tmaterial ? tmaterial->GetDrawSnapshotVersion() : 0;
@@ -129,90 +104,81 @@ namespace RN
 		{
 			_materialDrawSnapshotVersion = materialDrawSnapshotVersion;
 			_materialSnapshotVersion += 1;
+			_materialSnapshotDirty = true;
 		}
 
-		if(tmaterial)
+		if(_materialSnapshotDirty)
 		{
-			if(drawPacket._materialSourceSequence != _materialSourceSequence || drawPacket._materialDrawSnapshotVersion != _materialDrawSnapshotVersion)
-			{
-				tmaterial->GetDrawSnapshot(drawPacket._material);
-				drawPacket._materialSourceSequence = _materialSourceSequence;
-				drawPacket._materialDrawSnapshotVersion = _materialDrawSnapshotVersion;
-				drawPacket._materialSnapshotVersion = _materialSnapshotVersion;
-			}
-		}
-		else if(drawPacket._materialSourceSequence != _materialSourceSequence || drawPacket._materialDrawSnapshotVersion != 0)
-		{
-			drawPacket._material.Reset();
-			drawPacket._materialSourceSequence = _materialSourceSequence;
-			drawPacket._materialDrawSnapshotVersion = 0;
-			drawPacket._materialSnapshotVersion = _materialSnapshotVersion;
+			if(tmaterial)
+				tmaterial->GetDrawSnapshot(_material);
+			else
+				_material.Reset();
+
+			_materialSnapshotDirty = false;
 		}
 
 		uint64 skeletonDrawSnapshotVersion = tskeleton ? tskeleton->GetDrawSnapshotVersion() : 0;
-		if(tskeleton)
+		if(_skeletonDrawSnapshotVersion != skeletonDrawSnapshotVersion)
+			_skeletonSnapshotDirty = true;
+
+		if(_skeletonSnapshotDirty)
 		{
-			if(drawPacket._skeletonSourceSequence != _skeletonSourceSequence || drawPacket._skeletonDrawSnapshotVersion != skeletonDrawSnapshotVersion)
-			{
-				tskeleton->GetDrawSnapshot(drawPacket._skeleton);
-				drawPacket._skeletonSourceSequence = _skeletonSourceSequence;
-				drawPacket._skeletonDrawSnapshotVersion = skeletonDrawSnapshotVersion;
-			}
-		}
-		else if(drawPacket._skeletonSourceSequence != _skeletonSourceSequence || drawPacket._skeletonDrawSnapshotVersion != 0)
-		{
-			drawPacket._skeleton.Reset();
-			drawPacket._skeletonSourceSequence = _skeletonSourceSequence;
-			drawPacket._skeletonDrawSnapshotVersion = 0;
+			if(tskeleton)
+				tskeleton->GetDrawSnapshot(_skeleton);
+			else
+				_skeleton.Reset();
+
+			_skeletonDrawSnapshotVersion = skeletonDrawSnapshotVersion;
+			_skeletonSnapshotDirty = false;
 		}
 
-		UpdateTransform(node, drawPacket);
+		UpdateTransform(node);
 	}
 
 	void Drawable::Update(const SceneNode *node)
 	{
-		UpdateTransform(node, GetUpdateDrawPacket());
+		UpdateTransform(node);
 	}
 
-	void Drawable::UpdateTransform(const SceneNode *node, DrawPacket &drawPacket)
+	void Drawable::UpdateTransform(const SceneNode *node)
 	{
 		if(_transformNode != node)
 		{
 			_transformNode = node;
-			_transformSourceSequence += 1;
+			_transformDirty = true;
 		}
 
 		if(!node)
 		{
-			if(drawPacket._transformSourceSequence != _transformSourceSequence || drawPacket._transformVersion != 0 || drawPacket._renderGroup != 0xffff)
+			if(_transformDirty || _transformVersion != 0 || _renderGroup != 0xffff)
 			{
-				drawPacket._modelMatrix = Matrix();
-				drawPacket._inverseModelMatrix = Matrix();
-				drawPacket._renderGroup = 0xffff;
-				drawPacket._transformSourceSequence = _transformSourceSequence;
-				drawPacket._transformVersion = 0;
+				_modelMatrix = Matrix();
+				_inverseModelMatrix = Matrix();
+				_renderGroup = 0xffff;
+				_transformVersion = 0;
+				_transformDirty = false;
 			}
 
 			return;
 		}
 
-		drawPacket._renderGroup = node->GetRenderGroup();
+		_renderGroup = node->GetRenderGroup();
 
 		uint64 transformVersion = node->GetTransformVersion();
-		if(drawPacket._transformSourceSequence != _transformSourceSequence || drawPacket._transformVersion != transformVersion)
+		if(_transformDirty || _transformVersion != transformVersion)
 		{
-			drawPacket._modelMatrix = node->GetWorldTransform();
-			drawPacket._inverseModelMatrix = node->GetInverseWorldTransform();
-			drawPacket._transformSourceSequence = _transformSourceSequence;
-			drawPacket._transformVersion = transformVersion;
+			_modelMatrix = node->GetWorldTransform();
+			_inverseModelMatrix = node->GetInverseWorldTransform();
+			_transformVersion = transformVersion;
+			_transformDirty = false;
 		}
 	}
 
 	void Drawable::MakeDirty()
 	{
-		_meshSourceSequence += 1;
-		_materialSourceSequence += 1;
-		_materialDrawSnapshotVersion = 0;
-		_skeletonSourceSequence += 1;
+		_meshSnapshotDirty = true;
+		_materialSnapshotDirty = true;
+		_materialSnapshotVersion += 1;
+		_skeletonSnapshotDirty = true;
 	}
 } // namespace RN

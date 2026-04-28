@@ -60,9 +60,7 @@ namespace RN
 
 	struct MetalDrawable : public Drawable
 	{
-		MetalDrawable(Renderer *renderer) :
-			Drawable(renderer)
-		{}
+		MetalDrawable() = default;
 
 		struct RenderResources
 		{
@@ -75,45 +73,33 @@ namespace RN
 			std::vector<MetalUniformBufferReference*> fragmentShaderUniformBuffers;
 		};
 
-		struct RenderPacket
-		{
-			std::vector<RenderResources> resources;
-		};
-
 		~MetalDrawable()
 		{
-			for(uint8 packetSlot = 0; packetSlot < RN_RENDERING_PACKET_SLOT_COUNT; packetSlot += 1)
+			for(RenderResources &resources : _renderResources)
 			{
-				for(RenderResources &resources : _renderPackets[packetSlot].resources)
-				{
-					for(MetalUniformBufferReference *buffer : resources.vertexShaderUniformBuffers)
-						delete buffer;
+				for(MetalUniformBufferReference *buffer : resources.vertexShaderUniformBuffers)
+					delete buffer;
 
-					for(MetalUniformBufferReference *buffer : resources.fragmentShaderUniformBuffers)
-						delete buffer;
+				for(MetalUniformBufferReference *buffer : resources.fragmentShaderUniformBuffers)
+					delete buffer;
 
-					for(Shader::ArgumentBuffer *buffer : resources.argumentBufferToUniformBufferMapping)
-						buffer->Release();
-				}
+				for(Shader::ArgumentBuffer *buffer : resources.argumentBufferToUniformBufferMapping)
+					buffer->Release();
 			}
 		}
 
-		RenderResources &EnsureUpdateRenderResources(size_t resourceIndex, uint8 packetSlot)
+		RenderResources &EnsureRenderResources(size_t resourceIndex)
 		{
-			RN_DEBUG_ASSERT(packetSlot < RN_RENDERING_PACKET_SLOT_COUNT, "Invalid render resources packet slot");
-			RenderPacket &packet = _renderPackets[packetSlot];
-			if(packet.resources.size() <= resourceIndex)
-				packet.resources.resize(resourceIndex + 1);
+			if(_renderResources.size() <= resourceIndex)
+				_renderResources.resize(resourceIndex + 1);
 
-			return packet.resources[resourceIndex];
+			return _renderResources[resourceIndex];
 		}
 
-		const RenderResources &GetRenderResources(size_t resourceIndex, uint8 packetSlot) const
+		const RenderResources &GetRenderResources(size_t resourceIndex) const
 		{
-			RN_DEBUG_ASSERT(packetSlot < RN_RENDERING_PACKET_SLOT_COUNT, "Invalid render resources packet slot");
-			const RenderPacket &packet = _renderPackets[packetSlot];
-			RN_DEBUG_ASSERT(resourceIndex < packet.resources.size(), "Invalid render resources index");
-			return packet.resources[resourceIndex];
+			RN_DEBUG_ASSERT(resourceIndex < _renderResources.size(), "Invalid render resources index");
+			return _renderResources[resourceIndex];
 		}
 
 		void UpdateRenderingState(RenderResources &resources, Renderer *renderer, const MetalRenderingState *state, const Drawable::PipelineKey &pipelineKey)
@@ -157,7 +143,7 @@ namespace RN
 		}
 
 	private:
-		RenderPacket _renderPackets[RN_RENDERING_PACKET_SLOT_COUNT];
+		std::vector<RenderResources> _renderResources;
 	};
 
 	struct MetalRenderPass
@@ -179,7 +165,6 @@ namespace RN
 
 		MetalFramebuffer *framebuffer;
 		Shader::UsageHint shaderHint;
-		RenderPassResources *renderPassResources = nullptr;
 		MetalFramebuffer *resolveFramebuffer;
 
 		Camera *lightingCamera = nullptr;

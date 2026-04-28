@@ -23,70 +23,47 @@ namespace RN
 		_renderer->DeleteRenderPassResources(this);
 	}
 
-	const RenderPassResources::DrawPacket &RenderPassResources::GetDrawPacket(uint8 packetSlot) const
-	{
-		RN_DEBUG_ASSERT(packetSlot < RN_RENDERING_PACKET_SLOT_COUNT, "Invalid render pass packet slot");
-		return _drawPackets[packetSlot];
-	}
-
-	RenderPassResources::DrawPacket &RenderPassResources::GetUpdateDrawPacket()
-	{
-		RN_ASSERT(_renderer, "RenderPassResources needs a renderer to update draw packets");
-		uint8 updatePacketSlot = _renderer->GetUpdatePacketSlot();
-		RN_DEBUG_ASSERT(updatePacketSlot < RN_RENDERING_PACKET_SLOT_COUNT, "Invalid render pass packet slot");
-		return _drawPackets[updatePacketSlot];
-	}
-
 	void RenderPassResources::Update(RenderPass *renderPass, Material *effectiveOverrideMaterial)
 	{
-		DrawPacket &drawPacket = GetUpdateDrawPacket();
 		uint64 snapshotVersion = renderPass->GetDrawSnapshotVersion();
-		if(drawPacket._drawSnapshotSourceVersion != snapshotVersion)
+		if(_drawSnapshotSourceVersion != snapshotVersion)
 		{
-			renderPass->GetDrawSnapshot(drawPacket._drawSnapshot);
-			drawPacket._drawSnapshotSourceVersion = snapshotVersion;
+			renderPass->GetDrawSnapshot(_drawSnapshot);
+			_drawSnapshotSourceVersion = snapshotVersion;
 		}
-		else if(!drawPacket._drawSnapshot.IsSubpass())
+		else if(!_drawSnapshot.IsSubpass())
 		{
-			drawPacket._drawSnapshot._framebuffer = renderPass->GetFramebuffer();
-			drawPacket._drawSnapshot._frame = renderPass->GetFrame();
+			_drawSnapshot._framebuffer = renderPass->GetFramebuffer();
+			_drawSnapshot._frame = renderPass->GetFrame();
 		}
 		else
 		{
-			drawPacket._drawSnapshot._framebuffer = nullptr;
-			drawPacket._drawSnapshot._frame = Rect();
+			_drawSnapshot._framebuffer = nullptr;
+			_drawSnapshot._frame = Rect();
 		}
 
-		UpdateOverrideMaterial(effectiveOverrideMaterial, drawPacket);
+		UpdateOverrideMaterial(effectiveOverrideMaterial);
 	}
 
-	void RenderPassResources::UpdateOverrideMaterial(Material *effectiveOverrideMaterial, DrawPacket &drawPacket)
+	void RenderPassResources::UpdateOverrideMaterial(Material *effectiveOverrideMaterial)
 	{
-		bool overrideMaterialSourceChanged = overrideMaterialSource.Get() != effectiveOverrideMaterial;
+		bool overrideMaterialSourceChanged = _overrideMaterialSource.Get() != effectiveOverrideMaterial;
 		uint64 overrideSourceVersion = effectiveOverrideMaterial ? effectiveOverrideMaterial->GetDrawSnapshotVersion() : 0;
 		if(overrideMaterialSourceChanged)
 		{
-			overrideMaterialSource = effectiveOverrideMaterial;
-			overrideMaterialSourceSequence += 1;
+			_overrideMaterialSource = effectiveOverrideMaterial;
 		}
 
-		if(overrideMaterialSourceChanged || overrideMaterialSourceVersion != overrideSourceVersion)
+		if(overrideMaterialSourceChanged || _overrideMaterialSourceVersion != overrideSourceVersion)
 		{
-			overrideMaterialSourceVersion = overrideSourceVersion;
-			overrideMaterialSnapshotVersion += 1;
-		}
-
-		if(drawPacket._overrideMaterialSourceSequence != overrideMaterialSourceSequence || drawPacket._overrideMaterialSourceVersion != overrideMaterialSourceVersion)
-		{
-			drawPacket._hasOverrideMaterial = effectiveOverrideMaterial != nullptr;
-			drawPacket._overrideMaterialSourceSequence = overrideMaterialSourceSequence;
-			drawPacket._overrideMaterialSourceVersion = overrideMaterialSourceVersion;
-			drawPacket._overrideMaterialSnapshotVersion = overrideMaterialSnapshotVersion;
+			_overrideMaterialSourceVersion = overrideSourceVersion;
+			_overrideMaterialSnapshotVersion += 1;
+			_hasOverrideMaterial = effectiveOverrideMaterial != nullptr;
 
 			if(effectiveOverrideMaterial)
-				effectiveOverrideMaterial->GetDrawSnapshot(drawPacket._overrideMaterialSnapshot);
+				effectiveOverrideMaterial->GetDrawSnapshot(_overrideMaterialSnapshot);
 			else
-				drawPacket._overrideMaterialSnapshot.Reset();
+				_overrideMaterialSnapshot.Reset();
 		}
 	}
 } // namespace RN

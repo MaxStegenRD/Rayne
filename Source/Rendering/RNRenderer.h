@@ -82,9 +82,6 @@ namespace RN
 
 		RNAPI virtual void WarmupDrawable(Mesh *mesh, Material *material, Camera *camera); //If the renderer supports it, this will create the necessary render pipeline state or similar to speed things up when actually rendering the first time
 
-		uint8 GetUpdatePacketSlot() const { return _updatePacketSlot; }
-		uint8 GetRenderPacketSlot() const { return _renderPacketSlot; }
-
 		RNAPI virtual void SubmitLight(const Light *light) = 0;
 		
 		RNAPI void PrintFrameStatistics(float interval = 5.0f);
@@ -109,8 +106,6 @@ namespace RN
 	private:
 		RenderingDevice *_device;
 		RendererDescriptor *_descriptor;
-		uint8 _updatePacketSlot;
-		uint8 _renderPacketSlot;
 		Dictionary *_defaultShaderCache[Shader::Type::COUNT][Shader::UsageHint::COUNT];
 		Lockable _defaultShaderCacheLock;
 
