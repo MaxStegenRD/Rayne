@@ -71,6 +71,7 @@ namespace RN
 		RNAPI void Update(Mesh *tmesh, Material *tmaterial, Skeleton *tskeleton, const SceneNode *node);
 		RNAPI virtual void Update(const SceneNode *node);
 		RNAPI void MakeDirty();
+		RNAPI void GetMeshBufferSnapshot(Mesh::BufferSnapshot &snapshot) const;
 
 		const Mesh::DrawSnapshot &GetMesh() const { return _mesh; }
 		const Material::DrawSnapshot &GetMaterial() const { return _material; }

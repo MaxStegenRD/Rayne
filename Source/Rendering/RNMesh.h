@@ -202,8 +202,6 @@ namespace RN
 
 			RNAPI void Reset();
 
-			GPUBuffer *GetVertexBuffer() const { return _vertexBuffer.Get(); }
-			GPUBuffer *GetIndicesBuffer() const { return _indicesBuffer.Get(); }
 			size_t GetVerticesCount() const { return _verticesCount; }
 			size_t GetIndicesCount() const { return _indicesCount; }
 			size_t GetVertexPositionsSeparatedSize() const { return _vertexPositionsSeparatedSize; }
@@ -216,23 +214,15 @@ namespace RN
 			PrimitiveType GetIndexType() const { return _indexType; }
 			bool CanInstanceWith(const DrawSnapshot &other) const
 			{
-				return _vertexBuffer.Get() == other._vertexBuffer.Get() &&
-					_indicesBuffer.Get() == other._indicesBuffer.Get() &&
-					_vertexPositionsSeparatedSize == other._vertexPositionsSeparatedSize &&
-					_vertexPositionsSeparatedStride == other._vertexPositionsSeparatedStride &&
-					_stride == other._stride &&
-					_verticesCount == other._verticesCount &&
+				return _verticesCount == other._verticesCount &&
 					_indicesCount == other._indicesCount &&
 					_pipelineHash == other._pipelineHash &&
-					_drawMode == other._drawMode &&
 					_indexType == other._indexType;
 			}
 
 		private:
 			friend class Mesh;
 
-			StrongRef<GPUBuffer> _vertexBuffer;
-			StrongRef<GPUBuffer> _indicesBuffer;
 			VertexDescriptor _descriptor;
 
 			size_t _vertexPositionsSeparatedSize = 0;
@@ -244,6 +234,32 @@ namespace RN
 
 			DrawMode _drawMode = DrawMode::Triangle;
 			PrimitiveType _indexType = PrimitiveType::Invalid;
+		};
+
+		class BufferSnapshot
+		{
+		public:
+			BufferSnapshot() = default;
+
+			void Reset()
+			{
+				_vertexBuffer = nullptr;
+				_indicesBuffer = nullptr;
+			}
+
+			GPUBuffer *GetVertexBuffer() const { return _vertexBuffer.Get(); }
+			GPUBuffer *GetIndicesBuffer() const { return _indicesBuffer.Get(); }
+			bool CanInstanceWith(const BufferSnapshot &other) const
+			{
+				return _vertexBuffer.Get() == other._vertexBuffer.Get() &&
+					_indicesBuffer.Get() == other._indicesBuffer.Get();
+			}
+
+		private:
+			friend class Mesh;
+
+			StrongRef<GPUBuffer> _vertexBuffer;
+			StrongRef<GPUBuffer> _indicesBuffer;
 		};
 
 		class __ChunkFriend
@@ -507,6 +523,7 @@ namespace RN
 		RNAPI void CalculateBoundingVolumes();
 		uint64 GetPipelineVersion() const { return _pipelineVersion; }
 		RNAPI void GetDrawSnapshot(DrawSnapshot &snapshot) const;
+		RNAPI void GetBufferSnapshot(BufferSnapshot &snapshot) const;
 
 		//TODO: Having the two types is a bit confusing since they result in different iterator behaviour
 		Chunk GetChunk() { return Chunk(this, false); }

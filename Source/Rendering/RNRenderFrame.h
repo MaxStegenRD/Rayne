@@ -174,19 +174,24 @@ namespace RN
 				_modelMatrix(sourceDrawable->GetModelMatrix()),
 				_inverseModelMatrix(sourceDrawable->GetInverseModelMatrix()),
 				_materialSnapshotVersion(sourceDrawable->GetMaterialSnapshotVersion())
-			{}
+			{
+				sourceDrawable->GetMeshBufferSnapshot(_meshBuffers);
+			}
 
 			Drawable *GetSourceDrawableForPreparation() const { return _sourceDrawable; }
 			const Mesh::DrawSnapshot &GetMesh() const { return _mesh; }
+			const Mesh::BufferSnapshot &GetMeshBuffers() const { return _meshBuffers; }
 			const Material::DrawSnapshot &GetMaterial() const { return _material; }
 			const Skeleton::DrawSnapshot &GetSkeleton() const { return _skeleton; }
 			const Matrix &GetModelMatrix() const { return _modelMatrix; }
 			const Matrix &GetInverseModelMatrix() const { return _inverseModelMatrix; }
 			uint64 GetMaterialSnapshotVersion() const { return _materialSnapshotVersion; }
+			bool CanInstanceWith(const DrawItem &other) const { return _mesh.CanInstanceWith(other._mesh) && _meshBuffers.CanInstanceWith(other._meshBuffers); }
 
 		private:
 			Drawable *_sourceDrawable;
 			Mesh::DrawSnapshot _mesh;
+			Mesh::BufferSnapshot _meshBuffers;
 			Material::DrawSnapshot _material;
 			Skeleton::DrawSnapshot _skeleton;
 			Matrix _modelMatrix;

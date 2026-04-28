@@ -1493,7 +1493,7 @@ namespace RN
 					}
 				}
 
-				if(canUseInstancing && currentPipelineState == renderResources.pipelineState && instanceRenderResources && drawItem.GetMesh().CanInstanceWith(instanceDrawItem->GetMesh()) && renderResources.mergedMaterialSnapshot.IsTextureSetEqual(instanceRenderResources->mergedMaterialSnapshot))
+				if(canUseInstancing && currentPipelineState == renderResources.pipelineState && instanceRenderResources && drawItem.CanInstanceWith(*instanceDrawItem) && renderResources.mergedMaterialSnapshot.IsTextureSetEqual(instanceRenderResources->mergedMaterialSnapshot))
 				{
 					preparedPass.instanceSteps.back() += 1;
 				}
@@ -1754,7 +1754,8 @@ namespace RN
 
 		// Mesh
 		const Mesh::DrawSnapshot &mesh = drawItem.GetMesh();
-		MetalGPUBuffer *buffer = static_cast<MetalGPUBuffer *>(mesh.GetVertexBuffer());
+		const Mesh::BufferSnapshot &meshBuffers = drawItem.GetMeshBuffers();
+		MetalGPUBuffer *buffer = static_cast<MetalGPUBuffer *>(meshBuffers.GetVertexBuffer());
 
 		if(_internals->currentRenderState->vertexPositionBufferShaderResourceIndex <= 30)
 		{
@@ -1790,7 +1791,7 @@ namespace RN
 
 		if(mesh.GetIndicesCount() > 0)
 		{
-			MetalGPUBuffer *indexBuffer = static_cast<MetalGPUBuffer *>(mesh.GetIndicesBuffer());
+			MetalGPUBuffer *indexBuffer = static_cast<MetalGPUBuffer *>(meshBuffers.GetIndicesBuffer());
 			MTLIndexType indexType = mesh.GetIndexType() == PrimitiveType::Uint16? MTLIndexTypeUInt16 : MTLIndexTypeUInt32;
 
 			if(instanceCount == 1)

@@ -97,8 +97,6 @@ namespace RN
 
 	Mesh::DrawSnapshot &Mesh::DrawSnapshot::operator=(const DrawSnapshot &snapshot)
 	{
-		_vertexBuffer = snapshot._vertexBuffer;
-		_indicesBuffer = snapshot._indicesBuffer;
 		_descriptor = snapshot._descriptor;
 
 		_vertexPositionsSeparatedSize = snapshot._vertexPositionsSeparatedSize;
@@ -115,8 +113,6 @@ namespace RN
 
 	void Mesh::DrawSnapshot::Reset()
 	{
-		_vertexBuffer = nullptr;
-		_indicesBuffer = nullptr;
 		_descriptor = VertexDescriptor();
 
 		_vertexPositionsSeparatedSize = 0;
@@ -387,8 +383,6 @@ namespace RN
 
 	void Mesh::GetDrawSnapshot(DrawSnapshot &snapshot) const
 	{
-		snapshot._vertexBuffer = _vertexBuffer;
-		snapshot._indicesBuffer = _indicesBuffer;
 		snapshot._descriptor = _descriptor;
 
 		snapshot._vertexPositionsSeparatedSize = _vertexPositionsSeparatedSize;
@@ -407,6 +401,12 @@ namespace RN
 		HashCombine(pipelineHash, snapshot._stride);
 		HashCombine(pipelineHash, static_cast<uint32>(snapshot._drawMode));
 		snapshot._pipelineHash = pipelineHash;
+	}
+
+	void Mesh::GetBufferSnapshot(BufferSnapshot &snapshot) const
+	{
+		snapshot._vertexBuffer = _vertexBuffer ? _vertexBuffer->GetActiveBuffer() : nullptr;
+		snapshot._indicesBuffer = _indicesBuffer ? _indicesBuffer->GetActiveBuffer() : nullptr;
 	}
 
 	void Mesh::CalculateBoundingVolumes()

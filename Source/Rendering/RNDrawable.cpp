@@ -181,4 +181,13 @@ namespace RN
 		_materialSnapshotVersion += 1;
 		_skeletonSnapshotDirty = true;
 	}
+
+	void Drawable::GetMeshBufferSnapshot(Mesh::BufferSnapshot &snapshot) const
+	{
+		Mesh *mesh = _sourceMesh.Get();
+		if(mesh)
+			mesh->GetBufferSnapshot(snapshot);
+		else
+			snapshot.Reset();
+	}
 } // namespace RN

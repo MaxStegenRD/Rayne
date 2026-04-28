@@ -2257,7 +2257,7 @@ namespace RN
 					canUseInstancing = false;
 				}
 
-				if(canUseInstancing && currentPipelineState == renderResources.pipelineState && instanceRenderResources && drawItem.GetMesh().CanInstanceWith(instanceDrawItem->GetMesh()) && renderResources.mergedMaterialSnapshot.IsTextureSetEqualLite(instanceRenderResources->mergedMaterialSnapshot))
+				if(canUseInstancing && currentPipelineState == renderResources.pipelineState && instanceRenderResources && drawItem.CanInstanceWith(*instanceDrawItem) && renderResources.mergedMaterialSnapshot.IsTextureSetEqualLite(instanceRenderResources->mergedMaterialSnapshot))
 				{
 					preparedPass.instanceSteps.back() += 1; //Increase counter if the rendering state is the same
 				}
@@ -2840,6 +2840,7 @@ namespace RN
 		const VulkanUniformState *uniformState = renderResource.uniformState;
 		const VulkanRootSignature *rootSignature = pipelineState->rootSignature;
 		const Mesh::DrawSnapshot &mesh = drawItem.GetMesh();
+		const Mesh::BufferSnapshot &meshBuffers = drawItem.GetMeshBuffers();
 
 		VkDescriptorSet descriptorSet = renderResource.descriptorSet->GetActiveDescriptorSet();
 		if(_internals->drawBindStateCache.pipelineLayout != rootSignature->pipelineLayout || _internals->drawBindStateCache.descriptorSet != descriptorSet)
@@ -2854,8 +2855,8 @@ namespace RN
 			_internals->drawBindStateCache.pipeline = pipelineState->state;
 		}
 
-		VulkanGPUBuffer *buffer = static_cast<VulkanGPUBuffer *>(mesh.GetVertexBuffer());
-		VulkanGPUBuffer *indices = static_cast<VulkanGPUBuffer *>(mesh.GetIndicesBuffer());
+		VulkanGPUBuffer *buffer = static_cast<VulkanGPUBuffer *>(meshBuffers.GetVertexBuffer());
+		VulkanGPUBuffer *indices = static_cast<VulkanGPUBuffer *>(meshBuffers.GetIndicesBuffer());
 		VulkanGPUBuffer *instanceAttributesBuffer = uniformState->instanceAttributesBuffer ? static_cast<VulkanGPUBuffer *>(uniformState->instanceAttributesBuffer->dynamicBuffer->GetActiveGPUBuffer()) : nullptr;
 
 		//IF positions are separated, they will be in the first part of the buffer, everything else will be bound as the second binding, per instance data if provided through attributes are bound as a third buffer
