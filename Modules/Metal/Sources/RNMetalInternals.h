@@ -166,6 +166,7 @@ namespace RN
 		RenderPass *renderPass;
 		RenderPass *previousRenderPass;
 		size_t renderFramePassIndex = RenderFrame::InvalidPassIndex;
+		size_t preparedRenderPassIndex = RenderFrame::InvalidPassIndex;
 		size_t frameStatisticsIndex = static_cast<size_t>(-1);
 		MetalFramebuffer *previousStoredFramebuffer;
 
@@ -186,12 +187,7 @@ namespace RN
 
 	struct MetalPreparedRenderPass
 	{
-		void Clear()
-		{
-			drawItems.clear();
-			instanceSteps.clear();
-		}
-
+		size_t resourceIndex = 0;
 		std::vector<MetalPreparedDrawItem> drawItems;
 		std::vector<uint32> instanceSteps; //Number of draw items that use the same pipeline state and can be rendered with the same draw call.
 	};

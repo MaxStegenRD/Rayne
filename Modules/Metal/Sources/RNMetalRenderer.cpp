@@ -202,7 +202,8 @@ namespace RN
 				}
 				else
 				{
-					const MetalPreparedRenderPass &preparedPass = _internals->preparedRenderPasses[_internals->currentRenderPassIndex];
+					RN_DEBUG_ASSERT(renderPass.preparedRenderPassIndex != RenderFrame::InvalidPassIndex, "Invalid prepared render pass index");
+					const MetalPreparedRenderPass &preparedPass = _internals->preparedRenderPasses[renderPass.preparedRenderPassIndex];
 					const std::vector<MetalPreparedDrawItem> &drawItems = preparedPass.drawItems;
 					uint32 stepSize = 0;
 					uint32 stepSizeIndex = 0;
@@ -298,7 +299,8 @@ namespace RN
 				case MetalRenderPass::Type::Convert:
 				{
 					RN_DEBUG_ASSERT(renderPass.previousStoredFramebuffer, "Convert render pass requires a previous framebuffer");
-					const MetalPreparedRenderPass &preparedPass = _internals->preparedRenderPasses[_internals->currentRenderPassIndex];
+					RN_DEBUG_ASSERT(renderPass.preparedRenderPassIndex != RenderFrame::InvalidPassIndex, "Invalid prepared render pass index");
+					const MetalPreparedRenderPass &preparedPass = _internals->preparedRenderPasses[renderPass.preparedRenderPassIndex];
 					RN_DEBUG_ASSERT(!preparedPass.drawItems.empty(), "Convert render pass requires a prepared draw item");
 					RenderDrawable(preparedPass.drawItems[0], 1);
 					break;
@@ -1358,38 +1360,48 @@ namespace RN
 	{
 		RN_PROFILE_SCOPE();
 
-		_internals->preparedRenderPasses.resize(_internals->renderPasses.size());
+		size_t renderResourceIndex = 0;
+		_internals->preparedRenderPasses.clear();
 		for(size_t pi = 0; pi < _internals->renderPasses.size(); pi += 1)
 		{
 			MetalRenderPass &pass = _internals->renderPasses[pi];
-			MetalPreparedRenderPass &preparedPass = _internals->preparedRenderPasses[pi];
-			preparedPass.Clear();
+			pass.preparedRenderPassIndex = RenderFrame::InvalidPassIndex;
 
 			if(pass.type != MetalRenderPass::Type::Default && pass.type != MetalRenderPass::Type::Convert)
+			{
+				renderResourceIndex += 1;
 				continue;
+			}
 
 			RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(pass.renderFramePassIndex);
 			const std::vector<RenderFrame::DrawItem> &drawItems = framePass.GetDrawItems();
+			pass.preparedRenderPassIndex = _internals->preparedRenderPasses.size();
+			_internals->preparedRenderPasses.emplace_back();
+			MetalPreparedRenderPass &preparedPass = _internals->preparedRenderPasses.back();
+			preparedPass.resourceIndex = renderResourceIndex;
+
 			for(const RenderFrame::DrawItem &drawItem : drawItems)
 			{
 				MetalDrawable *drawable = static_cast<MetalDrawable *>(drawItem.GetSourceDrawableForPreparation());
-				drawable->EnsureRenderResources(pi);
+				drawable->EnsureRenderResources(renderResourceIndex);
 			}
+
+			renderResourceIndex += 1;
 		}
 
 		for(size_t pi = 0; pi < _internals->renderPasses.size(); pi += 1)
 		{
 			MetalRenderPass &pass = _internals->renderPasses[pi];
-			if(pass.type != MetalRenderPass::Type::Default && pass.type != MetalRenderPass::Type::Convert)
+			if(pass.preparedRenderPassIndex == RenderFrame::InvalidPassIndex)
 				continue;
 
+			MetalPreparedRenderPass &preparedPass = _internals->preparedRenderPasses[pass.preparedRenderPassIndex];
 			RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(pass.renderFramePassIndex);
 			const RenderPass::DrawSnapshot &passDrawSnapshot = framePass.GetDrawSnapshot();
 			const std::vector<RenderFrame::DrawItem> &drawItems = framePass.GetDrawItems();
 			if(drawItems.empty())
 				continue;
 
-			MetalPreparedRenderPass &preparedPass = _internals->preparedRenderPasses[pi];
 			preparedPass.drawItems.reserve(drawItems.size());
 
 			const RenderFrame::DrawItem *currentInstanceDrawItem = nullptr;
@@ -1398,11 +1410,10 @@ namespace RN
 			RN_DEBUG_ASSERT(pass.frameStatisticsIndex < _frameStatistics.size(), "Invalid frame statistics index");
 			CameraStatistics &statistics = _frameStatistics[pass.frameStatisticsIndex];
 
-			const size_t renderResourceIndex = pi;
 			for(const RenderFrame::DrawItem &drawItem : drawItems)
 			{
 				MetalDrawable *drawable = static_cast<MetalDrawable *>(drawItem.GetSourceDrawableForPreparation());
-				MetalDrawable::RenderResources &renderResources = drawable->GetRenderResources(renderResourceIndex);
+				MetalDrawable::RenderResources &renderResources = drawable->GetRenderResources(preparedPass.resourceIndex);
 
 				const Material::DrawSnapshot *overrideMaterialSnapshot = framePass.GetOverrideMaterialSnapshot();
 				renderResources.mergedMaterialSnapshot.Update(drawItem.GetMaterial(), drawItem.GetMaterialSnapshotVersion(), pass.shaderHint, overrideMaterialSnapshot, framePass.GetOverrideMaterialSnapshotIdentity(), framePass.GetOverrideMaterialSnapshotVersion());
