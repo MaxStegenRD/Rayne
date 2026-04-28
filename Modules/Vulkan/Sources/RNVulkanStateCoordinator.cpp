@@ -980,7 +980,7 @@ namespace RN
 	{
 		const VulkanFramebuffer *framebuffer = rootVulkanPass->framebuffer;
 		const VulkanFramebuffer *resolveFramebuffer = rootVulkanPass->resolveFramebuffer;
-		RenderPass::Flags flags = rootVulkanPass->renderPass->GetFlags();
+		RenderPass::Flags flags = rootVulkanPass->renderPassResources->drawSnapshot.flags;
 		uint8 multiviewCount = rootVulkanPass->multiviewCameraInfo.size();
 
 		//TODO: Maybe handle swapchain case better...

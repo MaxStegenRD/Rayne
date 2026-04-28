@@ -47,4 +47,9 @@ namespace RN
 		SafeRelease(_material);
 		_material = SafeRetain(material);
 	}
+
+	Material *PostProcessingStage::GetEffectiveOverrideMaterial() const
+	{
+		return _material;
+	}
 } // namespace RN

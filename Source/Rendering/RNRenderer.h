@@ -32,6 +32,7 @@
 namespace RN
 {
 	class RenderPass;
+	struct RenderPassResources;
 
 	struct Drawable
 	{
@@ -247,6 +248,8 @@ namespace RN
 		RNAPI virtual Drawable *CreateDrawable() = 0;
 		RNAPI virtual void DeleteDrawable(Drawable *drawable) = 0;
 		RNAPI virtual void SubmitDrawable(Drawable *drawable) = 0;
+		RNAPI virtual RenderPassResources *CreateRenderPassResources();
+		RNAPI virtual void DeleteRenderPassResources(RenderPassResources *resources);
 
 		RNAPI virtual void WarmupDrawable(Mesh *mesh, Material *material, Camera *camera); //If the renderer supports it, this will create the necessary render pipeline state or similar to speed things up when actually rendering the first time
 

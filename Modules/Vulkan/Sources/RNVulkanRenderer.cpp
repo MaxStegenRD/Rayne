@@ -496,11 +496,11 @@ namespace RN
 				if(renderPass.subpasses.size() > 0)
 				{
 					//Determine first/last usage of each color attachment across subpasses to choose appropriate initial/final layouts
-					uint32 numColorAttachments = renderPass.renderPass->GetFramebuffer()->GetColorTargetCount();
+					uint32 numColorAttachments = renderPass.framebuffer->GetColorTargetCount();
 
 					for(uint32 ci = 0; ci < numColorAttachments; ++ci)
 					{
-						Texture *t = renderPass.renderPass->GetFramebuffer()->GetColorTexture(ci);
+						Texture *t = renderPass.framebuffer->GetColorTexture(ci);
 						if(!t) continue;
 
 						VulkanTexture *vulkanTexture = t->Downcast<VulkanTexture>();
@@ -514,9 +514,9 @@ namespace RN
 						}
 					}
 
-					if(renderPass.renderPass->GetFramebuffer()->GetDepthStencilTexture())
+					if(renderPass.framebuffer->GetDepthStencilTexture())
 					{
-						Texture *t = renderPass.renderPass->GetFramebuffer()->GetDepthStencilTexture();
+						Texture *t = renderPass.framebuffer->GetDepthStencilTexture();
 						if(t)
 						{
 							bool depthFirstIsReadOnly = renderPass.renderPass->GetSubpassFirstDepthStencilUseIsRead();
@@ -752,7 +752,7 @@ namespace RN
 		}
 		{
 			RN_PROFILE_VULKAN_SCOPE_CMD_N(_internals->tracyVulkanCtx, commandBuffer, "SetAsRendertarget");
-			renderpass.framebuffer->SetAsRendertarget(commandBuffer, renderpass.resolveFramebuffer, renderpass.renderPass->GetClearColor(), renderpass.renderPass->GetClearDepth(), renderpass.renderPass->GetClearStencil());
+			renderpass.framebuffer->SetAsRendertarget(commandBuffer, renderpass.resolveFramebuffer, renderpass.renderPassResources->drawSnapshot.clearColor, renderpass.renderPassResources->drawSnapshot.clearDepth, renderpass.renderPassResources->drawSnapshot.clearStencil);
 		}
 		ResetDrawBindStateCache();
 
@@ -874,6 +874,7 @@ namespace RN
 
 		RenderPass *cameraRenderPass = _currentMultiviewFallbackRenderPass? _currentMultiviewFallbackRenderPass : camera->GetRenderPass();
 		cameraRenderPass->UpdateSubpassChain();
+		RenderPassResources *renderPassResources = cameraRenderPass->GetRenderResources(this);
 
 		renderPass.drawables.resize(0);
 		renderPass.multiviewLayer = _currentMultiviewLayer;
@@ -886,8 +887,8 @@ namespace RN
 
 		renderPass.resolveFramebuffer = nullptr;
 
-		renderPass.shaderHint = cameraRenderPass->GetShaderHint();
-		renderPass.SetOverrideMaterial(cameraRenderPass->GetOverrideMaterial());
+		renderPass.shaderHint = renderPassResources->drawSnapshot.shaderHint;
+		renderPass.renderPassResources = renderPassResources;
 
 		renderPass.cameraInfo.camera = camera;
 
@@ -913,7 +914,7 @@ namespace RN
 		renderPass.cameraFogColor1 = camera->GetFogColor1();
 		renderPass.cameraTag = camera->GetTag();
 
-		Framebuffer *framebuffer = cameraRenderPass->GetFramebuffer();
+		Framebuffer *framebuffer = renderPassResources->drawSnapshot.framebuffer.Get();
 		if(!framebuffer) return;
 
 		VulkanSwapChain *newSwapChain = nullptr;
@@ -946,7 +947,7 @@ namespace RN
 
 		size_t previousDrawableResourceIndex = _internals->currentDrawableResourceIndex;
 
-		if(!renderPass.renderPass->GetIsSubpass() && !renderPass.renderPass->GetIsRoot()) _internals->currentDrawableResourceIndex += 1;
+		if(!renderPass.renderPassResources->drawSnapshot.isSubpass && !renderPass.renderPassResources->drawSnapshot.isRoot) _internals->currentDrawableResourceIndex += 1;
 		nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
 			SubmitRenderPass(nextPass, _internals->renderPasses[previousRenderPassIndex]);
 		});
@@ -959,7 +960,7 @@ namespace RN
 		{
 			//Calculate viewport size
 			VulkanRenderPass &renderpass = _internals->renderPasses[i];
-			renderpass.cameraViewport = renderpass.renderPass->GetFrame();
+			renderpass.cameraViewport = renderpass.renderPassResources->drawSnapshot.frame;
 			if(renderpass.resolveFramebuffer)
 			{
 				if(renderpass.cameraViewport.width > renderpass.resolveFramebuffer->_size.x) renderpass.cameraViewport.width = renderpass.resolveFramebuffer->_size.x;
@@ -1012,11 +1013,35 @@ namespace RN
 		_internals->currentSubpassIndex = 0;
 
 		PostProcessingAPIStage *apiStage = renderPass->Downcast<PostProcessingAPIStage>();
-		PostProcessingStage *ppStage = renderPass->Downcast<PostProcessingStage>();
+		bool isPostProcessingStage = renderPass->IsKindOfClass(PostProcessingStage::GetMetaClass());
+		RenderPassResources *renderPassResources = renderPass->GetRenderResources(this);
 
 		VulkanRenderPass vulkanRenderPass;
 
-		if(vulkanRenderPass.type != VulkanRenderPass::Type::ResolveMSAA && !ppStage && vulkanRenderPass.type != VulkanRenderPass::Type::Convert)
+		vulkanRenderPass.type = VulkanRenderPass::Type::Default;
+		if(apiStage)
+		{
+			switch(apiStage->GetType())
+			{
+				case PostProcessingAPIStage::Type::ResolveMSAA:
+				{
+					vulkanRenderPass.type = VulkanRenderPass::Type::ResolveMSAA;
+					break;
+				}
+				case PostProcessingAPIStage::Type::Blit:
+				{
+					vulkanRenderPass.type = VulkanRenderPass::Type::Blit;
+					break;
+				}
+				case PostProcessingAPIStage::Type::Convert:
+				{
+					vulkanRenderPass.type = VulkanRenderPass::Type::Convert;
+					break;
+				}
+			}
+		}
+
+		if(vulkanRenderPass.type != VulkanRenderPass::Type::ResolveMSAA && !isPostProcessingStage && vulkanRenderPass.type != VulkanRenderPass::Type::Convert)
 		{
 			vulkanRenderPass.cameraInfo = previousRenderPass.cameraInfo;
 			vulkanRenderPass.multiviewCameraInfo = previousRenderPass.multiviewCameraInfo;
@@ -1038,49 +1063,17 @@ namespace RN
 		vulkanRenderPass.framebuffer = nullptr;
 		vulkanRenderPass.resolveFramebuffer = nullptr;
 
-		vulkanRenderPass.shaderHint = renderPass->GetShaderHint();
-		vulkanRenderPass.SetOverrideMaterial(ppStage ? ppStage->GetMaterial() : renderPass->GetOverrideMaterial());
-
-		if(!apiStage)
-		{
-			vulkanRenderPass.type = VulkanRenderPass::Type::Default;
-		}
-		else
-		{
-			switch(apiStage->GetType())
-			{
-				case PostProcessingAPIStage::Type::ResolveMSAA:
-				{
-					vulkanRenderPass.type = VulkanRenderPass::Type::ResolveMSAA;
-					break;
-				}
-				case PostProcessingAPIStage::Type::Blit:
-				{
-					vulkanRenderPass.type = VulkanRenderPass::Type::Blit;
-					break;
-				}
-				case PostProcessingAPIStage::Type::Convert:
-				{
-					vulkanRenderPass.type = VulkanRenderPass::Type::Convert;
-
-	/*					if(!_ppConvertMaterial)
-					{
-						_ppConvertMaterial = Material::WithShaders(_defaultShaderLibrary->GetShaderWithName(RNCSTR("pp_vertex")), _defaultShaderLibrary->GetShaderWithName(RNCSTR("pp_blit_fragment")));
-					}
-					vulkanRenderPass.SetOverrideMaterial(_ppConvertMaterial);*/
-					break;
-				}
-			}
-		}
+		vulkanRenderPass.shaderHint = renderPassResources->drawSnapshot.shaderHint;
+		vulkanRenderPass.renderPassResources = renderPassResources;
 
 		if(previousRenderPass.renderPass)
 		{
 			vulkanRenderPass.previousStoredFramebuffer = previousRenderPass.resolveFramebuffer ? previousRenderPass.resolveFramebuffer : previousRenderPass.framebuffer;
 		}
 
-		if(!renderPass->GetIsSubpass())
+		if(!renderPassResources->drawSnapshot.isSubpass)
 		{
-			Framebuffer *framebuffer = renderPass->GetFramebuffer();
+			Framebuffer *framebuffer = renderPassResources->drawSnapshot.framebuffer.Get();
 			VulkanSwapChain *newSwapChain = nullptr;
 			newSwapChain = framebuffer->Downcast<VulkanFramebuffer>()->GetSwapChain();
 			vulkanRenderPass.framebuffer = framebuffer->Downcast<VulkanFramebuffer>();
@@ -1106,7 +1099,7 @@ namespace RN
 
 		if(vulkanRenderPass.type != VulkanRenderPass::Type::ResolveMSAA)
 		{
-			if(renderPass->GetIsSubpass())
+			if(renderPassResources->drawSnapshot.isSubpass)
 			{
 				previousRenderPass.subpasses.push_back(vulkanRenderPass);
 			}
@@ -1116,7 +1109,7 @@ namespace RN
 				_internals->renderPasses.push_back(vulkanRenderPass);
 
 				// Inject a default fullscreen quad for post processing passes so we don't redraw the whole scene.
-				if(ppStage || vulkanRenderPass.type == VulkanRenderPass::Type::Convert)
+				if(isPostProcessingStage || vulkanRenderPass.type == VulkanRenderPass::Type::Convert)
 				{
 					if(!_defaultPostProcessingDrawable)
 					{
@@ -1133,7 +1126,7 @@ namespace RN
 				}
 			}
 
-			if(!renderPass->GetIsRoot()) _internals->currentDrawableResourceIndex += 1;
+			if(!renderPassResources->drawSnapshot.isRoot) _internals->currentDrawableResourceIndex += 1;
 		}
 		else
 		{
@@ -2031,10 +2024,10 @@ namespace RN
 		if(!mesh || !material || !camera || !camera->GetRenderPass()) return;
 
 		RenderPass *renderPass = camera->GetRenderPass();
-		Framebuffer *framebuffer = renderPass->GetFramebuffer();
+		RenderPassResources *renderPassResources = renderPass->GetRenderResources(this);
+		Framebuffer *framebuffer = renderPassResources->drawSnapshot.framebuffer.Get();
 		VulkanFramebuffer *vulkanFramebuffer = framebuffer? framebuffer->Downcast<VulkanFramebuffer>() : nullptr;
 		VulkanFramebuffer *resolveFramebuffer = nullptr;
-		RenderPass::Flags renderPassFlags = renderPass->GetFlags();
 
 		//Try to find resolve frame buffer (if there is one)
 		const Array *nextRenderPasses = renderPass->GetNextRenderPasses();
@@ -2062,8 +2055,8 @@ namespace RN
 		warmupRenderPass.previousStoredFramebuffer = nullptr;
 		warmupRenderPass.framebuffer = vulkanFramebuffer;
 		warmupRenderPass.resolveFramebuffer = resolveFramebuffer;
-		warmupRenderPass.shaderHint = renderPass->GetShaderHint();
-		warmupRenderPass.SetOverrideMaterial(renderPass->GetOverrideMaterial());
+		warmupRenderPass.shaderHint = renderPassResources->drawSnapshot.shaderHint;
+		warmupRenderPass.renderPassResources = renderPassResources;
 		warmupRenderPass.subpassSignature = 0; // no subpasses in warmup
 		warmupRenderPass.multiviewLayer = 0;
 		warmupRenderPass.subpasses.clear();
@@ -2097,7 +2090,7 @@ namespace RN
 				_internals->currentDrawableResourceIndex += 1;
 				return;
 			}
-			if((drawable->renderGroup & renderSubPass.renderPass->GetRenderGroupMask()) == 0)
+			if((drawable->renderGroup & renderSubPass.renderPassResources->drawSnapshot.renderGroupMask) == 0)
 			{
 				_internals->currentDrawableResourceIndex += 1;
 				return;

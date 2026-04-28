@@ -14,14 +14,25 @@ namespace RN
 	RNDefineMeta(RenderPass, Object)
 
     RenderPass::RenderPass(bool isSubpass) :
-        _flags(Flags::Defaults), _framebuffer(nullptr), _clearDepth(0.0f), _clearStencil(0), _nextRenderPasses(new Array()), _isSubpass(isSubpass), _isRoot(false), _renderGroupMask(0xffff), _subpassWritesDepthStencil(false), _subpassReadDepthStencilAttachment(false), _shaderHint(Shader::UsageHint::Default), _overrideMaterial(nullptr), _subpassNeedToStoreDepthStencil(false), _subpassLastDepthStencilWrite(false), _subpassFirstDepthStencilWrite(false), _depthFirstUseIsRead(false), _depthLastUseIsRead(false), _subpassIndex(0)
+        _flags(Flags::Defaults), _framebuffer(nullptr), _clearDepth(0.0f), _clearStencil(0), _nextRenderPasses(new Array()), _isSubpass(isSubpass), _isRoot(false), _renderGroupMask(0xffff), _subpassWritesDepthStencil(false), _subpassReadDepthStencilAttachment(false), _shaderHint(Shader::UsageHint::Default), _overrideMaterial(nullptr), _subpassNeedToStoreDepthStencil(false), _subpassLastDepthStencilWrite(false), _subpassFirstDepthStencilWrite(false), _depthFirstUseIsRead(false), _depthLastUseIsRead(false), _subpassIndex(0), _renderResources(nullptr), _drawSnapshotVersion(1)
 	{
 	}
 
 	RenderPass::~RenderPass()
 	{
+		if(_renderResources)
+			_renderResources->Delete();
 		SafeRelease(_framebuffer);
 		SafeRelease(_overrideMaterial);
+	}
+
+	void RenderPass::MarkDrawSnapshotDirty()
+	{
+		_drawSnapshotVersion += 1;
+		_nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
+			if(nextPass->GetIsSubpass())
+				nextPass->MarkDrawSnapshotDirty();
+		});
 	}
 
 	// Setter
@@ -31,23 +42,27 @@ namespace RN
 
 		SafeRelease(_framebuffer);
 		_framebuffer = framebuffer->Retain();
+		MarkDrawSnapshotDirty();
 	}
 
 	void RenderPass::SetFlags(Flags flags)
 	{
 		_flags = flags;
+		MarkDrawSnapshotDirty();
 	}
 
 	void RenderPass::SetFrame(const Rect &frame)
 	{
 		RN_ASSERT(!_isSubpass, "Cannot set frame for subpass");
 		_frame = std::move(frame.GetIntegral());
+		MarkDrawSnapshotDirty();
 	}
 
 	void RenderPass::SetClearColor(const Color &color)
 	{
 		RN_ASSERT(!_isSubpass, "Cannot set clear color for subpass");
 		_clearColor = color;
+		MarkDrawSnapshotDirty();
 	}
 
 	void RenderPass::SetClearDepthStencil(float depth, uint8 stencil)
@@ -55,25 +70,65 @@ namespace RN
 		RN_ASSERT(!_isSubpass, "Cannot set clear depth stencil for subpass");
 		_clearDepth = depth;
 		_clearStencil = stencil;
+		MarkDrawSnapshotDirty();
 	}
 
 	void RenderPass::SetRenderGroupMask(uint16 mask)
 	{
 		_renderGroupMask = mask;
+		MarkDrawSnapshotDirty();
 	}
 
 	void RenderPass::SetShaderHint(Shader::UsageHint hint)
 	{
 		_shaderHint = hint;
+		MarkDrawSnapshotDirty();
 	}
 
 	void RenderPass::SetOverrideMaterial(Material *material)
 	{
 		SafeRelease(_overrideMaterial);
 		_overrideMaterial = SafeRetain(material);
+		MarkDrawSnapshotDirty();
 	}
 
 	//Getter
+	Material *RenderPass::GetEffectiveOverrideMaterial() const
+	{
+		return _overrideMaterial;
+	}
+
+	RenderPassResources *RenderPass::GetRenderResources(Renderer *renderer)
+	{
+		if(!_renderResources)
+			_renderResources = renderer->CreateRenderPassResources();
+
+		_renderResources->Update(this, GetEffectiveOverrideMaterial());
+		return _renderResources;
+	}
+
+	void RenderPass::GetDrawSnapshot(DrawSnapshot &snapshot) const
+	{
+		snapshot.flags = _flags;
+		snapshot.clearColor = _clearColor;
+		snapshot.clearDepth = _clearDepth;
+		snapshot.clearStencil = _clearStencil;
+		snapshot.renderGroupMask = _renderGroupMask;
+		snapshot.shaderHint = _shaderHint;
+		snapshot.isSubpass = _isSubpass;
+		snapshot.isRoot = _isRoot;
+		if(!_isSubpass)
+		{
+			snapshot.framebuffer = GetFramebuffer();
+			snapshot.frame = GetFrame();
+		}
+		else
+		{
+			snapshot.framebuffer = nullptr;
+			snapshot.frame = Rect();
+		}
+	}
+
 	Framebuffer *RenderPass::GetFramebuffer() const
 	{
 		RN_ASSERT(!_isSubpass, "Cannot get framebuffer for subpass");
@@ -110,6 +165,7 @@ namespace RN
 		RN_ASSERT(_isSubpass, "Cannot set subpass writes depth stencil for non-subpass");
 		RN_ASSERT(_subpassReadDepthStencilAttachment != writesDepthStencil, "Cannot set subpass writes depth stencil to the same value");
 		_subpassWritesDepthStencil = writesDepthStencil;
+		MarkDrawSnapshotDirty();
 	}
 
 	void RenderPass::SetSubpassReadsDepthStencilAttachment(bool depthStencilAttachment)
@@ -117,6 +173,7 @@ namespace RN
 		RN_ASSERT(_isSubpass, "Cannot set subpass read depth stencil attachment for non-subpass");
 		RN_ASSERT(_subpassWritesDepthStencil != depthStencilAttachment, "Cannot set subpass read depth stencil attachment to the same value");
 		_subpassReadDepthStencilAttachment = depthStencilAttachment;
+		MarkDrawSnapshotDirty();
 	}
 	
 	void RenderPass::SetSubpassWritesColorAttachments(std::vector<uint32> colorAttachments)
@@ -129,6 +186,7 @@ namespace RN
 		std::set_intersection(colorAttachments.begin(), colorAttachments.end(), _subpassReadColorAttachments.begin(), _subpassReadColorAttachments.end(), std::back_inserter(intersection));
 		RN_ASSERT(intersection.empty(), "Subpass can not read and write the same color attachment");
 		_subpassWritesColorAttachments = colorAttachments;
+		MarkDrawSnapshotDirty();
 	}
 	
 	void RenderPass::SetSubpassReadsColorAttachments(std::vector<uint32> colorAttachments)
@@ -141,6 +199,7 @@ namespace RN
 		std::set_intersection(colorAttachments.begin(), colorAttachments.end(), _subpassWritesColorAttachments.begin(), _subpassWritesColorAttachments.end(), std::back_inserter(intersection));
 		RN_ASSERT(intersection.empty(), "Subpass can not read and write the same color attachment");
 		_subpassReadColorAttachments = colorAttachments;
+		MarkDrawSnapshotDirty();
 	}
 	
     
@@ -156,6 +215,7 @@ namespace RN
 		{
 			_isRoot = true;
 		}
+		MarkDrawSnapshotDirty();
 	}
 
 	void RenderPass::RemoveRenderPass(RenderPass *renderPass)
@@ -170,12 +230,14 @@ namespace RN
 				stop = true;
 			}
 		});
+		MarkDrawSnapshotDirty();
 	}
 
 	void RenderPass::RemoveAllRenderPasses()
 	{
 		_nextRenderPasses->RemoveAllObjects();
 		_isRoot = false;
+		MarkDrawSnapshotDirty();
 	}
 
 	void RenderPass::UpdateSubpassChain()
@@ -328,5 +390,53 @@ namespace RN
                 lastDepthStencilWriter->_subpassNeedToStoreDepthStencil = true;
             }
         }
+	}
+
+	RenderPassResources::RenderPassResources(Renderer *renderer) :
+		_renderer(renderer)
+	{}
+
+	RenderPassResources::~RenderPassResources()
+	{}
+
+	void RenderPassResources::Delete()
+	{
+		_renderer->DeleteRenderPassResources(this);
+	}
+
+	void RenderPassResources::Update(RenderPass *renderPass, Material *effectiveOverrideMaterial)
+	{
+		uint64 snapshotVersion = renderPass->GetDrawSnapshotVersion();
+		if(drawSnapshotVersion != snapshotVersion)
+		{
+			renderPass->GetDrawSnapshot(drawSnapshot);
+			drawSnapshotVersion = snapshotVersion;
+		}
+		else if(!drawSnapshot.isSubpass)
+		{
+			drawSnapshot.framebuffer = renderPass->GetFramebuffer();
+			drawSnapshot.frame = renderPass->GetFrame();
+		}
+		else
+		{
+			drawSnapshot.framebuffer = nullptr;
+			drawSnapshot.frame = Rect();
+		}
+
+		UpdateOverrideMaterial(effectiveOverrideMaterial);
+	}
+
+	void RenderPassResources::UpdateOverrideMaterial(Material *effectiveOverrideMaterial)
+	{
+		uint64 overrideSnapshotVersion = effectiveOverrideMaterial ? effectiveOverrideMaterial->GetDrawSnapshotVersion() : 0;
+		if(overrideMaterialSource.Get() != effectiveOverrideMaterial || overrideMaterialSnapshotVersion != overrideSnapshotVersion)
+		{
+			overrideMaterialSource = effectiveOverrideMaterial;
+			overrideMaterialSnapshotVersion = overrideSnapshotVersion;
+			if(effectiveOverrideMaterial)
+				effectiveOverrideMaterial->GetDrawSnapshot(overrideMaterialSnapshot);
+			else
+				overrideMaterialSnapshot.Reset();
+		}
 	}
 } // namespace RN

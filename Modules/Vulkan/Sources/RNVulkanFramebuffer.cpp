@@ -307,7 +307,7 @@ namespace RN
 	void VulkanFramebuffer::PrepareAsRendertargetForFrame(const VulkanRenderPass *renderPass)
 	{
 		VulkanFramebuffer *resolveFramebuffer = renderPass->resolveFramebuffer;
-		RenderPass::Flags flags = renderPass->renderPass->GetFlags();
+		RenderPass::Flags flags = renderPass->renderPassResources->drawSnapshot.flags;
 		uint8 multiviewCount = renderPass->multiviewCameraInfo.size();
 		uint8 multiviewLayer = renderPass->multiviewLayer;
 

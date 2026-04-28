@@ -49,6 +49,7 @@ namespace RN
 
 		RNAPI void SetMaterial(Material *material);
 		Material *GetMaterial() const { return _material; }
+		RNAPI Material *GetEffectiveOverrideMaterial() const override;
 
 	private:
 		Material *_material;

@@ -116,6 +116,16 @@ namespace RN
 	{
 	}
 
+	RenderPassResources *Renderer::CreateRenderPassResources()
+	{
+		return new RenderPassResources(this);
+	}
+
+	void Renderer::DeleteRenderPassResources(RenderPassResources *resources)
+	{
+		delete resources;
+	}
+
 	Shader *Renderer::GetDefaultShader(Shader::Type type, Shader::Options *options, Shader::UsageHint hint)
 	{
 		Shader::Options *realOptions = options ? options->Copy() : Shader::Options::WithNone()->Retain();

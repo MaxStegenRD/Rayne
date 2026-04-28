@@ -18,6 +18,9 @@
 
 namespace RN
 {
+	class Renderer;
+	struct RenderPassResources;
+
 	class RenderPass : public Object
 	{
 	public:
@@ -29,6 +32,20 @@ namespace RN
 				   LoadDepthStencil = (1 << 4),
 				   StoreDepthStencil = (1 << 5),
 				   Defaults = ClearDepthStencil | StoreColor);
+
+		struct DrawSnapshot
+		{
+			Flags flags = Flags::Defaults;
+			Rect frame;
+			StrongRef<Framebuffer> framebuffer;
+			Color clearColor;
+			float clearDepth = 0.0f;
+			uint8 clearStencil = 0;
+			uint16 renderGroupMask = 0xffff;
+			Shader::UsageHint shaderHint = Shader::UsageHint::Default;
+			bool isSubpass = false;
+			bool isRoot = false;
+		};
 
 		RNAPI RenderPass(bool isSubpass = false);
 		RNAPI ~RenderPass();
@@ -59,6 +76,10 @@ namespace RN
 
 		Shader::UsageHint GetShaderHint() const { return _shaderHint; }
 		Material *GetOverrideMaterial() const { return _overrideMaterial; }
+		RNAPI virtual Material *GetEffectiveOverrideMaterial() const;
+		RNAPI RenderPassResources *GetRenderResources(Renderer *renderer);
+		uint64 GetDrawSnapshotVersion() const { return _drawSnapshotVersion; }
+		RNAPI void GetDrawSnapshot(DrawSnapshot &snapshot) const;
 
 		bool GetIsSubpass() const { return _isSubpass; }
 		bool GetIsRoot() const { return _isRoot; }
@@ -86,6 +107,7 @@ namespace RN
 		RNAPI void UpdateSubpassChain();
 
 	private:
+		void MarkDrawSnapshotDirty();
 	
 		Flags _flags;
 		Rect _frame;
@@ -117,8 +139,36 @@ namespace RN
 		size_t _subpassIndex;
 
 		Array *_nextRenderPasses;
+		RenderPassResources *_renderResources;
+		uint64 _drawSnapshotVersion;
 
 		__RNDeclareMetaInternal(RenderPass)
+	};
+
+	struct RenderPassResources
+	{
+		RNAPI RenderPassResources(Renderer *renderer);
+		RNAPI virtual ~RenderPassResources();
+
+		RNAPI void Delete();
+		RNAPI void Update(RenderPass *renderPass, Material *effectiveOverrideMaterial);
+		RNAPI void UpdateOverrideMaterial(Material *effectiveOverrideMaterial);
+
+		const Material::DrawSnapshot *GetOverrideMaterialSnapshot() const
+		{
+			return overrideMaterialSource.Get() ? &overrideMaterialSnapshot : nullptr;
+		}
+
+		uint64 drawSnapshotVersion = 0;
+
+		StrongRef<Material> overrideMaterialSource;
+		uint64 overrideMaterialSnapshotVersion = 0;
+		Material::DrawSnapshot overrideMaterialSnapshot;
+
+		RenderPass::DrawSnapshot drawSnapshot;
+
+	private:
+		Renderer *_renderer;
 	};
 } // namespace RN
 

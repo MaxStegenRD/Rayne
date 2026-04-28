@@ -162,7 +162,7 @@ namespace RN
 				}
 
 				// Skip creating a Metal render encoder for root/container passes
-				if(renderPass.renderPass && renderPass.renderPass->GetIsRoot())
+				if(renderPass.renderPassResources && renderPass.renderPassResources->drawSnapshot.isRoot)
 				{
 					_internals->currentRenderPassIndex += 1;
 					continue;
@@ -301,7 +301,7 @@ namespace RN
 				//TODO: Handle multiple and not existing textures
 				MetalFramebuffer *sourceFramebuffer = renderPass.previousStoredFramebuffer;
 				Texture *sourceTexture = sourceFramebuffer->GetColorTexture(0);
-				MetalFramebuffer *destinationFramebuffer = renderPass.renderPass->GetFramebuffer()->Downcast<RN::MetalFramebuffer>();
+				MetalFramebuffer *destinationFramebuffer = renderPass.framebuffer;
 				Texture *destinationTexture = destinationFramebuffer->GetColorTexture(0);
 				
 				id<MTLTexture> sourceMTLTexture = nullptr;
@@ -337,7 +337,7 @@ namespace RN
 				id<MTLBlitCommandEncoder> commandEncoder = [[_internals->commandBuffer blitCommandEncoder] retain];
 				[descriptor release];
 				
-				Rect targetRect = renderPass.renderPass->GetFrame();
+				Rect targetRect = renderPass.frameRect;
 				[commandEncoder copyFromTexture:sourceMTLTexture sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(0, 0, 0) sourceSize:MTLSizeMake(sourceTextureSize.x, sourceTextureSize.y, sourceTextureSize.z) toTexture:destinationMTLTexture destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(targetRect.x, targetRect.y, 0)];
 				
 				[commandEncoder endEncoding];
@@ -389,6 +389,7 @@ namespace RN
 		
 		// Ensure subpass clearing plan is computed for root containers
 		cameraRenderPass->UpdateSubpassChain();
+		RenderPassResources *renderPassResources = cameraRenderPass->GetRenderResources(this);
 
 		// Set up
 		MetalRenderPass renderPass;
@@ -402,24 +403,24 @@ namespace RN
 		renderPass.drawables.clear();
 		renderPass.framebuffer = nullptr;
 
-		if(cameraRenderPass->GetShaderHint() == Shader::UsageHint::Multiview)
+		if(renderPassResources->drawSnapshot.shaderHint == Shader::UsageHint::Multiview)
 		{
 			renderPass.shaderHint = Shader::UsageHint::Default;
 		}
-		else if(cameraRenderPass->GetShaderHint() == Shader::UsageHint::DepthMultiview)
+		else if(renderPassResources->drawSnapshot.shaderHint == Shader::UsageHint::DepthMultiview)
 		{
 			renderPass.shaderHint = Shader::UsageHint::Depth;
 		}
-		else if(cameraRenderPass->GetShaderHint() == Shader::UsageHint::ShadowDepthMultiview)
+		else if(renderPassResources->drawSnapshot.shaderHint == Shader::UsageHint::ShadowDepthMultiview)
 		{
 			renderPass.shaderHint = Shader::UsageHint::ShadowDepth;
 		}
 		else
 		{
-			renderPass.shaderHint = cameraRenderPass->GetShaderHint();
+			renderPass.shaderHint = renderPassResources->drawSnapshot.shaderHint;
 		}
 
-		renderPass.SetOverrideMaterial(cameraRenderPass->GetOverrideMaterial());
+		renderPass.renderPassResources = renderPassResources;
 		renderPass.resolveFramebuffer = nullptr;
 		renderPass.previousStoredFramebuffer = nullptr;
 
@@ -446,8 +447,8 @@ namespace RN
 		renderPass.cameraFogColor1 = camera->GetFogColor1();
 		renderPass.cameraTag = camera->GetTag();
 
-		Framebuffer *framebuffer = cameraRenderPass->GetFramebuffer();
-		renderPass.frameRect = cameraRenderPass->GetFrame();
+		Framebuffer *framebuffer = renderPassResources->drawSnapshot.framebuffer.Get();
+		renderPass.frameRect = renderPassResources->drawSnapshot.frame;
 		MetalSwapChain *newSwapChain = nullptr;
 		newSwapChain = framebuffer->Downcast<MetalFramebuffer>()->GetSwapChain();
 		renderPass.framebuffer = framebuffer->Downcast<MetalFramebuffer>();
@@ -503,11 +504,11 @@ namespace RN
 		_internals->currentRenderState = nullptr; //This is used when submitting drawables to make lists of drawables to instance and needs to be reset per render pass
 		
 		PostProcessingAPIStage *apiStage = renderPass->Downcast<PostProcessingAPIStage>();
-		PostProcessingStage *ppStage = renderPass->Downcast<PostProcessingStage>();
+		bool isPostProcessingStage = renderPass->IsKindOfClass(PostProcessingStage::GetMetaClass());
+		Material *rendererOverrideMaterial = nullptr;
 		if(!apiStage)
 		{
 			metalRenderPass.type = MetalRenderPass::Type::Default;
-			metalRenderPass.SetOverrideMaterial(ppStage? ppStage->GetMaterial() : renderPass->GetOverrideMaterial());
 		}
 		else
 		{
@@ -527,7 +528,7 @@ namespace RN
 					{
 						_ppConvertMaterial = Material::WithShaders(_defaultShaderLibrary->GetShaderWithName(RNCSTR("pp_vertex")), _defaultShaderLibrary->GetShaderWithName(RNCSTR("pp_blit_fragment")))->Retain();
 					}
-					metalRenderPass.SetOverrideMaterial(_ppConvertMaterial);
+					rendererOverrideMaterial = _ppConvertMaterial;
 					break;
 				}
 				
@@ -538,6 +539,10 @@ namespace RN
 				}
 			}
 		}
+		RenderPassResources *renderPassResources = renderPass->GetRenderResources(this);
+		if(rendererOverrideMaterial)
+			renderPassResources->UpdateOverrideMaterial(rendererOverrideMaterial);
+		metalRenderPass.renderPassResources = renderPassResources;
 		
 		if(previousRenderPass.renderPass)
 		{
@@ -545,21 +550,21 @@ namespace RN
 		}
 		
 		//This forces passes to not use multiview
-		if(renderPass->GetShaderHint() == Shader::UsageHint::Multiview)
+		if(renderPassResources->drawSnapshot.shaderHint == Shader::UsageHint::Multiview)
 		{
 			metalRenderPass.shaderHint = Shader::UsageHint::Default;
 		}
-		else if(renderPass->GetShaderHint() == Shader::UsageHint::DepthMultiview)
+		else if(renderPassResources->drawSnapshot.shaderHint == Shader::UsageHint::DepthMultiview)
 		{
 			metalRenderPass.shaderHint = Shader::UsageHint::Depth;
 		}
-		else if(renderPass->GetShaderHint() == Shader::UsageHint::ShadowDepthMultiview)
+		else if(renderPassResources->drawSnapshot.shaderHint == Shader::UsageHint::ShadowDepthMultiview)
 		{
 			metalRenderPass.shaderHint = Shader::UsageHint::ShadowDepth;
 		}
 		else
 		{
-			metalRenderPass.shaderHint = renderPass->GetShaderHint();
+			metalRenderPass.shaderHint = renderPassResources->drawSnapshot.shaderHint;
 		}
 		
 		metalRenderPass.viewPosition = previousRenderPass.viewPosition;
@@ -586,7 +591,7 @@ namespace RN
 		metalRenderPass.cameraTag = previousRenderPass.cameraTag;
 		
 		Framebuffer *framebuffer = nullptr;
-		if(renderPass->GetIsSubpass())
+		if(renderPassResources->drawSnapshot.isSubpass)
 		{
 			// Subpass inherits root framebuffer
 			framebuffer = previousRenderPass.framebuffer;
@@ -594,8 +599,8 @@ namespace RN
 		}
 		else
 		{
-			framebuffer = renderPass->GetFramebuffer();
-			metalRenderPass.frameRect = renderPass->GetFrame();
+			framebuffer = renderPassResources->drawSnapshot.framebuffer.Get();
+			metalRenderPass.frameRect = renderPassResources->drawSnapshot.frame;
 		}
 		MetalSwapChain *newSwapChain = nullptr;
 		newSwapChain = framebuffer? framebuffer->Downcast<MetalFramebuffer>()->GetSwapChain() : nullptr;
@@ -623,7 +628,7 @@ namespace RN
 			_internals->currentRenderPassIndex = _internals->renderPasses.size();
 			_internals->renderPasses.push_back(metalRenderPass);
 			
-			if(ppStage || metalRenderPass.type == MetalRenderPass::Type::Convert)
+			if(isPostProcessingStage || metalRenderPass.type == MetalRenderPass::Type::Convert)
 			{
 				//Submit fullscreen quad drawable
 				if(!_defaultPostProcessingDrawable)
@@ -1393,7 +1398,7 @@ namespace RN
 			// For post processing/convert passes, render only the injected fullscreen quad.
 			if((pass.type == MetalRenderPass::Type::Convert || pass.renderPass->IsKindOfClass(PostProcessingStage::GetMetaClass())) && drawable != _defaultPostProcessingDrawable) continue;
 			// Filter by render group mask
-			if((drawable->renderGroup & pass.renderPass->GetRenderGroupMask()) == 0) continue;
+			if((drawable->renderGroup & pass.renderPassResources->drawSnapshot.renderGroupMask) == 0) continue;
 
 			// Ensure render resources align with this pass index
 			_internals->currentRenderPassIndex = pi;
@@ -1638,7 +1643,7 @@ namespace RN
 				return;
 			}
 			
-			if(!isDepthInput && renderPass.renderPass->GetIsSubpass())
+			if(!isDepthInput && renderPass.renderPassResources->drawSnapshot.isSubpass)
 			{
 				//Skip unused color attachments in the assignment to match vulkan subpass behavior
 				uint8 targetIndex = materialTextureIndex;
