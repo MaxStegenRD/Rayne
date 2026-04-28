@@ -904,20 +904,12 @@ namespace RN
 
 		Matrix clipSpaceCorrectionMatrix;
 		clipSpaceCorrectionMatrix.m[5] = -1.0f;
-		Matrix viewMatrix = camera->GetViewMatrix();
-		Matrix inverseViewMatrix = camera->GetInverseViewMatrix();
-		Matrix projectionMatrix = clipSpaceCorrectionMatrix * camera->GetProjectionMatrix();
-		Matrix inverseProjectionMatrix = camera->GetInverseProjectionMatrix();
-		RenderFrame::CameraSnapshot cameraSnapshot(camera->GetWorldPosition(), viewMatrix, inverseViewMatrix, projectionMatrix, inverseProjectionMatrix, projectionMatrix * viewMatrix, inverseViewMatrix * inverseProjectionMatrix, camera->GetAmbientColor(), camera->GetCustomData(), camera->GetFogColor0(), camera->GetFogColor1(), Vector2(camera->GetClipNear(), camera->GetClipFar()), Vector2(camera->GetFogNear(), camera->GetFogFar()), camera->GetTag(), rootDrawSnapshot.GetFrame());
+		RenderFrame::CameraSnapshot cameraSnapshot = RenderFrame::CameraSnapshot::WithCamera(camera, rootDrawSnapshot.GetFrame(), clipSpaceCorrectionMatrix);
 		RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex);
 		framePass.SetCameraSnapshot(cameraSnapshot);
 		for(Camera *multiviewCamera : multiviewSnapshotCameras)
 		{
-			Matrix multiviewViewMatrix = multiviewCamera->GetViewMatrix();
-			Matrix multiviewInverseViewMatrix = multiviewCamera->GetInverseViewMatrix();
-			Matrix multiviewProjectionMatrix = clipSpaceCorrectionMatrix * multiviewCamera->GetProjectionMatrix();
-			Matrix multiviewInverseProjectionMatrix = multiviewCamera->GetInverseProjectionMatrix();
-			framePass.AddMultiviewCameraSnapshot(RenderFrame::CameraSnapshot(multiviewCamera->GetWorldPosition(), multiviewViewMatrix, multiviewInverseViewMatrix, multiviewProjectionMatrix, multiviewInverseProjectionMatrix, multiviewProjectionMatrix * multiviewViewMatrix, multiviewInverseViewMatrix * multiviewInverseProjectionMatrix, multiviewCamera->GetAmbientColor(), multiviewCamera->GetCustomData(), multiviewCamera->GetFogColor0(), multiviewCamera->GetFogColor1(), Vector2(multiviewCamera->GetClipNear(), multiviewCamera->GetClipFar()), Vector2(multiviewCamera->GetFogNear(), multiviewCamera->GetFogFar()), multiviewCamera->GetTag(), rootDrawSnapshot.GetFrame()));
+			framePass.AddMultiviewCameraSnapshot(RenderFrame::CameraSnapshot::WithCamera(multiviewCamera, rootDrawSnapshot.GetFrame(), clipSpaceCorrectionMatrix));
 		}
 		renderPass.lightManager = camera->GetLightManager();
 
@@ -1982,7 +1974,7 @@ namespace RN
 
 			if(light->GetType() == Light::Type::DirectionalLight)
 			{
-				framePass.AddDirectionalLight(light->GetForward(), light->GetFinalColor());
+				framePass.AddDirectionalLight(RenderFrame::DirectionalLight::WithLight(light));
 
 				if(light->HasShadows())
 				{
@@ -2006,11 +1998,11 @@ namespace RN
 			}
 			else if(light->GetType() == Light::Type::PointLight)
 			{
-				framePass.AddPointLight(light->GetWorldPosition(), light->GetRange(), light->GetFinalColor());
+				framePass.AddPointLight(RenderFrame::PointLight::WithLight(light));
 			}
 			else if(light->GetType() == Light::Type::SpotLight)
 			{
-				framePass.AddSpotLight(light->GetWorldPosition(), light->GetRange(), light->GetForward(), light->GetAngleCos(), light->GetFinalColor());
+				framePass.AddSpotLight(RenderFrame::SpotLight::WithLight(light));
 			}
 		};
 

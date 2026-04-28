@@ -436,11 +436,7 @@ namespace RN
 
 		renderPass.lightingCamera = _currentMultiviewLightingCamera ? _currentMultiviewLightingCamera : camera;
 
-		Matrix viewMatrix = camera->GetViewMatrix();
-		Matrix inverseViewMatrix = camera->GetInverseViewMatrix();
-		Matrix projectionMatrix = camera->GetProjectionMatrix();
-		Matrix inverseProjectionMatrix = camera->GetInverseProjectionMatrix();
-		RenderFrame::CameraSnapshot cameraSnapshot(camera->GetWorldPosition(), viewMatrix, inverseViewMatrix, projectionMatrix, inverseProjectionMatrix, projectionMatrix * viewMatrix, inverseViewMatrix * inverseProjectionMatrix, camera->GetAmbientColor(), camera->GetCustomData(), camera->GetFogColor0(), camera->GetFogColor1(), Vector2(camera->GetClipNear(), camera->GetClipFar()), Vector2(camera->GetFogNear(), camera->GetFogFar()), camera->GetTag(), drawSnapshot.GetFrame());
+		RenderFrame::CameraSnapshot cameraSnapshot = RenderFrame::CameraSnapshot::WithCamera(camera, drawSnapshot.GetFrame());
 		_internals->renderFrame.GetPass(renderPass.renderFramePassIndex).SetCameraSnapshot(cameraSnapshot);
 
 		Framebuffer *framebuffer = drawSnapshot.GetFramebuffer();
@@ -1326,7 +1322,7 @@ namespace RN
 
 			if(light->GetType() == Light::Type::DirectionalLight)
 			{
-				framePass.AddDirectionalLight(light->GetForward(), light->GetFinalColor());
+				framePass.AddDirectionalLight(RenderFrame::DirectionalLight::WithLight(light));
 
 				// Attach shadow texture/matrices to all non-shadow-camera passes
 				if(light->HasShadows())
@@ -1351,11 +1347,11 @@ namespace RN
 			}
 			else if(light->GetType() == Light::Type::PointLight)
 			{
-				framePass.AddPointLight(light->GetWorldPosition(), light->GetRange(), light->GetFinalColor());
+				framePass.AddPointLight(RenderFrame::PointLight::WithLight(light));
 			}
 			else if(light->GetType() == Light::Type::SpotLight)
 			{
-				framePass.AddSpotLight(light->GetWorldPosition(), light->GetRange(), light->GetForward(), light->GetAngleCos(), light->GetFinalColor());
+				framePass.AddSpotLight(RenderFrame::SpotLight::WithLight(light));
 			}
 		}
 

@@ -11,6 +11,8 @@
 
 #include "RNDrawable.h"
 #include "RNRenderPass.h"
+#include "../Scene/RNCamera.h"
+#include "../Scene/RNLight.h"
 
 namespace RN
 {
@@ -44,6 +46,16 @@ namespace RN
 				_frame(frame)
 			{}
 
+			static CameraSnapshot WithCamera(const Camera *camera, const Rect &frame)
+			{
+				return WithCameraProjection(camera, frame, camera->GetProjectionMatrix());
+			}
+
+			static CameraSnapshot WithCamera(const Camera *camera, const Rect &frame, const Matrix &projectionCorrection)
+			{
+				return WithCameraProjection(camera, frame, projectionCorrection * camera->GetProjectionMatrix());
+			}
+
 			const Vector3 &GetViewPosition() const { return _viewPosition; }
 			const Matrix &GetViewMatrix() const { return _viewMatrix; }
 			const Matrix &GetInverseViewMatrix() const { return _inverseViewMatrix; }
@@ -61,6 +73,14 @@ namespace RN
 			const Rect &GetFrame() const { return _frame; }
 
 		private:
+			static CameraSnapshot WithCameraProjection(const Camera *camera, const Rect &frame, const Matrix &projectionMatrix)
+			{
+				Matrix viewMatrix = camera->GetViewMatrix();
+				Matrix inverseViewMatrix = camera->GetInverseViewMatrix();
+				Matrix inverseProjectionMatrix = camera->GetInverseProjectionMatrix();
+				return CameraSnapshot(camera->GetWorldPosition(), viewMatrix, inverseViewMatrix, projectionMatrix, inverseProjectionMatrix, projectionMatrix * viewMatrix, inverseViewMatrix * inverseProjectionMatrix, camera->GetAmbientColor(), camera->GetCustomData(), camera->GetFogColor0(), camera->GetFogColor1(), Vector2(camera->GetClipNear(), camera->GetClipFar()), Vector2(camera->GetFogNear(), camera->GetFogFar()), camera->GetTag(), frame);
+			}
+
 			Vector3 _viewPosition;
 			Matrix _viewMatrix;
 			Matrix _inverseViewMatrix;
@@ -87,6 +107,11 @@ namespace RN
 				_color(color)
 			{}
 
+			static DirectionalLight WithLight(const Light *light)
+			{
+				return DirectionalLight(light->GetForward(), light->GetFinalColor());
+			}
+
 		private:
 			Vector3 _direction;
 			float _padding;
@@ -101,6 +126,11 @@ namespace RN
 				_range(range),
 				_color(color)
 			{}
+
+			static PointLight WithLight(const Light *light)
+			{
+				return PointLight(light->GetWorldPosition(), light->GetRange(), light->GetFinalColor());
+			}
 
 		private:
 			Vector3 _position;
@@ -118,6 +148,11 @@ namespace RN
 				_angle(angle),
 				_color(color)
 			{}
+
+			static SpotLight WithLight(const Light *light)
+			{
+				return SpotLight(light->GetWorldPosition(), light->GetRange(), light->GetForward(), light->GetAngleCos(), light->GetFinalColor());
+			}
 
 		private:
 			Vector3 _position;
@@ -166,9 +201,9 @@ namespace RN
 			uint8 GetMultiviewCameraCount() const { return static_cast<uint8>(_multiviewCameraSnapshots.size()); }
 			const std::vector<CameraSnapshot> &GetMultiviewCameraSnapshots() const { return _multiviewCameraSnapshots; }
 
-			void AddDirectionalLight(const Vector3 &direction, const Vector4 &color) { _directionalLights.emplace_back(direction, color); }
-			void AddPointLight(const Vector3 &position, float range, const Vector4 &color) { _pointLights.emplace_back(position, range, color); }
-			void AddSpotLight(const Vector3 &position, float range, const Vector3 &direction, float angle, const Vector4 &color) { _spotLights.emplace_back(position, range, direction, angle, color); }
+			void AddDirectionalLight(const DirectionalLight &light) { _directionalLights.push_back(light); }
+			void AddPointLight(const PointLight &light) { _pointLights.push_back(light); }
+			void AddSpotLight(const SpotLight &light) { _spotLights.push_back(light); }
 			const std::vector<DirectionalLight> &GetDirectionalLights() const { return _directionalLights; }
 			const std::vector<PointLight> &GetPointLights() const { return _pointLights; }
 			const std::vector<SpotLight> &GetSpotLights() const { return _spotLights; }
