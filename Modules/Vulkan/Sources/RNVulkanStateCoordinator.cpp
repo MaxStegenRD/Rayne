@@ -581,8 +581,8 @@ namespace RN
 			uint32 countForPipeline = totalColorAttachments;
 			if(rootVulkanPass && rootVulkanPass->subpasses.size() > 0 && subpassIndex < rootVulkanPass->subpasses.size())
 			{
-				RenderPass *rp = rootVulkanPass->subpasses[subpassIndex].renderPass;
-				countForPipeline = rp->GetSubpassWritesColorAttachments().size();
+				const VulkanRenderPass &subpass = rootVulkanPass->subpasses[subpassIndex];
+				countForPipeline = subpass.renderPassResources->GetDrawSnapshot().GetSubpass().GetWritesColorAttachmentCount();
 			}
 			pipelineDescriptor.colorAttachmentCount = static_cast<uint8>(countForPipeline);
 		}
@@ -980,7 +980,9 @@ namespace RN
 	{
 		const VulkanFramebuffer *framebuffer = rootVulkanPass->framebuffer;
 		const VulkanFramebuffer *resolveFramebuffer = rootVulkanPass->resolveFramebuffer;
-		RenderPass::Flags flags = rootVulkanPass->renderPassResources->drawSnapshot.flags;
+		const RenderPass::DrawSnapshot &rootDrawSnapshot = rootVulkanPass->renderPassResources->GetDrawSnapshot();
+		const RenderPass::SubpassSnapshot &rootSubpassSnapshot = rootDrawSnapshot.GetSubpass();
+		RenderPass::Flags flags = rootDrawSnapshot.GetFlags();
 		uint8 multiviewCount = rootVulkanPass->multiviewCameraInfo.size();
 
 		//TODO: Maybe handle swapchain case better...
@@ -1058,8 +1060,8 @@ namespace RN
 			attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 			if(rootVulkanPass && rootVulkanPass->subpasses.size() > 0)
 			{
-				attachment.initialLayout = rootVulkanPass->renderPass->GetSubpassFirstUseIsRead(counter)? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-				attachment.finalLayout = rootVulkanPass->renderPass->GetSubpassLastUseIsRead(counter)? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+				attachment.initialLayout = rootSubpassSnapshot.GetFirstUseIsRead(counter)? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+				attachment.finalLayout = rootSubpassSnapshot.GetLastUseIsRead(counter)? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 			}
 			else
 			{
@@ -1161,9 +1163,8 @@ namespace RN
 			// Choose initial/final layouts based on depth usage across subpasses (read-only vs write)
 			if(rootVulkanPass)
 			{
-				RenderPass *root = rootVulkanPass->renderPass;
-				bool depthFirstIsReadOnly = root->GetSubpassFirstDepthStencilUseIsRead();
-				bool depthLastIsReadOnly = root->GetSubpassLastDepthStencilUseIsRead();
+				bool depthFirstIsReadOnly = rootSubpassSnapshot.GetDepthFirstUseIsRead();
+				bool depthLastIsReadOnly = rootSubpassSnapshot.GetDepthLastUseIsRead();
 
 				attachment.initialLayout = depthFirstIsReadOnly? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 				attachment.finalLayout = depthLastIsReadOnly? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -1223,19 +1224,19 @@ namespace RN
 
 			for(size_t si = 0; si < rootVulkanPass->subpasses.size(); si++)
 			{
-				RenderPass *rp = rootVulkanPass->subpasses[si].renderPass;
+				const RenderPass::SubpassSnapshot &subpassSnapshot = rootVulkanPass->subpasses[si].renderPassResources->GetDrawSnapshot().GetSubpass();
 
 				VkSubpassDescription sp = {};
 				sp.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
 				for(uint32 ci = 0; ci < colorAttachmentRefs.size(); ci++)
 				{
-					if(rp->GetSubpassWritesColorAttachment(ci))
+					if(subpassSnapshot.GetWritesColorAttachment(ci))
 					{
 						perSubpassColorRefs[si].push_back({ colorAttachmentRefs[ci].attachment, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
 						perSubpassColorIndices[si].push_back(ci);
 					}
-					else if(rp->GetSubpassReadColorAttachment(ci))
+					else if(subpassSnapshot.GetReadsColorAttachment(ci))
 					{
 						perSubpassInputRefs[si].push_back({ colorAttachmentRefs[ci].attachment, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
 					}
@@ -1245,12 +1246,12 @@ namespace RN
 
 				if(framebuffer->_depthStencilTarget)
 				{
-					if(rp->GetSubpassWritesDepthStencil())
+					if(subpassSnapshot.GetWritesDepthStencil())
 					{
 						perSubpassDepthRefs[si] = { depthReference.attachment, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
 						sp.pDepthStencilAttachment = &perSubpassDepthRefs[si];
 					}
-					else if(rp->GetSubpassReadDepthStencilAttachment())
+					else if(subpassSnapshot.GetReadsDepthStencil())
 					{
 						// Keep depth bound for depth testing but in read-only layout
 						perSubpassDepthRefs[si] = { depthReference.attachment, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL };
@@ -1268,14 +1269,14 @@ namespace RN
 				// Color attachments
 				for(uint32 ci = 0; ci < colorAttachmentRefs.size(); ci++)
 				{
-					bool used = rp->GetSubpassWritesColorAttachment(ci) || rp->GetSubpassReadColorAttachment(ci);
+					bool used = subpassSnapshot.GetUsesColorAttachment(ci);
 					if(!used)
 					{
 						// Check if any future subpass uses this attachment
 						for(size_t next = si + 1; next < rootVulkanPass->subpasses.size(); next++)
 						{
-							RenderPass *rpNext = rootVulkanPass->subpasses[next].renderPass;
-							if(rpNext->GetSubpassWritesColorAttachment(ci) || rpNext->GetSubpassReadColorAttachment(ci))
+							const RenderPass::SubpassSnapshot &nextSubpassSnapshot = rootVulkanPass->subpasses[next].renderPassResources->GetDrawSnapshot().GetSubpass();
+							if(nextSubpassSnapshot.GetUsesColorAttachment(ci))
 							{
 								preserveAttachments.push_back(colorAttachmentRefs[ci].attachment);
 								break;
@@ -1286,13 +1287,13 @@ namespace RN
 				// Depth attachment
 				if(framebuffer->_depthStencilTarget)
 				{
-					bool usesDepth = rp->GetSubpassWritesDepthStencil() || rp->GetSubpassReadDepthStencilAttachment();
+					bool usesDepth = subpassSnapshot.GetUsesDepthStencil();
 					if(!usesDepth)
 					{
 						for(size_t next = si + 1; next < rootVulkanPass->subpasses.size(); next++)
 						{
-							RenderPass *rpNext = rootVulkanPass->subpasses[next].renderPass;
-							if(rpNext->GetSubpassWritesDepthStencil() || rpNext->GetSubpassReadDepthStencilAttachment())
+							const RenderPass::SubpassSnapshot &nextSubpassSnapshot = rootVulkanPass->subpasses[next].renderPassResources->GetDrawSnapshot().GetSubpass();
+							if(nextSubpassSnapshot.GetUsesDepthStencil())
 							{
 								preserveAttachments.push_back(depthReference.attachment);
 								break;
@@ -1308,13 +1309,12 @@ namespace RN
 				// Resolve attachments only on last writer subpasses
 				if(resolveFramebuffer && sp.colorAttachmentCount > 0)
 				{
-					RenderPass *rp = rootVulkanPass->subpasses[si].renderPass;
 					perSubpassResolveRefs[si].reserve(perSubpassColorRefs[si].size());
 					bool anyLast = false;
 					for(size_t k = 0; k < perSubpassColorIndices[si].size(); ++k)
 					{
 						uint32 ci = perSubpassColorIndices[si][k];
-						if(rp->GetSubpassLastColorWriteAttachment(ci))
+						if(subpassSnapshot.GetIsLastColorWriteAttachment(ci))
 						{
 							perSubpassResolveRefs[si].push_back({ resolveAttachmentRefs[ci].attachment, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
 							anyLast = true;

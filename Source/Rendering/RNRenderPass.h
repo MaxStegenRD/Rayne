@@ -33,18 +33,76 @@ namespace RN
 				   StoreDepthStencil = (1 << 5),
 				   Defaults = ClearDepthStencil | StoreColor);
 
-		struct DrawSnapshot
+		class SubpassSnapshot
 		{
-			Flags flags = Flags::Defaults;
-			Rect frame;
-			StrongRef<Framebuffer> framebuffer;
-			Color clearColor;
-			float clearDepth = 0.0f;
-			uint8 clearStencil = 0;
-			uint16 renderGroupMask = 0xffff;
-			Shader::UsageHint shaderHint = Shader::UsageHint::Default;
-			bool isSubpass = false;
-			bool isRoot = false;
+		public:
+			bool GetReadsDepthStencil() const { return _readsDepthStencil; }
+			bool GetWritesDepthStencil() const { return _writesDepthStencil; }
+			bool GetUsesDepthStencil() const { return _readsDepthStencil || _writesDepthStencil; }
+			bool GetReadsColorAttachment(uint32 index) const { return std::find(_readColorAttachments.begin(), _readColorAttachments.end(), index) != _readColorAttachments.end(); }
+			bool GetWritesColorAttachment(uint32 index) const { return std::find(_writesColorAttachments.begin(), _writesColorAttachments.end(), index) != _writesColorAttachments.end(); }
+			bool GetUsesColorAttachment(uint32 index) const { return GetReadsColorAttachment(index) || GetWritesColorAttachment(index); }
+			bool GetIsFirstColorWriteAttachment(uint32 index) const { return std::find(_firstColorWriteAttachments.begin(), _firstColorWriteAttachments.end(), index) != _firstColorWriteAttachments.end(); }
+			bool GetIsLastColorWriteAttachment(uint32 index) const { return std::find(_lastColorWriteAttachments.begin(), _lastColorWriteAttachments.end(), index) != _lastColorWriteAttachments.end(); }
+			bool GetNeedsToStoreColorAttachment(uint32 index) const { return std::find(_colorAttachmentsToStore.begin(), _colorAttachmentsToStore.end(), index) != _colorAttachmentsToStore.end(); }
+			bool GetIsFirstDepthStencilWrite() const { return _firstDepthStencilWrite; }
+			bool GetIsLastDepthStencilWrite() const { return _lastDepthStencilWrite; }
+			bool GetNeedsToStoreDepthStencil() const { return _depthStencilNeedsStore; }
+			bool GetFirstUseIsRead(uint32 index) const { return (index < _firstUseIsRead.size())? _firstUseIsRead[index] : false; }
+			bool GetLastUseIsRead(uint32 index) const { return (index < _lastUseIsRead.size())? _lastUseIsRead[index] : false; }
+			bool GetDepthFirstUseIsRead() const { return _depthFirstUseIsRead; }
+			bool GetDepthLastUseIsRead() const { return _depthLastUseIsRead; }
+			size_t GetWritesColorAttachmentCount() const { return _writesColorAttachments.size(); }
+
+		private:
+			friend class RenderPass;
+
+			std::vector<uint32> _writesColorAttachments;
+			std::vector<uint32> _readColorAttachments;
+			std::vector<uint32> _firstColorWriteAttachments;
+			std::vector<uint32> _lastColorWriteAttachments;
+			std::vector<uint32> _colorAttachmentsToStore;
+			bool _writesDepthStencil = false;
+			bool _readsDepthStencil = false;
+			bool _firstDepthStencilWrite = false;
+			bool _lastDepthStencilWrite = false;
+			bool _depthStencilNeedsStore = false;
+			std::vector<bool> _firstUseIsRead;
+			std::vector<bool> _lastUseIsRead;
+			bool _depthFirstUseIsRead = false;
+			bool _depthLastUseIsRead = false;
+		};
+
+		class DrawSnapshot
+		{
+		public:
+			Flags GetFlags() const { return _flags; }
+			const Rect &GetFrame() const { return _frame; }
+			Framebuffer *GetFramebuffer() const { return _framebuffer.Get(); }
+			const Color &GetClearColor() const { return _clearColor; }
+			float GetClearDepth() const { return _clearDepth; }
+			uint8 GetClearStencil() const { return _clearStencil; }
+			uint16 GetRenderGroupMask() const { return _renderGroupMask; }
+			Shader::UsageHint GetShaderHint() const { return _shaderHint; }
+			bool IsSubpass() const { return _isSubpass; }
+			bool IsRoot() const { return _isRoot; }
+			const SubpassSnapshot &GetSubpass() const { return _subpass; }
+
+		private:
+			friend class RenderPass;
+			friend struct RenderPassResources;
+
+			Flags _flags = Flags::Defaults;
+			Rect _frame;
+			StrongRef<Framebuffer> _framebuffer;
+			Color _clearColor;
+			float _clearDepth = 0.0f;
+			uint8 _clearStencil = 0;
+			uint16 _renderGroupMask = 0xffff;
+			Shader::UsageHint _shaderHint = Shader::UsageHint::Default;
+			bool _isSubpass = false;
+			bool _isRoot = false;
+			SubpassSnapshot _subpass;
 		};
 
 		RNAPI RenderPass(bool isSubpass = false);
@@ -89,16 +147,6 @@ namespace RN
 		bool GetSubpassReadDepthStencilAttachment() const { return _subpassReadDepthStencilAttachment; }
 		bool GetSubpassReadColorAttachment(uint32 index) const { return std::find(_subpassReadColorAttachments.begin(), _subpassReadColorAttachments.end(), index) != _subpassReadColorAttachments.end(); }
 		bool GetSubpassWritesColorAttachment(uint32 index) const { return std::find(_subpassWritesColorAttachments.begin(), _subpassWritesColorAttachments.end(), index) != _subpassWritesColorAttachments.end(); }
-		bool GetSubpassFirstColorWriteAttachment(uint32 index) const { return std::find(_subpassFirstColorWriteAttachment.begin(), _subpassFirstColorWriteAttachment.end(), index) != _subpassFirstColorWriteAttachment.end(); }
-		bool GetSubpassLastColorWriteAttachment(uint32 index) const { return std::find(_subpassLastColorWriteAttachment.begin(), _subpassLastColorWriteAttachment.end(), index) != _subpassLastColorWriteAttachment.end(); }
-		bool GetSubpassNeedToStoreColorAttachment(uint32 index) const { return std::find(_subpassNeedToStoreColorAttachment.begin(), _subpassNeedToStoreColorAttachment.end(), index) != _subpassNeedToStoreColorAttachment.end(); }
-		bool GetSubpassFirstDepthStencilWrite() const { return _subpassFirstDepthStencilWrite; }
-		bool GetSubpassLastDepthStencilWrite() const { return _subpassLastDepthStencilWrite; }
-		bool GetSubpassNeedToStoreDepthStencil() const { return _subpassNeedToStoreDepthStencil; }
-		bool GetSubpassFirstUseIsRead(uint32 index) const { return (index < _subpassFirstUseIsRead.size())? _subpassFirstUseIsRead[index] : false; }
-		bool GetSubpassLastUseIsRead(uint32 index) const { return (index < _subpassLastUseIsRead.size())? _subpassLastUseIsRead[index] : false; }
-		bool GetSubpassFirstDepthStencilUseIsRead() const { return _depthFirstUseIsRead; }
-		bool GetSubpassLastDepthStencilUseIsRead() const { return _depthLastUseIsRead; }
 
 		RNAPI void AddRenderPass(RenderPass *renderPass);
 		RNAPI void RemoveRenderPass(RenderPass *renderPass);
@@ -159,11 +207,11 @@ namespace RN
 			return overrideMaterialSource.Get() ? &overrideMaterialSnapshot : nullptr;
 		}
 		uint64 GetOverrideMaterialSnapshotVersion() const { return overrideMaterialSnapshotVersion; }
-
-		RenderPass::DrawSnapshot drawSnapshot;
+		const RenderPass::DrawSnapshot &GetDrawSnapshot() const { return _drawSnapshot; }
 
 	private:
 		uint64 drawSnapshotVersion = 0;
+		RenderPass::DrawSnapshot _drawSnapshot;
 		StrongRef<Material> overrideMaterialSource;
 		// Source version refreshes the snapshot; snapshot version invalidates drawable caches.
 		uint64 overrideMaterialSourceVersion = 0;

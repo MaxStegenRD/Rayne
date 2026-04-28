@@ -161,15 +161,16 @@ namespace RN
 					continue;
 				}
 
+				const RenderPass::DrawSnapshot &drawSnapshot = renderPass.renderPassResources->GetDrawSnapshot();
 				// Skip creating a Metal render encoder for root/container passes
-				if(renderPass.renderPassResources && renderPass.renderPassResources->drawSnapshot.isRoot)
+				if(drawSnapshot.IsRoot())
 				{
 					_internals->currentRenderPassIndex += 1;
 					continue;
 				}
 				
 				_internals->currentRenderState = nullptr; //This is a property of the encoder and needs to be set to nullptr here to force setting it again.
-				MTLRenderPassDescriptor *descriptor = renderPass.framebuffer->GetRenderPassDescriptor(renderPass.renderPass, renderPass.resolveFramebuffer, renderPass.multiviewLayer, 0);
+				MTLRenderPassDescriptor *descriptor = renderPass.framebuffer->GetRenderPassDescriptor(drawSnapshot, renderPass.resolveFramebuffer, renderPass.multiviewLayer, 0);
 				_internals->commandEncoder = [_internals->commandBuffer renderCommandEncoderWithDescriptor:descriptor];
 				[descriptor release];
 				
@@ -331,7 +332,7 @@ namespace RN
 					destinationMTLTexture = destinationFramebuffer->GetSwapChain()->GetMetalColorTexture();
 				}
 				
-				MTLRenderPassDescriptor *descriptor = renderPass.framebuffer->GetRenderPassDescriptor(renderPass.renderPass, nullptr, 0, 0);
+				MTLRenderPassDescriptor *descriptor = renderPass.framebuffer->GetRenderPassDescriptor(renderPass.renderPassResources->GetDrawSnapshot(), nullptr, 0, 0);
 				id<MTLBlitCommandEncoder> commandEncoder = [[_internals->commandBuffer blitCommandEncoder] retain];
 				[descriptor release];
 				
@@ -401,21 +402,21 @@ namespace RN
 		renderPass.drawables.clear();
 		renderPass.framebuffer = nullptr;
 
-		if(renderPassResources->drawSnapshot.shaderHint == Shader::UsageHint::Multiview)
+		if(renderPassResources->GetDrawSnapshot().GetShaderHint() == Shader::UsageHint::Multiview)
 		{
 			renderPass.shaderHint = Shader::UsageHint::Default;
 		}
-		else if(renderPassResources->drawSnapshot.shaderHint == Shader::UsageHint::DepthMultiview)
+		else if(renderPassResources->GetDrawSnapshot().GetShaderHint() == Shader::UsageHint::DepthMultiview)
 		{
 			renderPass.shaderHint = Shader::UsageHint::Depth;
 		}
-		else if(renderPassResources->drawSnapshot.shaderHint == Shader::UsageHint::ShadowDepthMultiview)
+		else if(renderPassResources->GetDrawSnapshot().GetShaderHint() == Shader::UsageHint::ShadowDepthMultiview)
 		{
 			renderPass.shaderHint = Shader::UsageHint::ShadowDepth;
 		}
 		else
 		{
-			renderPass.shaderHint = renderPassResources->drawSnapshot.shaderHint;
+			renderPass.shaderHint = renderPassResources->GetDrawSnapshot().GetShaderHint();
 		}
 
 		renderPass.renderPassResources = renderPassResources;
@@ -445,8 +446,8 @@ namespace RN
 		renderPass.cameraFogColor1 = camera->GetFogColor1();
 		renderPass.cameraTag = camera->GetTag();
 
-		Framebuffer *framebuffer = renderPassResources->drawSnapshot.framebuffer.Get();
-		renderPass.frameRect = renderPassResources->drawSnapshot.frame;
+		Framebuffer *framebuffer = renderPassResources->GetDrawSnapshot().GetFramebuffer();
+		renderPass.frameRect = renderPassResources->GetDrawSnapshot().GetFrame();
 		MetalSwapChain *newSwapChain = nullptr;
 		newSwapChain = framebuffer->Downcast<MetalFramebuffer>()->GetSwapChain();
 		renderPass.framebuffer = framebuffer->Downcast<MetalFramebuffer>();
@@ -548,21 +549,21 @@ namespace RN
 		}
 		
 		//This forces passes to not use multiview
-		if(renderPassResources->drawSnapshot.shaderHint == Shader::UsageHint::Multiview)
+		if(renderPassResources->GetDrawSnapshot().GetShaderHint() == Shader::UsageHint::Multiview)
 		{
 			metalRenderPass.shaderHint = Shader::UsageHint::Default;
 		}
-		else if(renderPassResources->drawSnapshot.shaderHint == Shader::UsageHint::DepthMultiview)
+		else if(renderPassResources->GetDrawSnapshot().GetShaderHint() == Shader::UsageHint::DepthMultiview)
 		{
 			metalRenderPass.shaderHint = Shader::UsageHint::Depth;
 		}
-		else if(renderPassResources->drawSnapshot.shaderHint == Shader::UsageHint::ShadowDepthMultiview)
+		else if(renderPassResources->GetDrawSnapshot().GetShaderHint() == Shader::UsageHint::ShadowDepthMultiview)
 		{
 			metalRenderPass.shaderHint = Shader::UsageHint::ShadowDepth;
 		}
 		else
 		{
-			metalRenderPass.shaderHint = renderPassResources->drawSnapshot.shaderHint;
+			metalRenderPass.shaderHint = renderPassResources->GetDrawSnapshot().GetShaderHint();
 		}
 		
 		metalRenderPass.viewPosition = previousRenderPass.viewPosition;
@@ -589,7 +590,7 @@ namespace RN
 		metalRenderPass.cameraTag = previousRenderPass.cameraTag;
 		
 		Framebuffer *framebuffer = nullptr;
-		if(renderPassResources->drawSnapshot.isSubpass)
+		if(renderPassResources->GetDrawSnapshot().IsSubpass())
 		{
 			// Subpass inherits root framebuffer
 			framebuffer = previousRenderPass.framebuffer;
@@ -597,8 +598,8 @@ namespace RN
 		}
 		else
 		{
-			framebuffer = renderPassResources->drawSnapshot.framebuffer.Get();
-			metalRenderPass.frameRect = renderPassResources->drawSnapshot.frame;
+			framebuffer = renderPassResources->GetDrawSnapshot().GetFramebuffer();
+			metalRenderPass.frameRect = renderPassResources->GetDrawSnapshot().GetFrame();
 		}
 		MetalSwapChain *newSwapChain = nullptr;
 		newSwapChain = framebuffer? framebuffer->Downcast<MetalFramebuffer>()->GetSwapChain() : nullptr;
@@ -1396,7 +1397,7 @@ namespace RN
 			// For post processing/convert passes, render only the injected fullscreen quad.
 			if((pass.type == MetalRenderPass::Type::Convert || pass.renderPass->IsKindOfClass(PostProcessingStage::GetMetaClass())) && drawable != _defaultPostProcessingDrawable) continue;
 			// Filter by render group mask
-			if((drawable->renderGroup & pass.renderPassResources->drawSnapshot.renderGroupMask) == 0) continue;
+			if((drawable->renderGroup & pass.renderPassResources->GetDrawSnapshot().GetRenderGroupMask()) == 0) continue;
 
 			// Ensure render resources align with this pass index
 			_internals->currentRenderPassIndex = pi;
@@ -1417,7 +1418,7 @@ namespace RN
 			if(!renderResources.pipelineState || renderResources.pipelineKey != pipelineKey)
 			{
 				_lock.Lock();
-				const MetalRenderingState *state = _internals->stateCoordinator.GetRenderPipelineState(pipelineKey.vertexShader, pipelineKey.fragmentShader, sourceMesh, pass.framebuffer, pipelineKey.materialProperties, pass.renderPass);
+				const MetalRenderingState *state = _internals->stateCoordinator.GetRenderPipelineState(pipelineKey.vertexShader, pipelineKey.fragmentShader, sourceMesh, pass.framebuffer, pipelineKey.materialProperties, pass.renderPassResources->GetDrawSnapshot());
 				_lock.Unlock();
 
 				drawable->UpdateRenderingState(_internals->currentRenderPassIndex, this, state, pipelineKey);
@@ -1644,13 +1645,14 @@ namespace RN
 				return;
 			}
 			
-			if(!isDepthInput && renderPass.renderPassResources->drawSnapshot.isSubpass)
+			const RenderPass::DrawSnapshot &drawSnapshot = renderPass.renderPassResources->GetDrawSnapshot();
+			if(!isDepthInput && drawSnapshot.IsSubpass())
 			{
 				//Skip unused color attachments in the assignment to match vulkan subpass behavior
 				uint8 targetIndex = materialTextureIndex;
 				for(uint8 i = 0; i < renderPass.framebuffer->GetColorTargetCount(); i++)
 				{
-					if(renderPass.renderPass->GetSubpassReadColorAttachment(i))
+					if(drawSnapshot.GetSubpass().GetReadsColorAttachment(i))
 					{
 						if(targetIndex == 0)
 						{

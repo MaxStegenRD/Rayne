@@ -109,23 +109,37 @@ namespace RN
 
 	void RenderPass::GetDrawSnapshot(DrawSnapshot &snapshot) const
 	{
-		snapshot.flags = _flags;
-		snapshot.clearColor = _clearColor;
-		snapshot.clearDepth = _clearDepth;
-		snapshot.clearStencil = _clearStencil;
-		snapshot.renderGroupMask = _renderGroupMask;
-		snapshot.shaderHint = _shaderHint;
-		snapshot.isSubpass = _isSubpass;
-		snapshot.isRoot = _isRoot;
+		snapshot._flags = _flags;
+		snapshot._clearColor = _clearColor;
+		snapshot._clearDepth = _clearDepth;
+		snapshot._clearStencil = _clearStencil;
+		snapshot._renderGroupMask = _renderGroupMask;
+		snapshot._shaderHint = _shaderHint;
+		snapshot._isSubpass = _isSubpass;
+		snapshot._isRoot = _isRoot;
+		snapshot._subpass._writesColorAttachments = _subpassWritesColorAttachments;
+		snapshot._subpass._readColorAttachments = _subpassReadColorAttachments;
+		snapshot._subpass._firstColorWriteAttachments = _subpassFirstColorWriteAttachment;
+		snapshot._subpass._lastColorWriteAttachments = _subpassLastColorWriteAttachment;
+		snapshot._subpass._colorAttachmentsToStore = _subpassNeedToStoreColorAttachment;
+		snapshot._subpass._writesDepthStencil = _subpassWritesDepthStencil;
+		snapshot._subpass._readsDepthStencil = _subpassReadDepthStencilAttachment;
+		snapshot._subpass._firstDepthStencilWrite = _subpassFirstDepthStencilWrite;
+		snapshot._subpass._lastDepthStencilWrite = _subpassLastDepthStencilWrite;
+		snapshot._subpass._depthStencilNeedsStore = _subpassNeedToStoreDepthStencil;
+		snapshot._subpass._firstUseIsRead = _subpassFirstUseIsRead;
+		snapshot._subpass._lastUseIsRead = _subpassLastUseIsRead;
+		snapshot._subpass._depthFirstUseIsRead = _depthFirstUseIsRead;
+		snapshot._subpass._depthLastUseIsRead = _depthLastUseIsRead;
 		if(!_isSubpass)
 		{
-			snapshot.framebuffer = GetFramebuffer();
-			snapshot.frame = GetFrame();
+			snapshot._framebuffer = GetFramebuffer();
+			snapshot._frame = GetFrame();
 		}
 		else
 		{
-			snapshot.framebuffer = nullptr;
-			snapshot.frame = Rect();
+			snapshot._framebuffer = nullptr;
+			snapshot._frame = Rect();
 		}
 	}
 
@@ -390,6 +404,8 @@ namespace RN
                 lastDepthStencilWriter->_subpassNeedToStoreDepthStencil = true;
             }
         }
+
+		MarkDrawSnapshotDirty();
 	}
 
 	RenderPassResources::RenderPassResources(Renderer *renderer) :
@@ -409,18 +425,18 @@ namespace RN
 		uint64 snapshotVersion = renderPass->GetDrawSnapshotVersion();
 		if(drawSnapshotVersion != snapshotVersion)
 		{
-			renderPass->GetDrawSnapshot(drawSnapshot);
+			renderPass->GetDrawSnapshot(_drawSnapshot);
 			drawSnapshotVersion = snapshotVersion;
 		}
-		else if(!drawSnapshot.isSubpass)
+		else if(!_drawSnapshot.IsSubpass())
 		{
-			drawSnapshot.framebuffer = renderPass->GetFramebuffer();
-			drawSnapshot.frame = renderPass->GetFrame();
+			_drawSnapshot._framebuffer = renderPass->GetFramebuffer();
+			_drawSnapshot._frame = renderPass->GetFrame();
 		}
 		else
 		{
-			drawSnapshot.framebuffer = nullptr;
-			drawSnapshot.frame = Rect();
+			_drawSnapshot._framebuffer = nullptr;
+			_drawSnapshot._frame = Rect();
 		}
 
 		UpdateOverrideMaterial(effectiveOverrideMaterial);

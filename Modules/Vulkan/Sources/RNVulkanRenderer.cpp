@@ -495,6 +495,8 @@ namespace RN
 
 				if(renderPass.subpasses.size() > 0)
 				{
+					const RenderPass::DrawSnapshot &drawSnapshot = renderPass.renderPassResources->GetDrawSnapshot();
+					const RenderPass::SubpassSnapshot &subpass = drawSnapshot.GetSubpass();
 					//Determine first/last usage of each color attachment across subpasses to choose appropriate initial/final layouts
 					uint32 numColorAttachments = renderPass.framebuffer->GetColorTargetCount();
 
@@ -504,12 +506,12 @@ namespace RN
 						if(!t) continue;
 
 						VulkanTexture *vulkanTexture = t->Downcast<VulkanTexture>();
-						VkImageLayout initialLayout = renderPass.renderPass->GetSubpassFirstUseIsRead(ci)? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-						VkImageLayout targetLayout = renderPass.renderPass->GetSubpassLastUseIsRead(ci)? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+						VkImageLayout initialLayout = subpass.GetFirstUseIsRead(ci)? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+						VkImageLayout targetLayout = subpass.GetLastUseIsRead(ci)? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 						if(vulkanTexture->GetCurrentLayout() != initialLayout)
 						{
-							VulkanTexture::SetImageLayout(commandBuffer, vulkanTexture->GetVulkanImage(), 0, vulkanTexture->GetDescriptor().mipMaps, 0, vulkanTexture->GetDescriptor().depth, VK_IMAGE_ASPECT_COLOR_BIT, vulkanTexture->GetCurrentLayout(), initialLayout, renderPass.renderPass->GetSubpassFirstUseIsRead(ci) ? VulkanTexture::BarrierIntent::ShaderSource : VulkanTexture::BarrierIntent::RenderTarget);
+							VulkanTexture::SetImageLayout(commandBuffer, vulkanTexture->GetVulkanImage(), 0, vulkanTexture->GetDescriptor().mipMaps, 0, vulkanTexture->GetDescriptor().depth, VK_IMAGE_ASPECT_COLOR_BIT, vulkanTexture->GetCurrentLayout(), initialLayout, subpass.GetFirstUseIsRead(ci) ? VulkanTexture::BarrierIntent::ShaderSource : VulkanTexture::BarrierIntent::RenderTarget);
 							vulkanTexture->SetCurrentLayout(initialLayout);
 						}
 					}
@@ -519,8 +521,8 @@ namespace RN
 						Texture *t = renderPass.framebuffer->GetDepthStencilTexture();
 						if(t)
 						{
-							bool depthFirstIsReadOnly = renderPass.renderPass->GetSubpassFirstDepthStencilUseIsRead();
-							bool depthLastIsReadOnly = renderPass.renderPass->GetSubpassLastDepthStencilUseIsRead();
+							bool depthFirstIsReadOnly = subpass.GetDepthFirstUseIsRead();
+							bool depthLastIsReadOnly = subpass.GetDepthLastUseIsRead();
 
 							VulkanTexture *vulkanTexture = t->Downcast<VulkanTexture>();
 							VkImageLayout initialLayout = depthFirstIsReadOnly? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -592,6 +594,8 @@ namespace RN
 					VulkanFramebuffer *fb = renderPass.framebuffer;
 					if(fb)
 					{
+						const RenderPass::DrawSnapshot &drawSnapshot = renderPass.renderPassResources->GetDrawSnapshot();
+						const RenderPass::SubpassSnapshot &subpass = drawSnapshot.GetSubpass();
 						uint32 numColorAttachments = fb->GetColorTargetCount();
 
 						for(uint32 ci = 0; ci < numColorAttachments; ++ci)
@@ -599,14 +603,14 @@ namespace RN
 							Texture *t = fb->GetColorTexture(ci);
 							if(!t) continue;
 							VulkanTexture *vt = t->Downcast<VulkanTexture>();
-							vt->SetCurrentLayout(renderPass.renderPass->GetSubpassLastUseIsRead(ci)? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+							vt->SetCurrentLayout(subpass.GetLastUseIsRead(ci)? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 						}
 
 						// Depth-stencil
 						Texture *dt = fb->GetDepthStencilTexture();
 						if(dt)
 						{
-							bool depthLastIsReadOnly = renderPass.renderPass->GetSubpassLastDepthStencilUseIsRead();
+							bool depthLastIsReadOnly = subpass.GetDepthLastUseIsRead();
 
 							VulkanTexture *dvt = dt->Downcast<VulkanTexture>();
 							dvt->SetCurrentLayout(depthLastIsReadOnly? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
@@ -752,7 +756,7 @@ namespace RN
 		}
 		{
 			RN_PROFILE_VULKAN_SCOPE_CMD_N(_internals->tracyVulkanCtx, commandBuffer, "SetAsRendertarget");
-			renderpass.framebuffer->SetAsRendertarget(commandBuffer, renderpass.resolveFramebuffer, renderpass.renderPassResources->drawSnapshot.clearColor, renderpass.renderPassResources->drawSnapshot.clearDepth, renderpass.renderPassResources->drawSnapshot.clearStencil);
+			renderpass.framebuffer->SetAsRendertarget(commandBuffer, renderpass.resolveFramebuffer, renderpass.renderPassResources->GetDrawSnapshot().GetClearColor(), renderpass.renderPassResources->GetDrawSnapshot().GetClearDepth(), renderpass.renderPassResources->GetDrawSnapshot().GetClearStencil());
 		}
 		ResetDrawBindStateCache();
 
@@ -887,7 +891,7 @@ namespace RN
 
 		renderPass.resolveFramebuffer = nullptr;
 
-		renderPass.shaderHint = renderPassResources->drawSnapshot.shaderHint;
+		renderPass.shaderHint = renderPassResources->GetDrawSnapshot().GetShaderHint();
 		renderPass.renderPassResources = renderPassResources;
 
 		renderPass.cameraInfo.camera = camera;
@@ -914,7 +918,7 @@ namespace RN
 		renderPass.cameraFogColor1 = camera->GetFogColor1();
 		renderPass.cameraTag = camera->GetTag();
 
-		Framebuffer *framebuffer = renderPassResources->drawSnapshot.framebuffer.Get();
+		Framebuffer *framebuffer = renderPassResources->GetDrawSnapshot().GetFramebuffer();
 		if(!framebuffer) return;
 
 		VulkanSwapChain *newSwapChain = nullptr;
@@ -947,7 +951,8 @@ namespace RN
 
 		size_t previousDrawableResourceIndex = _internals->currentDrawableResourceIndex;
 
-		if(!renderPass.renderPassResources->drawSnapshot.isSubpass && !renderPass.renderPassResources->drawSnapshot.isRoot) _internals->currentDrawableResourceIndex += 1;
+		const RenderPass::DrawSnapshot &drawSnapshot = renderPass.renderPassResources->GetDrawSnapshot();
+		if(!drawSnapshot.IsSubpass() && !drawSnapshot.IsRoot()) _internals->currentDrawableResourceIndex += 1;
 		nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
 			SubmitRenderPass(nextPass, _internals->renderPasses[previousRenderPassIndex]);
 		});
@@ -960,7 +965,7 @@ namespace RN
 		{
 			//Calculate viewport size
 			VulkanRenderPass &renderpass = _internals->renderPasses[i];
-			renderpass.cameraViewport = renderpass.renderPassResources->drawSnapshot.frame;
+			renderpass.cameraViewport = renderpass.renderPassResources->GetDrawSnapshot().GetFrame();
 			if(renderpass.resolveFramebuffer)
 			{
 				if(renderpass.cameraViewport.width > renderpass.resolveFramebuffer->_size.x) renderpass.cameraViewport.width = renderpass.resolveFramebuffer->_size.x;
@@ -981,16 +986,16 @@ namespace RN
 				uint64 signature = 0;
 				for(size_t si = 0; si < renderpass.subpasses.size(); si++)
 				{
-					RenderPass *rp = renderpass.subpasses[si].renderPass;
+					const RenderPass::SubpassSnapshot &subpassSnapshot = renderpass.subpasses[si].renderPassResources->GetDrawSnapshot().GetSubpass();
 					for(uint32 ci = 0; ci < colorAttachmentCount; ci++)
 					{
-						if(rp->GetSubpassWritesColorAttachment(ci)) signature ^= (0x9e3779b97f4a7c15ull + ((static_cast<uint64>(si) << 32) ^ ci));
-						if(rp->GetSubpassReadColorAttachment(ci)) signature ^= (0x85ebca6b + ((static_cast<uint64>(si) << 33) ^ ci));
+						if(subpassSnapshot.GetWritesColorAttachment(ci)) signature ^= (0x9e3779b97f4a7c15ull + ((static_cast<uint64>(si) << 32) ^ ci));
+						if(subpassSnapshot.GetReadsColorAttachment(ci)) signature ^= (0x85ebca6b + ((static_cast<uint64>(si) << 33) ^ ci));
 					}
 					if(hasDepth)
 					{
-						if(rp->GetSubpassWritesDepthStencil()) signature ^= (0x27d4eb2f + (static_cast<uint64>(si) << 1));
-						else if(rp->GetSubpassReadDepthStencilAttachment()) signature ^= (0x165667b1 + (static_cast<uint64>(si) << 1));
+						if(subpassSnapshot.GetWritesDepthStencil()) signature ^= (0x27d4eb2f + (static_cast<uint64>(si) << 1));
+						else if(subpassSnapshot.GetReadsDepthStencil()) signature ^= (0x165667b1 + (static_cast<uint64>(si) << 1));
 					}
 				}
 				renderpass.subpassSignature = signature ^ (static_cast<uint64>(renderpass.subpasses.size()) * 0x9e3779b97f4a7c15ull);
@@ -1063,7 +1068,7 @@ namespace RN
 		vulkanRenderPass.framebuffer = nullptr;
 		vulkanRenderPass.resolveFramebuffer = nullptr;
 
-		vulkanRenderPass.shaderHint = renderPassResources->drawSnapshot.shaderHint;
+		vulkanRenderPass.shaderHint = renderPassResources->GetDrawSnapshot().GetShaderHint();
 		vulkanRenderPass.renderPassResources = renderPassResources;
 
 		if(previousRenderPass.renderPass)
@@ -1071,9 +1076,9 @@ namespace RN
 			vulkanRenderPass.previousStoredFramebuffer = previousRenderPass.resolveFramebuffer ? previousRenderPass.resolveFramebuffer : previousRenderPass.framebuffer;
 		}
 
-		if(!renderPassResources->drawSnapshot.isSubpass)
+		if(!renderPassResources->GetDrawSnapshot().IsSubpass())
 		{
-			Framebuffer *framebuffer = renderPassResources->drawSnapshot.framebuffer.Get();
+			Framebuffer *framebuffer = renderPassResources->GetDrawSnapshot().GetFramebuffer();
 			VulkanSwapChain *newSwapChain = nullptr;
 			newSwapChain = framebuffer->Downcast<VulkanFramebuffer>()->GetSwapChain();
 			vulkanRenderPass.framebuffer = framebuffer->Downcast<VulkanFramebuffer>();
@@ -1099,7 +1104,7 @@ namespace RN
 
 		if(vulkanRenderPass.type != VulkanRenderPass::Type::ResolveMSAA)
 		{
-			if(renderPassResources->drawSnapshot.isSubpass)
+			if(renderPassResources->GetDrawSnapshot().IsSubpass())
 			{
 				previousRenderPass.subpasses.push_back(vulkanRenderPass);
 			}
@@ -1126,7 +1131,7 @@ namespace RN
 				}
 			}
 
-			if(!renderPassResources->drawSnapshot.isRoot) _internals->currentDrawableResourceIndex += 1;
+			if(!renderPassResources->GetDrawSnapshot().IsRoot()) _internals->currentDrawableResourceIndex += 1;
 		}
 		else
 		{
@@ -2023,7 +2028,7 @@ namespace RN
 
 		RenderPass *renderPass = camera->GetRenderPass();
 		RenderPassResources *renderPassResources = renderPass->GetRenderResources(this);
-		Framebuffer *framebuffer = renderPassResources->drawSnapshot.framebuffer.Get();
+		Framebuffer *framebuffer = renderPassResources->GetDrawSnapshot().GetFramebuffer();
 		VulkanFramebuffer *vulkanFramebuffer = framebuffer? framebuffer->Downcast<VulkanFramebuffer>() : nullptr;
 		VulkanFramebuffer *resolveFramebuffer = nullptr;
 
@@ -2053,7 +2058,7 @@ namespace RN
 		warmupRenderPass.previousStoredFramebuffer = nullptr;
 		warmupRenderPass.framebuffer = vulkanFramebuffer;
 		warmupRenderPass.resolveFramebuffer = resolveFramebuffer;
-		warmupRenderPass.shaderHint = renderPassResources->drawSnapshot.shaderHint;
+		warmupRenderPass.shaderHint = renderPassResources->GetDrawSnapshot().GetShaderHint();
 		warmupRenderPass.renderPassResources = renderPassResources;
 		warmupRenderPass.subpassSignature = 0; // no subpasses in warmup
 		warmupRenderPass.multiviewLayer = 0;
@@ -2088,7 +2093,7 @@ namespace RN
 				_internals->currentDrawableResourceIndex += 1;
 				return;
 			}
-			if((drawable->renderGroup & renderSubPass.renderPassResources->drawSnapshot.renderGroupMask) == 0)
+			if((drawable->renderGroup & renderSubPass.renderPassResources->GetDrawSnapshot().GetRenderGroupMask()) == 0)
 			{
 				_internals->currentDrawableResourceIndex += 1;
 				return;
@@ -2317,16 +2322,16 @@ namespace RN
 
 				if(rootFramebuffer && rootRenderPass.subpasses.size() > 0)
 				{
-					RenderPass *subpassRP = renderPass.renderPass;
+					const RenderPass::SubpassSnapshot &subpassSnapshot = renderPass.renderPassResources->GetDrawSnapshot().GetSubpass();
 					uint32 totalColorAttachments = rootFramebuffer->_swapChain ? 1 : static_cast<uint32>(rootFramebuffer->_colorTargets.size());
 					for(uint32 ci = 0; ci < totalColorAttachments; ci++)
 					{
-						if(subpassRP->GetSubpassReadColorAttachment(ci))
+						if(subpassSnapshot.GetReadsColorAttachment(ci))
 						{
 							subpassInputColorIndices.push_back(ci);
 						}
 					}
-					subpassReadsDepthStencilAttachment = subpassRP->GetSubpassReadDepthStencilAttachment();
+					subpassReadsDepthStencilAttachment = subpassSnapshot.GetReadsDepthStencil();
 
 					if(subpassInputColorIndices.size() > 0)
 					{

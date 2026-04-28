@@ -249,16 +249,17 @@ namespace RN
 		return _sampleCount;
 	}
 
-	MTLRenderPassDescriptor *MetalFramebuffer::GetRenderPassDescriptor(RenderPass *renderPass, MetalFramebuffer *resolveFramebuffer, uint8 multiviewLayer, uint8 multiviewCount) const
+	MTLRenderPassDescriptor *MetalFramebuffer::GetRenderPassDescriptor(const RenderPass::DrawSnapshot &drawSnapshot, MetalFramebuffer *resolveFramebuffer, uint8 multiviewLayer, uint8 multiviewCount) const
 	{
 		//TODO: Currently the next camera into the same framebuffer will clear the whole framebuffer...
 		//There does not appear to be a way to only clear part of the framebuffer...
-		const Color &clearColor = renderPass->GetClearColor();
+		const Color &clearColor = drawSnapshot.GetClearColor();
 		MTLRenderPassDescriptor *descriptor = [[MTLRenderPassDescriptor alloc] init];
 		descriptor.renderTargetArrayLength = (multiviewCount > 0) ? multiviewCount : 1;
 		
-		bool isSubpass = renderPass->GetIsSubpass();
-		RenderPass::Flags renderPassFlags = renderPass->GetFlags();
+		const RenderPass::SubpassSnapshot &subpass = drawSnapshot.GetSubpass();
+		bool isSubpass = drawSnapshot.IsSubpass();
+		RenderPass::Flags renderPassFlags = drawSnapshot.GetFlags();
 
 		int counter = 0;
 		int attachmentCounter = 0;
@@ -268,8 +269,8 @@ namespace RN
 			bool writesThisColor = true;
 			if(isSubpass)
 			{
-				readsThisColor = renderPass->GetSubpassReadColorAttachment(counter);
-				writesThisColor = renderPass->GetSubpassWritesColorAttachment(counter);
+				readsThisColor = subpass.GetReadsColorAttachment(counter);
+				writesThisColor = subpass.GetWritesColorAttachment(counter);
 			}
 
 			if(!readsThisColor && !writesThisColor)
@@ -295,7 +296,7 @@ namespace RN
 			
 			if(isSubpass)
 			{
-				if(renderPass->GetSubpassFirstColorWriteAttachment(counter))
+				if(subpass.GetIsFirstColorWriteAttachment(counter))
 				{
 					if(renderPassFlags & RenderPass::Flags::ClearColor)
 					{
@@ -344,7 +345,7 @@ namespace RN
 			{
 				if(isSubpass)
 				{
-					if(renderPassFlags & RenderPass::Flags::StoreColor || !renderPass->GetSubpassLastColorWriteAttachment(counter) || renderPass->GetSubpassNeedToStoreColorAttachment(counter))
+					if(renderPassFlags & RenderPass::Flags::StoreColor || !subpass.GetIsLastColorWriteAttachment(counter) || subpass.GetNeedsToStoreColorAttachment(counter))
 					{
 						[colorAttachment setStoreAction:MTLStoreActionStore];
 					}
@@ -380,7 +381,7 @@ namespace RN
 			counter += 1;
 		}
 
-		if(_depthStencilTarget && (!isSubpass || renderPass->GetSubpassReadDepthStencilAttachment() || renderPass->GetSubpassWritesDepthStencil()))
+		if(_depthStencilTarget && (!isSubpass || subpass.GetUsesDepthStencil()))
 		{
 			id<MTLTexture> depthStencilTexture = nil;
 			if(!_depthStencilTarget->targetView.texture)
@@ -404,12 +405,12 @@ namespace RN
 				[depthAttachment setTexture:depthStencilTexture];
 				if(isSubpass)
 				{
-					if(renderPass->GetSubpassFirstDepthStencilWrite())
+					if(subpass.GetIsFirstDepthStencilWrite())
 					{
 						if(renderPassFlags & RenderPass::Flags::ClearDepthStencil)
 						{
 							[depthAttachment setLoadAction:MTLLoadActionClear];
-							[depthAttachment setClearDepth:renderPass->GetClearDepth()];
+							[depthAttachment setClearDepth:drawSnapshot.GetClearDepth()];
 						}
 						else if(renderPassFlags & RenderPass::Flags::LoadDepthStencil)
 						{
@@ -428,7 +429,7 @@ namespace RN
 				else if(renderPassFlags & RenderPass::Flags::ClearDepthStencil)
 				{
 					[depthAttachment setLoadAction:MTLLoadActionClear];
-					[depthAttachment setClearDepth:renderPass->GetClearDepth()];
+					[depthAttachment setClearDepth:drawSnapshot.GetClearDepth()];
 				}
 				else if(renderPassFlags & RenderPass::Flags::LoadDepthStencil)
 				{
@@ -454,7 +455,7 @@ namespace RN
 				{
 					if(isSubpass)
 					{
-						if(renderPassFlags & RenderPass::Flags::StoreDepthStencil || !renderPass->GetSubpassLastDepthStencilWrite() || renderPass->GetSubpassNeedToStoreDepthStencil())
+						if(renderPassFlags & RenderPass::Flags::StoreDepthStencil || !subpass.GetIsLastDepthStencilWrite() || subpass.GetNeedsToStoreDepthStencil())
 						{
 							[depthAttachment setStoreAction:MTLStoreActionStore];
 						}
@@ -463,7 +464,7 @@ namespace RN
 							[depthAttachment setStoreAction:MTLStoreActionDontCare];
 						}
 					}
-					else if(renderPass->GetFlags() & RenderPass::Flags::StoreDepthStencil)
+					else if(renderPassFlags & RenderPass::Flags::StoreDepthStencil)
 					{
 						[depthAttachment setStoreAction:MTLStoreActionStore];
 					}
@@ -497,12 +498,12 @@ namespace RN
 				
 				if(isSubpass)
 				{
-					if(renderPass->GetSubpassFirstDepthStencilWrite())
+					if(subpass.GetIsFirstDepthStencilWrite())
 					{
 						if(renderPassFlags & RenderPass::Flags::ClearDepthStencil)
 						{
 							[stencilAttachment setLoadAction:MTLLoadActionClear];
-							[stencilAttachment setClearStencil:renderPass->GetClearStencil()];
+							[stencilAttachment setClearStencil:drawSnapshot.GetClearStencil()];
 						}
 						else if(renderPassFlags & RenderPass::Flags::LoadDepthStencil)
 						{
@@ -521,7 +522,7 @@ namespace RN
 				else if(renderPassFlags & RenderPass::Flags::ClearDepthStencil)
 				{
 					[stencilAttachment setLoadAction:MTLLoadActionClear];
-					[stencilAttachment setClearStencil:renderPass->GetClearStencil()];
+					[stencilAttachment setClearStencil:drawSnapshot.GetClearStencil()];
 				}
 				else if(renderPassFlags & RenderPass::Flags::LoadDepthStencil)
 				{
@@ -548,7 +549,7 @@ namespace RN
 				{
 					if(isSubpass)
 					{
-						if(renderPassFlags & RenderPass::Flags::StoreDepthStencil || !renderPass->GetSubpassLastDepthStencilWrite() || renderPass->GetSubpassNeedToStoreDepthStencil())
+						if(renderPassFlags & RenderPass::Flags::StoreDepthStencil || !subpass.GetIsLastDepthStencilWrite() || subpass.GetNeedsToStoreDepthStencil())
 						{
 							[stencilAttachment setStoreAction:MTLStoreActionStore];
 						}

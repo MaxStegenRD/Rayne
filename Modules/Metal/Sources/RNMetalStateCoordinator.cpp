@@ -212,7 +212,7 @@ namespace RN
 		return sampler;
 	}
 
-	const MetalRenderingState *MetalStateCoordinator::GetRenderPipelineState(Shader *vertexShader, Shader *fragmentShader, Mesh *mesh, Framebuffer *framebuffer, const Material::PipelineProperties &materialProperties, RenderPass *renderPass)
+	const MetalRenderingState *MetalStateCoordinator::GetRenderPipelineState(Shader *vertexShader, Shader *fragmentShader, Mesh *mesh, Framebuffer *framebuffer, const Material::PipelineProperties &materialProperties, const RenderPass::DrawSnapshot &drawSnapshot)
 	{
 		const Mesh::VertexDescriptor &descriptor = mesh->GetVertexDescriptor();
 
@@ -225,7 +225,7 @@ namespace RN
 			{
 				if(collection->fragmentShader->IsEqual(metalFragmentShader) && collection->vertexShader->IsEqual(metalVertexShader))
 				{
-					return GetRenderPipelineStateInCollection(collection, mesh, framebuffer, materialProperties, renderPass);
+					return GetRenderPipelineStateInCollection(collection, mesh, framebuffer, materialProperties, drawSnapshot);
 				}
 			}
 		}
@@ -233,16 +233,17 @@ namespace RN
 		MetalRenderingStateCollection *collection = new MetalRenderingStateCollection(descriptor, metalVertexShader, metalFragmentShader);
 		_renderingStates.push_back(collection);
 
-		return GetRenderPipelineStateInCollection(collection, mesh, framebuffer, materialProperties, renderPass);
+		return GetRenderPipelineStateInCollection(collection, mesh, framebuffer, materialProperties, drawSnapshot);
 	}
 
-	const MetalRenderingState *MetalStateCoordinator::GetRenderPipelineStateInCollection(MetalRenderingStateCollection *collection, Mesh *mesh, Framebuffer *framebuffer, const Material::PipelineProperties &materialProperties, RenderPass *renderPass)
+	const MetalRenderingState *MetalStateCoordinator::GetRenderPipelineStateInCollection(MetalRenderingStateCollection *collection, Mesh *mesh, Framebuffer *framebuffer, const Material::PipelineProperties &materialProperties, const RenderPass::DrawSnapshot &drawSnapshot)
 	{
 		MetalFramebuffer *metalFramebuffer = framebuffer->Downcast<MetalFramebuffer>();
+		const RenderPass::SubpassSnapshot &subpass = drawSnapshot.GetSubpass();
 		std::vector<MTLPixelFormat> pixelFormats;
 		for(uint32 i = 0; i < metalFramebuffer->GetColorTargetCount(); i++)
 		{
-			if(renderPass->GetIsSubpass() && !renderPass->GetSubpassReadColorAttachment(i) && !renderPass->GetSubpassWritesColorAttachment(i))
+			if(drawSnapshot.IsSubpass() && !subpass.GetUsesColorAttachment(i))
 			{
 				continue;
 			}
@@ -286,7 +287,7 @@ namespace RN
 		pipelineStateDescriptor.colorAttachments[0].pixelFormat = MTLPixelFormatInvalid;
 		for(uint32 targetCounter = 0; targetCounter < metalFramebuffer->GetColorTargetCount(); targetCounter++)
 		{
-			if(renderPass->GetIsSubpass() && !renderPass->GetSubpassReadColorAttachment(targetCounter) && !renderPass->GetSubpassWritesColorAttachment(targetCounter))
+			if(drawSnapshot.IsSubpass() && !subpass.GetUsesColorAttachment(targetCounter))
 			{
 				continue;
 			}

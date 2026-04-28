@@ -109,11 +109,11 @@ namespace RN
 		MTLAPI id<MTLDepthStencilState> GetDepthStencilStateForMaterial(const Material::PipelineProperties &materialProperties, const MetalRenderingState *renderingState);
 		MTLAPI id<MTLSamplerState> GetSamplerStateForSampler(const Shader::ArgumentSampler *samplerDescriptor);
 
-		MTLAPI const MetalRenderingState *GetRenderPipelineState(Shader *vertexShader, Shader *fragmentShader, Mesh *mesh, Framebuffer *framebuffer, const Material::PipelineProperties &materialProperties, RenderPass *renderPass);
+		MTLAPI const MetalRenderingState *GetRenderPipelineState(Shader *vertexShader, Shader *fragmentShader, Mesh *mesh, Framebuffer *framebuffer, const Material::PipelineProperties &materialProperties, const RenderPass::DrawSnapshot &drawSnapshot);
 
 	private:
 		MTLVertexDescriptor *CreateVertexDescriptorFromMesh(Mesh *mesh, MetalShader *shader);
-		const MetalRenderingState *GetRenderPipelineStateInCollection(MetalRenderingStateCollection *collection, Mesh *mesh, Framebuffer *framebuffer, const Material::PipelineProperties &materialProperties, RenderPass *renderPass);
+		const MetalRenderingState *GetRenderPipelineStateInCollection(MetalRenderingStateCollection *collection, Mesh *mesh, Framebuffer *framebuffer, const Material::PipelineProperties &materialProperties, const RenderPass::DrawSnapshot &drawSnapshot);
 
 		id<MTLDevice> _device;
 
