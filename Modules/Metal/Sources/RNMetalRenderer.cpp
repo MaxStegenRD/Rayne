@@ -91,6 +91,7 @@ namespace RN
 
 	MetalFrameSubmission &MetalRenderer::GetActiveFrameSubmission()
 	{
+		AssertOnSubmissionThread();
 		RN_ASSERT(_activeFrameSubmission, "No active Metal frame submission");
 		return *_activeFrameSubmission;
 	}
@@ -124,6 +125,7 @@ namespace RN
 	void MetalRenderer::CreateMipMaps()
 	{
 		RN_PROFILE_SCOPE();
+		AssertOnRenderThread();
 		Set *mipMapTextures = nullptr;
 		{
 			LockGuard<Lockable> lock(_lock);
@@ -194,9 +196,32 @@ namespace RN
 		_internals->renderThread = nullptr;
 	}
 
+	void MetalRenderer::AssertOnSubmissionThread()
+	{
+#if RN_BUILD_DEBUG
+		std::thread::id currentThread = std::this_thread::get_id();
+		if(!_internals->hasSubmissionThread)
+		{
+			_internals->submissionThread = currentThread;
+			_internals->hasSubmissionThread = true;
+		}
+
+		RN_DEBUG_ASSERT(_internals->submissionThread == currentThread, "Metal frame submission must stay on one submission thread");
+		RN_DEBUG_ASSERT(!_internals->renderThread || !_internals->renderThread->OnThread(), "Metal frame submission must not run on the render thread");
+#endif
+	}
+
+	void MetalRenderer::AssertOnRenderThread() const
+	{
+#if RN_BUILD_DEBUG
+		RN_DEBUG_ASSERT(_internals->renderThread && _internals->renderThread->OnThread(), "Metal render work must run on the render thread");
+#endif
+	}
+
 	void MetalRenderer::QueueFrameSubmission(Function &&function)
 	{
 		RN_PROFILE_SCOPE();
+		AssertOnSubmissionThread();
 
 		MetalFrameSubmission submission;
 		if(!_internals->frameSubmissionQueue.WaitForSpace())
@@ -209,6 +234,7 @@ namespace RN
 	bool MetalRenderer::ConsumeFrameSubmission()
 	{
 		RN_PROFILE_SCOPE();
+		AssertOnRenderThread();
 
 		MetalFrameSubmission submission;
 		if(!_internals->frameSubmissionQueue.Pop(submission))
@@ -224,6 +250,7 @@ namespace RN
 	void MetalRenderer::BuildFrameSubmission(MetalFrameSubmission &submission, Function &&function)
 	{
 		RN_PROFILE_SCOPE();
+		AssertOnSubmissionThread();
 
 		//Submit camera is called for each camera and creates draw items per camera
 		MetalFrameSubmission *previousSubmission = _activeFrameSubmission;
@@ -235,6 +262,7 @@ namespace RN
 	void MetalRenderer::RenderFrameSubmission(const MetalFrameSubmission &submission)
 	{
 		RN_PROFILE_SCOPE();
+		AssertOnRenderThread();
 
 		for(MetalSwapChain *swapChain : submission.swapChains)
 		{
@@ -710,6 +738,7 @@ namespace RN
 	MetalUniformBufferReference *MetalRenderer::GetUniformBufferReference(size_t size, size_t index)
 	{
 		RN_PROFILE_SCOPE();
+		AssertOnRenderThread();
 		LockGuard<Lockable> lock(_lock);
 		return _uniformBufferPool->GetUniformBufferReference(size, index);
 	}
@@ -717,6 +746,7 @@ namespace RN
 	void MetalRenderer::UpdateUniformBufferReference(MetalUniformBufferReference *reference, bool align)
 	{
 		RN_PROFILE_SCOPE();
+		AssertOnRenderThread();
 		LockGuard<Lockable> lock(_lock);
 		return _uniformBufferPool->UpdateUniformBufferReference(reference, align);
 	}
@@ -1397,6 +1427,7 @@ namespace RN
 	void MetalRenderer::PrepareRenderFrame(MetalFrameSubmission &submission)
 	{
 		RN_PROFILE_SCOPE();
+		AssertOnRenderThread();
 		CreateMipMaps();
 
 		submission.preparedRenderPasses.clear();

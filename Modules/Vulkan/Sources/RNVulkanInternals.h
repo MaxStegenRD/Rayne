@@ -333,6 +333,10 @@ namespace RN
 
 		FrameSubmissionQueue<VulkanFrameSubmission> frameSubmissionQueue;
 		Thread *renderThread = nullptr;
+#if RN_BUILD_DEBUG
+		std::thread::id submissionThread;
+		bool hasSubmissionThread = false;
+#endif
 		std::vector<VulkanFrameResource> frameResources;
 
 		VulkanDrawBindStateCache drawBindStateCache;

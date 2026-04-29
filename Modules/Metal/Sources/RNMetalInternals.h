@@ -217,6 +217,10 @@ namespace RN
 	{
 		FrameSubmissionQueue<MetalFrameSubmission> frameSubmissionQueue;
 		Thread *renderThread = nullptr;
+#if RN_BUILD_DEBUG
+		std::thread::id submissionThread;
+		bool hasSubmissionThread = false;
+#endif
 		MetalStateCoordinator stateCoordinator;
 
 		id<MTLDevice> device;

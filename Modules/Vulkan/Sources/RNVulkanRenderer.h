@@ -96,6 +96,8 @@ namespace RN
 	private:
 		void StartRenderThread();
 		void StopRenderThread();
+		void AssertOnSubmissionThread();
+		void AssertOnRenderThread() const;
 		void QueueFrameSubmission(Function &&function);
 		void BuildFrameSubmission(VulkanFrameSubmission &submission, Function &&function);
 		bool ConsumeFrameSubmission();

@@ -150,6 +150,7 @@ namespace RN
 
 	VulkanFrameSubmission &VulkanRenderer::GetActiveFrameSubmission()
 	{
+		AssertOnSubmissionThread();
 		RN_ASSERT(_activeFrameSubmission, "No active Vulkan frame submission");
 		return *_activeFrameSubmission;
 	}
@@ -256,6 +257,7 @@ namespace RN
 	void VulkanRenderer::SubmitPendingResourceCommandBuffers()
 	{
 		RN_PROFILE_SCOPE();
+		AssertOnRenderThread();
 		_currentResourcesCommandBufferLock.Lock();
 		VulkanCommandBuffer *resourcesCommandBuffer = _currentResourcesCommandBuffer;
 		if(resourcesCommandBuffer)
@@ -318,6 +320,7 @@ namespace RN
 	void VulkanRenderer::UpdateFrameFences()
 	{
 		RN_PROFILE_SCOPE();
+		AssertOnRenderThread();
 		//Check fence status
 		int index = 0;
 		int freeFenceIndex = -1;
@@ -375,6 +378,7 @@ namespace RN
 	void VulkanRenderer::ReleaseFrameResources(uint32 frame)
 	{
 		RN_PROFILE_SCOPE();
+		AssertOnRenderThread();
 		//Delete command lists that finished execution on the graphics card (the command allocator needs to be alive the whole time)
 		for(int i = _executedCommandBuffers->GetCount() - 1; i >= 0; i--)
 		{
@@ -447,9 +451,32 @@ namespace RN
 		_internals->renderThread = nullptr;
 	}
 
+	void VulkanRenderer::AssertOnSubmissionThread()
+	{
+#if RN_BUILD_DEBUG
+		std::thread::id currentThread = std::this_thread::get_id();
+		if(!_internals->hasSubmissionThread)
+		{
+			_internals->submissionThread = currentThread;
+			_internals->hasSubmissionThread = true;
+		}
+
+		RN_DEBUG_ASSERT(_internals->submissionThread == currentThread, "Vulkan frame submission must stay on one submission thread");
+		RN_DEBUG_ASSERT(!_internals->renderThread || !_internals->renderThread->OnThread(), "Vulkan frame submission must not run on the render thread");
+#endif
+	}
+
+	void VulkanRenderer::AssertOnRenderThread() const
+	{
+#if RN_BUILD_DEBUG
+		RN_DEBUG_ASSERT(_internals->renderThread && _internals->renderThread->OnThread(), "Vulkan render work must run on the render thread");
+#endif
+	}
+
 	void VulkanRenderer::QueueFrameSubmission(Function &&function)
 	{
 		RN_PROFILE_SCOPE();
+		AssertOnSubmissionThread();
 
 		VulkanFrameSubmission submission;
 		if(!_internals->frameSubmissionQueue.WaitForSpace())
@@ -462,6 +489,7 @@ namespace RN
 	bool VulkanRenderer::ConsumeFrameSubmission()
 	{
 		RN_PROFILE_SCOPE();
+		AssertOnRenderThread();
 
 		VulkanFrameSubmission submission;
 		if(!_internals->frameSubmissionQueue.Pop(submission))
@@ -480,6 +508,7 @@ namespace RN
 	void VulkanRenderer::BuildFrameSubmission(VulkanFrameSubmission &submission, Function &&function)
 	{
 		RN_PROFILE_SCOPE();
+		AssertOnSubmissionThread();
 
 		//SubmitCamera is called for each camera and creates draw items per camera
 		VulkanFrameSubmission *previousSubmission = _activeFrameSubmission;
@@ -491,6 +520,7 @@ namespace RN
 	void VulkanRenderer::RenderFrameSubmission(const VulkanFrameSubmission &submission)
 	{
 		RN_PROFILE_SCOPE();
+		AssertOnRenderThread();
 
 		for(VulkanSwapChain *swapChain : submission.swapChains)
 		{
@@ -1272,6 +1302,7 @@ namespace RN
 	void VulkanRenderer::CreateMipMaps()
 	{
 		RN_PROFILE_SCOPE();
+		AssertOnRenderThread();
 		Array *mipMapTextures = nullptr;
 		{
 			LockGuard<Lockable> lock(_lock);
@@ -1345,12 +1376,14 @@ namespace RN
 
 	VulkanDynamicBufferReference *VulkanRenderer::GetConstantBufferReference(size_t size, size_t index, GPUResource::UsageOptions usageOptions)
 	{
+		AssertOnRenderThread();
 		VulkanDynamicBufferReference *reference = _dynamicBufferPool->GetDynamicBufferReference(size, index, usageOptions);
 		return reference;
 	}
 
 	void VulkanRenderer::UpdateDynamicBufferReference(VulkanDynamicBufferReference *reference, bool align)
 	{
+		AssertOnRenderThread();
 		LockGuard<Lockable> lock(_lock);
 		return _dynamicBufferPool->UpdateDynamicBufferReference(reference, align);
 	}
@@ -2083,6 +2116,7 @@ namespace RN
 
 	void VulkanRenderer::WarmupDrawable(Mesh *mesh, Material *material, Camera *camera)
 	{
+		AssertOnRenderThread();
 		//TODO: This is all a bit simplified and won't handle everything, but hopefully catches the main use case for now
 		Renderer::WarmupDrawable(mesh, material, camera);
 		if(!mesh || !material || !camera || !camera->GetRenderPass()) return;
@@ -2142,6 +2176,7 @@ namespace RN
 	bool VulkanRenderer::PrepareRenderFrame(VulkanFrameSubmission &submission)
 	{
 		RN_PROFILE_SCOPE();
+		AssertOnRenderThread();
 		_internals->stateCoordinator.SavePipelineCache(Kernel::GetSharedInstance()->GetApplication()->GetBuildNumber(), GetVulkanDevice()); //This won't do anything if no new pipelines were loaded
 
 		UpdateFrameFences(); //Releases resources of frames that finished

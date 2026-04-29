@@ -78,6 +78,8 @@ namespace RN
 	protected:
 		void StartRenderThread();
 		void StopRenderThread();
+		void AssertOnSubmissionThread();
+		void AssertOnRenderThread() const;
 		void QueueFrameSubmission(Function &&function);
 		void BuildFrameSubmission(MetalFrameSubmission &submission, Function &&function);
 		bool ConsumeFrameSubmission();
