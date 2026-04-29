@@ -76,7 +76,9 @@ namespace RN
 		MTLAPI id GetCommandQueue() const;
 
 	protected:
-		bool QueueFrameSubmission(Function &&function);
+		void StartRenderThread();
+		void StopRenderThread();
+		void QueueFrameSubmission(Function &&function);
 		void BuildFrameSubmission(MetalFrameSubmission &submission, Function &&function);
 		bool ConsumeFrameSubmission();
 		void RenderFrameSubmission(const MetalFrameSubmission &submission);

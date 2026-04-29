@@ -42,13 +42,13 @@ namespace RN
 
 		_defaultShaderLibrary = CreateShaderLibraryWithFile(RNCSTR(":RayneMetal:/Shaders.json"));
 		_uniformBufferPool = new MetalUniformBufferPool();
+		StartRenderThread();
 	}
 
 	MetalRenderer::~MetalRenderer()
 	{
 		RN_PROFILE_SCOPE();
-		_internals->frameSubmissionQueue.Shutdown();
-		_internals->frameSubmissionQueue.Drain();
+		StopRenderThread();
 		FlushAllDeletedDrawables();
 
 		[_internals->commandQueue release];
@@ -117,20 +117,29 @@ namespace RN
 	void MetalRenderer::CreateMipMapForTexture(MetalTexture *texture)
 	{
 		RN_PROFILE_SCOPE();
-		_lock.Lock();
+		LockGuard<Lockable> lock(_lock);
 		_mipMapTextures->AddObject(texture);
-		_lock.Unlock();
 	}
 
 	void MetalRenderer::CreateMipMaps()
 	{
 		RN_PROFILE_SCOPE();
-		if(_mipMapTextures->GetCount() == 0)
+		Set *mipMapTextures = nullptr;
+		{
+			LockGuard<Lockable> lock(_lock);
+			if(_mipMapTextures->GetCount() > 0)
+			{
+				mipMapTextures = new Set(_mipMapTextures);
+				_mipMapTextures->RemoveAllObjects();
+			}
+		}
+
+		if(!mipMapTextures)
 			return;
 
 		id<MTLCommandBuffer> commandBuffer = [_internals->commandQueue commandBuffer];
 
-		_mipMapTextures->Enumerate<MetalTexture>([&](MetalTexture *texture, bool &stop) {
+		mipMapTextures->Enumerate<MetalTexture>([&](MetalTexture *texture, bool &stop) {
 
 			id<MTLBlitCommandEncoder> commandEncoder = [commandBuffer blitCommandEncoder];
 			[commandEncoder generateMipmapsForTexture:(id<MTLTexture>)texture->__GetUnderlyingTexture()];
@@ -142,7 +151,7 @@ namespace RN
 		//TODO: make async
 		[commandBuffer waitUntilCompleted];
 
-		_mipMapTextures->RemoveAllObjects();
+		mipMapTextures->Release();
 	}
 
 
@@ -150,23 +159,51 @@ namespace RN
 	{
 		RN_PROFILE_SCOPE();
 		@autoreleasepool {
-			if(!QueueFrameSubmission(std::move(function)))
-				return;
-
-			ConsumeFrameSubmission();
+			QueueFrameSubmission(std::move(function));
 		}
 	}
 
-	bool MetalRenderer::QueueFrameSubmission(Function &&function)
+	void MetalRenderer::StartRenderThread()
+	{
+		_internals->renderThread = new Thread([this]() {
+			while(true)
+			{
+				@autoreleasepool {
+					AutoreleasePool pool;
+					if(!ConsumeFrameSubmission())
+						return;
+				}
+			}
+		}, false);
+		_internals->renderThread->SetName(RNCSTR("RN::MetalRender"));
+		_internals->renderThread->Start();
+		while(!_internals->renderThread->IsRunning())
+			std::this_thread::yield();
+	}
+
+	void MetalRenderer::StopRenderThread()
+	{
+		Thread *renderThread = _internals->renderThread;
+		if(!renderThread)
+			return;
+
+		_internals->frameSubmissionQueue.Shutdown();
+		renderThread->WaitForExit();
+		_internals->frameSubmissionQueue.Drain();
+		renderThread->Release();
+		_internals->renderThread = nullptr;
+	}
+
+	void MetalRenderer::QueueFrameSubmission(Function &&function)
 	{
 		RN_PROFILE_SCOPE();
 
 		MetalFrameSubmission submission;
 		if(!_internals->frameSubmissionQueue.WaitForSpace())
-			return false;
+			return;
 
 		BuildFrameSubmission(submission, std::move(function));
-		return _internals->frameSubmissionQueue.Push(std::move(submission));
+		_internals->frameSubmissionQueue.Push(std::move(submission));
 	}
 
 	bool MetalRenderer::ConsumeFrameSubmission()

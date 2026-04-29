@@ -99,12 +99,13 @@ namespace RN
 			_internals->tracyCommandBuffer = nullptr;
 			_internals->tracyVulkanCtx = nullptr;
 		#endif
+
+		StartRenderThread();
 	}
 
 	VulkanRenderer::~VulkanRenderer()
 	{
-		_internals->frameSubmissionQueue.Shutdown();
-		_internals->frameSubmissionQueue.Drain();
+		StopRenderThread();
 		FlushAllDeletedDrawables();
 
 		while(!_internals->frameResources.empty())
@@ -414,22 +415,48 @@ namespace RN
 	{
 		RN_PROFILE_SCOPE();
 
-		if(!QueueFrameSubmission(std::move(function)))
-			return;
-
-		ConsumeFrameSubmission();
+		QueueFrameSubmission(std::move(function));
 	}
 
-	bool VulkanRenderer::QueueFrameSubmission(Function &&function)
+	void VulkanRenderer::StartRenderThread()
+	{
+		_internals->renderThread = new Thread([this]() {
+			while(true)
+			{
+				AutoreleasePool pool;
+				if(!ConsumeFrameSubmission())
+					return;
+			}
+		}, false);
+		_internals->renderThread->SetName(RNCSTR("RN::VulkanRender"));
+		_internals->renderThread->Start();
+		while(!_internals->renderThread->IsRunning())
+			std::this_thread::yield();
+	}
+
+	void VulkanRenderer::StopRenderThread()
+	{
+		Thread *renderThread = _internals->renderThread;
+		if(!renderThread)
+			return;
+
+		_internals->frameSubmissionQueue.Shutdown();
+		renderThread->WaitForExit();
+		_internals->frameSubmissionQueue.Drain();
+		renderThread->Release();
+		_internals->renderThread = nullptr;
+	}
+
+	void VulkanRenderer::QueueFrameSubmission(Function &&function)
 	{
 		RN_PROFILE_SCOPE();
 
 		VulkanFrameSubmission submission;
 		if(!_internals->frameSubmissionQueue.WaitForSpace())
-			return false;
+			return;
 
 		BuildFrameSubmission(submission, std::move(function));
-		return _internals->frameSubmissionQueue.Push(std::move(submission));
+		_internals->frameSubmissionQueue.Push(std::move(submission));
 	}
 
 	bool VulkanRenderer::ConsumeFrameSubmission()
@@ -1238,20 +1265,29 @@ namespace RN
 
 	void VulkanRenderer::CreateMipMapForTexture(VulkanTexture *texture)
 	{
-		_lock.Lock();
+		LockGuard<Lockable> lock(_lock);
 		_mipMapTextures->AddObject(texture);
-		_lock.Unlock();
 	}
 
 	void VulkanRenderer::CreateMipMaps()
 	{
 		RN_PROFILE_SCOPE();
-		if(_mipMapTextures->GetCount() == 0)
+		Array *mipMapTextures = nullptr;
+		{
+			LockGuard<Lockable> lock(_lock);
+			if(_mipMapTextures->GetCount() > 0)
+			{
+				mipMapTextures = new Array(_mipMapTextures);
+				_mipMapTextures->RemoveAllObjects();
+			}
+		}
+
+		if(!mipMapTextures)
 			return;
 
 		VulkanCommandBuffer *commandBuffer = StartResourcesCommandBuffer();
 
-		_mipMapTextures->Enumerate<VulkanTexture>([&](VulkanTexture *texture, size_t index, bool &stop) {
+		mipMapTextures->Enumerate<VulkanTexture>([&](VulkanTexture *texture, size_t index, bool &stop) {
 
 			//TODO: Fix mipmap generation for texture arrays
 			VulkanTexture::SetImageLayout(commandBuffer->GetCommandBuffer(), texture->GetVulkanImage(), 0, 1, 0, 1, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VulkanTexture::BarrierIntent::CopySource);
@@ -1294,7 +1330,7 @@ namespace RN
 
 		EndResourcesCommandBuffer();
 
-		_mipMapTextures->RemoveAllObjects();
+		mipMapTextures->Release();
 	}
 
 	GPUBuffer *VulkanRenderer::CreateBufferWithLength(size_t length, GPUResource::UsageOptions usageOptions, GPUResource::AccessOptions accessOptions, bool isStreamable)

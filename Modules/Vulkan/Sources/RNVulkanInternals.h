@@ -332,6 +332,7 @@ namespace RN
 		VulkanStateCoordinator stateCoordinator;
 
 		FrameSubmissionQueue<VulkanFrameSubmission> frameSubmissionQueue;
+		Thread *renderThread = nullptr;
 		std::vector<VulkanFrameResource> frameResources;
 
 		VulkanDrawBindStateCache drawBindStateCache;

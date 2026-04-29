@@ -216,6 +216,7 @@ namespace RN
 	struct MetalRendererInternals
 	{
 		FrameSubmissionQueue<MetalFrameSubmission> frameSubmissionQueue;
+		Thread *renderThread = nullptr;
 		MetalStateCoordinator stateCoordinator;
 
 		id<MTLDevice> device;

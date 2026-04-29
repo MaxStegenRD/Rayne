@@ -27,16 +27,15 @@ namespace RN
 			return !_isShuttingDown;
 		}
 
-		bool Push(T &&submission)
+		void Push(T &&submission)
 		{
 			UniqueLock<Lockable> lock(_lock);
 			if(_isShuttingDown)
-				return false;
+				return;
 
 			RN_ASSERT(_submissions.size() < RN_RENDERING_FRAME_SUBMISSION_QUEUE_SIZE, "Frame submission queue is full");
 			_submissions.push_back(std::move(submission));
 			_queuedCondition.NotifyOne();
-			return true;
 		}
 
 		bool Pop(T &submission)
@@ -46,7 +45,7 @@ namespace RN
 				return _isShuttingDown || !_submissions.empty();
 			});
 
-			if(_submissions.empty())
+			if(_isShuttingDown || _submissions.empty())
 				return false;
 
 			submission = std::move(_submissions.front());
