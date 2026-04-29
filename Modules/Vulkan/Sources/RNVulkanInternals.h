@@ -253,7 +253,7 @@ namespace RN
 		}
 
 		RenderFrame renderFrame;
-		std::vector<VulkanRenderPass> renderPasses;
+		std::deque<VulkanRenderPass> renderPasses;
 		std::vector<VulkanPreparedRenderPass> preparedRenderPasses;
 		std::vector<VulkanSwapChain*> swapChains;
 		size_t activeRenderPassIndex = 0;

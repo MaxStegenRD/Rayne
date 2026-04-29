@@ -545,9 +545,6 @@ namespace RN
 		// Ensure subpass clearing plan is computed for root containers
 		cameraRenderPass->UpdateSubpassChain();
 		const Array *nextRenderPasses = cameraRenderPass->GetNextRenderPasses();
-		const size_t passReserveCount = cameraRenderPass->GetTotalRenderPassCount();
-		frameSubmission.renderFrame.ReserveAdditionalPasses(passReserveCount);
-		frameSubmission.renderPasses.reserve(frameSubmission.renderPasses.size() + passReserveCount);
 		const size_t frameStatisticsIndex = frameSubmission.renderFrame.AddCameraStatistics();
 
 		RenderPassResources *renderPassResources = cameraRenderPass->GetRenderResources(this);
@@ -573,7 +570,6 @@ namespace RN
 		framePass.ReserveDrawItems(estimatedDrawableCount, renderPassResources->GetLastDrawItemCount());
 		framePass.SetCameraSnapshot(cameraSnapshot);
 		std::vector<RenderPassDrawCountWriteback> drawCountWritebacks;
-		drawCountWritebacks.reserve(passReserveCount);
 		drawCountWritebacks.push_back({renderPass.renderFramePassIndex, renderPassResources});
 
 		Framebuffer *framebuffer = drawSnapshot.GetFramebuffer();

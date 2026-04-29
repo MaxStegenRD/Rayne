@@ -200,7 +200,7 @@ namespace RN
 		}
 
 		RenderFrame renderFrame;
-		std::vector<MetalRenderPass> renderPasses;
+		std::deque<MetalRenderPass> renderPasses;
 		std::vector<MetalPreparedRenderPass> preparedRenderPasses;
 		std::vector<MetalSwapChain *> swapChains;
 		size_t activeRenderPassIndex = 0;

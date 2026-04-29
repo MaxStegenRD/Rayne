@@ -1024,9 +1024,6 @@ namespace RN
 		RenderPass *cameraRenderPass = _currentMultiviewFallbackRenderPass? _currentMultiviewFallbackRenderPass : camera->GetRenderPass();
 		cameraRenderPass->UpdateSubpassChain();
 		const Array *nextRenderPasses = cameraRenderPass->GetNextRenderPasses();
-		const size_t passReserveCount = cameraRenderPass->GetTotalRenderPassCount();
-		frameSubmission.renderFrame.ReserveAdditionalPasses(passReserveCount);
-		frameSubmission.renderPasses.reserve(frameSubmission.renderPasses.size() + passReserveCount);
 		const size_t frameStatisticsIndex = frameSubmission.renderFrame.AddCameraStatistics();
 
 		RenderPassResources *renderPassResources = cameraRenderPass->GetRenderResources(this);
@@ -1050,7 +1047,6 @@ namespace RN
 		framePass.ReserveDrawItems(estimatedDrawableCount, renderPassResources->GetLastDrawItemCount());
 		framePass.SetCameraSnapshot(cameraSnapshot);
 		std::vector<RenderPassDrawCountWriteback> drawCountWritebacks;
-		drawCountWritebacks.reserve(passReserveCount);
 		drawCountWritebacks.push_back({renderPass.renderFramePassIndex, renderPassResources});
 		for(Camera *multiviewCamera : multiviewSnapshotCameras)
 		{
@@ -1065,8 +1061,7 @@ namespace RN
 
 		size_t previousRenderPassIndex = frameSubmission.renderPasses.size();
 		frameSubmission.activeRenderPassIndex = previousRenderPassIndex;
-		if(passReserveCount > 1)
-			renderPass.subpasses.reserve(passReserveCount - 1);
+		renderPass.subpasses.reserve(cameraRenderPass->GetSubpassCount());
 		frameSubmission.renderPasses.push_back(renderPass);
 
 		nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
@@ -1147,7 +1142,6 @@ namespace RN
 
 		renderPass->UpdateSubpassChain();
 		const Array *nextRenderPasses = renderPass->GetNextRenderPasses();
-		const size_t passReserveCount = renderPass->GetTotalRenderPassCount();
 
 		PostProcessingAPIStage *apiStage = renderPass->Downcast<PostProcessingAPIStage>();
 		bool isPostProcessingStage = renderPass->IsKindOfClass(PostProcessingStage::GetMetaClass());
@@ -1228,8 +1222,7 @@ namespace RN
 			else
 			{
 				frameSubmission.activeRenderPassIndex = frameSubmission.renderPasses.size();
-				if(passReserveCount > 1)
-					vulkanRenderPass.subpasses.reserve(passReserveCount - 1);
+				vulkanRenderPass.subpasses.reserve(renderPass->GetSubpassCount());
 				frameSubmission.renderPasses.push_back(vulkanRenderPass);
 
 				// Inject a default fullscreen quad for post processing passes so we don't redraw the whole scene.

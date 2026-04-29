@@ -14,7 +14,7 @@ namespace RN
 	RNDefineMeta(RenderPass, Object)
 
     RenderPass::RenderPass(bool isSubpass) :
-        _flags(Flags::Defaults), _framebuffer(nullptr), _clearDepth(0.0f), _clearStencil(0), _nextRenderPasses(new Array()), _isSubpass(isSubpass), _isRoot(false), _renderGroupMask(0xffff), _subpassWritesDepthStencil(false), _subpassReadDepthStencilAttachment(false), _shaderHint(Shader::UsageHint::Default), _overrideMaterial(nullptr), _subpassNeedToStoreDepthStencil(false), _subpassNeedToPreserveDepthStencil(false), _subpassLastDepthStencilWrite(false), _subpassFirstDepthStencilWrite(false), _depthFirstUseIsRead(false), _depthLastUseIsRead(false), _subpassIndex(0), _renderResources(nullptr), _drawSnapshotVersion(1)
+        _flags(Flags::Defaults), _framebuffer(nullptr), _clearDepth(0.0f), _clearStencil(0), _nextRenderPasses(new Array()), _isSubpass(isSubpass), _isRoot(false), _renderGroupMask(0xffff), _subpassWritesDepthStencil(false), _subpassReadDepthStencilAttachment(false), _shaderHint(Shader::UsageHint::Default), _overrideMaterial(nullptr), _subpassNeedToStoreDepthStencil(false), _subpassNeedToPreserveDepthStencil(false), _subpassLastDepthStencilWrite(false), _subpassFirstDepthStencilWrite(false), _depthFirstUseIsRead(false), _depthLastUseIsRead(false), _subpassIndex(0), _subpassCount(0), _renderResources(nullptr), _drawSnapshotVersion(1)
 	{
 	}
 
@@ -255,18 +255,9 @@ namespace RN
 		MarkDrawSnapshotDirty();
 	}
 
-	size_t RenderPass::GetTotalRenderPassCount() const
-	{
-		size_t count = 1;
-		_nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
-			count += nextPass->GetTotalRenderPassCount();
-		});
-
-		return count;
-	}
-
 	void RenderPass::UpdateSubpassChain()
 	{
+		_subpassCount = 0;
 		if(!_isRoot) return; // only meaningful for roots
 	
         // Collect complete subpass chain (in order)
@@ -281,6 +272,7 @@ namespace RN
             });
         };
         collect(this);
+		_subpassCount = subpasses.size();
 
         // Prepare root-level aggregation containers sized to framebuffer
         Framebuffer *fb = GetFramebuffer();

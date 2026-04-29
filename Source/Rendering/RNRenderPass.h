@@ -203,12 +203,12 @@ namespace RN
 
 		bool GetIsSubpass() const { return _isSubpass; }
 		bool GetIsRoot() const { return _isRoot; }
+		size_t GetSubpassCount() const { return _subpassCount; }
 
 		RNAPI void AddRenderPass(RenderPass *renderPass);
 		RNAPI void RemoveRenderPass(RenderPass *renderPass);
 		RNAPI void RemoveAllRenderPasses();
 		const Array *GetNextRenderPasses() const { return _nextRenderPasses; }
-		RNAPI size_t GetTotalRenderPassCount() const;
 		RNAPI void UpdateSubpassChain();
 
 	private:
@@ -244,6 +244,7 @@ namespace RN
 		bool _depthFirstUseIsRead;
 		bool _depthLastUseIsRead;
 		size_t _subpassIndex;
+		size_t _subpassCount;
 
 		Array *_nextRenderPasses;
 		RenderPassResources *_renderResources;

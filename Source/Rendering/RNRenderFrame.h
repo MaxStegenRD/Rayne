@@ -288,7 +288,6 @@ namespace RN
 			_cameraStatistics.clear();
 		}
 
-		void ReserveAdditionalPasses(size_t passCount) { _passes.reserve(_passes.size() + passCount); }
 		size_t AddPass(const RenderPass::DrawSnapshot &drawSnapshot, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialCacheIdentity, uint64 overrideMaterialSnapshotVersion)
 		{
 			_passes.emplace_back(drawSnapshot, overrideMaterialSnapshot, overrideMaterialCacheIdentity, overrideMaterialSnapshotVersion);
@@ -324,7 +323,7 @@ namespace RN
 		const std::vector<CameraStatistics> &GetCameraStatistics() const { return _cameraStatistics; }
 
 	private:
-		std::vector<Pass> _passes;
+		std::deque<Pass> _passes;
 		std::vector<CameraStatistics> _cameraStatistics;
 	};
 } // namespace RN
