@@ -53,3 +53,4 @@ Tools/BuildHelper/__pycache__
 /Modules/xmake-packages/packages/p/picoplatform-local/Vendor
 /Modules/xmake-packages/packages/o/oculus-local/Vendor
 /Modules/Vulkan/Vendor/generators/dispatchTableParsedHeader.py
+/.xmake

@@ -506,12 +506,12 @@ namespace RN
 		}
 	}
 
-	void MetalRenderer::SubmitCamera(Camera *camera, Function &&function, size_t estimatedDrawableCount)
+	void MetalRenderer::SubmitCamera(Camera *camera, Function &&function)
 	{
-		SubmitCamera(GetActiveFrameSubmission(), camera, camera, std::move(function), estimatedDrawableCount);
+		SubmitCamera(GetActiveFrameSubmission(), camera, camera, std::move(function));
 	}
 
-	void MetalRenderer::SubmitCamera(MetalFrameSubmission &frameSubmission, Camera *camera, Camera *lightClusterCamera, Function &&function, size_t estimatedDrawableCount)
+	void MetalRenderer::SubmitCamera(MetalFrameSubmission &frameSubmission, Camera *camera, Camera *lightClusterCamera, Function &&function)
 	{
 		RN_PROFILE_SCOPE();
 		const Array *multiviewCameras = camera->GetMultiviewCameras();
@@ -530,7 +530,7 @@ namespace RN
 					_currentMultiviewFallbackRenderPass = camera->GetRenderPass();
 
 					RN::Function submission = RN::MakeFunction([&function](){ function(); });
-					SubmitCamera(frameSubmission, multiviewCamera, lightClusterCamera, std::move(submission), estimatedDrawableCount);
+					SubmitCamera(frameSubmission, multiviewCamera, lightClusterCamera, std::move(submission));
 
 					_currentMultiviewLayer = 0;
 					_currentMultiviewFallbackRenderPass = nullptr;
@@ -567,10 +567,7 @@ namespace RN
 
 		RenderFrame::CameraSnapshot cameraSnapshot = RenderFrame::CameraSnapshot::WithCamera(camera, drawSnapshot.GetFrame());
 		RenderFrame::Pass &framePass = frameSubmission.renderFrame.GetPass(renderPass.renderFramePassIndex);
-		framePass.ReserveDrawItems(estimatedDrawableCount, renderPassResources->GetLastDrawItemCount());
 		framePass.SetCameraSnapshot(cameraSnapshot);
-		std::vector<RenderPassDrawCountWriteback> drawCountWritebacks;
-		drawCountWritebacks.push_back({renderPass.renderFramePassIndex, renderPassResources});
 
 		Framebuffer *framebuffer = drawSnapshot.GetFramebuffer();
 		renderPass.framebuffer = framebuffer->Downcast<MetalFramebuffer>();
@@ -581,7 +578,7 @@ namespace RN
 		frameSubmission.renderPasses.push_back(renderPass);
 
 		nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
-			SubmitRenderPass(frameSubmission, nextPass, frameSubmission.renderPasses[previousRenderPassIndex], estimatedDrawableCount, drawCountWritebacks);
+			SubmitRenderPass(frameSubmission, nextPass, frameSubmission.renderPasses[previousRenderPassIndex]);
 		});
 
 		const size_t submittedRenderPassEndIndex = frameSubmission.renderPasses.size();
@@ -605,15 +602,9 @@ namespace RN
 			RenderFrame::Pass &framePass = frameSubmission.renderFrame.GetPass(submittedRenderPass.renderFramePassIndex);
 			framePass.SetLightClusterSnapshot(lightClusterSnapshot);
 		}
-
-		for(const RenderPassDrawCountWriteback &writeback : drawCountWritebacks)
-		{
-			const RenderFrame::Pass &framePass = frameSubmission.renderFrame.GetPass(writeback.renderFramePassIndex);
-			writeback.renderPassResources->SetLastDrawItemCount(framePass.GetDrawItems().size());
-		}
 	}
 
-	void MetalRenderer::SubmitRenderPass(MetalFrameSubmission &frameSubmission, RenderPass *renderPass, MetalRenderPass &previousRenderPass, size_t estimatedDrawableCount, std::vector<RenderPassDrawCountWriteback> &drawCountWritebacks)
+	void MetalRenderer::SubmitRenderPass(MetalFrameSubmission &frameSubmission, RenderPass *renderPass, MetalRenderPass &previousRenderPass)
 	{
 		RN_PROFILE_SCOPE();
 
@@ -695,9 +686,7 @@ namespace RN
 		{
 			metalRenderPass.renderFramePassIndex = frameSubmission.renderFrame.AddPass(drawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetIdentity(), renderPassResources->GetOverrideMaterialSnapshotVersion());
 			RenderFrame::Pass &framePass = frameSubmission.renderFrame.GetPass(metalRenderPass.renderFramePassIndex);
-			framePass.ReserveDrawItems((isPostProcessingStage || metalRenderPass.type == MetalRenderPass::Type::Convert) ? 1 : estimatedDrawableCount, renderPassResources->GetLastDrawItemCount());
 			framePass.SetCameraSnapshot(frameSubmission.renderFrame.GetPass(previousRenderPass.renderFramePassIndex).GetCameraSnapshot());
-			drawCountWritebacks.push_back({metalRenderPass.renderFramePassIndex, renderPassResources});
 			frameSubmission.activeRenderPassIndex = frameSubmission.renderPasses.size();
 			frameSubmission.renderPasses.push_back(metalRenderPass);
 
@@ -724,7 +713,7 @@ namespace RN
 
 		const Array *nextRenderPasses = renderPass->GetNextRenderPasses();
 		nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop){
-			SubmitRenderPass(frameSubmission, nextPass, frameSubmission.renderPasses[frameSubmission.activeRenderPassIndex], estimatedDrawableCount, drawCountWritebacks);
+			SubmitRenderPass(frameSubmission, nextPass, frameSubmission.renderPasses[frameSubmission.activeRenderPassIndex]);
 		});
 	}
 
@@ -1477,12 +1466,13 @@ namespace RN
 			}
 
 			const RenderFrame::Pass &framePass = submission.renderFrame.GetPass(renderPass.renderFramePassIndex);
-			const std::vector<RenderFrame::DrawItem> &drawItems = framePass.GetDrawItems();
+			const std::vector<size_t> &drawItemIndices = framePass.GetDrawItemIndices();
 			renderPass.preparedRenderPassIndex = submission.preparedRenderPasses.size();
 			submission.preparedRenderPasses.emplace_back();
 
-			for(const RenderFrame::DrawItem &drawItem : drawItems)
+			for(size_t drawItemIndex : drawItemIndices)
 			{
+				const RenderFrame::DrawItem &drawItem = submission.renderFrame.GetDrawItem(drawItemIndex);
 				MetalDrawable *drawable = static_cast<MetalDrawable *>(drawItem.GetSourceDrawableForPreparation());
 				drawable->EnsureRenderResources(renderPass.preparedRenderPassIndex);
 			}
@@ -1522,19 +1512,20 @@ namespace RN
 			MetalPreparedRenderPass &preparedPass = submission.preparedRenderPasses[renderPass.preparedRenderPassIndex];
 			const RenderFrame::Pass &framePass = submission.renderFrame.GetPass(renderPass.renderFramePassIndex);
 			const RenderPass::DrawSnapshot &passDrawSnapshot = framePass.GetDrawSnapshot();
-			const std::vector<RenderFrame::DrawItem> &drawItems = framePass.GetDrawItems();
-			if(drawItems.empty())
+			const std::vector<size_t> &drawItemIndices = framePass.GetDrawItemIndices();
+			if(drawItemIndices.empty())
 				return;
 
-			preparedPass.drawItems.reserve(drawItems.size());
+			preparedPass.drawItems.reserve(drawItemIndices.size());
 
 			const RenderFrame::DrawItem *currentInstanceDrawItem = nullptr;
 			const MetalRenderingState *currentPipelineState = nullptr;
 			const MetalDrawable::RenderResources *currentInstanceRenderResources = nullptr;
 			RenderFrame::CameraStatistics &statistics = submission.renderFrame.GetCameraStatistics(renderPass.frameStatisticsIndex);
 
-			for(const RenderFrame::DrawItem &drawItem : drawItems)
+			for(size_t drawItemIndex : drawItemIndices)
 			{
+				const RenderFrame::DrawItem &drawItem = submission.renderFrame.GetDrawItem(drawItemIndex);
 				MetalDrawable *drawable = static_cast<MetalDrawable *>(drawItem.GetSourceDrawableForPreparation());
 				MetalDrawable::RenderResources &renderResources = drawable->GetRenderResources(renderPass.preparedRenderPassIndex);
 
@@ -1618,6 +1609,7 @@ namespace RN
 	{
 		RN_PROFILE_SCOPE();
 		MetalDrawable *drawable = static_cast<MetalDrawable *>(sourceDrawable);
+		size_t drawItemIndex = RenderFrame::InvalidDrawItemIndex;
 
 		size_t startIndex = frameSubmission.activeRenderPassIndex;
 		for(size_t pi = startIndex; pi < frameSubmission.renderPasses.size(); pi += 1)
@@ -1631,7 +1623,9 @@ namespace RN
 			if((drawable->GetRenderGroup() & passDrawSnapshot.GetRenderGroupMask()) == 0) continue;
 
 			_lock.Lock();
-			framePass.AddDrawItem(drawable);
+			if(drawItemIndex == RenderFrame::InvalidDrawItemIndex)
+				drawItemIndex = frameSubmission.renderFrame.AddDrawItem(drawable);
+			framePass.AddDrawItemIndex(drawItemIndex);
 			_lock.Unlock();
 		}
 	}

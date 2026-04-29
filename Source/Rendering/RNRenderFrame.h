@@ -10,7 +10,6 @@
 #define __RAYNE_RENDERFRAME_H__
 
 #include "RNDrawable.h"
-#include "RNRenderingConfig.h"
 #include "RNRenderPass.h"
 #include "../Scene/RNCamera.h"
 #include "../Scene/RNLight.h"
@@ -221,17 +220,9 @@ namespace RN
 					_overrideMaterialSnapshot = *overrideMaterialSnapshot;
 			}
 
-			void AddDrawItem(Drawable *sourceDrawable)
+			void AddDrawItemIndex(size_t drawItemIndex)
 			{
-				_drawItems.emplace_back(sourceDrawable);
-			}
-
-			void ReserveDrawItems(size_t estimatedDrawItemCount, size_t previousDrawItemCount)
-			{
-				size_t estimatedReserve = static_cast<size_t>(ceil(static_cast<double>(estimatedDrawItemCount) * static_cast<double>(RN_RENDERING_ESTIMATED_DRAW_ITEMS_RESERVE_MULTIPLIER)));
-				size_t previousReserve = static_cast<size_t>(ceil(static_cast<double>(previousDrawItemCount) * static_cast<double>(RN_RENDERING_PREVIOUS_DRAW_ITEMS_RESERVE_MULTIPLIER)));
-				size_t reserveCount = estimatedReserve > previousReserve ? estimatedReserve : previousReserve;
-				_drawItems.reserve(reserveCount);
+				_drawItemIndices.push_back(drawItemIndex);
 			}
 
 			void SetCameraSnapshot(const CameraSnapshot &cameraSnapshot) { _cameraSnapshot = cameraSnapshot; }
@@ -260,7 +251,7 @@ namespace RN
 			const Material::DrawSnapshot *GetOverrideMaterialSnapshot() const { return _hasOverrideMaterial ? &_overrideMaterialSnapshot : nullptr; }
 			uint64 GetOverrideMaterialCacheIdentity() const { return _overrideMaterialCacheIdentity; }
 			uint64 GetOverrideMaterialSnapshotVersion() const { return _overrideMaterialSnapshotVersion; }
-			const std::vector<DrawItem> &GetDrawItems() const { return _drawItems; }
+			const std::vector<size_t> &GetDrawItemIndices() const { return _drawItemIndices; }
 
 		private:
 			RenderPass::DrawSnapshot _drawSnapshot;
@@ -268,7 +259,7 @@ namespace RN
 			uint64 _overrideMaterialCacheIdentity;
 			uint64 _overrideMaterialSnapshotVersion;
 			Material::DrawSnapshot _overrideMaterialSnapshot;
-			std::vector<DrawItem> _drawItems;
+			std::vector<size_t> _drawItemIndices;
 			CameraSnapshot _cameraSnapshot;
 			std::vector<CameraSnapshot> _multiviewCameraSnapshots;
 			std::vector<DirectionalLight> _directionalLights;
@@ -281,10 +272,12 @@ namespace RN
 		};
 
 		static constexpr size_t InvalidPassIndex = static_cast<size_t>(-1);
+		static constexpr size_t InvalidDrawItemIndex = static_cast<size_t>(-1);
 
 		void Clear()
 		{
 			_passes.clear();
+			_drawItems.clear();
 			_cameraStatistics.clear();
 		}
 
@@ -292,6 +285,18 @@ namespace RN
 		{
 			_passes.emplace_back(drawSnapshot, overrideMaterialSnapshot, overrideMaterialCacheIdentity, overrideMaterialSnapshotVersion);
 			return _passes.size() - 1;
+		}
+
+		size_t AddDrawItem(Drawable *sourceDrawable)
+		{
+			_drawItems.emplace_back(sourceDrawable);
+			return _drawItems.size() - 1;
+		}
+
+		const DrawItem &GetDrawItem(size_t index) const
+		{
+			RN_DEBUG_ASSERT(index < _drawItems.size(), "Invalid render frame draw item index");
+			return _drawItems[index];
 		}
 
 		Pass &GetPass(size_t index)
@@ -324,6 +329,7 @@ namespace RN
 
 	private:
 		std::deque<Pass> _passes;
+		std::deque<DrawItem> _drawItems;
 		std::vector<CameraStatistics> _cameraStatistics;
 	};
 } // namespace RN

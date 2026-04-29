@@ -45,7 +45,7 @@ namespace RN
 
 		MTLAPI void Render(Function &&function) final;
 		MTLAPI void ScheduleRenderThreadWork(Function &&function) final;
-		MTLAPI void SubmitCamera(Camera *camera, Function &&function, size_t estimatedDrawableCount = 0) final;
+		MTLAPI void SubmitCamera(Camera *camera, Function &&function) final;
 
 		MTLAPI bool SupportsTextureFormat(const String *format) const final;
 		MTLAPI bool SupportsDrawMode(DrawMode mode) const final;
@@ -78,12 +78,6 @@ namespace RN
 		MTLAPI id GetCommandQueue() const;
 
 	protected:
-		struct RenderPassDrawCountWriteback
-		{
-			size_t renderFramePassIndex;
-			RenderPassResources *renderPassResources;
-		};
-
 		void StartRenderThread();
 		void StopRenderThread();
 		bool IsOnRenderThread() const;
@@ -93,8 +87,8 @@ namespace RN
 		void BuildFrameSubmission(MetalFrameSubmission &submission, Function &&function);
 		bool ConsumeRenderThreadWork();
 		void RenderFrameSubmission(const MetalFrameSubmission &submission);
-		void SubmitCamera(MetalFrameSubmission &submission, Camera *camera, Camera *lightClusterCamera, Function &&function, size_t estimatedDrawableCount);
-		void SubmitRenderPass(MetalFrameSubmission &submission, RenderPass *renderPass, MetalRenderPass &previousRenderPass, size_t estimatedDrawableCount, std::vector<RenderPassDrawCountWriteback> &drawCountWritebacks);
+		void SubmitCamera(MetalFrameSubmission &submission, Camera *camera, Camera *lightClusterCamera, Function &&function);
+		void SubmitRenderPass(MetalFrameSubmission &submission, RenderPass *renderPass, MetalRenderPass &previousRenderPass);
 		void SubmitDrawable(MetalFrameSubmission &submission, Drawable *drawable);
 		void PrepareRenderFrame(MetalFrameSubmission &submission);
 		void RenderDrawable(const MetalPreparedDrawItem &drawItem, uint32 instanceCount, const MetalRenderPass &renderPass, const RenderFrame::Pass &framePass);

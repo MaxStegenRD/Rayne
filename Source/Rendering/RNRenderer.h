@@ -57,7 +57,7 @@ namespace RN
 
 		RNAPI virtual void Render(Function &&function) = 0;
 		RNAPI virtual void ScheduleRenderThreadWork(Function &&function);
-		RNAPI virtual void SubmitCamera(Camera *camera, Function &&function, size_t estimatedDrawableCount = 0) = 0;
+		RNAPI virtual void SubmitCamera(Camera *camera, Function &&function) = 0;
 
 		RNAPI virtual bool SupportsTextureFormat(const String *format) const = 0;
 		RNAPI virtual bool SupportsDrawMode(DrawMode mode) const = 0;
