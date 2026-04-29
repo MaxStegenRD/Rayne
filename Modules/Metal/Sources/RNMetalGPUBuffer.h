@@ -15,10 +15,12 @@
 namespace RN
 {
 	class MetalRenderer;
+	class MetalDynamicGPUBuffer;
 	class MetalGPUBuffer : public GPUBuffer
 	{
 	public:
 		friend class MetalRenderer;
+		friend class MetalDynamicGPUBuffer;
 
 		MTLAPI void *GetBuffer() override;
 		MTLAPI void UnmapBuffer() override;
