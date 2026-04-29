@@ -30,6 +30,9 @@ namespace RN
 		RNVRAPI Camera *GetHead() const { return _head; }
 		RNVRAPI Camera *GetEye(uint8 eye) const { return _eye[eye]; }
 
+		RNVRAPI void SetFollowsTracking(bool followsTracking) { _followsTracking = followsTracking; }
+		RNVRAPI bool GetFollowsTracking() const { return _followsTracking; }
+
 		RNVRAPI VRHMDTrackingState GetHMDTrackingState() const;
 		RNVRAPI VRControllerTrackingState GetControllerTrackingState(uint8 index) const;
 		RNVRAPI VRControllerTrackingState GetTrackerTrackingState(uint8 index) const;
@@ -57,6 +60,7 @@ namespace RN
 		uint8 _msaaSampleCount;
 		bool _supportInputAttachments;
 		bool _didUpdateVRWindow;
+		bool _followsTracking;
 
 		Vector3 _originPositionOffset;
 		Quaternion _originalOrientationOffset;

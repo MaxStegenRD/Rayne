@@ -20,6 +20,7 @@ namespace RN
 		_msaaSampleCount(msaaSampleCount),
 		_eye {nullptr, nullptr},
 		_didUpdateVRWindow(false),
+		_followsTracking(true),
 		_hiddenAreaEntity {nullptr, nullptr},
 		_supportInputAttachments(supportInputAttachments)
 	{
@@ -232,8 +233,11 @@ namespace RN
 			_eye[i]->SetProjectionMatrix(hmdState.eyeProjection[i]);
 		}
 
-		_head->SetRotation(hmdState.rotation);
-		_head->SetPosition(hmdState.position);
+		if(_followsTracking)
+		{
+			_head->SetRotation(hmdState.rotation);
+			_head->SetPosition(hmdState.position);
+		}
 
 		//This assumes that the eyes are equal and only shifted horizontally
 		_head->SetFrustumPlaneOffset(0.0f, 0.0f, _eye[0] ? _eye[0]->GetPosition().x : 0.0f, _eye[1] ? _eye[1]->GetPosition().x : 0.0f);
