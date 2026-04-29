@@ -268,7 +268,7 @@ namespace RN
 		PrepareRenderFrame(submission);
 		RenderFrameSubmission(submission);
 		PrintFrameStatistics(submission.renderFrame);
-		FlushDeletedDrawables();
+		FinishRenderFrameSubmission(submission.renderFrame);
 		return true;
 	}
 
@@ -278,6 +278,7 @@ namespace RN
 		AssertOnSubmissionThread();
 
 		//Submit camera is called for each camera and creates draw items per camera
+		BeginRenderFrameSubmission(submission.renderFrame);
 		MetalFrameSubmission *previousSubmission = _activeFrameSubmission;
 		_activeFrameSubmission = &submission;
 		function();

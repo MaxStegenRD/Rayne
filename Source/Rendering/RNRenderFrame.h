@@ -276,10 +276,13 @@ namespace RN
 
 		void Clear()
 		{
+			_frameID = 0;
 			_passes.clear();
 			_drawItems.clear();
 			_cameraStatistics.clear();
 		}
+
+		uint64 GetFrameID() const { return _frameID; }
 
 		size_t AddPass(const RenderPass::DrawSnapshot &drawSnapshot, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialCacheIdentity, uint64 overrideMaterialSnapshotVersion)
 		{
@@ -328,6 +331,11 @@ namespace RN
 		const std::vector<CameraStatistics> &GetCameraStatistics() const { return _cameraStatistics; }
 
 	private:
+		friend class Renderer;
+
+		void SetFrameID(uint64 frameID) { _frameID = frameID; }
+
+		uint64 _frameID = 0;
 		std::deque<Pass> _passes;
 		std::deque<DrawItem> _drawItems;
 		std::vector<CameraStatistics> _cameraStatistics;

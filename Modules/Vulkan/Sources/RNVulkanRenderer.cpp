@@ -535,7 +535,7 @@ namespace RN
 			PrintFrameStatistics(submission.renderFrame);
 		}
 
-		FlushDeletedDrawables();
+		FinishRenderFrameSubmission(submission.renderFrame);
 		return true;
 	}
 
@@ -545,6 +545,7 @@ namespace RN
 		AssertOnSubmissionThread();
 
 		//SubmitCamera is called for each camera and creates draw items per camera
+		BeginRenderFrameSubmission(submission.renderFrame);
 		VulkanFrameSubmission *previousSubmission = _activeFrameSubmission;
 		_activeFrameSubmission = &submission;
 		function();

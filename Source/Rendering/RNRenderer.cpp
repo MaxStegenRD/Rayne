@@ -22,6 +22,8 @@ namespace RN
 
 	Renderer::Renderer(RendererDescriptor *descriptor, RenderingDevice *device) :
 		_frameStatisticsTimer(0.0),
+		_lastStartedRenderFrameID(0),
+		_completedRenderFrameID(0),
 		_device(device),
 		_descriptor(descriptor)
 	{
@@ -70,19 +72,44 @@ namespace RN
 		_activeRenderer = nullptr;
 	}
 
+	void Renderer::BeginRenderFrameSubmission(RenderFrame &frame)
+	{
+		LockGuard<Lockable> lock(_frameLifecycleLock);
+		_lastStartedRenderFrameID += 1;
+		frame.SetFrameID(_lastStartedRenderFrameID);
+	}
+
+	void Renderer::FinishRenderFrameSubmission(const RenderFrame &frame)
+	{
+		uint64 frameID = frame.GetFrameID();
+		{
+			LockGuard<Lockable> lock(_frameLifecycleLock);
+			if(frameID > _completedRenderFrameID)
+				_completedRenderFrameID = frameID;
+		}
+
+		FlushDeletedDrawables();
+	}
+
 	void Renderer::QueueDrawableDeletion(Drawable *drawable)
 	{
-		LockGuard<Lockable> lock(_deletedDrawablesLock);
-		_pendingDeletedDrawables.push_back(drawable);
+		LockGuard<Lockable> lock(_frameLifecycleLock);
+		_pendingDeletedDrawables.push_back({ drawable, _lastStartedRenderFrameID });
 	}
 
 	void Renderer::FlushDeletedDrawables()
 	{
 		std::vector<Drawable *> drawables;
 		{
-			LockGuard<Lockable> lock(_deletedDrawablesLock);
-			drawables.swap(_readyDeletedDrawables);
-			_readyDeletedDrawables.swap(_pendingDeletedDrawables);
+			LockGuard<Lockable> lock(_frameLifecycleLock);
+			size_t readyCount = 0;
+			while(readyCount < _pendingDeletedDrawables.size() && _pendingDeletedDrawables[readyCount].frameID <= _completedRenderFrameID)
+			{
+				drawables.push_back(_pendingDeletedDrawables[readyCount].drawable);
+				readyCount += 1;
+			}
+
+			_pendingDeletedDrawables.erase(_pendingDeletedDrawables.begin(), _pendingDeletedDrawables.begin() + readyCount);
 		}
 
 		for(Drawable *drawable : drawables)
@@ -93,11 +120,9 @@ namespace RN
 	{
 		std::vector<Drawable *> drawables;
 		{
-			LockGuard<Lockable> lock(_deletedDrawablesLock);
-			drawables.swap(_readyDeletedDrawables);
-
-			for(Drawable *drawable : _pendingDeletedDrawables)
-				drawables.push_back(drawable);
+			LockGuard<Lockable> lock(_frameLifecycleLock);
+			for(const DeletedDrawable &deletedDrawable : _pendingDeletedDrawables)
+				drawables.push_back(deletedDrawable.drawable);
 
 			_pendingDeletedDrawables.clear();
 		}
