@@ -21,10 +21,13 @@
 namespace RN
 {
 	class RenderPass;
+	class Renderer;
 	class SceneNode;
 
 	struct Drawable
 	{
+		friend class Renderer;
+
 		RNAPI Drawable();
 		RNAPI virtual ~Drawable();
 
@@ -127,7 +130,8 @@ namespace RN
 
 	private:
 		void UpdateTransform(const SceneNode *node);
-		void DrainDrawSnapshots(uint64 completedFrameID);
+		bool DrainDrawSnapshots(uint64 completedFrameID);
+		bool HasDrawSnapshotHistory() const;
 		void UpdateDrawSnapshots();
 
 		std::deque<MeshSnapshot> _meshSnapshots;
@@ -153,6 +157,7 @@ namespace RN
 		bool _materialSnapshotDirty = true;
 		bool _skeletonSnapshotDirty = true;
 		bool _transformDirty = true;
+		bool _isRegisteredForSnapshotDrain = false;
 
 		const SceneNode *_transformNode = nullptr;
 	};

@@ -76,13 +76,16 @@ namespace RN
 	void Renderer::BeginRenderFrameSubmission(RenderFrame &frame)
 	{
 		size_t drawItemReserveCount;
+		uint64 completedFrameID;
 		{
 			LockGuard<Lockable> lock(_frameLifecycleLock);
 			_lastStartedRenderFrameID += 1;
 			frame.SetFrameID(_lastStartedRenderFrameID);
 			drawItemReserveCount = static_cast<size_t>(static_cast<float>(_lastRenderFrameDrawItemCount) * RN_RENDERING_DRAW_ITEM_RESERVE_MULTIPLIER);
+			completedFrameID = _completedRenderFrameID;
 		}
 
+		DrainDrawableSnapshots(completedFrameID);
 		frame.ReserveDrawItems(drawItemReserveCount);
 	}
 
@@ -101,8 +104,69 @@ namespace RN
 
 	void Renderer::QueueDrawableDeletion(Drawable *drawable)
 	{
+		UnregisterDrawableFromSnapshotDrain(drawable);
+
 		LockGuard<Lockable> lock(_frameLifecycleLock);
 		_pendingDeletedDrawables.push_back({ drawable, _lastStartedRenderFrameID });
+	}
+
+	void Renderer::RegisterDrawableForSnapshotDrain(Drawable *drawable)
+	{
+		LockGuard<Lockable> lock(_frameLifecycleLock);
+		if(drawable->_isRegisteredForSnapshotDrain)
+			return;
+
+		drawable->_isRegisteredForSnapshotDrain = true;
+		_drawablesPendingSnapshotDrain.push_back(drawable);
+	}
+
+	void Renderer::UnregisterDrawableFromSnapshotDrain(Drawable *drawable)
+	{
+		LockGuard<Lockable> lock(_frameLifecycleLock);
+		if(!drawable->_isRegisteredForSnapshotDrain)
+			return;
+
+		drawable->_isRegisteredForSnapshotDrain = false;
+		for(auto iterator = _drawablesPendingSnapshotDrain.begin(); iterator != _drawablesPendingSnapshotDrain.end(); ++iterator)
+		{
+			if(*iterator == drawable)
+			{
+				_drawablesPendingSnapshotDrain.erase(iterator);
+				return;
+			}
+		}
+	}
+
+	void Renderer::DrainDrawableSnapshots(uint64 completedFrameID)
+	{
+		std::vector<Drawable *> drawables;
+		{
+			LockGuard<Lockable> lock(_frameLifecycleLock);
+			drawables.swap(_drawablesPendingSnapshotDrain);
+			for(Drawable *drawable : drawables)
+				drawable->_isRegisteredForSnapshotDrain = false;
+		}
+
+		size_t pendingCount = 0;
+		for(Drawable *drawable : drawables)
+		{
+			if(drawable->DrainDrawSnapshots(completedFrameID))
+				drawables[pendingCount++] = drawable;
+		}
+
+		if(pendingCount == 0)
+			return;
+
+		LockGuard<Lockable> lock(_frameLifecycleLock);
+		for(size_t i = 0; i < pendingCount; i += 1)
+		{
+			Drawable *drawable = drawables[i];
+			if(drawable->_isRegisteredForSnapshotDrain)
+				continue;
+
+			drawable->_isRegisteredForSnapshotDrain = true;
+			_drawablesPendingSnapshotDrain.push_back(drawable);
+		}
 	}
 
 	void Renderer::FlushDeletedDrawables()

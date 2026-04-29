@@ -42,6 +42,8 @@ namespace RN
 
 	class Renderer : public Object
 	{
+		friend struct Drawable;
+
 	public:
 		RNAPI static Renderer *GetActiveRenderer();
 		RNAPI static bool IsHeadless();
@@ -105,6 +107,9 @@ namespace RN
 			uint64 frameID;
 		};
 
+		void RegisterDrawableForSnapshotDrain(Drawable *drawable);
+		void UnregisterDrawableFromSnapshotDrain(Drawable *drawable);
+		void DrainDrawableSnapshots(uint64 completedFrameID);
 		void FlushDeletedDrawables();
 
 		double _frameStatisticsTimer;
@@ -112,6 +117,7 @@ namespace RN
 		uint64 _completedRenderFrameID;
 		size_t _lastRenderFrameDrawItemCount;
 		std::vector<DeletedDrawable> _pendingDeletedDrawables;
+		std::vector<Drawable *> _drawablesPendingSnapshotDrain;
 		Lockable _frameLifecycleLock;
 
 		RenderingDevice *_device;

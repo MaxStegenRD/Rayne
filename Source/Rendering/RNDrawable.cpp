@@ -7,7 +7,7 @@
 //
 
 #include "RNDrawable.h"
-#include "RNRenderingConfig.h"
+#include "RNRenderer.h"
 #include "../Scene/RNSceneNode.h"
 
 namespace RN
@@ -172,20 +172,10 @@ namespace RN
 		snapshot._material->_lastUsedFrameID = frameID;
 		snapshot._skeleton->_lastUsedFrameID = frameID;
 
-		if(_meshSnapshots.size() > 1 || _materialSnapshots.size() > 1 || _skeletonSnapshots.size() > 1)
-		{
-			// A frame can be on the render thread while queued submissions wait behind it.
-			// Keep enough snapshot history for that whole in-flight window.
-			uint64 completedFrameID = 0;
-			if(frameID > RN_RENDERING_FRAME_SUBMISSION_QUEUE_SIZE + 1)
-				completedFrameID = frameID - RN_RENDERING_FRAME_SUBMISSION_QUEUE_SIZE - 1;
-			DrainDrawSnapshots(completedFrameID);
-		}
-
 		return snapshot;
 	}
 
-	void Drawable::DrainDrawSnapshots(uint64 completedFrameID)
+	bool Drawable::DrainDrawSnapshots(uint64 completedFrameID)
 	{
 		while(_meshSnapshots.size() > 1 && _meshSnapshots.front()._lastUsedFrameID <= completedFrameID)
 			_meshSnapshots.pop_front();
@@ -195,13 +185,23 @@ namespace RN
 
 		while(_skeletonSnapshots.size() > 1 && _skeletonSnapshots.front()._lastUsedFrameID <= completedFrameID)
 			_skeletonSnapshots.pop_front();
+
+		return HasDrawSnapshotHistory();
+	}
+
+	bool Drawable::HasDrawSnapshotHistory() const
+	{
+		return _meshSnapshots.size() > 1 || _materialSnapshots.size() > 1 || _skeletonSnapshots.size() > 1;
 	}
 
 	void Drawable::UpdateDrawSnapshots()
 	{
+		bool didAddSnapshot = false;
+
 		if(_meshSnapshotDirty || _meshSnapshots.empty())
 		{
 			_meshSnapshots.emplace_back();
+			didAddSnapshot = true;
 			MeshSnapshot &snapshot = _meshSnapshots.back();
 
 			Mesh *mesh = _sourceMesh.Get();
@@ -217,6 +217,7 @@ namespace RN
 		if(_materialSnapshotDirty || _materialSnapshots.empty())
 		{
 			_materialSnapshots.emplace_back(_materialSnapshotVersion);
+			didAddSnapshot = true;
 			MaterialSnapshot &snapshot = _materialSnapshots.back();
 
 			Material *material = _sourceMaterial.Get();
@@ -232,6 +233,7 @@ namespace RN
 		if(_skeletonSnapshotDirty || _skeletonSnapshots.empty())
 		{
 			_skeletonSnapshots.emplace_back();
+			didAddSnapshot = true;
 			SkeletonSnapshot &snapshot = _skeletonSnapshots.back();
 
 			Skeleton *skeleton = _sourceSkeleton.Get();
@@ -243,5 +245,8 @@ namespace RN
 			_skeletonDrawSnapshotVersion = skeleton ? skeleton->GetDrawSnapshotVersion() : 0;
 			_skeletonSnapshotDirty = false;
 		}
+
+		if(didAddSnapshot && HasDrawSnapshotHistory() && !Renderer::IsHeadless())
+			Renderer::GetActiveRenderer()->RegisterDrawableForSnapshotDrain(this);
 	}
 } // namespace RN
