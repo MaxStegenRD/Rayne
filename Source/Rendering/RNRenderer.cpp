@@ -7,8 +7,8 @@
 //
 
 #include "RNRenderer.h"
+#include "RNRenderFrame.h"
 #include "RNRenderPassResources.h"
-#include "../Base/RNSettings.h"
 #include "../Base/RNKernel.h"
 #include "../Debug/RNLogger.h"
 
@@ -21,6 +21,7 @@ namespace RN
 	static Renderer *_activeRenderer = nullptr;
 
 	Renderer::Renderer(RendererDescriptor *descriptor, RenderingDevice *device) :
+		_frameStatisticsTimer(0.0),
 		_device(device),
 		_descriptor(descriptor)
 	{
@@ -69,14 +70,15 @@ namespace RN
 		_activeRenderer = nullptr;
 	}
 
-	void Renderer::PrintFrameStatistics(float interval)
+	void Renderer::PrintFrameStatistics(const RenderFrame &frame, float interval)
 	{
 		double currentTime = Kernel::GetSharedInstance()->GetTotalTime();
-		if((currentTime - _frameStatisticsTimer) > 5.0)
+		if((currentTime - _frameStatisticsTimer) > interval)
 		{
 			_frameStatisticsTimer = currentTime;
 
-			const size_t cameraCount = _frameStatistics.size();
+			const std::vector<RenderFrame::CameraStatistics> &frameStatistics = frame.GetCameraStatistics();
+			const size_t cameraCount = frameStatistics.size();
 			uint64 totalVertices = 0;
 			uint64 totalTriangles = 0;
 			uint64 totalDrawables = 0;
@@ -84,10 +86,10 @@ namespace RN
 
 			for(size_t i = 0; i < cameraCount; i++)
 			{
-				totalVertices += _frameStatistics[i].numberOfVertices;
-				totalTriangles += (_frameStatistics[i].numberOfIndices / 3);
-				totalDrawables += _frameStatistics[i].numberOfDrawables;
-				totalDrawCalls += _frameStatistics[i].numberOfDrawCalls;
+				totalVertices += frameStatistics[i].numberOfVertices;
+				totalTriangles += (frameStatistics[i].numberOfIndices / 3);
+				totalDrawables += frameStatistics[i].numberOfDrawables;
+				totalDrawCalls += frameStatistics[i].numberOfDrawCalls;
 			}
 
 			std::ostringstream statsStream;
@@ -102,10 +104,10 @@ namespace RN
 				for(size_t i = 0; i < cameraCount; i++)
 				{
 					statsStream << "\n  cam " << i
-						<< " | verts=" << _frameStatistics[i].numberOfVertices
-						<< " tris=" << (_frameStatistics[i].numberOfIndices / 3)
-						<< " drawables=" << _frameStatistics[i].numberOfDrawables
-						<< " draws=" << _frameStatistics[i].numberOfDrawCalls;
+						<< " | verts=" << frameStatistics[i].numberOfVertices
+						<< " tris=" << (frameStatistics[i].numberOfIndices / 3)
+						<< " drawables=" << frameStatistics[i].numberOfDrawables
+						<< " draws=" << frameStatistics[i].numberOfDrawCalls;
 				}
 			}
 

@@ -22,6 +22,14 @@ namespace RN
 	class RenderFrame
 	{
 	public:
+		struct CameraStatistics
+		{
+			uint64 numberOfDrawables = 0;
+			uint64 numberOfDrawCalls = 0;
+			uint64 numberOfVertices = 0;
+			uint64 numberOfIndices = 0;
+		};
+
 		class CameraSnapshot
 		{
 		public:
@@ -268,6 +276,7 @@ namespace RN
 		void Clear()
 		{
 			_passes.clear();
+			_cameraStatistics.clear();
 		}
 
 		size_t AddPass(const RenderPass::DrawSnapshot &drawSnapshot, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialCacheIdentity, uint64 overrideMaterialSnapshotVersion)
@@ -288,8 +297,23 @@ namespace RN
 			return _passes[index];
 		}
 
+		size_t AddCameraStatistics()
+		{
+			_cameraStatistics.emplace_back();
+			return _cameraStatistics.size() - 1;
+		}
+
+		CameraStatistics &GetCameraStatistics(size_t index)
+		{
+			RN_DEBUG_ASSERT(index < _cameraStatistics.size(), "Invalid render frame camera statistics index");
+			return _cameraStatistics[index];
+		}
+
+		const std::vector<CameraStatistics> &GetCameraStatistics() const { return _cameraStatistics; }
+
 	private:
 		std::vector<Pass> _passes;
+		std::vector<CameraStatistics> _cameraStatistics;
 	};
 } // namespace RN
 

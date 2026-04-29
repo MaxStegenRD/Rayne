@@ -95,9 +95,7 @@ namespace RN
 	void Scene::WillRender(Renderer *renderer)
 	{}
 	void Scene::DidRender(Renderer *renderer)
-	{
-		renderer->PrintFrameStatistics(5.0f); //Print frame statistics every 5 seconds
-	}
+	{}
 
 
 	SceneInfo::SceneInfo(Scene *scene) :

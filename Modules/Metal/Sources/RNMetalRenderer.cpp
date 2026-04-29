@@ -152,6 +152,7 @@ namespace RN
 			BuildFrameSubmission(submission, std::move(function));
 			PrepareRenderFrame(submission);
 			RenderFrameSubmission(submission);
+			PrintFrameStatistics(submission.renderFrame);
 			FlushDeletedDrawables();
 		}
 	}
@@ -159,7 +160,6 @@ namespace RN
 	void MetalRenderer::BuildFrameSubmission(MetalFrameSubmission &submission, Function &&function)
 	{
 		RN_PROFILE_SCOPE();
-		_frameStatistics.clear();
 
 		//Submit camera is called for each camera and creates draw items per camera
 		MetalFrameSubmission *previousSubmission = _activeFrameSubmission;
@@ -423,8 +423,7 @@ namespace RN
 			}
 		}
 
-		const size_t frameStatisticsIndex = _frameStatistics.size();
-		_frameStatistics.push_back({0, 0, 0, 0});
+		const size_t frameStatisticsIndex = frameSubmission.renderFrame.AddCameraStatistics();
 
 		RenderPass *cameraRenderPass = _currentMultiviewFallbackRenderPass? _currentMultiviewFallbackRenderPass : camera->GetRenderPass();
 
@@ -1367,7 +1366,7 @@ namespace RN
 			}
 		};
 
-		auto appendPreparedDrawItem = [](MetalPreparedRenderPass &preparedPass, const RenderFrame::DrawItem &drawItem, const MetalDrawable::RenderResources &renderResources, CameraStatistics &statistics) {
+		auto appendPreparedDrawItem = [](MetalPreparedRenderPass &preparedPass, const RenderFrame::DrawItem &drawItem, const MetalDrawable::RenderResources &renderResources, RenderFrame::CameraStatistics &statistics) {
 			MetalPreparedDrawItem preparedDrawItem;
 			preparedDrawItem.drawItem = &drawItem;
 			preparedDrawItem.renderResources = &renderResources;
@@ -1410,8 +1409,7 @@ namespace RN
 			const RenderFrame::DrawItem *currentInstanceDrawItem = nullptr;
 			const MetalRenderingState *currentPipelineState = nullptr;
 			const MetalDrawable::RenderResources *currentInstanceRenderResources = nullptr;
-			RN_DEBUG_ASSERT(renderPass.frameStatisticsIndex < _frameStatistics.size(), "Invalid frame statistics index");
-			CameraStatistics &statistics = _frameStatistics[renderPass.frameStatisticsIndex];
+			RenderFrame::CameraStatistics &statistics = submission.renderFrame.GetCameraStatistics(renderPass.frameStatisticsIndex);
 
 			for(const RenderFrame::DrawItem &drawItem : drawItems)
 			{

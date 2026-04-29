@@ -24,6 +24,7 @@
 #include "RNGPUBuffer.h"
 #include "RNMaterial.h"
 #include "RNMesh.h"
+#include "RNRenderingConfig.h"
 #include "RNRendererTypes.h"
 #include "RNShaderLibrary.h"
 #include "RNSkeleton.h"
@@ -32,6 +33,7 @@
 
 namespace RN
 {
+	class RenderFrame;
 	struct RenderPassResources;
 
 	class RendererDescriptor;
@@ -84,26 +86,16 @@ namespace RN
 
 		RNAPI virtual void SubmitLight(const Light *light) = 0;
 		
-		RNAPI void PrintFrameStatistics(float interval = 5.0f);
-
 		RendererDescriptor *GetDescriptor() const { return _descriptor; }
 		RenderingDevice *GetDevice() const { return _device; }
 
 	protected:
 		RNAPI Renderer(RendererDescriptor *descriptor, RenderingDevice *device);
-		
-		struct CameraStatistics
-		{
-			uint64 numberOfDrawables;
-			uint64 numberOfDrawCalls;
-			uint64 numberOfVertices;
-			uint64 numberOfIndices;
-		};
-		
-		std::vector<CameraStatistics> _frameStatistics;
-		double _frameStatisticsTimer;
+		RNAPI void PrintFrameStatistics(const RenderFrame &frame, float interval = RN_RENDERING_FRAME_STATISTICS_INTERVAL);
 
 	private:
+		double _frameStatisticsTimer;
+
 		RenderingDevice *_device;
 		RendererDescriptor *_descriptor;
 		Dictionary *_defaultShaderCache[Shader::Type::COUNT][Shader::UsageHint::COUNT];

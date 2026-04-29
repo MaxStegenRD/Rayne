@@ -417,6 +417,7 @@ namespace RN
 		if(PrepareRenderFrame(submission))
 		{
 			RenderFrameSubmission(submission);
+			PrintFrameStatistics(submission.renderFrame);
 		}
 
 		FlushDeletedDrawables();
@@ -425,7 +426,6 @@ namespace RN
 	void VulkanRenderer::BuildFrameSubmission(VulkanFrameSubmission &submission, Function &&function)
 	{
 		RN_PROFILE_SCOPE();
-		_frameStatistics.clear();
 
 		//SubmitCamera is called for each camera and creates draw items per camera
 		VulkanFrameSubmission *previousSubmission = _activeFrameSubmission;
@@ -903,8 +903,7 @@ namespace RN
 			}
 		}
 
-		const size_t frameStatisticsIndex = _frameStatistics.size();
-		_frameStatistics.push_back({0, 0, 0, 0});
+		const size_t frameStatisticsIndex = frameSubmission.renderFrame.AddCameraStatistics();
 
 		RenderPass *cameraRenderPass = _currentMultiviewFallbackRenderPass? _currentMultiviewFallbackRenderPass : camera->GetRenderPass();
 		cameraRenderPass->UpdateSubpassChain();
@@ -2125,7 +2124,7 @@ namespace RN
 			}
 		};
 
-		auto appendPreparedDrawItem = [](VulkanPreparedRenderPass &preparedPass, const RenderFrame::DrawItem &drawItem, const VulkanDrawable::RenderResources &renderResources, CameraStatistics &statistics) {
+		auto appendPreparedDrawItem = [](VulkanPreparedRenderPass &preparedPass, const RenderFrame::DrawItem &drawItem, const VulkanDrawable::RenderResources &renderResources, RenderFrame::CameraStatistics &statistics) {
 			VulkanPreparedDrawItem preparedDrawItem;
 			preparedDrawItem.drawItem = &drawItem;
 			preparedDrawItem.renderResources = &renderResources;
@@ -2181,8 +2180,7 @@ namespace RN
 			const RenderFrame::DrawItem *currentInstanceDrawItem = nullptr;
 			const VulkanPipelineState *currentPipelineState = nullptr;
 			VulkanDrawable::RenderResources *currentInstanceRenderResources = nullptr;
-			RN_DEBUG_ASSERT(renderSubPass.frameStatisticsIndex < _frameStatistics.size(), "Invalid frame statistics index");
-			CameraStatistics &statistics = _frameStatistics[renderSubPass.frameStatisticsIndex];
+			RenderFrame::CameraStatistics &statistics = submission.renderFrame.GetCameraStatistics(renderSubPass.frameStatisticsIndex);
 
 			for(const RenderFrame::DrawItem &drawItem : drawItems)
 			{
