@@ -371,7 +371,19 @@ namespace RN
 		RN_PROFILE_SCOPE();
 
 		VulkanFrameSubmission submission;
+		if(!BuildFrameSubmission(submission, std::move(function)))
+		{
+			return;
+		}
 
+		PrepareRenderFrame(submission);
+		RenderFrameSubmission(submission);
+		FlushDeletedDrawables();
+	}
+
+	bool VulkanRenderer::BuildFrameSubmission(VulkanFrameSubmission &submission, Function &&function)
+	{
+		RN_PROFILE_SCOPE();
 		_internals->stateCoordinator.SavePipelineCache(Kernel::GetSharedInstance()->GetApplication()->GetBuildNumber(), GetVulkanDevice()); //This won't do anything if no new pipelines were loaded
 
 		_currentDrawableIndex = 0;
@@ -386,7 +398,7 @@ namespace RN
 		if((!hasCompletedFrame && _currentFrame > 4) || (hasCompletedFrame && (_currentFrame - _completedFrame > 4)))
 		{
 			//RNDebug("Too many frames in-flight, ignore this one");
-			return; //Don't submit a new frame if there are already 5 frames in flight
+			return false; //Don't submit a new frame if there are already 5 frames in flight
 		}
 
 		CreateMipMaps();
@@ -436,10 +448,12 @@ namespace RN
 		function();
 		_activeFrameSubmission = previousSubmission;
 
-		PrepareRenderFrame(submission);
+		return true;
+	}
 
-		_dynamicBufferPool->Update(this, _currentFrame, _completedFrame);
-		UpdateDescriptorSets(submission);
+	void VulkanRenderer::RenderFrameSubmission(const VulkanFrameSubmission &submission)
+	{
+		RN_PROFILE_SCOPE();
 
 		for(VulkanSwapChain *swapChain : submission.swapChains)
 		{
@@ -741,7 +755,6 @@ namespace RN
 		if(_submittedCommandBuffers->GetCount() == 0)
 		{
 			_lock.Unlock();
-			FlushDeletedDrawables();
 			return;
 		}
 
@@ -775,8 +788,6 @@ namespace RN
 		}
 
 		RN_PROFILE_FRAME_TRACY();
-
-		FlushDeletedDrawables();
 
 		_currentFrame ++;
 	}
@@ -2291,6 +2302,10 @@ namespace RN
 				prepareRenderPass(renderPass, renderPass, 0);
 			}
 		}
+
+		// Do this after pipeline preparation so newly created uniform references have backing buffers.
+		_dynamicBufferPool->Update(this, _currentFrame, _completedFrame);
+		UpdateDescriptorSets(submission);
 	}
 
 	void VulkanRenderer::SubmitDrawable(Drawable *drawable)

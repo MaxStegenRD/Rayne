@@ -94,6 +94,8 @@ namespace RN
 		VKAPI void UpdateDynamicBufferReference(VulkanDynamicBufferReference *reference, bool align);
 
 	private:
+		bool BuildFrameSubmission(VulkanFrameSubmission &submission, Function &&function);
+		void RenderFrameSubmission(const VulkanFrameSubmission &submission);
 		void SubmitCamera(VulkanFrameSubmission &submission, Camera *camera, Camera *lightClusterCamera, Function &&function);
 		void SubmitRenderPass(VulkanFrameSubmission &submission, RenderPass *renderPass, VulkanRenderPass &previousRenderPass);
 		void SubmitDrawable(VulkanFrameSubmission &submission, Drawable *drawable);

@@ -149,170 +149,176 @@ namespace RN
 		RN_PROFILE_SCOPE();
 		@autoreleasepool {
 			MetalFrameSubmission submission;
-
-			FlushDeletedDrawables();
-
-			CreateMipMaps();
-
-			_frameStatistics.clear();
-
-			//Submit camera is called for each camera and creates draw items per camera
-			MetalFrameSubmission *previousSubmission = _activeFrameSubmission;
-			_activeFrameSubmission = &submission;
-			function();
-			_activeFrameSubmission = previousSubmission;
-
+			BuildFrameSubmission(submission, std::move(function));
 			PrepareRenderFrame(submission);
-
-			//Advance to next gpu buffer for uniforms and create new uniform buffer if pool is not big enough for any new objects
-			_uniformBufferPool->Update(this); //This will also reset all reference offsets into the buffer
-
-			for(MetalSwapChain *swapChain : submission.swapChains)
-			{
-				//TODO: do this the first time the swap chain is actually used
-				swapChain->AcquireBackBuffer();
-				swapChain->Prepare();
-			}
-
-			_internals->commandBuffer = [_internals->commandQueue commandBuffer];
-
-			for(MetalRenderPass &renderPass : submission.renderPasses)
-			{
-				if(renderPass.framebuffer->GetSwapChain() && !renderPass.framebuffer->GetSwapChain()->GetMetalColorTexture())
-				{
-					continue;
-				}
-
-				if(!renderPass.UsesDrawItems())
-				{
-					RenderAPIRenderPass(submission, renderPass);
-					continue;
-				}
-
-				const RenderFrame::Pass &framePass = submission.renderFrame.GetPass(renderPass.renderFramePassIndex);
-				const RenderPass::DrawSnapshot &drawSnapshot = framePass.GetDrawSnapshot();
-				// Skip creating a Metal render encoder for root/container passes
-				if(drawSnapshot.IsRoot())
-				{
-					continue;
-				}
-
-				_internals->currentRenderState = nullptr; //This is a property of the encoder and needs to be set to nullptr here to force setting it again.
-				MTLRenderPassDescriptor *descriptor = renderPass.framebuffer->GetRenderPassDescriptor(drawSnapshot, renderPass.resolveFramebuffer, renderPass.multiviewLayer, 0);
-				_internals->commandEncoder = [_internals->commandBuffer renderCommandEncoderWithDescriptor:descriptor];
-				[descriptor release];
-
-				Rect cameraRect = framePass.GetCameraSnapshot().GetFrame();
-				if(cameraRect.width < 0.5f || cameraRect.height < 0.5f)
-				{
-					Vector2 framebufferSize = renderPass.framebuffer->GetSize();
-					cameraRect.x = 0.0f;
-					cameraRect.y = 0.0f;
-					cameraRect.width = framebufferSize.x;
-					cameraRect.height = framebufferSize.y;
-				}
-				MTLViewport viewPort;
-				viewPort.originX = cameraRect.x;
-				viewPort.originY = cameraRect.y;
-				viewPort.width = cameraRect.width;
-				viewPort.height = cameraRect.height;
-				viewPort.znear = 0.0f;
-				viewPort.zfar = 1.0f;
-				[_internals->commandEncoder setViewport:viewPort];
-
-				if(renderPass.type == MetalRenderPass::Type::Convert)
-				{
-					RenderAPIRenderPass(submission, renderPass);
-				}
-				else
-				{
-					RN_DEBUG_ASSERT(renderPass.preparedRenderPassIndex < submission.preparedRenderPasses.size(), "Invalid prepared render pass index");
-					const MetalPreparedRenderPass &preparedPass = submission.preparedRenderPasses[renderPass.preparedRenderPassIndex];
-					const std::vector<MetalPreparedDrawItem> &drawItems = preparedPass.drawItems;
-					uint32 stepSize = 0;
-					uint32 stepSizeIndex = 0;
-					for(size_t i = 0; i < drawItems.size(); i += stepSize)
-					{
-						stepSize = preparedPass.instanceSteps[stepSizeIndex++];
-
-						uint32 counter = 0;
-						const MetalPreparedDrawItem &baseDrawItem = drawItems[i];
-						const MetalDrawable::RenderResources &renderResources = *baseDrawItem.renderResources;
-						for(size_t n = 0; n < renderResources.vertexShaderUniformBuffers.size(); n++)
-						{
-							for(size_t instance = 0; instance < stepSize; instance++)
-							{
-								Shader::ArgumentBuffer *argument = renderResources.argumentBufferToUniformBufferMapping[counter];
-
-								//TODO: Somehow find a better way to know if an argument buffer contains instance data or not
-								//Assume that only storage buffers can contain per instance data
-								if(instance > 0 && argument->GetType() != Shader::ArgumentBuffer::Type::StorageBuffer) break;
-
-								const MetalPreparedDrawItem &preparedDrawItem = drawItems[i + instance];
-								const RenderFrame::DrawItem &drawItem = *preparedDrawItem.drawItem;
-								const MetalDrawable::RenderResources &drawableRenderResources = *preparedDrawItem.renderResources;
-								const Material::Properties &mergedMaterialProperties = drawableRenderResources.mergedMaterialSnapshot.GetProperties();
-
-								MetalUniformBufferReference *bufferReference = drawableRenderResources.vertexShaderUniformBuffers[n];
-								UpdateUniformBufferReference(bufferReference, instance == 0);
-								FillUniformBuffer(argument, bufferReference, drawItem, mergedMaterialProperties, framePass);
-							}
-							counter += 1;
-						}
-
-						for(size_t n = 0; n < renderResources.fragmentShaderUniformBuffers.size(); n++)
-						{
-							for(size_t instance = 0; instance < stepSize; instance++)
-							{
-								Shader::ArgumentBuffer *argument = renderResources.argumentBufferToUniformBufferMapping[counter];
-
-								//TODO: Somehow find a better way to know if an argument buffer contains instance data or not
-								//Assume that only storage buffers can contain per instance data
-								if(instance > 0 && argument->GetType() != Shader::ArgumentBuffer::Type::StorageBuffer) break;
-
-								const MetalPreparedDrawItem &preparedDrawItem = drawItems[i + instance];
-								const RenderFrame::DrawItem &drawItem = *preparedDrawItem.drawItem;
-								const MetalDrawable::RenderResources &drawableRenderResources = *preparedDrawItem.renderResources;
-								const Material::Properties &mergedMaterialProperties = drawableRenderResources.mergedMaterialSnapshot.GetProperties();
-
-								MetalUniformBufferReference *bufferReference = drawableRenderResources.fragmentShaderUniformBuffers[n];
-								UpdateUniformBufferReference(bufferReference, instance == 0);
-								FillUniformBuffer(argument, bufferReference, drawItem, mergedMaterialProperties, framePass);
-							}
-
-							counter += 1;
-						}
-
-						RenderDrawable(baseDrawItem, stepSize, renderPass, framePass);
-					}
-				}
-
-				[_internals->commandEncoder endEncoding];
-				_internals->commandEncoder = nil;
-			}
-
-			for(MetalSwapChain *swapChain : submission.swapChains)
-			{
-				swapChain->Finalize();
-				swapChain->PresentBackBuffer(_internals->commandBuffer);
-			}
-
-			//Flush all uniform buffers to make the GPU get the latest changes from CPU
-			_uniformBufferPool->FlushAllBuffers();
-
-			[_internals->commandBuffer commit];
-
-			for(MetalSwapChain *swapChain : submission.swapChains)
-			{
-				swapChain->PostPresent(_internals->commandBuffer);
-			}
-
-			RN_PROFILE_FRAME();
-
-			_internals->commandBuffer = nil;
-
+			RenderFrameSubmission(submission);
 			FlushDeletedDrawables();
 		}
+	}
+
+	void MetalRenderer::BuildFrameSubmission(MetalFrameSubmission &submission, Function &&function)
+	{
+		RN_PROFILE_SCOPE();
+		FlushDeletedDrawables();
+
+		CreateMipMaps();
+
+		_frameStatistics.clear();
+
+		//Submit camera is called for each camera and creates draw items per camera
+		MetalFrameSubmission *previousSubmission = _activeFrameSubmission;
+		_activeFrameSubmission = &submission;
+		function();
+		_activeFrameSubmission = previousSubmission;
+	}
+
+	void MetalRenderer::RenderFrameSubmission(const MetalFrameSubmission &submission)
+	{
+		RN_PROFILE_SCOPE();
+
+		for(MetalSwapChain *swapChain : submission.swapChains)
+		{
+			//TODO: do this the first time the swap chain is actually used
+			swapChain->AcquireBackBuffer();
+			swapChain->Prepare();
+		}
+
+		_internals->commandBuffer = [_internals->commandQueue commandBuffer];
+
+		for(const MetalRenderPass &renderPass : submission.renderPasses)
+		{
+			if(renderPass.framebuffer->GetSwapChain() && !renderPass.framebuffer->GetSwapChain()->GetMetalColorTexture())
+			{
+				continue;
+			}
+
+			if(!renderPass.UsesDrawItems())
+			{
+				RenderAPIRenderPass(submission, renderPass);
+				continue;
+			}
+
+			const RenderFrame::Pass &framePass = submission.renderFrame.GetPass(renderPass.renderFramePassIndex);
+			const RenderPass::DrawSnapshot &drawSnapshot = framePass.GetDrawSnapshot();
+			// Skip creating a Metal render encoder for root/container passes
+			if(drawSnapshot.IsRoot())
+			{
+				continue;
+			}
+
+			_internals->currentRenderState = nullptr; //This is a property of the encoder and needs to be set to nullptr here to force setting it again.
+			MTLRenderPassDescriptor *descriptor = renderPass.framebuffer->GetRenderPassDescriptor(drawSnapshot, renderPass.resolveFramebuffer, renderPass.multiviewLayer, 0);
+			_internals->commandEncoder = [_internals->commandBuffer renderCommandEncoderWithDescriptor:descriptor];
+			[descriptor release];
+
+			Rect cameraRect = framePass.GetCameraSnapshot().GetFrame();
+			if(cameraRect.width < 0.5f || cameraRect.height < 0.5f)
+			{
+				Vector2 framebufferSize = renderPass.framebuffer->GetSize();
+				cameraRect.x = 0.0f;
+				cameraRect.y = 0.0f;
+				cameraRect.width = framebufferSize.x;
+				cameraRect.height = framebufferSize.y;
+			}
+			MTLViewport viewPort;
+			viewPort.originX = cameraRect.x;
+			viewPort.originY = cameraRect.y;
+			viewPort.width = cameraRect.width;
+			viewPort.height = cameraRect.height;
+			viewPort.znear = 0.0f;
+			viewPort.zfar = 1.0f;
+			[_internals->commandEncoder setViewport:viewPort];
+
+			if(renderPass.type == MetalRenderPass::Type::Convert)
+			{
+				RenderAPIRenderPass(submission, renderPass);
+			}
+			else
+			{
+				RN_DEBUG_ASSERT(renderPass.preparedRenderPassIndex < submission.preparedRenderPasses.size(), "Invalid prepared render pass index");
+				const MetalPreparedRenderPass &preparedPass = submission.preparedRenderPasses[renderPass.preparedRenderPassIndex];
+				const std::vector<MetalPreparedDrawItem> &drawItems = preparedPass.drawItems;
+				uint32 stepSize = 0;
+				uint32 stepSizeIndex = 0;
+				for(size_t i = 0; i < drawItems.size(); i += stepSize)
+				{
+					stepSize = preparedPass.instanceSteps[stepSizeIndex++];
+
+					uint32 counter = 0;
+					const MetalPreparedDrawItem &baseDrawItem = drawItems[i];
+					const MetalDrawable::RenderResources &renderResources = *baseDrawItem.renderResources;
+					for(size_t n = 0; n < renderResources.vertexShaderUniformBuffers.size(); n++)
+					{
+						for(size_t instance = 0; instance < stepSize; instance++)
+						{
+							Shader::ArgumentBuffer *argument = renderResources.argumentBufferToUniformBufferMapping[counter];
+
+							//TODO: Somehow find a better way to know if an argument buffer contains instance data or not
+							//Assume that only storage buffers can contain per instance data
+							if(instance > 0 && argument->GetType() != Shader::ArgumentBuffer::Type::StorageBuffer) break;
+
+							const MetalPreparedDrawItem &preparedDrawItem = drawItems[i + instance];
+							const RenderFrame::DrawItem &drawItem = *preparedDrawItem.drawItem;
+							const MetalDrawable::RenderResources &drawableRenderResources = *preparedDrawItem.renderResources;
+							const Material::Properties &mergedMaterialProperties = drawableRenderResources.mergedMaterialSnapshot.GetProperties();
+
+							MetalUniformBufferReference *bufferReference = drawableRenderResources.vertexShaderUniformBuffers[n];
+							UpdateUniformBufferReference(bufferReference, instance == 0);
+							FillUniformBuffer(argument, bufferReference, drawItem, mergedMaterialProperties, framePass);
+						}
+						counter += 1;
+					}
+
+					for(size_t n = 0; n < renderResources.fragmentShaderUniformBuffers.size(); n++)
+					{
+						for(size_t instance = 0; instance < stepSize; instance++)
+						{
+							Shader::ArgumentBuffer *argument = renderResources.argumentBufferToUniformBufferMapping[counter];
+
+							//TODO: Somehow find a better way to know if an argument buffer contains instance data or not
+							//Assume that only storage buffers can contain per instance data
+							if(instance > 0 && argument->GetType() != Shader::ArgumentBuffer::Type::StorageBuffer) break;
+
+							const MetalPreparedDrawItem &preparedDrawItem = drawItems[i + instance];
+							const RenderFrame::DrawItem &drawItem = *preparedDrawItem.drawItem;
+							const MetalDrawable::RenderResources &drawableRenderResources = *preparedDrawItem.renderResources;
+							const Material::Properties &mergedMaterialProperties = drawableRenderResources.mergedMaterialSnapshot.GetProperties();
+
+							MetalUniformBufferReference *bufferReference = drawableRenderResources.fragmentShaderUniformBuffers[n];
+							UpdateUniformBufferReference(bufferReference, instance == 0);
+							FillUniformBuffer(argument, bufferReference, drawItem, mergedMaterialProperties, framePass);
+						}
+
+						counter += 1;
+					}
+
+					RenderDrawable(baseDrawItem, stepSize, renderPass, framePass);
+				}
+			}
+
+			[_internals->commandEncoder endEncoding];
+			_internals->commandEncoder = nil;
+		}
+
+		for(MetalSwapChain *swapChain : submission.swapChains)
+		{
+			swapChain->Finalize();
+			swapChain->PresentBackBuffer(_internals->commandBuffer);
+		}
+
+		//Flush all uniform buffers to make the GPU get the latest changes from CPU
+		_uniformBufferPool->FlushAllBuffers();
+
+		[_internals->commandBuffer commit];
+
+		for(MetalSwapChain *swapChain : submission.swapChains)
+		{
+			swapChain->PostPresent(_internals->commandBuffer);
+		}
+
+		RN_PROFILE_FRAME();
+
+		_internals->commandBuffer = nil;
 	}
 
 	void MetalRenderer::RenderAPIRenderPass(const MetalFrameSubmission &submission, const MetalRenderPass &renderPass)
@@ -1481,6 +1487,9 @@ namespace RN
 		{
 			prepareRenderPass(renderPass);
 		}
+
+		// Do this after pipeline preparation so newly created uniform references have backing buffers.
+		_uniformBufferPool->Update(this); //This will also reset all reference offsets into the buffer
 	}
 
 	void MetalRenderer::SubmitDrawable(Drawable *drawable)
