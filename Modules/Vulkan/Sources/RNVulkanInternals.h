@@ -333,7 +333,6 @@ namespace RN
 		std::vector<VulkanFrameResource> frameResources;
 		std::vector<Drawable *> pendingDeletedDrawables;
 
-		size_t totalDescriptorTables;
 		VulkanDrawBindStateCache drawBindStateCache;
 
 		VmaAllocator memoryAllocator;

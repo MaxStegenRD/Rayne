@@ -94,12 +94,12 @@ namespace RN
 		VKAPI void UpdateDynamicBufferReference(VulkanDynamicBufferReference *reference, bool align);
 
 	private:
-		bool BuildFrameSubmission(VulkanFrameSubmission &submission, Function &&function);
+		void BuildFrameSubmission(VulkanFrameSubmission &submission, Function &&function);
 		void RenderFrameSubmission(const VulkanFrameSubmission &submission);
 		void SubmitCamera(VulkanFrameSubmission &submission, Camera *camera, Camera *lightClusterCamera, Function &&function);
 		void SubmitRenderPass(VulkanFrameSubmission &submission, RenderPass *renderPass, VulkanRenderPass &previousRenderPass);
 		void SubmitDrawable(VulkanFrameSubmission &submission, Drawable *drawable);
-		void PrepareRenderFrame(VulkanFrameSubmission &submission);
+		bool PrepareRenderFrame(VulkanFrameSubmission &submission);
 		void UpdateDescriptorSets(VulkanFrameSubmission &submission);
 		void RenderDrawable(VkCommandBuffer commandBuffer, const VulkanPreparedDrawItem &drawItem, uint32 instanceCount);
 		void FillUniformBuffer(Shader::ArgumentBuffer *argumentBuffer, VulkanDynamicBufferReference *dynamicBufferReference, const RenderFrame::DrawItem &drawItem, const Material::Properties &mergedMaterialProperties, const RenderFrame::Pass &framePass);
@@ -110,6 +110,7 @@ namespace RN
 
 		void SetupRendertargets(VkCommandBuffer commandBuffer, const VulkanFrameSubmission &submission, const VulkanRenderPass &renderPass);
 		VkRenderPass GetVulkanRenderPass(const RenderFrame &renderFrame, const VulkanRenderPass *renderPass);
+		void SubmitPendingResourceCommandBuffers();
 		void FlushDeletedDrawables();
 
 		void CreateVulkanCommandBuffers(size_t count, std::vector<VkCommandBuffer> &buffers);
@@ -145,7 +146,6 @@ namespace RN
 		std::vector<uint32> _frameFenceValues;
 		uint32 _currentFrameFenceIndex;
 
-		size_t _currentDrawableIndex;
 		size_t _currentFrame;
 		size_t _completedFrame;
 

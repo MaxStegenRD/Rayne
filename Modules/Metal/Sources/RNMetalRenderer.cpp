@@ -159,10 +159,6 @@ namespace RN
 	void MetalRenderer::BuildFrameSubmission(MetalFrameSubmission &submission, Function &&function)
 	{
 		RN_PROFILE_SCOPE();
-		FlushDeletedDrawables();
-
-		CreateMipMaps();
-
 		_frameStatistics.clear();
 
 		//Submit camera is called for each camera and creates draw items per camera
@@ -1347,6 +1343,7 @@ namespace RN
 	void MetalRenderer::PrepareRenderFrame(MetalFrameSubmission &submission)
 	{
 		RN_PROFILE_SCOPE();
+		CreateMipMaps();
 
 		submission.preparedRenderPasses.clear();
 

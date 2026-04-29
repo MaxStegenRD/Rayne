@@ -250,6 +250,48 @@ namespace RN
 		_lock.Unlock();
 	}
 
+	void VulkanRenderer::SubmitPendingResourceCommandBuffers()
+	{
+		RN_PROFILE_SCOPE();
+		_currentResourcesCommandBufferLock.Lock();
+		VulkanCommandBuffer *resourcesCommandBuffer = _currentResourcesCommandBuffer;
+		if(resourcesCommandBuffer)
+		{
+			resourcesCommandBuffer->End();
+			resourcesCommandBuffer->_frameValue = _currentFrame;
+		}
+		_currentResourcesCommandBuffer = nullptr; //Always stays inside it's pool array, so just don't do any retain release
+		_currentResourcesCommandBufferLock.Unlock();
+
+		_lock.Lock();
+		if(_submittedCommandBuffers->GetCount() > 0 || resourcesCommandBuffer)
+		{
+			std::vector<VkCommandBuffer> buffers;
+
+			buffers.reserve(_submittedCommandBuffers->GetCount() + 1);
+			if(resourcesCommandBuffer)
+			{
+				buffers.push_back(resourcesCommandBuffer->_commandBuffer);
+			}
+			_submittedCommandBuffers->Enumerate<VulkanCommandBuffer>([&](VulkanCommandBuffer *buffer, int i, bool &stop){
+				buffer->_frameValue = _currentFrame;
+				buffers.push_back(buffer->_commandBuffer);
+				_executedCommandBuffers->AddObject(buffer);
+			});
+
+			VkSubmitInfo submitInfo = {};
+			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+			submitInfo.commandBufferCount = buffers.size();
+			submitInfo.pCommandBuffers = buffers.data();
+
+			RNVulkanValidate(vk::QueueSubmit(_workQueue, 1, &submitInfo, VK_NULL_HANDLE));
+
+			//RNVulkanValidate(vk::DeviceWaitIdle(GetVulkanDevice()->GetDevice()));
+			_submittedCommandBuffers->RemoveAllObjects();
+		}
+		_lock.Unlock();
+	}
+
 	Window *VulkanRenderer::CreateAWindow(const Vector2 &size, Screen *screen, const Window::SwapChainDescriptor &descriptor, void *hwnd)
 	{
 		VulkanWindow *window = new VulkanWindow(size, screen, this, descriptor, hwnd);
@@ -371,84 +413,25 @@ namespace RN
 		RN_PROFILE_SCOPE();
 
 		VulkanFrameSubmission submission;
-		if(!BuildFrameSubmission(submission, std::move(function)))
+		BuildFrameSubmission(submission, std::move(function));
+		if(PrepareRenderFrame(submission))
 		{
-			return;
+			RenderFrameSubmission(submission);
 		}
 
-		PrepareRenderFrame(submission);
-		RenderFrameSubmission(submission);
 		FlushDeletedDrawables();
 	}
 
-	bool VulkanRenderer::BuildFrameSubmission(VulkanFrameSubmission &submission, Function &&function)
+	void VulkanRenderer::BuildFrameSubmission(VulkanFrameSubmission &submission, Function &&function)
 	{
 		RN_PROFILE_SCOPE();
-		_internals->stateCoordinator.SavePipelineCache(Kernel::GetSharedInstance()->GetApplication()->GetBuildNumber(), GetVulkanDevice()); //This won't do anything if no new pipelines were loaded
-
-		_currentDrawableIndex = 0;
-		_internals->totalDescriptorTables = 0;
-	//		_currentRootSignature = nullptr;
-
-		UpdateFrameFences(); //Releases resources of frames that finished
 		_frameStatistics.clear();
-		FlushDeletedDrawables();
-
-		const bool hasCompletedFrame = (_completedFrame != static_cast<size_t>(-1));
-		if((!hasCompletedFrame && _currentFrame > 4) || (hasCompletedFrame && (_currentFrame - _completedFrame > 4)))
-		{
-			//RNDebug("Too many frames in-flight, ignore this one");
-			return false; //Don't submit a new frame if there are already 5 frames in flight
-		}
-
-		CreateMipMaps();
-
-		_currentResourcesCommandBufferLock.Lock();
-		VulkanCommandBuffer *resourcesCommandBuffer = _currentResourcesCommandBuffer;
-		if(resourcesCommandBuffer)
-		{
-			resourcesCommandBuffer->End();
-			resourcesCommandBuffer->_frameValue = _currentFrame;
-		}
-		_currentResourcesCommandBuffer = nullptr; //Always stays inside it's pool array, so just don't do any retain release
-		_currentResourcesCommandBufferLock.Unlock();
-
-		_lock.Lock();
-		if(_submittedCommandBuffers->GetCount() > 0 || resourcesCommandBuffer)
-		{
-			std::vector<VkCommandBuffer> buffers;
-
-			buffers.reserve(_submittedCommandBuffers->GetCount() + 1);
-			if(resourcesCommandBuffer)
-			{
-				buffers.push_back(resourcesCommandBuffer->_commandBuffer);
-			}
-			_submittedCommandBuffers->Enumerate<VulkanCommandBuffer>([&](VulkanCommandBuffer *buffer, int i, bool &stop){
-				buffer->_frameValue = _currentFrame;
-				buffers.push_back(buffer->_commandBuffer);
-				_executedCommandBuffers->AddObject(buffer);
-			});
-
-			//Submit command buffers
-			VkSubmitInfo submitInfo = {};
-			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-			submitInfo.commandBufferCount = buffers.size();
-			submitInfo.pCommandBuffers = buffers.data();
-
-			RNVulkanValidate(vk::QueueSubmit(_workQueue, 1, &submitInfo, VK_NULL_HANDLE));
-
-			//RNVulkanValidate(vk::DeviceWaitIdle(GetVulkanDevice()->GetDevice()));
-			_submittedCommandBuffers->RemoveAllObjects();
-		}
-		_lock.Unlock();
 
 		//SubmitCamera is called for each camera and creates draw items per camera
 		VulkanFrameSubmission *previousSubmission = _activeFrameSubmission;
 		_activeFrameSubmission = &submission;
 		function();
 		_activeFrameSubmission = previousSubmission;
-
-		return true;
 	}
 
 	void VulkanRenderer::RenderFrameSubmission(const VulkanFrameSubmission &submission)
@@ -2103,9 +2086,22 @@ namespace RN
 		_internals->stateCoordinator.GetRenderPipelineState(mergedMaterialSnapshot.GetVertexShader(), mergedMaterialSnapshot.GetFragmentShader(), meshSnapshot, mergedMaterialSnapshot.GetPipelineProperties(), warmupFrame, &warmupRenderPass, 0, static_cast<uint8>(multiviewCameraCount));
 	}
 
-	void VulkanRenderer::PrepareRenderFrame(VulkanFrameSubmission &submission)
+	bool VulkanRenderer::PrepareRenderFrame(VulkanFrameSubmission &submission)
 	{
 		RN_PROFILE_SCOPE();
+		_internals->stateCoordinator.SavePipelineCache(Kernel::GetSharedInstance()->GetApplication()->GetBuildNumber(), GetVulkanDevice()); //This won't do anything if no new pipelines were loaded
+
+		UpdateFrameFences(); //Releases resources of frames that finished
+
+		const bool hasCompletedFrame = (_completedFrame != static_cast<size_t>(-1));
+		if((!hasCompletedFrame && _currentFrame > 4) || (hasCompletedFrame && (_currentFrame - _completedFrame > 4)))
+		{
+			//RNDebug("Too many frames in-flight, ignore this one");
+			return false; //Don't submit a new frame if there are already 5 frames in flight
+		}
+
+		CreateMipMaps();
+		SubmitPendingResourceCommandBuffers();
 
 		submission.preparedRenderPasses.clear();
 
@@ -2275,8 +2271,6 @@ namespace RN
 						renderResources.descriptorSet->SetLayout(renderResources.pipelineState->rootSignature->descriptorSetLayout);
 					}
 					renderResources.descriptorSet->Allocate(this);
-					_internals->totalDescriptorTables += renderResources.pipelineState->rootSignature->textureCount;
-					_internals->totalDescriptorTables += renderResources.pipelineState->rootSignature->constantBufferCount;
 				}
 
 				appendPreparedDrawItem(preparedPass, drawItem, renderResources, statistics);
@@ -2306,6 +2300,7 @@ namespace RN
 		// Do this after pipeline preparation so newly created uniform references have backing buffers.
 		_dynamicBufferPool->Update(this, _currentFrame, _completedFrame);
 		UpdateDescriptorSets(submission);
+		return true;
 	}
 
 	void VulkanRenderer::SubmitDrawable(Drawable *drawable)
@@ -2921,8 +2916,6 @@ namespace RN
 		{
 			vk::CmdDraw(commandBuffer, mesh.GetVerticesCount(), instanceCount, 0, 0);
 		}
-
-		_currentDrawableIndex += 1;
 	}
 
 	void VulkanRenderer::RenderAPIRenderPass(VulkanCommandBuffer *commandList, const VulkanRenderPass &renderPass)
