@@ -2144,70 +2144,59 @@ namespace RN
 		Renderer::WarmupDrawable(mesh, material, camera);
 		if(!mesh || !material || !camera) return;
 
-		StrongRef<Mesh> meshRef(mesh);
-		StrongRef<Material> materialRef(material);
+		AssertOnSubmissionThread();
+
+		Mesh::DrawSnapshot meshSnapshot;
+		mesh->GetDrawSnapshot(meshSnapshot);
+
+		Material::DrawSnapshot materialSnapshot;
+		material->GetDrawSnapshot(materialSnapshot);
+		uint64 materialSnapshotVersion = material->GetDrawSnapshotVersion();
+
 		StrongRef<Camera> cameraRef(camera);
-		ScheduleRenderThreadWork([this, meshRef = std::move(meshRef), materialRef = std::move(materialRef), cameraRef = std::move(cameraRef)]() mutable {
-			WarmupDrawableOnRenderThread(meshRef.Get(), materialRef.Get(), cameraRef.Get());
+		VulkanFrameSubmission submission;
+		SubmitCamera(submission, camera, camera, RN::MakeFunction([](){}));
+		if(submission.renderPasses.empty())
+			return;
+
+		ScheduleRenderThreadWork([this, submission = std::move(submission), meshSnapshot = std::move(meshSnapshot), materialSnapshot = std::move(materialSnapshot), materialSnapshotVersion, cameraRef = std::move(cameraRef)]() mutable {
+			cameraRef.Get(); // Keep the camera-owned render pass resources alive until the warmup task is consumed.
+			WarmupDrawableOnRenderThread(submission, meshSnapshot, materialSnapshot, materialSnapshotVersion);
 		});
 	}
 
-	void VulkanRenderer::WarmupDrawableOnRenderThread(Mesh *mesh, Material *material, Camera *camera)
+	void VulkanRenderer::WarmupDrawableOnRenderThread(const VulkanFrameSubmission &submission, const Mesh::DrawSnapshot &meshSnapshot, const Material::DrawSnapshot &materialSnapshot, uint64 materialSnapshotVersion)
 	{
 		AssertOnRenderThread();
-		//TODO: This is all a bit simplified and won't handle everything, but hopefully catches the main use case for now
-		if(!mesh || !material || !camera || !camera->GetRenderPass()) return;
 
-		RenderPass *renderPass = camera->GetRenderPass();
-		RenderPassResources *renderPassResources = renderPass->GetRenderResources(this);
-		const RenderPass::DrawSnapshot &drawSnapshot = renderPassResources->GetDrawSnapshot();
-		Framebuffer *framebuffer = drawSnapshot.GetFramebuffer();
-		VulkanFramebuffer *vulkanFramebuffer = framebuffer? framebuffer->Downcast<VulkanFramebuffer>() : nullptr;
-		VulkanFramebuffer *resolveFramebuffer = nullptr;
+		auto warmupRenderPass = [&](const VulkanRenderPass &rootRenderPass, const VulkanRenderPass &renderPass, uint32 subpassIndex) {
+			if(!renderPass.UsesDrawItems() || !rootRenderPass.framebuffer)
+				return;
 
-		//Try to find resolve frame buffer (if there is one)
-		const Array *nextRenderPasses = renderPass->GetNextRenderPasses();
-		nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
-			PostProcessingAPIStage *apiStage = nextPass->Downcast<PostProcessingAPIStage>();
-			if(apiStage && apiStage->GetType() == PostProcessingAPIStage::Type::ResolveMSAA)
-			{
-				RN::Framebuffer *tempFramebuffer = apiStage->GetFramebuffer();
-				resolveFramebuffer = tempFramebuffer? tempFramebuffer->Downcast<VulkanFramebuffer>() : nullptr;
-				stop = true;
-			}
-		});
+			const RenderFrame::Pass &framePass = submission.renderFrame.GetPass(renderPass.renderFramePassIndex);
+			const Material::DrawSnapshot *overrideMaterialSnapshot = framePass.GetOverrideMaterialSnapshot();
+			Drawable::MergedMaterialSnapshot mergedMaterialSnapshot;
+			mergedMaterialSnapshot.Update(materialSnapshot, materialSnapshotVersion, renderPass.shaderHint, overrideMaterialSnapshot, framePass.GetOverrideMaterialCacheIdentity(), framePass.GetOverrideMaterialSnapshotVersion());
+			_internals->stateCoordinator.GetRenderPipelineState(mergedMaterialSnapshot.GetVertexShader(), mergedMaterialSnapshot.GetFragmentShader(), meshSnapshot, mergedMaterialSnapshot.GetPipelineProperties(), submission.renderFrame, &rootRenderPass, subpassIndex, framePass.GetMultiviewCameraCount());
+		};
 
-		size_t multiviewCameraCount = 0;
-		const Array *multiviewCameras = camera->GetMultiviewCameras();
-		if(multiviewCameras->GetCount() > 1 && GetVulkanDevice()->GetSupportsMultiview())
+		for(const VulkanRenderPass &renderPass : submission.renderPasses)
 		{
-			multiviewCameraCount = std::min(multiviewCameras->GetCount(), static_cast<size_t>(GetVulkanDevice()->GetMaxMultiviewViewCount()));
+			if(renderPass.previousRenderPass)
+				continue;
+
+			if(renderPass.subpasses.size() > 0)
+			{
+				for(size_t i = 0; i < renderPass.subpasses.size(); i += 1)
+				{
+					warmupRenderPass(renderPass, renderPass.subpasses[i], static_cast<uint32>(i));
+				}
+			}
+			else
+			{
+				warmupRenderPass(renderPass, renderPass, 0);
+			}
 		}
-
-		VulkanRenderPass warmupRenderPass;
-		warmupRenderPass.type = VulkanRenderPass::Type::Default;
-		warmupRenderPass.renderPass = renderPass;
-		warmupRenderPass.previousRenderPass = nullptr;
-		warmupRenderPass.previousStoredFramebuffer = nullptr;
-		warmupRenderPass.framebuffer = vulkanFramebuffer;
-		warmupRenderPass.resolveFramebuffer = resolveFramebuffer;
-		warmupRenderPass.shaderHint = drawSnapshot.GetShaderHint();
-		warmupRenderPass.subpassSignature = 0; // no subpasses in warmup
-		warmupRenderPass.multiviewLayer = 0;
-		warmupRenderPass.subpasses.clear();
-		RenderFrame warmupFrame;
-		warmupRenderPass.renderFramePassIndex = warmupFrame.AddPass(drawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetIdentity(), renderPassResources->GetOverrideMaterialSnapshotVersion());
-
-		//TODO: Support subpasses
-		Mesh::DrawSnapshot meshSnapshot;
-		mesh->GetDrawSnapshot(meshSnapshot);
-		Material::DrawSnapshot materialSnapshot;
-		material->GetDrawSnapshot(materialSnapshot);
-		const Material::DrawSnapshot *overrideMaterialSnapshot = renderPassResources->GetOverrideMaterialSnapshot();
-		uint64 overrideMaterialCacheIdentity = overrideMaterialSnapshot ? renderPassResources->GetIdentity() : 0;
-		Drawable::MergedMaterialSnapshot mergedMaterialSnapshot;
-		mergedMaterialSnapshot.Update(materialSnapshot, material->GetDrawSnapshotVersion(), warmupRenderPass.shaderHint, overrideMaterialSnapshot, overrideMaterialCacheIdentity, renderPassResources->GetOverrideMaterialSnapshotVersion());
-		_internals->stateCoordinator.GetRenderPipelineState(mergedMaterialSnapshot.GetVertexShader(), mergedMaterialSnapshot.GetFragmentShader(), meshSnapshot, mergedMaterialSnapshot.GetPipelineProperties(), warmupFrame, &warmupRenderPass, 0, static_cast<uint8>(multiviewCameraCount));
 	}
 
 	bool VulkanRenderer::PrepareRenderFrame(VulkanFrameSubmission &submission)

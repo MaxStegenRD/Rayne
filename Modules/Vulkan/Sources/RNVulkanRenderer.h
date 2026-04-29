@@ -104,7 +104,7 @@ namespace RN
 		void BuildFrameSubmission(VulkanFrameSubmission &submission, Function &&function);
 		bool ConsumeRenderThreadWork();
 		void RenderFrameSubmission(const VulkanFrameSubmission &submission);
-		void WarmupDrawableOnRenderThread(Mesh *mesh, Material *material, Camera *camera);
+		void WarmupDrawableOnRenderThread(const VulkanFrameSubmission &submission, const Mesh::DrawSnapshot &meshSnapshot, const Material::DrawSnapshot &materialSnapshot, uint64 materialSnapshotVersion);
 		void SubmitCamera(VulkanFrameSubmission &submission, Camera *camera, Camera *lightClusterCamera, Function &&function);
 		void SubmitRenderPass(VulkanFrameSubmission &submission, RenderPass *renderPass, VulkanRenderPass &previousRenderPass);
 		void SubmitDrawable(VulkanFrameSubmission &submission, Drawable *drawable);
