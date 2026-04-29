@@ -129,10 +129,15 @@ namespace RN
 		uint16 GetRenderGroup() const { return _renderGroup; }
 
 	private:
+		static constexpr uint8 MeshSnapshotDirty = 1 << 0;
+		static constexpr uint8 MaterialSnapshotDirty = 1 << 1;
+		static constexpr uint8 SkeletonSnapshotDirty = 1 << 2;
+		static constexpr uint8 AllSnapshotsDirty = MeshSnapshotDirty | MaterialSnapshotDirty | SkeletonSnapshotDirty;
+
 		void UpdateTransform(const SceneNode *node);
 		bool DrainDrawSnapshots(uint64 completedFrameID);
 		bool HasDrawSnapshotHistory() const;
-		void UpdateDrawSnapshots();
+		void UpdateDrawSnapshots(uint64 frameID);
 
 		std::deque<MeshSnapshot> _meshSnapshots;
 		std::deque<MaterialSnapshot> _materialSnapshots;
@@ -153,9 +158,7 @@ namespace RN
 		uint64 _skeletonDrawSnapshotVersion = 0;
 		uint64 _transformVersion = 0;
 
-		bool _meshSnapshotDirty = true;
-		bool _materialSnapshotDirty = true;
-		bool _skeletonSnapshotDirty = true;
+		uint8 _drawSnapshotDirtyMask = AllSnapshotsDirty;
 		bool _transformDirty = true;
 		bool _isRegisteredForSnapshotDrain = false;
 

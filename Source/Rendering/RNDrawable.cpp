@@ -72,34 +72,34 @@ namespace RN
 		if(meshSourceChanged)
 		{
 			_sourceMesh = tmesh;
-			_meshSnapshotDirty = true;
+			_drawSnapshotDirtyMask |= MeshSnapshotDirty;
 		}
 		if(materialSourceChanged)
 		{
 			_sourceMaterial = tmaterial;
-			_materialSnapshotDirty = true;
+			_drawSnapshotDirtyMask |= MaterialSnapshotDirty;
 		}
 		if(skeletonSourceChanged)
 		{
 			_sourceSkeleton = tskeleton;
-			_skeletonSnapshotDirty = true;
+			_drawSnapshotDirtyMask |= SkeletonSnapshotDirty;
 		}
 
 		uint64 meshPipelineVersion = tmesh ? tmesh->GetPipelineVersion() : 0;
 		if(_meshPipelineVersion != meshPipelineVersion)
-			_meshSnapshotDirty = true;
+			_drawSnapshotDirtyMask |= MeshSnapshotDirty;
 
 		uint64 materialDrawSnapshotVersion = tmaterial ? tmaterial->GetDrawSnapshotVersion() : 0;
 		if(materialSourceChanged || _materialDrawSnapshotVersion != materialDrawSnapshotVersion)
 		{
 			_materialDrawSnapshotVersion = materialDrawSnapshotVersion;
 			_materialSnapshotVersion += 1;
-			_materialSnapshotDirty = true;
+			_drawSnapshotDirtyMask |= MaterialSnapshotDirty;
 		}
 
 		uint64 skeletonDrawSnapshotVersion = tskeleton ? tskeleton->GetDrawSnapshotVersion() : 0;
 		if(_skeletonDrawSnapshotVersion != skeletonDrawSnapshotVersion)
-			_skeletonSnapshotDirty = true;
+			_drawSnapshotDirtyMask |= SkeletonSnapshotDirty;
 
 		UpdateTransform(node);
 	}
@@ -145,10 +145,8 @@ namespace RN
 
 	void Drawable::MakeDirty()
 	{
-		_meshSnapshotDirty = true;
-		_materialSnapshotDirty = true;
+		_drawSnapshotDirtyMask |= AllSnapshotsDirty;
 		_materialSnapshotVersion += 1;
-		_skeletonSnapshotDirty = true;
 	}
 
 	void Drawable::GetMeshBufferSnapshot(Mesh::BufferSnapshot &snapshot) const
@@ -162,17 +160,12 @@ namespace RN
 
 	Drawable::DrawSnapshotBundle Drawable::GetDrawSnapshotBundleForFrame(uint64 frameID)
 	{
-		if(_meshSnapshots.empty() || _meshSnapshotDirty || _materialSnapshotDirty || _skeletonSnapshotDirty)
-			UpdateDrawSnapshots();
+		if(_drawSnapshotDirtyMask != 0)
+			UpdateDrawSnapshots(frameID);
 
 		RN_DEBUG_ASSERT(!_meshSnapshots.empty() && !_materialSnapshots.empty() && !_skeletonSnapshots.empty(), "Drawable has no draw snapshots");
 
-		DrawSnapshotBundle snapshot(&_meshSnapshots.back(), &_materialSnapshots.back(), &_skeletonSnapshots.back());
-		snapshot._mesh->_lastUsedFrameID = frameID;
-		snapshot._material->_lastUsedFrameID = frameID;
-		snapshot._skeleton->_lastUsedFrameID = frameID;
-
-		return snapshot;
+		return DrawSnapshotBundle(&_meshSnapshots.back(), &_materialSnapshots.back(), &_skeletonSnapshots.back());
 	}
 
 	bool Drawable::DrainDrawSnapshots(uint64 completedFrameID)
@@ -194,12 +187,15 @@ namespace RN
 		return _meshSnapshots.size() > 1 || _materialSnapshots.size() > 1 || _skeletonSnapshots.size() > 1;
 	}
 
-	void Drawable::UpdateDrawSnapshots()
+	void Drawable::UpdateDrawSnapshots(uint64 frameID)
 	{
 		bool didAddSnapshot = false;
 
-		if(_meshSnapshotDirty || _meshSnapshots.empty())
+		if((_drawSnapshotDirtyMask & MeshSnapshotDirty) != 0)
 		{
+			if(!_meshSnapshots.empty())
+				_meshSnapshots.back()._lastUsedFrameID = frameID;
+
 			_meshSnapshots.emplace_back();
 			didAddSnapshot = true;
 			MeshSnapshot &snapshot = _meshSnapshots.back();
@@ -211,11 +207,14 @@ namespace RN
 				snapshot._snapshot.Reset();
 
 			_meshPipelineVersion = mesh ? mesh->GetPipelineVersion() : 0;
-			_meshSnapshotDirty = false;
+			_drawSnapshotDirtyMask &= AllSnapshotsDirty ^ MeshSnapshotDirty;
 		}
 
-		if(_materialSnapshotDirty || _materialSnapshots.empty())
+		if((_drawSnapshotDirtyMask & MaterialSnapshotDirty) != 0)
 		{
+			if(!_materialSnapshots.empty())
+				_materialSnapshots.back()._lastUsedFrameID = frameID;
+
 			_materialSnapshots.emplace_back(_materialSnapshotVersion);
 			didAddSnapshot = true;
 			MaterialSnapshot &snapshot = _materialSnapshots.back();
@@ -227,11 +226,14 @@ namespace RN
 				snapshot._snapshot.Reset();
 
 			_materialDrawSnapshotVersion = material ? material->GetDrawSnapshotVersion() : 0;
-			_materialSnapshotDirty = false;
+			_drawSnapshotDirtyMask &= AllSnapshotsDirty ^ MaterialSnapshotDirty;
 		}
 
-		if(_skeletonSnapshotDirty || _skeletonSnapshots.empty())
+		if((_drawSnapshotDirtyMask & SkeletonSnapshotDirty) != 0)
 		{
+			if(!_skeletonSnapshots.empty())
+				_skeletonSnapshots.back()._lastUsedFrameID = frameID;
+
 			_skeletonSnapshots.emplace_back();
 			didAddSnapshot = true;
 			SkeletonSnapshot &snapshot = _skeletonSnapshots.back();
@@ -243,7 +245,7 @@ namespace RN
 				snapshot._snapshot.Reset();
 
 			_skeletonDrawSnapshotVersion = skeleton ? skeleton->GetDrawSnapshotVersion() : 0;
-			_skeletonSnapshotDirty = false;
+			_drawSnapshotDirtyMask &= AllSnapshotsDirty ^ SkeletonSnapshotDirty;
 		}
 
 		if(didAddSnapshot && HasDrawSnapshotHistory() && !Renderer::IsHeadless())
