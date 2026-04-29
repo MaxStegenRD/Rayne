@@ -81,6 +81,7 @@ namespace RN
 		void RenderDrawable(const MetalPreparedDrawItem &drawItem, uint32 instanceCount);
 		void RenderAPIRenderPass(const MetalRenderPass &renderPass);
 		void FillUniformBuffer(Shader::ArgumentBuffer *argument, MetalUniformBufferReference *uniformBufferReference, const RenderFrame::DrawItem &drawItem, const Material::Properties &materialProperties);
+		void FlushDeletedDrawables();
 
 		void CreateMipMapForTexture(MetalTexture *texture);
 		void CreateMipMaps();

@@ -105,6 +105,7 @@ namespace RN
 
 		void SetupRendertargets(VkCommandBuffer commandBuffer, const VulkanRenderPass &renderpass);
 		VkRenderPass GetVulkanRenderPass(const VulkanRenderPass *renderPass);
+		void FlushDeletedDrawables();
 
 		void CreateVulkanCommandBuffers(size_t count, std::vector<VkCommandBuffer> &buffers);
 		VkCommandBuffer CreateVulkanCommandBuffer();

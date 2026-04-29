@@ -102,13 +102,25 @@ namespace RN
 
 	VulkanRenderer::~VulkanRenderer()
 	{
+		FlushDeletedDrawables();
+
+		while(!_internals->frameResources.empty())
+		{
+			std::vector<VulkanFrameResource> frameResources;
+			frameResources.swap(_internals->frameResources);
+
+			for(VulkanFrameResource &frameResource : frameResources)
+			{
+				if(frameResource.finishedCallback)
+				{
+					frameResource.finishedCallback();
+				}
+			}
+		}
+
 		_internals->stateCoordinator.DestroyPipelineCache(GetVulkanDevice(), GetAllocatorCallback());
 
 		_mipMapTextures->Release();
-
-		for(auto &frameRes : _internals->frameResources)
-			frameRes.finishedCallback();
-		_internals->frameResources.clear();
 
 		delete _dynamicBufferPool;
 
@@ -324,6 +336,7 @@ namespace RN
 		}
 
 		//Free other frame resources such as unused framebuffers and imageviews
+		std::vector<std::function<void()>> finishedCallbacks;
 		Lock();
 		for(int i = _internals->frameResources.size()-1; i >= 0; i--)
 		{
@@ -332,13 +345,18 @@ namespace RN
 			{
 				if(frameResource.finishedCallback)
 				{
-					frameResource.finishedCallback();
+					finishedCallbacks.push_back(frameResource.finishedCallback);
 				}
 
 				_internals->frameResources.erase(_internals->frameResources.begin() + i);
 			}
 		}
 		Unlock();
+
+		for(std::function<void()> &callback : finishedCallbacks)
+		{
+			callback();
+		}
 	}
 
 	void VulkanRenderer::Render(Function &&function)
@@ -357,6 +375,9 @@ namespace RN
 	//		_currentRootSignature = nullptr;
 
 		UpdateFrameFences(); //Releases resources of frames that finished
+		_internals->renderFrame.Clear();
+		_frameStatistics.clear();
+		FlushDeletedDrawables();
 
 		const bool hasCompletedFrame = (_completedFrame != static_cast<size_t>(-1));
 		if((!hasCompletedFrame && _currentFrame > 4) || (hasCompletedFrame && (_currentFrame - _completedFrame > 4)))
@@ -366,9 +387,6 @@ namespace RN
 		}
 
 		CreateMipMaps();
-
-		_internals->renderFrame.Clear();
-		_frameStatistics.clear();
 
 		_currentResourcesCommandBufferLock.Lock();
 		VulkanCommandBuffer *resourcesCommandBuffer = _currentResourcesCommandBuffer;
@@ -720,6 +738,7 @@ namespace RN
 		if(_submittedCommandBuffers->GetCount() == 0)
 		{
 			_lock.Unlock();
+			FlushDeletedDrawables();
 			return;
 		}
 
@@ -753,6 +772,8 @@ namespace RN
 		}
 
 		RN_PROFILE_FRAME_TRACY();
+
+		FlushDeletedDrawables();
 
 		_currentFrame ++;
 	}
@@ -1968,7 +1989,16 @@ namespace RN
 
 	void VulkanRenderer::DeleteDrawable(Drawable *drawable)
 	{
-		delete drawable;
+		_internals->pendingDeletedDrawables.push_back(drawable);
+	}
+
+	void VulkanRenderer::FlushDeletedDrawables()
+	{
+		std::vector<Drawable *> drawables;
+		drawables.swap(_internals->pendingDeletedDrawables);
+
+		for(Drawable *drawable : drawables)
+			delete drawable;
 	}
 
 	void VulkanRenderer::SubmitLight(const Light *light)

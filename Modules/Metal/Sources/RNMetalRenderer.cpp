@@ -46,6 +46,8 @@ namespace RN
 	MetalRenderer::~MetalRenderer()
 	{
 		RN_PROFILE_SCOPE();
+		FlushDeletedDrawables();
+
 		[_internals->commandQueue release];
 		[_internals->device release];
 
@@ -126,6 +128,7 @@ namespace RN
 			_internals->preparedRenderPasses.clear();
 			_internals->swapChains.clear();
 			_internals->currentRenderPassIndex = 0;
+			FlushDeletedDrawables();
 
 			CreateMipMaps();
 
@@ -287,6 +290,8 @@ namespace RN
 			RN_PROFILE_FRAME();
 
 			_internals->commandBuffer = nil;
+
+			FlushDeletedDrawables();
 		}
 	}
 
@@ -843,7 +848,16 @@ namespace RN
 	void MetalRenderer::DeleteDrawable(Drawable *drawable)
 	{
 		RN_PROFILE_SCOPE();
-		delete drawable;
+		_internals->pendingDeletedDrawables.push_back(drawable);
+	}
+
+	void MetalRenderer::FlushDeletedDrawables()
+	{
+		std::vector<Drawable *> drawables;
+		drawables.swap(_internals->pendingDeletedDrawables);
+
+		for(Drawable *drawable : drawables)
+			delete drawable;
 	}
 
 	void MetalRenderer::FillUniformBuffer(Shader::ArgumentBuffer *argument, MetalUniformBufferReference *uniformBufferReference, const RenderFrame::DrawItem &drawItem, const Material::Properties &materialProperties)

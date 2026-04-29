@@ -197,6 +197,7 @@ namespace RN
 		RenderFrame renderFrame;
 		std::vector<MetalRenderPass> renderPasses;
 		std::vector<MetalPreparedRenderPass> preparedRenderPasses;
+		std::vector<Drawable *> pendingDeletedDrawables;
 		MetalStateCoordinator stateCoordinator;
 
 		id<MTLDevice> device;

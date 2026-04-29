@@ -230,7 +230,6 @@ namespace RN
 		uint8 multiviewLayer;
 
 		std::vector<VulkanTexture *> renderTargetsUsedInShader;
-
 	};
 
 	struct VulkanPreparedDrawItem
@@ -315,6 +314,7 @@ namespace RN
 
 		std::vector<VulkanSwapChain*> swapChains;
 		std::vector<VulkanFrameResource> frameResources;
+		std::vector<Drawable *> pendingDeletedDrawables;
 
 		size_t currentRenderPassIndex;
 		size_t totalDrawableCount;
