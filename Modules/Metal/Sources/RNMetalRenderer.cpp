@@ -150,6 +150,26 @@ namespace RN
 		@autoreleasepool {
 			MetalFrameSubmission submission;
 			BuildFrameSubmission(submission, std::move(function));
+			QueueFrameSubmission(std::move(submission));
+			ConsumeFrameSubmissions();
+		}
+	}
+
+	void MetalRenderer::QueueFrameSubmission(MetalFrameSubmission &&submission)
+	{
+		RN_PROFILE_SCOPE();
+		_internals->queuedFrameSubmissions.push_back(std::move(submission));
+	}
+
+	void MetalRenderer::ConsumeFrameSubmissions()
+	{
+		RN_PROFILE_SCOPE();
+
+		while(!_internals->queuedFrameSubmissions.empty())
+		{
+			MetalFrameSubmission submission = std::move(_internals->queuedFrameSubmissions.front());
+			_internals->queuedFrameSubmissions.erase(_internals->queuedFrameSubmissions.begin());
+
 			PrepareRenderFrame(submission);
 			RenderFrameSubmission(submission);
 			PrintFrameStatistics(submission.renderFrame);

@@ -77,6 +77,8 @@ namespace RN
 
 	protected:
 		void BuildFrameSubmission(MetalFrameSubmission &submission, Function &&function);
+		void QueueFrameSubmission(MetalFrameSubmission &&submission);
+		void ConsumeFrameSubmissions();
 		void RenderFrameSubmission(const MetalFrameSubmission &submission);
 		void SubmitCamera(MetalFrameSubmission &submission, Camera *camera, Camera *lightClusterCamera, Function &&function);
 		void SubmitRenderPass(MetalFrameSubmission &submission, RenderPass *renderPass, MetalRenderPass &previousRenderPass);

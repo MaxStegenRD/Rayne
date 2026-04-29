@@ -95,6 +95,8 @@ namespace RN
 
 	private:
 		void BuildFrameSubmission(VulkanFrameSubmission &submission, Function &&function);
+		void QueueFrameSubmission(VulkanFrameSubmission &&submission);
+		void ConsumeFrameSubmissions();
 		void RenderFrameSubmission(const VulkanFrameSubmission &submission);
 		void SubmitCamera(VulkanFrameSubmission &submission, Camera *camera, Camera *lightClusterCamera, Function &&function);
 		void SubmitRenderPass(VulkanFrameSubmission &submission, RenderPass *renderPass, VulkanRenderPass &previousRenderPass);

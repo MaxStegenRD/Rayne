@@ -214,6 +214,7 @@ namespace RN
 
 	struct MetalRendererInternals
 	{
+		std::vector<MetalFrameSubmission> queuedFrameSubmissions;
 		MetalStateCoordinator stateCoordinator;
 
 		id<MTLDevice> device;

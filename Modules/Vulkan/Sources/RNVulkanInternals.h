@@ -330,6 +330,7 @@ namespace RN
 	{
 		VulkanStateCoordinator stateCoordinator;
 
+		std::vector<VulkanFrameSubmission> queuedFrameSubmissions;
 		std::vector<VulkanFrameResource> frameResources;
 
 		VulkanDrawBindStateCache drawBindStateCache;

@@ -414,13 +414,33 @@ namespace RN
 
 		VulkanFrameSubmission submission;
 		BuildFrameSubmission(submission, std::move(function));
-		if(PrepareRenderFrame(submission))
-		{
-			RenderFrameSubmission(submission);
-			PrintFrameStatistics(submission.renderFrame);
-		}
+		QueueFrameSubmission(std::move(submission));
+		ConsumeFrameSubmissions();
+	}
 
-		FlushDeletedDrawables();
+	void VulkanRenderer::QueueFrameSubmission(VulkanFrameSubmission &&submission)
+	{
+		RN_PROFILE_SCOPE();
+		_internals->queuedFrameSubmissions.push_back(std::move(submission));
+	}
+
+	void VulkanRenderer::ConsumeFrameSubmissions()
+	{
+		RN_PROFILE_SCOPE();
+
+		while(!_internals->queuedFrameSubmissions.empty())
+		{
+			VulkanFrameSubmission submission = std::move(_internals->queuedFrameSubmissions.front());
+			_internals->queuedFrameSubmissions.erase(_internals->queuedFrameSubmissions.begin());
+
+			if(PrepareRenderFrame(submission))
+			{
+				RenderFrameSubmission(submission);
+				PrintFrameStatistics(submission.renderFrame);
+			}
+
+			FlushDeletedDrawables();
+		}
 	}
 
 	void VulkanRenderer::BuildFrameSubmission(VulkanFrameSubmission &submission, Function &&function)
