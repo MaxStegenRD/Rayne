@@ -110,6 +110,7 @@ namespace RN
 		double _frameStatisticsTimer;
 		uint64 _lastStartedRenderFrameID;
 		uint64 _completedRenderFrameID;
+		size_t _lastRenderFrameDrawItemCount;
 		std::vector<DeletedDrawable> _pendingDeletedDrawables;
 		Lockable _frameLifecycleLock;
 

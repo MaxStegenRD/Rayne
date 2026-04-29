@@ -10,6 +10,7 @@
 #define __RAYNE_RENDERFRAME_H__
 
 #include "RNDrawable.h"
+#include "RNRenderingConfig.h"
 #include "RNRenderPass.h"
 #include "../Scene/RNCamera.h"
 #include "../Scene/RNLight.h"
@@ -286,9 +287,20 @@ namespace RN
 
 		size_t AddDrawItem(Drawable *sourceDrawable)
 		{
+			if(_drawItems.size() == _drawItems.capacity())
+			{
+				size_t capacity = _drawItems.capacity();
+				_drawItems.reserve(capacity + (capacity > 0 ? capacity : RN_RENDERING_DRAW_ITEM_RESERVE_BLOCK_SIZE));
+			}
+
 			Drawable::DrawSnapshotBundle drawSnapshot = sourceDrawable->GetDrawSnapshotBundleForFrame(_frameID);
 			_drawItems.emplace_back(sourceDrawable, drawSnapshot);
 			return _drawItems.size() - 1;
+		}
+
+		void ReserveDrawItems(size_t count)
+		{
+			_drawItems.reserve(count);
 		}
 
 		const DrawItem &GetDrawItem(size_t index) const
@@ -296,6 +308,8 @@ namespace RN
 			RN_DEBUG_ASSERT(index < _drawItems.size(), "Invalid render frame draw item index");
 			return _drawItems[index];
 		}
+
+		size_t GetDrawItemCount() const { return _drawItems.size(); }
 
 		Pass &GetPass(size_t index)
 		{
@@ -332,7 +346,7 @@ namespace RN
 
 		uint64 _frameID = 0;
 		std::deque<Pass> _passes;
-		std::deque<DrawItem> _drawItems;
+		std::vector<DrawItem> _drawItems;
 		std::vector<CameraStatistics> _cameraStatistics;
 	};
 } // namespace RN

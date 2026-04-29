@@ -24,6 +24,7 @@ namespace RN
 		_frameStatisticsTimer(0.0),
 		_lastStartedRenderFrameID(0),
 		_completedRenderFrameID(0),
+		_lastRenderFrameDrawItemCount(0),
 		_device(device),
 		_descriptor(descriptor)
 	{
@@ -74,9 +75,15 @@ namespace RN
 
 	void Renderer::BeginRenderFrameSubmission(RenderFrame &frame)
 	{
-		LockGuard<Lockable> lock(_frameLifecycleLock);
-		_lastStartedRenderFrameID += 1;
-		frame.SetFrameID(_lastStartedRenderFrameID);
+		size_t drawItemReserveCount;
+		{
+			LockGuard<Lockable> lock(_frameLifecycleLock);
+			_lastStartedRenderFrameID += 1;
+			frame.SetFrameID(_lastStartedRenderFrameID);
+			drawItemReserveCount = static_cast<size_t>(static_cast<float>(_lastRenderFrameDrawItemCount) * RN_RENDERING_DRAW_ITEM_RESERVE_MULTIPLIER);
+		}
+
+		frame.ReserveDrawItems(drawItemReserveCount);
 	}
 
 	void Renderer::FinishRenderFrameSubmission(const RenderFrame &frame)
@@ -86,6 +93,7 @@ namespace RN
 			LockGuard<Lockable> lock(_frameLifecycleLock);
 			if(frameID > _completedRenderFrameID)
 				_completedRenderFrameID = frameID;
+			_lastRenderFrameDrawItemCount = frame.GetDrawItemCount();
 		}
 
 		FlushDeletedDrawables();
