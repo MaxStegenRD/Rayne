@@ -42,7 +42,7 @@ namespace RN
 				return;
 
 			RN_ASSERT(_queuedFrameSubmissionCount < RN_RENDERING_FRAME_SUBMISSION_QUEUE_SIZE, "Render thread frame submission queue is full");
-			_workItems.push_back(WorkItem(std::move(submission)));
+			_workItems.emplace_back(std::move(submission));
 			_queuedFrameSubmissionCount += 1;
 			_queuedCondition.NotifyOne();
 		}
@@ -53,7 +53,7 @@ namespace RN
 			if(_isShuttingDown)
 				return;
 
-			_workItems.push_back(WorkItem(std::move(task)));
+			_workItems.emplace_back(std::move(task));
 			_queuedCondition.NotifyOne();
 		}
 
@@ -68,7 +68,7 @@ namespace RN
 				return WorkType::None;
 
 			WorkItem item(std::move(_workItems.front()));
-			_workItems.erase(_workItems.begin());
+			_workItems.pop_front();
 
 			if(item.type == WorkType::FrameSubmission)
 			{
@@ -120,7 +120,7 @@ namespace RN
 			Function task;
 		};
 
-		std::vector<WorkItem> _workItems;
+		std::deque<WorkItem> _workItems;
 		Lockable _lock;
 		Condition _queuedCondition;
 		Condition _consumedCondition;
