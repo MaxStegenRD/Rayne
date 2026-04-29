@@ -191,12 +191,29 @@ namespace RN
 		std::vector<uint32> instanceSteps; //Number of draw items that use the same pipeline state and can be rendered with the same draw call.
 	};
 
-
-	struct MetalRendererInternals
+	struct MetalFrameSubmission
 	{
+		void AddSwapChain(MetalSwapChain *swapChain)
+		{
+			if(!swapChain) return;
+
+			for(MetalSwapChain *existingSwapChain : swapChains)
+			{
+				if(existingSwapChain == swapChain) return;
+			}
+
+			swapChains.push_back(swapChain);
+		}
+
 		RenderFrame renderFrame;
 		std::vector<MetalRenderPass> renderPasses;
 		std::vector<MetalPreparedRenderPass> preparedRenderPasses;
+		std::vector<MetalSwapChain *> swapChains;
+		size_t activeRenderPassIndex = 0;
+	};
+
+	struct MetalRendererInternals
+	{
 		std::vector<Drawable *> pendingDeletedDrawables;
 		MetalStateCoordinator stateCoordinator;
 
@@ -206,9 +223,6 @@ namespace RN
 		id<MTLCommandBuffer> commandBuffer;
 		id<MTLRenderCommandEncoder> commandEncoder;
 
-		std::vector<MetalSwapChain *>swapChains;
-
-		size_t currentRenderPassIndex;
 		const MetalRenderingState *currentRenderState;
 	};
 

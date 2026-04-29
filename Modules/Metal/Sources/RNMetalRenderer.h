@@ -17,6 +17,7 @@ namespace RN
 	struct MetalRendererInternals;
 	struct MetalDrawable;
 	struct MetalPreparedDrawItem;
+	struct MetalFrameSubmission;
 
 	class MetalRendererDescriptor;
 	class MetalDevice;
@@ -75,13 +76,16 @@ namespace RN
 		MTLAPI id GetCommandQueue() const;
 
 	protected:
-		void SubmitCamera(Camera *camera, Camera *lightClusterCamera, Function &&function);
-		void SubmitRenderPass(RenderPass *renderPass, MetalRenderPass &previousRenderPass);
-		void PrepareRenderFrame();
-		void RenderDrawable(const MetalPreparedDrawItem &drawItem, uint32 instanceCount);
-		void RenderAPIRenderPass(const MetalRenderPass &renderPass);
-		void FillUniformBuffer(Shader::ArgumentBuffer *argument, MetalUniformBufferReference *uniformBufferReference, const RenderFrame::DrawItem &drawItem, const Material::Properties &materialProperties);
+		void SubmitCamera(MetalFrameSubmission &submission, Camera *camera, Camera *lightClusterCamera, Function &&function);
+		void SubmitRenderPass(MetalFrameSubmission &submission, RenderPass *renderPass, MetalRenderPass &previousRenderPass);
+		void SubmitDrawable(MetalFrameSubmission &submission, Drawable *drawable);
+		void PrepareRenderFrame(MetalFrameSubmission &submission);
+		void RenderDrawable(const MetalPreparedDrawItem &drawItem, uint32 instanceCount, const MetalRenderPass &renderPass, const RenderFrame::Pass &framePass);
+		void RenderAPIRenderPass(const MetalFrameSubmission &submission, const MetalRenderPass &renderPass);
+		void FillUniformBuffer(Shader::ArgumentBuffer *argument, MetalUniformBufferReference *uniformBufferReference, const RenderFrame::DrawItem &drawItem, const Material::Properties &materialProperties, const RenderFrame::Pass &framePass);
 		void FlushDeletedDrawables();
+		MetalFrameSubmission &GetActiveFrameSubmission();
+		Shader::UsageHint GetMetalShaderHint(Shader::UsageHint shaderHint) const;
 
 		void CreateMipMapForTexture(MetalTexture *texture);
 		void CreateMipMaps();
@@ -90,6 +94,7 @@ namespace RN
 
 		PIMPL<MetalRendererInternals> _internals;
 		Window *_mainWindow;
+		MetalFrameSubmission *_activeFrameSubmission;
 		
 		MetalDrawable *_defaultPostProcessingDrawable;
 		Material *_ppConvertMaterial;

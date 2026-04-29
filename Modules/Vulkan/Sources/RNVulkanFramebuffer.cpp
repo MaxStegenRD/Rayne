@@ -304,10 +304,10 @@ namespace RN
 		return _framebufferVariants[_currentVariantIndex].tileProperties;
 	}
 
-	void VulkanFramebuffer::PrepareAsRendertargetForFrame(const VulkanRenderPass *renderPass)
+	void VulkanFramebuffer::PrepareAsRendertargetForFrame(const RenderFrame &renderFrame, const VulkanRenderPass *renderPass)
 	{
 		VulkanFramebuffer *resolveFramebuffer = renderPass->resolveFramebuffer;
-		const RenderFrame::Pass &framePass = _renderer->_internals->renderFrame.GetPass(renderPass->renderFramePassIndex);
+		const RenderFrame::Pass &framePass = renderFrame.GetPass(renderPass->renderFramePassIndex);
 		RenderPass::Flags flags = framePass.GetDrawSnapshot().GetFlags();
 		uint8 multiviewCount = framePass.GetMultiviewCameraCount();
 		uint8 multiviewLayer = renderPass->multiviewLayer;
@@ -361,7 +361,7 @@ namespace RN
 		newVariant.subpassSignature = renderPass->subpassSignature;
 		
 		VkDevice device = _renderer->GetVulkanDevice()->GetDevice();
-		newVariant.renderPass = _renderer->GetVulkanRenderPass(renderPass);
+		newVariant.renderPass = _renderer->GetVulkanRenderPass(renderFrame, renderPass);
 
 		if(_colorTargets.size() > 0)
 		{

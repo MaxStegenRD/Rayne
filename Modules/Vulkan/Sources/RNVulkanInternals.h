@@ -244,6 +244,27 @@ namespace RN
 		std::vector<uint32> instanceSteps; //Number of draw items that use the same pipeline state and can be rendered with the same draw call.
 	};
 
+	struct VulkanFrameSubmission
+	{
+		void AddSwapChain(VulkanSwapChain *swapChain)
+		{
+			if(!swapChain) return;
+
+			for(VulkanSwapChain *existingSwapChain : swapChains)
+			{
+				if(existingSwapChain == swapChain) return;
+			}
+
+			swapChains.push_back(swapChain);
+		}
+
+		RenderFrame renderFrame;
+		std::vector<VulkanRenderPass> renderPasses;
+		std::vector<VulkanPreparedRenderPass> preparedRenderPasses;
+		std::vector<VulkanSwapChain*> swapChains;
+		size_t activeRenderPassIndex = 0;
+	};
+
 	struct VulkanFrameResource
 	{
 		size_t frame;
@@ -307,22 +328,13 @@ namespace RN
 
 	struct VulkanRendererInternals
 	{
-		RenderFrame renderFrame;
-		std::vector<VulkanRenderPass> renderPasses;
-		std::vector<VulkanPreparedRenderPass> preparedRenderPasses;
 		VulkanStateCoordinator stateCoordinator;
 
-		std::vector<VulkanSwapChain*> swapChains;
 		std::vector<VulkanFrameResource> frameResources;
 		std::vector<Drawable *> pendingDeletedDrawables;
 
-		size_t currentRenderPassIndex;
-		size_t totalDrawableCount;
-
 		size_t totalDescriptorTables;
 		VulkanDrawBindStateCache drawBindStateCache;
-
-		uint32 currentSubpassIndex; //TODO: Remove this
 
 		VmaAllocator memoryAllocator;
 		VulkanDescriptorPool descriptorPool;

@@ -20,6 +20,7 @@ namespace RN
 	struct VulkanDrawable;
 	struct VulkanRenderPass;
 	struct VulkanPreparedDrawItem;
+	struct VulkanFrameSubmission;
 	class VulkanTexture;
 	class VulkanCommandBuffer;
 	class VulkanCommandBufferWithCallback;
@@ -93,18 +94,20 @@ namespace RN
 		VKAPI void UpdateDynamicBufferReference(VulkanDynamicBufferReference *reference, bool align);
 
 	private:
-		void SubmitCamera(Camera *camera, Camera *lightClusterCamera, Function &&function);
-		void SubmitRenderPass(RenderPass *renderPass, VulkanRenderPass &previousRenderPass);
-		void PrepareRenderFrame();
-		void UpdateDescriptorSets();
+		void SubmitCamera(VulkanFrameSubmission &submission, Camera *camera, Camera *lightClusterCamera, Function &&function);
+		void SubmitRenderPass(VulkanFrameSubmission &submission, RenderPass *renderPass, VulkanRenderPass &previousRenderPass);
+		void SubmitDrawable(VulkanFrameSubmission &submission, Drawable *drawable);
+		void PrepareRenderFrame(VulkanFrameSubmission &submission);
+		void UpdateDescriptorSets(VulkanFrameSubmission &submission);
 		void RenderDrawable(VkCommandBuffer commandBuffer, const VulkanPreparedDrawItem &drawItem, uint32 instanceCount);
-		void FillUniformBuffer(Shader::ArgumentBuffer *argumentBuffer, VulkanDynamicBufferReference *dynamicBufferReference, const RenderFrame::DrawItem &drawItem, const Material::Properties &mergedMaterialProperties, size_t renderFramePassIndex);
+		void FillUniformBuffer(Shader::ArgumentBuffer *argumentBuffer, VulkanDynamicBufferReference *dynamicBufferReference, const RenderFrame::DrawItem &drawItem, const Material::Properties &mergedMaterialProperties, const RenderFrame::Pass &framePass);
 		void ResetDrawBindStateCache();
+		VulkanFrameSubmission &GetActiveFrameSubmission();
 
 		void RenderAPIRenderPass(VulkanCommandBuffer *commandBuffer, const VulkanRenderPass &renderPass);
 
-		void SetupRendertargets(VkCommandBuffer commandBuffer, const VulkanRenderPass &renderpass);
-		VkRenderPass GetVulkanRenderPass(const VulkanRenderPass *renderPass);
+		void SetupRendertargets(VkCommandBuffer commandBuffer, const VulkanFrameSubmission &submission, const VulkanRenderPass &renderPass);
+		VkRenderPass GetVulkanRenderPass(const RenderFrame &renderFrame, const VulkanRenderPass *renderPass);
 		void FlushDeletedDrawables();
 
 		void CreateVulkanCommandBuffers(size_t count, std::vector<VkCommandBuffer> &buffers);
@@ -117,6 +120,7 @@ namespace RN
 		ShaderLibrary *_defaultShaderLibrary;
 
 		PIMPL<VulkanRendererInternals> _internals;
+		VulkanFrameSubmission *_activeFrameSubmission;
 
 		Lockable _lock;
 

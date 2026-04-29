@@ -15,6 +15,7 @@
 
 namespace RN
 {
+	class RenderFrame;
 	struct VulkanRenderPass;
 	class VulkanFramebuffer : public Framebuffer
 	{
@@ -69,7 +70,7 @@ namespace RN
 		VKAPI void DidUpdateSwapChain(Vector2 size, uint8 layerCount, Texture::Format colorFormat, Texture::Format depthStencilFormat, Texture::Format fragmentDensityFormat);
 
 	private:
-		void PrepareAsRendertargetForFrame(const VulkanRenderPass *renderPass);
+		void PrepareAsRendertargetForFrame(const RenderFrame &renderFrame, const VulkanRenderPass *renderPass);
 		void SetAsRendertarget(VkCommandBuffer commandBuffer, VulkanFramebuffer *resolveFramebuffer, const Color &clearColor, float depth, uint8 stencil) const;
 
 		VulkanRenderer *_renderer;

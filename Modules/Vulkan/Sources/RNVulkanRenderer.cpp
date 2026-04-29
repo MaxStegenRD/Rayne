@@ -39,6 +39,7 @@ namespace RN
 		_commandBufferPool(new Array()),
 		_commandBufferResourcesPool(new Array()),
 		_defaultPostProcessingDrawable(nullptr),
+		_activeFrameSubmission(nullptr),
 		_currentMultiviewLayer(0),
 		_currentMultiviewCount(0),
 		_currentMultiviewFallbackRenderPass(nullptr)
@@ -144,11 +145,17 @@ namespace RN
 		_internals->drawBindStateCache.indexType = VK_INDEX_TYPE_UINT16;
 	}
 
-	VkRenderPass VulkanRenderer::GetVulkanRenderPass(const VulkanRenderPass *renderPass)
+	VulkanFrameSubmission &VulkanRenderer::GetActiveFrameSubmission()
 	{
-		const RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderPass->renderFramePassIndex);
+		RN_ASSERT(_activeFrameSubmission, "No active Vulkan frame submission");
+		return *_activeFrameSubmission;
+	}
+
+	VkRenderPass VulkanRenderer::GetVulkanRenderPass(const RenderFrame &renderFrame, const VulkanRenderPass *renderPass)
+	{
+		const RenderFrame::Pass &framePass = renderFrame.GetPass(renderPass->renderFramePassIndex);
 		uint8 multiviewCount = framePass.GetMultiviewCameraCount();
-		return _internals->stateCoordinator.GetRenderPassState(_internals->renderFrame, renderPass, multiviewCount)->renderPass;
+		return _internals->stateCoordinator.GetRenderPassState(renderFrame, renderPass, multiviewCount)->renderPass;
 	}
 
 	void VulkanRenderer::CreateVulkanCommandBuffers(size_t count, std::vector<VkCommandBuffer> &buffers)
@@ -363,19 +370,15 @@ namespace RN
 	{
 		RN_PROFILE_SCOPE();
 
+		VulkanFrameSubmission submission;
+
 		_internals->stateCoordinator.SavePipelineCache(Kernel::GetSharedInstance()->GetApplication()->GetBuildNumber(), GetVulkanDevice()); //This won't do anything if no new pipelines were loaded
 
 		_currentDrawableIndex = 0;
-		_internals->renderPasses.clear();
-		_internals->preparedRenderPasses.clear();
-		_internals->totalDrawableCount = 0;
-		_internals->currentRenderPassIndex = 0;
 		_internals->totalDescriptorTables = 0;
-		_internals->swapChains.clear();
 	//		_currentRootSignature = nullptr;
 
 		UpdateFrameFences(); //Releases resources of frames that finished
-		_internals->renderFrame.Clear();
 		_frameStatistics.clear();
 		FlushDeletedDrawables();
 
@@ -428,14 +431,17 @@ namespace RN
 		_lock.Unlock();
 
 		//SubmitCamera is called for each camera and creates draw items per camera
+		VulkanFrameSubmission *previousSubmission = _activeFrameSubmission;
+		_activeFrameSubmission = &submission;
 		function();
+		_activeFrameSubmission = previousSubmission;
 
-		PrepareRenderFrame();
+		PrepareRenderFrame(submission);
 
 		_dynamicBufferPool->Update(this, _currentFrame, _completedFrame);
-		UpdateDescriptorSets();
+		UpdateDescriptorSets(submission);
 
-		for(VulkanSwapChain *swapChain : _internals->swapChains)
+		for(VulkanSwapChain *swapChain : submission.swapChains)
 		{
 			swapChain->AcquireBackBuffer();
 		}
@@ -445,28 +451,26 @@ namespace RN
 		_currentCommandBuffer->Begin();
 		ResetDrawBindStateCache();
 
-		if(_internals->swapChains.size() > 0)
+		if(submission.swapChains.size() > 0)
 		{
 			VkCommandBuffer commandBuffer = _currentCommandBuffer->GetCommandBuffer();
 			RN_PROFILE_VULKAN_SCOPE_CMD(_internals->tracyVulkanCtx, commandBuffer);
 
-			for(VulkanSwapChain *swapChain : _internals->swapChains)
+			for(VulkanSwapChain *swapChain : submission.swapChains)
 			{
 				swapChain->Prepare(commandBuffer);
 			}
 
-			_internals->currentRenderPassIndex = 0;
-			for(const VulkanRenderPass &renderPass : _internals->renderPasses)
+			for(const VulkanRenderPass &renderPass : submission.renderPasses)
 			{
 				if(!renderPass.UsesDrawItems())
 				{
 					RenderAPIRenderPass(_currentCommandBuffer, renderPass);
-					_internals->currentRenderPassIndex += 1;
 					continue;
 				}
 
 				//Set shadow depth texture layout for reading
-				Texture *directionalShadowDepthTexture = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex).GetDirectionalShadowDepthTexture();
+				Texture *directionalShadowDepthTexture = submission.renderFrame.GetPass(renderPass.renderFramePassIndex).GetDirectionalShadowDepthTexture();
 				VulkanTexture *directionalShadowVulkanTexture = directionalShadowDepthTexture ? directionalShadowDepthTexture->Downcast<VulkanTexture>() : nullptr;
 				if(directionalShadowVulkanTexture)
 				{
@@ -519,7 +523,7 @@ namespace RN
 
 				if(renderPass.subpasses.size() > 0)
 				{
-					const RenderPass::DrawSnapshot &drawSnapshot = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex).GetDrawSnapshot();
+					const RenderPass::DrawSnapshot &drawSnapshot = submission.renderFrame.GetPass(renderPass.renderFramePassIndex).GetDrawSnapshot();
 					const RenderPass::SubpassSnapshot &subpass = drawSnapshot.GetSubpass();
 					//Determine first/last usage of each color attachment across subpasses to choose appropriate initial/final layouts
 					uint32 numColorAttachments = renderPass.framebuffer->GetColorTargetCount();
@@ -561,15 +565,15 @@ namespace RN
 						}
 					}
 
-					SetupRendertargets(commandBuffer, renderPass);
+					SetupRendertargets(commandBuffer, submission, renderPass);
 
 					uint32 counter = 0;
 					for(const VulkanRenderPass &subpass : renderPass.subpasses)
 					{
 						//TODO: Sort drawables by camera and root signature? Maybe not...
 						//Draw drawables
-						RN_DEBUG_ASSERT(subpass.preparedRenderPassIndex < _internals->preparedRenderPasses.size(), "Invalid prepared render pass index");
-						const VulkanPreparedRenderPass &preparedPass = _internals->preparedRenderPasses[subpass.preparedRenderPassIndex];
+						RN_DEBUG_ASSERT(subpass.preparedRenderPassIndex < submission.preparedRenderPasses.size(), "Invalid prepared render pass index");
+						const VulkanPreparedRenderPass &preparedPass = submission.preparedRenderPasses[subpass.preparedRenderPassIndex];
 						const std::vector<VulkanPreparedDrawItem> &drawItems = preparedPass.drawItems;
 						uint32 stepSize = 0;
 						uint32 stepSizeIndex = 0;
@@ -591,12 +595,12 @@ namespace RN
 				}
 				else
 				{
-					RN_DEBUG_ASSERT(renderPass.preparedRenderPassIndex < _internals->preparedRenderPasses.size(), "Invalid prepared render pass index");
-					const VulkanPreparedRenderPass &preparedPass = _internals->preparedRenderPasses[renderPass.preparedRenderPassIndex];
+					RN_DEBUG_ASSERT(renderPass.preparedRenderPassIndex < submission.preparedRenderPasses.size(), "Invalid prepared render pass index");
+					const VulkanPreparedRenderPass &preparedPass = submission.preparedRenderPasses[renderPass.preparedRenderPassIndex];
 					const std::vector<VulkanPreparedDrawItem> &drawItems = preparedPass.drawItems;
 					if(!drawItems.empty())
 					{
-						SetupRendertargets(commandBuffer, renderPass);
+						SetupRendertargets(commandBuffer, submission, renderPass);
 
 						//TODO: Sort drawables by camera and root signature? Maybe not...
 						//Draw drawables
@@ -612,8 +616,8 @@ namespace RN
 					}
 				}
 
-				RN_DEBUG_ASSERT(renderPass.subpasses.size() > 0 || renderPass.preparedRenderPassIndex < _internals->preparedRenderPasses.size(), "Invalid prepared render pass index");
-				if(renderPass.subpasses.size() > 0 || !_internals->preparedRenderPasses[renderPass.preparedRenderPassIndex].drawItems.empty())
+				RN_DEBUG_ASSERT(renderPass.subpasses.size() > 0 || renderPass.preparedRenderPassIndex < submission.preparedRenderPasses.size(), "Invalid prepared render pass index");
+				if(renderPass.subpasses.size() > 0 || !submission.preparedRenderPasses[renderPass.preparedRenderPassIndex].drawItems.empty())
 				{
 					vk::CmdEndRenderPass(commandBuffer);
 				}
@@ -623,7 +627,7 @@ namespace RN
 					VulkanFramebuffer *fb = renderPass.framebuffer;
 					if(fb)
 					{
-						const RenderPass::DrawSnapshot &drawSnapshot = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex).GetDrawSnapshot();
+						const RenderPass::DrawSnapshot &drawSnapshot = submission.renderFrame.GetPass(renderPass.renderFramePassIndex).GetDrawSnapshot();
 						const RenderPass::SubpassSnapshot &subpass = drawSnapshot.GetSubpass();
 						uint32 numColorAttachments = fb->GetColorTargetCount();
 
@@ -648,7 +652,7 @@ namespace RN
 				}
 
 				//Set shadow depth texture layout for writing
-				Texture *writeDirectionalShadowDepthTexture = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex).GetDirectionalShadowDepthTexture();
+				Texture *writeDirectionalShadowDepthTexture = submission.renderFrame.GetPass(renderPass.renderFramePassIndex).GetDirectionalShadowDepthTexture();
 				VulkanTexture *writeDirectionalShadowVulkanTexture = writeDirectionalShadowDepthTexture ? writeDirectionalShadowDepthTexture->Downcast<VulkanTexture>() : nullptr;
 				if(writeDirectionalShadowVulkanTexture)
 				{
@@ -699,10 +703,9 @@ namespace RN
 					}
 				}
 
-				_internals->currentRenderPassIndex += 1;
 			}
 
-			for(VulkanSwapChain *swapChain : _internals->swapChains)
+			for(VulkanSwapChain *swapChain : submission.swapChains)
 			{
 				swapChain->Finalize(commandBuffer);
 			}
@@ -715,7 +718,7 @@ namespace RN
 		std::vector<VkPipelineStageFlags> presentSemaphoresWaitStages;
 		std::vector<VkSemaphore> renderSemaphores;
 
-		for(VulkanSwapChain *swapChain : _internals->swapChains)
+		for(VulkanSwapChain *swapChain : submission.swapChains)
 		{
 			VkSemaphore presentSemaphore = swapChain->GetCurrentPresentSemaphore();
 			VkSemaphore renderSemaphore = swapChain->GetCurrentRenderSemaphore();
@@ -766,7 +769,7 @@ namespace RN
 		_frameFenceValues[_currentFrameFenceIndex] = _currentFrame;
 		RNVulkanValidate(vk::QueueSubmit(_workQueue, 1, &submitInfo, _frameFences[_currentFrameFenceIndex]));
 
-		for(VulkanSwapChain *swapChain : _internals->swapChains)
+		for(VulkanSwapChain *swapChain : submission.swapChains)
 		{
 			swapChain->PresentBackBuffer(_workQueue);
 		}
@@ -778,7 +781,7 @@ namespace RN
 		_currentFrame ++;
 	}
 
-	void VulkanRenderer::SetupRendertargets(VkCommandBuffer commandBuffer, const VulkanRenderPass &renderpass)
+	void VulkanRenderer::SetupRendertargets(VkCommandBuffer commandBuffer, const VulkanFrameSubmission &submission, const VulkanRenderPass &renderPass)
 	{
 		RN_PROFILE_SCOPE();
 		RN_PROFILE_VULKAN_SCOPE_CMD_N(_internals->tracyVulkanCtx, commandBuffer, "SetupRendertargets");
@@ -786,21 +789,21 @@ namespace RN
 		//TODO: Call PrepareAsRendertargetForFrame() only once per framebuffer per frame, find new solution for setting things up for msaa while reusing a framebuffer?
 		{
 			RN_PROFILE_VULKAN_SCOPE_CMD_N(_internals->tracyVulkanCtx, commandBuffer, "PrepareRendertargetForFrame");
-			renderpass.framebuffer->PrepareAsRendertargetForFrame(&renderpass);
+			renderPass.framebuffer->PrepareAsRendertargetForFrame(submission.renderFrame, &renderPass);
 		}
 		{
 			RN_PROFILE_VULKAN_SCOPE_CMD_N(_internals->tracyVulkanCtx, commandBuffer, "SetAsRendertarget");
-			const RenderPass::DrawSnapshot &drawSnapshot = _internals->renderFrame.GetPass(renderpass.renderFramePassIndex).GetDrawSnapshot();
-			renderpass.framebuffer->SetAsRendertarget(commandBuffer, renderpass.resolveFramebuffer, drawSnapshot.GetClearColor(), drawSnapshot.GetClearDepth(), drawSnapshot.GetClearStencil());
+			const RenderPass::DrawSnapshot &drawSnapshot = submission.renderFrame.GetPass(renderPass.renderFramePassIndex).GetDrawSnapshot();
+			renderPass.framebuffer->SetAsRendertarget(commandBuffer, renderPass.resolveFramebuffer, drawSnapshot.GetClearColor(), drawSnapshot.GetClearDepth(), drawSnapshot.GetClearStencil());
 		}
 		ResetDrawBindStateCache();
 
 		//Setup viewport and scissor rect
-		Rect cameraRect = _internals->renderFrame.GetPass(renderpass.renderFramePassIndex).GetCameraSnapshot().GetFrame();
-		if(renderpass.resolveFramebuffer)
+		Rect cameraRect = submission.renderFrame.GetPass(renderPass.renderFramePassIndex).GetCameraSnapshot().GetFrame();
+		if(renderPass.resolveFramebuffer)
 		{
-			if(cameraRect.width > renderpass.resolveFramebuffer->_size.x) cameraRect.width = renderpass.resolveFramebuffer->_size.x;
-			if(cameraRect.height > renderpass.resolveFramebuffer->_size.y) cameraRect.height = renderpass.resolveFramebuffer->_size.y;
+			if(cameraRect.width > renderPass.resolveFramebuffer->_size.x) cameraRect.width = renderPass.resolveFramebuffer->_size.x;
+			if(cameraRect.height > renderPass.resolveFramebuffer->_size.y) cameraRect.height = renderPass.resolveFramebuffer->_size.y;
 		}
 
 		// Update dynamic viewport state
@@ -827,10 +830,10 @@ namespace RN
 	//TODO: Merge parts of this with SubmitRenderPass and call it in here
 	void VulkanRenderer::SubmitCamera(Camera *camera, Function &&function)
 	{
-		SubmitCamera(camera, camera, std::move(function));
+		SubmitCamera(GetActiveFrameSubmission(), camera, camera, std::move(function));
 	}
 
-	void VulkanRenderer::SubmitCamera(Camera *camera, Camera *lightClusterCamera, Function &&function)
+	void VulkanRenderer::SubmitCamera(VulkanFrameSubmission &frameSubmission, Camera *camera, Camera *lightClusterCamera, Function &&function)
 	{
 		RN_PROFILE_SCOPE();
 		VulkanRenderPass renderPass;
@@ -864,16 +867,16 @@ namespace RN
 						_currentMultiviewLayer = i;
 						_currentMultiviewCount = increment;
 
-						RN::Function submission = RN::MakeFunction([&function](){ function(); });
+						RN::Function cameraSubmission = RN::MakeFunction([&function](){ function(); });
 						if(increment == 1)
 						{
 							_currentMultiviewFallbackRenderPass = camera->GetRenderPass();
-							SubmitCamera(multiviewCameras->GetObjectAtIndex<Camera>(i), lightClusterCamera, std::move(submission));
+							SubmitCamera(frameSubmission, multiviewCameras->GetObjectAtIndex<Camera>(i), lightClusterCamera, std::move(cameraSubmission));
 							_currentMultiviewFallbackRenderPass = nullptr;
 						}
 						else
 						{
-							SubmitCamera(camera, lightClusterCamera, std::move(submission));
+							SubmitCamera(frameSubmission, camera, lightClusterCamera, std::move(cameraSubmission));
 						}
 
 						_currentMultiviewLayer = 0;
@@ -894,8 +897,8 @@ namespace RN
 					_currentMultiviewCount = 1;
 					_currentMultiviewFallbackRenderPass = camera->GetRenderPass();
 
-					RN::Function submission = RN::MakeFunction([&function](){ function(); });
-					SubmitCamera(multiviewCamera, lightClusterCamera, std::move(submission));
+					RN::Function cameraSubmission = RN::MakeFunction([&function](){ function(); });
+					SubmitCamera(frameSubmission, multiviewCamera, lightClusterCamera, std::move(cameraSubmission));
 
 					_currentMultiviewLayer = 0;
 					_currentMultiviewCount = 0;
@@ -924,12 +927,12 @@ namespace RN
 		renderPass.resolveFramebuffer = nullptr;
 
 		renderPass.shaderHint = rootDrawSnapshot.GetShaderHint();
-		renderPass.renderFramePassIndex = _internals->renderFrame.AddPass(rootDrawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetIdentity(), renderPassResources->GetOverrideMaterialSnapshotVersion());
+		renderPass.renderFramePassIndex = frameSubmission.renderFrame.AddPass(rootDrawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetIdentity(), renderPassResources->GetOverrideMaterialSnapshotVersion());
 
 		Matrix clipSpaceCorrectionMatrix;
 		clipSpaceCorrectionMatrix.m[5] = -1.0f;
 		RenderFrame::CameraSnapshot cameraSnapshot = RenderFrame::CameraSnapshot::WithCamera(camera, rootDrawSnapshot.GetFrame(), clipSpaceCorrectionMatrix);
-		RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex);
+		RenderFrame::Pass &framePass = frameSubmission.renderFrame.GetPass(renderPass.renderFramePassIndex);
 		framePass.SetCameraSnapshot(cameraSnapshot);
 		for(Camera *multiviewCamera : multiviewSnapshotCameras)
 		{
@@ -939,52 +942,33 @@ namespace RN
 		Framebuffer *framebuffer = rootDrawSnapshot.GetFramebuffer();
 		if(!framebuffer) return;
 
-		VulkanSwapChain *newSwapChain = nullptr;
-		newSwapChain = framebuffer->Downcast<VulkanFramebuffer>()->GetSwapChain();
 		renderPass.framebuffer = framebuffer->Downcast<VulkanFramebuffer>();
+		frameSubmission.AddSwapChain(renderPass.framebuffer->GetSwapChain());
 
-		if(newSwapChain)
-		{
-			bool notIncluded = true;
-			for(VulkanSwapChain *swapChain : _internals->swapChains)
-			{
-				if(swapChain == newSwapChain)
-				{
-					notIncluded = false;
-					break;
-				}
-			}
-
-			if(notIncluded)
-			{
-				_internals->swapChains.push_back(newSwapChain);
-			}
-		}
-
-		size_t previousRenderPassIndex = _internals->renderPasses.size();
-		_internals->currentRenderPassIndex = previousRenderPassIndex;
-		_internals->renderPasses.push_back(renderPass);
+		size_t previousRenderPassIndex = frameSubmission.renderPasses.size();
+		frameSubmission.activeRenderPassIndex = previousRenderPassIndex;
+		frameSubmission.renderPasses.push_back(renderPass);
 
 		const Array *nextRenderPasses = renderPass.renderPass->GetNextRenderPasses();
 		nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
-			SubmitRenderPass(nextPass, _internals->renderPasses[previousRenderPassIndex]);
+			SubmitRenderPass(frameSubmission, nextPass, frameSubmission.renderPasses[previousRenderPassIndex]);
 		});
 
-		_internals->currentRenderPassIndex = previousRenderPassIndex;
+		frameSubmission.activeRenderPassIndex = previousRenderPassIndex;
 
-		for(size_t i = previousRenderPassIndex; i < _internals->renderPasses.size(); i++)
+		for(size_t i = previousRenderPassIndex; i < frameSubmission.renderPasses.size(); i++)
 		{
-			VulkanRenderPass &renderpass = _internals->renderPasses[i];
-			renderpass.subpassSignature = 0;
-			if(renderpass.subpasses.size() > 0)
+			VulkanRenderPass &submittedRenderPass = frameSubmission.renderPasses[i];
+			submittedRenderPass.subpassSignature = 0;
+			if(submittedRenderPass.subpasses.size() > 0)
 			{
-				uint32 colorAttachmentCount = renderpass.framebuffer->GetColorTargetCount();
-				bool hasDepth = (renderpass.framebuffer->_depthStencilTarget != nullptr);
+				uint32 colorAttachmentCount = submittedRenderPass.framebuffer->GetColorTargetCount();
+				bool hasDepth = (submittedRenderPass.framebuffer->_depthStencilTarget != nullptr);
 
 				uint64 signature = 0;
-				for(size_t si = 0; si < renderpass.subpasses.size(); si++)
+				for(size_t si = 0; si < submittedRenderPass.subpasses.size(); si++)
 				{
-					const RenderPass::SubpassSnapshot &subpassSnapshot = _internals->renderFrame.GetPass(renderpass.subpasses[si].renderFramePassIndex).GetDrawSnapshot().GetSubpass();
+					const RenderPass::SubpassSnapshot &subpassSnapshot = frameSubmission.renderFrame.GetPass(submittedRenderPass.subpasses[si].renderFramePassIndex).GetDrawSnapshot().GetSubpass();
 					for(uint32 ci = 0; ci < colorAttachmentCount; ci++)
 					{
 						const auto colorAttachment = subpassSnapshot.GetColorAttachment(ci);
@@ -997,11 +981,11 @@ namespace RN
 						else if(subpassSnapshot.GetReadsDepthStencil()) signature ^= (0x165667b1 + (static_cast<uint64>(si) << 1));
 					}
 				}
-				renderpass.subpassSignature = signature ^ (static_cast<uint64>(renderpass.subpasses.size()) * 0x9e3779b97f4a7c15ull);
+				submittedRenderPass.subpassSignature = signature ^ (static_cast<uint64>(submittedRenderPass.subpasses.size()) * 0x9e3779b97f4a7c15ull);
 			}
 		}
 
-		const size_t submittedRenderPassEndIndex = _internals->renderPasses.size();
+		const size_t submittedRenderPassEndIndex = frameSubmission.renderPasses.size();
 
 		// Run once to submit all scene nodes; SubmitDrawable will route to all matching passes
 		LightManager::DrawSnapshot lightClusterSnapshot;
@@ -1017,13 +1001,13 @@ namespace RN
 			if(!submittedRenderPass.UsesDrawItems())
 				return;
 
-			RenderFrame::Pass &submittedFramePass = _internals->renderFrame.GetPass(submittedRenderPass.renderFramePassIndex);
+			RenderFrame::Pass &submittedFramePass = frameSubmission.renderFrame.GetPass(submittedRenderPass.renderFramePassIndex);
 			submittedFramePass.SetLightClusterSnapshot(lightClusterSnapshot);
 		};
 
 		for(size_t i = previousRenderPassIndex; i < submittedRenderPassEndIndex; i++)
 		{
-			VulkanRenderPass &submittedRenderPass = _internals->renderPasses[i];
+			VulkanRenderPass &submittedRenderPass = frameSubmission.renderPasses[i];
 			setLightClusterSnapshot(submittedRenderPass);
 			for(VulkanRenderPass &subpass : submittedRenderPass.subpasses)
 			{
@@ -1032,12 +1016,11 @@ namespace RN
 		}
 	}
 
-	void VulkanRenderer::SubmitRenderPass(RenderPass *renderPass, VulkanRenderPass &previousRenderPass)
+	void VulkanRenderer::SubmitRenderPass(VulkanFrameSubmission &frameSubmission, RenderPass *renderPass, VulkanRenderPass &previousRenderPass)
 	{
 		RN_PROFILE_SCOPE();
 
 		renderPass->UpdateSubpassChain();
-		_internals->currentSubpassIndex = 0;
 
 		PostProcessingAPIStage *apiStage = renderPass->Downcast<PostProcessingAPIStage>();
 		bool isPostProcessingStage = renderPass->IsKindOfClass(PostProcessingStage::GetMetaClass());
@@ -1096,34 +1079,15 @@ namespace RN
 		if(!drawSnapshot.IsSubpass())
 		{
 			Framebuffer *framebuffer = drawSnapshot.GetFramebuffer();
-			VulkanSwapChain *newSwapChain = nullptr;
-			newSwapChain = framebuffer->Downcast<VulkanFramebuffer>()->GetSwapChain();
 			vulkanRenderPass.framebuffer = framebuffer->Downcast<VulkanFramebuffer>();
-
-			if(newSwapChain)
-			{
-				bool notIncluded = true;
-				for(VulkanSwapChain *swapChain : _internals->swapChains)
-				{
-					if(swapChain == newSwapChain)
-					{
-						notIncluded = false;
-						break;
-					}
-				}
-
-				if(notIncluded)
-				{
-					_internals->swapChains.push_back(newSwapChain);
-				}
-			}
+			frameSubmission.AddSwapChain(vulkanRenderPass.framebuffer->GetSwapChain());
 		}
 
 		if(vulkanRenderPass.type != VulkanRenderPass::Type::ResolveMSAA)
 		{
-			vulkanRenderPass.renderFramePassIndex = _internals->renderFrame.AddPass(drawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetIdentity(), renderPassResources->GetOverrideMaterialSnapshotVersion());
-			RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(vulkanRenderPass.renderFramePassIndex);
-			const RenderFrame::Pass &previousFramePass = _internals->renderFrame.GetPass(previousRenderPass.renderFramePassIndex);
+			vulkanRenderPass.renderFramePassIndex = frameSubmission.renderFrame.AddPass(drawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetIdentity(), renderPassResources->GetOverrideMaterialSnapshotVersion());
+			RenderFrame::Pass &framePass = frameSubmission.renderFrame.GetPass(vulkanRenderPass.renderFramePassIndex);
+			const RenderFrame::Pass &previousFramePass = frameSubmission.renderFrame.GetPass(previousRenderPass.renderFramePassIndex);
 			framePass.SetCameraSnapshot(previousFramePass.GetCameraSnapshot());
 			for(const RenderFrame::CameraSnapshot &multiviewCameraSnapshot : previousFramePass.GetMultiviewCameraSnapshots())
 			{
@@ -1135,8 +1099,8 @@ namespace RN
 			}
 			else
 			{
-				_internals->currentRenderPassIndex = _internals->renderPasses.size();
-				_internals->renderPasses.push_back(vulkanRenderPass);
+				frameSubmission.activeRenderPassIndex = frameSubmission.renderPasses.size();
+				frameSubmission.renderPasses.push_back(vulkanRenderPass);
 
 				// Inject a default fullscreen quad for post processing passes so we don't redraw the whole scene.
 				if(isPostProcessingStage || vulkanRenderPass.type == VulkanRenderPass::Type::Convert)
@@ -1152,19 +1116,19 @@ namespace RN
 						_lock.Unlock();
 					}
 
-					SubmitDrawable(_defaultPostProcessingDrawable);
+					SubmitDrawable(frameSubmission, _defaultPostProcessingDrawable);
 				}
 			}
 
 		}
 		else
 		{
-			_internals->renderPasses[_internals->currentRenderPassIndex].resolveFramebuffer = vulkanRenderPass.framebuffer;
+			frameSubmission.renderPasses[frameSubmission.activeRenderPassIndex].resolveFramebuffer = vulkanRenderPass.framebuffer;
 		}
 
 		const Array *nextRenderPasses = renderPass->GetNextRenderPasses();
 		nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
-			SubmitRenderPass(nextPass, _internals->renderPasses[_internals->currentRenderPassIndex]);
+			SubmitRenderPass(frameSubmission, nextPass, frameSubmission.renderPasses[frameSubmission.activeRenderPassIndex]);
 		});
 	}
 
@@ -1362,11 +1326,10 @@ namespace RN
 		return new VulkanFramebuffer(size, this);
 	}
 
-	void VulkanRenderer::FillUniformBuffer(Shader::ArgumentBuffer *argumentBuffer, VulkanDynamicBufferReference *dynamicBufferReference, const RenderFrame::DrawItem &drawItem, const Material::Properties &mergedMaterialProperties, size_t renderFramePassIndex)
+	void VulkanRenderer::FillUniformBuffer(Shader::ArgumentBuffer *argumentBuffer, VulkanDynamicBufferReference *dynamicBufferReference, const RenderFrame::DrawItem &drawItem, const Material::Properties &mergedMaterialProperties, const RenderFrame::Pass &framePass)
 	{
 		uint8 *buffer = reinterpret_cast<uint8 *>(dynamicBufferReference->dynamicBuffer->GetBuffer()) + dynamicBufferReference->offset;
 
-		const RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderFramePassIndex);
 		const RenderFrame::CameraSnapshot &cameraSnapshot = framePass.GetCameraSnapshot();
 		const std::vector<RenderFrame::CameraSnapshot> &multiviewCameraSnapshots = framePass.GetMultiviewCameraSnapshots();
 		const Matrix &modelMatrix = drawItem.GetModelMatrix();
@@ -2003,9 +1966,10 @@ namespace RN
 
 	void VulkanRenderer::SubmitLight(const Light *light)
 	{
+		VulkanFrameSubmission &frameSubmission = GetActiveFrameSubmission();
+
 		// Distribute the light to all passes belonging to the current camera range
-		size_t startIndex = _internals->currentRenderPassIndex;
-		size_t originalIndex = _internals->currentRenderPassIndex;
+		size_t startIndex = frameSubmission.activeRenderPassIndex;
 
 		std::vector<Matrix> directionalShadowMatrices;
 		Vector2 directionalShadowInfo;
@@ -2023,7 +1987,7 @@ namespace RN
 
 		auto submitLightToRenderPass = [&](VulkanRenderPass &renderPass, VulkanFramebuffer *framebuffer) {
 			if(!renderPass.UsesDrawItems()) return;
-			RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex);
+			RenderFrame::Pass &framePass = frameSubmission.renderFrame.GetPass(renderPass.renderFramePassIndex);
 
 			if(light->GetType() == Light::Type::DirectionalLight)
 			{
@@ -2059,17 +2023,15 @@ namespace RN
 			}
 		};
 
-		for(size_t pi = startIndex; pi < _internals->renderPasses.size(); pi++)
+		for(size_t pi = startIndex; pi < frameSubmission.renderPasses.size(); pi++)
 		{
-			VulkanRenderPass &renderPass = _internals->renderPasses[pi];
+			VulkanRenderPass &renderPass = frameSubmission.renderPasses[pi];
 			submitLightToRenderPass(renderPass, renderPass.framebuffer);
 			for(VulkanRenderPass &subpass : renderPass.subpasses)
 			{
 				submitLightToRenderPass(subpass, renderPass.framebuffer);
 			}
 		}
-
-		_internals->currentRenderPassIndex = originalIndex;
 	}
 
 	void VulkanRenderer::WarmupDrawable(Mesh *mesh, Material *material, Camera *camera)
@@ -2130,11 +2092,11 @@ namespace RN
 		_internals->stateCoordinator.GetRenderPipelineState(mergedMaterialSnapshot.GetVertexShader(), mergedMaterialSnapshot.GetFragmentShader(), meshSnapshot, mergedMaterialSnapshot.GetPipelineProperties(), warmupFrame, &warmupRenderPass, 0, static_cast<uint8>(multiviewCameraCount));
 	}
 
-	void VulkanRenderer::PrepareRenderFrame()
+	void VulkanRenderer::PrepareRenderFrame(VulkanFrameSubmission &submission)
 	{
 		RN_PROFILE_SCOPE();
 
-		_internals->preparedRenderPasses.clear();
+		submission.preparedRenderPasses.clear();
 
 		auto ensureRenderPassResources = [&](VulkanRenderPass &renderSubPass) {
 			renderSubPass.preparedRenderPassIndex = RenderFrame::InvalidPassIndex;
@@ -2144,10 +2106,10 @@ namespace RN
 				return;
 			}
 
-			const RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderSubPass.renderFramePassIndex);
+			const RenderFrame::Pass &framePass = submission.renderFrame.GetPass(renderSubPass.renderFramePassIndex);
 			const std::vector<RenderFrame::DrawItem> &drawItems = framePass.GetDrawItems();
-			renderSubPass.preparedRenderPassIndex = _internals->preparedRenderPasses.size();
-			_internals->preparedRenderPasses.emplace_back();
+			renderSubPass.preparedRenderPassIndex = submission.preparedRenderPasses.size();
+			submission.preparedRenderPasses.emplace_back();
 
 			for(const RenderFrame::DrawItem &drawItem : drawItems)
 			{
@@ -2181,13 +2143,9 @@ namespace RN
 			return pipelineKey;
 		};
 
-		for(VulkanRenderPass &renderPass : _internals->renderPasses)
+		for(VulkanRenderPass &renderPass : submission.renderPasses)
 		{
-			if(!renderPass.UsesDrawItems())
-			{
-				ensureRenderPassResources(renderPass);
-			}
-			else if(renderPass.subpasses.size() > 0)
+			if(renderPass.UsesDrawItems() && renderPass.subpasses.size() > 0)
 			{
 				renderPass.preparedRenderPassIndex = RenderFrame::InvalidPassIndex;
 				for(VulkanRenderPass &renderSubPass : renderPass.subpasses)
@@ -2205,8 +2163,8 @@ namespace RN
 			if(renderSubPass.preparedRenderPassIndex == RenderFrame::InvalidPassIndex)
 				return;
 
-			VulkanPreparedRenderPass &preparedPass = _internals->preparedRenderPasses[renderSubPass.preparedRenderPassIndex];
-			const RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderSubPass.renderFramePassIndex);
+			VulkanPreparedRenderPass &preparedPass = submission.preparedRenderPasses[renderSubPass.preparedRenderPassIndex];
+			const RenderFrame::Pass &framePass = submission.renderFrame.GetPass(renderSubPass.renderFramePassIndex);
 			const std::vector<RenderFrame::DrawItem> &drawItems = framePass.GetDrawItems();
 			if(drawItems.empty())
 				return;
@@ -2230,7 +2188,7 @@ namespace RN
 
 				if(!renderResources.pipelineState || renderResources.pipelineKey != pipelineKey)
 				{
-					const VulkanPipelineState *pipelineState = _internals->stateCoordinator.GetRenderPipelineState(pipelineKey.vertexShader, pipelineKey.fragmentShader, drawItem.GetMesh(), pipelineKey.materialProperties, _internals->renderFrame, &renderPass, subpassIndex, pipelineKey.renderViewCount);
+					const VulkanPipelineState *pipelineState = _internals->stateCoordinator.GetRenderPipelineState(pipelineKey.vertexShader, pipelineKey.fragmentShader, drawItem.GetMesh(), pipelineKey.materialProperties, submission.renderFrame, &renderPass, subpassIndex, pipelineKey.renderViewCount);
 					VulkanUniformState *uniformState = _internals->stateCoordinator.GetUniformStateForPipelineState(pipelineState);
 
 					RN_ASSERT(pipelineState && uniformState, "Failed to create pipeline or uniform state for drawable!");
@@ -2314,7 +2272,7 @@ namespace RN
 			}
 		};
 
-		for(VulkanRenderPass &renderPass : _internals->renderPasses)
+		for(VulkanRenderPass &renderPass : submission.renderPasses)
 		{
 			if(!renderPass.UsesDrawItems())
 			{
@@ -2335,9 +2293,14 @@ namespace RN
 		}
 	}
 
-	void VulkanRenderer::SubmitDrawable(Drawable *tdrawable)
+	void VulkanRenderer::SubmitDrawable(Drawable *drawable)
 	{
-		VulkanDrawable *drawable = static_cast<VulkanDrawable *>(tdrawable);
+		SubmitDrawable(GetActiveFrameSubmission(), drawable);
+	}
+
+	void VulkanRenderer::SubmitDrawable(VulkanFrameSubmission &frameSubmission, Drawable *sourceDrawable)
+	{
+		VulkanDrawable *drawable = static_cast<VulkanDrawable *>(sourceDrawable);
 
 		auto submitDrawable = [&](VulkanRenderPass &renderSubPass) {
 			if(!renderSubPass.UsesDrawItems())
@@ -2346,7 +2309,7 @@ namespace RN
 			if((renderSubPass.type == VulkanRenderPass::Type::Convert || renderSubPass.renderPass->IsKindOfClass(PostProcessingStage::GetMetaClass())) && drawable != _defaultPostProcessingDrawable)
 				return;
 
-			RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderSubPass.renderFramePassIndex);
+			RenderFrame::Pass &framePass = frameSubmission.renderFrame.GetPass(renderSubPass.renderFramePassIndex);
 			const RenderPass::DrawSnapshot &renderSubPassDrawSnapshot = framePass.GetDrawSnapshot();
 			if((drawable->GetRenderGroup() & renderSubPassDrawSnapshot.GetRenderGroupMask()) == 0)
 				return;
@@ -2354,9 +2317,9 @@ namespace RN
 			framePass.AddDrawItem(drawable);
 		};
 
-		for(size_t pi = _internals->currentRenderPassIndex; pi < _internals->renderPasses.size(); pi += 1)
+		for(size_t pi = frameSubmission.activeRenderPassIndex; pi < frameSubmission.renderPasses.size(); pi += 1)
 		{
-			VulkanRenderPass &renderPass = _internals->renderPasses[pi];
+			VulkanRenderPass &renderPass = frameSubmission.renderPasses[pi];
 			if(!renderPass.UsesDrawItems())
 			{
 				continue;
@@ -2375,7 +2338,7 @@ namespace RN
 		}
 	}
 
-	void VulkanRenderer::UpdateDescriptorSets()
+	void VulkanRenderer::UpdateDescriptorSets(VulkanFrameSubmission &submission)
 	{
 		RN_PROFILE_SCOPE();
 
@@ -2384,13 +2347,13 @@ namespace RN
 		uint32 totalSubpassInputCount = 0;
 
 		auto accumulateDescriptorCounts = [&](const VulkanRenderPass &renderPass) {
-			RN_DEBUG_ASSERT(renderPass.preparedRenderPassIndex < _internals->preparedRenderPasses.size(), "Invalid prepared render pass index");
-			const VulkanPreparedRenderPass &preparedPass = _internals->preparedRenderPasses[renderPass.preparedRenderPassIndex];
+			RN_DEBUG_ASSERT(renderPass.preparedRenderPassIndex < submission.preparedRenderPasses.size(), "Invalid prepared render pass index");
+			const VulkanPreparedRenderPass &preparedPass = submission.preparedRenderPasses[renderPass.preparedRenderPassIndex];
 			const std::vector<VulkanPreparedDrawItem> &drawItems = preparedPass.drawItems;
 			if(drawItems.empty())
 				return;
 
-			const RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex);
+			const RenderFrame::Pass &framePass = submission.renderFrame.GetPass(renderPass.renderFramePassIndex);
 			const bool hasLightClusterSnapshot = framePass.GetLightClusterSnapshot().IsValid();
 			uint32 stepSize = 0;
 			uint32 stepSizeIndex = 0;
@@ -2412,7 +2375,7 @@ namespace RN
 			}
 		};
 
-		for(const VulkanRenderPass &renderPass : _internals->renderPasses)
+		for(const VulkanRenderPass &renderPass : submission.renderPasses)
 		{
 			RN_PROFILE_SCOPE();
 			if(!renderPass.UsesDrawItems())
@@ -2443,11 +2406,12 @@ namespace RN
 		subpassInputDescriptorInfoArray.reserve(totalSubpassInputCount);
 
 		auto updateDescriptorSets = [&](const VulkanRenderPass &renderPass, VulkanRenderPass &rootRenderPass) {
-			RN_DEBUG_ASSERT(renderPass.preparedRenderPassIndex < _internals->preparedRenderPasses.size(), "Invalid prepared render pass index");
-			const VulkanPreparedRenderPass &preparedPass = _internals->preparedRenderPasses[renderPass.preparedRenderPassIndex];
+			RN_DEBUG_ASSERT(renderPass.preparedRenderPassIndex < submission.preparedRenderPasses.size(), "Invalid prepared render pass index");
+			const VulkanPreparedRenderPass &preparedPass = submission.preparedRenderPasses[renderPass.preparedRenderPassIndex];
 			const std::vector<VulkanPreparedDrawItem> &drawItems = preparedPass.drawItems;
 			if(!drawItems.empty())
 			{
+				const RenderFrame::Pass &framePass = submission.renderFrame.GetPass(renderPass.renderFramePassIndex);
 				std::vector<uint32> subpassInputColorIndices;
 				bool subpassReadsDepthStencilAttachment = false;
 				VulkanFramebuffer *rootFramebuffer = rootRenderPass.framebuffer;
@@ -2456,7 +2420,7 @@ namespace RN
 
 				if(rootFramebuffer && rootRenderPass.subpasses.size() > 0)
 				{
-					const RenderPass::SubpassSnapshot &subpassSnapshot = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex).GetDrawSnapshot().GetSubpass();
+					const RenderPass::SubpassSnapshot &subpassSnapshot = framePass.GetDrawSnapshot().GetSubpass();
 					uint32 totalColorAttachments = rootFramebuffer->_swapChain ? 1 : static_cast<uint32>(rootFramebuffer->_colorTargets.size());
 					for(uint32 ci = 0; ci < totalColorAttachments; ci++)
 					{
@@ -2531,7 +2495,7 @@ namespace RN
 							VulkanUniformState *instanceUniformState = instanceRenderResources.uniformState;
 							VulkanDynamicBufferReference *instanceAttributesBuffer = instanceUniformState->instanceAttributesBuffer;
 							_dynamicBufferPool->UpdateDynamicBufferReference(instanceAttributesBuffer, instance == 0);
-							FillUniformBuffer(argument, instanceAttributesBuffer, instanceDrawItem, instanceRenderResources.mergedMaterialSnapshot.GetProperties(), renderPass.renderFramePassIndex);
+							FillUniformBuffer(argument, instanceAttributesBuffer, instanceDrawItem, instanceRenderResources.mergedMaterialSnapshot.GetProperties(), framePass);
 						}
 					}
 
@@ -2550,7 +2514,7 @@ namespace RN
 							const VulkanDrawable::RenderResources &instanceRenderResources = *instancePreparedDrawItem.renderResources;
 							VulkanUniformState *instanceUniformState = instanceRenderResources.uniformState;
 							_dynamicBufferPool->UpdateDynamicBufferReference(instanceUniformState->vertexConstantBuffers[bufferIndex], instance == 0);
-							FillUniformBuffer(argument, instanceUniformState->vertexConstantBuffers[bufferIndex], instanceDrawItem, instanceRenderResources.mergedMaterialSnapshot.GetProperties(), renderPass.renderFramePassIndex);
+							FillUniformBuffer(argument, instanceUniformState->vertexConstantBuffers[bufferIndex], instanceDrawItem, instanceRenderResources.mergedMaterialSnapshot.GetProperties(), framePass);
 						}
 
 						VulkanDynamicBufferReference *constantBuffer = uniformState->vertexConstantBuffers[bufferIndex];
@@ -2590,7 +2554,7 @@ namespace RN
 							_dynamicBufferPool->UpdateDynamicBufferReference(
 								instanceUniformState->fragmentConstantBuffers[bufferIndex],
 								instance == 0);
-							FillUniformBuffer(argument, instanceUniformState->fragmentConstantBuffers[bufferIndex], instanceDrawItem, instanceRenderResources.mergedMaterialSnapshot.GetProperties(), renderPass.renderFramePassIndex);
+							FillUniformBuffer(argument, instanceUniformState->fragmentConstantBuffers[bufferIndex], instanceDrawItem, instanceRenderResources.mergedMaterialSnapshot.GetProperties(), framePass);
 						}
 
 						VulkanDynamicBufferReference *constantBuffer = uniformState->fragmentConstantBuffers[bufferIndex];
@@ -2615,7 +2579,6 @@ namespace RN
 					}
 
 					// Bind LightManager buffers by semantic for forward rendering
-					const RenderFrame::Pass &framePass = _internals->renderFrame.GetPass(renderPass.renderFramePassIndex);
 					const LightManager::DrawSnapshot &lightClusterSnapshot = framePass.GetLightClusterSnapshot();
 					if(lightClusterSnapshot.IsValid())
 					{
@@ -2760,7 +2723,7 @@ namespace RN
 						const Array *textures = renderResource.mergedMaterialSnapshot.GetTextures();
 						signature->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop) {
 							VkImageView imageView = VK_NULL_HANDLE;
-							Texture *directionalShadowDepthTexture = _internals->renderFrame.GetPass(rootRenderPass.renderFramePassIndex).GetDirectionalShadowDepthTexture();
+							Texture *directionalShadowDepthTexture = submission.renderFrame.GetPass(rootRenderPass.renderFramePassIndex).GetDirectionalShadowDepthTexture();
 							if(argument->GetMaterialTextureIndex() == Shader::ArgumentTexture::IndexDirectionalShadowTexture && directionalShadowDepthTexture)
 							{
 								const VulkanTexture *materialTexture = directionalShadowDepthTexture->Downcast<VulkanTexture>();
@@ -2831,7 +2794,7 @@ namespace RN
 			}
 		};
 
-		for(VulkanRenderPass &renderPass : _internals->renderPasses)
+		for(VulkanRenderPass &renderPass : submission.renderPasses)
 		{
 			RN_PROFILE_SCOPE();
 			renderPass.renderTargetsUsedInShader.clear();
