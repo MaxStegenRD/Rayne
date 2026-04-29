@@ -174,37 +174,31 @@ namespace RN
 		class DrawItem
 		{
 		public:
-			DrawItem(Drawable *sourceDrawable) :
+			DrawItem(Drawable *sourceDrawable, const Drawable::DrawSnapshotBundle &drawSnapshot) :
 				_sourceDrawable(sourceDrawable),
-				_mesh(sourceDrawable->GetMesh()),
-				_material(sourceDrawable->GetMaterial()),
-				_skeleton(sourceDrawable->GetSkeleton()),
+				_drawSnapshot(drawSnapshot),
 				_modelMatrix(sourceDrawable->GetModelMatrix()),
-				_inverseModelMatrix(sourceDrawable->GetInverseModelMatrix()),
-				_materialSnapshotVersion(sourceDrawable->GetMaterialSnapshotVersion())
+				_inverseModelMatrix(sourceDrawable->GetInverseModelMatrix())
 			{
 				sourceDrawable->GetMeshBufferSnapshot(_meshBuffers);
 			}
 
 			Drawable *GetSourceDrawableForPreparation() const { return _sourceDrawable; }
-			const Mesh::DrawSnapshot &GetMesh() const { return _mesh; }
+			const Mesh::DrawSnapshot &GetMesh() const { return _drawSnapshot.GetMesh(); }
 			const Mesh::BufferSnapshot &GetMeshBuffers() const { return _meshBuffers; }
-			const Material::DrawSnapshot &GetMaterial() const { return _material; }
-			const Skeleton::DrawSnapshot &GetSkeleton() const { return _skeleton; }
+			const Material::DrawSnapshot &GetMaterial() const { return _drawSnapshot.GetMaterial(); }
+			const Skeleton::DrawSnapshot &GetSkeleton() const { return _drawSnapshot.GetSkeleton(); }
 			const Matrix &GetModelMatrix() const { return _modelMatrix; }
 			const Matrix &GetInverseModelMatrix() const { return _inverseModelMatrix; }
-			uint64 GetMaterialSnapshotVersion() const { return _materialSnapshotVersion; }
-			bool CanInstanceWith(const DrawItem &other) const { return _mesh.CanInstanceWith(other._mesh) && _meshBuffers.CanInstanceWith(other._meshBuffers); }
+			uint64 GetMaterialSnapshotVersion() const { return _drawSnapshot.GetMaterialSnapshotVersion(); }
+			bool CanInstanceWith(const DrawItem &other) const { return GetMesh().CanInstanceWith(other.GetMesh()) && _meshBuffers.CanInstanceWith(other._meshBuffers); }
 
 		private:
 			Drawable *_sourceDrawable;
-			Mesh::DrawSnapshot _mesh;
+			Drawable::DrawSnapshotBundle _drawSnapshot;
 			Mesh::BufferSnapshot _meshBuffers;
-			Material::DrawSnapshot _material;
-			Skeleton::DrawSnapshot _skeleton;
 			Matrix _modelMatrix;
 			Matrix _inverseModelMatrix;
-			uint64 _materialSnapshotVersion;
 		};
 
 		class Pass
@@ -292,7 +286,8 @@ namespace RN
 
 		size_t AddDrawItem(Drawable *sourceDrawable)
 		{
-			_drawItems.emplace_back(sourceDrawable);
+			Drawable::DrawSnapshotBundle drawSnapshot = sourceDrawable->GetDrawSnapshotBundleForFrame(_frameID);
+			_drawItems.emplace_back(sourceDrawable, drawSnapshot);
 			return _drawItems.size() - 1;
 		}
 

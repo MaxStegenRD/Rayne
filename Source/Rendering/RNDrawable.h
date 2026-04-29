@@ -28,6 +28,31 @@ namespace RN
 		RNAPI Drawable();
 		RNAPI virtual ~Drawable();
 
+	private:
+		struct MeshSnapshot
+		{
+			Mesh::DrawSnapshot _snapshot;
+			uint64 _lastUsedFrameID = 0;
+		};
+
+		struct MaterialSnapshot
+		{
+			MaterialSnapshot(uint64 version) :
+				_version(version)
+			{}
+
+			Material::DrawSnapshot _snapshot;
+			uint64 _version = 0;
+			uint64 _lastUsedFrameID = 0;
+		};
+
+		struct SkeletonSnapshot
+		{
+			Skeleton::DrawSnapshot _snapshot;
+			uint64 _lastUsedFrameID = 0;
+		};
+
+	public:
 		struct PipelineKey
 		{
 			size_t meshPipelineHash = 0;
@@ -68,25 +93,46 @@ namespace RN
 			Material::PipelineProperties _pipelineProperties;
 		};
 
+		class DrawSnapshotBundle
+		{
+		public:
+			const Mesh::DrawSnapshot &GetMesh() const { return _mesh->_snapshot; }
+			const Material::DrawSnapshot &GetMaterial() const { return _material->_snapshot; }
+			const Skeleton::DrawSnapshot &GetSkeleton() const { return _skeleton->_snapshot; }
+			uint64 GetMaterialSnapshotVersion() const { return _material->_version; }
+
+		private:
+			friend struct Drawable;
+
+			DrawSnapshotBundle(MeshSnapshot *mesh, MaterialSnapshot *material, SkeletonSnapshot *skeleton) :
+				_mesh(mesh),
+				_material(material),
+				_skeleton(skeleton)
+			{}
+
+			MeshSnapshot *_mesh;
+			MaterialSnapshot *_material;
+			SkeletonSnapshot *_skeleton;
+		};
+
 		RNAPI void Update(Mesh *tmesh, Material *tmaterial, Skeleton *tskeleton, const SceneNode *node);
 		RNAPI virtual void Update(const SceneNode *node);
 		RNAPI void MakeDirty();
 		RNAPI void GetMeshBufferSnapshot(Mesh::BufferSnapshot &snapshot) const;
+		RNAPI DrawSnapshotBundle GetDrawSnapshotBundleForFrame(uint64 frameID);
 
-		const Mesh::DrawSnapshot &GetMesh() const { return _mesh; }
-		const Material::DrawSnapshot &GetMaterial() const { return _material; }
-		const Skeleton::DrawSnapshot &GetSkeleton() const { return _skeleton; }
 		const Matrix &GetModelMatrix() const { return _modelMatrix; }
 		const Matrix &GetInverseModelMatrix() const { return _inverseModelMatrix; }
 		uint16 GetRenderGroup() const { return _renderGroup; }
-		uint64 GetMaterialSnapshotVersion() const { return _materialSnapshotVersion; }
 
 	private:
 		void UpdateTransform(const SceneNode *node);
+		void DrainDrawSnapshots(uint64 completedFrameID);
+		void UpdateDrawSnapshots();
 
-		Mesh::DrawSnapshot _mesh;
-		Material::DrawSnapshot _material;
-		Skeleton::DrawSnapshot _skeleton;
+		std::deque<MeshSnapshot> _meshSnapshots;
+		std::deque<MaterialSnapshot> _materialSnapshots;
+		std::deque<SkeletonSnapshot> _skeletonSnapshots;
 
 		Matrix _modelMatrix;
 		Matrix _inverseModelMatrix;
