@@ -50,6 +50,7 @@ namespace RN
 		VKAPI Window *GetMainWindow() final;
 
 		VKAPI void Render(Function &&function) final;
+		VKAPI void ScheduleRenderThreadWork(Function &&function) final;
 		VKAPI void SubmitCamera(Camera *camera, Function &&function) final;
 
 		VKAPI bool SupportsTextureFormat(const String *format) const final;
@@ -96,12 +97,14 @@ namespace RN
 	private:
 		void StartRenderThread();
 		void StopRenderThread();
+		bool IsOnRenderThread() const;
 		void AssertOnSubmissionThread();
 		void AssertOnRenderThread() const;
 		void QueueFrameSubmission(Function &&function);
 		void BuildFrameSubmission(VulkanFrameSubmission &submission, Function &&function);
-		bool ConsumeFrameSubmission();
+		bool ConsumeRenderThreadWork();
 		void RenderFrameSubmission(const VulkanFrameSubmission &submission);
+		void WarmupDrawableOnRenderThread(Mesh *mesh, Material *material, Camera *camera);
 		void SubmitCamera(VulkanFrameSubmission &submission, Camera *camera, Camera *lightClusterCamera, Function &&function);
 		void SubmitRenderPass(VulkanFrameSubmission &submission, RenderPass *renderPass, VulkanRenderPass &previousRenderPass);
 		void SubmitDrawable(VulkanFrameSubmission &submission, Drawable *drawable);

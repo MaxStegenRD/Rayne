@@ -172,7 +172,7 @@ namespace RN
 			{
 				@autoreleasepool {
 					AutoreleasePool pool;
-					if(!ConsumeFrameSubmission())
+					if(!ConsumeRenderThreadWork())
 						return;
 				}
 			}
@@ -189,9 +189,9 @@ namespace RN
 		if(!renderThread)
 			return;
 
-		_internals->frameSubmissionQueue.Shutdown();
+		_internals->renderThreadQueue.Shutdown();
 		renderThread->WaitForExit();
-		_internals->frameSubmissionQueue.Drain();
+		_internals->renderThreadQueue.Drain();
 		renderThread->Release();
 		_internals->renderThread = nullptr;
 	}
@@ -211,11 +211,27 @@ namespace RN
 #endif
 	}
 
+	bool MetalRenderer::IsOnRenderThread() const
+	{
+		return _internals->renderThread && _internals->renderThread->OnThread();
+	}
+
 	void MetalRenderer::AssertOnRenderThread() const
 	{
 #if RN_BUILD_DEBUG
-		RN_DEBUG_ASSERT(_internals->renderThread && _internals->renderThread->OnThread(), "Metal render work must run on the render thread");
+		RN_DEBUG_ASSERT(IsOnRenderThread(), "Metal render work must run on the render thread");
 #endif
+	}
+
+	void MetalRenderer::ScheduleRenderThreadWork(Function &&function)
+	{
+		if(IsOnRenderThread())
+		{
+			function();
+			return;
+		}
+
+		_internals->renderThreadQueue.PushTask(std::move(function));
 	}
 
 	void MetalRenderer::QueueFrameSubmission(Function &&function)
@@ -224,21 +240,30 @@ namespace RN
 		AssertOnSubmissionThread();
 
 		MetalFrameSubmission submission;
-		if(!_internals->frameSubmissionQueue.WaitForSpace())
+		if(!_internals->renderThreadQueue.WaitForSpace())
 			return;
 
 		BuildFrameSubmission(submission, std::move(function));
-		_internals->frameSubmissionQueue.Push(std::move(submission));
+		_internals->renderThreadQueue.Push(std::move(submission));
 	}
 
-	bool MetalRenderer::ConsumeFrameSubmission()
+	bool MetalRenderer::ConsumeRenderThreadWork()
 	{
 		RN_PROFILE_SCOPE();
 		AssertOnRenderThread();
 
 		MetalFrameSubmission submission;
-		if(!_internals->frameSubmissionQueue.Pop(submission))
+		Function task;
+		using WorkType = RenderThreadQueue<MetalFrameSubmission>::WorkType;
+		WorkType workType = _internals->renderThreadQueue.Pop(submission, task);
+		if(workType == WorkType::None)
 			return false;
+
+		if(workType == WorkType::Task)
+		{
+			task();
+			return true;
+		}
 
 		PrepareRenderFrame(submission);
 		RenderFrameSubmission(submission);

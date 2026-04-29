@@ -43,6 +43,7 @@ namespace RN
 		MTLAPI void SetMainWindow(Window *window) final;
 
 		MTLAPI void Render(Function &&function) final;
+		MTLAPI void ScheduleRenderThreadWork(Function &&function) final;
 		MTLAPI void SubmitCamera(Camera *camera, Function &&function) final;
 
 		MTLAPI bool SupportsTextureFormat(const String *format) const final;
@@ -78,11 +79,12 @@ namespace RN
 	protected:
 		void StartRenderThread();
 		void StopRenderThread();
+		bool IsOnRenderThread() const;
 		void AssertOnSubmissionThread();
 		void AssertOnRenderThread() const;
 		void QueueFrameSubmission(Function &&function);
 		void BuildFrameSubmission(MetalFrameSubmission &submission, Function &&function);
-		bool ConsumeFrameSubmission();
+		bool ConsumeRenderThreadWork();
 		void RenderFrameSubmission(const MetalFrameSubmission &submission);
 		void SubmitCamera(MetalFrameSubmission &submission, Camera *camera, Camera *lightClusterCamera, Function &&function);
 		void SubmitRenderPass(MetalFrameSubmission &submission, RenderPass *renderPass, MetalRenderPass &previousRenderPass);

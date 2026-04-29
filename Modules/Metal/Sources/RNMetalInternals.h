@@ -16,7 +16,7 @@
 #include "RNMetalUniformBuffer.h"
 #include "RNMetalFramebuffer.h"
 #include "RNMetalRenderer.h"
-#include "../../../Source/Rendering/RNFrameSubmissionQueue.h"
+#include "../../../Source/Rendering/RNRenderThreadQueue.h"
 
 #if RN_PLATFORM_MAC_OS
 #import <Cocoa/Cocoa.h>
@@ -215,7 +215,7 @@ namespace RN
 
 	struct MetalRendererInternals
 	{
-		FrameSubmissionQueue<MetalFrameSubmission> frameSubmissionQueue;
+		RenderThreadQueue<MetalFrameSubmission> renderThreadQueue;
 		Thread *renderThread = nullptr;
 #if RN_BUILD_DEBUG
 		std::thread::id submissionThread;

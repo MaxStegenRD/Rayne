@@ -13,7 +13,7 @@
 #include "RNVulkanStateCoordinator.h"
 #include "RNVulkanRenderer.h"
 #include "RNVulkanSwapChain.h"
-#include "../../../Source/Rendering/RNFrameSubmissionQueue.h"
+#include "../../../Source/Rendering/RNRenderThreadQueue.h"
 
 #include <vk_mem_alloc.h>
 
@@ -331,7 +331,7 @@ namespace RN
 	{
 		VulkanStateCoordinator stateCoordinator;
 
-		FrameSubmissionQueue<VulkanFrameSubmission> frameSubmissionQueue;
+		RenderThreadQueue<VulkanFrameSubmission> renderThreadQueue;
 		Thread *renderThread = nullptr;
 #if RN_BUILD_DEBUG
 		std::thread::id submissionThread;

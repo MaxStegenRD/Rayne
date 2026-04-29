@@ -151,6 +151,11 @@ namespace RN
 		}
 	}
 
+	void Renderer::ScheduleRenderThreadWork(Function &&function)
+	{
+		function();
+	}
+
 	void Renderer::WarmupDrawable(Mesh *mesh, Material *material, Camera *camera)
 	{
 	}

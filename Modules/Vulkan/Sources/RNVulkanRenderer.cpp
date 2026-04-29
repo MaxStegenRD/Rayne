@@ -428,7 +428,7 @@ namespace RN
 			while(true)
 			{
 				AutoreleasePool pool;
-				if(!ConsumeFrameSubmission())
+				if(!ConsumeRenderThreadWork())
 					return;
 			}
 		}, false);
@@ -444,9 +444,9 @@ namespace RN
 		if(!renderThread)
 			return;
 
-		_internals->frameSubmissionQueue.Shutdown();
+		_internals->renderThreadQueue.Shutdown();
 		renderThread->WaitForExit();
-		_internals->frameSubmissionQueue.Drain();
+		_internals->renderThreadQueue.Drain();
 		renderThread->Release();
 		_internals->renderThread = nullptr;
 	}
@@ -469,8 +469,24 @@ namespace RN
 	void VulkanRenderer::AssertOnRenderThread() const
 	{
 #if RN_BUILD_DEBUG
-		RN_DEBUG_ASSERT(_internals->renderThread && _internals->renderThread->OnThread(), "Vulkan render work must run on the render thread");
+		RN_DEBUG_ASSERT(IsOnRenderThread(), "Vulkan render work must run on the render thread");
 #endif
+	}
+
+	bool VulkanRenderer::IsOnRenderThread() const
+	{
+		return _internals->renderThread && _internals->renderThread->OnThread();
+	}
+
+	void VulkanRenderer::ScheduleRenderThreadWork(Function &&function)
+	{
+		if(IsOnRenderThread())
+		{
+			function();
+			return;
+		}
+
+		_internals->renderThreadQueue.PushTask(std::move(function));
 	}
 
 	void VulkanRenderer::QueueFrameSubmission(Function &&function)
@@ -479,21 +495,30 @@ namespace RN
 		AssertOnSubmissionThread();
 
 		VulkanFrameSubmission submission;
-		if(!_internals->frameSubmissionQueue.WaitForSpace())
+		if(!_internals->renderThreadQueue.WaitForSpace())
 			return;
 
 		BuildFrameSubmission(submission, std::move(function));
-		_internals->frameSubmissionQueue.Push(std::move(submission));
+		_internals->renderThreadQueue.Push(std::move(submission));
 	}
 
-	bool VulkanRenderer::ConsumeFrameSubmission()
+	bool VulkanRenderer::ConsumeRenderThreadWork()
 	{
 		RN_PROFILE_SCOPE();
 		AssertOnRenderThread();
 
 		VulkanFrameSubmission submission;
-		if(!_internals->frameSubmissionQueue.Pop(submission))
+		Function task;
+		using WorkType = RenderThreadQueue<VulkanFrameSubmission>::WorkType;
+		WorkType workType = _internals->renderThreadQueue.Pop(submission, task);
+		if(workType == WorkType::None)
 			return false;
+
+		if(workType == WorkType::Task)
+		{
+			task();
+			return true;
+		}
 
 		if(PrepareRenderFrame(submission))
 		{
@@ -2116,9 +2141,21 @@ namespace RN
 
 	void VulkanRenderer::WarmupDrawable(Mesh *mesh, Material *material, Camera *camera)
 	{
+		Renderer::WarmupDrawable(mesh, material, camera);
+		if(!mesh || !material || !camera) return;
+
+		StrongRef<Mesh> meshRef(mesh);
+		StrongRef<Material> materialRef(material);
+		StrongRef<Camera> cameraRef(camera);
+		ScheduleRenderThreadWork([this, meshRef = std::move(meshRef), materialRef = std::move(materialRef), cameraRef = std::move(cameraRef)]() mutable {
+			WarmupDrawableOnRenderThread(meshRef.Get(), materialRef.Get(), cameraRef.Get());
+		});
+	}
+
+	void VulkanRenderer::WarmupDrawableOnRenderThread(Mesh *mesh, Material *material, Camera *camera)
+	{
 		AssertOnRenderThread();
 		//TODO: This is all a bit simplified and won't handle everything, but hopefully catches the main use case for now
-		Renderer::WarmupDrawable(mesh, material, camera);
 		if(!mesh || !material || !camera || !camera->GetRenderPass()) return;
 
 		RenderPass *renderPass = camera->GetRenderPass();
