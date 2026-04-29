@@ -331,6 +331,9 @@ namespace RN
 		VulkanStateCoordinator stateCoordinator;
 
 		std::vector<VulkanFrameSubmission> queuedFrameSubmissions;
+		Lockable queuedFrameSubmissionsLock;
+		Condition queuedFrameSubmissionQueuedCondition;
+		Condition queuedFrameSubmissionConsumedCondition;
 		std::vector<VulkanFrameResource> frameResources;
 
 		VulkanDrawBindStateCache drawBindStateCache;

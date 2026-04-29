@@ -149,32 +149,52 @@ namespace RN
 		RN_PROFILE_SCOPE();
 		@autoreleasepool {
 			MetalFrameSubmission submission;
+			WaitForFrameSubmissionQueueSpace();
 			BuildFrameSubmission(submission, std::move(function));
 			QueueFrameSubmission(std::move(submission));
-			ConsumeFrameSubmissions();
+			ConsumeFrameSubmission();
 		}
+	}
+
+	void MetalRenderer::WaitForFrameSubmissionQueueSpace()
+	{
+		UniqueLock<Lockable> lock(_internals->queuedFrameSubmissionsLock);
+		_internals->queuedFrameSubmissionConsumedCondition.Wait(lock, [&]() {
+			return _internals->queuedFrameSubmissions.size() < RN_RENDERING_FRAME_SUBMISSION_QUEUE_SIZE;
+		});
 	}
 
 	void MetalRenderer::QueueFrameSubmission(MetalFrameSubmission &&submission)
 	{
 		RN_PROFILE_SCOPE();
+		UniqueLock<Lockable> lock(_internals->queuedFrameSubmissionsLock);
+		RN_ASSERT(_internals->queuedFrameSubmissions.size() < RN_RENDERING_FRAME_SUBMISSION_QUEUE_SIZE, "Frame submission queue is full");
 		_internals->queuedFrameSubmissions.push_back(std::move(submission));
+		_internals->queuedFrameSubmissionQueuedCondition.NotifyOne();
 	}
 
-	void MetalRenderer::ConsumeFrameSubmissions()
+	void MetalRenderer::DequeueFrameSubmission(MetalFrameSubmission &submission)
+	{
+		UniqueLock<Lockable> lock(_internals->queuedFrameSubmissionsLock);
+		_internals->queuedFrameSubmissionQueuedCondition.Wait(lock, [&]() {
+			return !_internals->queuedFrameSubmissions.empty();
+		});
+
+		submission = std::move(_internals->queuedFrameSubmissions.front());
+		_internals->queuedFrameSubmissions.erase(_internals->queuedFrameSubmissions.begin());
+		_internals->queuedFrameSubmissionConsumedCondition.NotifyOne();
+	}
+
+	void MetalRenderer::ConsumeFrameSubmission()
 	{
 		RN_PROFILE_SCOPE();
 
-		while(!_internals->queuedFrameSubmissions.empty())
-		{
-			MetalFrameSubmission submission = std::move(_internals->queuedFrameSubmissions.front());
-			_internals->queuedFrameSubmissions.erase(_internals->queuedFrameSubmissions.begin());
-
-			PrepareRenderFrame(submission);
-			RenderFrameSubmission(submission);
-			PrintFrameStatistics(submission.renderFrame);
-			FlushDeletedDrawables();
-		}
+		MetalFrameSubmission submission;
+		DequeueFrameSubmission(submission);
+		PrepareRenderFrame(submission);
+		RenderFrameSubmission(submission);
+		PrintFrameStatistics(submission.renderFrame);
+		FlushDeletedDrawables();
 	}
 
 	void MetalRenderer::BuildFrameSubmission(MetalFrameSubmission &submission, Function &&function)

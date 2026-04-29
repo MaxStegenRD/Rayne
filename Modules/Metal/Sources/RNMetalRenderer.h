@@ -76,9 +76,11 @@ namespace RN
 		MTLAPI id GetCommandQueue() const;
 
 	protected:
+		void WaitForFrameSubmissionQueueSpace();
 		void BuildFrameSubmission(MetalFrameSubmission &submission, Function &&function);
 		void QueueFrameSubmission(MetalFrameSubmission &&submission);
-		void ConsumeFrameSubmissions();
+		void DequeueFrameSubmission(MetalFrameSubmission &submission);
+		void ConsumeFrameSubmission();
 		void RenderFrameSubmission(const MetalFrameSubmission &submission);
 		void SubmitCamera(MetalFrameSubmission &submission, Camera *camera, Camera *lightClusterCamera, Function &&function);
 		void SubmitRenderPass(MetalFrameSubmission &submission, RenderPass *renderPass, MetalRenderPass &previousRenderPass);
