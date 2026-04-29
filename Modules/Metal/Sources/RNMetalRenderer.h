@@ -85,7 +85,6 @@ namespace RN
 		void RenderDrawable(const MetalPreparedDrawItem &drawItem, uint32 instanceCount, const MetalRenderPass &renderPass, const RenderFrame::Pass &framePass);
 		void RenderAPIRenderPass(const MetalFrameSubmission &submission, const MetalRenderPass &renderPass);
 		void FillUniformBuffer(Shader::ArgumentBuffer *argument, MetalUniformBufferReference *uniformBufferReference, const RenderFrame::DrawItem &drawItem, const Material::Properties &materialProperties, const RenderFrame::Pass &framePass);
-		void FlushDeletedDrawables();
 		MetalFrameSubmission &GetActiveFrameSubmission();
 		Shader::UsageHint GetMetalShaderHint(Shader::UsageHint shaderHint) const;
 

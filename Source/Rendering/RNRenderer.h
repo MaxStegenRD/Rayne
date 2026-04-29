@@ -91,10 +91,16 @@ namespace RN
 
 	protected:
 		RNAPI Renderer(RendererDescriptor *descriptor, RenderingDevice *device);
+		RNAPI void QueueDrawableDeletion(Drawable *drawable);
+		RNAPI void FlushDeletedDrawables();
+		RNAPI void FlushAllDeletedDrawables();
 		RNAPI void PrintFrameStatistics(const RenderFrame &frame, float interval = RN_RENDERING_FRAME_STATISTICS_INTERVAL);
 
 	private:
 		double _frameStatisticsTimer;
+		std::vector<Drawable *> _pendingDeletedDrawables;
+		std::vector<Drawable *> _readyDeletedDrawables;
+		Lockable _deletedDrawablesLock;
 
 		RenderingDevice *_device;
 		RendererDescriptor *_descriptor;

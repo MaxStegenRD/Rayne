@@ -103,7 +103,7 @@ namespace RN
 
 	VulkanRenderer::~VulkanRenderer()
 	{
-		FlushDeletedDrawables();
+		FlushAllDeletedDrawables();
 
 		while(!_internals->frameResources.empty())
 		{
@@ -1945,16 +1945,7 @@ namespace RN
 
 	void VulkanRenderer::DeleteDrawable(Drawable *drawable)
 	{
-		_internals->pendingDeletedDrawables.push_back(drawable);
-	}
-
-	void VulkanRenderer::FlushDeletedDrawables()
-	{
-		std::vector<Drawable *> drawables;
-		drawables.swap(_internals->pendingDeletedDrawables);
-
-		for(Drawable *drawable : drawables)
-			delete drawable;
+		QueueDrawableDeletion(drawable);
 	}
 
 	void VulkanRenderer::SubmitLight(const Light *light)

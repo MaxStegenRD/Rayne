@@ -331,7 +331,6 @@ namespace RN
 		VulkanStateCoordinator stateCoordinator;
 
 		std::vector<VulkanFrameResource> frameResources;
-		std::vector<Drawable *> pendingDeletedDrawables;
 
 		VulkanDrawBindStateCache drawBindStateCache;
 

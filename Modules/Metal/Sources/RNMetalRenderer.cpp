@@ -47,7 +47,7 @@ namespace RN
 	MetalRenderer::~MetalRenderer()
 	{
 		RN_PROFILE_SCOPE();
-		FlushDeletedDrawables();
+		FlushAllDeletedDrawables();
 
 		[_internals->commandQueue release];
 		[_internals->device release];
@@ -805,16 +805,7 @@ namespace RN
 	void MetalRenderer::DeleteDrawable(Drawable *drawable)
 	{
 		RN_PROFILE_SCOPE();
-		_internals->pendingDeletedDrawables.push_back(drawable);
-	}
-
-	void MetalRenderer::FlushDeletedDrawables()
-	{
-		std::vector<Drawable *> drawables;
-		drawables.swap(_internals->pendingDeletedDrawables);
-
-		for(Drawable *drawable : drawables)
-			delete drawable;
+		QueueDrawableDeletion(drawable);
 	}
 
 	void MetalRenderer::FillUniformBuffer(Shader::ArgumentBuffer *argument, MetalUniformBufferReference *uniformBufferReference, const RenderFrame::DrawItem &drawItem, const Material::Properties &materialProperties, const RenderFrame::Pass &framePass)

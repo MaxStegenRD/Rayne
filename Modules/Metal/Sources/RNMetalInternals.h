@@ -214,7 +214,6 @@ namespace RN
 
 	struct MetalRendererInternals
 	{
-		std::vector<Drawable *> pendingDeletedDrawables;
 		MetalStateCoordinator stateCoordinator;
 
 		id<MTLDevice> device;

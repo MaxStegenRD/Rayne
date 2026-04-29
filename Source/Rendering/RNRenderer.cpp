@@ -70,6 +70,42 @@ namespace RN
 		_activeRenderer = nullptr;
 	}
 
+	void Renderer::QueueDrawableDeletion(Drawable *drawable)
+	{
+		LockGuard<Lockable> lock(_deletedDrawablesLock);
+		_pendingDeletedDrawables.push_back(drawable);
+	}
+
+	void Renderer::FlushDeletedDrawables()
+	{
+		std::vector<Drawable *> drawables;
+		{
+			LockGuard<Lockable> lock(_deletedDrawablesLock);
+			drawables.swap(_readyDeletedDrawables);
+			_readyDeletedDrawables.swap(_pendingDeletedDrawables);
+		}
+
+		for(Drawable *drawable : drawables)
+			delete drawable;
+	}
+
+	void Renderer::FlushAllDeletedDrawables()
+	{
+		std::vector<Drawable *> drawables;
+		{
+			LockGuard<Lockable> lock(_deletedDrawablesLock);
+			drawables.swap(_readyDeletedDrawables);
+
+			for(Drawable *drawable : _pendingDeletedDrawables)
+				drawables.push_back(drawable);
+
+			_pendingDeletedDrawables.clear();
+		}
+
+		for(Drawable *drawable : drawables)
+			delete drawable;
+	}
+
 	void Renderer::PrintFrameStatistics(const RenderFrame &frame, float interval)
 	{
 		double currentTime = Kernel::GetSharedInstance()->GetTotalTime();
