@@ -288,6 +288,7 @@ namespace RN
 			_cameraStatistics.clear();
 		}
 
+		void ReserveAdditionalPasses(size_t passCount) { _passes.reserve(_passes.size() + passCount); }
 		size_t AddPass(const RenderPass::DrawSnapshot &drawSnapshot, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialCacheIdentity, uint64 overrideMaterialSnapshotVersion)
 		{
 			_passes.emplace_back(drawSnapshot, overrideMaterialSnapshot, overrideMaterialCacheIdentity, overrideMaterialSnapshotVersion);
@@ -305,6 +306,8 @@ namespace RN
 			RN_DEBUG_ASSERT(index < _passes.size(), "Invalid render frame pass index");
 			return _passes[index];
 		}
+
+		size_t GetPassCount() const { return _passes.size(); }
 
 		size_t AddCameraStatistics()
 		{

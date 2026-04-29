@@ -208,6 +208,7 @@ namespace RN
 		RNAPI void RemoveRenderPass(RenderPass *renderPass);
 		RNAPI void RemoveAllRenderPasses();
 		const Array *GetNextRenderPasses() const { return _nextRenderPasses; }
+		RNAPI size_t GetTotalRenderPassCount() const;
 		RNAPI void UpdateSubpassChain();
 
 	private:

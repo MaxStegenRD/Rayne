@@ -540,12 +540,16 @@ namespace RN
 			}
 		}
 
-		const size_t frameStatisticsIndex = frameSubmission.renderFrame.AddCameraStatistics();
-
 		RenderPass *cameraRenderPass = _currentMultiviewFallbackRenderPass? _currentMultiviewFallbackRenderPass : camera->GetRenderPass();
 
 		// Ensure subpass clearing plan is computed for root containers
 		cameraRenderPass->UpdateSubpassChain();
+		const Array *nextRenderPasses = cameraRenderPass->GetNextRenderPasses();
+		const size_t passReserveCount = cameraRenderPass->GetTotalRenderPassCount();
+		frameSubmission.renderFrame.ReserveAdditionalPasses(passReserveCount);
+		frameSubmission.renderPasses.reserve(frameSubmission.renderPasses.size() + passReserveCount);
+		const size_t frameStatisticsIndex = frameSubmission.renderFrame.AddCameraStatistics();
+
 		RenderPassResources *renderPassResources = cameraRenderPass->GetRenderResources(this);
 		const RenderPass::DrawSnapshot &drawSnapshot = renderPassResources->GetDrawSnapshot();
 
@@ -569,6 +573,7 @@ namespace RN
 		framePass.ReserveDrawItems(estimatedDrawableCount, renderPassResources->GetLastDrawItemCount());
 		framePass.SetCameraSnapshot(cameraSnapshot);
 		std::vector<RenderPassDrawCountWriteback> drawCountWritebacks;
+		drawCountWritebacks.reserve(passReserveCount);
 		drawCountWritebacks.push_back({renderPass.renderFramePassIndex, renderPassResources});
 
 		Framebuffer *framebuffer = drawSnapshot.GetFramebuffer();
@@ -579,7 +584,6 @@ namespace RN
 		frameSubmission.activeRenderPassIndex = previousRenderPassIndex;
 		frameSubmission.renderPasses.push_back(renderPass);
 
-		const Array *nextRenderPasses = cameraRenderPass->GetNextRenderPasses();
 		nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
 			SubmitRenderPass(frameSubmission, nextPass, frameSubmission.renderPasses[previousRenderPassIndex], estimatedDrawableCount, drawCountWritebacks);
 		});
@@ -1466,6 +1470,7 @@ namespace RN
 		CreateMipMaps();
 
 		submission.preparedRenderPasses.clear();
+		submission.preparedRenderPasses.reserve(submission.renderFrame.GetPassCount());
 
 		auto ensureRenderPassResources = [&](MetalRenderPass &renderPass) {
 			renderPass.preparedRenderPassIndex = RenderFrame::InvalidPassIndex;

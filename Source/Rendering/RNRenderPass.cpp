@@ -255,6 +255,16 @@ namespace RN
 		MarkDrawSnapshotDirty();
 	}
 
+	size_t RenderPass::GetTotalRenderPassCount() const
+	{
+		size_t count = 1;
+		_nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
+			count += nextPass->GetTotalRenderPassCount();
+		});
+
+		return count;
+	}
+
 	void RenderPass::UpdateSubpassChain()
 	{
 		if(!_isRoot) return; // only meaningful for roots
