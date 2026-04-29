@@ -553,7 +553,6 @@ namespace RN
 		MetalRenderPass renderPass;
 		renderPass.type = MetalRenderPass::Type::Default;
 		renderPass.renderPass = cameraRenderPass;
-		renderPass.previousRenderPass = nullptr;
 		renderPass.frameStatisticsIndex = frameStatisticsIndex;
 
 		renderPass.multiviewLayer = _currentMultiviewLayer;
@@ -614,7 +613,6 @@ namespace RN
 		MetalRenderPass metalRenderPass;
 		metalRenderPass.type = MetalRenderPass::Type::Default;
 		metalRenderPass.renderPass = renderPass;
-		metalRenderPass.previousRenderPass = previousRenderPass.renderPass;
 		metalRenderPass.frameStatisticsIndex = previousRenderPass.frameStatisticsIndex;
 		metalRenderPass.previousStoredFramebuffer = nullptr;
 

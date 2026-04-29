@@ -92,7 +92,7 @@ namespace RN
 
 		_internals->stateCoordinator.LoadPipelineCache(Kernel::GetSharedInstance()->GetApplication()->GetBuildNumber(), device, GetAllocatorCallback());
 
-		#if RN_PROFILE_TRACY
+		#if defined(RN_PROFILE_TRACY)
 			_internals->tracyCommandBuffer = GetCommandBuffer()->Retain();
 			_internals->tracyVulkanCtx = RN_PROFILE_VULKAN_DECLARE_CONTEXT(device->GetInstance()->GetInstance(), device->GetDevice(), device->GetPhysicalDevice(), _workQueue, _internals->tracyCommandBuffer->GetCommandBuffer(), vk::GetInstanceProcAddr, vk::GetDeviceProcAddr);
 		#else
@@ -121,6 +121,15 @@ namespace RN
 				}
 			}
 		}
+
+#if defined(RN_PROFILE_TRACY)
+		if(_internals->tracyVulkanCtx)
+		{
+			RN_PROFILE_VULKAN_DESTROY_CONTEXT(_internals->tracyVulkanCtx);
+			_internals->tracyVulkanCtx = nullptr;
+		}
+#endif
+		SafeRelease(_internals->tracyCommandBuffer);
 
 		_internals->stateCoordinator.DestroyPipelineCache(GetVulkanDevice(), GetAllocatorCallback());
 
@@ -1023,7 +1032,6 @@ namespace RN
 
 		renderPass.type = VulkanRenderPass::Type::Default;
 		renderPass.renderPass = cameraRenderPass;
-		renderPass.previousRenderPass = nullptr;
 		renderPass.frameStatisticsIndex = frameStatisticsIndex;
 
 		renderPass.resolveFramebuffer = nullptr;
@@ -1164,7 +1172,6 @@ namespace RN
 		}
 
 		vulkanRenderPass.renderPass = renderPass;
-		vulkanRenderPass.previousRenderPass = previousRenderPass.renderPass;
 		vulkanRenderPass.frameStatisticsIndex = previousRenderPass.frameStatisticsIndex;
 		vulkanRenderPass.previousStoredFramebuffer = nullptr;
 
@@ -2182,7 +2189,7 @@ namespace RN
 
 		for(const VulkanRenderPass &renderPass : submission.renderPasses)
 		{
-			if(renderPass.previousRenderPass)
+			if(renderPass.previousStoredFramebuffer)
 				continue;
 
 			if(renderPass.subpasses.size() > 0)

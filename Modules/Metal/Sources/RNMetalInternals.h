@@ -79,10 +79,10 @@ namespace RN
 			for(RenderResources &resources : _renderResources)
 			{
 				for(MetalUniformBufferReference *buffer : resources.vertexShaderUniformBuffers)
-					delete buffer;
+					buffer->Release();
 
 				for(MetalUniformBufferReference *buffer : resources.fragmentShaderUniformBuffers)
-					delete buffer;
+					buffer->Release();
 
 				for(Shader::ArgumentBuffer *buffer : resources.argumentBufferToUniformBufferMapping)
 					buffer->Release();
@@ -94,12 +94,6 @@ namespace RN
 			if(_renderResources.size() <= resourceIndex)
 				_renderResources.resize(resourceIndex + 1);
 
-			return _renderResources[resourceIndex];
-		}
-
-		const RenderResources &GetRenderResources(size_t resourceIndex) const
-		{
-			RN_DEBUG_ASSERT(resourceIndex < _renderResources.size(), "Invalid render resources index");
 			return _renderResources[resourceIndex];
 		}
 
@@ -167,7 +161,6 @@ namespace RN
 
 		Type type;
 		RenderPass *renderPass;
-		RenderPass *previousRenderPass;
 		size_t renderFramePassIndex = RenderFrame::InvalidPassIndex;
 		size_t preparedRenderPassIndex = RenderFrame::InvalidPassIndex;
 		size_t frameStatisticsIndex = static_cast<size_t>(-1);

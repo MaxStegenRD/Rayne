@@ -169,12 +169,6 @@ namespace RN
 			return _renderResources[resourceIndex];
 		}
 
-		const RenderResources &GetRenderResources(size_t resourceIndex) const
-		{
-			RN_DEBUG_ASSERT(resourceIndex < _renderResources.size(), "Invalid render resources index");
-			return _renderResources[resourceIndex];
-		}
-
 		RenderResources &GetRenderResources(size_t resourceIndex)
 		{
 			RN_DEBUG_ASSERT(resourceIndex < _renderResources.size(), "Invalid render resources index");
@@ -215,7 +209,6 @@ namespace RN
 
 		Type type;
 		RenderPass *renderPass;
-		RenderPass *previousRenderPass;
 		size_t renderFramePassIndex = RenderFrame::InvalidPassIndex;
 		size_t preparedRenderPassIndex = RenderFrame::InvalidPassIndex;
 		size_t frameStatisticsIndex = static_cast<size_t>(-1);
@@ -347,7 +340,6 @@ namespace RN
 		// Tracy Vulkan GPU context
 		RN_PROFILE_VULKAN_CONTEXT_TYPE tracyVulkanCtx;
 		VulkanCommandBuffer *tracyCommandBuffer;
-		VkCommandBuffer tracyVulkanCommandBuffer;
 	};
 
 	class VulkanTransientDescriptorSet
