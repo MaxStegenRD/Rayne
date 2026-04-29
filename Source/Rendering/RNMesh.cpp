@@ -98,6 +98,8 @@ namespace RN
 	Mesh::DrawSnapshot &Mesh::DrawSnapshot::operator=(const DrawSnapshot &snapshot)
 	{
 		_descriptor = snapshot._descriptor;
+		_vertexBuffer = snapshot._vertexBuffer;
+		_indicesBuffer = snapshot._indicesBuffer;
 
 		_vertexPositionsSeparatedSize = snapshot._vertexPositionsSeparatedSize;
 		_vertexPositionsSeparatedStride = snapshot._vertexPositionsSeparatedStride;
@@ -114,6 +116,8 @@ namespace RN
 	void Mesh::DrawSnapshot::Reset()
 	{
 		_descriptor = VertexDescriptor();
+		_vertexBuffer = nullptr;
+		_indicesBuffer = nullptr;
 
 		_vertexPositionsSeparatedSize = 0;
 		_vertexPositionsSeparatedStride = 0;
@@ -384,6 +388,8 @@ namespace RN
 	void Mesh::GetDrawSnapshot(DrawSnapshot &snapshot) const
 	{
 		snapshot._descriptor = _descriptor;
+		snapshot._vertexBuffer = _vertexBuffer;
+		snapshot._indicesBuffer = _indicesBuffer;
 
 		snapshot._vertexPositionsSeparatedSize = _vertexPositionsSeparatedSize;
 		snapshot._vertexPositionsSeparatedStride = _vertexPositionsSeparatedStride;

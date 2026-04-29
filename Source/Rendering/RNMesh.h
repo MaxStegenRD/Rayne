@@ -224,6 +224,8 @@ namespace RN
 			friend class Mesh;
 
 			VertexDescriptor _descriptor;
+			StrongRef<GPUBuffer> _vertexBuffer;
+			StrongRef<GPUBuffer> _indicesBuffer;
 
 			size_t _vertexPositionsSeparatedSize = 0;
 			size_t _vertexPositionsSeparatedStride = 0;
@@ -247,19 +249,19 @@ namespace RN
 				_indicesBuffer = nullptr;
 			}
 
-			GPUBuffer *GetVertexBuffer() const { return _vertexBuffer.Get(); }
-			GPUBuffer *GetIndicesBuffer() const { return _indicesBuffer.Get(); }
+			GPUBuffer *GetVertexBuffer() const { return _vertexBuffer; }
+			GPUBuffer *GetIndicesBuffer() const { return _indicesBuffer; }
 			bool CanInstanceWith(const BufferSnapshot &other) const
 			{
-				return _vertexBuffer.Get() == other._vertexBuffer.Get() &&
-					_indicesBuffer.Get() == other._indicesBuffer.Get();
+				return _vertexBuffer == other._vertexBuffer &&
+					_indicesBuffer == other._indicesBuffer;
 			}
 
 		private:
 			friend class Mesh;
 
-			StrongRef<GPUBuffer> _vertexBuffer;
-			StrongRef<GPUBuffer> _indicesBuffer;
+			GPUBuffer *_vertexBuffer = nullptr;
+			GPUBuffer *_indicesBuffer = nullptr;
 		};
 
 		class __ChunkFriend
