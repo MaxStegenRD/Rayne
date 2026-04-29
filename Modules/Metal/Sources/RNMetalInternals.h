@@ -16,6 +16,7 @@
 #include "RNMetalUniformBuffer.h"
 #include "RNMetalFramebuffer.h"
 #include "RNMetalRenderer.h"
+#include "../../../Source/Rendering/RNFrameSubmissionQueue.h"
 
 #if RN_PLATFORM_MAC_OS
 #import <Cocoa/Cocoa.h>
@@ -214,10 +215,7 @@ namespace RN
 
 	struct MetalRendererInternals
 	{
-		std::vector<MetalFrameSubmission> queuedFrameSubmissions;
-		Lockable queuedFrameSubmissionsLock;
-		Condition queuedFrameSubmissionQueuedCondition;
-		Condition queuedFrameSubmissionConsumedCondition;
+		FrameSubmissionQueue<MetalFrameSubmission> frameSubmissionQueue;
 		MetalStateCoordinator stateCoordinator;
 
 		id<MTLDevice> device;

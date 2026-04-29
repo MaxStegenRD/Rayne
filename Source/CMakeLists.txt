@@ -209,6 +209,7 @@ set(RAYNE_HEADERS
     Objects/RNValue.h
     Objects/RNWeakStorage.h
     Rendering/RNDrawable.h
+    Rendering/RNFrameSubmissionQueue.h
     Rendering/RNFramebuffer.h
     Rendering/RNGPUBuffer.h
     Rendering/RNGPUResource.h

@@ -103,6 +103,8 @@ namespace RN
 
 	VulkanRenderer::~VulkanRenderer()
 	{
+		_internals->frameSubmissionQueue.Shutdown();
+		_internals->frameSubmissionQueue.Drain();
 		FlushAllDeletedDrawables();
 
 		while(!_internals->frameResources.empty())
@@ -412,48 +414,32 @@ namespace RN
 	{
 		RN_PROFILE_SCOPE();
 
-		VulkanFrameSubmission submission;
-		WaitForFrameSubmissionQueueSpace();
-		BuildFrameSubmission(submission, std::move(function));
-		QueueFrameSubmission(std::move(submission));
+		if(!QueueFrameSubmission(std::move(function)))
+			return;
+
 		ConsumeFrameSubmission();
 	}
 
-	void VulkanRenderer::WaitForFrameSubmissionQueueSpace()
-	{
-		UniqueLock<Lockable> lock(_internals->queuedFrameSubmissionsLock);
-		_internals->queuedFrameSubmissionConsumedCondition.Wait(lock, [&]() {
-			return _internals->queuedFrameSubmissions.size() < RN_RENDERING_FRAME_SUBMISSION_QUEUE_SIZE;
-		});
-	}
-
-	void VulkanRenderer::QueueFrameSubmission(VulkanFrameSubmission &&submission)
-	{
-		RN_PROFILE_SCOPE();
-		UniqueLock<Lockable> lock(_internals->queuedFrameSubmissionsLock);
-		RN_ASSERT(_internals->queuedFrameSubmissions.size() < RN_RENDERING_FRAME_SUBMISSION_QUEUE_SIZE, "Frame submission queue is full");
-		_internals->queuedFrameSubmissions.push_back(std::move(submission));
-		_internals->queuedFrameSubmissionQueuedCondition.NotifyOne();
-	}
-
-	void VulkanRenderer::DequeueFrameSubmission(VulkanFrameSubmission &submission)
-	{
-		UniqueLock<Lockable> lock(_internals->queuedFrameSubmissionsLock);
-		_internals->queuedFrameSubmissionQueuedCondition.Wait(lock, [&]() {
-			return !_internals->queuedFrameSubmissions.empty();
-		});
-
-		submission = std::move(_internals->queuedFrameSubmissions.front());
-		_internals->queuedFrameSubmissions.erase(_internals->queuedFrameSubmissions.begin());
-		_internals->queuedFrameSubmissionConsumedCondition.NotifyOne();
-	}
-
-	void VulkanRenderer::ConsumeFrameSubmission()
+	bool VulkanRenderer::QueueFrameSubmission(Function &&function)
 	{
 		RN_PROFILE_SCOPE();
 
 		VulkanFrameSubmission submission;
-		DequeueFrameSubmission(submission);
+		if(!_internals->frameSubmissionQueue.WaitForSpace())
+			return false;
+
+		BuildFrameSubmission(submission, std::move(function));
+		return _internals->frameSubmissionQueue.Push(std::move(submission));
+	}
+
+	bool VulkanRenderer::ConsumeFrameSubmission()
+	{
+		RN_PROFILE_SCOPE();
+
+		VulkanFrameSubmission submission;
+		if(!_internals->frameSubmissionQueue.Pop(submission))
+			return false;
+
 		if(PrepareRenderFrame(submission))
 		{
 			RenderFrameSubmission(submission);
@@ -461,6 +447,7 @@ namespace RN
 		}
 
 		FlushDeletedDrawables();
+		return true;
 	}
 
 	void VulkanRenderer::BuildFrameSubmission(VulkanFrameSubmission &submission, Function &&function)

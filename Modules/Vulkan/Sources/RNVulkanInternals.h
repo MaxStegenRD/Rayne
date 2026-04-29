@@ -13,6 +13,7 @@
 #include "RNVulkanStateCoordinator.h"
 #include "RNVulkanRenderer.h"
 #include "RNVulkanSwapChain.h"
+#include "../../../Source/Rendering/RNFrameSubmissionQueue.h"
 
 #include <vk_mem_alloc.h>
 
@@ -330,10 +331,7 @@ namespace RN
 	{
 		VulkanStateCoordinator stateCoordinator;
 
-		std::vector<VulkanFrameSubmission> queuedFrameSubmissions;
-		Lockable queuedFrameSubmissionsLock;
-		Condition queuedFrameSubmissionQueuedCondition;
-		Condition queuedFrameSubmissionConsumedCondition;
+		FrameSubmissionQueue<VulkanFrameSubmission> frameSubmissionQueue;
 		std::vector<VulkanFrameResource> frameResources;
 
 		VulkanDrawBindStateCache drawBindStateCache;
