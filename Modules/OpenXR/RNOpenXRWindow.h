@@ -84,6 +84,9 @@ namespace RN
 		void InitializeHandTracking();
 		void ResetTilePropertiesHintCache();
 		void UpdateTilePropertiesHint();
+		bool BeginRenderFrame();
+		void FinishRenderFrame();
+		void ResetFramePacing();
 
 		int _mainThreadID;
 		OpenXRWindowInternals *_internals;

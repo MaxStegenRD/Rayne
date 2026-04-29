@@ -39,10 +39,10 @@ namespace RN
 		OXRAPI virtual void SetActive(bool active) { _isActive = active; }
 
 	protected:
-		OpenXRSwapChain(const OpenXRWindow *window, OpenXRCompositorLayer *layer, SwapChainType type);
+		OpenXRSwapChain(OpenXRWindow *window, OpenXRCompositorLayer *layer, SwapChainType type);
 		OpenXRSwapchainInternals *_internals;
 
-		const OpenXRWindow *_xrWindow;
+		OpenXRWindow *_xrWindow;
 		OpenXRCompositorLayer *_layer;
 		bool _isActive;
 		bool _hasContent;

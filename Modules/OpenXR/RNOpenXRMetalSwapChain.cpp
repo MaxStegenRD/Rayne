@@ -14,7 +14,7 @@ namespace RN
 {
 	RNDefineMeta(OpenXRMetalSwapChain, MetalSwapChain)
 
-	OpenXRMetalSwapChain::OpenXRMetalSwapChain(const OpenXRWindow *window, OpenXRCompositorLayer *layer, const Window::SwapChainDescriptor &descriptor, const Vector2 &size) :
+	OpenXRMetalSwapChain::OpenXRMetalSwapChain(OpenXRWindow *window, OpenXRCompositorLayer *layer, const Window::SwapChainDescriptor &descriptor, const Vector2 &size) :
 		OpenXRSwapChain(window, layer, SwapChainType::Metal), _swapchainImages(nullptr)
 	{
 		_descriptor = descriptor;
@@ -82,7 +82,7 @@ namespace RN
 
 	void OpenXRMetalSwapChain::AcquireBackBuffer()
 	{
-		if(!_isActive) return;
+		if(!_isActive || !_xrWindow->BeginRenderFrame()) return;
 
 		_layer->UpdateForCurrentFrame();
 

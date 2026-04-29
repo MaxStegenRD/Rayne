@@ -44,7 +44,7 @@ namespace RN
 		OXRAPI void SetFixedFoveatedRenderingLevel(uint8 level, bool dynamic) final;
 
 	private:
-		OpenXRVulkanSwapChain(const OpenXRWindow *window, OpenXRCompositorLayer *layer, const Window::SwapChainDescriptor &descriptor, const Vector2 &size, bool supportFoveation);
+		OpenXRVulkanSwapChain(OpenXRWindow *window, OpenXRCompositorLayer *layer, const Window::SwapChainDescriptor &descriptor, const Vector2 &size, bool supportFoveation);
 
 		VkImage *_swapchainImages;
 		VkImage *_swapchainFoveationImages;

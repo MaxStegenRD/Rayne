@@ -111,6 +111,9 @@ namespace RN
 		_internals->passthroughSessionFB = XR_NULL_HANDLE;
 		_internals->handTracker[0] = XR_NULL_HANDLE;
 		_internals->handTracker[1] = XR_NULL_HANDLE;
+		_internals->predictedDisplayTime = 0;
+		_internals->activeDisplayTime = 0;
+		_internals->hasActiveFrame = false;
 
 #if XR_USE_GRAPHICS_API_VULKAN
 		_internals->GetVulkanInstanceExtensionsKHR = nullptr;
@@ -1686,10 +1689,16 @@ namespace RN
 					insertLayer(layer);
 				});
 
+				XrTime displayTime;
+				{
+					UniqueLock<Lockable> lock(_internals->framePacingLock);
+					displayTime = _internals->activeDisplayTime;
+				}
+
 				XrFrameEndInfo frameEndInfo;
 				frameEndInfo.type = XR_TYPE_FRAME_END_INFO;
 				frameEndInfo.next = nullptr;
-				frameEndInfo.displayTime = _internals->predictedDisplayTime;
+				frameEndInfo.displayTime = displayTime;
 				frameEndInfo.environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
 				frameEndInfo.layerCount = layers.size();
 				frameEndInfo.layers = layers.data();
@@ -1703,11 +1712,16 @@ namespace RN
 					frameEndInfo.next = (void *)&xrLocalDimmingFrameEndInfoMETA;
 				}
 
-				if(XR_FAILED(xrEndFrame(_internals->session, &frameEndInfo)))
 				{
-					RNDebug("Error in xrEndFrame?");
+					RN_PROFILE_SCOPE_N("EndOpenXRRenderFrame");
+					if(XR_FAILED(xrEndFrame(_internals->session, &frameEndInfo)))
+					{
+						RNDebug("Error in xrEndFrame?");
+					}
 				}
 			}
+
+			FinishRenderFrame();
 		};
 
 #if RN_BUILD_DEBUG
@@ -1819,6 +1833,7 @@ namespace RN
 	void OpenXRWindow::StopRendering()
 	{
 		ResetTilePropertiesHintCache();
+		ResetFramePacing();
 
 		if(_internals->session != XR_NULL_HANDLE)
 		{
@@ -2050,6 +2065,7 @@ namespace RN
 							RNInfo("Session State: Stopping");
 							_hasSynchronization = false;
 							_isSessionRunning = false;
+							ResetFramePacing();
 							_layersUnderlay->Enumerate<OpenXRCompositorLayer>([](OpenXRCompositorLayer *layer, size_t index, bool &stop) {
 								layer->SetSessionActive(false);
 							});
@@ -2131,14 +2147,65 @@ namespace RN
 		XrFrameState frameState;
 		frameState.type = XR_TYPE_FRAME_STATE;
 		frameState.next = nullptr;
-		xrWaitFrame(_internals->session, &frameWaitInfo, &frameState);
+		{
+			RN_PROFILE_SCOPE_N("WaitOpenXRFrame");
+			xrWaitFrame(_internals->session, &frameWaitInfo, &frameState);
+		}
 
 		_internals->predictedDisplayTime = frameState.predictedDisplayTime;
+		{
+			UniqueLock<Lockable> lock(_internals->framePacingLock);
+			_internals->pendingDisplayTimes.push_back(frameState.predictedDisplayTime);
+		}
+	}
+
+	bool OpenXRWindow::BeginRenderFrame()
+	{
+		RN_PROFILE_SCOPE_N("BeginOpenXRRenderFrame");
+		if(_internals->session == XR_NULL_HANDLE || !_isSessionRunning) return false;
+
+		XrTime displayTime = 0;
+		{
+			UniqueLock<Lockable> lock(_internals->framePacingLock);
+			if(_internals->hasActiveFrame)
+				return true;
+
+			if(_internals->pendingDisplayTimes.empty())
+				return false;
+
+			displayTime = _internals->pendingDisplayTimes.front();
+			_internals->pendingDisplayTimes.pop_front();
+		}
 
 		XrFrameBeginInfo frameBeginInfo;
 		frameBeginInfo.type = XR_TYPE_FRAME_BEGIN_INFO;
 		frameBeginInfo.next = nullptr;
-		xrBeginFrame(_internals->session, &frameBeginInfo);
+		if(XR_FAILED(xrBeginFrame(_internals->session, &frameBeginInfo)))
+		{
+			RNDebug("Error in xrBeginFrame?");
+			return false;
+		}
+
+		{
+			UniqueLock<Lockable> lock(_internals->framePacingLock);
+			_internals->activeDisplayTime = displayTime;
+			_internals->hasActiveFrame = true;
+		}
+		return true;
+	}
+
+	void OpenXRWindow::FinishRenderFrame()
+	{
+		UniqueLock<Lockable> lock(_internals->framePacingLock);
+		_internals->hasActiveFrame = false;
+	}
+
+	void OpenXRWindow::ResetFramePacing()
+	{
+		UniqueLock<Lockable> lock(_internals->framePacingLock);
+		_internals->pendingDisplayTimes.clear();
+		_internals->activeDisplayTime = 0;
+		_internals->hasActiveFrame = false;
 	}
 
 	void OpenXRWindow::Update(float delta, float near, float far)

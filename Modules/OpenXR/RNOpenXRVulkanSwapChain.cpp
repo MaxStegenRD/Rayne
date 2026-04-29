@@ -14,7 +14,7 @@ namespace RN
 {
 	RNDefineMeta(OpenXRVulkanSwapChain, VulkanSwapChain)
 
-	OpenXRVulkanSwapChain::OpenXRVulkanSwapChain(const OpenXRWindow *window, OpenXRCompositorLayer *layer, const Window::SwapChainDescriptor &descriptor, const Vector2 &size, bool supportFoveation) :
+	OpenXRVulkanSwapChain::OpenXRVulkanSwapChain(OpenXRWindow *window, OpenXRCompositorLayer *layer, const Window::SwapChainDescriptor &descriptor, const Vector2 &size, bool supportFoveation) :
 		OpenXRSwapChain(window, layer, SwapChainType::Vulkan), _swapchainImages(nullptr), _swapchainFoveationImages(nullptr), _swapChainFoveationImagesSize(nullptr)
 	{
 		_descriptor = descriptor;
@@ -149,7 +149,7 @@ namespace RN
 
 	void OpenXRVulkanSwapChain::AcquireBackBuffer()
 	{
-		if(!_isActive) return;
+		if(!_isActive || !_xrWindow->BeginRenderFrame()) return;
 
 		XrSwapchainImageAcquireInfo swapchainImageAcquireInfo;
 		swapchainImageAcquireInfo.type = XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO;

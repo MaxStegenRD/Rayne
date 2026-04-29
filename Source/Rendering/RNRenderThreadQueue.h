@@ -27,6 +27,7 @@ namespace RN
 
 		bool WaitForSpace()
 		{
+			RN_PROFILE_SCOPE_N("WaitForRenderFrameQueueSpace");
 			UniqueLock<Lockable> lock(_lock);
 			_consumedCondition.Wait(lock, [this]() {
 				return _isShuttingDown || _queuedFrameSubmissionCount < RN_RENDERING_FRAME_SUBMISSION_QUEUE_SIZE;
