@@ -10,6 +10,7 @@
 #define __RAYNE_RENDERFRAME_H__
 
 #include "RNDrawable.h"
+#include "RNRenderingConfig.h"
 #include "RNRenderPass.h"
 #include "../Scene/RNCamera.h"
 #include "../Scene/RNLight.h"
@@ -223,6 +224,14 @@ namespace RN
 			void AddDrawItem(Drawable *sourceDrawable)
 			{
 				_drawItems.emplace_back(sourceDrawable);
+			}
+
+			void ReserveDrawItems(size_t estimatedDrawItemCount, size_t previousDrawItemCount)
+			{
+				size_t estimatedReserve = static_cast<size_t>(ceil(static_cast<double>(estimatedDrawItemCount) * static_cast<double>(RN_RENDERING_ESTIMATED_DRAW_ITEMS_RESERVE_MULTIPLIER)));
+				size_t previousReserve = static_cast<size_t>(ceil(static_cast<double>(previousDrawItemCount) * static_cast<double>(RN_RENDERING_PREVIOUS_DRAW_ITEMS_RESERVE_MULTIPLIER)));
+				size_t reserveCount = estimatedReserve > previousReserve ? estimatedReserve : previousReserve;
+				_drawItems.reserve(reserveCount);
 			}
 
 			void SetCameraSnapshot(const CameraSnapshot &cameraSnapshot) { _cameraSnapshot = cameraSnapshot; }

@@ -940,12 +940,12 @@ namespace RN
 	}
 
 	//TODO: Merge parts of this with SubmitRenderPass and call it in here
-	void VulkanRenderer::SubmitCamera(Camera *camera, Function &&function)
+	void VulkanRenderer::SubmitCamera(Camera *camera, Function &&function, size_t estimatedDrawableCount)
 	{
-		SubmitCamera(GetActiveFrameSubmission(), camera, camera, std::move(function));
+		SubmitCamera(GetActiveFrameSubmission(), camera, camera, std::move(function), estimatedDrawableCount);
 	}
 
-	void VulkanRenderer::SubmitCamera(VulkanFrameSubmission &frameSubmission, Camera *camera, Camera *lightClusterCamera, Function &&function)
+	void VulkanRenderer::SubmitCamera(VulkanFrameSubmission &frameSubmission, Camera *camera, Camera *lightClusterCamera, Function &&function, size_t estimatedDrawableCount)
 	{
 		RN_PROFILE_SCOPE();
 		VulkanRenderPass renderPass;
@@ -983,12 +983,12 @@ namespace RN
 						if(increment == 1)
 						{
 							_currentMultiviewFallbackRenderPass = camera->GetRenderPass();
-							SubmitCamera(frameSubmission, multiviewCameras->GetObjectAtIndex<Camera>(i), lightClusterCamera, std::move(cameraSubmission));
+							SubmitCamera(frameSubmission, multiviewCameras->GetObjectAtIndex<Camera>(i), lightClusterCamera, std::move(cameraSubmission), estimatedDrawableCount);
 							_currentMultiviewFallbackRenderPass = nullptr;
 						}
 						else
 						{
-							SubmitCamera(frameSubmission, camera, lightClusterCamera, std::move(cameraSubmission));
+							SubmitCamera(frameSubmission, camera, lightClusterCamera, std::move(cameraSubmission), estimatedDrawableCount);
 						}
 
 						_currentMultiviewLayer = 0;
@@ -1010,7 +1010,7 @@ namespace RN
 					_currentMultiviewFallbackRenderPass = camera->GetRenderPass();
 
 					RN::Function cameraSubmission = RN::MakeFunction([&function](){ function(); });
-					SubmitCamera(frameSubmission, multiviewCamera, lightClusterCamera, std::move(cameraSubmission));
+					SubmitCamera(frameSubmission, multiviewCamera, lightClusterCamera, std::move(cameraSubmission), estimatedDrawableCount);
 
 					_currentMultiviewLayer = 0;
 					_currentMultiviewCount = 0;
@@ -1043,7 +1043,10 @@ namespace RN
 		clipSpaceCorrectionMatrix.m[5] = -1.0f;
 		RenderFrame::CameraSnapshot cameraSnapshot = RenderFrame::CameraSnapshot::WithCamera(camera, rootDrawSnapshot.GetFrame(), clipSpaceCorrectionMatrix);
 		RenderFrame::Pass &framePass = frameSubmission.renderFrame.GetPass(renderPass.renderFramePassIndex);
+		framePass.ReserveDrawItems(estimatedDrawableCount, renderPassResources->GetLastDrawItemCount());
 		framePass.SetCameraSnapshot(cameraSnapshot);
+		std::vector<RenderPassDrawCountWriteback> drawCountWritebacks;
+		drawCountWritebacks.push_back({renderPass.renderFramePassIndex, renderPassResources});
 		for(Camera *multiviewCamera : multiviewSnapshotCameras)
 		{
 			framePass.AddMultiviewCameraSnapshot(RenderFrame::CameraSnapshot::WithCamera(multiviewCamera, rootDrawSnapshot.GetFrame(), clipSpaceCorrectionMatrix));
@@ -1061,7 +1064,7 @@ namespace RN
 
 		const Array *nextRenderPasses = renderPass.renderPass->GetNextRenderPasses();
 		nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
-			SubmitRenderPass(frameSubmission, nextPass, frameSubmission.renderPasses[previousRenderPassIndex]);
+			SubmitRenderPass(frameSubmission, nextPass, frameSubmission.renderPasses[previousRenderPassIndex], estimatedDrawableCount, drawCountWritebacks);
 		});
 
 		frameSubmission.activeRenderPassIndex = previousRenderPassIndex;
@@ -1124,9 +1127,15 @@ namespace RN
 				setLightClusterSnapshot(subpass);
 			}
 		}
+
+		for(const RenderPassDrawCountWriteback &writeback : drawCountWritebacks)
+		{
+			const RenderFrame::Pass &submittedFramePass = frameSubmission.renderFrame.GetPass(writeback.renderFramePassIndex);
+			writeback.renderPassResources->SetLastDrawItemCount(submittedFramePass.GetDrawItems().size());
+		}
 	}
 
-	void VulkanRenderer::SubmitRenderPass(VulkanFrameSubmission &frameSubmission, RenderPass *renderPass, VulkanRenderPass &previousRenderPass)
+	void VulkanRenderer::SubmitRenderPass(VulkanFrameSubmission &frameSubmission, RenderPass *renderPass, VulkanRenderPass &previousRenderPass, size_t estimatedDrawableCount, std::vector<RenderPassDrawCountWriteback> &drawCountWritebacks)
 	{
 		RN_PROFILE_SCOPE();
 
@@ -1197,7 +1206,9 @@ namespace RN
 			vulkanRenderPass.renderFramePassIndex = frameSubmission.renderFrame.AddPass(drawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetIdentity(), renderPassResources->GetOverrideMaterialSnapshotVersion());
 			RenderFrame::Pass &framePass = frameSubmission.renderFrame.GetPass(vulkanRenderPass.renderFramePassIndex);
 			const RenderFrame::Pass &previousFramePass = frameSubmission.renderFrame.GetPass(previousRenderPass.renderFramePassIndex);
+			framePass.ReserveDrawItems((isPostProcessingStage || vulkanRenderPass.type == VulkanRenderPass::Type::Convert) ? 1 : estimatedDrawableCount, renderPassResources->GetLastDrawItemCount());
 			framePass.SetCameraSnapshot(previousFramePass.GetCameraSnapshot());
+			drawCountWritebacks.push_back({vulkanRenderPass.renderFramePassIndex, renderPassResources});
 			for(const RenderFrame::CameraSnapshot &multiviewCameraSnapshot : previousFramePass.GetMultiviewCameraSnapshots())
 			{
 				framePass.AddMultiviewCameraSnapshot(multiviewCameraSnapshot);
@@ -1237,7 +1248,7 @@ namespace RN
 
 		const Array *nextRenderPasses = renderPass->GetNextRenderPasses();
 		nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
-			SubmitRenderPass(frameSubmission, nextPass, frameSubmission.renderPasses[frameSubmission.activeRenderPassIndex]);
+			SubmitRenderPass(frameSubmission, nextPass, frameSubmission.renderPasses[frameSubmission.activeRenderPassIndex], estimatedDrawableCount, drawCountWritebacks);
 		});
 	}
 
@@ -2162,7 +2173,7 @@ namespace RN
 
 		StrongRef<Camera> cameraRef(camera);
 		VulkanFrameSubmission submission;
-		SubmitCamera(submission, camera, camera, RN::MakeFunction([](){}));
+		SubmitCamera(submission, camera, camera, RN::MakeFunction([](){}), 0);
 		if(submission.renderPasses.empty())
 			return;
 

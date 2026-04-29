@@ -165,6 +165,9 @@ namespace RN
 					}
 				});
 
+				size_t estimatedDrawableCount = _defaultVolume ? _defaultVolume->nodes.size() : 0;
+				estimatedDrawableCount += (volume && volume != _defaultVolume) ? volume->nodes.size() : 0;
+
 				renderer->SubmitCamera(camera, [&] {
 					if(LightManager *lm = camera->GetLightManager())
 					{
@@ -175,7 +178,7 @@ namespace RN
 					{
 						RenderVolumeList(renderer, camera, volume);
 					}
-				});
+				}, estimatedDrawableCount);
 
 				member = member->GetNext();
 			}

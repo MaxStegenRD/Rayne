@@ -31,6 +31,7 @@ namespace RN
 	class VulkanStaticGPUBuffer;
 	class VulkanDynamicGPUBuffer;
 	class VulkanTransientDescriptorSet;
+	struct RenderPassResources;
 
 	class VulkanRenderer : public Renderer
 	{
@@ -51,7 +52,7 @@ namespace RN
 
 		VKAPI void Render(Function &&function) final;
 		VKAPI void ScheduleRenderThreadWork(Function &&function) final;
-		VKAPI void SubmitCamera(Camera *camera, Function &&function) final;
+		VKAPI void SubmitCamera(Camera *camera, Function &&function, size_t estimatedDrawableCount = 0) final;
 
 		VKAPI bool SupportsTextureFormat(const String *format) const final;
 		VKAPI bool SupportsDrawMode(DrawMode mode) const final;
@@ -95,6 +96,12 @@ namespace RN
 		VKAPI void UpdateDynamicBufferReference(VulkanDynamicBufferReference *reference, bool align);
 
 	private:
+		struct RenderPassDrawCountWriteback
+		{
+			size_t renderFramePassIndex;
+			RenderPassResources *renderPassResources;
+		};
+
 		void StartRenderThread();
 		void StopRenderThread();
 		bool IsOnRenderThread() const;
@@ -105,8 +112,8 @@ namespace RN
 		bool ConsumeRenderThreadWork();
 		void RenderFrameSubmission(const VulkanFrameSubmission &submission);
 		void WarmupDrawableOnRenderThread(const VulkanFrameSubmission &submission, const Mesh::DrawSnapshot &meshSnapshot, const Material::DrawSnapshot &materialSnapshot, uint64 materialSnapshotVersion);
-		void SubmitCamera(VulkanFrameSubmission &submission, Camera *camera, Camera *lightClusterCamera, Function &&function);
-		void SubmitRenderPass(VulkanFrameSubmission &submission, RenderPass *renderPass, VulkanRenderPass &previousRenderPass);
+		void SubmitCamera(VulkanFrameSubmission &submission, Camera *camera, Camera *lightClusterCamera, Function &&function, size_t estimatedDrawableCount);
+		void SubmitRenderPass(VulkanFrameSubmission &submission, RenderPass *renderPass, VulkanRenderPass &previousRenderPass, size_t estimatedDrawableCount, std::vector<RenderPassDrawCountWriteback> &drawCountWritebacks);
 		void SubmitDrawable(VulkanFrameSubmission &submission, Drawable *drawable);
 		bool PrepareRenderFrame(VulkanFrameSubmission &submission);
 		void UpdateDescriptorSets(VulkanFrameSubmission &submission);

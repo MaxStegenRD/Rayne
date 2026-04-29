@@ -472,7 +472,7 @@ namespace RN
 					{
 						node->Render(renderer, camera);
 					}
-				});
+				}, sceneNodesToRender.size());
 
 				cameraMember = cameraMember->GetNext();
 			}

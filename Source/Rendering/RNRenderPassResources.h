@@ -30,6 +30,8 @@ namespace RN
 		const Material::DrawSnapshot *GetOverrideMaterialSnapshot() const { return _hasOverrideMaterial ? &_overrideMaterialSnapshot : nullptr; }
 		uint64 GetOverrideMaterialSnapshotVersion() const { return _overrideMaterialSnapshotVersion; }
 		const RenderPass::DrawSnapshot &GetDrawSnapshot() const { return _drawSnapshot; }
+		size_t GetLastDrawItemCount() const { return _lastDrawItemCount; }
+		void SetLastDrawItemCount(size_t count) { _lastDrawItemCount = count; }
 
 	private:
 		void UpdateOverrideMaterial(Material *effectiveOverrideMaterial);
@@ -44,6 +46,8 @@ namespace RN
 		uint64 _overrideMaterialSourceVersion = 0;
 		uint64 _overrideMaterialSnapshotVersion = 0;
 		Material::DrawSnapshot _overrideMaterialSnapshot;
+
+		size_t _lastDrawItemCount = 0;
 
 		Renderer *_renderer;
 	};
