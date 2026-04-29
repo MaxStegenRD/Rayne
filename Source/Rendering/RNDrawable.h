@@ -118,9 +118,13 @@ namespace RN
 			SkeletonSnapshot *_skeleton;
 		};
 
-		RNAPI void Update(Mesh *tmesh, Material *tmaterial, Skeleton *tskeleton, const SceneNode *node);
-		RNAPI virtual void Update(const SceneNode *node);
-		RNAPI void MakeDirty();
+		RNAPI void SetSources(Mesh *mesh, Material *material, Skeleton *skeleton);
+		RNAPI virtual void UpdateTransform(const SceneNode *node);
+		bool ShouldRender() const
+		{
+			Material *material = _sourceMaterial.Get();
+			return material && !material->GetSkipRendering();
+		}
 		RNAPI void GetMeshBufferSnapshot(Mesh::BufferSnapshot &snapshot) const;
 		RNAPI DrawSnapshotBundle GetDrawSnapshotBundleForFrame(uint64 frameID);
 
@@ -134,7 +138,7 @@ namespace RN
 		static constexpr uint8 SkeletonSnapshotDirty = 1 << 2;
 		static constexpr uint8 AllSnapshotsDirty = MeshSnapshotDirty | MaterialSnapshotDirty | SkeletonSnapshotDirty;
 
-		void UpdateTransform(const SceneNode *node);
+		void UpdateSourceVersions();
 		bool DrainDrawSnapshots(uint64 completedFrameID);
 		bool HasDrawSnapshotHistory() const;
 		void UpdateDrawSnapshots(uint64 frameID);

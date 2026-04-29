@@ -701,7 +701,7 @@ namespace RN
 
 					_lock.Lock();
 					_defaultPostProcessingDrawable = static_cast<MetalDrawable*>(CreateDrawable());
-					_defaultPostProcessingDrawable->Update(planeMesh, planeMaterial, nullptr, nullptr);
+					_defaultPostProcessingDrawable->SetSources(planeMesh, planeMaterial, nullptr);
 					_lock.Unlock();
 				}
 				SubmitDrawable(frameSubmission, _defaultPostProcessingDrawable);

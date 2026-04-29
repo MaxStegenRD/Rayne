@@ -31,7 +31,7 @@ namespace RN
 		RNAPI bool CanRender(Renderer *renderer, Camera *camera) const override;
 		RNAPI void Render(Renderer *renderer, Camera *camera) const override;
 
-		RNAPI void MakeDirty(); //Can be used to force a drawable snapshot refresh.
+		RNAPI void RefreshDrawableSources();
 
 	private:
 		void ClearDrawables();

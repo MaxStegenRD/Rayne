@@ -22,6 +22,7 @@ namespace RN
 	// ---------------------
 
 	ParticleEmitter::ParticleEmitter() :
+		_drawable(nullptr),
 		_material(nullptr),
 		_mesh(nullptr),
 		_isLocal(true),
@@ -56,10 +57,12 @@ namespace RN
 
 		Renderer *renderer = Renderer::GetActiveRenderer();
 		_drawable = renderer->CreateDrawable();
+		_drawable->SetSources(_mesh, _material, nullptr);
 	}
 
 	ParticleEmitter::ParticleEmitter(const ParticleEmitter *emitter) :
 		SceneNode(emitter),
+		_drawable(nullptr),
 		_material(emitter->GetMaterial()),
 		_mesh(nullptr),
 		_isLocal(emitter->_isLocal),
@@ -74,6 +77,7 @@ namespace RN
 
 		Renderer *renderer = Renderer::GetActiveRenderer();
 		_drawable = renderer->CreateDrawable();
+		_drawable->SetSources(_mesh, _material, nullptr);
 	}
 
 	ParticleEmitter::~ParticleEmitter()
@@ -81,11 +85,6 @@ namespace RN
 		SafeRelease(_material);
 		SafeRelease(_mesh);
 		SafeRelease(_rng);
-	}
-
-	void ParticleEmitter::MakeDirty()
-	{
-		_drawable->MakeDirty();
 	}
 
 	void ParticleEmitter::Cook(float time, int steps)
@@ -133,6 +132,8 @@ namespace RN
 						 maxParticles * 4, maxParticles * 6, true); //Create a streamable mesh
 
 		_meshIsInitialized = false;
+		if(_drawable)
+			_drawable->SetSources(_mesh, _material, nullptr);
 	}
 
 	void ParticleEmitter::SetMaxParticlesSoft(uint32 maxParticles)
@@ -146,6 +147,8 @@ namespace RN
 	{
 		SafeRelease(_material);
 		_material = SafeRetain(material);
+		if(_drawable)
+			_drawable->SetSources(_mesh, _material, nullptr);
 	}
 
 	void ParticleEmitter::SetGenerator(RandomNumberGenerator *generator)
@@ -422,7 +425,7 @@ namespace RN
 			UpdateMesh();
 		}
 
-		_drawable->Update(_mesh, _material, nullptr, _isLocal ? this : nullptr);
+		_drawable->UpdateTransform(_isLocal ? this : nullptr);
 		renderer->SubmitDrawable(_drawable);
 	}
 

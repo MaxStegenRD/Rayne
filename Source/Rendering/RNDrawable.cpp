@@ -63,50 +63,51 @@ namespace RN
 		return _textures->IsEqualLite(other._textures);
 	}
 
-	void Drawable::Update(Mesh *tmesh, Material *tmaterial, Skeleton *tskeleton, const SceneNode *node)
+	void Drawable::SetSources(Mesh *mesh, Material *material, Skeleton *skeleton)
 	{
-		bool meshSourceChanged = _sourceMesh.Get() != tmesh;
-		bool materialSourceChanged = _sourceMaterial.Get() != tmaterial;
-		bool skeletonSourceChanged = _sourceSkeleton.Get() != tskeleton;
+		bool meshSourceChanged = _sourceMesh.Get() != mesh;
+		bool materialSourceChanged = _sourceMaterial.Get() != material;
+		bool skeletonSourceChanged = _sourceSkeleton.Get() != skeleton;
 
 		if(meshSourceChanged)
 		{
-			_sourceMesh = tmesh;
+			_sourceMesh = mesh;
 			_drawSnapshotDirtyMask |= MeshSnapshotDirty;
 		}
 		if(materialSourceChanged)
 		{
-			_sourceMaterial = tmaterial;
+			_sourceMaterial = material;
+			_materialDrawSnapshotVersion = material ? material->GetDrawSnapshotVersion() : 0;
+			_materialSnapshotVersion += 1;
 			_drawSnapshotDirtyMask |= MaterialSnapshotDirty;
 		}
 		if(skeletonSourceChanged)
 		{
-			_sourceSkeleton = tskeleton;
+			_sourceSkeleton = skeleton;
 			_drawSnapshotDirtyMask |= SkeletonSnapshotDirty;
 		}
+	}
 
-		uint64 meshPipelineVersion = tmesh ? tmesh->GetPipelineVersion() : 0;
+	void Drawable::UpdateSourceVersions()
+	{
+		Mesh *mesh = _sourceMesh.Get();
+		uint64 meshPipelineVersion = mesh ? mesh->GetPipelineVersion() : 0;
 		if(_meshPipelineVersion != meshPipelineVersion)
 			_drawSnapshotDirtyMask |= MeshSnapshotDirty;
 
-		uint64 materialDrawSnapshotVersion = tmaterial ? tmaterial->GetDrawSnapshotVersion() : 0;
-		if(materialSourceChanged || _materialDrawSnapshotVersion != materialDrawSnapshotVersion)
+		Material *material = _sourceMaterial.Get();
+		uint64 materialDrawSnapshotVersion = material ? material->GetDrawSnapshotVersion() : 0;
+		if(_materialDrawSnapshotVersion != materialDrawSnapshotVersion)
 		{
 			_materialDrawSnapshotVersion = materialDrawSnapshotVersion;
 			_materialSnapshotVersion += 1;
 			_drawSnapshotDirtyMask |= MaterialSnapshotDirty;
 		}
 
-		uint64 skeletonDrawSnapshotVersion = tskeleton ? tskeleton->GetDrawSnapshotVersion() : 0;
+		Skeleton *skeleton = _sourceSkeleton.Get();
+		uint64 skeletonDrawSnapshotVersion = skeleton ? skeleton->GetDrawSnapshotVersion() : 0;
 		if(_skeletonDrawSnapshotVersion != skeletonDrawSnapshotVersion)
 			_drawSnapshotDirtyMask |= SkeletonSnapshotDirty;
-
-		UpdateTransform(node);
-	}
-
-	void Drawable::Update(const SceneNode *node)
-	{
-		UpdateTransform(node);
 	}
 
 	void Drawable::UpdateTransform(const SceneNode *node)
@@ -143,12 +144,6 @@ namespace RN
 		}
 	}
 
-	void Drawable::MakeDirty()
-	{
-		_drawSnapshotDirtyMask |= AllSnapshotsDirty;
-		_materialSnapshotVersion += 1;
-	}
-
 	void Drawable::GetMeshBufferSnapshot(Mesh::BufferSnapshot &snapshot) const
 	{
 		Mesh *mesh = _sourceMesh.Get();
@@ -160,6 +155,8 @@ namespace RN
 
 	Drawable::DrawSnapshotBundle Drawable::GetDrawSnapshotBundleForFrame(uint64 frameID)
 	{
+		UpdateSourceVersions();
+
 		if(_drawSnapshotDirtyMask != 0)
 			UpdateDrawSnapshots(frameID);
 

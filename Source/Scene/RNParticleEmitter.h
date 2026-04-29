@@ -69,8 +69,6 @@ namespace RN
 
 		RNAPI size_t GetNumParticles() const { return _lifespans.size(); }
 		
-		RNAPI void MakeDirty(); //Can be used to force a drawable snapshot refresh.
-
 	protected:		
 		RNAPI virtual void UpdateLifespans(float delta);
 		RNAPI virtual void RemoveParticles(const std::vector<size_t> &indices);

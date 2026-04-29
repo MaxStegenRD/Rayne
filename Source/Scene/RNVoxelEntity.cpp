@@ -40,6 +40,7 @@ namespace RN
 	{
 		SafeRelease(_material);
 		_material = SafeRetain(material);
+		_drawable->SetSources(_mesh, _material, nullptr);
 	}
 
 	void VoxelEntity::SetVoxel(uint32 x, uint32 y, uint32 z, const Point &voxel)
@@ -724,6 +725,8 @@ namespace RN
 		_mesh->changedVertices = true;
 		_mesh->changedIndices = true;
 		_mesh->EndChanges();
+
+		_drawable->SetSources(_mesh, _material, nullptr);
 	}
 
 	bool VoxelEntity::CanRender(Renderer *renderer, Camera *camera) const
@@ -739,7 +742,7 @@ namespace RN
 		if(!_material)
 			return;
 
-		_drawable->Update(_mesh, _material, nullptr, this);
+		_drawable->UpdateTransform(this);
 		renderer->SubmitDrawable(_drawable);
 	}
 } // namespace RN

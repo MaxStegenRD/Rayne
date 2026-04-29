@@ -39,10 +39,10 @@ namespace RN
 
 		Renderer *renderer = Renderer::GetActiveRenderer();
 #if RN_MODEL_LOD_DISABLED
-		for(auto *drawable : _drawables)
+		for(Drawable *drawable : _drawables)
 			renderer->DeleteDrawable(drawable);
 #else
-		for(auto &drawables : _drawables)
+		for(const std::vector<Drawable *> &drawables : _drawables)
 		{
 			for(Drawable *drawable : drawables)
 				renderer->DeleteDrawable(drawable);
@@ -73,20 +73,24 @@ namespace RN
 					size_t groups = stage->GetCount();
 
 #if RN_MODEL_LOD_DISABLED //In this case there only ever is one stage
+					_drawables.reserve(groups);
 					for(size_t j = 0; j < groups; j++)
 					{
 						_drawables.push_back(renderer->CreateDrawable());
 					}
 #else
-					_drawables.emplace_back(groups, nullptr);
+					_drawables.emplace_back();
 
-					auto &drawables = _drawables.back();
+					std::vector<Drawable *> &drawables = _drawables.back();
+					drawables.reserve(groups);
 					for(size_t j = 0; j < groups; j++)
 					{
-						drawables[j] = renderer->CreateDrawable();
+						drawables.push_back(renderer->CreateDrawable());
 					}
 #endif
 				}
+
+				RefreshDrawableSources();
 			}
 
 			SetBoundingBox(model->GetBoundingBox());
@@ -99,7 +103,7 @@ namespace RN
 			return;
 
 #if RN_MODEL_LOD_DISABLED
-		const Model::LODStage *stage = _model->_lodStage;
+		const std::vector<Drawable *> &drawables = _drawables;
 #else
 		Camera *distanceCamera = camera->GetLODCamera();
 
@@ -109,53 +113,46 @@ namespace RN
 		const Model::LODStage *stage = _model->GetLODStageForDistance(lodDistance);
 
 		size_t index = stage->_index;
-		auto &drawables = _drawables[index];
+		const std::vector<Drawable *> &drawables = _drawables[index];
 #endif
 
-		size_t count = stage->GetCount();
-
-		for(size_t i = 0; i < count; i++)
+		for(Drawable *drawable : drawables)
 		{
-			Material *material = stage->GetMaterialAtIndex(i);
-
-			if(!material->_skipRendering)
+			if(drawable->ShouldRender())
 			{
-#if RN_MODEL_LOD_DISABLED
-				Drawable *drawable = _drawables[i];
-#else
-				Drawable *drawable = drawables[i];
-#endif
-				drawable->Update(stage->GetMeshAtIndex(i), material, _model->_skeleton, this);
+				drawable->UpdateTransform(this);
 				renderer->SubmitDrawable(drawable);
 			}
 		}
 	}
 
-	void Entity::MakeDirty()
+	void Entity::RefreshDrawableSources()
 	{
 		RN_PROFILE_SCOPE();
 		if(!_model) return;
 
+#if RN_MODEL_LOD_DISABLED
+		Model::LODStage *stage = _model->GetLODStage(0);
+		size_t count = stage->GetCount();
+		for(size_t i = 0; i < count; i += 1)
+		{
+			Drawable *drawable = _drawables[i];
+			drawable->SetSources(stage->GetMeshAtIndex(i), stage->GetMaterialAtIndex(i), _model->_skeleton);
+		}
+#else
 		size_t lodStageCount = _model->GetLODStageCount();
 		for(size_t lodStage = 0; lodStage < lodStageCount; lodStage += 1)
 		{
 			Model::LODStage *stage = _model->GetLODStage(lodStage);
-
-#if !RN_MODEL_LOD_DISABLED
-			auto &drawables = _drawables[lodStage];
-#endif
-
+			const std::vector<Drawable *> &drawables = _drawables[lodStage];
 			size_t count = stage->GetCount();
-			for(size_t i = 0; i < count; i++)
+			for(size_t i = 0; i < count; i += 1)
 			{
-#if RN_MODEL_LOD_DISABLED
-				Drawable *drawable = _drawables[i];
-#else
 				Drawable *drawable = drawables[i];
-#endif
-				drawable->MakeDirty();
+				drawable->SetSources(stage->GetMeshAtIndex(i), stage->GetMaterialAtIndex(i), _model->_skeleton);
 			}
 		}
+#endif
 	}
 
 	bool Entity::CanRender(Renderer *renderer, Camera *camera) const
