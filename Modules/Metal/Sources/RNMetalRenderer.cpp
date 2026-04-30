@@ -1627,11 +1627,9 @@ namespace RN
 			const RenderPass::DrawSnapshot &passDrawSnapshot = framePass.GetDrawSnapshot();
 			if((renderGroup & passDrawSnapshot.GetRenderGroupMask()) == 0) continue;
 
-			_lock.Lock();
 			if(drawItemIndex == RenderFrame::InvalidDrawItemIndex)
 				drawItemIndex = frameSubmission.renderFrame.AddDrawItem(drawable, node);
 			framePass.AddDrawItemIndex(drawItemIndex);
-			_lock.Unlock();
 		}
 	}
 
