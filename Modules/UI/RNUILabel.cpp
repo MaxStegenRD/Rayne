@@ -103,7 +103,7 @@ namespace RN
 				Color finalColor = _shadowColor;
 				finalColor.a *= _combinedOpacityFactor;
 				_shadowMaterial->SetDiffuseColor(finalColor);
-				_shadowMaterial->SetSkipRendering(finalColor.a < k::EpsilonFloat);
+				SetDrawableRenderingEnabled(1, finalColor.a >= k::EpsilonFloat);
 			}
 			Unlock();
 		}
@@ -155,7 +155,7 @@ namespace RN
 			Color finalColor = Color::White();
 			finalColor.a *= _combinedOpacityFactor;
 			material->SetDiffuseColor(finalColor);
-			material->SetSkipRendering(finalColor.a < k::EpsilonFloat || !_attributedText || _attributedText->GetLength() == 0);
+			SetDrawableRenderingEnabled(2, finalColor.a >= k::EpsilonFloat && _attributedText && _attributedText->GetLength() > 0);
 
 			const Rect &scissorRect = GetScissorRect();
 			material->SetUIClippingRect(Vector4(scissorRect.GetLeft(), scissorRect.GetRight(), scissorRect.GetTop(), scissorRect.GetBottom()));
@@ -193,7 +193,7 @@ namespace RN
 			Color finalColor = _shadowColor;
 			finalColor.a *= _combinedOpacityFactor;
 			material->SetDiffuseColor(finalColor);
-			material->SetSkipRendering(finalColor.a < k::EpsilonFloat || !_attributedText || _attributedText->GetLength() == 0);
+			SetDrawableRenderingEnabled(1, finalColor.a >= k::EpsilonFloat && _attributedText && _attributedText->GetLength() > 0);
 
 			RN::Model *model = GetModel();
 			if(model && model->GetLODStage(0)->GetCount() > 1)
@@ -912,14 +912,8 @@ namespace RN
 			Lock();
 			if(!_attributedText || _attributedText->GetLength() == 0)
 			{
-				Model *model = GetModel();
-				if(model->GetLODStage(0)->GetCount() > 1)
-				{
-					Material *textMaterial = model->GetLODStage(0)->GetMaterialAtIndex(2);
-					textMaterial->SetSkipRendering(true);
-					Material *shadowMaterial = model->GetLODStage(0)->GetMaterialAtIndex(1);
-					shadowMaterial->SetSkipRendering(true);
-				}
+				SetDrawableRenderingEnabled(2, false);
+				SetDrawableRenderingEnabled(1, false);
 				Unlock();
 				return;
 			}
@@ -1086,14 +1080,8 @@ namespace RN
 
 			if(numberOfIndices < 3)
 			{
-				Model *model = GetModel();
-				if(model->GetLODStage(0)->GetCount() > 1)
-				{
-					Material *textMaterial = model->GetLODStage(0)->GetMaterialAtIndex(2);
-					textMaterial->SetSkipRendering(true);
-					Material *shadowMaterial = model->GetLODStage(0)->GetMaterialAtIndex(1);
-					shadowMaterial->SetSkipRendering(true);
-				}
+				SetDrawableRenderingEnabled(2, false);
+				SetDrawableRenderingEnabled(1, false);
 				Unlock();
 				return;
 			}
@@ -1314,10 +1302,8 @@ namespace RN
 				RefreshDrawableSources();
 			}
 
-			Material *textMaterial = model->GetLODStage(0)->GetMaterialAtIndex(2);
-			textMaterial->SetSkipRendering(_combinedOpacityFactor < k::EpsilonFloat);
-			Material *shadowMaterial = model->GetLODStage(0)->GetMaterialAtIndex(1);
-			shadowMaterial->SetSkipRendering(_shadowColor.a < k::EpsilonFloat);
+			SetDrawableRenderingEnabled(2, _combinedOpacityFactor >= k::EpsilonFloat);
+			SetDrawableRenderingEnabled(1, _shadowColor.a >= k::EpsilonFloat);
 
 			model->CalculateBoundingVolumes();
 			SetBoundingBox(model->GetBoundingBox());
@@ -1335,7 +1321,7 @@ namespace RN
 				Color finalColor = Color::White();
 				finalColor.a *= _combinedOpacityFactor;
 				_textMaterial->SetDiffuseColor(finalColor);
-				_textMaterial->SetSkipRendering(finalColor.a < k::EpsilonFloat || !_attributedText || _attributedText->GetLength() == 0);
+				SetDrawableRenderingEnabled(2, finalColor.a >= k::EpsilonFloat && _attributedText && _attributedText->GetLength() > 0);
 			}
 
 			if(_shadowMaterial)
@@ -1343,7 +1329,7 @@ namespace RN
 				Color finalColor = _shadowColor;
 				finalColor.a *= _combinedOpacityFactor;
 				_shadowMaterial->SetDiffuseColor(finalColor);
-				_shadowMaterial->SetSkipRendering(finalColor.a < k::EpsilonFloat || !_attributedText || _attributedText->GetLength() == 0);
+				SetDrawableRenderingEnabled(1, finalColor.a >= k::EpsilonFloat && _attributedText && _attributedText->GetLength() > 0);
 			}
 
 			Unlock();

@@ -54,7 +54,7 @@ namespace RN
 
 				Color finalColor = _color;
 				finalColor.a *= _combinedOpacityFactor;
-				material->SetSkipRendering(_image == nullptr || finalColor.a < k::EpsilonFloat);
+				SetDrawableRenderingEnabled(1, _image && finalColor.a >= k::EpsilonFloat);
 			}
 			NotifyIntrinsicSizeChanged();
 		}
@@ -76,7 +76,7 @@ namespace RN
 
 				Color finalColor = _color;
 				finalColor.a *= _combinedOpacityFactor;
-				material->SetSkipRendering(_framebuffer == nullptr || finalColor.a < k::EpsilonFloat);
+				SetDrawableRenderingEnabled(1, _framebuffer && finalColor.a >= k::EpsilonFloat);
 			}
 			NotifyIntrinsicSizeChanged();
 		}
@@ -92,7 +92,7 @@ namespace RN
 				Color finalColor = _color;
 				finalColor.a *= _combinedOpacityFactor;
 				material->SetDiffuseColor(finalColor);
-				material->SetSkipRendering(_image == nullptr || finalColor.a < k::EpsilonFloat);
+				SetDrawableRenderingEnabled(1, _image && finalColor.a >= k::EpsilonFloat);
 			}
 		}
 
@@ -151,7 +151,7 @@ namespace RN
 
 			if(_framebuffer) material->AddTexture(_framebuffer);
 			else if(_image) material->AddTexture(_image);
-			material->SetSkipRendering((_image == nullptr && _framebuffer == nullptr) || finalColor.a < k::EpsilonFloat);
+			SetDrawableRenderingEnabled(1, (_image || _framebuffer) && finalColor.a >= k::EpsilonFloat);
 
 			Model *model = GetModel();
 			if(model && model->GetLODStage(0)->GetCount() > 1)
@@ -210,7 +210,7 @@ namespace RN
 				Color finalColor = _color;
 				finalColor.a *= _combinedOpacityFactor;
 				material->SetDiffuseColor(finalColor);
-				material->SetSkipRendering(_image == nullptr || finalColor.a < k::EpsilonFloat);
+				SetDrawableRenderingEnabled(1, _image && finalColor.a >= k::EpsilonFloat);
 			}
 
 			Unlock();

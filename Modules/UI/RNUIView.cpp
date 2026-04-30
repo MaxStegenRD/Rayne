@@ -604,7 +604,7 @@ namespace RN
 
 				Material *material = model->GetLODStage(0)->GetMaterialAtIndex(0);
 				material->SetDiffuseColor(finalColor);
-				material->SetSkipRendering(finalColor.a < k::EpsilonFloat);
+				SetDrawableRenderingEnabled(0, finalColor.a >= k::EpsilonFloat);
 			}
 			Unlock();
 		}
@@ -639,7 +639,7 @@ namespace RN
 				material->SetEmissiveColor(finalColor[2]);
 				material->SetAmbientColor(finalColor[3]);
 
-				material->SetSkipRendering(finalColor[0].a + finalColor[1].a + finalColor[2].a + finalColor[3].a < k::EpsilonFloat);
+				SetDrawableRenderingEnabled(0, finalColor[0].a + finalColor[1].a + finalColor[2].a + finalColor[3].a >= k::EpsilonFloat);
 			}
 			Unlock();
 		}
@@ -823,7 +823,7 @@ namespace RN
 					finalColor.a *= _combinedOpacityFactor;
 
 					material->SetDiffuseColor(finalColor);
-					material->SetSkipRendering(finalColor.a < k::EpsilonFloat);
+					SetDrawableRenderingEnabled(0, finalColor.a >= k::EpsilonFloat);
 				}
 				else
 				{
@@ -842,7 +842,7 @@ namespace RN
 					material->SetEmissiveColor(finalColor[2]);
 					material->SetAmbientColor(finalColor[3]);
 
-					material->SetSkipRendering(finalColor[0].a + finalColor[1].a + finalColor[2].a + finalColor[3].a < k::EpsilonFloat);
+					SetDrawableRenderingEnabled(0, finalColor[0].a + finalColor[1].a + finalColor[2].a + finalColor[3].a >= k::EpsilonFloat);
 				}
 			}
 			Unlock();
@@ -1572,7 +1572,7 @@ namespace RN
 				{
 					Color finalColor = _backgroundColor[0];
 					finalColor.a *= _combinedOpacityFactor;
-					material->SetSkipRendering(finalColor.a < k::EpsilonFloat);
+					SetDrawableRenderingEnabled(0, finalColor.a >= k::EpsilonFloat);
 					material->SetDiffuseColor(finalColor);
 				}
 				else
@@ -1592,7 +1592,7 @@ namespace RN
 					material->SetEmissiveColor(finalColor[2]);
 					material->SetAmbientColor(finalColor[3]);
 
-					material->SetSkipRendering(finalColor[0].a + finalColor[1].a + finalColor[2].a + finalColor[3].a < k::EpsilonFloat);
+					SetDrawableRenderingEnabled(0, finalColor[0].a + finalColor[1].a + finalColor[2].a + finalColor[3].a >= k::EpsilonFloat);
 				}
 
 				if(_hasOutline)

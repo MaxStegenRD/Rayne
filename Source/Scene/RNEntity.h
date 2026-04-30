@@ -27,6 +27,7 @@ namespace RN
 
 		RNAPI void SetModel(Model *model);
 		Model *GetModel() const { return _model; }
+		RNAPI void SetDrawableRenderingEnabled(size_t index, bool enabled);
 
 		RNAPI bool CanRender(Renderer *renderer, Camera *camera) const override;
 		RNAPI void Render(Renderer *renderer, Camera *camera) const override;
@@ -35,12 +36,17 @@ namespace RN
 
 	private:
 		void ClearDrawables();
+		bool IsDrawableRenderingEnabled(size_t index) const;
+		void RebuildRenderableDrawables();
 
 		Model *_model;
+		std::vector<uint8> _drawableRenderingEnabled;
 #if RN_MODEL_LOD_DISABLED
 		std::vector<Drawable *> _drawables;
+		std::vector<Drawable *> _renderableDrawables;
 #else
 		std::vector<std::vector<Drawable *>> _drawables;
+		std::vector<std::vector<Drawable *>> _renderableDrawables;
 #endif
 
 		__RNDeclareMetaInternal(Entity)

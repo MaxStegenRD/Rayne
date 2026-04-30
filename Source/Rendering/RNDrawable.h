@@ -120,11 +120,6 @@ namespace RN
 		};
 
 		RNAPI void SetSources(Mesh *mesh, Material *material, Skeleton *skeleton);
-		bool ShouldRender() const
-		{
-			Material *material = _sourceMaterial.Get();
-			return material && !material->GetSkipRendering();
-		}
 		RNAPI void GetMeshBufferSnapshot(Mesh::BufferSnapshot &snapshot) const;
 		RNAPI DrawSnapshotBundle GetDrawSnapshotBundleForFrame(uint64 frameID);
 

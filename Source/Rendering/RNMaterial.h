@@ -73,8 +73,6 @@ namespace RN
 
 	class Material : public Object
 	{
-		friend class Entity;
-
 	public:
 		class Properties
 		{
@@ -260,9 +258,6 @@ namespace RN
 		RNAPI void SetCustomShaderUniform(const String *name, Number *number);
 		RNAPI Object *GetCustomShaderUniform(const String *name) const;
 
-		RNAPI void SetSkipRendering(bool skip);
-		bool GetSkipRendering() const { return _skipRendering; }
-
 		uint32 GetOverride() const { return _override; }
 
 		RNAPI Shader *GetFragmentShader(Shader::UsageHint type = Shader::UsageHint::Default) const;
@@ -316,8 +311,6 @@ namespace RN
 		Shader *_vertexShader[static_cast<uint8>(Shader::UsageHint::COUNT)];
 
 		Array *_textures;
-
-		bool _skipRendering;
 
 		uint64 _drawSnapshotVersion;
 		uint64 _pipelineVersion;

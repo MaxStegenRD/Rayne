@@ -184,7 +184,6 @@ namespace RN
 	Material::Material(Shader *vertexShader, Shader *fragmentShader) :
 		_override(0),
 		_textures(new Array()),
-		_skipRendering(false),
 		_drawSnapshotVersion(1),
 		_pipelineVersion(1)
 	{
@@ -209,7 +208,6 @@ namespace RN
 	Material::Material(const Material *other) :
 		_override(other->_override),
 		_textures(SafeCopy(other->_textures)),
-		_skipRendering(other->_skipRendering),
 		_drawSnapshotVersion(1),
 		_pipelineVersion(1),
 		_properties(other->_properties),
@@ -435,14 +433,6 @@ namespace RN
 	Object *Material::GetCustomShaderUniform(const String *name) const
 	{
 		return _properties.GetCustomShaderUniform(name);
-	}
-
-	void Material::SetSkipRendering(bool skip)
-	{
-		if(_skipRendering == skip)
-			return;
-
-		_skipRendering = skip;
 	}
 
 	Shader *Material::GetFragmentShader(Shader::UsageHint type) const

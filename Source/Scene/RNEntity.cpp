@@ -50,6 +50,7 @@ namespace RN
 #endif
 
 		_drawables.clear();
+		_renderableDrawables.clear();
 	}
 
 	void Entity::SetModel(Model *model)
@@ -80,6 +81,7 @@ namespace RN
 					}
 #else
 					_drawables.emplace_back();
+					_renderableDrawables.emplace_back();
 
 					std::vector<Drawable *> &drawables = _drawables.back();
 					drawables.reserve(groups);
@@ -97,13 +99,28 @@ namespace RN
 		}
 	}
 
+	void Entity::SetDrawableRenderingEnabled(size_t index, bool enabled)
+	{
+		uint8 value = enabled ? 1 : 0;
+		if(index >= _drawableRenderingEnabled.size())
+		{
+			_drawableRenderingEnabled.resize(index + 1, 1);
+		}
+
+		if(_drawableRenderingEnabled[index] == value)
+			return;
+
+		_drawableRenderingEnabled[index] = value;
+		RebuildRenderableDrawables();
+	}
+
 	void Entity::Render(Renderer *renderer, Camera *camera) const
 	{
 		if(!_model)//RN_EXPECT_FALSE(!_model))
 			return;
 
 #if RN_MODEL_LOD_DISABLED
-		const std::vector<Drawable *> &drawables = _drawables;
+		const std::vector<Drawable *> &drawables = _renderableDrawables;
 #else
 		Camera *distanceCamera = camera->GetLODCamera();
 
@@ -113,15 +130,12 @@ namespace RN
 		const Model::LODStage *stage = _model->GetLODStageForDistance(lodDistance);
 
 		size_t index = stage->_index;
-		const std::vector<Drawable *> &drawables = _drawables[index];
+		const std::vector<Drawable *> &drawables = _renderableDrawables[index];
 #endif
 
 		for(Drawable *drawable : drawables)
 		{
-			if(drawable->ShouldRender())
-			{
-				renderer->SubmitDrawable(drawable, this);
-			}
+			renderer->SubmitDrawable(drawable, this);
 		}
 	}
 
@@ -152,6 +166,7 @@ namespace RN
 			}
 		}
 #endif
+		RebuildRenderableDrawables();
 	}
 
 	bool Entity::CanRender(Renderer *renderer, Camera *camera) const
@@ -159,5 +174,40 @@ namespace RN
 		if(!_model) return false;
 
 		return CanRenderUtil(renderer, camera);
+	}
+
+	bool Entity::IsDrawableRenderingEnabled(size_t index) const
+	{
+		return index >= _drawableRenderingEnabled.size() || _drawableRenderingEnabled[index];
+	}
+
+	void Entity::RebuildRenderableDrawables()
+	{
+#if RN_MODEL_LOD_DISABLED
+		_renderableDrawables.clear();
+		_renderableDrawables.reserve(_drawables.size());
+		for(size_t i = 0; i < _drawables.size(); i += 1)
+		{
+			if(IsDrawableRenderingEnabled(i))
+			{
+				_renderableDrawables.push_back(_drawables[i]);
+			}
+		}
+#else
+		for(size_t lodStage = 0; lodStage < _drawables.size(); lodStage += 1)
+		{
+			const std::vector<Drawable *> &drawables = _drawables[lodStage];
+			std::vector<Drawable *> &renderableDrawables = _renderableDrawables[lodStage];
+			renderableDrawables.clear();
+			renderableDrawables.reserve(drawables.size());
+			for(size_t i = 0; i < drawables.size(); i += 1)
+			{
+				if(IsDrawableRenderingEnabled(i))
+				{
+					renderableDrawables.push_back(drawables[i]);
+				}
+			}
+		}
+#endif
 	}
 } // namespace RN
