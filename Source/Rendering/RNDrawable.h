@@ -120,7 +120,7 @@ namespace RN
 		};
 
 		RNAPI void SetSources(Mesh *mesh, Material *material, Skeleton *skeleton);
-		bool ShouldRender() const
+		bool ShouldSubmitDrawItem() const
 		{
 			Material *material = _sourceMaterial.Get();
 			return material && !material->GetSkipRendering();
