@@ -165,6 +165,7 @@ namespace RN
 			if(model && model->GetLODStage(0)->GetCount() > 1)
 			{
 				model->GetLODStage(0)->ReplaceMaterial(material, 2);
+				RefreshDrawableSources();
 			}
 			Unlock();
 		}
@@ -198,6 +199,7 @@ namespace RN
 			if(model && model->GetLODStage(0)->GetCount() > 1)
 			{
 				model->GetLODStage(0)->ReplaceMaterial(material, 1);
+				RefreshDrawableSources();
 			}
 			Unlock();
 		}
@@ -1309,6 +1311,7 @@ namespace RN
 			{
 				model->GetLODStage(0)->ReplaceMesh(textMesh, 1);
 				model->GetLODStage(0)->ReplaceMesh(textMesh->Autorelease(), 2);
+				RefreshDrawableSources();
 			}
 
 			Material *textMaterial = model->GetLODStage(0)->GetMaterialAtIndex(2);

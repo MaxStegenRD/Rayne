@@ -157,6 +157,7 @@ namespace RN
 			if(model && model->GetLODStage(0)->GetCount() > 1)
 			{
 				model->GetLODStage(0)->ReplaceMaterial(material, 1);
+				RefreshDrawableSources();
 			}
 		}
 
@@ -193,6 +194,7 @@ namespace RN
 			else
 			{
 				lodStage->ReplaceMesh(lodStage->GetMeshAtIndex(0), 1);
+				RefreshDrawableSources();
 			}
 		}
 

@@ -1621,6 +1621,7 @@ namespace RN
 			else
 			{
 				model->GetLODStage(0)->ReplaceMesh(mesh->Autorelease(), 0);
+				RefreshDrawableSources();
 			}
 
 			model->CalculateBoundingVolumes();
