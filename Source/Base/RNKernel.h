@@ -35,6 +35,7 @@
 namespace RN
 {
 	struct __KernelBootstrapHelper;
+	class PerformanceScenarioRunner;
 
 	class Kernel
 	{
@@ -55,6 +56,7 @@ namespace RN
 
 		Application *GetApplication() const { return _application; }
 		Settings *GetSettings() const { return _settings; }
+		PerformanceScenarioRunner *GetPerformanceScenarioRunner() const { return _performanceScenarioRunner; }
 		const ArgumentParser &GetArguments() const { return _arguments; }
 
 		template<class T>
@@ -118,6 +120,7 @@ namespace RN
 		FileManager *_fileManager;
 		Dictionary *_manifest;
 		Settings *_settings;
+		PerformanceScenarioRunner *_performanceScenarioRunner;
 		Logger *_logger;
 		Renderer *_renderer;
 		SceneManager *_sceneManager;

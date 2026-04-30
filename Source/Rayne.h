@@ -16,6 +16,7 @@
 #include "Base/RNMemoryPool.h"
 #include "Base/RNNotification.h"
 #include "Base/RNNotificationManager.h"
+#include "Base/RNPerformanceScenarioRunner.h"
 #include "Base/RNSettings.h"
 #include "Base/RNUnicode.h"
 

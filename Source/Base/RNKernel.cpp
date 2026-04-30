@@ -12,6 +12,7 @@
 #include "../Objects/RNJSONSerialization.h"
 #include "../Rendering/RNRendererDescriptor.h"
 #include "RNBaseInternal.h"
+#include "RNPerformanceScenarioRunner.h"
 #include "RNScopeAllocator.h"
 
 namespace RN
@@ -123,6 +124,8 @@ namespace RN
 			SetMaxFPS(500);
 
 			_settings = new Settings(); // Requires the FileManager to have all search paths
+			_performanceScenarioRunner = new PerformanceScenarioRunner();
+			_performanceScenarioRunner->LoadDefaultScenario();
 
 			_notificationManager = new NotificationManager();
 			_assetManager = AssetManager::GetSharedInstance(); //Potentially needed for registering modules during static initialisation, so GetSharedInstance constructs it if needed
@@ -269,6 +272,7 @@ namespace RN
 		delete _inputManager;
 		delete _moduleManager;
 		delete _notificationManager;
+		delete _performanceScenarioRunner;
 
 		_logger->Flush();
 		delete _logger;
@@ -420,6 +424,7 @@ namespace RN
 		END_TASK();
 
 		_application->DidUpdate(static_cast<float>(_delta));
+		_performanceScenarioRunner->Update(static_cast<float>(_delta));
 
 		if(_renderer)
 		{

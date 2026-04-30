@@ -32,6 +32,7 @@ set(RAYNE_SOURCES
     Base/RNMemoryPool.cpp
     Base/RNNotification.cpp
     Base/RNNotificationManager.cpp
+    Base/RNPerformanceScenarioRunner.cpp
     Base/RNScopeAllocator.cpp
     Base/RNSettings.cpp
     Base/RNUnicode.cpp
@@ -149,6 +150,7 @@ set(RAYNE_HEADERS
     Base/RNMemoryPool.h
     Base/RNNotification.h
     Base/RNNotificationManager.h
+    Base/RNPerformanceScenarioRunner.h
     Base/RNScopeAllocator.h
     Base/RNScopedFunction.h
     Base/RNScopeGuard.h
