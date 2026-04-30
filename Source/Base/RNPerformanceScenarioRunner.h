@@ -50,9 +50,10 @@ namespace RN
 			},
 
 			"collectors": [
-				{ "name": "logcat" },
-				{ "name": "perfetto", "config": "perfetto/quest-frame-time.pbtxt" },
-				{ "name": "ovrMetrics" }
+				{ "name": "logcat", "tool": "logcat" },
+				{ "name": "frameTrace", "tool": "perfetto", "config": "perfetto/quest-frame-time.pbtxt" },
+				{ "name": "gpuCounters", "tool": "ovrgpuprofiler", "captureMode": "counters" },
+				{ "name": "ovrMetrics", "tool": "ovrMetrics" }
 			],
 
 			"actions": [
@@ -62,16 +63,16 @@ namespace RN
 				{ "command": "setDeviceSettings" },
 				{ "command": "setNodePose", "target": "playerRig", "position": [0, 1.7, 4], "rotationEuler": [0, 180, 0] },
 				{ "command": "waitSeconds", "seconds": 3 },
-				{ "command": "prepareCapture" },
+				{ "command": "prepareCapture", "collectors": ["logcat", "frameTrace", "ovrMetrics"] },
 				{ "command": "waitSeconds", "seconds": 2 },
-				{ "command": "startCapture" },
+				{ "command": "startCapture", "collectors": ["logcat", "frameTrace", "gpuCounters", "ovrMetrics"] },
 				{ "name": "measured_window", "command": "waitSeconds", "seconds": 60 },
-				{ "command": "stopCapture" },
+				{ "command": "stopCapture", "collectors": ["logcat", "frameTrace", "ovrMetrics"] },
 				{ "command": "setNodePose", "target": "playerRig", "position": [3, 1.7, 1], "rotationEuler": [0, 90, 0] },
-				{ "command": "prepareCapture" },
-				{ "command": "startCapture" },
+				{ "command": "prepareCapture", "collectors": ["frameTrace"] },
+				{ "command": "startCapture", "collectors": ["frameTrace"] },
 				{ "name": "second_window", "command": "waitSeconds", "seconds": 30 },
-				{ "command": "stopCapture" }
+				{ "command": "stopCapture", "collectors": ["frameTrace"] }
 			]
 		}
 
@@ -93,21 +94,25 @@ namespace RN
 			stopCapture       Emits RN_PERF_CAPTURE_END once per collector.
 			logMarker         Requires "marker" and emits RN_PERF_MARKER.
 
-		Capture actions use the top-level "collectors" array unless the action
-		has its own "collectors" array. A collector can be a string or an object
-		with "name". Scalar fields on collector objects are copied into capture
-		marker lines, except "name", which is emitted as "collector". String
-		values are percent-encoded for log parsing.
+		The top-level "collectors" array defines named collector instances. Each
+		definition requires "name" and "tool"; "name" is used by capture actions
+		and "tool" is emitted as "collector". Capture actions require a
+		"collectors" array of names. Scalar fields on collector definitions are
+		copied into capture marker lines, except "name" and "tool". String values
+		are percent-encoded for log parsing.
 
 		Example marker:
 
-			RN_PERF_CAPTURE_PREPARE identifier=forest_replay_90hz captureIndex=0 collector=perfetto config=perfetto/quest-frame-time.pbtxt
+			RN_PERF_CAPTURE_PREPARE identifier=forest_replay_90hz captureIndex=0 collector=perfetto collectorName=frameTrace config=perfetto/quest-frame-time.pbtxt
 
 		Capture ordering is validated on load. A scenario may contain multiple
 		capture windows. Each window is either startCapture/stopCapture or
 		prepareCapture/startCapture/stopCapture. prepareCapture must be followed
 		by startCapture, startCapture must be followed by stopCapture, and a new
 		capture window cannot begin before the previous one is stopped.
+		The collector lists may differ between prepareCapture, startCapture, and
+		stopCapture; collectors that should only receive a start marker can be
+		listed only on startCapture.
 
 		Game-side setup should be limited to registering game-specific commands,
 		conditions, and targets once the relevant objects exist:

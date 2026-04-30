@@ -113,29 +113,93 @@ namespace RN
 		return true;
 	}
 
-	static String *GetCollectorName(Object *collector)
+	static String *GetCollectorReference(Object *collector)
 	{
 		if(!collector)
 			return nullptr;
 
 		String *name = collector->Downcast<String>();
-		if(name)
-			return name;
-
-		Dictionary *dictionary = collector->Downcast<Dictionary>();
-		return GetStringValue(dictionary, "name");
+		return name;
 	}
 
-	static Array *GetCollectorsForAction(const PerformanceScenario *scenario, const Dictionary *action)
+	static Dictionary *GetCollectorDefinition(Array *definitions, const String *reference)
 	{
-		Array *collectors = GetArrayValue(action, "collectors");
-		if(collectors)
-			return collectors;
+		if(!definitions || !reference)
+			return nullptr;
 
-		return scenario? scenario->GetCollectors() : nullptr;
+		Dictionary *result = nullptr;
+		definitions->Enumerate([&](Object *object, size_t index, bool &stop) {
+			Dictionary *definition = object->Downcast<Dictionary>();
+			if(definition && String::AreEqual(GetStringValue(definition, "name"), reference))
+			{
+				result = definition;
+				stop = true;
+			}
+
+			(void)index;
+		});
+
+		return result;
 	}
 
-	static bool ValidateCollectors(Array *collectors, const char *&message)
+	static Array *GetCollectorsForAction(const Dictionary *action)
+	{
+		return GetArrayValue(action, "collectors");
+	}
+
+	static bool ValidateCollectorDefinitions(Array *collectors, const char *&message)
+	{
+		if(collectors && collectors->GetCount() == 0)
+		{
+			message = "performance scenario collectors is empty";
+			return false;
+		}
+
+		bool isValid = true;
+		collectors->Enumerate([&](Object *object, size_t index, bool &stop) {
+			Dictionary *collector = object->Downcast<Dictionary>();
+			if(!collector)
+			{
+				message = "performance collector definition is not a dictionary";
+				isValid = false;
+				stop = true;
+				return;
+			}
+
+			String *name = GetStringValue(collector, "name");
+			if(!name)
+			{
+				message = "performance collector definition is missing name";
+				isValid = false;
+				stop = true;
+				return;
+			}
+
+			if(!GetStringValue(collector, "tool"))
+			{
+				message = "performance collector definition is missing tool";
+				isValid = false;
+				stop = true;
+				return;
+			}
+
+			for(size_t previousIndex = 0; previousIndex < index; previousIndex++)
+			{
+				Dictionary *previous = collectors->GetObjectAtIndex<Dictionary>(previousIndex);
+				if(previous && String::AreEqual(GetStringValue(previous, "name"), name))
+				{
+					message = "performance scenario has duplicate collector name";
+					isValid = false;
+					stop = true;
+					return;
+				}
+			}
+		});
+
+		return isValid;
+	}
+
+	static bool ValidateCollectorReferences(Array *definitions, Array *collectors, const char *&message)
 	{
 		if(!collectors || collectors->GetCount() == 0)
 		{
@@ -145,11 +209,21 @@ namespace RN
 
 		bool isValid = true;
 		collectors->Enumerate([&](Object *object, size_t index, bool &stop) {
-			if(!GetCollectorName(object))
+			String *reference = GetCollectorReference(object);
+			if(!reference)
 			{
-				message = "performance collector is missing name";
+				message = "performance capture action collector is not a name";
 				isValid = false;
 				stop = true;
+				return;
+			}
+
+			if(!GetCollectorDefinition(definitions, reference))
+			{
+				message = "performance capture action references an unknown collector";
+				isValid = false;
+				stop = true;
+				return;
 			}
 
 			(void)index;
@@ -717,7 +791,7 @@ namespace RN
 			message = "performance scenario collectors must be an array";
 			return false;
 		}
-		if(scenarioCollectors && !ValidateCollectors(scenarioCollectors, message))
+		if(scenarioCollectors && !ValidateCollectorDefinitions(scenarioCollectors, message))
 			return false;
 
 		Array *actions = GetArrayValue(dictionary, "actions");
@@ -761,7 +835,15 @@ namespace RN
 					return;
 				}
 
-				if(!ValidateCollectors(actionCollectors? actionCollectors : scenarioCollectors, message))
+				if(!scenarioCollectors)
+				{
+					message = "performance capture action requires scenario collectors";
+					isValid = false;
+					stop = true;
+					return;
+				}
+
+				if(!ValidateCollectorReferences(scenarioCollectors, actionCollectors, message))
 				{
 					isValid = false;
 					stop = true;
@@ -920,32 +1002,31 @@ namespace RN
 		if(!_scenario || !marker)
 			return;
 
-		Array *collectors = GetCollectorsForAction(_scenario, action);
+		Array *collectors = GetCollectorsForAction(action);
 		if(!collectors)
 			return;
 
 		collectors->Enumerate([&](Object *object, size_t index, bool &stop) {
-			String *collector = GetCollectorName(object);
+			String *reference = GetCollectorReference(object);
+			Dictionary *dictionary = GetCollectorDefinition(_scenario->GetCollectors(), reference);
+			String *collector = GetStringValue(dictionary, "tool");
 			if(collector)
 			{
 				StringBuilder line;
 				line << marker << " identifier=" << _scenario->GetIdentifier() << " captureIndex=" << captureIndex << " collector=" << EncodeMarkerValue(collector->GetUTF8String());
+				line << " collectorName=" << EncodeMarkerValue(reference->GetUTF8String());
 
-				Dictionary *dictionary = object->Downcast<Dictionary>();
-				if(dictionary)
-				{
-					dictionary->Enumerate([&](Object *value, const Object *key, bool &metadataStop) {
-						const String *keyString = key->Downcast<String>();
-						if(!keyString || String::AreEqual(keyString, RNCSTR("name")))
-							return;
+				dictionary->Enumerate([&](Object *value, const Object *key, bool &metadataStop) {
+					const String *keyString = key->Downcast<String>();
+					if(!keyString || String::AreEqual(keyString, RNCSTR("name")) || String::AreEqual(keyString, RNCSTR("tool")))
+						return;
 
-						std::string markerValue;
-						if(GetMarkerValue(value, markerValue))
-							line << " " << keyString->GetUTF8String() << "=" << markerValue;
+					std::string markerValue;
+					if(GetMarkerValue(value, markerValue))
+						line << " " << keyString->GetUTF8String() << "=" << markerValue;
 
-						(void)metadataStop;
-					});
-				}
+					(void)metadataStop;
+				});
 
 				RNInfo(line.Build());
 			}
