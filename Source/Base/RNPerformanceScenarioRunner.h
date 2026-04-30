@@ -78,6 +78,8 @@ namespace RN
 		Each action requires "command". "name" is optional and is copied into
 		result.json. "timeoutSeconds" is a generic wrapper for any action: if the
 		action still returns Running after that time, the scenario fails.
+		Array entries inside "actions" are ignored, so an action can be wrapped
+		in a nested array to temporarily disable it without removing it.
 
 		Built-in commands:
 

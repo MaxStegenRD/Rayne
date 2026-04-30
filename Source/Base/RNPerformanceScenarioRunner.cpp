@@ -163,6 +163,18 @@ namespace RN
 		return command == "prepareCapture" || command == "startCapture" || command == "stopCapture";
 	}
 
+	static void SkipIgnoredActionLists(const Array *actions, size_t &index)
+	{
+		while(index < actions->GetCount())
+		{
+			Object *object = actions->GetObjectAtIndex<Object>(index);
+			if(!object || !object->Downcast<Array>())
+				return;
+
+			index++;
+		}
+	}
+
 	static std::string EncodeMarkerValue(const char *value)
 	{
 		if(!value)
@@ -627,7 +639,11 @@ namespace RN
 	bool PerformanceScenarioRunner::RunActions(float delta)
 	{
 		Array *commands = _scenario? _scenario->GetActions() : nullptr;
-		if(!commands || _commandIndex >= commands->GetCount())
+		if(!commands)
+			return true;
+
+		SkipIgnoredActionLists(commands, _commandIndex);
+		if(_commandIndex >= commands->GetCount())
 			return true;
 
 		Dictionary *command = commands->GetObjectAtIndex<Dictionary>(_commandIndex);
@@ -680,6 +696,7 @@ namespace RN
 				EndAction("passed");
 				_commandIndex++;
 				_commandElapsed = 0.0f;
+				SkipIgnoredActionLists(commands, _commandIndex);
 				return _commandIndex >= commands->GetCount();
 
 			case PerformanceCommandResult::State::Failed:
@@ -720,6 +737,9 @@ namespace RN
 		bool hasOpenCapture = false;
 		bool isCaptureRunning = false;
 		actions->Enumerate([&](Object *object, size_t index, bool &stop) {
+			if(object && object->Downcast<Array>())
+				return;
+
 			Dictionary *action = object->Downcast<Dictionary>();
 			if(!ValidateAction(action, index, message))
 			{
