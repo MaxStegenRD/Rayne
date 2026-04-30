@@ -1608,9 +1608,6 @@ namespace RN
 
 	void MetalRenderer::SubmitDrawable(MetalFrameSubmission &frameSubmission, Drawable *sourceDrawable, const SceneNode *node)
 	{
-		if(!sourceDrawable->ShouldSubmitDrawItem())
-			return;
-
 		RN_PROFILE_SCOPE();
 		MetalDrawable *drawable = static_cast<MetalDrawable *>(sourceDrawable);
 		uint16 renderGroup = node ? node->GetRenderGroup() : 0xffff;

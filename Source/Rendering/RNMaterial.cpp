@@ -439,6 +439,9 @@ namespace RN
 
 	void Material::SetSkipRendering(bool skip)
 	{
+		if(_skipRendering == skip)
+			return;
+
 		_skipRendering = skip;
 	}
 

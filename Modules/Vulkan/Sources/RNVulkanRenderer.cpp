@@ -2436,9 +2436,6 @@ namespace RN
 
 	void VulkanRenderer::SubmitDrawable(VulkanFrameSubmission &frameSubmission, Drawable *sourceDrawable, const SceneNode *node)
 	{
-		if(!sourceDrawable->ShouldSubmitDrawItem())
-			return;
-
 		VulkanDrawable *drawable = static_cast<VulkanDrawable *>(sourceDrawable);
 		uint16 renderGroup = node ? node->GetRenderGroup() : 0xffff;
 		size_t drawItemIndex = RenderFrame::InvalidDrawItemIndex;

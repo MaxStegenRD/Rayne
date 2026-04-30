@@ -118,7 +118,10 @@ namespace RN
 
 		for(Drawable *drawable : drawables)
 		{
-			renderer->SubmitDrawable(drawable, this);
+			if(drawable->ShouldRender())
+			{
+				renderer->SubmitDrawable(drawable, this);
+			}
 		}
 	}
 
