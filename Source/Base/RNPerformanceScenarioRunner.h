@@ -30,7 +30,9 @@ namespace RN
 			perf/result.json
 
 		when the scenario completes or fails. result.json contains the scenario
-		status, device block, capture timestamps, and per-action timing records.
+		status, device block, capture records, and per-action timing records.
+		Capture records are written to the "captures" array with index, optional
+		name, prepareSeconds, startSeconds, and endSeconds.
 
 		Minimal scenario shape:
 
@@ -64,6 +66,11 @@ namespace RN
 				{ "command": "waitSeconds", "seconds": 2 },
 				{ "command": "startCapture" },
 				{ "name": "measured_window", "command": "waitSeconds", "seconds": 60 },
+				{ "command": "stopCapture" },
+				{ "command": "setNodePose", "target": "playerRig", "position": [3, 1.7, 1], "rotationEuler": [0, 90, 0] },
+				{ "command": "prepareCapture" },
+				{ "command": "startCapture" },
+				{ "name": "second_window", "command": "waitSeconds", "seconds": 30 },
 				{ "command": "stopCapture" }
 			]
 		}
@@ -92,12 +99,13 @@ namespace RN
 
 		Example marker:
 
-			RN_PERF_CAPTURE_PREPARE identifier=forest_replay_90hz collector=perfetto config=perfetto/quest-frame-time.pbtxt
+			RN_PERF_CAPTURE_PREPARE identifier=forest_replay_90hz captureIndex=0 collector=perfetto config=perfetto/quest-frame-time.pbtxt
 
-		Capture ordering is validated on load: at most one prepareCapture,
-		startCapture, and stopCapture; prepareCapture must be before start/stop;
-		stopCapture requires a preceding startCapture; startCapture requires a
-		following stopCapture.
+		Capture ordering is validated on load. A scenario may contain multiple
+		capture windows. Each window is either startCapture/stopCapture or
+		prepareCapture/startCapture/stopCapture. prepareCapture must be followed
+		by startCapture, startCapture must be followed by stopCapture, and a new
+		capture window cannot begin before the previous one is stopped.
 
 		Game-side setup should be limited to registering game-specific commands,
 		conditions, and targets once the relevant objects exist:
@@ -121,7 +129,8 @@ namespace RN
 		Host-side tooling does not need to parse the scenario. It can push the
 		scenario file, tail logcat, react to RN_PERF_SCENARIO_START, then use
 		collector-specific RN_PERF_CAPTURE_PREPARE/START/END marker fields to
-		prepare, start, and stop tools like Perfetto or OVR Metrics. On
+		prepare, start, and stop tools like Perfetto or OVR Metrics.
+		captureIndex distinguishes multiple capture windows in one scenario. On
 		RN_PERF_SCENARIO_END or RN_PERF_FAILED it should pull perf/result.json.
 	*/
 
@@ -228,6 +237,8 @@ namespace RN
 		friend class Kernel;
 		friend class PerformanceCommandContext;
 
+		struct CaptureRecord;
+
 		PerformanceScenarioRunner();
 		~PerformanceScenarioRunner();
 
@@ -236,7 +247,9 @@ namespace RN
 		bool EvaluateCondition(const String *name, const PerformanceCommandContext &context) const;
 		bool ValidateScenario(Dictionary *dictionary, const char *&message) const;
 		bool ValidateAction(Dictionary *action, size_t index, const char *&message) const;
-		void EmitCaptureMarker(const char *marker, const Dictionary *action) const;
+		CaptureRecord &BeginCaptureRecord(const Dictionary *action);
+		void UpdateCaptureRecordName(CaptureRecord &record, const Dictionary *action) const;
+		void EmitCaptureMarker(const char *marker, const Dictionary *action, size_t captureIndex) const;
 		void BeginAction(const Dictionary *action);
 		void EndAction(const char *status, const char *message = nullptr);
 		void BeginState(State state);
@@ -256,22 +269,32 @@ namespace RN
 			double endTime;
 		};
 
+		struct CaptureRecord
+		{
+			size_t index;
+			std::string name;
+			double prepareTime;
+			double startTime;
+			double endTime;
+			bool didPrepare;
+			bool didStart;
+			bool didEnd;
+		};
+
 		std::unordered_map<std::string, CommandCallback> _commands;
 		std::unordered_map<std::string, ConditionCallback> _conditions;
 		std::unordered_map<std::string, Object *> _targets;
 		std::vector<ActionRecord> _actionRecords;
+		std::vector<CaptureRecord> _captureRecords;
 
 		PerformanceScenario *_scenario;
 		State _state;
 		size_t _commandIndex;
 		float _commandElapsed;
 		double _scenarioStartTime;
-		double _capturePrepareTime;
-		double _captureStartTime;
-		double _captureEndTime;
-		bool _didMarkCapturePrepare;
-		bool _didMarkCaptureStart;
-		bool _didMarkCaptureEnd;
+		size_t _activeCaptureIndex;
+		bool _hasActiveCapture;
+		bool _isActiveCaptureRunning;
 	};
 
 	class PerformanceCommandContext

@@ -285,12 +285,9 @@ namespace RN
 		_commandIndex(0),
 		_commandElapsed(0.0f),
 		_scenarioStartTime(0.0),
-		_capturePrepareTime(0.0),
-		_captureStartTime(0.0),
-		_captureEndTime(0.0),
-		_didMarkCapturePrepare(false),
-		_didMarkCaptureStart(false),
-		_didMarkCaptureEnd(false)
+		_activeCaptureIndex(0),
+		_hasActiveCapture(false),
+		_isActiveCaptureRunning(false)
 	{
 		__sharedPerformanceScenarioRunner = this;
 		RegisterBuiltinCommands();
@@ -362,13 +359,11 @@ namespace RN
 
 		_scenario = new PerformanceScenario(dictionary);
 		_scenarioStartTime = GetKernelTime();
-		_capturePrepareTime = 0.0;
-		_captureStartTime = 0.0;
-		_captureEndTime = 0.0;
-		_didMarkCapturePrepare = false;
-		_didMarkCaptureStart = false;
-		_didMarkCaptureEnd = false;
 		_actionRecords.clear();
+		_captureRecords.clear();
+		_activeCaptureIndex = 0;
+		_hasActiveCapture = false;
+		_isActiveCaptureRunning = false;
 
 		BeginState(State::Running);
 		RNInfo("RN_PERF_SCENARIO_LOADED identifier=" << _scenario->GetIdentifier());
@@ -384,6 +379,10 @@ namespace RN
 		_commandIndex = 0;
 		_commandElapsed = 0.0f;
 		_actionRecords.clear();
+		_captureRecords.clear();
+		_activeCaptureIndex = 0;
+		_hasActiveCapture = false;
+		_isActiveCaptureRunning = false;
 	}
 
 	void PerformanceScenarioRunner::RegisterCommand(const String *name, const CommandCallback &callback)
@@ -492,32 +491,59 @@ namespace RN
 
 	void PerformanceScenarioRunner::MarkCapturePrepare(const Dictionary *action)
 	{
-		if(!_scenario || _didMarkCapturePrepare)
+		if(!_scenario)
 			return;
 
-		_capturePrepareTime = GetKernelTime();
-		_didMarkCapturePrepare = true;
-		EmitCaptureMarker("RN_PERF_CAPTURE_PREPARE", action);
+		if(_hasActiveCapture)
+		{
+			Fail("prepareCapture requires the previous capture to stop first");
+			return;
+		}
+
+		CaptureRecord &record = BeginCaptureRecord(action);
+		record.prepareTime = GetKernelTime();
+		record.didPrepare = true;
+		EmitCaptureMarker("RN_PERF_CAPTURE_PREPARE", action, record.index);
 	}
 
 	void PerformanceScenarioRunner::MarkCaptureStart(const Dictionary *action)
 	{
-		if(!_scenario || _didMarkCaptureStart)
+		if(!_scenario)
 			return;
 
-		_captureStartTime = GetKernelTime();
-		_didMarkCaptureStart = true;
-		EmitCaptureMarker("RN_PERF_CAPTURE_START", action);
+		if(_hasActiveCapture && _isActiveCaptureRunning)
+		{
+			Fail("startCapture requires the previous capture to stop first");
+			return;
+		}
+
+		CaptureRecord &record = _hasActiveCapture? _captureRecords[_activeCaptureIndex] : BeginCaptureRecord(action);
+		UpdateCaptureRecordName(record, action);
+		record.startTime = GetKernelTime();
+		record.didStart = true;
+		_isActiveCaptureRunning = true;
+		EmitCaptureMarker("RN_PERF_CAPTURE_START", action, record.index);
 	}
 
 	void PerformanceScenarioRunner::MarkCaptureEnd(const Dictionary *action)
 	{
-		if(!_scenario || _didMarkCaptureEnd)
+		if(!_scenario)
 			return;
 
-		_captureEndTime = GetKernelTime();
-		_didMarkCaptureEnd = true;
-		EmitCaptureMarker("RN_PERF_CAPTURE_END", action);
+		if(!_hasActiveCapture || !_isActiveCaptureRunning)
+		{
+			Fail("stopCapture requires a preceding startCapture");
+			return;
+		}
+
+		CaptureRecord &record = _captureRecords[_activeCaptureIndex];
+		UpdateCaptureRecordName(record, action);
+		record.endTime = GetKernelTime();
+		record.didEnd = true;
+		EmitCaptureMarker("RN_PERF_CAPTURE_END", action, record.index);
+
+		_hasActiveCapture = false;
+		_isActiveCaptureRunning = false;
 	}
 
 	void PerformanceScenarioRunner::Fail(const char *message)
@@ -691,9 +717,8 @@ namespace RN
 		}
 
 		bool isValid = true;
-		bool didPrepareCapture = false;
-		bool didStartCapture = false;
-		bool didStopCapture = false;
+		bool hasOpenCapture = false;
+		bool isCaptureRunning = false;
 		actions->Enumerate([&](Object *object, size_t index, bool &stop) {
 			Dictionary *action = object->Downcast<Dictionary>();
 			if(!ValidateAction(action, index, message))
@@ -726,52 +751,33 @@ namespace RN
 
 			if(command == "prepareCapture")
 			{
-				if(didPrepareCapture)
+				if(hasOpenCapture)
 				{
-					message = "performance scenario has duplicate prepareCapture";
-					isValid = false;
-					stop = true;
-					return;
-				}
-				if(didStartCapture || didStopCapture)
-				{
-					message = "prepareCapture must be before startCapture and stopCapture";
+					message = isCaptureRunning? "prepareCapture requires the previous capture to stop first" : "performance scenario has duplicate prepareCapture before startCapture";
 					isValid = false;
 					stop = true;
 					return;
 				}
 
-				didPrepareCapture = true;
+				hasOpenCapture = true;
+				isCaptureRunning = false;
 			}
 			else if(command == "startCapture")
 			{
-				if(didStartCapture)
+				if(hasOpenCapture && isCaptureRunning)
 				{
-					message = "performance scenario has duplicate startCapture";
-					isValid = false;
-					stop = true;
-					return;
-				}
-				if(didStopCapture)
-				{
-					message = "startCapture must be before stopCapture";
+					message = "startCapture requires the previous capture to stop first";
 					isValid = false;
 					stop = true;
 					return;
 				}
 
-				didStartCapture = true;
+				hasOpenCapture = true;
+				isCaptureRunning = true;
 			}
 			else if(command == "stopCapture")
 			{
-				if(didStopCapture)
-				{
-					message = "performance scenario has duplicate stopCapture";
-					isValid = false;
-					stop = true;
-					return;
-				}
-				if(!didStartCapture)
+				if(!hasOpenCapture || !isCaptureRunning)
 				{
 					message = "stopCapture requires a preceding startCapture";
 					isValid = false;
@@ -779,13 +785,14 @@ namespace RN
 					return;
 				}
 
-				didStopCapture = true;
+				hasOpenCapture = false;
+				isCaptureRunning = false;
 			}
 		});
 
-		if(isValid && didStartCapture && !didStopCapture)
+		if(isValid && hasOpenCapture)
 		{
-			message = "startCapture requires a following stopCapture";
+			message = isCaptureRunning? "startCapture requires a following stopCapture" : "prepareCapture requires a following startCapture";
 			return false;
 		}
 
@@ -860,7 +867,35 @@ namespace RN
 		return true;
 	}
 
-	void PerformanceScenarioRunner::EmitCaptureMarker(const char *marker, const Dictionary *action) const
+	PerformanceScenarioRunner::CaptureRecord &PerformanceScenarioRunner::BeginCaptureRecord(const Dictionary *action)
+	{
+		CaptureRecord record;
+		record.index = _captureRecords.size();
+		record.name = StringToKey(GetStringValue(action, "name"));
+		record.prepareTime = 0.0;
+		record.startTime = 0.0;
+		record.endTime = 0.0;
+		record.didPrepare = false;
+		record.didStart = false;
+		record.didEnd = false;
+
+		_captureRecords.push_back(record);
+		_activeCaptureIndex = record.index;
+		_hasActiveCapture = true;
+		_isActiveCaptureRunning = false;
+
+		return _captureRecords.back();
+	}
+
+	void PerformanceScenarioRunner::UpdateCaptureRecordName(CaptureRecord &record, const Dictionary *action) const
+	{
+		if(!record.name.empty())
+			return;
+
+		record.name = StringToKey(GetStringValue(action, "name"));
+	}
+
+	void PerformanceScenarioRunner::EmitCaptureMarker(const char *marker, const Dictionary *action, size_t captureIndex) const
 	{
 		if(!_scenario || !marker)
 			return;
@@ -874,7 +909,7 @@ namespace RN
 			if(collector)
 			{
 				StringBuilder line;
-				line << marker << " identifier=" << _scenario->GetIdentifier() << " collector=" << EncodeMarkerValue(collector->GetUTF8String());
+				line << marker << " identifier=" << _scenario->GetIdentifier() << " captureIndex=" << captureIndex << " collector=" << EncodeMarkerValue(collector->GetUTF8String());
 
 				Dictionary *dictionary = object->Downcast<Dictionary>();
 				if(dictionary)
@@ -956,16 +991,31 @@ namespace RN
 			result->SetObjectForKey(String::WithString(message), RNCSTR("message"));
 
 		result->SetObjectForKey(Number::WithDouble(_scenarioStartTime), RNCSTR("startedAtSeconds"));
-		if(_didMarkCapturePrepare)
-			result->SetObjectForKey(Number::WithDouble(_capturePrepareTime), RNCSTR("capturePrepareSeconds"));
-		if(_didMarkCaptureStart)
-			result->SetObjectForKey(Number::WithDouble(_captureStartTime), RNCSTR("captureStartSeconds"));
-		if(_didMarkCaptureEnd)
-			result->SetObjectForKey(Number::WithDouble(_captureEndTime), RNCSTR("captureEndSeconds"));
 
 		Dictionary *device = _scenario->GetDeviceConfiguration();
 		if(device)
 			result->SetObjectForKey(device, RNCSTR("device"));
+
+		if(!_captureRecords.empty())
+		{
+			Array *captures = new Array();
+			for(const CaptureRecord &record : _captureRecords)
+			{
+				Dictionary *capture = new Dictionary();
+				capture->SetObjectForKey(Number::WithUint64(record.index), RNCSTR("index"));
+				if(!record.name.empty())
+					capture->SetObjectForKey(String::WithString(record.name.c_str()), RNCSTR("name"));
+				if(record.didPrepare)
+					capture->SetObjectForKey(Number::WithDouble(record.prepareTime), RNCSTR("prepareSeconds"));
+				if(record.didStart)
+					capture->SetObjectForKey(Number::WithDouble(record.startTime), RNCSTR("startSeconds"));
+				if(record.didEnd)
+					capture->SetObjectForKey(Number::WithDouble(record.endTime), RNCSTR("endSeconds"));
+
+				captures->AddObject(capture->Autorelease());
+			}
+			result->SetObjectForKey(captures->Autorelease(), RNCSTR("captures"));
+		}
 
 		Array *actions = new Array();
 		for(const ActionRecord &record : _actionRecords)
