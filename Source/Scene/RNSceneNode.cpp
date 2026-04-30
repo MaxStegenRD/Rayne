@@ -426,10 +426,11 @@ namespace RN
 		if((_renderGroup & camera->GetRenderGroup()) == 0)
 			return false;
 
-		if(_flags.load(std::memory_order_acquire) & Flags::Hidden)
+		uint32 flags = _flags.load(std::memory_order_acquire);
+		if(flags & Flags::Hidden)
 			return false;
 
-		if(_flags.load(std::memory_order_acquire) & Flags::NoCulling)
+		if(flags & Flags::NoCulling)
 			return true;
 
 		return camera->InFrustum(GetBoundingSphere());
