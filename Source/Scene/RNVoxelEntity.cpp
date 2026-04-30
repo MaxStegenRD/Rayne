@@ -742,7 +742,6 @@ namespace RN
 		if(!_material)
 			return;
 
-		_drawable->UpdateTransform(this);
-		renderer->SubmitDrawable(_drawable);
+		renderer->SubmitDrawable(_drawable, this);
 	}
 } // namespace RN

@@ -120,8 +120,7 @@ namespace RN
 		{
 			if(drawable->ShouldRender())
 			{
-				drawable->UpdateTransform(this);
-				renderer->SubmitDrawable(drawable);
+				renderer->SubmitDrawable(drawable, this);
 			}
 		}
 	}

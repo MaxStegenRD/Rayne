@@ -67,7 +67,7 @@ namespace RN
 
 		MTLAPI Drawable *CreateDrawable() final;
 		MTLAPI void DeleteDrawable(Drawable *drawable) final;
-		MTLAPI void SubmitDrawable(Drawable *drawable) final;
+		MTLAPI void SubmitDrawable(Drawable *drawable, const SceneNode *node) final;
 		MTLAPI void SubmitLight(const Light *light) final;
 		
 		MTLAPI static MTLResourceOptions MetalResourceOptionsFromOptions(GPUResource::AccessOptions options);
@@ -89,7 +89,7 @@ namespace RN
 		void RenderFrameSubmission(const MetalFrameSubmission &submission);
 		void SubmitCamera(MetalFrameSubmission &submission, Camera *camera, Camera *lightClusterCamera, Function &&function);
 		void SubmitRenderPass(MetalFrameSubmission &submission, RenderPass *renderPass, MetalRenderPass &previousRenderPass);
-		void SubmitDrawable(MetalFrameSubmission &submission, Drawable *drawable);
+		void SubmitDrawable(MetalFrameSubmission &submission, Drawable *drawable, const SceneNode *node);
 		void PrepareRenderFrame(MetalFrameSubmission &submission);
 		void RenderDrawable(const MetalPreparedDrawItem &drawItem, uint32 instanceCount, const MetalRenderPass &renderPass, const RenderFrame::Pass &framePass);
 		void RenderAPIRenderPass(const MetalFrameSubmission &submission, const MetalRenderPass &renderPass);

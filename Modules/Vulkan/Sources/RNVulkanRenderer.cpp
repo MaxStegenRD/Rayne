@@ -1229,7 +1229,7 @@ namespace RN
 						_lock.Unlock();
 					}
 
-					SubmitDrawable(frameSubmission, _defaultPostProcessingDrawable);
+					SubmitDrawable(frameSubmission, _defaultPostProcessingDrawable, nullptr);
 				}
 			}
 
@@ -2429,14 +2429,15 @@ namespace RN
 		return true;
 	}
 
-	void VulkanRenderer::SubmitDrawable(Drawable *drawable)
+	void VulkanRenderer::SubmitDrawable(Drawable *drawable, const SceneNode *node)
 	{
-		SubmitDrawable(GetActiveFrameSubmission(), drawable);
+		SubmitDrawable(GetActiveFrameSubmission(), drawable, node);
 	}
 
-	void VulkanRenderer::SubmitDrawable(VulkanFrameSubmission &frameSubmission, Drawable *sourceDrawable)
+	void VulkanRenderer::SubmitDrawable(VulkanFrameSubmission &frameSubmission, Drawable *sourceDrawable, const SceneNode *node)
 	{
 		VulkanDrawable *drawable = static_cast<VulkanDrawable *>(sourceDrawable);
+		uint16 renderGroup = node ? node->GetRenderGroup() : 0xffff;
 		size_t drawItemIndex = RenderFrame::InvalidDrawItemIndex;
 
 		auto submitDrawable = [&](VulkanRenderPass &renderSubPass) {
@@ -2448,11 +2449,11 @@ namespace RN
 
 			RenderFrame::Pass &framePass = frameSubmission.renderFrame.GetPass(renderSubPass.renderFramePassIndex);
 			const RenderPass::DrawSnapshot &renderSubPassDrawSnapshot = framePass.GetDrawSnapshot();
-			if((drawable->GetRenderGroup() & renderSubPassDrawSnapshot.GetRenderGroupMask()) == 0)
+			if((renderGroup & renderSubPassDrawSnapshot.GetRenderGroupMask()) == 0)
 				return;
 
 			if(drawItemIndex == RenderFrame::InvalidDrawItemIndex)
-				drawItemIndex = frameSubmission.renderFrame.AddDrawItem(drawable);
+				drawItemIndex = frameSubmission.renderFrame.AddDrawItem(drawable, node);
 			framePass.AddDrawItemIndex(drawItemIndex);
 		};
 

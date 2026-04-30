@@ -27,6 +27,7 @@ namespace RN
 	struct Drawable
 	{
 		friend class Renderer;
+		friend class RenderFrame;
 
 		RNAPI Drawable();
 		RNAPI virtual ~Drawable();
@@ -119,7 +120,6 @@ namespace RN
 		};
 
 		RNAPI void SetSources(Mesh *mesh, Material *material, Skeleton *skeleton);
-		RNAPI virtual void UpdateTransform(const SceneNode *node);
 		bool ShouldRender() const
 		{
 			Material *material = _sourceMaterial.Get();
@@ -128,15 +128,15 @@ namespace RN
 		RNAPI void GetMeshBufferSnapshot(Mesh::BufferSnapshot &snapshot) const;
 		RNAPI DrawSnapshotBundle GetDrawSnapshotBundleForFrame(uint64 frameID);
 
-		const Matrix &GetModelMatrix() const { return _modelMatrix; }
-		const Matrix &GetInverseModelMatrix() const { return _inverseModelMatrix; }
-		uint16 GetRenderGroup() const { return _renderGroup; }
-
 	private:
 		static constexpr uint8 MeshSnapshotDirty = 1 << 0;
 		static constexpr uint8 MaterialSnapshotDirty = 1 << 1;
 		static constexpr uint8 SkeletonSnapshotDirty = 1 << 2;
 		static constexpr uint8 AllSnapshotsDirty = MeshSnapshotDirty | MaterialSnapshotDirty | SkeletonSnapshotDirty;
+
+		void UpdateTransform(const SceneNode *node);
+		const Matrix &GetModelMatrix() const { return _modelMatrix; }
+		const Matrix &GetInverseModelMatrix() const { return _inverseModelMatrix; }
 
 		void UpdateSourceVersions();
 		bool DrainDrawSnapshots(uint64 completedFrameID);
@@ -149,7 +149,6 @@ namespace RN
 
 		Matrix _modelMatrix;
 		Matrix _inverseModelMatrix;
-		uint16 _renderGroup = 0xffff;
 
 		// Source objects are kept for snapshot refresh/version checks.
 		StrongRef<Mesh> _sourceMesh;

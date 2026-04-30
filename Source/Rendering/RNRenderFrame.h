@@ -175,11 +175,11 @@ namespace RN
 		class DrawItem
 		{
 		public:
-			DrawItem(Drawable *sourceDrawable, const Drawable::DrawSnapshotBundle &drawSnapshot) :
+			DrawItem(Drawable *sourceDrawable, const Drawable::DrawSnapshotBundle &drawSnapshot, const Matrix &modelMatrix, const Matrix &inverseModelMatrix) :
 				_sourceDrawable(sourceDrawable),
 				_drawSnapshot(drawSnapshot),
-				_modelMatrix(sourceDrawable->GetModelMatrix()),
-				_inverseModelMatrix(sourceDrawable->GetInverseModelMatrix())
+				_modelMatrix(modelMatrix),
+				_inverseModelMatrix(inverseModelMatrix)
 			{
 				sourceDrawable->GetMeshBufferSnapshot(_meshBuffers);
 			}
@@ -285,7 +285,7 @@ namespace RN
 			return _passes.size() - 1;
 		}
 
-		size_t AddDrawItem(Drawable *sourceDrawable)
+		size_t AddDrawItem(Drawable *sourceDrawable, const SceneNode *node)
 		{
 			if(_drawItems.size() == _drawItems.capacity())
 			{
@@ -293,8 +293,9 @@ namespace RN
 				_drawItems.reserve(capacity + (capacity > 0 ? capacity : RN_RENDERING_DRAW_ITEM_RESERVE_BLOCK_SIZE));
 			}
 
+			sourceDrawable->UpdateTransform(node);
 			Drawable::DrawSnapshotBundle drawSnapshot = sourceDrawable->GetDrawSnapshotBundleForFrame(_frameID);
-			_drawItems.emplace_back(sourceDrawable, drawSnapshot);
+			_drawItems.emplace_back(sourceDrawable, drawSnapshot, sourceDrawable->GetModelMatrix(), sourceDrawable->GetInverseModelMatrix());
 			return _drawItems.size() - 1;
 		}
 

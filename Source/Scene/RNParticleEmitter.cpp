@@ -425,8 +425,7 @@ namespace RN
 			UpdateMesh();
 		}
 
-		_drawable->UpdateTransform(_isLocal ? this : nullptr);
-		renderer->SubmitDrawable(_drawable);
+		renderer->SubmitDrawable(_drawable, _isLocal ? this : nullptr);
 	}
 
 

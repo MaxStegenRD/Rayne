@@ -76,7 +76,7 @@ namespace RN
 
 		VKAPI Drawable *CreateDrawable() final;
 		VKAPI void DeleteDrawable(Drawable *drawable) final;
-		VKAPI void SubmitDrawable(Drawable *drawable) final;
+		VKAPI void SubmitDrawable(Drawable *drawable, const SceneNode *node) final;
 		VKAPI void SubmitLight(const Light *light) final;
 		VKAPI void WarmupDrawable(Mesh *mesh, Material *material, Camera *camera) final;
 
@@ -108,7 +108,7 @@ namespace RN
 		void WarmupDrawableOnRenderThread(const VulkanFrameSubmission &submission, const Mesh::DrawSnapshot &meshSnapshot, const Material::DrawSnapshot &materialSnapshot, uint64 materialSnapshotVersion);
 		void SubmitCamera(VulkanFrameSubmission &submission, Camera *camera, Camera *lightClusterCamera, Function &&function);
 		void SubmitRenderPass(VulkanFrameSubmission &submission, RenderPass *renderPass, VulkanRenderPass &previousRenderPass);
-		void SubmitDrawable(VulkanFrameSubmission &submission, Drawable *drawable);
+		void SubmitDrawable(VulkanFrameSubmission &submission, Drawable *drawable, const SceneNode *node);
 		bool PrepareRenderFrame(VulkanFrameSubmission &submission);
 		void UpdateDescriptorSets(VulkanFrameSubmission &submission);
 		void RenderDrawable(VkCommandBuffer commandBuffer, const VulkanPreparedDrawItem &drawItem, uint32 instanceCount);

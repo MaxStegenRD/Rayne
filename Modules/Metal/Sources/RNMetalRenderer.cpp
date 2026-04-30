@@ -704,7 +704,7 @@ namespace RN
 					_defaultPostProcessingDrawable->SetSources(planeMesh, planeMaterial, nullptr);
 					_lock.Unlock();
 				}
-				SubmitDrawable(frameSubmission, _defaultPostProcessingDrawable);
+				SubmitDrawable(frameSubmission, _defaultPostProcessingDrawable, nullptr);
 			}
 		}
 		else
@@ -1601,15 +1601,16 @@ namespace RN
 		_uniformBufferPool->Update(this); //This will also reset all reference offsets into the buffer
 	}
 
-	void MetalRenderer::SubmitDrawable(Drawable *drawable)
+	void MetalRenderer::SubmitDrawable(Drawable *drawable, const SceneNode *node)
 	{
-		SubmitDrawable(GetActiveFrameSubmission(), drawable);
+		SubmitDrawable(GetActiveFrameSubmission(), drawable, node);
 	}
 
-	void MetalRenderer::SubmitDrawable(MetalFrameSubmission &frameSubmission, Drawable *sourceDrawable)
+	void MetalRenderer::SubmitDrawable(MetalFrameSubmission &frameSubmission, Drawable *sourceDrawable, const SceneNode *node)
 	{
 		RN_PROFILE_SCOPE();
 		MetalDrawable *drawable = static_cast<MetalDrawable *>(sourceDrawable);
+		uint16 renderGroup = node ? node->GetRenderGroup() : 0xffff;
 		size_t drawItemIndex = RenderFrame::InvalidDrawItemIndex;
 
 		size_t startIndex = frameSubmission.activeRenderPassIndex;
@@ -1621,11 +1622,11 @@ namespace RN
 
 			RenderFrame::Pass &framePass = frameSubmission.renderFrame.GetPass(pass.renderFramePassIndex);
 			const RenderPass::DrawSnapshot &passDrawSnapshot = framePass.GetDrawSnapshot();
-			if((drawable->GetRenderGroup() & passDrawSnapshot.GetRenderGroupMask()) == 0) continue;
+			if((renderGroup & passDrawSnapshot.GetRenderGroupMask()) == 0) continue;
 
 			_lock.Lock();
 			if(drawItemIndex == RenderFrame::InvalidDrawItemIndex)
-				drawItemIndex = frameSubmission.renderFrame.AddDrawItem(drawable);
+				drawItemIndex = frameSubmission.renderFrame.AddDrawItem(drawable, node);
 			framePass.AddDrawItemIndex(drawItemIndex);
 			_lock.Unlock();
 		}

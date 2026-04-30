@@ -81,7 +81,7 @@ namespace RN
 
 		RNAPI virtual Drawable *CreateDrawable() = 0;
 		RNAPI virtual void DeleteDrawable(Drawable *drawable) = 0;
-		RNAPI virtual void SubmitDrawable(Drawable *drawable) = 0;
+		RNAPI virtual void SubmitDrawable(Drawable *drawable, const SceneNode *node) = 0;
 		RNAPI virtual RenderPassResources *CreateRenderPassResources();
 		RNAPI virtual void DeleteRenderPassResources(RenderPassResources *resources);
 

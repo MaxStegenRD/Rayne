@@ -88,6 +88,37 @@ namespace RN
 		}
 	}
 
+	void Drawable::UpdateTransform(const SceneNode *node)
+	{
+		if(_transformNode != node)
+		{
+			_transformNode = node;
+			_transformDirty = true;
+		}
+
+		if(!node)
+		{
+			if(_transformDirty || _transformVersion != 0)
+			{
+				_modelMatrix = Matrix();
+				_inverseModelMatrix = Matrix();
+				_transformVersion = 0;
+				_transformDirty = false;
+			}
+
+			return;
+		}
+
+		uint64 transformVersion = node->GetTransformVersion();
+		if(_transformDirty || _transformVersion != transformVersion)
+		{
+			_modelMatrix = node->GetWorldTransform();
+			_inverseModelMatrix = node->GetInverseWorldTransform();
+			_transformVersion = transformVersion;
+			_transformDirty = false;
+		}
+	}
+
 	void Drawable::UpdateSourceVersions()
 	{
 		Mesh *mesh = _sourceMesh.Get();
@@ -108,40 +139,6 @@ namespace RN
 		uint64 skeletonDrawSnapshotVersion = skeleton ? skeleton->GetDrawSnapshotVersion() : 0;
 		if(_skeletonDrawSnapshotVersion != skeletonDrawSnapshotVersion)
 			_drawSnapshotDirtyMask |= SkeletonSnapshotDirty;
-	}
-
-	void Drawable::UpdateTransform(const SceneNode *node)
-	{
-		if(_transformNode != node)
-		{
-			_transformNode = node;
-			_transformDirty = true;
-		}
-
-		if(!node)
-		{
-			if(_transformDirty || _transformVersion != 0 || _renderGroup != 0xffff)
-			{
-				_modelMatrix = Matrix();
-				_inverseModelMatrix = Matrix();
-				_renderGroup = 0xffff;
-				_transformVersion = 0;
-				_transformDirty = false;
-			}
-
-			return;
-		}
-
-		_renderGroup = node->GetRenderGroup();
-
-		uint64 transformVersion = node->GetTransformVersion();
-		if(_transformDirty || _transformVersion != transformVersion)
-		{
-			_modelMatrix = node->GetWorldTransform();
-			_inverseModelMatrix = node->GetInverseWorldTransform();
-			_transformVersion = transformVersion;
-			_transformDirty = false;
-		}
 	}
 
 	void Drawable::GetMeshBufferSnapshot(Mesh::BufferSnapshot &snapshot) const
