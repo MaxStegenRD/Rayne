@@ -28,6 +28,7 @@ namespace RN
 		bool WaitForSpace()
 		{
 			RN_PROFILE_SCOPE_N("WaitForRenderFrameQueueSpace");
+			RN_PROFILE_ATRACE_SCOPE_N("RN RenderQueue WaitForFrameSlot");
 			UniqueLock<Lockable> lock(_lock);
 			_consumedCondition.Wait(lock, [this]() {
 				return _isShuttingDown || _queuedFrameSubmissionCount < RN_RENDERING_FRAME_SUBMISSION_QUEUE_SIZE;
@@ -60,6 +61,7 @@ namespace RN
 
 		WorkType Pop(T &submission, Function &task)
 		{
+			RN_PROFILE_ATRACE_SCOPE_N("RN RenderQueue PopWork");
 			UniqueLock<Lockable> lock(_lock);
 			_queuedCondition.Wait(lock, [this]() {
 				return _isShuttingDown || !_workItems.empty();

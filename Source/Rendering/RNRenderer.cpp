@@ -91,6 +91,7 @@ namespace RN
 			LockGuard<Lockable> lock(_frameLifecycleLock);
 			_lastStartedRenderFrameID += 1;
 			frame.SetFrameID(_lastStartedRenderFrameID);
+			RN_PROFILE_ATRACE_ASYNC_BEGIN_N("RN RenderFrame", _lastStartedRenderFrameID);
 			drawItemReserveCount = static_cast<size_t>(static_cast<float>(_lastRenderFrameDrawItemCount) * RN_RENDERING_DRAW_ITEM_RESERVE_MULTIPLIER);
 			completedFrameID = _completedRenderFrameID;
 		}
@@ -109,6 +110,7 @@ namespace RN
 			_lastRenderFrameDrawItemCount = frame.GetDrawItemCount();
 		}
 
+		RN_PROFILE_ATRACE_ASYNC_END_N("RN RenderFrame", frameID);
 		FlushDeletedDrawables();
 	}
 

@@ -298,7 +298,10 @@ namespace RN
 			submitInfo.commandBufferCount = buffers.size();
 			submitInfo.pCommandBuffers = buffers.data();
 
-			RNVulkanValidate(vk::QueueSubmit(_workQueue, 1, &submitInfo, VK_NULL_HANDLE));
+			{
+				RN_PROFILE_ATRACE_SCOPE_N("VK QueueSubmit Resource Uploads");
+				RNVulkanValidate(vk::QueueSubmit(_workQueue, 1, &submitInfo, VK_NULL_HANDLE));
+			}
 
 			//RNVulkanValidate(vk::DeviceWaitIdle(GetVulkanDevice()->GetDevice()));
 			_submittedCommandBuffers->RemoveAllObjects();
@@ -529,6 +532,7 @@ namespace RN
 			return true;
 		}
 
+		RN_PROFILE_ATRACE_SCOPE_N("RN RenderThread Execute Render Frame");
 		if(PrepareRenderFrame(submission))
 		{
 			RenderFrameSubmission(submission);
@@ -542,6 +546,7 @@ namespace RN
 	void VulkanRenderer::BuildFrameSubmission(VulkanFrameSubmission &submission, Function &&function)
 	{
 		RN_PROFILE_SCOPE();
+		RN_PROFILE_ATRACE_SCOPE_N("RN MainThread Build Render Frame");
 		AssertOnSubmissionThread();
 
 		//SubmitCamera is called for each camera and creates draw items per camera
@@ -882,7 +887,10 @@ namespace RN
 		submitInfo.pWaitDstStageMask = presentSemaphoresWaitStages.data();
 
 		_frameFenceValues[_currentFrameFenceIndex] = _currentFrame;
-		RNVulkanValidate(vk::QueueSubmit(_workQueue, 1, &submitInfo, _frameFences[_currentFrameFenceIndex]));
+		{
+			RN_PROFILE_ATRACE_SCOPE_N("VK QueueSubmit Frame");
+			RNVulkanValidate(vk::QueueSubmit(_workQueue, 1, &submitInfo, _frameFences[_currentFrameFenceIndex]));
+		}
 
 		for(VulkanSwapChain *swapChain : submission.swapChains)
 		{
@@ -2209,6 +2217,7 @@ namespace RN
 	bool VulkanRenderer::PrepareRenderFrame(VulkanFrameSubmission &submission)
 	{
 		RN_PROFILE_SCOPE();
+		RN_PROFILE_ATRACE_SCOPE_N("VK Prepare Render Frame");
 		AssertOnRenderThread();
 		_internals->stateCoordinator.SavePipelineCache(Kernel::GetSharedInstance()->GetApplication()->GetBuildNumber(), GetVulkanDevice()); //This won't do anything if no new pipelines were loaded
 
