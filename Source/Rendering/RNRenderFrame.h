@@ -12,6 +12,7 @@
 #include "RNDrawable.h"
 #include "RNRenderingConfig.h"
 #include "RNRenderPass.h"
+#include "../Objects/RNObject.h"
 #include "../Scene/RNCamera.h"
 #include "../Scene/RNLight.h"
 #include "../Scene/RNLightManager.h"
@@ -19,6 +20,19 @@
 namespace RN
 {
 	class Texture;
+
+	class RenderFramePresentationState : public Object
+	{
+	public:
+		RNAPI virtual void BeginFrameOnRenderThread();
+		RNAPI virtual void EndFrameOnRenderThread();
+
+	protected:
+		RNAPI RenderFramePresentationState();
+		RNAPI ~RenderFramePresentationState();
+
+		__RNDeclareMetaInternal(RenderFramePresentationState)
+	};
 
 	class RenderFrame
 	{
@@ -272,12 +286,30 @@ namespace RN
 		void Clear()
 		{
 			_frameID = 0;
+			_presentationStates.clear();
 			_passes.clear();
 			_drawItems.clear();
 			_cameraStatistics.clear();
 		}
 
 		uint64 GetFrameID() const { return _frameID; }
+		void AddPresentationState(RenderFramePresentationState *state)
+		{
+			if(!state) return;
+
+			for(const StrongRef<RenderFramePresentationState> &existingState : _presentationStates)
+			{
+				if(existingState.Get() == state) return;
+			}
+
+			_presentationStates.push_back(state);
+		}
+		size_t GetPresentationStateCount() const { return _presentationStates.size(); }
+		RenderFramePresentationState *GetPresentationState(size_t index) const
+		{
+			RN_DEBUG_ASSERT(index < _presentationStates.size(), "Invalid render frame presentation state index");
+			return _presentationStates[index].Get();
+		}
 
 		size_t AddPass(const RenderPass::DrawSnapshot &drawSnapshot, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialCacheIdentity, uint64 overrideMaterialSnapshotVersion)
 		{
@@ -346,6 +378,7 @@ namespace RN
 		void SetFrameID(uint64 frameID) { _frameID = frameID; }
 
 		uint64 _frameID = 0;
+		std::vector<StrongRef<RenderFramePresentationState>> _presentationStates;
 		std::deque<Pass> _passes;
 		std::vector<DrawItem> _drawItems;
 		std::vector<CameraStatistics> _cameraStatistics;

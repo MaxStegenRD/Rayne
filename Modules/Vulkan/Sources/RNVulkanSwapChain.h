@@ -16,6 +16,7 @@ namespace RN
 	class VulkanRenderer;
 	class VulkanFramebuffer;
 	class VulkanCommandBuffer;
+	class RenderFramePresentationState;
 
 	class VulkanSwapChain : public Object
 	{
@@ -30,6 +31,7 @@ namespace RN
 		VKAPI virtual void Prepare(VkCommandBuffer commandBuffer);
 		VKAPI virtual void Finalize(VkCommandBuffer commandBuffer);
 		VKAPI virtual void PresentBackBuffer(VkQueue queue);
+		VKAPI virtual RenderFramePresentationState *TakeRenderFramePresentationState() { return nullptr; }
 
 		VKAPI virtual VkImage GetVulkanColorBuffer(int i) const;
 		VKAPI virtual VkImage GetVulkanDepthBuffer(int i) const;

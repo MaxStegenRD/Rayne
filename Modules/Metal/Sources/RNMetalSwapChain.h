@@ -20,6 +20,7 @@ class RNMetalLayerContainer;
 namespace RN
 {
 	class MetalFramebuffer;
+	class RenderFramePresentationState;
 	class MetalSwapChain : public Object
 	{
 	public:
@@ -35,6 +36,7 @@ namespace RN
 		MTLAPI virtual void Finalize();
 		MTLAPI virtual void PresentBackBuffer(id<MTLCommandBuffer> commandBuffer);
 		MTLAPI virtual void PostPresent(id<MTLCommandBuffer> commandBuffer);
+		MTLAPI virtual RenderFramePresentationState *TakeRenderFramePresentationState() { return nullptr; }
 
 		MTLAPI virtual id GetMetalColorTexture() const;
 		MTLAPI virtual id GetMetalDepthTexture() const;

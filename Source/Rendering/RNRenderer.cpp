@@ -14,6 +14,7 @@
 
 namespace RN
 {
+	RNDefineMeta(RenderFramePresentationState, Object)
 	RNDefineMeta(Renderer, Object)
 
 	RNExceptionImp(ShaderCompilation)
@@ -61,6 +62,18 @@ namespace RN
 		RN_ASSERT(_activeRenderer, "GetActiveRenderer() called, but no renderer is currently active");
 		return _activeRenderer;
 	}
+
+	RenderFramePresentationState::RenderFramePresentationState()
+	{}
+
+	RenderFramePresentationState::~RenderFramePresentationState()
+	{}
+
+	void RenderFramePresentationState::BeginFrameOnRenderThread()
+	{}
+
+	void RenderFramePresentationState::EndFrameOnRenderThread()
+	{}
 
 	void Renderer::Activate()
 	{
