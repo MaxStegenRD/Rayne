@@ -87,6 +87,7 @@ namespace RN
 		bool BeginRenderFrame();
 		void FinishRenderFrame();
 		void ResetFramePacing();
+		void WaitForRenderThread();
 
 		int _mainThreadID;
 		OpenXRWindowInternals *_internals;

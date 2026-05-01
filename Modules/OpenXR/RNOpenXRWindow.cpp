@@ -2730,6 +2730,8 @@ namespace RN
 
 	void OpenXRWindow::UpdateLate()
 	{
+		WaitForRenderThread();
+
 		_layersUnderlay->Enumerate<OpenXRCompositorLayer>([](OpenXRCompositorLayer *layer, size_t index, bool &stop) {
 			layer->UpdateForCurrentFrame();
 		});
@@ -2737,6 +2739,25 @@ namespace RN
 		_layersOverlay->Enumerate<OpenXRCompositorLayer>([](OpenXRCompositorLayer *layer, size_t index, bool &stop) {
 			layer->UpdateForCurrentFrame();
 		});
+	}
+
+	void OpenXRWindow::WaitForRenderThread()
+	{
+		Renderer *renderer = Renderer::GetActiveRenderer();
+		if(!renderer) return;
+
+		Lockable lock;
+		Condition condition;
+		bool finished = false;
+
+		renderer->ScheduleRenderThreadWork(RN::MakeFunction([&]() {
+			LockGuard<Lockable> guard(lock);
+			finished = true;
+			condition.NotifyOne();
+		}));
+
+		UniqueLock<Lockable> guard(lock);
+		condition.Wait(guard, [&]() { return finished; });
 	}
 
 	const String *OpenXRWindow::GetHMDInfoDescription() const
