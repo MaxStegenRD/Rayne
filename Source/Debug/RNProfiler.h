@@ -8,10 +8,51 @@
 #ifndef __RAYNE_PROFILER_H__
 #define __RAYNE_PROFILER_H__
 
+#if RN_PLATFORM_ANDROID
+	#define RN_PROFILE_ATRACE 1
+#endif
+
 // Select exactly one backend by defining one of:
 //   - RN_PROFILE_TRACY
 //
 // If none are defined, all profiling macros become no-ops.
+
+#if RN_PLATFORM_ANDROID && defined(RN_PROFILE_ATRACE)
+	#include <android/trace.h>
+
+	namespace RN
+	{
+		class ATraceScope
+		{
+		public:
+			ATraceScope(const char *name) :
+				_isEnabled(ATrace_isEnabled())
+			{
+				if(_isEnabled) ATrace_beginSection(name);
+			}
+
+			~ATraceScope()
+			{
+				if(_isEnabled) ATrace_endSection();
+			}
+
+		private:
+			bool _isEnabled;
+		};
+	}
+
+	#define RN_PROFILE_ATRACE_CONCAT_INNER(a, b) a ## b
+	#define RN_PROFILE_ATRACE_CONCAT(a, b) RN_PROFILE_ATRACE_CONCAT_INNER(a, b)
+	#define RN_PROFILE_ATRACE_SCOPE_N(name) RN::ATraceScope RN_PROFILE_ATRACE_CONCAT(__rnATraceScope, __LINE__)(name)
+	#define RN_PROFILE_ATRACE_SCOPE() RN_PROFILE_ATRACE_SCOPE_N(__FUNCTION__)
+	#define RN_PROFILE_ATRACE_ASYNC_BEGIN_N(name, cookie) do { if(ATrace_isEnabled()) ATrace_beginAsyncSection(name, static_cast<int>(cookie)); } while(0)
+	#define RN_PROFILE_ATRACE_ASYNC_END_N(name, cookie) do { if(ATrace_isEnabled()) ATrace_endAsyncSection(name, static_cast<int>(cookie)); } while(0)
+#else
+	#define RN_PROFILE_ATRACE_SCOPE_N(name) ((void)0)
+	#define RN_PROFILE_ATRACE_SCOPE() ((void)0)
+	#define RN_PROFILE_ATRACE_ASYNC_BEGIN_N(name, cookie) ((void)0)
+	#define RN_PROFILE_ATRACE_ASYNC_END_N(name, cookie) ((void)0)
+#endif
 
 // ---------------------------
 // Tracy backend
@@ -95,5 +136,3 @@
 #endif
 
 #endif /* __RAYNE_PROFILER_H__ */
-
-
