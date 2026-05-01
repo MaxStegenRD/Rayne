@@ -38,7 +38,9 @@ namespace RN
 		};
 
 		const Vector2 &GetSize() const { return _size; }
-		RNAPI virtual void SetSize(Vector2 size) { _size = size; }
+		RNAPI Vector2 GetRenderAreaSize() const;
+		RNAPI virtual void SetSize(Vector2 size);
+		RNAPI void SetRenderAreaSize(Vector2 size);
 
 		RNAPI virtual uint32 GetColorTargetCount() const = 0;
 		RNAPI virtual Texture *GetColorTexture(uint32 index = 0) const = 0;
@@ -53,8 +55,11 @@ namespace RN
 		RNAPI ~Framebuffer();
 
 		Vector2 _size;
+		Vector2 _renderAreaSize;
 
 	private:
+		void ClampRenderAreaSize();
+
 		__RNDeclareMetaInternal(Framebuffer)
 	};
 } // namespace RN

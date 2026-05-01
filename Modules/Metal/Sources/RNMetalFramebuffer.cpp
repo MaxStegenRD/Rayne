@@ -582,7 +582,7 @@ namespace RN
 
 	void MetalFramebuffer::DidUpdateSwapChain(Vector2 size, Texture::Format colorFormat, Texture::Format depthStencilFormat)
 	{
-		_size = size;
+		SetSize(size);
 
 		for(MetalTargetView *targetView : _colorTargets)
 		{
@@ -614,7 +614,7 @@ namespace RN
 
 	void MetalFramebuffer::DidUpdateSwapChainSize(Vector2 size)
 	{
-		_size = size;
+		SetSize(size);
 	}
 	
 	MTLPixelFormat MetalFramebuffer::GetMetalColorFormat(uint8 texture) const

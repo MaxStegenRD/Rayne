@@ -71,7 +71,7 @@ namespace RN
 
 	private:
 		void PrepareAsRendertargetForFrame(const RenderFrame &renderFrame, const VulkanRenderPass *renderPass);
-		void SetAsRendertarget(VkCommandBuffer commandBuffer, VulkanFramebuffer *resolveFramebuffer, const Color &clearColor, float depth, uint8 stencil) const;
+		void SetAsRendertarget(VkCommandBuffer commandBuffer, VulkanFramebuffer *resolveFramebuffer, const RenderPass::DrawSnapshot &drawSnapshot) const;
 
 		VulkanRenderer *_renderer;
 		uint8 _sampleCount;

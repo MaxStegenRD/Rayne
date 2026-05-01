@@ -138,7 +138,8 @@ namespace RN
 		{
 		public:
 			Flags GetFlags() const { return _flags; }
-			const Rect &GetFrame() const { return _frame; }
+			RNAPI Rect GetFrame() const;
+			RNAPI Vector2 GetFramebufferResourceSize() const;
 			Framebuffer *GetFramebuffer() const { return _framebuffer.Get(); }
 			const Color &GetClearColor() const { return _clearColor; }
 			float GetClearDepth() const { return _clearDepth; }
@@ -153,8 +154,11 @@ namespace RN
 			friend class RenderPass;
 			friend struct RenderPassResources;
 
+			static bool IsValidSize(const Vector2 &size);
+
 			Flags _flags = Flags::Defaults;
 			Rect _frame;
+			Vector2 _framebufferResourceSize;
 			StrongRef<Framebuffer> _framebuffer;
 			Color _clearColor;
 			float _clearDepth = 0.0f;
@@ -188,6 +192,7 @@ namespace RN
 		RNAPI Framebuffer *GetFramebuffer() const;
 		Flags GetFlags() const { return _flags; }
 		RNAPI Rect GetFrame() const;
+		RNAPI Rect GetEffectiveFrame() const;
 		const Color &GetClearColor() const { return _clearColor; }
 		float GetClearDepth() const { return _clearDepth; }
 		uint8 GetClearStencil() const { return _clearStencil; }
@@ -212,7 +217,10 @@ namespace RN
 		RNAPI void UpdateSubpassChain();
 
 	private:
+		friend struct RenderPassResources;
+
 		void MarkDrawSnapshotDirty();
+		void UpdateDrawSnapshotFrame(DrawSnapshot &snapshot) const;
 	
 		Flags _flags;
 		Rect _frame;

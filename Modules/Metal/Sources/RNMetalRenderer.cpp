@@ -326,14 +326,6 @@ namespace RN
 			[descriptor release];
 
 			Rect cameraRect = framePass.GetCameraSnapshot().GetFrame();
-			if(cameraRect.width < 0.5f || cameraRect.height < 0.5f)
-			{
-				Vector2 framebufferSize = renderPass.framebuffer->GetSize();
-				cameraRect.x = 0.0f;
-				cameraRect.y = 0.0f;
-				cameraRect.width = framebufferSize.x;
-				cameraRect.height = framebufferSize.y;
-			}
 			MTLViewport viewPort;
 			viewPort.originX = cameraRect.x;
 			viewPort.originY = cameraRect.y;
@@ -474,8 +466,8 @@ namespace RN
 				else
 				{
 					sourceMTLTexture = sourceFramebuffer->GetSwapChain()->GetMetalColorTexture();
-					sourceTextureSize.x = sourceFramebuffer->GetSize().x;
-					sourceTextureSize.y = sourceFramebuffer->GetSize().y;
+					sourceTextureSize.x = renderPass.previousStoredRenderAreaSize.x;
+					sourceTextureSize.y = renderPass.previousStoredRenderAreaSize.y;
 					sourceTextureSize.z = 0;
 				}
 
@@ -553,18 +545,15 @@ namespace RN
 
 		// Set up
 		MetalRenderPass renderPass;
-		renderPass.type = MetalRenderPass::Type::Default;
 		renderPass.renderPass = cameraRenderPass;
 		renderPass.frameStatisticsIndex = frameStatisticsIndex;
 
 		renderPass.multiviewLayer = _currentMultiviewLayer;
 
-		renderPass.framebuffer = nullptr;
+		renderPass.renderAreaSize = drawSnapshot.GetFrame().GetSize();
 
 		renderPass.shaderHint = GetMetalShaderHint(drawSnapshot.GetShaderHint());
 		renderPass.renderFramePassIndex = frameSubmission.renderFrame.AddPass(drawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetIdentity(), renderPassResources->GetOverrideMaterialSnapshotVersion());
-		renderPass.resolveFramebuffer = nullptr;
-		renderPass.previousStoredFramebuffer = nullptr;
 
 		RenderFrame::CameraSnapshot cameraSnapshot = RenderFrame::CameraSnapshot::WithCamera(camera, drawSnapshot.GetFrame());
 		RenderFrame::Pass &framePass = frameSubmission.renderFrame.GetPass(renderPass.renderFramePassIndex);
@@ -613,22 +602,13 @@ namespace RN
 
 		// Set up
 		MetalRenderPass metalRenderPass;
-		metalRenderPass.type = MetalRenderPass::Type::Default;
 		metalRenderPass.renderPass = renderPass;
 		metalRenderPass.frameStatisticsIndex = previousRenderPass.frameStatisticsIndex;
-		metalRenderPass.previousStoredFramebuffer = nullptr;
-
-		metalRenderPass.framebuffer = nullptr;
-		metalRenderPass.resolveFramebuffer = nullptr;
 
 		PostProcessingAPIStage *apiStage = renderPass->Downcast<PostProcessingAPIStage>();
 		bool isPostProcessingStage = renderPass->IsKindOfClass(PostProcessingStage::GetMetaClass());
 		Material *rendererOverrideMaterial = nullptr;
-		if(!apiStage)
-		{
-			metalRenderPass.type = MetalRenderPass::Type::Default;
-		}
-		else
+		if(apiStage)
 		{
 			switch(apiStage->GetType())
 			{
@@ -664,6 +644,7 @@ namespace RN
 		if(previousRenderPass.renderPass)
 		{
 			metalRenderPass.previousStoredFramebuffer = previousRenderPass.resolveFramebuffer ? previousRenderPass.resolveFramebuffer : previousRenderPass.framebuffer;
+			metalRenderPass.previousStoredRenderAreaSize = previousRenderPass.resolveFramebuffer ? previousRenderPass.resolveRenderAreaSize : previousRenderPass.renderAreaSize;
 		}
 
 		//This forces passes to not use multiview
@@ -675,10 +656,12 @@ namespace RN
 		{
 			// Subpass inherits root framebuffer
 			framebuffer = previousRenderPass.framebuffer;
+			metalRenderPass.renderAreaSize = previousRenderPass.renderAreaSize;
 		}
 		else
 		{
 			framebuffer = drawSnapshot.GetFramebuffer();
+			metalRenderPass.renderAreaSize = drawSnapshot.GetFrame().GetSize();
 		}
 		metalRenderPass.framebuffer = framebuffer? framebuffer->Downcast<MetalFramebuffer>() : nullptr;
 		frameSubmission.AddSwapChain(metalRenderPass.framebuffer ? metalRenderPass.framebuffer->GetSwapChain() : nullptr);
@@ -710,6 +693,7 @@ namespace RN
 		else
 		{
 			frameSubmission.renderPasses[frameSubmission.activeRenderPassIndex].resolveFramebuffer = metalRenderPass.framebuffer;
+			frameSubmission.renderPasses[frameSubmission.activeRenderPassIndex].resolveRenderAreaSize = metalRenderPass.renderAreaSize;
 		}
 
 		const Array *nextRenderPasses = renderPass->GetNextRenderPasses();

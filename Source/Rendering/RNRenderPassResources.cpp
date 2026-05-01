@@ -34,15 +34,9 @@ namespace RN
 			renderPass->GetDrawSnapshot(_drawSnapshot);
 			_drawSnapshotSourceVersion = snapshotVersion;
 		}
-		else if(!_drawSnapshot.IsSubpass())
-		{
-			_drawSnapshot._framebuffer = renderPass->GetFramebuffer();
-			_drawSnapshot._frame = renderPass->GetFrame();
-		}
 		else
 		{
-			_drawSnapshot._framebuffer = nullptr;
-			_drawSnapshot._frame = Rect();
+			renderPass->UpdateDrawSnapshotFrame(_drawSnapshot);
 		}
 
 		UpdateOverrideMaterial(effectiveOverrideMaterial);

@@ -898,6 +898,7 @@ namespace RN
 	{
 		RN_PROFILE_SCOPE();
 		RN_PROFILE_VULKAN_SCOPE_CMD_N(_internals->tracyVulkanCtx, commandBuffer, "SetupRendertargets");
+		const RenderFrame::Pass &framePass = submission.renderFrame.GetPass(renderPass.renderFramePassIndex);
 
 		//TODO: Call PrepareAsRendertargetForFrame() only once per framebuffer per frame, find new solution for setting things up for msaa while reusing a framebuffer?
 		{
@@ -906,18 +907,12 @@ namespace RN
 		}
 		{
 			RN_PROFILE_VULKAN_SCOPE_CMD_N(_internals->tracyVulkanCtx, commandBuffer, "SetAsRendertarget");
-			const RenderPass::DrawSnapshot &drawSnapshot = submission.renderFrame.GetPass(renderPass.renderFramePassIndex).GetDrawSnapshot();
-			renderPass.framebuffer->SetAsRendertarget(commandBuffer, renderPass.resolveFramebuffer, drawSnapshot.GetClearColor(), drawSnapshot.GetClearDepth(), drawSnapshot.GetClearStencil());
+			renderPass.framebuffer->SetAsRendertarget(commandBuffer, renderPass.resolveFramebuffer, framePass.GetDrawSnapshot());
 		}
 		ResetDrawBindStateCache();
 
 		//Setup viewport and scissor rect
-		Rect cameraRect = submission.renderFrame.GetPass(renderPass.renderFramePassIndex).GetCameraSnapshot().GetFrame();
-		if(renderPass.resolveFramebuffer)
-		{
-			if(cameraRect.width > renderPass.resolveFramebuffer->_size.x) cameraRect.width = renderPass.resolveFramebuffer->_size.x;
-			if(cameraRect.height > renderPass.resolveFramebuffer->_size.y) cameraRect.height = renderPass.resolveFramebuffer->_size.y;
-		}
+		Rect cameraRect = framePass.GetCameraSnapshot().GetFrame();
 
 		// Update dynamic viewport state
 		VkViewport viewport = {};

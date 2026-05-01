@@ -7,6 +7,7 @@
 //
 
 #include "RNRenderPass.h"
+#include "RNPostProcessing.h"
 #include "../Rendering/RNRenderer.h"
 
 namespace RN
@@ -132,16 +133,50 @@ namespace RN
 		snapshot._subpass._depthStencilNeedsPreserve = _subpassNeedToPreserveDepthStencil;
 		snapshot._subpass._depthFirstUseIsRead = _depthFirstUseIsRead;
 		snapshot._subpass._depthLastUseIsRead = _depthLastUseIsRead;
+		UpdateDrawSnapshotFrame(snapshot);
+	}
+
+	bool RenderPass::DrawSnapshot::IsValidSize(const Vector2 &size)
+	{
+		return size.x >= 0.5f && size.y >= 0.5f;
+	}
+
+	Rect RenderPass::DrawSnapshot::GetFrame() const
+	{
+		Vector2 renderAreaSize = _frame.GetSize();
+		if(!IsValidSize(renderAreaSize))
+		{
+			RN_DEBUG_ASSERT(false, "Invalid render area size in render pass snapshot");
+			return Rect(Vector2(), Vector2(2.0f));
+		}
+
+		return _frame;
+	}
+
+	Vector2 RenderPass::DrawSnapshot::GetFramebufferResourceSize() const
+	{
+		if(!IsValidSize(_framebufferResourceSize))
+		{
+			RN_DEBUG_ASSERT(false, "Invalid framebuffer resource size in render pass snapshot");
+			return Vector2(2.0f);
+		}
+
+		return _framebufferResourceSize;
+	}
+
+	void RenderPass::UpdateDrawSnapshotFrame(DrawSnapshot &snapshot) const
+	{
 		if(!_isSubpass)
 		{
 			snapshot._framebuffer = GetFramebuffer();
-			snapshot._frame = GetFrame();
+			snapshot._frame = GetEffectiveFrame();
+			snapshot._framebufferResourceSize = snapshot._framebuffer ? snapshot._framebuffer->GetSize() : Vector2();
+			return;
 		}
-		else
-		{
-			snapshot._framebuffer = nullptr;
-			snapshot._frame = Rect();
-		}
+
+		snapshot._framebuffer = nullptr;
+		snapshot._framebufferResourceSize = Vector2();
+		snapshot._frame = Rect();
 	}
 
 	Framebuffer *RenderPass::GetFramebuffer() const
@@ -165,14 +200,32 @@ namespace RN
 
 		if(_framebuffer)
 		{
-			Rect frame(Vector2(), _framebuffer->GetSize());
-			return frame;
+			return Rect(Vector2(), _framebuffer->GetRenderAreaSize());
 		}
 
 		Renderer *renderer = Renderer::GetActiveRenderer();
-		Vector2 mainWindowSize = renderer->GetMainWindow()->GetSize();
-		Rect windowFrame(Vector2(), mainWindowSize);
-		return windowFrame;
+		Window *mainWindow = renderer->GetMainWindow();
+		Framebuffer *framebuffer = mainWindow->GetFramebuffer();
+		Vector2 frameSize = framebuffer ? framebuffer->GetRenderAreaSize() : mainWindow->GetSize();
+		return Rect(Vector2(), frameSize);
+	}
+
+	Rect RenderPass::GetEffectiveFrame() const
+	{
+		Rect frame = GetFrame();
+
+		_nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t, bool &stop) {
+			PostProcessingAPIStage *apiStage = nextPass->Downcast<PostProcessingAPIStage>();
+			if(apiStage && apiStage->GetType() == PostProcessingAPIStage::Type::ResolveMSAA)
+			{
+				Rect resolveFrame = nextPass->GetFrame();
+				if(resolveFrame.width >= 0.5f && resolveFrame.height >= 0.5f)
+					frame = resolveFrame;
+				stop = true;
+			}
+		});
+
+		return frame;
 	}
 
 	void RenderPass::SetSubpassWritesDepthStencilAttachment(bool writesDepthStencil)

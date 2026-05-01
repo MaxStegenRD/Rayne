@@ -308,9 +308,11 @@ namespace RN
 	{
 		VulkanFramebuffer *resolveFramebuffer = renderPass->resolveFramebuffer;
 		const RenderFrame::Pass &framePass = renderFrame.GetPass(renderPass->renderFramePassIndex);
-		RenderPass::Flags flags = framePass.GetDrawSnapshot().GetFlags();
+		const RenderPass::DrawSnapshot &drawSnapshot = framePass.GetDrawSnapshot();
+		RenderPass::Flags flags = drawSnapshot.GetFlags();
 		uint8 multiviewCount = framePass.GetMultiviewCameraCount();
 		uint8 multiviewLayer = renderPass->multiviewLayer;
+		Vector2 framebufferExtent = drawSnapshot.GetFramebufferResourceSize();
 
 		//Check if there is already a cached variant for this framebuffer
 		uint8 swapchainImageIndex = 0;
@@ -445,8 +447,8 @@ namespace RN
 		frameBufferCreateInfo.renderPass = newVariant.renderPass;
 		frameBufferCreateInfo.attachmentCount = newVariant.attachments.size();
 		frameBufferCreateInfo.pAttachments = newVariant.attachments.data();
-		frameBufferCreateInfo.width = static_cast<uint32>(_size.x);
-		frameBufferCreateInfo.height = static_cast<uint32>(_size.y);
+		frameBufferCreateInfo.width = static_cast<uint32>(framebufferExtent.x);
+		frameBufferCreateInfo.height = static_cast<uint32>(framebufferExtent.y);
 		frameBufferCreateInfo.layers = 1; //Must be 1 for multiview, so this is ok for now, but will need to be the actual layer count when rendering to multiple layers with selection in the shader
 
 		RNVulkanValidate(vk::CreateFramebuffer(device, &frameBufferCreateInfo, _renderer->GetAllocatorCallback(), &newVariant.framebuffer));
@@ -463,8 +465,10 @@ namespace RN
 		_framebufferVariants.push_back(newVariant);
 	}
 
-	void VulkanFramebuffer::SetAsRendertarget(VkCommandBuffer commandBuffer, VulkanFramebuffer *resolveFramebuffer, const Color &clearColor, float depth, uint8 stencil) const
+	void VulkanFramebuffer::SetAsRendertarget(VkCommandBuffer commandBuffer, VulkanFramebuffer *resolveFramebuffer, const RenderPass::DrawSnapshot &drawSnapshot) const
 	{
+		Vector2 effectiveRenderAreaSize = drawSnapshot.GetFrame().GetSize();
+		const Color &clearColor = drawSnapshot.GetClearColor();
 		uint16 numberOfClearColors = _colorTargets.size();
 		if(_swapChain) numberOfClearColors = 1;
 		if((resolveFramebuffer && resolveFramebuffer->_swapChain)) numberOfClearColors += 1;
@@ -504,7 +508,7 @@ namespace RN
 		if(_depthStencilTarget)
 		{
 			VkClearValue clearValue;
-			clearValue.depthStencil = {depth, stencil};
+			clearValue.depthStencil = {drawSnapshot.GetClearDepth(), drawSnapshot.GetClearStencil()};
 			clearColors.push_back(clearValue);
 		}
 
@@ -515,8 +519,8 @@ namespace RN
 		renderPassBeginInfo.framebuffer = _framebufferVariants[_currentVariantIndex].framebuffer;
 		renderPassBeginInfo.renderArea.offset.x = 0;
 		renderPassBeginInfo.renderArea.offset.y = 0;
-		renderPassBeginInfo.renderArea.extent.width = static_cast<uint32_t>(_size.x);
-		renderPassBeginInfo.renderArea.extent.height = static_cast<uint32_t>(_size.y);
+		renderPassBeginInfo.renderArea.extent.width = static_cast<uint32_t>(effectiveRenderAreaSize.x);
+		renderPassBeginInfo.renderArea.extent.height = static_cast<uint32_t>(effectiveRenderAreaSize.y);
 		renderPassBeginInfo.clearValueCount = clearColors.size();
 		renderPassBeginInfo.pClearValues = clearColors.data();
 
@@ -570,7 +574,7 @@ namespace RN
 
 	void VulkanFramebuffer::DidUpdateSwapChain(Vector2 size, uint8 layerCount, Texture::Format colorFormat, Texture::Format depthStencilFormat, Texture::Format fragmentDensityFormat)
 	{
-		_size = size;
+		SetSize(size);
 
 		VulkanDevice *device = _renderer->GetVulkanDevice();
 

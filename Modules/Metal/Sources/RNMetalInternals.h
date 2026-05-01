@@ -159,18 +159,21 @@ namespace RN
 
 		bool UsesDrawItems() const { return type == Type::Default || type == Type::Convert; }
 
-		Type type;
-		RenderPass *renderPass;
+		Type type = Type::Default;
+		RenderPass *renderPass = nullptr;
 		size_t renderFramePassIndex = RenderFrame::InvalidPassIndex;
 		size_t preparedRenderPassIndex = RenderFrame::InvalidPassIndex;
 		size_t frameStatisticsIndex = static_cast<size_t>(-1);
-		MetalFramebuffer *previousStoredFramebuffer;
+		MetalFramebuffer *previousStoredFramebuffer = nullptr;
+		Vector2 previousStoredRenderAreaSize;
 
-		MetalFramebuffer *framebuffer;
-		Shader::UsageHint shaderHint;
-		MetalFramebuffer *resolveFramebuffer;
+		MetalFramebuffer *framebuffer = nullptr;
+		Vector2 renderAreaSize;
+		Shader::UsageHint shaderHint = Shader::UsageHint::Default;
+		MetalFramebuffer *resolveFramebuffer = nullptr;
+		Vector2 resolveRenderAreaSize;
 
-		uint8 multiviewLayer;
+		uint8 multiviewLayer = 0;
 	};
 
 	struct MetalPreparedDrawItem
