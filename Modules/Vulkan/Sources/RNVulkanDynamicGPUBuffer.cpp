@@ -63,7 +63,7 @@ namespace RN
 		if(!isOwnedByPool) _bufferFrames[_bufferIndex] = currentFrame;
 		_hostBufferIndex = (_hostBufferIndex + 1) % _buffers.size();
 
-		if(_bufferFrames[_hostBufferIndex] > completedFrame)
+		if(completedFrame == static_cast<size_t>(-1) || _bufferFrames[_hostBufferIndex] > completedFrame)
 		{
 			VulkanRenderer *realRenderer = Renderer::GetActiveRenderer()->Downcast<VulkanRenderer>();
 			GPUBuffer *buffer = realRenderer->CreateBufferWithLength(_totalSize, _usageOptions, GPUResource::AccessOptions::WriteOnly, false);
