@@ -222,7 +222,7 @@ namespace RN
 			recommendedLayerResolutionGetInfo.type = XR_TYPE_RECOMMENDED_LAYER_RESOLUTION_GET_INFO_META;
 			recommendedLayerResolutionGetInfo.next = nullptr;
 			recommendedLayerResolutionGetInfo.layer = _internals->layerBaseHeader;
-			recommendedLayerResolutionGetInfo.predictedDisplayTime = _window->_internals->predictedDisplayTime;
+			recommendedLayerResolutionGetInfo.predictedDisplayTime = _window->_internals->currentFramePredictedDisplayTime;
 			XrRecommendedLayerResolutionMETA recommendedLayerResolution;
 			if(!XR_FAILED(_window->_internals->GetRecommendedLayerResolutionMETA(_window->_internals->session, &recommendedLayerResolutionGetInfo, &recommendedLayerResolution)))
 			{

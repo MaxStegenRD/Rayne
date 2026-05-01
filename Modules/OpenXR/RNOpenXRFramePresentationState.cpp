@@ -15,10 +15,12 @@ namespace RN
 {
 	RNDefineMeta(OpenXRFramePresentationState, RenderFramePresentationState)
 
-	OpenXRFramePresentationState::OpenXRFramePresentationState(OpenXRWindow *window) :
+	OpenXRFramePresentationState::OpenXRFramePresentationState(OpenXRWindow *window, int64 displayTime, bool shouldRender, bool hasFrameState) :
 		_window(window),
-		_displayTime(0),
-		_isLocalDimmingEnabled(window ? window->_isLocalDimmingEnabled : false)
+		_displayTime(displayTime),
+		_isLocalDimmingEnabled(window ? window->_isLocalDimmingEnabled : false),
+		_shouldRender(shouldRender),
+		_hasFrameState(hasFrameState)
 	{}
 
 	XrCompositionLayerBaseHeader *OpenXRFramePresentationState::LayerState::GetBaseHeader()
@@ -102,6 +104,8 @@ namespace RN
 	void OpenXRFramePresentationState::GetCompositionLayers(std::vector<XrCompositionLayerBaseHeader *> &layers)
 	{
 		layers.clear();
+		if(!_shouldRender) return;
+
 		layers.reserve(_layers.size());
 
 		for(LayerState &layer : _layers)
@@ -116,14 +120,14 @@ namespace RN
 
 	bool OpenXRFramePresentationState::BeginFrameOnRenderThread()
 	{
+		if(!_hasFrameState) return false;
+
 		OpenXRWindow *window = _window.Load();
 		if(!window) return false;
 
-		XrTime displayTime = 0;
-		if(!window->BeginRenderFrame(displayTime))
+		if(!window->BeginRenderFrame())
 			return false;
 
-		_displayTime = displayTime;
 		return true;
 	}
 

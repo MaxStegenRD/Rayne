@@ -35,9 +35,10 @@ namespace RN
 		XrSession session;
 
 		XrSpace trackingSpace;
-		XrTime predictedDisplayTime;
+		XrTime currentFramePredictedDisplayTime;
+		bool currentFrameShouldRender;
+		bool currentFrameIsValid;
 		Lockable framePacingLock;
-		std::deque<XrTime> pendingDisplayTimes;
 		bool hasActiveFrame;
 
 		XrView *views;

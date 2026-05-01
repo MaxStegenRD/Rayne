@@ -22,11 +22,11 @@ namespace RN
 	class OpenXRFramePresentationState : public RenderFramePresentationState
 	{
 	public:
-		OpenXRFramePresentationState(OpenXRWindow *window);
+		OpenXRFramePresentationState(OpenXRWindow *window, int64 displayTime, bool shouldRender, bool hasFrameState);
 
 		bool AddLayerSnapshot(OpenXRCompositorLayer *targetLayer, bool includeNonSwapChainLayers);
 		void GetCompositionLayers(std::vector<XrCompositionLayerBaseHeader *> &layers);
-		XrTime GetDisplayTime() const { return _displayTime; }
+		int64 GetDisplayTime() const { return _displayTime; }
 		bool GetLocalDimmingEnabled() const { return _isLocalDimmingEnabled; }
 		bool BeginFrameOnRenderThread() final;
 		void EndFrameOnRenderThread() final;
@@ -48,8 +48,10 @@ namespace RN
 		};
 
 		WeakRef<OpenXRWindow> _window;
-		XrTime _displayTime;
+		int64 _displayTime;
 		bool _isLocalDimmingEnabled;
+		bool _shouldRender;
+		bool _hasFrameState;
 		std::vector<LayerState> _layers;
 
 		__RNDeclareMetaInternal(OpenXRFramePresentationState)

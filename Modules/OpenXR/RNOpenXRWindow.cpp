@@ -112,7 +112,9 @@ namespace RN
 		_internals->passthroughSessionFB = XR_NULL_HANDLE;
 		_internals->handTracker[0] = XR_NULL_HANDLE;
 		_internals->handTracker[1] = XR_NULL_HANDLE;
-		_internals->predictedDisplayTime = 0;
+		_internals->currentFramePredictedDisplayTime = 0;
+		_internals->currentFrameShouldRender = false;
+		_internals->currentFrameIsValid = false;
 		_internals->hasActiveFrame = false;
 
 #if XR_USE_GRAPHICS_API_VULKAN
@@ -1973,6 +1975,9 @@ namespace RN
 	void OpenXRWindow::BeginFrame(float delta)
 	{
 		RN_PROFILE_SCOPE();
+		_internals->currentFrameIsValid = false;
+		_internals->currentFrameShouldRender = false;
+
 		while(1)
 		{
 			XrEventDataBuffer event;
@@ -2092,19 +2097,23 @@ namespace RN
 		XrFrameState frameState;
 		frameState.type = XR_TYPE_FRAME_STATE;
 		frameState.next = nullptr;
+		XrResult waitFrameResult;
 		{
 			RN_PROFILE_SCOPE_N("WaitOpenXRFrame");
-			xrWaitFrame(_internals->session, &frameWaitInfo, &frameState);
+			waitFrameResult = xrWaitFrame(_internals->session, &frameWaitInfo, &frameState);
+		}
+		if(XR_FAILED(waitFrameResult))
+		{
+			RNDebug("Error in xrWaitFrame?");
+			return;
 		}
 
-		_internals->predictedDisplayTime = frameState.predictedDisplayTime;
-		{
-			UniqueLock<Lockable> lock(_internals->framePacingLock);
-			_internals->pendingDisplayTimes.push_back(frameState.predictedDisplayTime);
-		}
+		_internals->currentFramePredictedDisplayTime = frameState.predictedDisplayTime;
+		_internals->currentFrameShouldRender = frameState.shouldRender;
+		_internals->currentFrameIsValid = true;
 	}
 
-	bool OpenXRWindow::BeginRenderFrame(int64 &displayTime)
+	bool OpenXRWindow::BeginRenderFrame()
 	{
 		RN_PROFILE_SCOPE_N("BeginOpenXRRenderFrame");
 		if(_internals->session == XR_NULL_HANDLE || !_isSessionRunning) return false;
@@ -2114,11 +2123,7 @@ namespace RN
 			if(_internals->hasActiveFrame)
 				return false;
 
-			if(_internals->pendingDisplayTimes.empty())
-				return false;
-
-			displayTime = _internals->pendingDisplayTimes.front();
-			_internals->pendingDisplayTimes.pop_front();
+			_internals->hasActiveFrame = true;
 		}
 
 		XrFrameBeginInfo frameBeginInfo;
@@ -2127,13 +2132,10 @@ namespace RN
 		if(XR_FAILED(xrBeginFrame(_internals->session, &frameBeginInfo)))
 		{
 			RNDebug("Error in xrBeginFrame?");
+			FinishRenderFrame();
 			return false;
 		}
 
-		{
-			UniqueLock<Lockable> lock(_internals->framePacingLock);
-			_internals->hasActiveFrame = true;
-		}
 		return true;
 	}
 
@@ -2146,8 +2148,9 @@ namespace RN
 	void OpenXRWindow::ResetFramePacing()
 	{
 		UniqueLock<Lockable> lock(_internals->framePacingLock);
-		_internals->pendingDisplayTimes.clear();
 		_internals->hasActiveFrame = false;
+		_internals->currentFrameIsValid = false;
+		_internals->currentFrameShouldRender = false;
 	}
 
 	void OpenXRWindow::Update(float delta, float near, float far)
@@ -2159,12 +2162,13 @@ namespace RN
 		_hmdTrackingState.mode = VRHMDTrackingState::Mode::Paused;
 
 		if(_internals->session == XR_NULL_HANDLE || !_isSessionRunning) return;
+		if(!_internals->currentFrameIsValid) return;
 
 		XrViewLocateInfo locateInfo;
 		locateInfo.type = XR_TYPE_VIEW_LOCATE_INFO;
 		locateInfo.next = nullptr;
 		locateInfo.viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
-		locateInfo.displayTime = _internals->predictedDisplayTime;
+		locateInfo.displayTime = _internals->currentFramePredictedDisplayTime;
 		locateInfo.space = _internals->trackingSpace;
 
 		XrViewState viewState;
@@ -2268,7 +2272,7 @@ namespace RN
 		if(handLeftState.isActive)
 		{
 			XrSpaceLocation aimLocation {XR_TYPE_SPACE_LOCATION};
-			xrLocateSpace(_internals->handLeftAimPoseSpace, _internals->trackingSpace, _internals->predictedDisplayTime, &aimLocation);
+			xrLocateSpace(_internals->handLeftAimPoseSpace, _internals->trackingSpace, _internals->currentFramePredictedDisplayTime, &aimLocation);
 
 			if(aimLocation.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT)
 			{
@@ -2281,7 +2285,7 @@ namespace RN
 
 			XrSpaceVelocity velocity {XR_TYPE_SPACE_VELOCITY};
 			XrSpaceLocation gripLocation {XR_TYPE_SPACE_LOCATION, &velocity};
-			xrLocateSpace(_internals->handLeftGripPoseSpace, _internals->trackingSpace, _internals->predictedDisplayTime, &gripLocation);
+			xrLocateSpace(_internals->handLeftGripPoseSpace, _internals->trackingSpace, _internals->currentFramePredictedDisplayTime, &gripLocation);
 
 			if(velocity.velocityFlags & XR_SPACE_VELOCITY_LINEAR_VALID_BIT)
 			{
@@ -2433,7 +2437,7 @@ namespace RN
 		if(handRightState.isActive)
 		{
 			XrSpaceLocation aimLocation {XR_TYPE_SPACE_LOCATION};
-			xrLocateSpace(_internals->handRightAimPoseSpace, _internals->trackingSpace, _internals->predictedDisplayTime, &aimLocation);
+			xrLocateSpace(_internals->handRightAimPoseSpace, _internals->trackingSpace, _internals->currentFramePredictedDisplayTime, &aimLocation);
 
 			if(aimLocation.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT)
 			{
@@ -2446,7 +2450,7 @@ namespace RN
 
 			XrSpaceVelocity velocity {XR_TYPE_SPACE_VELOCITY};
 			XrSpaceLocation gripLocation {XR_TYPE_SPACE_LOCATION, &velocity};
-			xrLocateSpace(_internals->handRightGripPoseSpace, _internals->trackingSpace, _internals->predictedDisplayTime, &gripLocation);
+			xrLocateSpace(_internals->handRightGripPoseSpace, _internals->trackingSpace, _internals->currentFramePredictedDisplayTime, &gripLocation);
 
 			if(velocity.velocityFlags & XR_SPACE_VELOCITY_LINEAR_VALID_BIT)
 			{
@@ -2600,7 +2604,7 @@ namespace RN
 				XrHandJointsLocateInfoEXT locateInfo {};
 				locateInfo.type = XR_TYPE_HAND_JOINTS_LOCATE_INFO_EXT;
 				locateInfo.baseSpace = _internals->trackingSpace;
-				locateInfo.time = _internals->predictedDisplayTime;
+				locateInfo.time = _internals->currentFramePredictedDisplayTime;
 
 				XrResult result = _internals->LocateHandJointsEXT(_internals->handTracker[handIndex], &locateInfo, &locations);
 
@@ -2672,6 +2676,8 @@ namespace RN
 
 	void OpenXRWindow::UpdateLate()
 	{
+		if(!_internals->currentFrameIsValid) return;
+
 		_layersUnderlay->Enumerate<OpenXRCompositorLayer>([](OpenXRCompositorLayer *layer, size_t index, bool &stop) {
 			layer->UpdateForCurrentFrame();
 		});
@@ -2727,7 +2733,7 @@ namespace RN
 		if(createdPresentationState)
 		{
 			SafeRelease(_pendingPresentationState);
-			_pendingPresentationState = new OpenXRFramePresentationState(this);
+			_pendingPresentationState = new OpenXRFramePresentationState(this, _internals->currentFramePredictedDisplayTime, _internals->currentFrameShouldRender, _internals->currentFrameIsValid);
 			_pendingPresentationFrameID = frameID;
 			_pendingPresentationStateWasTaken = false;
 		}

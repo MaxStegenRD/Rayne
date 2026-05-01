@@ -86,7 +86,7 @@ namespace RN
 		void InitializeHandTracking();
 		void ResetTilePropertiesHintCache();
 		void UpdateTilePropertiesHint();
-		bool BeginRenderFrame(int64 &displayTime);
+		bool BeginRenderFrame();
 		void FinishRenderFrame();
 		void ResetFramePacing();
 		void EndFrameWithPresentationState(OpenXRFramePresentationState &state);
