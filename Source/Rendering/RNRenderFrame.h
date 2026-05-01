@@ -24,7 +24,6 @@ namespace RN
 	class RenderFramePresentationState : public Object
 	{
 	public:
-		RNAPI virtual void BeginFrameOnRenderThread();
 		RNAPI virtual void EndFrameOnRenderThread();
 
 	protected:
@@ -293,6 +292,7 @@ namespace RN
 		}
 
 		uint64 GetFrameID() const { return _frameID; }
+		
 		void AddPresentationState(RenderFramePresentationState *state)
 		{
 			if(!state) return;
@@ -304,11 +304,13 @@ namespace RN
 
 			_presentationStates.push_back(state);
 		}
-		size_t GetPresentationStateCount() const { return _presentationStates.size(); }
-		RenderFramePresentationState *GetPresentationState(size_t index) const
+		
+		void EndPresentationStatesOnRenderThread() const
 		{
-			RN_DEBUG_ASSERT(index < _presentationStates.size(), "Invalid render frame presentation state index");
-			return _presentationStates[index].Get();
+			for(const StrongRef<RenderFramePresentationState> &state : _presentationStates)
+			{
+				state->EndFrameOnRenderThread();
+			}
 		}
 
 		size_t AddPass(const RenderPass::DrawSnapshot &drawSnapshot, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialCacheIdentity, uint64 overrideMaterialSnapshotVersion)

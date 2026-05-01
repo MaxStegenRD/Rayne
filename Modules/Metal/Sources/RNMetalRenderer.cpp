@@ -412,6 +412,8 @@ namespace RN
 			swapChain->PresentBackBuffer(_internals->commandBuffer);
 		}
 
+		submission.renderFrame.EndPresentationStatesOnRenderThread();
+
 		//Flush all uniform buffers to make the GPU get the latest changes from CPU
 		_uniformBufferPool->FlushAllBuffers();
 

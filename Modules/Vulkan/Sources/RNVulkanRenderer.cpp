@@ -889,6 +889,8 @@ namespace RN
 			swapChain->PresentBackBuffer(_workQueue);
 		}
 
+		submission.renderFrame.EndPresentationStatesOnRenderThread();
+
 		RN_PROFILE_FRAME_TRACY();
 
 		_currentFrame ++;
