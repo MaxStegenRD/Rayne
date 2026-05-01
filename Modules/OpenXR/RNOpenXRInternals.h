@@ -36,7 +36,6 @@ namespace RN
 
 		XrSpace trackingSpace;
 		XrTime predictedDisplayTime;
-		XrTime activeDisplayTime;
 		Lockable framePacingLock;
 		std::deque<XrTime> pendingDisplayTimes;
 		bool hasActiveFrame;

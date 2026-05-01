@@ -16,6 +16,7 @@
 namespace RN
 {
 	class OpenXRCompositorLayer;
+	class OpenXRFramePresentationState;
 	class OpenXRSwapChain;
 	class OpenXRVulkanSwapChain;
 	class OpenXRMetalSwapChain;
@@ -25,6 +26,7 @@ namespace RN
 		friend OpenXRVulkanSwapChain;
 		friend OpenXRMetalSwapChain;
 		friend OpenXRCompositorLayer;
+		friend OpenXRFramePresentationState;
 
 	public:
 		OXRAPI OpenXRWindow();
@@ -87,7 +89,8 @@ namespace RN
 		bool BeginRenderFrame();
 		void FinishRenderFrame();
 		void ResetFramePacing();
-		void WaitForRenderThread();
+		void EndFrameWithPresentationState(OpenXRFramePresentationState &state);
+		RenderFramePresentationState *TakePresentationStateForLayer(uint64 frameID, OpenXRCompositorLayer *layer);
 
 		int _mainThreadID;
 		OpenXRWindowInternals *_internals;
@@ -97,6 +100,9 @@ namespace RN
 		Array *_layersUnderlay; //First one is the lowest
 		Array *_layersOverlay; //Last one is the highest
 		OpenXRCompositorLayer *_mainLayer; //Layer used for main game content, representing the window
+		OpenXRFramePresentationState *_pendingPresentationState;
+		uint64 _pendingPresentationFrameID;
+		bool _pendingPresentationStateWasTaken;
 
 		uint32 _actualFrameIndex;
 

@@ -115,13 +115,12 @@ namespace RN
 		swapchainImageReleaseInfo.type = XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO;
 		swapchainImageReleaseInfo.next = nullptr;
 		xrReleaseSwapchainImage(_internals->swapchain, &swapchainImageReleaseInfo);
+	}
 
-		_hasContent = true;
-
-		if(_presentEvent)
-		{
-			_presentEvent();
-		}
+	RenderFramePresentationState *OpenXRMetalSwapChain::TakeRenderFramePresentationState(uint64 frameID)
+	{
+		if(!_isActive) return nullptr;
+		return _xrWindow->TakePresentationStateForLayer(frameID, _layer);
 	}
 
 	id OpenXRMetalSwapChain::GetMetalColorTexture() const

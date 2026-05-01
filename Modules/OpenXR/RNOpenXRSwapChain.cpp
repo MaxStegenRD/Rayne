@@ -12,7 +12,7 @@
 namespace RN
 {
 	OpenXRSwapChain::OpenXRSwapChain(OpenXRWindow *window, OpenXRCompositorLayer *layer, SwapChainType type) :
-		_internals(new OpenXRSwapchainInternals()), _xrWindow(window), _layer(layer), _isActive(false), _swapChainType(type), _hasContent(false)
+		_internals(new OpenXRSwapchainInternals()), _xrWindow(window), _layer(layer), _isActive(false), _swapChainType(type)
 	{
 		_internals->currentFoveationProfile = XR_NULL_HANDLE;
 	}

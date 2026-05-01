@@ -16,12 +16,14 @@ namespace RN
 {
 	class OpenXRSwapChain;
 	class OpenXRWindow;
+	class OpenXRFramePresentationState;
 	class OpenXRCompositorLayerInternals;
 
 	class OpenXRCompositorLayer : public VRCompositorLayer
 	{
 	public:
 		friend OpenXRWindow;
+		friend OpenXRFramePresentationState;
 		friend class OpenXRVulkanSwapChain;
 		friend class OpenXRMetalSwapChain;
 

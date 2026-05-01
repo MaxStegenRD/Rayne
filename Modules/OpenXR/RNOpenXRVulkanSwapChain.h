@@ -32,6 +32,7 @@ namespace RN
 		OXRAPI void Prepare(VkCommandBuffer commandBuffer) final;
 		OXRAPI void Finalize(VkCommandBuffer commandBuffer) final;
 		OXRAPI void PresentBackBuffer(VkQueue queue) final;
+		OXRAPI RenderFramePresentationState *TakeRenderFramePresentationState(uint64 frameID) final;
 
 		OXRAPI VkImage GetVulkanColorBuffer(int i) const final;
 		OXRAPI VkImage GetVulkanDepthBuffer(int i) const final;

@@ -61,6 +61,7 @@ set(VERSION_STRING "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 set(SOURCES
 	RNOpenXRInit.cpp
 	RNOpenXRInternals.cpp
+	RNOpenXRFramePresentationState.cpp
 	RNOpenXRSwapChain.cpp
 	RNOpenXRWindow.cpp
 	RNOpenXRCompositorLayer.cpp)
@@ -68,6 +69,7 @@ set(SOURCES
 set(HEADERS
 	RNOpenXR.h
 	RNOpenXRInternals.h
+	RNOpenXRFramePresentationState.h
 	RNOpenXRSwapChain.h
 	RNOpenXRWindow.h
 	RNOpenXRCompositorLayer.h)

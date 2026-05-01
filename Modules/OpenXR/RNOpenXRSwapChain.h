@@ -45,11 +45,8 @@ namespace RN
 		OpenXRWindow *_xrWindow;
 		OpenXRCompositorLayer *_layer;
 		bool _isActive;
-		bool _hasContent;
 
 		SwapChainType _swapChainType;
-
-		std::function<void()> _presentEvent;
 	};
 } // namespace RN
 

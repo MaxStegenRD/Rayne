@@ -249,7 +249,7 @@ namespace RN
 				if(existingSwapChain == swapChain) return;
 			}
 
-			renderFrame.AddPresentationState(swapChain->TakeRenderFramePresentationState());
+			renderFrame.AddPresentationState(swapChain->TakeRenderFramePresentationState(renderFrame.GetFrameID()));
 			swapChains.push_back(swapChain);
 		}
 

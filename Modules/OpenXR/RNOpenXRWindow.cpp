@@ -7,6 +7,7 @@
 //
 
 #include "RNOpenXRWindow.h"
+#include "RNOpenXRFramePresentationState.h"
 #include "RNOpenXRInternals.h"
 
 /*
@@ -89,7 +90,7 @@ namespace RN
 	}
 
 	OpenXRWindow::OpenXRWindow() :
-		_internals(new OpenXRWindowInternals()), _runtimeName(nullptr), _actualFrameIndex(0), _currentHapticsIndex {0, 0}, _hapticsStopped {true, true}, _preferredFrameRate(0.0f), _minCPULevel(XR_PERF_SETTINGS_LEVEL_SUSTAINED_HIGH_EXT), _minGPULevel(XR_PERF_SETTINGS_LEVEL_SUSTAINED_HIGH_EXT), _fixedFoveatedRenderingLevel(2), _fixedFoveatedRenderingDynamic(false), _isLocalDimmingEnabled(false), _isSessionRunning(false), _hasSynchronization(false), _hasVisibility(false), _hasInputFocus(false), _mainLayer(nullptr), _layersUnderlay(new Array()), _layersOverlay(new Array()), _isHandTrackingEnabled(false)
+		_internals(new OpenXRWindowInternals()), _runtimeName(nullptr), _layersUnderlay(new Array()), _layersOverlay(new Array()), _mainLayer(nullptr), _pendingPresentationState(nullptr), _pendingPresentationFrameID(0), _pendingPresentationStateWasTaken(false), _actualFrameIndex(0), _currentHapticsIndex {0, 0}, _hapticsStopped {true, true}, _preferredFrameRate(0.0f), _minCPULevel(XR_PERF_SETTINGS_LEVEL_SUSTAINED_HIGH_EXT), _minGPULevel(XR_PERF_SETTINGS_LEVEL_SUSTAINED_HIGH_EXT), _fixedFoveatedRenderingLevel(2), _fixedFoveatedRenderingDynamic(false), _isLocalDimmingEnabled(false), _isSessionRunning(false), _hasSynchronization(false), _hasVisibility(false), _hasInputFocus(false), _isHandTrackingEnabled(false)
 	{
 		_supportsVulkan = false;
 		_supportsMetal = false;
@@ -112,7 +113,6 @@ namespace RN
 		_internals->handTracker[0] = XR_NULL_HANDLE;
 		_internals->handTracker[1] = XR_NULL_HANDLE;
 		_internals->predictedDisplayTime = 0;
-		_internals->activeDisplayTime = 0;
 		_internals->hasActiveFrame = false;
 
 #if XR_USE_GRAPHICS_API_VULKAN
@@ -538,6 +538,7 @@ namespace RN
 
 	OpenXRWindow::~OpenXRWindow()
 	{
+		SafeRelease(_pendingPresentationState);
 		SafeRelease(_layersUnderlay);
 		SafeRelease(_layersOverlay);
 
@@ -1667,62 +1668,6 @@ namespace RN
 		_internals->views[1].next = nullptr;
 
 		_mainLayer = new OpenXRCompositorLayer(VRCompositorLayer::Type::TypeProjectionView, descriptor, eyeRenderSize, true, this);
-		_mainLayer->_swapChain->_presentEvent = [this]() {
-			if(_internals->session != XR_NULL_HANDLE && _isSessionRunning)
-			{
-				UpdateTilePropertiesHint();
-
-				std::vector<XrCompositionLayerBaseHeader *> layers;
-
-				auto insertLayer = [&](OpenXRCompositorLayer *layer) {
-					if(!layer->_isActive) return;
-					if(!layer->_shouldDisplay) return;
-					if(layer->_swapChain && !layer->_swapChain->_hasContent) return;
-					layers.push_back(layer->_internals->layerBaseHeader);
-				};
-
-				_layersUnderlay->Enumerate<OpenXRCompositorLayer>([&](OpenXRCompositorLayer *layer, size_t index, bool &stop) {
-					insertLayer(layer);
-				});
-				insertLayer(_mainLayer);
-				_layersOverlay->Enumerate<OpenXRCompositorLayer>([&](OpenXRCompositorLayer *layer, size_t index, bool &stop) {
-					insertLayer(layer);
-				});
-
-				XrTime displayTime;
-				{
-					UniqueLock<Lockable> lock(_internals->framePacingLock);
-					displayTime = _internals->activeDisplayTime;
-				}
-
-				XrFrameEndInfo frameEndInfo;
-				frameEndInfo.type = XR_TYPE_FRAME_END_INFO;
-				frameEndInfo.next = nullptr;
-				frameEndInfo.displayTime = displayTime;
-				frameEndInfo.environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
-				frameEndInfo.layerCount = layers.size();
-				frameEndInfo.layers = layers.data();
-
-				XrLocalDimmingFrameEndInfoMETA xrLocalDimmingFrameEndInfoMETA;
-				if(_supportsLocalDimming)
-				{
-					xrLocalDimmingFrameEndInfoMETA.type = XR_TYPE_LOCAL_DIMMING_FRAME_END_INFO_META;
-					xrLocalDimmingFrameEndInfoMETA.localDimmingMode = _isLocalDimmingEnabled ? XR_LOCAL_DIMMING_MODE_ON_META : XR_LOCAL_DIMMING_MODE_OFF_META;
-					xrLocalDimmingFrameEndInfoMETA.next = nullptr;
-					frameEndInfo.next = (void *)&xrLocalDimmingFrameEndInfoMETA;
-				}
-
-				{
-					RN_PROFILE_SCOPE_N("EndOpenXRRenderFrame");
-					if(XR_FAILED(xrEndFrame(_internals->session, &frameEndInfo)))
-					{
-						RNDebug("Error in xrEndFrame?");
-					}
-				}
-			}
-
-			FinishRenderFrame();
-		};
 
 #if RN_BUILD_DEBUG
 		if(_internals->EnumerateDisplayRefreshRatesFB)
@@ -2164,7 +2109,6 @@ namespace RN
 		RN_PROFILE_SCOPE_N("BeginOpenXRRenderFrame");
 		if(_internals->session == XR_NULL_HANDLE || !_isSessionRunning) return false;
 
-		XrTime displayTime = 0;
 		{
 			UniqueLock<Lockable> lock(_internals->framePacingLock);
 			if(_internals->hasActiveFrame)
@@ -2173,7 +2117,6 @@ namespace RN
 			if(_internals->pendingDisplayTimes.empty())
 				return false;
 
-			displayTime = _internals->pendingDisplayTimes.front();
 			_internals->pendingDisplayTimes.pop_front();
 		}
 
@@ -2188,7 +2131,6 @@ namespace RN
 
 		{
 			UniqueLock<Lockable> lock(_internals->framePacingLock);
-			_internals->activeDisplayTime = displayTime;
 			_internals->hasActiveFrame = true;
 		}
 		return true;
@@ -2204,7 +2146,6 @@ namespace RN
 	{
 		UniqueLock<Lockable> lock(_internals->framePacingLock);
 		_internals->pendingDisplayTimes.clear();
-		_internals->activeDisplayTime = 0;
 		_internals->hasActiveFrame = false;
 	}
 
@@ -2730,8 +2671,6 @@ namespace RN
 
 	void OpenXRWindow::UpdateLate()
 	{
-		WaitForRenderThread();
-
 		_layersUnderlay->Enumerate<OpenXRCompositorLayer>([](OpenXRCompositorLayer *layer, size_t index, bool &stop) {
 			layer->UpdateForCurrentFrame();
 		});
@@ -2741,23 +2680,65 @@ namespace RN
 		});
 	}
 
-	void OpenXRWindow::WaitForRenderThread()
+	void OpenXRWindow::EndFrameWithPresentationState(OpenXRFramePresentationState &state)
 	{
-		Renderer *renderer = Renderer::GetActiveRenderer();
-		if(!renderer) return;
+		if(_internals->session != XR_NULL_HANDLE && _isSessionRunning)
+		{
+			UpdateTilePropertiesHint();
 
-		Lockable lock;
-		Condition condition;
-		bool finished = false;
+			std::vector<XrCompositionLayerBaseHeader *> layers;
+			state.GetCompositionLayers(layers);
 
-		renderer->ScheduleRenderThreadWork(RN::MakeFunction([&]() {
-			LockGuard<Lockable> guard(lock);
-			finished = true;
-			condition.NotifyOne();
-		}));
+			XrFrameEndInfo frameEndInfo;
+			frameEndInfo.type = XR_TYPE_FRAME_END_INFO;
+			frameEndInfo.next = nullptr;
+			frameEndInfo.displayTime = state.GetDisplayTime();
+			frameEndInfo.environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
+			frameEndInfo.layerCount = layers.size();
+			frameEndInfo.layers = layers.data();
 
-		UniqueLock<Lockable> guard(lock);
-		condition.Wait(guard, [&]() { return finished; });
+			XrLocalDimmingFrameEndInfoMETA xrLocalDimmingFrameEndInfoMETA;
+			if(_supportsLocalDimming)
+			{
+				xrLocalDimmingFrameEndInfoMETA.type = XR_TYPE_LOCAL_DIMMING_FRAME_END_INFO_META;
+				xrLocalDimmingFrameEndInfoMETA.localDimmingMode = state.GetLocalDimmingEnabled() ? XR_LOCAL_DIMMING_MODE_ON_META : XR_LOCAL_DIMMING_MODE_OFF_META;
+				xrLocalDimmingFrameEndInfoMETA.next = nullptr;
+				frameEndInfo.next = (void *)&xrLocalDimmingFrameEndInfoMETA;
+			}
+
+			{
+				RN_PROFILE_SCOPE_N("EndOpenXRRenderFrame");
+				if(XR_FAILED(xrEndFrame(_internals->session, &frameEndInfo)))
+				{
+					RNDebug("Error in xrEndFrame?");
+				}
+			}
+		}
+
+		FinishRenderFrame();
+	}
+
+	RenderFramePresentationState *OpenXRWindow::TakePresentationStateForLayer(uint64 frameID, OpenXRCompositorLayer *targetLayer)
+	{
+		if(!targetLayer) return nullptr;
+
+		bool createdPresentationState = (_pendingPresentationFrameID != frameID || !_pendingPresentationState);
+		if(createdPresentationState)
+		{
+			SafeRelease(_pendingPresentationState);
+			_pendingPresentationState = new OpenXRFramePresentationState(this);
+			_pendingPresentationFrameID = frameID;
+			_pendingPresentationStateWasTaken = false;
+		}
+
+		bool addedLayer = _pendingPresentationState->AddLayerSnapshot(targetLayer, createdPresentationState);
+		RN_DEBUG_ASSERT(addedLayer, "OpenXR presentation layer does not belong to this window");
+		if(!addedLayer) return nullptr;
+
+		if(_pendingPresentationStateWasTaken) return nullptr;
+
+		_pendingPresentationStateWasTaken = true;
+		return _pendingPresentationState;
 	}
 
 	const String *OpenXRWindow::GetHMDInfoDescription() const
