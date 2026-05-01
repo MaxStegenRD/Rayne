@@ -28,6 +28,7 @@ namespace RN
 		void GetCompositionLayers(std::vector<XrCompositionLayerBaseHeader *> &layers);
 		XrTime GetDisplayTime() const { return _displayTime; }
 		bool GetLocalDimmingEnabled() const { return _isLocalDimmingEnabled; }
+		bool BeginFrameOnRenderThread() final;
 		void EndFrameOnRenderThread() final;
 
 	private:

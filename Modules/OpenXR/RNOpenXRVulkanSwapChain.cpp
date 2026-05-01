@@ -149,7 +149,7 @@ namespace RN
 
 	void OpenXRVulkanSwapChain::AcquireBackBuffer()
 	{
-		if(!_isActive || !_xrWindow->BeginRenderFrame()) return;
+		if(!_isActive) return;
 
 		XrSwapchainImageAcquireInfo swapchainImageAcquireInfo;
 		swapchainImageAcquireInfo.type = XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO;

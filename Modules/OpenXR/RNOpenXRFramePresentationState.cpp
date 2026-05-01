@@ -17,7 +17,7 @@ namespace RN
 
 	OpenXRFramePresentationState::OpenXRFramePresentationState(OpenXRWindow *window) :
 		_window(window),
-		_displayTime(window ? window->_internals->predictedDisplayTime : 0),
+		_displayTime(0),
 		_isLocalDimmingEnabled(window ? window->_isLocalDimmingEnabled : false)
 	{}
 
@@ -112,6 +112,19 @@ namespace RN
 			XrCompositionLayerBaseHeader *baseHeader = layer.GetBaseHeader();
 			if(baseHeader) layers.push_back(baseHeader);
 		}
+	}
+
+	bool OpenXRFramePresentationState::BeginFrameOnRenderThread()
+	{
+		OpenXRWindow *window = _window.Load();
+		if(!window) return false;
+
+		XrTime displayTime = 0;
+		if(!window->BeginRenderFrame(displayTime))
+			return false;
+
+		_displayTime = displayTime;
+		return true;
 	}
 
 	void OpenXRFramePresentationState::EndFrameOnRenderThread()

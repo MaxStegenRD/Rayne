@@ -2104,7 +2104,7 @@ namespace RN
 		}
 	}
 
-	bool OpenXRWindow::BeginRenderFrame()
+	bool OpenXRWindow::BeginRenderFrame(int64 &displayTime)
 	{
 		RN_PROFILE_SCOPE_N("BeginOpenXRRenderFrame");
 		if(_internals->session == XR_NULL_HANDLE || !_isSessionRunning) return false;
@@ -2112,11 +2112,12 @@ namespace RN
 		{
 			UniqueLock<Lockable> lock(_internals->framePacingLock);
 			if(_internals->hasActiveFrame)
-				return true;
+				return false;
 
 			if(_internals->pendingDisplayTimes.empty())
 				return false;
 
+			displayTime = _internals->pendingDisplayTimes.front();
 			_internals->pendingDisplayTimes.pop_front();
 		}
 
