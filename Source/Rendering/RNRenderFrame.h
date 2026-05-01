@@ -24,6 +24,7 @@ namespace RN
 	class RenderFramePresentationState : public Object
 	{
 	public:
+		RNAPI virtual bool BeginFrameOnRenderThread();
 		RNAPI virtual void EndFrameOnRenderThread();
 
 	protected:
@@ -305,6 +306,17 @@ namespace RN
 			_presentationStates.push_back(state);
 		}
 		
+		bool BeginPresentationStatesOnRenderThread() const
+		{
+			for(const StrongRef<RenderFramePresentationState> &state : _presentationStates)
+			{
+				if(!state->BeginFrameOnRenderThread())
+					return false;
+			}
+
+			return true;
+		}
+
 		void EndPresentationStatesOnRenderThread() const
 		{
 			for(const StrongRef<RenderFramePresentationState> &state : _presentationStates)

@@ -2230,6 +2230,9 @@ namespace RN
 			return false; //Don't submit a new frame if there are already 5 frames in flight
 		}
 
+		if(!submission.renderFrame.BeginPresentationStatesOnRenderThread())
+			return false;
+
 		CreateMipMaps();
 		SubmitPendingResourceCommandBuffers();
 

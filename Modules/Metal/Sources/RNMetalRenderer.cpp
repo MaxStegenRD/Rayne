@@ -265,6 +265,12 @@ namespace RN
 			return true;
 		}
 
+		if(!submission.renderFrame.BeginPresentationStatesOnRenderThread())
+		{
+			FinishRenderFrameSubmission(submission.renderFrame);
+			return true;
+		}
+
 		PrepareRenderFrame(submission);
 		RenderFrameSubmission(submission);
 		PrintFrameStatistics(submission.renderFrame);

@@ -69,6 +69,11 @@ namespace RN
 	RenderFramePresentationState::~RenderFramePresentationState()
 	{}
 
+	bool RenderFramePresentationState::BeginFrameOnRenderThread()
+	{
+		return true;
+	}
+
 	void RenderFramePresentationState::EndFrameOnRenderThread()
 	{}
 
