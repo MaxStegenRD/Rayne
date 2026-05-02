@@ -308,6 +308,35 @@ namespace RN
 		MarkDrawSnapshotDirty();
 	}
 
+	void RenderPass::AddRenderPassDependency(RenderPass *renderPass)
+	{
+		RN_ASSERT(renderPass, "Cannot add an empty render pass dependency");
+		RN_ASSERT(renderPass != this, "Cannot add a render pass dependency on itself");
+
+		for(const WeakRef<RenderPass> &dependency : _renderPassDependencies)
+		{
+			if(dependency.Load() == renderPass) return;
+		}
+
+		_renderPassDependencies.push_back(renderPass);
+	}
+
+	void RenderPass::RemoveRenderPassDependency(RenderPass *renderPass)
+	{
+		for(auto iterator = _renderPassDependencies.begin(); iterator != _renderPassDependencies.end();)
+		{
+			if(iterator->Load() == renderPass)
+				iterator = _renderPassDependencies.erase(iterator);
+			else
+				iterator++;
+		}
+	}
+
+	void RenderPass::RemoveAllRenderPassDependencies()
+	{
+		_renderPassDependencies.clear();
+	}
+
 	void RenderPass::UpdateSubpassChain()
 	{
 		_subpassCount = 0;

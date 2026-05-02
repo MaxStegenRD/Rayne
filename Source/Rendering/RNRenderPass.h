@@ -214,6 +214,10 @@ namespace RN
 		RNAPI void RemoveRenderPass(RenderPass *renderPass);
 		RNAPI void RemoveAllRenderPasses();
 		const Array *GetNextRenderPasses() const { return _nextRenderPasses; }
+		RNAPI void AddRenderPassDependency(RenderPass *renderPass);
+		RNAPI void RemoveRenderPassDependency(RenderPass *renderPass);
+		RNAPI void RemoveAllRenderPassDependencies();
+		const std::vector<WeakRef<RenderPass>> &GetRenderPassDependencies() const { return _renderPassDependencies; }
 		RNAPI void UpdateSubpassChain();
 
 	private:
@@ -255,6 +259,7 @@ namespace RN
 		size_t _subpassCount;
 
 		Array *_nextRenderPasses;
+		std::vector<WeakRef<RenderPass>> _renderPassDependencies;
 		RenderPassResources *_renderResources;
 		uint64 _drawSnapshotVersion;
 
