@@ -539,15 +539,9 @@ namespace RN
 			return true;
 		}
 
-		bool didPrepareFrame = PrepareRenderFrame(submission);
-		bool didRenderFrame = false;
-		if(didPrepareFrame)
+		if(PrepareRenderFrame(submission))
 		{
-			didRenderFrame = RenderFrameSubmission(submission);
-		}
-
-		if(didRenderFrame)
-		{
+			RenderFrameSubmission(submission);
 			PrintFrameStatistics(submission.renderFrame);
 		}
 		else
@@ -573,7 +567,7 @@ namespace RN
 		_activeFrameSubmission = previousSubmission;
 	}
 
-	bool VulkanRenderer::RenderFrameSubmission(const VulkanFrameSubmission &submission)
+	void VulkanRenderer::RenderFrameSubmission(const VulkanFrameSubmission &submission)
 	{
 		RN_PROFILE_SCOPE();
 		AssertOnRenderThread();
@@ -875,12 +869,6 @@ namespace RN
 
 		std::vector<VkCommandBuffer> buffers;
 		_lock.Lock();
-		if(_submittedCommandBuffers->GetCount() == 0)
-		{
-			_lock.Unlock();
-			return false;
-		}
-
 		buffers.reserve(_submittedCommandBuffers->GetCount());
 		_submittedCommandBuffers->Enumerate<VulkanCommandBuffer>([&](VulkanCommandBuffer *buffer, int i, bool &stop){
 			buffer->_frameValue = _currentFrame;
@@ -918,7 +906,6 @@ namespace RN
 		RN_PROFILE_FRAME_TRACY();
 
 		_currentFrame ++;
-		return true;
 	}
 
 	void VulkanRenderer::SetupRendertargets(VkCommandBuffer commandBuffer, const VulkanFrameSubmission &submission, const VulkanRenderPass &renderPass)
