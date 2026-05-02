@@ -134,26 +134,56 @@ namespace RN
 		uint16 maxY = std::min(std::max(std::max(A.y, std::max(B.y, C.y)), 0.0f), static_cast<float>(_height - 1));
 
 		float area = edgeFunction(Vector2(A), Vector2(B), Vector2(C));
+		float inverseArea = 1.0f / area;
+
+		Vector2 point(minX, minY);
+		float rowW0 = edgeFunction(Vector2(B), Vector2(C), point);
+		float rowW1 = edgeFunction(Vector2(C), Vector2(A), point);
+		float rowW2 = edgeFunction(Vector2(A), Vector2(B), point);
+
+		float w0StepX = C.y - B.y;
+		float w1StepX = A.y - C.y;
+		float w2StepX = B.y - A.y;
+
+		float w0StepY = B.x - C.x;
+		float w1StepY = C.x - A.x;
+		float w2StepY = A.x - B.x;
+
+		float rowDepthNumerator = rowW0 * A.z + rowW1 * B.z + rowW2 * C.z;
+		float depthNumeratorStepX = w0StepX * A.z + w1StepX * B.z + w2StepX * C.z;
+		float depthNumeratorStepY = w0StepY * A.z + w1StepY * B.z + w2StepY * C.z;
 
 		for(uint16 y = minY; y <= maxY; y++)
 		{
 			float *depthBufferRow = &_depthBuffer[_width * (_height - y - 1)];
+			float w0 = rowW0;
+			float w1 = rowW1;
+			float w2 = rowW2;
+			float depthNumerator = rowDepthNumerator;
 			for(uint16 x = minX; x <= maxX; x++)
 			{
-				Vector2 point(x, y);
-				float w0 = edgeFunction(Vector2(B), Vector2(C), point); if(w0 <= 0) continue;
-				float w1 = edgeFunction(Vector2(C), Vector2(A), point); if(w1 < 0) continue;
-				float w2 = edgeFunction(Vector2(A), Vector2(B), point); if(w2 < 0) continue;
-
-				float depth = (w0 * A.z + w1 * B.z + w2 * C.z) / area - OCCLUSION_DEPTH_BIAS;
-				if(depth <= 1.0f)
+				if(w0 > 0 && w1 >= 0 && w2 >= 0)
 				{
+					float depth = depthNumerator * inverseArea - OCCLUSION_DEPTH_BIAS;
+					if(depth <= 1.0f)
+					{
 #if OCCLUSION_VISUALIZE_DEPTH
-					depth *= 1000.0f;
+						depth *= 1000.0f;
 #endif
-					if(depth > depthBufferRow[x]) depthBufferRow[x] = depth;
+						if(depth > depthBufferRow[x]) depthBufferRow[x] = depth;
+					}
 				}
+
+				w0 += w0StepX;
+				w1 += w1StepX;
+				w2 += w2StepX;
+				depthNumerator += depthNumeratorStepX;
 			}
+
+			rowW0 += w0StepY;
+			rowW1 += w1StepY;
+			rowW2 += w2StepY;
+			rowDepthNumerator += depthNumeratorStepY;
 		}
 	}
 
@@ -217,5 +247,3 @@ namespace RN
 		}
 	}
 }
-
-
