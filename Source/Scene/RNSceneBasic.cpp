@@ -206,9 +206,15 @@ namespace RN
 						if(node->HasFlags(SceneNode::Flags::Occluder) && node->CanRender(renderer, camera))
 						{
 							SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo *>(node->GetSceneInfo());
+							sceneInfo->isActiveOccluder = false;
+							if(node->GetBoundingBox().Contains(cameraWorldPosition))
+							{
+								nodeMember = nodeMember->GetNext();
+								continue;
+							}
+
 							sceneInfo->occluderDistance = std::max(node->GetWorldPosition().GetSquaredDistance(cameraWorldPosition), 1.0f);
 							sceneInfo->occluderSize = node->GetBoundingSphere().radius * node->GetBoundingSphere().radius / sceneInfo->occluderDistance;
-							sceneInfo->isActiveOccluder = false;
 							occluders.push_back(node);
 						}
 
