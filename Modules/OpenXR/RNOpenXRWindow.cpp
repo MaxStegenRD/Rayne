@@ -1637,6 +1637,7 @@ namespace RN
 			{
 				RN_ASSERT(false, "Failed fetching vulkan graphics device");
 			}
+			RN_ASSERT(physicalDevice == renderer->GetVulkanDevice()->GetPhysicalDevice(), "OpenXR requires a different Vulkan physical device");
 
 			vulkanGraphicsBinding.instance = renderer->GetVulkanInstance()->GetInstance();
 			vulkanGraphicsBinding.physicalDevice = renderer->GetVulkanDevice()->GetPhysicalDevice();
@@ -2853,6 +2854,32 @@ namespace RN
 
 	RenderingDevice *OpenXRWindow::GetOutputDevice(RendererDescriptor *descriptor) const
 	{
+#ifdef XR_USE_GRAPHICS_API_VULKAN
+		if(descriptor->GetAPI()->IsEqual(RNCSTR("Vulkan")) && _internals->GetVulkanGraphicsDeviceKHR)
+		{
+			VulkanRendererDescriptor *vulkanDescriptor = descriptor->Downcast<VulkanRendererDescriptor>();
+			if(!vulkanDescriptor || !vulkanDescriptor->GetInstance()) return nullptr;
+
+			VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+			if(!XR_SUCCEEDED(_internals->GetVulkanGraphicsDeviceKHR(_internals->instance, _internals->systemID, vulkanDescriptor->GetInstance()->GetInstance(), &physicalDevice)))
+			{
+				return nullptr;
+			}
+
+			VulkanDevice *result = nullptr;
+			descriptor->GetDevices()->Enumerate<VulkanDevice>([&](VulkanDevice *device, size_t index, bool &stop) {
+				if(physicalDevice == device->GetPhysicalDevice())
+				{
+					result = device;
+					stop = true;
+				}
+			});
+
+			RN_ASSERT(result, "OpenXR requires a Vulkan physical device that is not available");
+			return result;
+		}
+#endif
+
 #ifdef XR_USE_GRAPHICS_API_METAL
 		RNDebug(descriptor->GetAPI());
 		if(descriptor->GetAPI()->IsEqual(RNCSTR("Metal")))
