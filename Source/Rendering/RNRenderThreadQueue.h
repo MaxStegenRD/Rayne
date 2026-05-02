@@ -59,6 +59,30 @@ namespace RN
 			_queuedCondition.NotifyOne();
 		}
 
+		void Synchronize()
+		{
+			uint64 synchronizationID;
+			{
+				UniqueLock<Lockable> lock(_lock);
+				if(_isShuttingDown)
+					return;
+
+				synchronizationID = ++_nextSynchronizationID;
+				_workItems.emplace_back(Function([this, synchronizationID]() {
+					UniqueLock<Lockable> lock(_lock);
+					if(_completedSynchronizationID < synchronizationID)
+						_completedSynchronizationID = synchronizationID;
+					_consumedCondition.NotifyAll();
+				}));
+				_queuedCondition.NotifyOne();
+			}
+
+			UniqueLock<Lockable> lock(_lock);
+			_consumedCondition.Wait(lock, [this, synchronizationID]() {
+				return _isShuttingDown || _completedSynchronizationID >= synchronizationID;
+			});
+		}
+
 		WorkType Pop(T &submission, Function &task)
 		{
 			RN_PROFILE_ATRACE_SCOPE_N("RN RenderQueue PopWork");
@@ -98,6 +122,7 @@ namespace RN
 			UniqueLock<Lockable> lock(_lock);
 			_workItems.clear();
 			_queuedFrameSubmissionCount = 0;
+			_completedSynchronizationID = _nextSynchronizationID;
 			_queuedCondition.NotifyAll();
 			_consumedCondition.NotifyAll();
 		}
@@ -128,6 +153,8 @@ namespace RN
 		Condition _queuedCondition;
 		Condition _consumedCondition;
 		size_t _queuedFrameSubmissionCount = 0;
+		uint64 _nextSynchronizationID = 0;
+		uint64 _completedSynchronizationID = 0;
 		bool _isShuttingDown = false;
 	};
 }

@@ -273,6 +273,10 @@ namespace RN
 		function();
 	}
 
+	void Renderer::SynchronizeRenderThread()
+	{
+	}
+
 	void Renderer::WarmupDrawable(Mesh *mesh, Material *material, Camera *camera)
 	{
 	}

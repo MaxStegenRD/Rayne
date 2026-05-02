@@ -52,6 +52,7 @@ namespace RN
 
 		VKAPI void Render(Function &&function) final;
 		VKAPI void ScheduleRenderThreadWork(Function &&function) final;
+		VKAPI void SynchronizeRenderThread() final;
 		VKAPI void SubmitCamera(Camera *camera, Function &&function) final;
 
 		VKAPI bool SupportsTextureFormat(const String *format) const final;

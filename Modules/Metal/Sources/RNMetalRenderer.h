@@ -45,6 +45,7 @@ namespace RN
 
 		MTLAPI void Render(Function &&function) final;
 		MTLAPI void ScheduleRenderThreadWork(Function &&function) final;
+		MTLAPI void SynchronizeRenderThread() final;
 		MTLAPI void SubmitCamera(Camera *camera, Function &&function) final;
 
 		MTLAPI bool SupportsTextureFormat(const String *format) const final;

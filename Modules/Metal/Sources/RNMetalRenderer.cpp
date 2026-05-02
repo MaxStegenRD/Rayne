@@ -234,6 +234,14 @@ namespace RN
 		_internals->renderThreadQueue.PushTask(std::move(function));
 	}
 
+	void MetalRenderer::SynchronizeRenderThread()
+	{
+		if(IsOnRenderThread())
+			return;
+
+		_internals->renderThreadQueue.Synchronize();
+	}
+
 	void MetalRenderer::QueueFrameSubmission(Function &&function)
 	{
 		RN_PROFILE_SCOPE();

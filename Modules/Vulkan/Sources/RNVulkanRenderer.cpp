@@ -501,6 +501,14 @@ namespace RN
 		_internals->renderThreadQueue.PushTask(std::move(function));
 	}
 
+	void VulkanRenderer::SynchronizeRenderThread()
+	{
+		if(IsOnRenderThread())
+			return;
+
+		_internals->renderThreadQueue.Synchronize();
+	}
+
 	void VulkanRenderer::QueueFrameSubmission(Function &&function)
 	{
 		RN_PROFILE_SCOPE();
