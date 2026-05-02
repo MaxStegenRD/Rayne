@@ -44,13 +44,15 @@ namespace RN
 	private:
 		void SetSessionActive(bool active);
 		void UpdateForCurrentFrame();
+		void QueuePassthroughLayerState(bool active, bool sessionActive);
+		void ApplyPassthroughLayerState(bool active, bool sessionActive);
 		void ApplyFixedFoveatedRenderingLevel(uint8 level, bool dynamic);
 
 		OpenXRCompositorLayerInternals *_internals;
 
 		OpenXRWindow *_window;
 		OpenXRSwapChain *_swapChain;
-		bool _isActive;
+		std::atomic<bool> _isActive;
 		bool _isSessionActive;
 		bool _shouldDisplay;
 

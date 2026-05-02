@@ -21,7 +21,10 @@ namespace RN
 		_isLocalDimmingEnabled(window ? window->_isLocalDimmingEnabled : false),
 		_shouldRender(shouldRender),
 		_hasFrameState(hasFrameState)
-	{}
+	{
+		if(window && window->_mainLayer && window->_mainLayer->_swapChain)
+			_tilePropertiesFramebuffer = window->_mainLayer->_swapChain->GetSwapChainFramebuffer();
+	}
 
 	XrCompositionLayerBaseHeader *OpenXRFramePresentationState::LayerState::GetBaseHeader()
 	{
@@ -57,7 +60,7 @@ namespace RN
 
 			if(layer == targetLayer || (includeNonSwapChainLayers && !layer->_swapChain))
 			{
-				AddLayerSnapshot(order, layer, layer == window->_mainLayer);
+				AddLayerSnapshot(order, layer);
 				if(layer == targetLayer) addedTargetLayer = true;
 			}
 			order++;
@@ -74,7 +77,7 @@ namespace RN
 		return addedTargetLayer;
 	}
 
-	void OpenXRFramePresentationState::AddLayerSnapshot(size_t order, OpenXRCompositorLayer *layer, bool isMainLayer)
+	void OpenXRFramePresentationState::AddLayerSnapshot(size_t order, OpenXRCompositorLayer *layer)
 	{
 		if(!layer) return;
 
@@ -86,11 +89,8 @@ namespace RN
 		LayerState layerState = {};
 		layerState.order = order;
 		layerState.layer = layer;
-		layerState.framebuffer = layer->_swapChain ? layer->_swapChain->GetSwapChainFramebuffer() : nullptr;
 		layerState.type = layer->GetType();
-		layerState.swapChain = layer->_swapChain;
-		layerState.isMainLayer = isMainLayer;
-		layerState.isActive = layer->_isActive;
+		layerState.isActive = layer->_isActive.load();
 		layerState.shouldDisplay = layer->_shouldDisplay;
 		layerState.internals = *layer->_internals;
 
@@ -122,21 +122,14 @@ namespace RN
 #if XR_USE_GRAPHICS_API_VULKAN
 	const std::vector<VkTilePropertiesQCOM> *OpenXRFramePresentationState::GetTilePropertiesHint() const
 	{
-		for(const LayerState &layer : _layers)
-		{
-			if(!layer.isMainLayer) continue;
+		Framebuffer *framebufferObject = _tilePropertiesFramebuffer.Get();
+		if(!framebufferObject) return nullptr;
 
-			Framebuffer *framebufferObject = layer.framebuffer.Get();
-			if(!framebufferObject) continue;
+		VulkanFramebuffer *framebuffer = framebufferObject->Downcast<VulkanFramebuffer>();
+		if(!framebuffer) return nullptr;
 
-			VulkanFramebuffer *framebuffer = framebufferObject->Downcast<VulkanFramebuffer>();
-			if(!framebuffer) continue;
-
-			const std::vector<VkTilePropertiesQCOM> &tileProperties = framebuffer->GetCurrentVariantTileProperties();
-			if(!tileProperties.empty()) return &tileProperties;
-		}
-
-		return nullptr;
+		const std::vector<VkTilePropertiesQCOM> &tileProperties = framebuffer->GetCurrentVariantTileProperties();
+		return tileProperties.empty() ? nullptr : &tileProperties;
 	}
 #endif
 

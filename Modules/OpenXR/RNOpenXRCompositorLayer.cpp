@@ -255,15 +255,24 @@ namespace RN
 
 	void OpenXRCompositorLayer::SetActive(bool active)
 	{
-		_isActive = active;
+		_isActive.store(active);
+		QueuePassthroughLayerState(active, _isSessionActive);
+	}
 
-		if(_internals->layerPassthroughFb)
+	void OpenXRCompositorLayer::QueuePassthroughLayerState(bool active, bool sessionActive)
+	{
+		if(!_internals->layerPassthroughFb) return;
+
+		if(Renderer::IsHeadless())
 		{
-			if(_isActive && _isSessionActive)
-				_window->_internals->PassthroughLayerResumeFB(_internals->layerPassthroughFb);
-			else
-				_window->_internals->PassthroughLayerPauseFB(_internals->layerPassthroughFb);
+			ApplyPassthroughLayerState(active, sessionActive);
+			return;
 		}
+
+		StrongRef<OpenXRCompositorLayer> layer(this);
+		Renderer::GetActiveRenderer()->ScheduleRenderThreadWork([layer = std::move(layer), active, sessionActive]() {
+			layer->ApplyPassthroughLayerState(active, sessionActive);
+		});
 	}
 
 	void OpenXRCompositorLayer::SetFixedFoveatedRenderingLevel(uint8 level, bool dynamic)
@@ -319,13 +328,19 @@ namespace RN
 	void OpenXRCompositorLayer::SetSessionActive(bool active)
 	{
 		_isSessionActive = active;
+		if(active)
+			QueuePassthroughLayerState(_isActive.load(), true);
+		else
+			ApplyPassthroughLayerState(_isActive.load(), false);
+	}
 
-		if(_internals->layerPassthroughFb)
-		{
-			if(_isActive && _isSessionActive)
-				_window->_internals->PassthroughLayerResumeFB(_internals->layerPassthroughFb);
-			else
-				_window->_internals->PassthroughLayerPauseFB(_internals->layerPassthroughFb);
-		}
+	void OpenXRCompositorLayer::ApplyPassthroughLayerState(bool active, bool sessionActive)
+	{
+		if(!_internals->layerPassthroughFb) return;
+
+		if(active && sessionActive)
+			_window->_internals->PassthroughLayerResumeFB(_internals->layerPassthroughFb);
+		else
+			_window->_internals->PassthroughLayerPauseFB(_internals->layerPassthroughFb);
 	}
 } // namespace RN

@@ -16,7 +16,6 @@
 namespace RN
 {
 	class OpenXRCompositorLayer;
-	class OpenXRSwapChain;
 	class OpenXRWindow;
 
 	class OpenXRFramePresentationState : public RenderFramePresentationState
@@ -36,7 +35,7 @@ namespace RN
 		void CancelFrameOnRenderThread() final;
 
 	private:
-		void AddLayerSnapshot(size_t order, OpenXRCompositorLayer *layer, bool isMainLayer);
+		void AddLayerSnapshot(size_t order, OpenXRCompositorLayer *layer);
 
 		struct LayerState
 		{
@@ -44,10 +43,7 @@ namespace RN
 
 			size_t order;
 			StrongRef<OpenXRCompositorLayer> layer;
-			StrongRef<Framebuffer> framebuffer;
 			VRCompositorLayer::Type type;
-			OpenXRSwapChain *swapChain;
-			bool isMainLayer;
 			bool isActive;
 			bool shouldDisplay;
 			OpenXRCompositorLayerInternals internals;
@@ -58,6 +54,7 @@ namespace RN
 		bool _isLocalDimmingEnabled;
 		bool _shouldRender;
 		bool _hasFrameState;
+		StrongRef<Framebuffer> _tilePropertiesFramebuffer;
 		std::vector<LayerState> _layers;
 
 		__RNDeclareMetaInternal(OpenXRFramePresentationState)
