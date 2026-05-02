@@ -635,7 +635,7 @@ namespace RN
 		_internals->handTracker[1] = XR_NULL_HANDLE;
 	}
 
-	void OpenXRWindow::UpdateTilePropertiesHint()
+	void OpenXRWindow::UpdateTilePropertiesHint(OpenXRFramePresentationState &state)
 	{
 		if(!_supportsTilePropertiesHint || !_internals->SetTilePropertiesHintMETA || _internals->session == XR_NULL_HANDLE)
 		{
@@ -643,36 +643,25 @@ namespace RN
 		}
 
 #if XR_USE_GRAPHICS_API_VULKAN
-		if(!_mainLayer || !_mainLayer->_swapChain || _mainLayer->_swapChain->_swapChainType != OpenXRSwapChain::SwapChainType::Vulkan)
+		const std::vector<VkTilePropertiesQCOM> *tileProperties = state.GetTilePropertiesHint();
+		if(!tileProperties)
 		{
 			return;
 		}
 
-		OpenXRVulkanSwapChain *swapChain = static_cast<OpenXRVulkanSwapChain *>(_mainLayer->_swapChain);
-		VulkanFramebuffer *framebuffer = swapChain->GetFramebuffer();
-		if(!framebuffer)
+		std::vector<XrTilePropertiesMETA> xrProperties(tileProperties->size());
+		for(size_t i = 0; i < tileProperties->size(); i++)
 		{
-			return;
-		}
-
-		const std::vector<VkTilePropertiesQCOM> &tileProperties = framebuffer->GetCurrentVariantTileProperties();
-		if(tileProperties.empty())
-		{
-			return;
-		}
-
-		std::vector<XrTilePropertiesMETA> xrProperties(tileProperties.size());
-		for(size_t i = 0; i < tileProperties.size(); i++)
-		{
+			const VkTilePropertiesQCOM &tileProperty = (*tileProperties)[i];
 			xrProperties[i].type = XR_TYPE_TILE_PROPERTIES_META;
 			xrProperties[i].next = nullptr;
-			xrProperties[i].tileDimensions.width = tileProperties[i].tileSize.width;
-			xrProperties[i].tileDimensions.height = tileProperties[i].tileSize.height;
-			xrProperties[i].tileDimensions.depth = tileProperties[i].tileSize.depth;
-			xrProperties[i].apronDimensions.width = tileProperties[i].apronSize.width;
-			xrProperties[i].apronDimensions.height = tileProperties[i].apronSize.height;
-			xrProperties[i].origin.x = tileProperties[i].origin.x;
-			xrProperties[i].origin.y = tileProperties[i].origin.y;
+			xrProperties[i].tileDimensions.width = tileProperty.tileSize.width;
+			xrProperties[i].tileDimensions.height = tileProperty.tileSize.height;
+			xrProperties[i].tileDimensions.depth = tileProperty.tileSize.depth;
+			xrProperties[i].apronDimensions.width = tileProperty.apronSize.width;
+			xrProperties[i].apronDimensions.height = tileProperty.apronSize.height;
+			xrProperties[i].origin.x = tileProperty.origin.x;
+			xrProperties[i].origin.y = tileProperty.origin.y;
 		}
 
 		uint32 propertyCount = static_cast<uint32>(xrProperties.size());
@@ -2726,7 +2715,7 @@ namespace RN
 			std::vector<XrCompositionLayerBaseHeader *> layers;
 			if(submitCompositionLayers)
 			{
-				UpdateTilePropertiesHint();
+				UpdateTilePropertiesHint(state);
 				state.GetCompositionLayers(layers);
 			}
 

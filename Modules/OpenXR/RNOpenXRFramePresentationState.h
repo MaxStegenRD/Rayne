@@ -26,6 +26,9 @@ namespace RN
 
 		bool AddLayerSnapshot(OpenXRCompositorLayer *targetLayer, bool includeNonSwapChainLayers);
 		void GetCompositionLayers(std::vector<XrCompositionLayerBaseHeader *> &layers);
+#if XR_USE_GRAPHICS_API_VULKAN
+		const std::vector<VkTilePropertiesQCOM> *GetTilePropertiesHint() const;
+#endif
 		int64 GetDisplayTime() const { return _displayTime; }
 		bool GetLocalDimmingEnabled() const { return _isLocalDimmingEnabled; }
 		bool BeginFrameOnRenderThread() final;
@@ -33,7 +36,7 @@ namespace RN
 		void CancelFrameOnRenderThread() final;
 
 	private:
-		void AddLayerSnapshot(size_t order, OpenXRCompositorLayer *layer);
+		void AddLayerSnapshot(size_t order, OpenXRCompositorLayer *layer, bool isMainLayer);
 
 		struct LayerState
 		{
@@ -41,8 +44,10 @@ namespace RN
 
 			size_t order;
 			StrongRef<OpenXRCompositorLayer> layer;
+			StrongRef<Framebuffer> framebuffer;
 			VRCompositorLayer::Type type;
 			OpenXRSwapChain *swapChain;
+			bool isMainLayer;
 			bool isActive;
 			bool shouldDisplay;
 			OpenXRCompositorLayerInternals internals;

@@ -57,7 +57,7 @@ namespace RN
 
 			if(layer == targetLayer || (includeNonSwapChainLayers && !layer->_swapChain))
 			{
-				AddLayerSnapshot(order, layer);
+				AddLayerSnapshot(order, layer, layer == window->_mainLayer);
 				if(layer == targetLayer) addedTargetLayer = true;
 			}
 			order++;
@@ -74,7 +74,7 @@ namespace RN
 		return addedTargetLayer;
 	}
 
-	void OpenXRFramePresentationState::AddLayerSnapshot(size_t order, OpenXRCompositorLayer *layer)
+	void OpenXRFramePresentationState::AddLayerSnapshot(size_t order, OpenXRCompositorLayer *layer, bool isMainLayer)
 	{
 		if(!layer) return;
 
@@ -86,8 +86,10 @@ namespace RN
 		LayerState layerState = {};
 		layerState.order = order;
 		layerState.layer = layer;
+		layerState.framebuffer = layer->_swapChain ? layer->_swapChain->GetSwapChainFramebuffer() : nullptr;
 		layerState.type = layer->GetType();
 		layerState.swapChain = layer->_swapChain;
+		layerState.isMainLayer = isMainLayer;
 		layerState.isActive = layer->_isActive;
 		layerState.shouldDisplay = layer->_shouldDisplay;
 		layerState.internals = *layer->_internals;
@@ -116,6 +118,27 @@ namespace RN
 			if(baseHeader) layers.push_back(baseHeader);
 		}
 	}
+
+#if XR_USE_GRAPHICS_API_VULKAN
+	const std::vector<VkTilePropertiesQCOM> *OpenXRFramePresentationState::GetTilePropertiesHint() const
+	{
+		for(const LayerState &layer : _layers)
+		{
+			if(!layer.isMainLayer) continue;
+
+			Framebuffer *framebufferObject = layer.framebuffer.Get();
+			if(!framebufferObject) continue;
+
+			VulkanFramebuffer *framebuffer = framebufferObject->Downcast<VulkanFramebuffer>();
+			if(!framebuffer) continue;
+
+			const std::vector<VkTilePropertiesQCOM> &tileProperties = framebuffer->GetCurrentVariantTileProperties();
+			if(!tileProperties.empty()) return &tileProperties;
+		}
+
+		return nullptr;
+	}
+#endif
 
 	bool OpenXRFramePresentationState::BeginFrameOnRenderThread()
 	{

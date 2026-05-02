@@ -91,7 +91,7 @@ namespace RN
 		void DestroyPassthroughSession();
 		void DestroySession();
 		void ResetTilePropertiesHintCache();
-		void UpdateTilePropertiesHint();
+		void UpdateTilePropertiesHint(OpenXRFramePresentationState &state);
 		bool BeginRenderFrame();
 		void ResetCurrentFrameState();
 		void EndFrameWithPresentationState(OpenXRFramePresentationState &state, bool submitCompositionLayers);
