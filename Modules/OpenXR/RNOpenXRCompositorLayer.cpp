@@ -257,7 +257,6 @@ namespace RN
 	{
 		_isActive = active;
 
-		if(_swapChain) _swapChain->SetActive(_isSessionActive && _isActive);
 		if(_internals->layerPassthroughFb)
 		{
 			if(_isActive && _isSessionActive)
@@ -305,7 +304,6 @@ namespace RN
 	{
 		_isSessionActive = active;
 
-		if(_swapChain) _swapChain->SetActive(_isSessionActive && _isActive);
 		if(_internals->layerPassthroughFb)
 		{
 			if(_isActive && _isSessionActive)

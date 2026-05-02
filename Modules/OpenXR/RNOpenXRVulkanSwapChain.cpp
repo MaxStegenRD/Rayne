@@ -149,15 +149,16 @@ namespace RN
 
 	void OpenXRVulkanSwapChain::AcquireBackBuffer()
 	{
-		if(!_isActive) return;
-
 		XrSwapchainImageAcquireInfo swapchainImageAcquireInfo;
 		swapchainImageAcquireInfo.type = XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO;
 		swapchainImageAcquireInfo.next = nullptr;
 
 		uint32_t imageIndex = 0;
-		xrAcquireSwapchainImage(_internals->swapchain, &swapchainImageAcquireInfo, &imageIndex);
+		if(XR_FAILED(xrAcquireSwapchainImage(_internals->swapchain, &swapchainImageAcquireInfo, &imageIndex)))
+			return;
+
 		_semaphoreIndex = _frameIndex = imageIndex;
+		_acquiredImageCountForRenderFrame += 1;
 
 		XrSwapchainImageWaitInfo swapchainImageWaitInfo;
 		swapchainImageWaitInfo.type = XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO;
@@ -176,17 +177,18 @@ namespace RN
 
 	void OpenXRVulkanSwapChain::PresentBackBuffer(VkQueue queue)
 	{
-		if(!_isActive) return;
+		if(_acquiredImageCountForRenderFrame == 0) return;
 
 		XrSwapchainImageReleaseInfo swapchainImageReleaseInfo;
 		swapchainImageReleaseInfo.type = XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO;
 		swapchainImageReleaseInfo.next = nullptr;
 		xrReleaseSwapchainImage(_internals->swapchain, &swapchainImageReleaseInfo);
+
+		_acquiredImageCountForRenderFrame -= 1;
 	}
 
 	RenderFramePresentationState *OpenXRVulkanSwapChain::TakeRenderFramePresentationState(uint64 frameID)
 	{
-		if(!_isActive) return nullptr;
 		return _xrWindow->TakePresentationStateForLayer(frameID, _layer);
 	}
 

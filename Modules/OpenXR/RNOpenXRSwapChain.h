@@ -36,15 +36,14 @@ namespace RN
 		OXRAPI virtual Framebuffer *GetSwapChainFramebuffer() const = 0;
 		OXRAPI virtual void SetFixedFoveatedRenderingLevel(uint8 level, bool dynamic) {}
 
-		OXRAPI virtual void SetActive(bool active) { _isActive = active; }
-
 	protected:
 		OpenXRSwapChain(OpenXRWindow *window, OpenXRCompositorLayer *layer, SwapChainType type);
+
 		OpenXRSwapchainInternals *_internals;
 
 		OpenXRWindow *_xrWindow;
 		OpenXRCompositorLayer *_layer;
-		bool _isActive;
+		uint32 _acquiredImageCountForRenderFrame;
 
 		SwapChainType _swapChainType;
 	};
