@@ -20,6 +20,7 @@ namespace RN
 		_descriptor = descriptor;
 		_descriptor.depthStencilFormat = Texture::Format::Invalid;
 		_descriptor.colorFormat = Texture::Format::RGBA_8_SRGB; //TODO: Don´t hardcode the format here?
+		_frameIndex = 0;
 
 		_size = size;
 
@@ -90,7 +91,7 @@ namespace RN
 		if(XR_FAILED(xrAcquireSwapchainImage(_internals->swapchain, &swapchainImageAcquireInfo, &imageIndex)))
 			return;
 
-		//_semaphoreIndex = _frameIndex = imageIndex;
+		_frameIndex = imageIndex;
 		_acquiredImageCountForRenderFrame += 1;
 
 		XrSwapchainImageWaitInfo swapchainImageWaitInfo;
@@ -132,7 +133,8 @@ namespace RN
 
 	id OpenXRMetalSwapChain::GetMetalColorTexture() const
 	{
-		return (id<MTLTexture>)_swapchainImages[0];
+		if(!_swapchainImages || _frameIndex >= _descriptor.bufferCount) return nil;
+		return (id<MTLTexture>)_swapchainImages[_frameIndex];
 	}
 
 	id OpenXRMetalSwapChain::GetMetalDepthTexture() const
