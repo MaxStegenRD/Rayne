@@ -194,7 +194,7 @@ namespace RN
 
 	bool OpenXRVulkanSwapChain::ShouldRenderBackBuffer() const
 	{
-		return _xrWindow->_internals->currentFrameIsValid && _xrWindow->_internals->currentFrameShouldRender;
+		return _xrWindow->_isSessionRunning && _xrWindow->_internals->currentFrameIsValid && _xrWindow->_internals->currentFrameShouldRender;
 	}
 
 	VkImage OpenXRVulkanSwapChain::GetVulkanColorBuffer(int i) const

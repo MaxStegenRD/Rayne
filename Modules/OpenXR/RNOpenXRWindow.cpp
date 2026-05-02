@@ -2165,7 +2165,7 @@ namespace RN
 	bool OpenXRWindow::BeginRenderFrame()
 	{
 		RN_PROFILE_SCOPE_N("BeginOpenXRRenderFrame");
-		if(_internals->session == XR_NULL_HANDLE || !_isSessionRunning) return false;
+		if(_internals->session == XR_NULL_HANDLE) return false;
 
 		XrFrameBeginInfo frameBeginInfo;
 		frameBeginInfo.type = XR_TYPE_FRAME_BEGIN_INFO;
@@ -2721,7 +2721,7 @@ namespace RN
 
 	void OpenXRWindow::EndFrameWithPresentationState(OpenXRFramePresentationState &state, bool submitCompositionLayers)
 	{
-		if(_internals->session != XR_NULL_HANDLE && _isSessionRunning)
+		if(_internals->session != XR_NULL_HANDLE)
 		{
 			std::vector<XrCompositionLayerBaseHeader *> layers;
 			if(submitCompositionLayers)
@@ -2766,7 +2766,8 @@ namespace RN
 		if(createdPresentationState)
 		{
 			SafeRelease(_pendingPresentationState);
-			_pendingPresentationState = new OpenXRFramePresentationState(this, _internals->currentFramePredictedDisplayTime, _internals->currentFrameShouldRender, _internals->currentFrameIsValid);
+			const bool hasFrameState = (_isSessionRunning && _internals->session != XR_NULL_HANDLE && _internals->currentFrameIsValid);
+			_pendingPresentationState = new OpenXRFramePresentationState(this, _internals->currentFramePredictedDisplayTime, hasFrameState && _internals->currentFrameShouldRender, hasFrameState);
 			_pendingPresentationFrameID = frameID;
 			_pendingPresentationStateWasTaken = false;
 		}

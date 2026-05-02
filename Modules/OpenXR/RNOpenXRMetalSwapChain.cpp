@@ -127,7 +127,7 @@ namespace RN
 
 	bool OpenXRMetalSwapChain::ShouldRenderBackBuffer() const
 	{
-		return _xrWindow->_internals->currentFrameIsValid && _xrWindow->_internals->currentFrameShouldRender;
+		return _xrWindow->_isSessionRunning && _xrWindow->_internals->currentFrameIsValid && _xrWindow->_internals->currentFrameShouldRender;
 	}
 
 	id OpenXRMetalSwapChain::GetMetalColorTexture() const
