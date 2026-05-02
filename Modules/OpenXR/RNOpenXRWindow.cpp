@@ -115,7 +115,6 @@ namespace RN
 		_internals->currentFramePredictedDisplayTime = 0;
 		_internals->currentFrameShouldRender = false;
 		_internals->currentFrameIsValid = false;
-		_internals->hasActiveFrame = false;
 		_internals->views = nullptr;
 
 #if XR_USE_GRAPHICS_API_VULKAN
@@ -595,7 +594,7 @@ namespace RN
 		SetLayersSessionActive(false);
 
 		ResetTilePropertiesHintCache();
-		ResetFramePacing();
+		ResetCurrentFrameState();
 	}
 
 	void OpenXRWindow::ReleaseSessionLayers()
@@ -2168,37 +2167,20 @@ namespace RN
 		RN_PROFILE_SCOPE_N("BeginOpenXRRenderFrame");
 		if(_internals->session == XR_NULL_HANDLE || !_isSessionRunning) return false;
 
-		{
-			UniqueLock<Lockable> lock(_internals->framePacingLock);
-			if(_internals->hasActiveFrame)
-				return false;
-
-			_internals->hasActiveFrame = true;
-		}
-
 		XrFrameBeginInfo frameBeginInfo;
 		frameBeginInfo.type = XR_TYPE_FRAME_BEGIN_INFO;
 		frameBeginInfo.next = nullptr;
 		if(XR_FAILED(xrBeginFrame(_internals->session, &frameBeginInfo)))
 		{
 			RNDebug("Error in xrBeginFrame?");
-			FinishRenderFrame();
 			return false;
 		}
 
 		return true;
 	}
 
-	void OpenXRWindow::FinishRenderFrame()
+	void OpenXRWindow::ResetCurrentFrameState()
 	{
-		UniqueLock<Lockable> lock(_internals->framePacingLock);
-		_internals->hasActiveFrame = false;
-	}
-
-	void OpenXRWindow::ResetFramePacing()
-	{
-		UniqueLock<Lockable> lock(_internals->framePacingLock);
-		_internals->hasActiveFrame = false;
 		_internals->currentFrameIsValid = false;
 		_internals->currentFrameShouldRender = false;
 	}
@@ -2774,7 +2756,6 @@ namespace RN
 			}
 		}
 
-		FinishRenderFrame();
 	}
 
 	RenderFramePresentationState *OpenXRWindow::TakePresentationStateForLayer(uint64 frameID, OpenXRCompositorLayer *targetLayer)

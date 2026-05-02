@@ -93,8 +93,7 @@ namespace RN
 		void ResetTilePropertiesHintCache();
 		void UpdateTilePropertiesHint();
 		bool BeginRenderFrame();
-		void FinishRenderFrame();
-		void ResetFramePacing();
+		void ResetCurrentFrameState();
 		void EndFrameWithPresentationState(OpenXRFramePresentationState &state, bool submitCompositionLayers);
 		RenderFramePresentationState *TakePresentationStateForLayer(uint64 frameID, OpenXRCompositorLayer *layer);
 

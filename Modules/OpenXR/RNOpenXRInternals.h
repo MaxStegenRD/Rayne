@@ -38,8 +38,6 @@ namespace RN
 		XrTime currentFramePredictedDisplayTime;
 		bool currentFrameShouldRender;
 		bool currentFrameIsValid;
-		Lockable framePacingLock;
-		bool hasActiveFrame;
 
 		XrView *views;
 
