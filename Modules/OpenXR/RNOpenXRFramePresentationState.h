@@ -40,7 +40,7 @@ namespace RN
 			XrCompositionLayerBaseHeader *GetBaseHeader();
 
 			size_t order;
-			OpenXRCompositorLayer *layer;
+			StrongRef<OpenXRCompositorLayer> layer;
 			VRCompositorLayer::Type type;
 			OpenXRSwapChain *swapChain;
 			bool isActive;

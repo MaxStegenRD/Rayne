@@ -80,7 +80,7 @@ namespace RN
 
 		for(const LayerState &existingLayer : _layers)
 		{
-			if(existingLayer.layer == layer) return;
+			if(existingLayer.layer.Get() == layer) return;
 		}
 
 		LayerState layerState = {};
