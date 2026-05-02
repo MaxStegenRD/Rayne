@@ -1852,7 +1852,7 @@ namespace RN
 
 	bool OpenXRWindow::IsRendering() const
 	{
-		return true;
+		return (_internals->session != XR_NULL_HANDLE && _mainLayer != nullptr);
 	}
 
 	bool OpenXRWindow::InitializePassthrough(bool startRunning)
