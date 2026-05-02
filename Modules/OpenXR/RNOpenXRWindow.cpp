@@ -90,7 +90,7 @@ namespace RN
 	}
 
 	OpenXRWindow::OpenXRWindow() :
-		_internals(new OpenXRWindowInternals()), _runtimeName(nullptr), _layersUnderlay(new Array()), _layersOverlay(new Array()), _mainLayer(nullptr), _pendingPresentationState(nullptr), _pendingPresentationFrameID(0), _pendingPresentationStateWasTaken(false), _actualFrameIndex(0), _currentHapticsIndex {0, 0}, _hapticsStopped {true, true}, _preferredFrameRate(0.0f), _minCPULevel(XR_PERF_SETTINGS_LEVEL_SUSTAINED_HIGH_EXT), _minGPULevel(XR_PERF_SETTINGS_LEVEL_SUSTAINED_HIGH_EXT), _fixedFoveatedRenderingLevel(2), _fixedFoveatedRenderingDynamic(false), _isLocalDimmingEnabled(false), _isSessionRunning(false), _hasSynchronization(false), _hasVisibility(false), _hasInputFocus(false), _isHandTrackingEnabled(false)
+		_internals(new OpenXRWindowInternals()), _runtimeName(nullptr), _layersUnderlay(new Array()), _layersOverlay(new Array()), _mainLayer(nullptr), _pendingPresentationState(nullptr), _pendingPresentationFrameID(0), _pendingPresentationStateWasTaken(false), _actualFrameIndex(0), _currentHapticsIndex {0, 0}, _hapticsStopped {true, true}, _preferredFrameRate(0.0f), _minCPULevel(XR_PERF_SETTINGS_LEVEL_SUSTAINED_HIGH_EXT), _minGPULevel(XR_PERF_SETTINGS_LEVEL_SUSTAINED_HIGH_EXT), _fixedFoveatedRenderingLevel(2), _fixedFoveatedRenderingDynamic(false), _isLocalDimmingEnabled(false), _isDynamicResolutionEnabled(true), _isSessionRunning(false), _hasSynchronization(false), _hasVisibility(false), _hasInputFocus(false), _isHandTrackingEnabled(false)
 	{
 		_supportsVulkan = false;
 		_supportsMetal = false;
@@ -1970,6 +1970,11 @@ namespace RN
 	void OpenXRWindow::SetLocalDimming(bool enabled)
 	{
 		_isLocalDimmingEnabled = (_supportsLocalDimming && enabled);
+	}
+
+	void OpenXRWindow::SetDynamicResolutionEnabled(bool enabled)
+	{
+		_isDynamicResolutionEnabled = enabled;
 	}
 
 	Vector2 OpenXRWindow::GetSize() const

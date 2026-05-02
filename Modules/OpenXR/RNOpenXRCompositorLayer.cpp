@@ -216,7 +216,21 @@ namespace RN
 			_internals->layerQuad.size.height = _scale.y;
 		}
 
-		if(_window->_supportsDynamicResolution && _type != TypePassthrough && _window->_deviceType != VRWindow::DeviceType::PicoVR) //Don't use dynamic resolution on pico as it adjusts resolution before it goes up with gpu levels...
+		// Don't use dynamic resolution on Pico as it adjusts resolution before it goes up with GPU levels.
+		const bool canUseDynamicResolution = (_window->_supportsDynamicResolution &&
+			_window->_isDynamicResolutionEnabled &&
+			_type != TypePassthrough &&
+			_window->_deviceType != VRWindow::DeviceType::PicoVR);
+		if(!canUseDynamicResolution && _type != TypePassthrough)
+		{
+			_shouldDisplay = true;
+			if(_swapChain && _swapChain->GetSwapChainFramebuffer())
+			{
+				_swapChain->GetSwapChainFramebuffer()->SetRenderAreaSize(_swapChain->GetSwapChainSize());
+			}
+		}
+
+		if(canUseDynamicResolution)
 		{
 			XrRecommendedLayerResolutionGetInfoMETA recommendedLayerResolutionGetInfo;
 			recommendedLayerResolutionGetInfo.type = XR_TYPE_RECOMMENDED_LAYER_RESOLUTION_GET_INFO_META;

@@ -46,6 +46,7 @@ namespace RN
 		OXRAPI void SetPreferredFramerate(float framerate) final;
 		OXRAPI void SetPerformanceLevel(uint8 cpuLevel, uint8 gpuLevel) final;
 		OXRAPI void SetLocalDimming(bool enabled) final;
+		OXRAPI void SetDynamicResolutionEnabled(bool enabled) final;
 
 		OXRAPI Vector2 GetSize() const final;
 		OXRAPI Framebuffer *GetFramebuffer() const final;
@@ -126,6 +127,7 @@ namespace RN
 		uint8 _fixedFoveatedRenderingLevel;
 		bool _fixedFoveatedRenderingDynamic;
 		bool _isLocalDimmingEnabled;
+		bool _isDynamicResolutionEnabled;
 
 		bool _isSessionRunning;
 		bool _hasSynchronization;

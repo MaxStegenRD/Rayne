@@ -72,6 +72,7 @@ namespace RN
 		RNVRAPI virtual void SetPreferredFramerate(float framerate) {}
 		RNVRAPI virtual void SetPerformanceLevel(uint8 cpuLevel, uint8 gpuLevel) {}
 		RNVRAPI virtual void SetLocalDimming(bool enabled) {}
+		RNVRAPI virtual void SetDynamicResolutionEnabled(bool enabled) {}
 
 		RNVRAPI virtual Vector2 GetSize() const override = 0;
 		RNVRAPI virtual size_t GetEyeCount() const { return 2; }
