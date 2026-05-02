@@ -30,6 +30,7 @@ namespace RN
 		bool GetLocalDimmingEnabled() const { return _isLocalDimmingEnabled; }
 		bool BeginFrameOnRenderThread() final;
 		void EndFrameOnRenderThread() final;
+		void CancelFrameOnRenderThread() final;
 
 	private:
 		void AddLayerSnapshot(size_t order, OpenXRCompositorLayer *layer);

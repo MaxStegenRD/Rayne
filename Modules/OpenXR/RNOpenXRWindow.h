@@ -89,7 +89,7 @@ namespace RN
 		bool BeginRenderFrame();
 		void FinishRenderFrame();
 		void ResetFramePacing();
-		void EndFrameWithPresentationState(OpenXRFramePresentationState &state);
+		void EndFrameWithPresentationState(OpenXRFramePresentationState &state, bool submitLayers = true);
 		RenderFramePresentationState *TakePresentationStateForLayer(uint64 frameID, OpenXRCompositorLayer *layer);
 
 		int _mainThreadID;

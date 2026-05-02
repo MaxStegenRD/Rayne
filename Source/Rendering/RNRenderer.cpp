@@ -77,6 +77,9 @@ namespace RN
 	void RenderFramePresentationState::EndFrameOnRenderThread()
 	{}
 
+	void RenderFramePresentationState::CancelFrameOnRenderThread()
+	{}
+
 	void Renderer::Activate()
 	{
 		RN_ASSERT(!_activeRenderer, "Rayne only supports one active renderer at a time");

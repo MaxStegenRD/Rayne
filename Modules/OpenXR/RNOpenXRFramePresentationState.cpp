@@ -138,4 +138,12 @@ namespace RN
 
 		window->EndFrameWithPresentationState(*this);
 	}
+
+	void OpenXRFramePresentationState::CancelFrameOnRenderThread()
+	{
+		OpenXRWindow *window = _window.Load();
+		if(!window) return;
+
+		window->EndFrameWithPresentationState(*this, false);
+	}
 } // namespace RN

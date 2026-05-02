@@ -2687,14 +2687,16 @@ namespace RN
 		});
 	}
 
-	void OpenXRWindow::EndFrameWithPresentationState(OpenXRFramePresentationState &state)
+	void OpenXRWindow::EndFrameWithPresentationState(OpenXRFramePresentationState &state, bool submitLayers)
 	{
 		if(_internals->session != XR_NULL_HANDLE && _isSessionRunning)
 		{
-			UpdateTilePropertiesHint();
-
 			std::vector<XrCompositionLayerBaseHeader *> layers;
-			state.GetCompositionLayers(layers);
+			if(submitLayers)
+			{
+				UpdateTilePropertiesHint();
+				state.GetCompositionLayers(layers);
+			}
 
 			XrFrameEndInfo frameEndInfo;
 			frameEndInfo.type = XR_TYPE_FRAME_END_INFO;
@@ -2702,10 +2704,10 @@ namespace RN
 			frameEndInfo.displayTime = state.GetDisplayTime();
 			frameEndInfo.environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
 			frameEndInfo.layerCount = layers.size();
-			frameEndInfo.layers = layers.data();
+			frameEndInfo.layers = layers.empty() ? nullptr : layers.data();
 
 			XrLocalDimmingFrameEndInfoMETA xrLocalDimmingFrameEndInfoMETA;
-			if(_supportsLocalDimming)
+			if(submitLayers && _supportsLocalDimming)
 			{
 				xrLocalDimmingFrameEndInfoMETA.type = XR_TYPE_LOCAL_DIMMING_FRAME_END_INFO_META;
 				xrLocalDimmingFrameEndInfoMETA.localDimmingMode = state.GetLocalDimmingEnabled() ? XR_LOCAL_DIMMING_MODE_ON_META : XR_LOCAL_DIMMING_MODE_OFF_META;

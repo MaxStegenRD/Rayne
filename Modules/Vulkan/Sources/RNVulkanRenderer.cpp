@@ -533,10 +533,26 @@ namespace RN
 		}
 
 		RN_PROFILE_ATRACE_SCOPE_N("RN RenderThread Execute Render Frame");
-		if(PrepareRenderFrame(submission))
+		if(!submission.renderFrame.BeginPresentationStatesOnRenderThread())
 		{
-			RenderFrameSubmission(submission);
+			FinishRenderFrameSubmission(submission.renderFrame);
+			return true;
+		}
+
+		bool didPrepareFrame = PrepareRenderFrame(submission);
+		bool didRenderFrame = false;
+		if(didPrepareFrame)
+		{
+			didRenderFrame = RenderFrameSubmission(submission);
+		}
+
+		if(didRenderFrame)
+		{
 			PrintFrameStatistics(submission.renderFrame);
+		}
+		else
+		{
+			submission.renderFrame.CancelPresentationStatesOnRenderThread();
 		}
 
 		FinishRenderFrameSubmission(submission.renderFrame);
@@ -557,7 +573,7 @@ namespace RN
 		_activeFrameSubmission = previousSubmission;
 	}
 
-	void VulkanRenderer::RenderFrameSubmission(const VulkanFrameSubmission &submission)
+	bool VulkanRenderer::RenderFrameSubmission(const VulkanFrameSubmission &submission)
 	{
 		RN_PROFILE_SCOPE();
 		AssertOnRenderThread();
@@ -862,7 +878,7 @@ namespace RN
 		if(_submittedCommandBuffers->GetCount() == 0)
 		{
 			_lock.Unlock();
-			return;
+			return false;
 		}
 
 		buffers.reserve(_submittedCommandBuffers->GetCount());
@@ -902,6 +918,7 @@ namespace RN
 		RN_PROFILE_FRAME_TRACY();
 
 		_currentFrame ++;
+		return true;
 	}
 
 	void VulkanRenderer::SetupRendertargets(VkCommandBuffer commandBuffer, const VulkanFrameSubmission &submission, const VulkanRenderPass &renderPass)
@@ -2229,9 +2246,6 @@ namespace RN
 			//RNDebug("Too many frames in-flight, ignore this one");
 			return false; //Don't submit a new frame if there are already 5 frames in flight
 		}
-
-		if(!submission.renderFrame.BeginPresentationStatesOnRenderThread())
-			return false;
 
 		CreateMipMaps();
 		SubmitPendingResourceCommandBuffers();

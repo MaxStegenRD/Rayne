@@ -26,6 +26,7 @@ namespace RN
 	public:
 		RNAPI virtual bool BeginFrameOnRenderThread();
 		RNAPI virtual void EndFrameOnRenderThread();
+		RNAPI virtual void CancelFrameOnRenderThread();
 
 	protected:
 		RNAPI RenderFramePresentationState();
@@ -308,10 +309,16 @@ namespace RN
 		
 		bool BeginPresentationStatesOnRenderThread() const
 		{
+			size_t begunStateCount = 0;
 			for(const StrongRef<RenderFramePresentationState> &state : _presentationStates)
 			{
 				if(!state->BeginFrameOnRenderThread())
+				{
+					CancelPresentationStatesOnRenderThread(begunStateCount);
 					return false;
+				}
+
+				begunStateCount += 1;
 			}
 
 			return true;
@@ -323,6 +330,11 @@ namespace RN
 			{
 				state->EndFrameOnRenderThread();
 			}
+		}
+
+		void CancelPresentationStatesOnRenderThread() const
+		{
+			CancelPresentationStatesOnRenderThread(_presentationStates.size());
 		}
 
 		size_t AddPass(const RenderPass::DrawSnapshot &drawSnapshot, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialCacheIdentity, uint64 overrideMaterialSnapshotVersion)
@@ -390,6 +402,16 @@ namespace RN
 		friend class Renderer;
 
 		void SetFrameID(uint64 frameID) { _frameID = frameID; }
+		void CancelPresentationStatesOnRenderThread(size_t count) const
+		{
+			if(count > _presentationStates.size())
+				count = _presentationStates.size();
+
+			for(size_t i = 0; i < count; i += 1)
+			{
+				_presentationStates[i]->CancelFrameOnRenderThread();
+			}
+		}
 
 		uint64 _frameID = 0;
 		std::vector<StrongRef<RenderFramePresentationState>> _presentationStates;
