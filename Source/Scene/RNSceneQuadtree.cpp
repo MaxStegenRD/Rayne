@@ -18,7 +18,6 @@
 #include "../Scene/RNLightManager.h"
 
 #define kRNSceneUpdateBatchSize 8192 //1024
-#define kRNSceneRenderBatchSize 32
 
 #define OCCLUSION_FRAMECOUNT 50
 #define OCCLUSION_JITTER 0.15f
