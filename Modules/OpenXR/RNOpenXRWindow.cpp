@@ -116,6 +116,7 @@ namespace RN
 		_internals->currentFrameShouldRender = false;
 		_internals->currentFrameIsValid = false;
 		_internals->hasActiveFrame = false;
+		_internals->views = nullptr;
 
 #if XR_USE_GRAPHICS_API_VULKAN
 		_internals->GetVulkanInstanceExtensionsKHR = nullptr;
@@ -540,21 +541,11 @@ namespace RN
 
 	OpenXRWindow::~OpenXRWindow()
 	{
+		StopRendering();
+
 		SafeRelease(_pendingPresentationState);
 		SafeRelease(_layersUnderlay);
 		SafeRelease(_layersOverlay);
-
-		if(_internals->passthroughSessionFB != XR_NULL_HANDLE)
-		{
-			_internals->DestroyPassthroughFB(_internals->passthroughSessionFB);
-			_internals->passthroughSessionFB = XR_NULL_HANDLE;
-		}
-
-		StopRendering();
-
-		//The framebuffer retains and autoreleases the swapchain every frame, this guarantees it to be released before destroying the xr instance
-		if(AutoreleasePool::GetCurrentPool()) AutoreleasePool::GetCurrentPool()->Drain();
-
 		SafeRelease(_runtimeName);
 		xrDestroyInstance(_internals->instance);
 		delete _internals;
@@ -563,6 +554,86 @@ namespace RN
 	void OpenXRWindow::ResetTilePropertiesHintCache()
 	{
 		_internals->currentTilePropertiesHint.clear();
+	}
+
+	void OpenXRWindow::SynchronizeRenderThread()
+	{
+		if(Renderer::IsHeadless())
+			return;
+
+		Renderer::GetActiveRenderer()->SynchronizeRenderThread();
+	}
+
+	void OpenXRWindow::SetLayersSessionActive(bool active)
+	{
+		if(_layersUnderlay)
+		{
+			_layersUnderlay->Enumerate<OpenXRCompositorLayer>([active](OpenXRCompositorLayer *layer, size_t index, bool &stop) {
+				layer->SetSessionActive(active);
+			});
+		}
+
+		if(_mainLayer)
+			_mainLayer->SetSessionActive(active);
+
+		if(_layersOverlay)
+		{
+			_layersOverlay->Enumerate<OpenXRCompositorLayer>([active](OpenXRCompositorLayer *layer, size_t index, bool &stop) {
+				layer->SetSessionActive(active);
+			});
+		}
+	}
+
+	void OpenXRWindow::StopSessionRendering()
+	{
+		SynchronizeRenderThread();
+
+		_hasSynchronization = false;
+		_hasVisibility = false;
+		_hasInputFocus = false;
+		_isSessionRunning = false;
+		SetLayersSessionActive(false);
+
+		ResetTilePropertiesHintCache();
+		ResetFramePacing();
+	}
+
+	void OpenXRWindow::ReleaseSessionLayers()
+	{
+		SafeRelease(_pendingPresentationState);
+
+		if(_layersUnderlay)
+			_layersUnderlay->RemoveAllObjects();
+
+		if(_layersOverlay)
+			_layersOverlay->RemoveAllObjects();
+
+		SafeRelease(_mainLayer);
+	}
+
+	void OpenXRWindow::DestroyPassthroughSession()
+	{
+		if(_internals->passthroughSessionFB != XR_NULL_HANDLE)
+		{
+			if(_internals->DestroyPassthroughFB)
+				_internals->DestroyPassthroughFB(_internals->passthroughSessionFB);
+
+			_internals->passthroughSessionFB = XR_NULL_HANDLE;
+		}
+	}
+
+	void OpenXRWindow::DestroySession()
+	{
+		DestroyPassthroughSession();
+
+		if(_internals->session != XR_NULL_HANDLE)
+		{
+			xrDestroySession(_internals->session);
+			_internals->session = XR_NULL_HANDLE;
+		}
+
+		_internals->handTracker[0] = XR_NULL_HANDLE;
+		_internals->handTracker[1] = XR_NULL_HANDLE;
 	}
 
 	void OpenXRWindow::UpdateTilePropertiesHint()
@@ -1779,20 +1850,16 @@ namespace RN
 
 	void OpenXRWindow::StopRendering()
 	{
-		ResetTilePropertiesHintCache();
-		ResetFramePacing();
+		StopSessionRendering();
+		ReleaseSessionLayers();
 
-		if(_internals->session != XR_NULL_HANDLE)
-		{
-			xrDestroySession(_internals->session);
-			_internals->session = XR_NULL_HANDLE;
-		}
+		//Framebuffers can retain/autorelease their swapchain while rendering; drain before destroying the OpenXR session.
+		if(AutoreleasePool::GetCurrentPool()) AutoreleasePool::GetCurrentPool()->Drain();
 
-		_internals->handTracker[0] = XR_NULL_HANDLE;
-		_internals->handTracker[1] = XR_NULL_HANDLE;
+		DestroySession();
 
 		delete[] _internals->views;
-		SafeRelease(_mainLayer);
+		_internals->views = nullptr;
 	}
 
 	bool OpenXRWindow::IsRendering() const
@@ -2002,38 +2069,21 @@ namespace RN
 							xrBeginSession(_internals->session, &beginInfo);
 
 							_isSessionRunning = true;
-							_layersUnderlay->Enumerate<OpenXRCompositorLayer>([](OpenXRCompositorLayer *layer, size_t index, bool &stop) {
-								layer->SetSessionActive(true);
-							});
-							_mainLayer->SetSessionActive(true);
-							_layersOverlay->Enumerate<OpenXRCompositorLayer>([](OpenXRCompositorLayer *layer, size_t index, bool &stop) {
-								layer->SetSessionActive(true);
-							});
+							SetLayersSessionActive(true);
 						}
 						else if(sessionStateChangedEvent.state == XR_SESSION_STATE_STOPPING)
 						{
 							RNInfo("Session State: Stopping");
-							_hasSynchronization = false;
-							_isSessionRunning = false;
-							ResetFramePacing();
-							_layersUnderlay->Enumerate<OpenXRCompositorLayer>([](OpenXRCompositorLayer *layer, size_t index, bool &stop) {
-								layer->SetSessionActive(false);
-							});
-							_mainLayer->SetSessionActive(false);
-							_layersOverlay->Enumerate<OpenXRCompositorLayer>([](OpenXRCompositorLayer *layer, size_t index, bool &stop) {
-								layer->SetSessionActive(false);
-							});
-							xrEndSession(_internals->session);
-							ResetTilePropertiesHintCache();
+							StopSessionRendering();
+							if(_internals->session != XR_NULL_HANDLE)
+								xrEndSession(_internals->session);
 						}
 						else if(sessionStateChangedEvent.state == XR_SESSION_STATE_EXITING || sessionStateChangedEvent.state == XR_SESSION_STATE_LOSS_PENDING)
 						{
 							RNInfo("Session State: Exiting");
-							ResetTilePropertiesHintCache();
-							xrDestroySession(_internals->session);
-							_internals->session = XR_NULL_HANDLE;
+							StopRendering();
 
-							_hmdTrackingState.mode == VRHMDTrackingState::Mode::Disconnected;
+							_hmdTrackingState.mode = VRHMDTrackingState::Mode::Disconnected;
 						}
 						else if(sessionStateChangedEvent.state == XR_SESSION_STATE_SYNCHRONIZED)
 						{

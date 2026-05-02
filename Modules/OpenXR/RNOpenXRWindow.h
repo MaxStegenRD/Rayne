@@ -84,6 +84,12 @@ namespace RN
 		void InitializeInput();
 		const String *GetHMDInfoDescription() const;
 		void InitializeHandTracking();
+		void SynchronizeRenderThread();
+		void SetLayersSessionActive(bool active);
+		void StopSessionRendering();
+		void ReleaseSessionLayers();
+		void DestroyPassthroughSession();
+		void DestroySession();
 		void ResetTilePropertiesHintCache();
 		void UpdateTilePropertiesHint();
 		bool BeginRenderFrame();
