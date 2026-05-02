@@ -240,18 +240,8 @@ namespace RN
 
 	struct VulkanFrameSubmission
 	{
-		void AddSwapChain(VulkanSwapChain *swapChain)
-		{
-			if(!swapChain) return;
-
-			for(VulkanSwapChain *existingSwapChain : swapChains)
-			{
-				if(existingSwapChain == swapChain) return;
-			}
-
-			renderFrame.AddPresentationState(swapChain->TakeRenderFramePresentationState(renderFrame.GetFrameID()));
-			swapChains.push_back(swapChain);
-		}
+		void AddSwapChain(VulkanSwapChain *swapChain);
+		void RemoveUnsubmittedSwapChainRenderPasses();
 
 		RenderFrame renderFrame;
 		std::deque<VulkanRenderPass> renderPasses;

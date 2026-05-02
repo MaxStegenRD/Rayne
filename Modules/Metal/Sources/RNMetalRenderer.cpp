@@ -297,6 +297,7 @@ namespace RN
 		_activeFrameSubmission = &submission;
 		function();
 		_activeFrameSubmission = previousSubmission;
+		submission.RemoveUnsubmittedSwapChainRenderPasses();
 	}
 
 	void MetalRenderer::RenderFrameSubmission(const MetalFrameSubmission &submission)
@@ -680,7 +681,8 @@ namespace RN
 			metalRenderPass.renderAreaSize = drawSnapshot.GetFrame().GetSize();
 		}
 		metalRenderPass.framebuffer = framebuffer? framebuffer->Downcast<MetalFramebuffer>() : nullptr;
-		frameSubmission.AddSwapChain(metalRenderPass.framebuffer ? metalRenderPass.framebuffer->GetSwapChain() : nullptr);
+		if(!drawSnapshot.IsSubpass())
+			frameSubmission.AddSwapChain(metalRenderPass.framebuffer ? metalRenderPass.framebuffer->GetSwapChain() : nullptr);
 
 		if(metalRenderPass.type != MetalRenderPass::Type::ResolveMSAA)
 		{

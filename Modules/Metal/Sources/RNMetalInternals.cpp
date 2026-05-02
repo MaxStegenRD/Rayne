@@ -10,6 +10,7 @@
 #include "RNMetalInternals.h"
 #include "RNMetalTexture.h"
 #include "RNMetalFramebuffer.h"
+#include "RNMetalSwapChain.h"
 
 #if RN_PLATFORM_MAC_OS
 @implementation RNMetalView
@@ -115,3 +116,48 @@ RN::Vector2 RNMetalLayerContainer::GetSize()
 	return RN::Vector2(_metalLayer.frame.size.width, _metalLayer.frame.size.height);
 }
 #endif
+
+namespace RN
+{
+	void MetalFrameSubmission::AddSwapChain(MetalSwapChain *swapChain)
+	{
+		if(!swapChain) return;
+
+		for(MetalSwapChain *existingSwapChain : swapChains)
+		{
+			if(existingSwapChain == swapChain) return;
+		}
+
+		RenderFramePresentationState *presentationState = swapChain->TakeRenderFramePresentationState(renderFrame.GetFrameID());
+		renderFrame.AddPresentationState(presentationState);
+		if(swapChain->ShouldRenderBackBuffer())
+			swapChains.push_back(swapChain);
+	}
+
+	void MetalFrameSubmission::RemoveUnsubmittedSwapChainRenderPasses()
+	{
+		auto usesSubmittedSwapChain = [this](MetalSwapChain *swapChain) {
+			if(!swapChain) return true;
+
+			for(MetalSwapChain *submittedSwapChain : swapChains)
+			{
+				if(submittedSwapChain == swapChain)
+					return true;
+			}
+
+			return false;
+		};
+
+		auto usesSubmittedFramebufferSwapChain = [&usesSubmittedSwapChain](const MetalFramebuffer *framebuffer) {
+			return !framebuffer || usesSubmittedSwapChain(framebuffer->GetSwapChain());
+		};
+
+		for(auto iterator = renderPasses.begin(); iterator != renderPasses.end();)
+		{
+			if(usesSubmittedFramebufferSwapChain(iterator->framebuffer) && usesSubmittedFramebufferSwapChain(iterator->resolveFramebuffer))
+				iterator++;
+			else
+				iterator = renderPasses.erase(iterator);
+		}
+	}
+}

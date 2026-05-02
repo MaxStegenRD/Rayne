@@ -190,18 +190,8 @@ namespace RN
 
 	struct MetalFrameSubmission
 	{
-		void AddSwapChain(MetalSwapChain *swapChain)
-		{
-			if(!swapChain) return;
-
-			for(MetalSwapChain *existingSwapChain : swapChains)
-			{
-				if(existingSwapChain == swapChain) return;
-			}
-
-			renderFrame.AddPresentationState(swapChain->TakeRenderFramePresentationState(renderFrame.GetFrameID()));
-			swapChains.push_back(swapChain);
-		}
+		void AddSwapChain(MetalSwapChain *swapChain);
+		void RemoveUnsubmittedSwapChainRenderPasses();
 
 		RenderFrame renderFrame;
 		std::deque<MetalRenderPass> renderPasses;

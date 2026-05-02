@@ -32,6 +32,7 @@ namespace RN
 		VKAPI virtual void Finalize(VkCommandBuffer commandBuffer);
 		VKAPI virtual void PresentBackBuffer(VkQueue queue);
 		VKAPI virtual RenderFramePresentationState *TakeRenderFramePresentationState(uint64 frameID) { return nullptr; }
+		VKAPI virtual bool ShouldRenderBackBuffer() const { return true; }
 
 		VKAPI virtual VkImage GetVulkanColorBuffer(int i) const;
 		VKAPI virtual VkImage GetVulkanDepthBuffer(int i) const;

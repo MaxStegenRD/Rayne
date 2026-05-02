@@ -37,6 +37,7 @@ namespace RN
 		MTLAPI virtual void PresentBackBuffer(id<MTLCommandBuffer> commandBuffer);
 		MTLAPI virtual void PostPresent(id<MTLCommandBuffer> commandBuffer);
 		MTLAPI virtual RenderFramePresentationState *TakeRenderFramePresentationState(uint64 frameID) { return nullptr; }
+		MTLAPI virtual bool ShouldRenderBackBuffer() const { return true; }
 
 		MTLAPI virtual id GetMetalColorTexture() const;
 		MTLAPI virtual id GetMetalDepthTexture() const;
