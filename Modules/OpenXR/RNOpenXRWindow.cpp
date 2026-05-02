@@ -2737,12 +2737,12 @@ namespace RN
 		});
 	}
 
-	void OpenXRWindow::EndFrameWithPresentationState(OpenXRFramePresentationState &state, bool submitLayers)
+	void OpenXRWindow::EndFrameWithPresentationState(OpenXRFramePresentationState &state, bool submitCompositionLayers)
 	{
 		if(_internals->session != XR_NULL_HANDLE && _isSessionRunning)
 		{
 			std::vector<XrCompositionLayerBaseHeader *> layers;
-			if(submitLayers)
+			if(submitCompositionLayers)
 			{
 				UpdateTilePropertiesHint();
 				state.GetCompositionLayers(layers);
@@ -2757,7 +2757,7 @@ namespace RN
 			frameEndInfo.layers = layers.empty() ? nullptr : layers.data();
 
 			XrLocalDimmingFrameEndInfoMETA xrLocalDimmingFrameEndInfoMETA;
-			if(submitLayers && _supportsLocalDimming)
+			if(submitCompositionLayers && _supportsLocalDimming)
 			{
 				xrLocalDimmingFrameEndInfoMETA.type = XR_TYPE_LOCAL_DIMMING_FRAME_END_INFO_META;
 				xrLocalDimmingFrameEndInfoMETA.localDimmingMode = state.GetLocalDimmingEnabled() ? XR_LOCAL_DIMMING_MODE_ON_META : XR_LOCAL_DIMMING_MODE_OFF_META;

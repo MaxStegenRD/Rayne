@@ -104,7 +104,6 @@ namespace RN
 	void OpenXRFramePresentationState::GetCompositionLayers(std::vector<XrCompositionLayerBaseHeader *> &layers)
 	{
 		layers.clear();
-		if(!_shouldRender) return;
 
 		layers.reserve(_layers.size());
 
@@ -136,7 +135,8 @@ namespace RN
 		OpenXRWindow *window = _window.Load();
 		if(!window) return;
 
-		window->EndFrameWithPresentationState(*this);
+		const bool submitCompositionLayers = _shouldRender;
+		window->EndFrameWithPresentationState(*this, submitCompositionLayers);
 	}
 
 	void OpenXRFramePresentationState::CancelFrameOnRenderThread()

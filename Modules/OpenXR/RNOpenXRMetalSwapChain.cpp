@@ -125,6 +125,11 @@ namespace RN
 		return _xrWindow->TakePresentationStateForLayer(frameID, _layer);
 	}
 
+	bool OpenXRMetalSwapChain::ShouldRenderBackBuffer() const
+	{
+		return _xrWindow->_internals->currentFrameIsValid && _xrWindow->_internals->currentFrameShouldRender;
+	}
+
 	id OpenXRMetalSwapChain::GetMetalColorTexture() const
 	{
 		return (id<MTLTexture>)_swapchainImages[0];

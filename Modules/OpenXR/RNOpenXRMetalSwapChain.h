@@ -33,6 +33,7 @@ namespace RN
 		OXRAPI void Finalize() final;
 		OXRAPI void PresentBackBuffer(id<MTLCommandBuffer> commandBuffer) final;
 		OXRAPI RenderFramePresentationState *TakeRenderFramePresentationState(uint64 frameID) final;
+		OXRAPI bool ShouldRenderBackBuffer() const final;
 
 		OXRAPI id GetMetalColorTexture() const final;
 		OXRAPI id GetMetalDepthTexture() const final;

@@ -192,6 +192,11 @@ namespace RN
 		return _xrWindow->TakePresentationStateForLayer(frameID, _layer);
 	}
 
+	bool OpenXRVulkanSwapChain::ShouldRenderBackBuffer() const
+	{
+		return _xrWindow->_internals->currentFrameIsValid && _xrWindow->_internals->currentFrameShouldRender;
+	}
+
 	VkImage OpenXRVulkanSwapChain::GetVulkanColorBuffer(int i) const
 	{
 		return _swapchainImages[i];
