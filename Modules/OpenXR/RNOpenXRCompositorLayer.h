@@ -44,6 +44,7 @@ namespace RN
 	private:
 		void SetSessionActive(bool active);
 		void UpdateForCurrentFrame();
+		void ApplyFixedFoveatedRenderingLevel(uint8 level, bool dynamic);
 
 		OpenXRCompositorLayerInternals *_internals;
 

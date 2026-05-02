@@ -268,6 +268,22 @@ namespace RN
 
 	void OpenXRCompositorLayer::SetFixedFoveatedRenderingLevel(uint8 level, bool dynamic)
 	{
+		if(!_swapChain) return;
+
+		if(Renderer::IsHeadless())
+		{
+			ApplyFixedFoveatedRenderingLevel(level, dynamic);
+			return;
+		}
+
+		StrongRef<OpenXRCompositorLayer> layer(this);
+		Renderer::GetActiveRenderer()->ScheduleRenderThreadWork([layer = std::move(layer), level, dynamic]() {
+			layer->ApplyFixedFoveatedRenderingLevel(level, dynamic);
+		});
+	}
+
+	void OpenXRCompositorLayer::ApplyFixedFoveatedRenderingLevel(uint8 level, bool dynamic)
+	{
 		if(_swapChain) _swapChain->SetFixedFoveatedRenderingLevel(level, dynamic);
 	}
 
