@@ -240,8 +240,12 @@ namespace RN
 
 	struct VulkanFrameSubmission
 	{
+		using RenderPassType = VulkanRenderPass;
+		using FramebufferType = VulkanFramebuffer;
+		using SwapChainType = VulkanSwapChain;
+
 		void AddSwapChain(VulkanSwapChain *swapChain);
-		void RemoveUnsubmittedSwapChainRenderPasses();
+		void PruneSkippedRenderPasses();
 
 		RenderFrame renderFrame;
 		std::deque<VulkanRenderPass> renderPasses;

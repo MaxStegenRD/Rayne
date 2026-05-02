@@ -573,7 +573,7 @@ namespace RN
 		_activeFrameSubmission = &submission;
 		function();
 		_activeFrameSubmission = previousSubmission;
-		submission.RemoveUnsubmittedSwapChainRenderPasses();
+		submission.PruneSkippedRenderPasses();
 	}
 
 	void VulkanRenderer::RenderFrameSubmission(const VulkanFrameSubmission &submission)

@@ -9,10 +9,34 @@
 #include "RNVulkanInternals.h"
 #include "RNVulkanRenderer.h"
 #include "RNVulkanFramebuffer.h"
+#include "../../../Source/Rendering/RNFrameSubmissionPruner.h"
 
 namespace RN
 {
 	RNDefineMeta(VulkanCommandBuffer, Object)
+
+	bool FrameSubmissionPassUsesRenderPass(const VulkanRenderPass &vulkanRenderPass, RenderPass *renderPass)
+	{
+		if(vulkanRenderPass.renderPass == renderPass) return true;
+
+		for(const VulkanRenderPass &subpass : vulkanRenderPass.subpasses)
+		{
+			if(subpass.renderPass == renderPass) return true;
+		}
+
+		return false;
+	}
+
+	template<class Pruner>
+	void FrameSubmissionAddRenderPassDependencies(Pruner &pruner, size_t consumerIndex, VulkanRenderPass &vulkanRenderPass)
+	{
+		pruner.AddExplicitRenderPassDependencies(consumerIndex, vulkanRenderPass.renderPass);
+
+		for(VulkanRenderPass &subpass : vulkanRenderPass.subpasses)
+		{
+			pruner.AddExplicitRenderPassDependencies(consumerIndex, subpass.renderPass);
+		}
+	}
 
 	void VulkanFrameSubmission::AddSwapChain(VulkanSwapChain *swapChain)
 	{
@@ -29,31 +53,10 @@ namespace RN
 			swapChains.push_back(swapChain);
 	}
 
-	void VulkanFrameSubmission::RemoveUnsubmittedSwapChainRenderPasses()
+	void VulkanFrameSubmission::PruneSkippedRenderPasses()
 	{
-		auto usesSubmittedSwapChain = [this](VulkanSwapChain *swapChain) {
-			if(!swapChain) return true;
-
-			for(VulkanSwapChain *submittedSwapChain : swapChains)
-			{
-				if(submittedSwapChain == swapChain)
-					return true;
-			}
-
-			return false;
-		};
-
-		auto usesSubmittedFramebufferSwapChain = [&usesSubmittedSwapChain](const VulkanFramebuffer *framebuffer) {
-			return !framebuffer || usesSubmittedSwapChain(framebuffer->GetSwapChain());
-		};
-
-		for(auto iterator = renderPasses.begin(); iterator != renderPasses.end();)
-		{
-			if(usesSubmittedFramebufferSwapChain(iterator->framebuffer) && usesSubmittedFramebufferSwapChain(iterator->resolveFramebuffer))
-				iterator++;
-			else
-				iterator = renderPasses.erase(iterator);
-		}
+		FrameSubmissionPruner<VulkanFrameSubmission> pruner(*this);
+		pruner.Prune();
 	}
 
 	VulkanCommandBuffer::VulkanCommandBuffer(VkDevice device, VkCommandPool pool) : _device(device), _pool(pool)

@@ -190,8 +190,12 @@ namespace RN
 
 	struct MetalFrameSubmission
 	{
+		using RenderPassType = MetalRenderPass;
+		using FramebufferType = MetalFramebuffer;
+		using SwapChainType = MetalSwapChain;
+
 		void AddSwapChain(MetalSwapChain *swapChain);
-		void RemoveUnsubmittedSwapChainRenderPasses();
+		void PruneSkippedRenderPasses();
 
 		RenderFrame renderFrame;
 		std::deque<MetalRenderPass> renderPasses;

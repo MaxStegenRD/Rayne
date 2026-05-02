@@ -11,6 +11,7 @@
 #include "RNMetalTexture.h"
 #include "RNMetalFramebuffer.h"
 #include "RNMetalSwapChain.h"
+#include "../../../Source/Rendering/RNFrameSubmissionPruner.h"
 
 #if RN_PLATFORM_MAC_OS
 @implementation RNMetalView
@@ -134,30 +135,9 @@ namespace RN
 			swapChains.push_back(swapChain);
 	}
 
-	void MetalFrameSubmission::RemoveUnsubmittedSwapChainRenderPasses()
+	void MetalFrameSubmission::PruneSkippedRenderPasses()
 	{
-		auto usesSubmittedSwapChain = [this](MetalSwapChain *swapChain) {
-			if(!swapChain) return true;
-
-			for(MetalSwapChain *submittedSwapChain : swapChains)
-			{
-				if(submittedSwapChain == swapChain)
-					return true;
-			}
-
-			return false;
-		};
-
-		auto usesSubmittedFramebufferSwapChain = [&usesSubmittedSwapChain](const MetalFramebuffer *framebuffer) {
-			return !framebuffer || usesSubmittedSwapChain(framebuffer->GetSwapChain());
-		};
-
-		for(auto iterator = renderPasses.begin(); iterator != renderPasses.end();)
-		{
-			if(usesSubmittedFramebufferSwapChain(iterator->framebuffer) && usesSubmittedFramebufferSwapChain(iterator->resolveFramebuffer))
-				iterator++;
-			else
-				iterator = renderPasses.erase(iterator);
-		}
+		FrameSubmissionPruner<MetalFrameSubmission> pruner(*this);
+		pruner.Prune();
 	}
 }
