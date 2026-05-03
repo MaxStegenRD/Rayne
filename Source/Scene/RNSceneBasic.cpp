@@ -33,7 +33,13 @@ namespace RN
 	{}
 
 	SceneBasicInfo::SceneBasicInfo(Scene *scene) :
-		SceneInfo(scene), occludedFrameCounter(0)
+		SceneInfo(scene),
+		occludedFrameCounter(0),
+		occluderSize(0.0f),
+		occluderDistance(0.0f),
+		isActiveOccluder(false),
+		isVisibleOccluder(false),
+		isCachedOccluder(false)
 	{
 		RN_PROFILE_SCOPE();
 	}
@@ -148,6 +154,42 @@ namespace RN
 		_nodesToRemove->RemoveAllObjects();
 	}
 
+	bool SceneBasic::IsOccluderCacheCandidate(SceneNode *node) const
+	{
+		return node->GetRenderPriority() < SceneNode::RenderPriority::RenderSky && node->HasFlags(SceneNode::Flags::Occluder);
+	}
+
+	void SceneBasic::AddCachedOccluderNode(SceneNode *node)
+	{
+		if(!IsOccluderCacheCandidate(node)) return;
+
+		SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo *>(node->GetSceneInfo());
+		if(!sceneInfo || sceneInfo->isCachedOccluder) return;
+
+		sceneInfo->isCachedOccluder = true;
+		_occluderNodes.push_back(node);
+	}
+
+	void SceneBasic::RemoveCachedOccluderNode(SceneNode *node)
+	{
+		SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo *>(node->GetSceneInfo());
+		if(sceneInfo)
+		{
+			sceneInfo->isCachedOccluder = false;
+			sceneInfo->isActiveOccluder = false;
+		}
+
+		for(auto iterator = _occluderNodes.begin(); iterator != _occluderNodes.end(); iterator++)
+		{
+			if(*iterator == node)
+			{
+				*iterator = _occluderNodes.back();
+				_occluderNodes.pop_back();
+				break;
+			}
+		}
+	}
+
 
 	void SceneBasic::Render(Renderer *renderer)
 	{
@@ -190,37 +232,35 @@ namespace RN
 				size_t firstTransparentIndex = 0;
 				size_t lastTransparentIndex = 0;
 
-				occluders.reserve(_renderNodes.GetCount());
+				occluders.reserve(_occluderNodes.size());
 				sceneNodesToRender.reserve(_renderNodes.GetCount());
 
 				IntrusiveList<SceneNode>::Member *firstNodeMember = camera->_firstNodeMember ? camera->_firstNodeMember : _renderNodes.GetHead();
 				IntrusiveList<SceneNode>::Member *nodeMember = firstNodeMember;
-				if(!(camera->GetFlags() & Camera::Flags::NoOcclusionCulling) && !camera->GetRenderNodes())
+				//TODO: Occlusion culling is skipped for cameras rendering a later slice of the render list. The cached occluder list is global and can contain occluders before firstNodeMember.
+				if(firstNodeMember == _renderNodes.GetHead() && _occlusionCullingParameters.maxOccluders > 0 && !(camera->GetFlags() & Camera::Flags::NoOcclusionCulling) && !camera->GetRenderNodes())
 				{
 					RN_PROFILE_SCOPE_N("Collect Occluders");
 					const RN::Vector3 cameraWorldPosition = camera->GetWorldPosition();
-					//Collect all occluders
-					while(nodeMember)
+					for(size_t i = 0; i < _occluderNodes.size();)
 					{
-						SceneNode *node = nodeMember->Get();
-						if(node->GetRenderPriority() >= SceneNode::RenderPriority::RenderSky) break;
-
-						if(_occlusionCullingParameters.maxOccluders > 0 && node->HasFlags(SceneNode::Flags::Occluder) && node->CanRender(renderer, camera))
+						SceneNode *node = _occluderNodes[i];
+						SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo *>(node->GetSceneInfo());
+						if(!sceneInfo || !IsOccluderCacheCandidate(node))
 						{
-							SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo *>(node->GetSceneInfo());
-							sceneInfo->isActiveOccluder = false;
-							if(node->GetBoundingBox().Contains(cameraWorldPosition))
-							{
-								nodeMember = nodeMember->GetNext();
-								continue;
-							}
+							RemoveCachedOccluderNode(node);
+							continue;
+						}
 
+						sceneInfo->isActiveOccluder = false;
+						if(node->CanRender(renderer, camera) && !node->GetBoundingBox().Contains(cameraWorldPosition))
+						{
 							sceneInfo->occluderDistance = std::max(node->GetWorldPosition().GetSquaredDistance(cameraWorldPosition), 1.0f);
 							sceneInfo->occluderSize = node->GetBoundingSphere().radius * node->GetBoundingSphere().radius / sceneInfo->occluderDistance;
 							occluders.push_back(node);
 						}
 
-						nodeMember = nodeMember->GetNext();
+						i++;
 					}
 
 					nodeMember = firstNodeMember;
@@ -335,6 +375,8 @@ namespace RN
 
 							if(node->GetFlags() & SceneNode::Flags::Occluder)
 							{
+								AddCachedOccluderNode(node);
+
 								SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo *>(node->GetSceneInfo());
 								if(sceneInfo->isActiveOccluder && sceneInfo->occludedFrameCounter < _occlusionCullingParameters.frameCount)
 								{
@@ -413,6 +455,11 @@ namespace RN
 							SceneNode *node = nodeMember->Get();
 							if(node->CanRender(renderer, camera))
 							{
+								if(node->GetFlags() & SceneNode::Flags::Occluder)
+								{
+									AddCachedOccluderNode(node);
+								}
+
 								if(node->GetRenderPriority() == SceneNode::RenderTransparent)
 								{
 									if(firstTransparentIndex == 0)
@@ -534,6 +581,7 @@ namespace RN
 		}
 
 		Unlock();
+		AddCachedOccluderNode(node);
 	}
 
 	void SceneBasic::RemoveRenderNode(SceneNode *node)
@@ -554,6 +602,7 @@ namespace RN
 			return;
 		}
 
+		RemoveCachedOccluderNode(node);
 		_renderNodes.Erase(node->_sceneRenderEntry);
 	}
 
