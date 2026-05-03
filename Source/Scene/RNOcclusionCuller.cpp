@@ -8,7 +8,6 @@
 
 #include "RNOcclusionCuller.h"
 
-#define OCCLUSION_VISUALIZE_DEPTH 0
 #define OCCLUSION_DEPTH_BIAS 0.000001f
 
 namespace RN
@@ -32,6 +31,17 @@ namespace RN
 	void OcclusionCuller::Clear()
 	{
 		std::fill(_depthBuffer, _depthBuffer + _width * _height, 0.0f);
+	}
+
+	void OcclusionCuller::CopyDepthBufferForVisualization(float *target, float depthScaleFactor) const
+	{
+		if(!target) return;
+
+		const size_t pixelCount = static_cast<size_t>(_width) * static_cast<size_t>(_height);
+		for(size_t i = 0; i < pixelCount; i++)
+		{
+			target[i] = _depthBuffer[i] * depthScaleFactor;
+		}
 	}
 
 	bool OcclusionCuller::TestBoundingBox(const Matrix &matViewProj, const AABB &aabb, const Vector2 &screenPixelSize) const
@@ -95,10 +105,6 @@ namespace RN
 
 		uint16 minY = std::max(std::min(std::floor(minCorners.y) - 1.0f, static_cast<float>(_height - 1)), 0.0f);
 		uint16 maxY = std::max(std::min(std::ceil(maxCorners.y) + 1.0f, static_cast<float>(_height - 1)), 0.0f);
-
-#if OCCLUSION_VISUALIZE_DEPTH
-		maxCorners.z *= 1000.0f;
-#endif
 
 		for(uint16 y = minY; y <= maxY; y++)
 		{
@@ -167,9 +173,6 @@ namespace RN
 					float depth = depthNumerator * inverseArea - OCCLUSION_DEPTH_BIAS;
 					if(depth <= 1.0f)
 					{
-#if OCCLUSION_VISUALIZE_DEPTH
-						depth *= 1000.0f;
-#endif
 						if(depth > depthBufferRow[x]) depthBufferRow[x] = depth;
 					}
 				}
