@@ -260,12 +260,14 @@ namespace RN
 
 					float occlusionJitter = _occlusionCullingParameters.jitter;
 					Vector3 randomCameraOffset = RandomNumberGenerator::GetSharedGenerator()->GetRandomVector3Range(RN::Vector3(-occlusionJitter, -occlusionJitter, 0.0f), RN::Vector3(occlusionJitter, occlusionJitter, 0.0f));
-					Matrix matViewProj = camera->GetProjectionMatrix() * Matrix::WithTranslation(randomCameraOffset) * camera->GetViewMatrix();
-					if(camera->GetIsMultiviewCamera())
+					Matrix matJitter = Matrix::WithTranslation(randomCameraOffset);
+					Matrix matViewProj = camera->GetProjectionMatrix() * matJitter * camera->GetViewMatrix();
+					const Array *multiviewCameras = camera->GetMultiviewCameras();
+					if(multiviewCameras && multiviewCameras->GetCount() > 0)
 					{
-						size_t multiviewIndex = _currentFrameCount % camera->GetMultiviewCameras()->GetCount();
-						RN::Camera *multiviewCamera = camera->GetMultiviewCameras()->GetObjectAtIndex<RN::Camera>(multiviewIndex);
-						matViewProj = multiviewCamera->GetProjectionMatrix() * multiviewCamera->GetViewMatrix();
+						size_t multiviewIndex = _currentFrameCount % multiviewCameras->GetCount();
+						RN::Camera *multiviewCamera = multiviewCameras->GetObjectAtIndex<RN::Camera>(multiviewIndex);
+						matViewProj = multiviewCamera->GetProjectionMatrix() * matJitter * multiviewCamera->GetViewMatrix();
 					}
 
 					{
