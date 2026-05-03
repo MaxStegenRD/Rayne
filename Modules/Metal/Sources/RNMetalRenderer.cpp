@@ -1733,7 +1733,12 @@ namespace RN
 					if(argument->GetSource() != Shader::ArgumentBuffer::Source::Frame)
 						return;
 
-					bindBuffer(argument, renderFrame.GetGlobalBuffer(argument->GetNameHash()), vertexStage);
+					GPUBuffer *globalBuffer = renderFrame.GetGlobalBuffer(argument->GetNameHash());
+					MetalGPUBuffer *metalBuffer = globalBuffer ? static_cast<MetalGPUBuffer *>(globalBuffer->GetActiveBuffer()) : nullptr;
+					RN_DEBUG_ASSERT(metalBuffer, "Missing frame global buffer");
+
+					if(vertexStage) [encoder setVertexBuffer:(metalBuffer ? (id<MTLBuffer>)metalBuffer->_buffer : nil) offset:0 atIndex:argument->GetIndex()];
+					else [encoder setFragmentBuffer:(metalBuffer ? (id<MTLBuffer>)metalBuffer->_buffer : nil) offset:0 atIndex:argument->GetIndex()];
 				});
 			};
 
@@ -1767,6 +1772,7 @@ namespace RN
 				{
 					Texture *globalTexture = renderFrame.GetGlobalTexture(argument->GetNameHash());
 					MetalTexture *metalTexture = globalTexture ? globalTexture->Downcast<MetalTexture>() : nullptr;
+					RN_DEBUG_ASSERT(metalTexture, "Missing frame global texture");
 					if(metalTexture) [encoder setFragmentTexture:(id<MTLTexture>)metalTexture->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
 					else [encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
 					break;

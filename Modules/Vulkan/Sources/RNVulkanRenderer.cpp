@@ -39,6 +39,8 @@ namespace RN
 		_commandBufferPool(new Array()),
 		_commandBufferResourcesPool(new Array()),
 		_defaultPostProcessingDrawable(nullptr),
+		_fallbackGlobalBuffer(nullptr),
+		_fallbackGlobalTexture(nullptr),
 		_activeFrameSubmission(nullptr),
 		_currentMultiviewLayer(0),
 		_currentMultiviewCount(0),
@@ -88,6 +90,15 @@ namespace RN
 		_defaultShaderLibrary = CreateShaderLibraryWithFile(RNCSTR(":RayneVulkan:/Shaders.json"));
 		_dynamicBufferPool = new VulkanDynamicBufferPool();
 
+		const size_t fallbackGlobalBufferLength = 16 * 1024;
+		uint8 fallbackGlobalBufferData[fallbackGlobalBufferLength] = {};
+		_fallbackGlobalBuffer = new VulkanStaticGPUBuffer(this, fallbackGlobalBufferData, fallbackGlobalBufferLength, GPUResource::UsageOptions::Uniform, GPUResource::AccessOptions::WriteOnly);
+
+		Texture::Descriptor fallbackGlobalTextureDescriptor = Texture::Descriptor::With2DTextureAndFormat(Texture::Format::RGBA_8, 1, 1, false);
+		_fallbackGlobalTexture = CreateTextureWithDescriptor(fallbackGlobalTextureDescriptor);
+		uint8 fallbackGlobalTextureData[4] = {};
+		_fallbackGlobalTexture->SetData(0, fallbackGlobalTextureData, 4, 1);
+
 		_internals->descriptorPool.Init(this);
 
 		_internals->stateCoordinator.LoadPipelineCache(Kernel::GetSharedInstance()->GetApplication()->GetBuildNumber(), device, GetAllocatorCallback());
@@ -107,6 +118,9 @@ namespace RN
 	{
 		StopRenderThread();
 		FlushAllDeletedDrawables();
+
+		SafeRelease(_fallbackGlobalTexture);
+		SafeRelease(_fallbackGlobalBuffer);
 
 		while(!_internals->frameResources.empty())
 		{
@@ -2528,6 +2542,21 @@ namespace RN
 			return nullptr;
 		};
 
+		auto getFrameGlobalBuffer = [&](Shader::ArgumentBuffer *argument) -> GPUBuffer * {
+			GPUBuffer *globalBuffer = submission.renderFrame.GetGlobalBuffer(argument->GetNameHash());
+			RN_DEBUG_ASSERT(globalBuffer, "Missing frame global buffer");
+
+			if(globalBuffer)
+			{
+				VulkanGPUBuffer *vulkanBuffer = globalBuffer->Downcast<VulkanGPUBuffer>();
+				RN_DEBUG_ASSERT(vulkanBuffer, "Frame global buffer must be a Vulkan buffer");
+				if(vulkanBuffer)
+					return globalBuffer;
+			}
+
+			return _fallbackGlobalBuffer;
+		};
+
 		auto enumerateGlobalBufferDescriptors = [&](Shader *shader, auto &&callback) {
 			if(!shader || !shader->GetSignature()) return;
 
@@ -2535,11 +2564,7 @@ namespace RN
 				if(argument->GetSource() != Shader::ArgumentBuffer::Source::Frame)
 					return;
 
-				GPUBuffer *globalBuffer = submission.renderFrame.GetGlobalBuffer(argument->GetNameHash());
-				if(globalBuffer)
-				{
-					callback(argument, globalBuffer);
-				}
+				callback(argument, getFrameGlobalBuffer(argument));
 			});
 		};
 
@@ -2876,15 +2901,15 @@ namespace RN
 								{
 									Texture *globalTexture = submission.renderFrame.GetGlobalTexture(argument->GetNameHash());
 									VulkanTexture *vulkanTexture = globalTexture ? globalTexture->Downcast<VulkanTexture>() : nullptr;
+									RN_DEBUG_ASSERT(vulkanTexture, "Missing frame global texture");
 									if(!vulkanTexture)
 									{
-										stop = true;
-										return;
+										vulkanTexture = _fallbackGlobalTexture->Downcast<VulkanTexture>();
 									}
 
 									imageView = vulkanTexture->_imageView;
 
-									if(vulkanTexture->GetDescriptor().usageHint & Texture::UsageHint::RenderTarget)
+									if(globalTexture && (vulkanTexture->GetDescriptor().usageHint & Texture::UsageHint::RenderTarget))
 									{
 										rootRenderPass.renderTargetsUsedInShader.push_back(vulkanTexture);
 									}

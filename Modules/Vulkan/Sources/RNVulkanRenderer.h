@@ -164,6 +164,8 @@ namespace RN
 		RenderPass *_currentMultiviewFallbackRenderPass;
 
 		VulkanDrawable *_defaultPostProcessingDrawable;
+		GPUBuffer *_fallbackGlobalBuffer;
+		Texture *_fallbackGlobalTexture;
 
 		RNDeclareMetaAPI(VulkanRenderer, VKAPI)
 	};
