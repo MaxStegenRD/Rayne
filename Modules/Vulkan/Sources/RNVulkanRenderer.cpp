@@ -2952,6 +2952,12 @@ namespace RN
 									}
 									break;
 								}
+
+								case Shader::ArgumentTexture::Source::SubpassInput:
+								{
+									RN_DEBUG_ASSERT(false, "Subpass input texture argument must be bound through subpass inputs");
+									return;
+								}
 							}
 
 							VkDescriptorImageInfo imageBufferDescriptorInfo = {};

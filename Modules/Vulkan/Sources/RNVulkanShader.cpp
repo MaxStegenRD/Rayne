@@ -233,7 +233,7 @@ namespace RN
 			}
 
 			uint32 binding = reflector.get_decoration(resource.id, spv::DecorationBinding);
-			ArgumentTexture *argumentTexture = new ArgumentTexture(name, binding, materialTextureIndex, ArgumentTexture::Source::Material);
+			ArgumentTexture *argumentTexture = new ArgumentTexture(name, binding, materialTextureIndex, ArgumentTexture::Source::SubpassInput);
 			subpassInputsArray->AddObject(argumentTexture->Autorelease());
 		}
 

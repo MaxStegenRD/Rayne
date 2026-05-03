@@ -288,7 +288,8 @@ namespace RN
 				Material,
 				Frame,
 				DirectionalShadow,
-				Framebuffer
+				Framebuffer,
+				SubpassInput
 			};
 			RNAPI ArgumentTexture(String *name, uint32 index, uint8 materialTextureIndex, Source source);
 			RNAPI ArgumentTexture(const ArgumentTexture *other);

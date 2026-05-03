@@ -134,7 +134,7 @@ namespace RN
 					String *name = RNSTR([[argument name] UTF8String]);
 					uint8 materialTextureIndex = 0;
 					bool isSubpassInput = false;
-					ArgumentTexture::Source textureSource = ArgumentTexture::Source::Material;
+					ArgumentTexture::Source textureSource = ArgumentTexture::Source::SubpassInput;
 					
 					// Metal reports subpass inputs in the same texture argument list.
 					if(name->HasPrefix(RNCSTR("colorInput")))
