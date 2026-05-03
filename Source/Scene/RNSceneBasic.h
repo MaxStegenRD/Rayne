@@ -58,6 +58,12 @@ namespace RN
 		Array *_nodesToRemove;
 		Array *_nodesToAdd;
 
+		bool IsOccluderCacheCandidate(SceneNode *node) const;
+		void AddCachedOccluderNode(SceneNode *node);
+		void RemoveCachedOccluderNode(SceneNode *node);
+
+		std::vector<SceneNode *> _occluderNodes;
+
 		OcclusionCullingParameters _occlusionCullingParameters;
 		size_t _currentFrameCount;
 
@@ -74,6 +80,7 @@ namespace RN
 		float occluderDistance;
 		bool isActiveOccluder;
 		bool isVisibleOccluder;
+		bool isCachedOccluder;
 
 		__RNDeclareMetaInternal(SceneBasicInfo)
 	};
