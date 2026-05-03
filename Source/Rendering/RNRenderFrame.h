@@ -296,6 +296,8 @@ namespace RN
 			_drawItems.clear();
 			_cameraStatistics.clear();
 			_attachmentSnapshots.clear();
+			_globalTextures.clear();
+			_globalBuffers.clear();
 		}
 
 		uint64 GetFrameID() const { return _frameID; }
@@ -359,6 +361,42 @@ namespace RN
 		{
 			auto iterator = _attachmentSnapshots.find(meta);
 			return iterator == _attachmentSnapshots.end() ? nullptr : iterator->second.Get();
+		}
+
+		void SetGlobalTexture(const String *name, Texture *texture)
+		{
+			size_t nameHash = name->GetHash();
+			if(texture) _globalTextures[nameHash] = texture;
+			else _globalTextures.erase(nameHash);
+		}
+
+		Texture *GetGlobalTexture(const String *name) const
+		{
+			return GetGlobalTexture(name->GetHash());
+		}
+
+		Texture *GetGlobalTexture(size_t nameHash) const
+		{
+			auto iterator = _globalTextures.find(nameHash);
+			return iterator == _globalTextures.end() ? nullptr : iterator->second.Get();
+		}
+
+		void SetGlobalBuffer(const String *name, GPUBuffer *buffer)
+		{
+			size_t nameHash = name->GetHash();
+			if(buffer) _globalBuffers[nameHash] = buffer;
+			else _globalBuffers.erase(nameHash);
+		}
+
+		GPUBuffer *GetGlobalBuffer(const String *name) const
+		{
+			return GetGlobalBuffer(name->GetHash());
+		}
+
+		GPUBuffer *GetGlobalBuffer(size_t nameHash) const
+		{
+			auto iterator = _globalBuffers.find(nameHash);
+			return iterator == _globalBuffers.end() ? nullptr : iterator->second.Get();
 		}
 
 		size_t AddPass(const RenderPass::DrawSnapshot &drawSnapshot, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialCacheIdentity, uint64 overrideMaterialSnapshotVersion)
@@ -443,6 +481,8 @@ namespace RN
 		std::vector<DrawItem> _drawItems;
 		std::vector<CameraStatistics> _cameraStatistics;
 		std::unordered_map<MetaClass *, StrongRef<Object>> _attachmentSnapshots;
+		std::unordered_map<size_t, StrongRef<Texture>> _globalTextures;
+		std::unordered_map<size_t, StrongRef<GPUBuffer>> _globalBuffers;
 	};
 } // namespace RN
 
