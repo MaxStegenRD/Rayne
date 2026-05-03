@@ -19,7 +19,7 @@ namespace RN
 	public:
 		struct OcclusionCullingParameters
 		{
-			RNAPI OcclusionCullingParameters(uint16 textureWidth = 40, uint16 textureHeight = 40, size_t maxOccluders = 300, uint16 frameCount = 50, float jitter = 0.15f);
+			RNAPI OcclusionCullingParameters(uint16 textureWidth = 40, uint16 textureHeight = 40, size_t maxOccluders = 150, uint16 frameCount = 50, float jitter = 0.15f);
 
 			uint16 textureWidth;
 			uint16 textureHeight;
