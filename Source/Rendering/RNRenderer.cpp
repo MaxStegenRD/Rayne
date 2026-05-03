@@ -130,6 +130,12 @@ namespace RN
 		_activeRenderFrame->AddAttachmentSnapshot(snapshot);
 	}
 
+	void Renderer::SubmitPassAttachmentSnapshot(size_t passIndex, Object *snapshot)
+	{
+		RN_ASSERT(_activeRenderFrame, "SubmitPassAttachmentSnapshot() called outside render frame submission");
+		_activeRenderFrame->GetPass(passIndex).AddAttachmentSnapshot(snapshot);
+	}
+
 	RenderFrame *Renderer::SetActiveRenderFrame(RenderFrame *frame)
 	{
 		RenderFrame *previousFrame = _activeRenderFrame;

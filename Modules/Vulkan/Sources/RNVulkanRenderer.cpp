@@ -2542,19 +2542,37 @@ namespace RN
 			return nullptr;
 		};
 
-		auto getFrameGlobalBuffer = [&](Shader::ArgumentBuffer *argument) -> GPUBuffer * {
-			GPUBuffer *globalBuffer = submission.renderFrame.GetGlobalBuffer(argument->GetNameHash());
-			RN_DEBUG_ASSERT(globalBuffer, "Missing frame global buffer");
+		auto resolveVulkanBuffer = [&](GPUBuffer *buffer, const char *missingMessage, const char *invalidMessage) -> GPUBuffer * {
+			RN_DEBUG_ASSERT(buffer, missingMessage);
 
-			if(globalBuffer)
+			if(buffer)
 			{
-				VulkanGPUBuffer *vulkanBuffer = globalBuffer->Downcast<VulkanGPUBuffer>();
-				RN_DEBUG_ASSERT(vulkanBuffer, "Frame global buffer must be a Vulkan buffer");
+				VulkanGPUBuffer *vulkanBuffer = buffer->Downcast<VulkanGPUBuffer>();
+				RN_DEBUG_ASSERT(vulkanBuffer, invalidMessage);
 				if(vulkanBuffer)
-					return globalBuffer;
+					return buffer;
 			}
 
 			return _fallbackGlobalBuffer;
+		};
+
+		auto getPassResourceBuffer = [&](const RenderFrame::Pass &framePass, Shader::ArgumentBuffer *argument) -> GPUBuffer * {
+			return resolveVulkanBuffer(framePass.GetPassResourceBuffer(argument->GetNameHash()), "Missing pass resource buffer", "Pass resource buffer must be a Vulkan buffer");
+		};
+
+		auto getFrameGlobalBuffer = [&](Shader::ArgumentBuffer *argument) -> GPUBuffer * {
+			return resolveVulkanBuffer(submission.renderFrame.GetGlobalBuffer(argument->GetNameHash()), "Missing frame global buffer", "Frame global buffer must be a Vulkan buffer");
+		};
+
+		auto enumeratePassBufferDescriptors = [&](const RenderFrame::Pass &framePass, Shader *shader, auto &&callback) {
+			if(!shader || !shader->GetSignature()) return;
+
+			shader->GetSignature()->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *argument, size_t index, bool &stop) {
+				if(argument->GetSource() != Shader::ArgumentBuffer::Source::Pass)
+					return;
+
+				callback(argument, getPassResourceBuffer(framePass, argument));
+			});
 		};
 
 		auto enumerateGlobalBufferDescriptors = [&](Shader *shader, auto &&callback) {
@@ -2565,6 +2583,12 @@ namespace RN
 					return;
 
 				callback(argument, getFrameGlobalBuffer(argument));
+			});
+		};
+
+		auto countPassBufferDescriptors = [&](const RenderFrame::Pass &framePass, Shader *shader) {
+			enumeratePassBufferDescriptors(framePass, shader, [&](Shader::ArgumentBuffer *, GPUBuffer *) {
+				totalConstantBufferCount += 1;
 			});
 		};
 
@@ -2614,6 +2638,8 @@ namespace RN
 				totalConstantBufferCount += uniformState->vertexConstantBuffers.size();
 				totalConstantBufferCount += uniformState->fragmentConstantBuffers.size();
 
+				countPassBufferDescriptors(framePass, pipelineState->descriptor.vertexShader);
+				countPassBufferDescriptors(framePass, pipelineState->descriptor.fragmentShader);
 				countGlobalBufferDescriptors(pipelineState->descriptor.vertexShader);
 				countGlobalBufferDescriptors(pipelineState->descriptor.fragmentShader);
 				countLightClusterBufferDescriptors(pipelineState->descriptor.fragmentShader, lightClusterSnapshot);
@@ -2670,6 +2696,12 @@ namespace RN
 			writeConstantDescriptorSet.descriptorCount = 1;
 
 			writeDescriptorSets.push_back(writeConstantDescriptorSet);
+		};
+
+		auto addPassBufferDescriptors = [&](VkDescriptorSet descriptorSet, const RenderFrame::Pass &framePass, Shader *shader) {
+			enumeratePassBufferDescriptors(framePass, shader, [&](Shader::ArgumentBuffer *argument, GPUBuffer *passBuffer) {
+				addBufferDescriptor(descriptorSet, argument, passBuffer, 0, passBuffer->GetLength());
+			});
 		};
 
 		auto addGlobalBufferDescriptors = [&](VkDescriptorSet descriptorSet, Shader *shader) {
@@ -2831,6 +2863,8 @@ namespace RN
 					const LightManager::DrawSnapshot &lightClusterSnapshot = framePass.GetLightClusterSnapshot();
 					addLightClusterBufferDescriptors(descriptorSet, pipelineState->descriptor.fragmentShader, lightClusterSnapshot);
 
+					addPassBufferDescriptors(descriptorSet, framePass, pipelineState->descriptor.vertexShader);
+					addPassBufferDescriptors(descriptorSet, framePass, pipelineState->descriptor.fragmentShader);
 					addGlobalBufferDescriptors(descriptorSet, pipelineState->descriptor.vertexShader);
 					addGlobalBufferDescriptors(descriptorSet, pipelineState->descriptor.fragmentShader);
 
@@ -2910,6 +2944,25 @@ namespace RN
 									imageView = vulkanTexture->_imageView;
 
 									if(globalTexture && (vulkanTexture->GetDescriptor().usageHint & Texture::UsageHint::RenderTarget))
+									{
+										rootRenderPass.renderTargetsUsedInShader.push_back(vulkanTexture);
+									}
+									break;
+								}
+
+								case Shader::ArgumentTexture::Source::Pass:
+								{
+									Texture *passTexture = framePass.GetPassResourceTexture(argument->GetNameHash());
+									VulkanTexture *vulkanTexture = passTexture ? passTexture->Downcast<VulkanTexture>() : nullptr;
+									RN_DEBUG_ASSERT(vulkanTexture, "Missing pass resource texture");
+									if(!vulkanTexture)
+									{
+										vulkanTexture = _fallbackGlobalTexture->Downcast<VulkanTexture>();
+									}
+
+									imageView = vulkanTexture->_imageView;
+
+									if(passTexture && (vulkanTexture->GetDescriptor().usageHint & Texture::UsageHint::RenderTarget))
 									{
 										rootRenderPass.renderTargetsUsedInShader.push_back(vulkanTexture);
 									}

@@ -1726,6 +1726,25 @@ namespace RN
 				});
 			};
 
+			auto bindRequiredBuffer = [&](Shader::ArgumentBuffer *argument, GPUBuffer *buffer, const char *missingMessage, bool vertexStage) {
+				MetalGPUBuffer *metalBuffer = buffer ? static_cast<MetalGPUBuffer *>(buffer->GetActiveBuffer()) : nullptr;
+				RN_DEBUG_ASSERT(metalBuffer, missingMessage);
+
+				if(vertexStage) [encoder setVertexBuffer:(metalBuffer ? (id<MTLBuffer>)metalBuffer->_buffer : nil) offset:0 atIndex:argument->GetIndex()];
+				else [encoder setFragmentBuffer:(metalBuffer ? (id<MTLBuffer>)metalBuffer->_buffer : nil) offset:0 atIndex:argument->GetIndex()];
+			};
+
+			auto bindPassBuffers = [&](MetalShader *shader, bool vertexStage) {
+				if(!shader || !shader->GetSignature()) return;
+
+				shader->GetSignature()->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *argument, size_t index, bool &stop) {
+					if(argument->GetSource() != Shader::ArgumentBuffer::Source::Pass)
+						return;
+
+					bindRequiredBuffer(argument, framePass.GetPassResourceBuffer(argument->GetNameHash()), "Missing pass resource buffer", vertexStage);
+				});
+			};
+
 			auto bindGlobalBuffers = [&](MetalShader *shader, bool vertexStage) {
 				if(!shader || !shader->GetSignature()) return;
 
@@ -1733,16 +1752,13 @@ namespace RN
 					if(argument->GetSource() != Shader::ArgumentBuffer::Source::Frame || argument->GetSemantic() != Shader::ArgumentBuffer::Semantic::None)
 						return;
 
-					GPUBuffer *globalBuffer = renderFrame.GetGlobalBuffer(argument->GetNameHash());
-					MetalGPUBuffer *metalBuffer = globalBuffer ? static_cast<MetalGPUBuffer *>(globalBuffer->GetActiveBuffer()) : nullptr;
-					RN_DEBUG_ASSERT(metalBuffer, "Missing frame global buffer");
-
-					if(vertexStage) [encoder setVertexBuffer:(metalBuffer ? (id<MTLBuffer>)metalBuffer->_buffer : nil) offset:0 atIndex:argument->GetIndex()];
-					else [encoder setFragmentBuffer:(metalBuffer ? (id<MTLBuffer>)metalBuffer->_buffer : nil) offset:0 atIndex:argument->GetIndex()];
+					bindRequiredBuffer(argument, renderFrame.GetGlobalBuffer(argument->GetNameHash()), "Missing frame global buffer", vertexStage);
 				});
 			};
 
 			bindLightClusterBuffers(metalFragmentShader);
+			bindPassBuffers(metalVertexShader, true);
+			bindPassBuffers(metalFragmentShader, false);
 			bindGlobalBuffers(metalVertexShader, true);
 			bindGlobalBuffers(metalFragmentShader, false);
 		}
@@ -1773,6 +1789,16 @@ namespace RN
 					Texture *globalTexture = renderFrame.GetGlobalTexture(argument->GetNameHash());
 					MetalTexture *metalTexture = globalTexture ? globalTexture->Downcast<MetalTexture>() : nullptr;
 					RN_DEBUG_ASSERT(metalTexture, "Missing frame global texture");
+					if(metalTexture) [encoder setFragmentTexture:(id<MTLTexture>)metalTexture->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
+					else [encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
+					break;
+				}
+
+				case Shader::ArgumentTexture::Source::Pass:
+				{
+					Texture *passTexture = framePass.GetPassResourceTexture(argument->GetNameHash());
+					MetalTexture *metalTexture = passTexture ? passTexture->Downcast<MetalTexture>() : nullptr;
+					RN_DEBUG_ASSERT(metalTexture, "Missing pass resource texture");
 					if(metalTexture) [encoder setFragmentTexture:(id<MTLTexture>)metalTexture->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
 					else [encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
 					break;

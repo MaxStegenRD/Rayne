@@ -253,6 +253,61 @@ namespace RN
 			void SetLightClusterSnapshot(const LightManager::DrawSnapshot &snapshot) { _lightClusterSnapshot = snapshot; }
 			const LightManager::DrawSnapshot &GetLightClusterSnapshot() const { return _lightClusterSnapshot; }
 
+			void AddAttachmentSnapshot(Object *snapshot)
+			{
+				RN_ASSERT(snapshot, "RenderFrame pass attachment snapshot mustn't be NULL");
+				_attachmentSnapshots[snapshot->GetClass()] = snapshot;
+			}
+
+			template<class T>
+			T *GetAttachmentSnapshot() const
+			{
+				auto iterator = _attachmentSnapshots.find(T::GetMetaClass());
+				return iterator == _attachmentSnapshots.end() ? nullptr : iterator->second.Get()->template Downcast<T>();
+			}
+
+			Object *GetAttachmentSnapshot(MetaClass *meta) const
+			{
+				auto iterator = _attachmentSnapshots.find(meta);
+				return iterator == _attachmentSnapshots.end() ? nullptr : iterator->second.Get();
+			}
+
+			void SetPassResourceBuffer(const String *name, GPUBuffer *buffer)
+			{
+				size_t nameHash = name->GetHash();
+				if(buffer) _passResourceBuffers[nameHash] = buffer;
+				else _passResourceBuffers.erase(nameHash);
+			}
+
+			GPUBuffer *GetPassResourceBuffer(const String *name) const
+			{
+				return GetPassResourceBuffer(name->GetHash());
+			}
+
+			GPUBuffer *GetPassResourceBuffer(size_t nameHash) const
+			{
+				auto iterator = _passResourceBuffers.find(nameHash);
+				return iterator == _passResourceBuffers.end() ? nullptr : iterator->second.Get();
+			}
+
+			void SetPassResourceTexture(const String *name, Texture *texture)
+			{
+				size_t nameHash = name->GetHash();
+				if(texture) _passResourceTextures[nameHash] = texture;
+				else _passResourceTextures.erase(nameHash);
+			}
+
+			Texture *GetPassResourceTexture(const String *name) const
+			{
+				return GetPassResourceTexture(name->GetHash());
+			}
+
+			Texture *GetPassResourceTexture(size_t nameHash) const
+			{
+				auto iterator = _passResourceTextures.find(nameHash);
+				return iterator == _passResourceTextures.end() ? nullptr : iterator->second.Get();
+			}
+
 			void SetDirectionalShadowDepthTexture(Texture *texture) { _directionalShadowDepthTexture = texture; }
 			Texture *GetDirectionalShadowDepthTexture() const { return _directionalShadowDepthTexture; }
 			void SetDirectionalShadowMatrices(const std::vector<Matrix> &matrices) { _directionalShadowMatrices = matrices; }
@@ -279,6 +334,9 @@ namespace RN
 			std::vector<PointLight> _pointLights;
 			std::vector<SpotLight> _spotLights;
 			LightManager::DrawSnapshot _lightClusterSnapshot;
+			std::unordered_map<MetaClass *, StrongRef<Object>> _attachmentSnapshots;
+			std::unordered_map<size_t, StrongRef<GPUBuffer>> _passResourceBuffers;
+			std::unordered_map<size_t, StrongRef<Texture>> _passResourceTextures;
 			std::vector<Matrix> _directionalShadowMatrices;
 			Texture *_directionalShadowDepthTexture = nullptr;
 			Vector2 _directionalShadowInfo;

@@ -105,6 +105,7 @@ namespace RN
 		RNAPI void AddAttachment(RendererAttachment *attachment);
 		RNAPI void RemoveAttachment(RendererAttachment *attachment);
 		RNAPI void SubmitAttachmentSnapshot(Object *snapshot);
+		RNAPI void SubmitPassAttachmentSnapshot(size_t passIndex, Object *snapshot);
 		
 		RendererDescriptor *GetDescriptor() const { return _descriptor; }
 		RenderingDevice *GetDevice() const { return _device; }

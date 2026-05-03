@@ -200,6 +200,7 @@ namespace RN
 			enum class Source
 			{
 				Draw,
+				Pass,
 				Frame
 			};
 			RNAPI ArgumentBuffer(String *name, uint32 index, Array *uniformDescriptors, Type type, Source source, size_t maxInstanceCount);
@@ -286,6 +287,7 @@ namespace RN
 			enum class Source
 			{
 				Material,
+				Pass,
 				Frame,
 				DirectionalShadow,
 				Framebuffer,
