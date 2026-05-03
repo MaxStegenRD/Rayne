@@ -290,12 +290,6 @@ namespace RN
 				DirectionalShadow,
 				Framebuffer
 			};
-			enum Index
-			{
-				IndexDirectionalShadowTexture = 255,
-				IndexFramebufferTexture = 254
-			};
-
 			RNAPI ArgumentTexture(String *name, uint32 index, uint8 materialTextureIndex, Source source);
 			RNAPI ArgumentTexture(const ArgumentTexture *other);
 			RNAPI ~ArgumentTexture();
