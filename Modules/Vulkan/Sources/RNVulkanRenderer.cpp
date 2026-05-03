@@ -2532,7 +2532,7 @@ namespace RN
 			if(!shader || !shader->GetSignature()) return;
 
 			shader->GetSignature()->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *argument, size_t index, bool &stop) {
-				if(argument->GetSource() != Shader::ArgumentBuffer::Source::Frame || argument->GetTotalUniformSize() > 0)
+				if(argument->GetSource() != Shader::ArgumentBuffer::Source::Frame)
 					return;
 
 				GPUBuffer *globalBuffer = submission.renderFrame.GetGlobalBuffer(argument->GetNameHash());
@@ -2647,14 +2647,6 @@ namespace RN
 			writeDescriptorSets.push_back(writeConstantDescriptorSet);
 		};
 
-		auto addFrameGlobalBufferDescriptor = [&](VkDescriptorSet descriptorSet, Shader::ArgumentBuffer *argument) {
-			GPUBuffer *globalBuffer = submission.renderFrame.GetGlobalBuffer(argument->GetNameHash());
-			if(globalBuffer)
-			{
-				addBufferDescriptor(descriptorSet, argument, globalBuffer, 0, globalBuffer->GetLength());
-			}
-		};
-
 		auto addGlobalBufferDescriptors = [&](VkDescriptorSet descriptorSet, Shader *shader) {
 			enumerateGlobalBufferDescriptors(shader, [&](Shader::ArgumentBuffer *argument, GPUBuffer *globalBuffer) {
 				addBufferDescriptor(descriptorSet, argument, globalBuffer, 0, globalBuffer->GetLength());
@@ -2765,12 +2757,6 @@ namespace RN
 					for(size_t bufferIndex = 0; bufferIndex < uniformState->vertexConstantBuffers.size(); bufferIndex += 1)
 					{
 						Shader::ArgumentBuffer *argument = uniformState->constantBufferToArgumentMapping[counter++];
-						if(argument->GetSource() == Shader::ArgumentBuffer::Source::Frame)
-						{
-							addFrameGlobalBufferDescriptor(descriptorSet, argument);
-							continue;
-						}
-
 						const size_t maxInstanceCount = argument->GetMaxInstanceCount();
 						const size_t instanceCount = (maxInstanceCount == 0) ? stepSize : std::min(stepSize, maxInstanceCount);
 
@@ -2794,12 +2780,6 @@ namespace RN
 					for(size_t bufferIndex = 0; bufferIndex < uniformState->fragmentConstantBuffers.size(); bufferIndex += 1)
 					{
 						Shader::ArgumentBuffer *argument = uniformState->constantBufferToArgumentMapping[counter++];
-						if(argument->GetSource() == Shader::ArgumentBuffer::Source::Frame)
-						{
-							addFrameGlobalBufferDescriptor(descriptorSet, argument);
-							continue;
-						}
-
 						const size_t maxInstanceCount = argument->GetMaxInstanceCount();
 						const size_t instanceCount = (maxInstanceCount == 0) ? stepSize : std::min(stepSize, maxInstanceCount);
 

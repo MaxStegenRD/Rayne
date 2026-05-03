@@ -124,6 +124,9 @@ namespace RN
 
 			const Shader::Signature *vertexShaderSignature = state->vertexShader->GetSignature();
 			vertexShaderSignature->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *buffer, size_t index, bool &stop){
+				if(buffer->GetSource() != Shader::ArgumentBuffer::Source::Draw)
+					return;
+
 				size_t totalSize = buffer->GetTotalUniformSize();
 				if(totalSize > 0)
 				{
@@ -134,6 +137,9 @@ namespace RN
 
 			const Shader::Signature *fragmentShaderSignature = state->fragmentShader->GetSignature();
 			fragmentShaderSignature->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *buffer, size_t index, bool &stop){
+				if(buffer->GetSource() != Shader::ArgumentBuffer::Source::Draw)
+					return;
+
 				size_t totalSize = buffer->GetTotalUniformSize();
 				if(totalSize > 0)
 				{

@@ -952,6 +952,9 @@ namespace RN
 				state->instanceAttributesBuffer = renderer->GetConstantBufferReference(vulkanShader->_instancingAttributes->GetTotalUniformSize(), vulkanShader->_instancingAttributes->GetIndex(), GPUResource::UsageOptions::Vertex)->Retain();
 			}
 			vertexShader->GetSignature()->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *buffer, size_t index, bool &stop){
+				if(buffer->GetSource() != Shader::ArgumentBuffer::Source::Draw)
+					return;
+
 				size_t totalSize = buffer->GetTotalUniformSize();
 				if(totalSize > 0)
 				{
@@ -964,6 +967,9 @@ namespace RN
 		if(fragmentShader && fragmentShader->GetSignature())
 		{
 			fragmentShader->GetSignature()->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *buffer, size_t index, bool &stop){
+				if(buffer->GetSource() != Shader::ArgumentBuffer::Source::Draw)
+					return;
+
 				size_t totalSize = buffer->GetTotalUniformSize();
 				if(totalSize > 0)
 				{
