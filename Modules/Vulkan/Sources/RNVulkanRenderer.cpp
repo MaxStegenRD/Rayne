@@ -2510,6 +2510,63 @@ namespace RN
 		uint32 totalTextureCount = 0;
 		uint32 totalSubpassInputCount = 0;
 
+		auto getLightClusterBuffer = [](const LightManager::DrawSnapshot &lightClusterSnapshot, Shader::ArgumentBuffer::Semantic semantic) -> GPUBuffer * {
+			switch(semantic)
+			{
+				case Shader::ArgumentBuffer::Semantic::LightClusterPointLights:
+					return lightClusterSnapshot.GetPointLightBuffer();
+				case Shader::ArgumentBuffer::Semantic::LightClusterSpotLights:
+					return lightClusterSnapshot.GetSpotLightBuffer();
+				case Shader::ArgumentBuffer::Semantic::LightClusterRecords:
+					return lightClusterSnapshot.GetClusterRecordsBuffer();
+				case Shader::ArgumentBuffer::Semantic::LightClusterIndices:
+					return lightClusterSnapshot.GetClusterIndexBuffer();
+				case Shader::ArgumentBuffer::Semantic::None:
+					return nullptr;
+			}
+
+			return nullptr;
+		};
+
+		auto enumerateGlobalBufferDescriptors = [&](Shader *shader, auto &&callback) {
+			if(!shader || !shader->GetSignature()) return;
+
+			shader->GetSignature()->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *argument, size_t index, bool &stop) {
+				if(argument->GetSource() != Shader::ArgumentBuffer::Source::Frame || argument->GetTotalUniformSize() > 0)
+					return;
+
+				GPUBuffer *globalBuffer = submission.renderFrame.GetGlobalBuffer(argument->GetNameHash());
+				if(globalBuffer)
+				{
+					callback(argument, globalBuffer);
+				}
+			});
+		};
+
+		auto countGlobalBufferDescriptors = [&](Shader *shader) {
+			enumerateGlobalBufferDescriptors(shader, [&](Shader::ArgumentBuffer *, GPUBuffer *) {
+				totalConstantBufferCount += 1;
+			});
+		};
+
+		auto enumerateLightClusterBufferDescriptors = [&](Shader *shader, const LightManager::DrawSnapshot &lightClusterSnapshot, auto &&callback) {
+			if(!shader || !shader->GetSignature()) return;
+
+			shader->GetSignature()->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *argument, size_t index, bool &stop) {
+				GPUBuffer *lightClusterBuffer = getLightClusterBuffer(lightClusterSnapshot, argument->GetSemantic());
+				if(lightClusterBuffer)
+				{
+					callback(argument, lightClusterBuffer);
+				}
+			});
+		};
+
+		auto countLightClusterBufferDescriptors = [&](Shader *shader, const LightManager::DrawSnapshot &lightClusterSnapshot) {
+			enumerateLightClusterBufferDescriptors(shader, lightClusterSnapshot, [&](Shader::ArgumentBuffer *, GPUBuffer *) {
+				totalConstantBufferCount += 1;
+			});
+		};
+
 		auto accumulateDescriptorCounts = [&](const VulkanRenderPass &renderPass) {
 			RN_DEBUG_ASSERT(renderPass.preparedRenderPassIndex < submission.preparedRenderPasses.size(), "Invalid prepared render pass index");
 			const VulkanPreparedRenderPass &preparedPass = submission.preparedRenderPasses[renderPass.preparedRenderPassIndex];
@@ -2518,7 +2575,7 @@ namespace RN
 				return;
 
 			const RenderFrame::Pass &framePass = submission.renderFrame.GetPass(renderPass.renderFramePassIndex);
-			const bool hasLightClusterSnapshot = framePass.GetLightClusterSnapshot().IsValid();
+			const LightManager::DrawSnapshot &lightClusterSnapshot = framePass.GetLightClusterSnapshot();
 			uint32 stepSize = 0;
 			uint32 stepSizeIndex = 0;
 			for(size_t i = 0; i < drawItems.size(); i += stepSize)
@@ -2532,7 +2589,9 @@ namespace RN
 				totalConstantBufferCount += uniformState->vertexConstantBuffers.size();
 				totalConstantBufferCount += uniformState->fragmentConstantBuffers.size();
 
-				if(hasLightClusterSnapshot) totalConstantBufferCount += 4;
+				countGlobalBufferDescriptors(pipelineState->descriptor.vertexShader);
+				countGlobalBufferDescriptors(pipelineState->descriptor.fragmentShader);
+				countLightClusterBufferDescriptors(pipelineState->descriptor.fragmentShader, lightClusterSnapshot);
 
 				totalTextureCount += pipelineState->rootSignature->textureCount;
 				totalSubpassInputCount += pipelineState->rootSignature->subpassInputCount;
@@ -2561,13 +2620,52 @@ namespace RN
 		}
 
 		std::vector<VkWriteDescriptorSet> writeDescriptorSets;
-		writeDescriptorSets.reserve(totalConstantBufferCount + totalTextureCount);
+		writeDescriptorSets.reserve(totalConstantBufferCount + totalTextureCount + totalSubpassInputCount);
 		std::vector<VkDescriptorBufferInfo> constantBufferDescriptorInfoArray;
 		constantBufferDescriptorInfoArray.reserve(totalConstantBufferCount);
 		std::vector<VkDescriptorImageInfo> imageBufferDescriptorInfoArray;
 		imageBufferDescriptorInfoArray.reserve(totalTextureCount);
 		std::vector<VkDescriptorImageInfo> subpassInputDescriptorInfoArray;
 		subpassInputDescriptorInfoArray.reserve(totalSubpassInputCount);
+
+		auto addBufferDescriptor = [&](VkDescriptorSet descriptorSet, Shader::ArgumentBuffer *argument, GPUBuffer *gpuBuffer, size_t offset, size_t range) {
+			VkDescriptorBufferInfo constantBufferDescriptorInfo = {};
+			constantBufferDescriptorInfo.buffer = gpuBuffer->Downcast<VulkanGPUBuffer>()->GetVulkanBuffer();
+			constantBufferDescriptorInfo.offset = offset;
+			constantBufferDescriptorInfo.range = range;
+			constantBufferDescriptorInfoArray.push_back(constantBufferDescriptorInfo);
+
+			VkWriteDescriptorSet writeConstantDescriptorSet = {};
+			writeConstantDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			writeConstantDescriptorSet.pNext = NULL;
+			writeConstantDescriptorSet.dstSet = descriptorSet;
+			writeConstantDescriptorSet.descriptorType = (argument->GetType() == Shader::ArgumentBuffer::Type::UniformBuffer) ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			writeConstantDescriptorSet.dstBinding = argument->GetIndex();
+			writeConstantDescriptorSet.pBufferInfo = &constantBufferDescriptorInfoArray.back();
+			writeConstantDescriptorSet.descriptorCount = 1;
+
+			writeDescriptorSets.push_back(writeConstantDescriptorSet);
+		};
+
+		auto addFrameGlobalBufferDescriptor = [&](VkDescriptorSet descriptorSet, Shader::ArgumentBuffer *argument) {
+			GPUBuffer *globalBuffer = submission.renderFrame.GetGlobalBuffer(argument->GetNameHash());
+			if(globalBuffer)
+			{
+				addBufferDescriptor(descriptorSet, argument, globalBuffer, 0, globalBuffer->GetLength());
+			}
+		};
+
+		auto addGlobalBufferDescriptors = [&](VkDescriptorSet descriptorSet, Shader *shader) {
+			enumerateGlobalBufferDescriptors(shader, [&](Shader::ArgumentBuffer *argument, GPUBuffer *globalBuffer) {
+				addBufferDescriptor(descriptorSet, argument, globalBuffer, 0, globalBuffer->GetLength());
+			});
+		};
+
+		auto addLightClusterBufferDescriptors = [&](VkDescriptorSet descriptorSet, Shader *shader, const LightManager::DrawSnapshot &lightClusterSnapshot) {
+			enumerateLightClusterBufferDescriptors(shader, lightClusterSnapshot, [&](Shader::ArgumentBuffer *argument, GPUBuffer *lightClusterBuffer) {
+				addBufferDescriptor(descriptorSet, argument, lightClusterBuffer, 0, lightClusterBuffer->GetLength());
+			});
+		};
 
 		auto updateDescriptorSets = [&](const VulkanRenderPass &renderPass, VulkanRenderPass &rootRenderPass) {
 			RN_DEBUG_ASSERT(renderPass.preparedRenderPassIndex < submission.preparedRenderPasses.size(), "Invalid prepared render pass index");
@@ -2667,6 +2765,12 @@ namespace RN
 					for(size_t bufferIndex = 0; bufferIndex < uniformState->vertexConstantBuffers.size(); bufferIndex += 1)
 					{
 						Shader::ArgumentBuffer *argument = uniformState->constantBufferToArgumentMapping[counter++];
+						if(argument->GetSource() == Shader::ArgumentBuffer::Source::Frame)
+						{
+							addFrameGlobalBufferDescriptor(descriptorSet, argument);
+							continue;
+						}
+
 						const size_t maxInstanceCount = argument->GetMaxInstanceCount();
 						const size_t instanceCount = (maxInstanceCount == 0) ? stepSize : std::min(stepSize, maxInstanceCount);
 
@@ -2684,27 +2788,18 @@ namespace RN
 						VulkanDynamicBufferReference *constantBuffer = uniformState->vertexConstantBuffers[bufferIndex];
 
 						GPUBuffer *gpuBuffer = constantBuffer->dynamicBuffer->GetActiveGPUBuffer();
-						VkDescriptorBufferInfo constantBufferDescriptorInfo = {};
-						constantBufferDescriptorInfo.buffer = gpuBuffer->Downcast<VulkanGPUBuffer>()->GetVulkanBuffer();
-						constantBufferDescriptorInfo.offset = constantBuffer->offset;
-						constantBufferDescriptorInfo.range = constantBuffer->size * instanceCount;
-						constantBufferDescriptorInfoArray.push_back(constantBufferDescriptorInfo);
-
-						VkWriteDescriptorSet writeConstantDescriptorSet = {};
-						writeConstantDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-						writeConstantDescriptorSet.pNext = NULL;
-						writeConstantDescriptorSet.dstSet = descriptorSet;
-						writeConstantDescriptorSet.descriptorType = (argument->GetType() == Shader::ArgumentBuffer::Type::UniformBuffer) ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-						writeConstantDescriptorSet.dstBinding = argument->GetIndex();
-						writeConstantDescriptorSet.pBufferInfo = &constantBufferDescriptorInfoArray[constantBufferDescriptorInfoArray.size() - 1];
-						writeConstantDescriptorSet.descriptorCount = 1;
-
-						writeDescriptorSets.push_back(writeConstantDescriptorSet);
+						addBufferDescriptor(descriptorSet, argument, gpuBuffer, constantBuffer->offset, constantBuffer->size * instanceCount);
 					}
 
 					for(size_t bufferIndex = 0; bufferIndex < uniformState->fragmentConstantBuffers.size(); bufferIndex += 1)
 					{
 						Shader::ArgumentBuffer *argument = uniformState->constantBufferToArgumentMapping[counter++];
+						if(argument->GetSource() == Shader::ArgumentBuffer::Source::Frame)
+						{
+							addFrameGlobalBufferDescriptor(descriptorSet, argument);
+							continue;
+						}
+
 						const size_t maxInstanceCount = argument->GetMaxInstanceCount();
 						const size_t instanceCount = (maxInstanceCount == 0) ? stepSize : std::min(stepSize, maxInstanceCount);
 
@@ -2724,108 +2819,15 @@ namespace RN
 						VulkanDynamicBufferReference *constantBuffer = uniformState->fragmentConstantBuffers[bufferIndex];
 
 						GPUBuffer *gpuBuffer = constantBuffer->dynamicBuffer->GetActiveGPUBuffer();
-						VkDescriptorBufferInfo constantBufferDescriptorInfo = {};
-						constantBufferDescriptorInfo.buffer = gpuBuffer->Downcast<VulkanGPUBuffer>()->GetVulkanBuffer();
-						constantBufferDescriptorInfo.offset = constantBuffer->offset;
-						constantBufferDescriptorInfo.range = constantBuffer->size * instanceCount;
-						constantBufferDescriptorInfoArray.push_back(constantBufferDescriptorInfo);
-
-						VkWriteDescriptorSet writeConstantDescriptorSet = {};
-						writeConstantDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-						writeConstantDescriptorSet.pNext = NULL;
-						writeConstantDescriptorSet.dstSet = descriptorSet;
-						writeConstantDescriptorSet.descriptorType = (argument->GetType() == Shader::ArgumentBuffer::Type::UniformBuffer) ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-						writeConstantDescriptorSet.dstBinding = argument->GetIndex();
-						writeConstantDescriptorSet.pBufferInfo = &constantBufferDescriptorInfoArray[constantBufferDescriptorInfoArray.size() - 1];
-						writeConstantDescriptorSet.descriptorCount = 1;
-
-						writeDescriptorSets.push_back(writeConstantDescriptorSet);
+						addBufferDescriptor(descriptorSet, argument, gpuBuffer, constantBuffer->offset, constantBuffer->size * instanceCount);
 					}
 
 					// Bind LightManager buffers by semantic for forward rendering
 					const LightManager::DrawSnapshot &lightClusterSnapshot = framePass.GetLightClusterSnapshot();
-					if(lightClusterSnapshot.IsValid())
-					{
-						const Shader::Signature *signature = pipelineState->descriptor.fragmentShader ? pipelineState->descriptor.fragmentShader->GetSignature() : nullptr;
-						if(signature)
-						{
-							signature->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *argument, size_t index, bool &stop) {
-								VkDescriptorBufferInfo bufferInfo = {};
-								VkWriteDescriptorSet write = {};
-								write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-								write.pNext = NULL;
-								write.dstSet = descriptorSet;
-								write.dstBinding = argument->GetIndex();
-								write.descriptorCount = 1;
+					addLightClusterBufferDescriptors(descriptorSet, pipelineState->descriptor.fragmentShader, lightClusterSnapshot);
 
-								switch(argument->GetSemantic())
-								{
-									case Shader::ArgumentBuffer::Semantic::LightClusterPointLights:
-									{
-										GPUBuffer *pointlightBuffer = lightClusterSnapshot.GetPointLightBuffer();
-										if(pointlightBuffer)
-										{
-											bufferInfo.buffer = pointlightBuffer->Downcast<VulkanGPUBuffer>()->GetVulkanBuffer();
-											bufferInfo.offset = 0;
-											bufferInfo.range = pointlightBuffer->GetLength();
-											constantBufferDescriptorInfoArray.push_back(bufferInfo);
-											write.pBufferInfo = &constantBufferDescriptorInfoArray.back();
-											write.descriptorType = (argument->GetType() == Shader::ArgumentBuffer::Type::UniformBuffer) ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-											writeDescriptorSets.push_back(write);
-										}
-										break;
-									}
-									case Shader::ArgumentBuffer::Semantic::LightClusterSpotLights:
-									{
-										GPUBuffer *spotlightBuffer = lightClusterSnapshot.GetSpotLightBuffer();
-										if(spotlightBuffer)
-										{
-											bufferInfo.buffer = spotlightBuffer->Downcast<VulkanGPUBuffer>()->GetVulkanBuffer();
-											bufferInfo.offset = 0;
-											bufferInfo.range = spotlightBuffer->GetLength();
-											constantBufferDescriptorInfoArray.push_back(bufferInfo);
-											write.pBufferInfo = &constantBufferDescriptorInfoArray.back();
-											write.descriptorType = (argument->GetType() == Shader::ArgumentBuffer::Type::UniformBuffer) ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-											writeDescriptorSets.push_back(write);
-										}
-										break;
-									}
-									case Shader::ArgumentBuffer::Semantic::LightClusterRecords:
-									{
-										GPUBuffer *clusterRecordsBuffer = lightClusterSnapshot.GetClusterRecordsBuffer();
-										if(clusterRecordsBuffer)
-										{
-											bufferInfo.buffer = clusterRecordsBuffer->Downcast<VulkanGPUBuffer>()->GetVulkanBuffer();
-											bufferInfo.offset = 0;
-											bufferInfo.range = clusterRecordsBuffer->GetLength();
-											constantBufferDescriptorInfoArray.push_back(bufferInfo);
-											write.pBufferInfo = &constantBufferDescriptorInfoArray.back();
-											write.descriptorType = (argument->GetType() == Shader::ArgumentBuffer::Type::UniformBuffer) ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-											writeDescriptorSets.push_back(write);
-										}
-										break;
-									}
-									case Shader::ArgumentBuffer::Semantic::LightClusterIndices:
-									{
-										GPUBuffer *clusterIndexBuffer = lightClusterSnapshot.GetClusterIndexBuffer();
-										if(clusterIndexBuffer)
-										{
-											bufferInfo.buffer = clusterIndexBuffer->Downcast<VulkanGPUBuffer>()->GetVulkanBuffer();
-											bufferInfo.offset = 0;
-											bufferInfo.range = clusterIndexBuffer->GetLength();
-											constantBufferDescriptorInfoArray.push_back(bufferInfo);
-											write.pBufferInfo = &constantBufferDescriptorInfoArray.back();
-											write.descriptorType = (argument->GetType() == Shader::ArgumentBuffer::Type::UniformBuffer) ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-											writeDescriptorSets.push_back(write);
-										}
-										break;
-									}
-									default:
-										break;
-								}
-							});
-						}
-					}
+					addGlobalBufferDescriptors(descriptorSet, pipelineState->descriptor.vertexShader);
+					addGlobalBufferDescriptors(descriptorSet, pipelineState->descriptor.fragmentShader);
 
 					//TODO: Support vertex shader textures
 					Shader *fragmentShader = pipelineState->descriptor.fragmentShader;
@@ -2888,52 +2890,87 @@ namespace RN
 						signature->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop) {
 							VkImageView imageView = VK_NULL_HANDLE;
 							Texture *directionalShadowDepthTexture = submission.renderFrame.GetPass(rootRenderPass.renderFramePassIndex).GetDirectionalShadowDepthTexture();
-							if(argument->GetMaterialTextureIndex() == Shader::ArgumentTexture::IndexDirectionalShadowTexture && directionalShadowDepthTexture)
+							switch(argument->GetSource())
 							{
-								const VulkanTexture *materialTexture = directionalShadowDepthTexture->Downcast<VulkanTexture>();
-								imageView = materialTexture->_imageView;
-							}
-							else if(argument->GetMaterialTextureIndex() == Shader::ArgumentTexture::IndexFramebufferTexture)
-							{
-								if(!previousPassColorView)
+								case Shader::ArgumentTexture::Source::Frame:
 								{
-									return;
-								}
-								imageView = previousPassColorView;
-							}
-							else if(!textures || argument->GetMaterialTextureIndex() >= textures->GetCount())
-							{
-								stop = true;
-								return;
-							}
-							else
-							{
-								Object *textureObject = textures->GetObjectAtIndex(argument->GetMaterialTextureIndex());
-
-								VulkanTexture *materialTexture = nullptr;
-								if(textureObject->IsKindOfClass(VulkanTexture::GetMetaClass()))
-								{
-									materialTexture = static_cast<VulkanTexture *>(textureObject);
-								}
-								else
-								{
-									VulkanFramebuffer *framebuffer = static_cast<VulkanFramebuffer *>(textureObject);
-									// Prevent binding the current framebuffer as a sampled texture
-									if(rootFramebuffer && framebuffer == rootFramebuffer)
+									Texture *globalTexture = submission.renderFrame.GetGlobalTexture(argument->GetNameHash());
+									VulkanTexture *vulkanTexture = globalTexture ? globalTexture->Downcast<VulkanTexture>() : nullptr;
+									if(!vulkanTexture)
 									{
-										return; // skip this texture argument
+										stop = true;
+										return;
 									}
-									size_t textureIndex = 0;
-									if(framebuffer->GetSwapChain()) textureIndex = framebuffer->GetSwapChain()->GetFrameIndex();
-									materialTexture = framebuffer->GetColorTexture(textureIndex)->Downcast<VulkanTexture>();
+
+									imageView = vulkanTexture->_imageView;
+
+									if(vulkanTexture->GetDescriptor().usageHint & Texture::UsageHint::RenderTarget)
+									{
+										rootRenderPass.renderTargetsUsedInShader.push_back(vulkanTexture);
+									}
+									break;
 								}
 
-								imageView = materialTexture->_imageView;
-
-								if(materialTexture->GetDescriptor().usageHint & Texture::UsageHint::RenderTarget)
+								case Shader::ArgumentTexture::Source::DirectionalShadow:
 								{
-									//Add render targets to list of textures that needs to be transitioned for this render pass
-									rootRenderPass.renderTargetsUsedInShader.push_back(materialTexture);
+									VulkanTexture *vulkanTexture = directionalShadowDepthTexture ? directionalShadowDepthTexture->Downcast<VulkanTexture>() : nullptr;
+									if(!vulkanTexture)
+									{
+										stop = true;
+										return;
+									}
+
+									imageView = vulkanTexture->_imageView;
+									break;
+								}
+
+								case Shader::ArgumentTexture::Source::Framebuffer:
+								{
+									if(!previousPassColorView)
+									{
+										return;
+									}
+									imageView = previousPassColorView;
+									break;
+								}
+
+								case Shader::ArgumentTexture::Source::Material:
+								{
+									uint8 materialTextureIndex = argument->GetMaterialTextureIndex();
+									if(!textures || materialTextureIndex >= textures->GetCount())
+									{
+										stop = true;
+										return;
+									}
+
+									Object *textureObject = textures->GetObjectAtIndex(materialTextureIndex);
+
+									VulkanTexture *vulkanTexture = nullptr;
+									if(textureObject->IsKindOfClass(VulkanTexture::GetMetaClass()))
+									{
+										vulkanTexture = static_cast<VulkanTexture *>(textureObject);
+									}
+									else
+									{
+										VulkanFramebuffer *framebuffer = static_cast<VulkanFramebuffer *>(textureObject);
+										// Prevent binding the current framebuffer as a sampled texture
+										if(rootFramebuffer && framebuffer == rootFramebuffer)
+										{
+											return; // skip this texture argument
+										}
+										size_t textureIndex = 0;
+										if(framebuffer->GetSwapChain()) textureIndex = framebuffer->GetSwapChain()->GetFrameIndex();
+										vulkanTexture = framebuffer->GetColorTexture(textureIndex)->Downcast<VulkanTexture>();
+									}
+
+									imageView = vulkanTexture->_imageView;
+
+									if(vulkanTexture->GetDescriptor().usageHint & Texture::UsageHint::RenderTarget)
+									{
+										//Add render targets to list of textures that needs to be transitioned for this render pass
+										rootRenderPass.renderTargetsUsedInShader.push_back(vulkanTexture);
+									}
+									break;
 								}
 							}
 
