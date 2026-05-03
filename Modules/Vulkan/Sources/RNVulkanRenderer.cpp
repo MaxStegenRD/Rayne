@@ -2561,7 +2561,7 @@ namespace RN
 			if(!shader || !shader->GetSignature()) return;
 
 			shader->GetSignature()->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *argument, size_t index, bool &stop) {
-				if(argument->GetSource() != Shader::ArgumentBuffer::Source::Frame)
+				if(argument->GetSource() != Shader::ArgumentBuffer::Source::Frame || argument->GetSemantic() != Shader::ArgumentBuffer::Semantic::None)
 					return;
 
 				callback(argument, getFrameGlobalBuffer(argument));
