@@ -29,4 +29,12 @@ namespace RN
 	void SceneAttachment::DidUpdate(float delta)
 	{
 	}
+
+	void SceneAttachment::WillRender(Renderer *renderer)
+	{
+	}
+
+	void SceneAttachment::DidRender(Renderer *renderer)
+	{
+	}
 } // namespace RN

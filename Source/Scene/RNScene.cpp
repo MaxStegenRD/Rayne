@@ -93,9 +93,23 @@ namespace RN
 		}
 	}
 	void Scene::WillRender(Renderer *renderer)
-	{}
+	{
+		if(_attachments)
+		{
+			_attachments->Enumerate<SceneAttachment>([renderer](SceneAttachment *attachment, size_t index, bool &stop) {
+				attachment->WillRender(renderer);
+			});
+		}
+	}
 	void Scene::DidRender(Renderer *renderer)
-	{}
+	{
+		if(_attachments)
+		{
+			_attachments->Enumerate<SceneAttachment>([renderer](SceneAttachment *attachment, size_t index, bool &stop) {
+				attachment->DidRender(renderer);
+			});
+		}
+	}
 
 
 	SceneInfo::SceneInfo(Scene *scene) :

@@ -15,6 +15,7 @@
 namespace RN
 {
 	class Scene;
+	class Renderer;
 	class SceneAttachment : public Object
 	{
 	public:
@@ -30,6 +31,8 @@ namespace RN
 		RNAPI virtual void Update(float delta);
 		RNAPI virtual void WillUpdate(float delta);
 		RNAPI virtual void DidUpdate(float delta);
+		RNAPI virtual void WillRender(Renderer *renderer);
+		RNAPI virtual void DidRender(Renderer *renderer);
 
 	private:
 		Scene *_scene;
