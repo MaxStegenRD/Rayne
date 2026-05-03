@@ -358,7 +358,7 @@ namespace RN
 		T *GetAttachmentSnapshot() const
 		{
 			auto iterator = _attachmentSnapshots.find(T::GetMetaClass());
-			return iterator == _attachmentSnapshots.end() ? nullptr : iterator->second.Get()->Downcast<T>();
+			return iterator == _attachmentSnapshots.end() ? nullptr : iterator->second.Get()->template Downcast<T>();
 		}
 
 		Object *GetAttachmentSnapshot(MetaClass *meta) const
