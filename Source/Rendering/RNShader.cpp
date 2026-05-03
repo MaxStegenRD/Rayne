@@ -557,13 +557,15 @@ namespace RN
 	}
 
 	Shader::Argument::Argument(String *name, uint32 index) :
-		_index(index)
+		_index(index),
+		_nameHash(name ? name->GetHash() : 0)
 	{
 		_name = SafeRetain(name);
 	}
 
 	Shader::Argument::Argument(const Argument *other) :
-		_index(other->_index)
+		_index(other->_index),
+		_nameHash(other->_nameHash)
 	{
 		_name = SafeRetain(other->_name);
 	}
@@ -573,8 +575,8 @@ namespace RN
 		SafeRelease(_name);
 	}
 
-	Shader::ArgumentBuffer::ArgumentBuffer(String *name, uint32 index, Array *uniformDescriptors, Type type, size_t maxInstanceCount) :
-		Argument(name, index), _totalUniformSize(0), _type(type), _semantic(Semantic::None), _maxInstanceCount(maxInstanceCount)
+	Shader::ArgumentBuffer::ArgumentBuffer(String *name, uint32 index, Array *uniformDescriptors, Type type, Source source, size_t maxInstanceCount) :
+		Argument(name, index), _totalUniformSize(0), _type(type), _source(source), _semantic(Semantic::None), _maxInstanceCount(maxInstanceCount)
 	{
 		_uniformDescriptors = SafeRetain(uniformDescriptors);
 
@@ -595,7 +597,7 @@ namespace RN
 	}
 
 	Shader::ArgumentBuffer::ArgumentBuffer(const ArgumentBuffer *other) :
-		Argument(other), _totalUniformSize(other->_totalUniformSize), _type(other->_type)
+		Argument(other), _totalUniformSize(other->_totalUniformSize), _type(other->_type), _source(other->_source), _semantic(other->_semantic), _maxInstanceCount(other->_maxInstanceCount)
 	{
 		_uniformDescriptors = SafeRetain(other->_uniformDescriptors);
 	}
@@ -631,13 +633,13 @@ namespace RN
 		_defaultAnisotropy = anisotropy;
 	}
 
-	Shader::ArgumentTexture::ArgumentTexture(String *name, uint32 index, uint8 materialTextureIndex) :
-		Argument(name, index), _materialTextureIndex(materialTextureIndex)
+	Shader::ArgumentTexture::ArgumentTexture(String *name, uint32 index, uint8 materialTextureIndex, Source source) :
+		Argument(name, index), _materialTextureIndex(materialTextureIndex), _source(source)
 	{
 	}
 
 	Shader::ArgumentTexture::ArgumentTexture(const ArgumentTexture *other) :
-		Argument(other), _materialTextureIndex(other->_materialTextureIndex)
+		Argument(other), _materialTextureIndex(other->_materialTextureIndex), _source(other->_source)
 	{}
 
 	Shader::ArgumentTexture::~ArgumentTexture()

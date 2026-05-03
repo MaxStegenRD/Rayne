@@ -116,13 +116,13 @@ namespace RN
 					if(uniformDescriptors->GetCount() > 0)
 					{
 						//numberOfElements will only be > 0 for per instance data. In this case marking it as storage buffer will make the renderer not limit the number of instances per draw call, as metal can handle this just fine (it's different with vulkan on some mobile hardware!)
-						ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR([[argument name] UTF8String]), static_cast<uint32>([argument index]), uniformDescriptors, numberOfElements > 0? ArgumentBuffer::Type::StorageBuffer : ArgumentBuffer::Type::UniformBuffer, numberOfElements > 0? 0 : 1);
+						ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR([[argument name] UTF8String]), static_cast<uint32>([argument index]), uniformDescriptors, numberOfElements > 0? ArgumentBuffer::Type::StorageBuffer : ArgumentBuffer::Type::UniformBuffer, ArgumentBuffer::Source::Draw, numberOfElements > 0? 0 : 1);
 						buffersArray->AddObject(argumentBuffer->Autorelease());
 					}
 					else
 					{
 						// No reflected members: treat as raw/storage buffer (e.g., ByteAddressBuffer)
-						ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR([[argument name] UTF8String]), static_cast<uint32>([argument index]), uniformDescriptors, ArgumentBuffer::Type::StorageBuffer, 0);
+						ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR([[argument name] UTF8String]), static_cast<uint32>([argument index]), uniformDescriptors, ArgumentBuffer::Type::StorageBuffer, ArgumentBuffer::Source::Frame, 0);
 						buffersArray->AddObject(argumentBuffer->Autorelease());
 					}
 					
@@ -134,35 +134,41 @@ namespace RN
 					String *name = RNSTR([[argument name] UTF8String]);
 					uint8 materialTextureIndex = 0;
 					bool isSubpassInput = false;
+					ArgumentTexture::Source textureSource = ArgumentTexture::Source::Frame;
 					
 					//TODO: Move this into the shader base class
 					if(name->IsEqual(RNCSTR("directionalShadowTexture")))
 					{
 						materialTextureIndex = ArgumentTexture::IndexDirectionalShadowTexture;
+						textureSource = ArgumentTexture::Source::DirectionalShadow;
 					}
 					else if (name->IsEqual(RNCSTR("framebufferTexture")))
 					{
 						materialTextureIndex = ArgumentTexture::IndexFramebufferTexture;
+						textureSource = ArgumentTexture::Source::Framebuffer;
 					}
 					else if(name->HasPrefix(RNCSTR("texture")))
 					{
 						String *indexString = name->GetSubstring(Range(7, name->GetLength() - 7));
 						materialTextureIndex = std::stoi(indexString->GetUTF8String());
+						textureSource = ArgumentTexture::Source::Material;
 					}
 					else if(name->HasPrefix(RNCSTR("colorInput")))
 					{
 						String *indexString = name->GetSubstring(Range(10, name->GetLength() - 10));
 						materialTextureIndex = std::stoi(indexString->GetUTF8String());
 						isSubpassInput = true;
+						textureSource = ArgumentTexture::Source::Material;
 					}
 					else if(name->HasPrefix(RNCSTR("depthInput")))
 					{
 						String *indexString = name->GetSubstring(Range(10, name->GetLength() - 10));
 						materialTextureIndex = std::stoi(indexString->GetUTF8String()) + 128;
 						isSubpassInput = true;
+						textureSource = ArgumentTexture::Source::Material;
 					}
 					
-					ArgumentTexture *argumentTexture = new ArgumentTexture(name, static_cast<uint32>([argument index]), materialTextureIndex);
+					ArgumentTexture *argumentTexture = new ArgumentTexture(name, static_cast<uint32>([argument index]), materialTextureIndex, textureSource);
 					
 					if(isSubpassInput) subpassInputsArray->AddObject(argumentTexture->Autorelease());
 					else texturesArray->AddObject(argumentTexture->Autorelease());

@@ -164,6 +164,7 @@ namespace RN
 		{
 		public:
 			String *GetName() const { return _name; }
+			size_t GetNameHash() const { return _nameHash; }
 			uint32 GetIndex() const { return _index; }
 			void SetIndex(uint32 index) { _index = index; }
 
@@ -174,6 +175,7 @@ namespace RN
 
 			uint32 _index;
 			String *_name;
+			size_t _nameHash;
 
 			__RNDeclareMetaInternal(Argument)
 		};
@@ -195,14 +197,19 @@ namespace RN
 				StorageBuffer,
 				InstanceAttributesBuffer
 			};
-			RNAPI ArgumentBuffer(String *name, uint32 index, Array *uniformDescriptors, Type type, size_t maxInstanceCount);
+			enum class Source
+			{
+				Draw,
+				Frame
+			};
+			RNAPI ArgumentBuffer(String *name, uint32 index, Array *uniformDescriptors, Type type, Source source, size_t maxInstanceCount);
 			RNAPI ArgumentBuffer(const ArgumentBuffer *other);
 			RNAPI ~ArgumentBuffer();
 
 			size_t GetTotalUniformSize() const { return _totalUniformSize; }
 			const Array *GetUniformDescriptors() const { return _uniformDescriptors; }
 			Type GetType() const { return _type; }
-			void SetSemantic(Semantic semantic) { _semantic = semantic; }
+			Source GetSource() const { return _source; }
 			Semantic GetSemantic() const { return _semantic; }
 
 			size_t GetMaxInstanceCount() const { return _maxInstanceCount; }
@@ -211,6 +218,7 @@ namespace RN
 			Array *_uniformDescriptors;
 			size_t _totalUniformSize;
 			Type _type;
+			Source _source;
 			Semantic _semantic;
 
 			size_t _maxInstanceCount; //If this buffer contains per instance uniform data, it just contains an array of a struct, this is the number of elements of that array. 1 otherwise. 0 if this a storage buffer as they don't have any tight size limits and can be indexed more freely.
@@ -275,20 +283,29 @@ namespace RN
 		class ArgumentTexture : public Argument
 		{
 		public:
+			enum class Source
+			{
+				Material,
+				Frame,
+				DirectionalShadow,
+				Framebuffer
+			};
 			enum Index
 			{
 				IndexDirectionalShadowTexture = 255,
 				IndexFramebufferTexture = 254
 			};
 
-			RNAPI ArgumentTexture(String *name, uint32 index, uint8 materialTextureIndex);
+			RNAPI ArgumentTexture(String *name, uint32 index, uint8 materialTextureIndex, Source source);
 			RNAPI ArgumentTexture(const ArgumentTexture *other);
 			RNAPI ~ArgumentTexture();
 
 			uint8 GetMaterialTextureIndex() const { return _materialTextureIndex; }
+			Source GetSource() const { return _source; }
 
 		private:
 			uint8 _materialTextureIndex;
+			Source _source;
 
 			__RNDeclareMetaInternal(ArgumentTexture)
 		};

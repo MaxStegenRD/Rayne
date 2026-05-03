@@ -206,7 +206,7 @@ namespace RN
 
 			if(instanceAttributes->GetCount() > 0)
 			{
-				ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR("_InstanceAttributes_"), 0, instanceAttributes->Autorelease(), ArgumentBuffer::Type::InstanceAttributesBuffer, 0);
+				ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR("_InstanceAttributes_"), 0, instanceAttributes->Autorelease(), ArgumentBuffer::Type::InstanceAttributesBuffer, ArgumentBuffer::Source::Draw, 0);
 				_instancingAttributes = argumentBuffer;
 			}
 			else
@@ -233,7 +233,7 @@ namespace RN
 			}
 
 			uint32 binding = reflector.get_decoration(resource.id, spv::DecorationBinding);
-			ArgumentTexture *argumentTexture = new ArgumentTexture(name, binding, materialTextureIndex);
+			ArgumentTexture *argumentTexture = new ArgumentTexture(name, binding, materialTextureIndex, ArgumentTexture::Source::Material);
 			subpassInputsArray->AddObject(argumentTexture->Autorelease());
 		}
 
@@ -241,24 +241,28 @@ namespace RN
 		{
 			String *name = RNSTR(resource.name);
 			uint8 materialTextureIndex = 0;
+			ArgumentTexture::Source textureSource = ArgumentTexture::Source::Frame;
 
 			//TODO: Move this into the shader base class
 			if(name->IsEqual(RNCSTR("directionalShadowTexture")))
 			{
 				materialTextureIndex = ArgumentTexture::IndexDirectionalShadowTexture;
+				textureSource = ArgumentTexture::Source::DirectionalShadow;
 			}
 			else if (name->IsEqual(RNCSTR("framebufferTexture")))
 			{
 				materialTextureIndex = ArgumentTexture::IndexFramebufferTexture;
+				textureSource = ArgumentTexture::Source::Framebuffer;
 			}
 			else if(name->HasPrefix(RNCSTR("texture")))
 			{
 				String *indexString = name->GetSubstring(Range(7, name->GetLength() - 7));
 				materialTextureIndex = std::stoi(indexString->GetUTF8String());
+				textureSource = ArgumentTexture::Source::Material;
 			}
 
 			uint32 binding = reflector.get_decoration(resource.id, spv::DecorationBinding);
-			ArgumentTexture *argumentTexture = new ArgumentTexture(name, binding, materialTextureIndex);
+			ArgumentTexture *argumentTexture = new ArgumentTexture(name, binding, materialTextureIndex, textureSource);
 			texturesArray->AddObject(argumentTexture->Autorelease());
 		}
 
@@ -385,7 +389,8 @@ namespace RN
 
 			// Always create an argument buffer (even if unstructured/empty like ByteAddressBuffer)
 			uint32 binding = reflector.get_decoration(resource.id, spv::DecorationBinding);
-			ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR(resource.name), binding, uniformDescriptors->Autorelease(), ArgumentBuffer::Type::StorageBuffer, 0);
+			ArgumentBuffer::Source bufferSource = uniformDescriptors->GetCount() > 0 ? ArgumentBuffer::Source::Draw : ArgumentBuffer::Source::Frame;
+			ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR(resource.name), binding, uniformDescriptors->Autorelease(), ArgumentBuffer::Type::StorageBuffer, bufferSource, 0);
 			buffersArray->AddObject(argumentBuffer->Autorelease());
 		}
 
@@ -397,7 +402,7 @@ namespace RN
 			if(resource.name == "type_lightClusterPointLights" || resource.name == "type_lightClusterSpotLights" || resource.name == "type_lightClusterRecords" || resource.name == "type_lightClusterIndices")
 			{
 				uint32 binding = reflector.get_decoration(resource.id, spv::DecorationBinding);
-				ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR(resource.name.substr(5)), binding, uniformDescriptors->Autorelease(), ArgumentBuffer::Type::UniformBuffer, maxInstanceCount);
+				ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR(resource.name.substr(5)), binding, uniformDescriptors->Autorelease(), ArgumentBuffer::Type::UniformBuffer, ArgumentBuffer::Source::Draw, maxInstanceCount);
 				buffersArray->AddObject(argumentBuffer->Autorelease());
 				continue;
 			}
@@ -501,7 +506,7 @@ namespace RN
 			if(uniformDescriptors->GetCount() > 0)
 			{
 				uint32 binding = reflector.get_decoration(resource.id, spv::DecorationBinding);
-				ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR(resource.name), binding, uniformDescriptors->Autorelease(), ArgumentBuffer::Type::UniformBuffer, maxInstanceCount);
+				ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR(resource.name), binding, uniformDescriptors->Autorelease(), ArgumentBuffer::Type::UniformBuffer, ArgumentBuffer::Source::Draw, maxInstanceCount);
 				buffersArray->AddObject(argumentBuffer->Autorelease());
 			}
 			else
