@@ -298,6 +298,10 @@ namespace RN
 			_attachmentSnapshots.clear();
 			_globalTextures.clear();
 			_globalBuffers.clear();
+#if RN_BUILD_DEBUG
+			_globalTextureNames.clear();
+			_globalBufferNames.clear();
+#endif
 		}
 
 		uint64 GetFrameID() const { return _frameID; }
@@ -366,6 +370,9 @@ namespace RN
 		void SetGlobalTexture(const String *name, Texture *texture)
 		{
 			size_t nameHash = name->GetHash();
+#if RN_BUILD_DEBUG
+			SetGlobalResourceName(_globalTextureNames, nameHash, name, texture != nullptr);
+#endif
 			if(texture) _globalTextures[nameHash] = texture;
 			else _globalTextures.erase(nameHash);
 		}
@@ -384,6 +391,9 @@ namespace RN
 		void SetGlobalBuffer(const String *name, GPUBuffer *buffer)
 		{
 			size_t nameHash = name->GetHash();
+#if RN_BUILD_DEBUG
+			SetGlobalResourceName(_globalBufferNames, nameHash, name, buffer != nullptr);
+#endif
 			if(buffer) _globalBuffers[nameHash] = buffer;
 			else _globalBuffers.erase(nameHash);
 		}
@@ -475,6 +485,17 @@ namespace RN
 			}
 		}
 
+#if RN_BUILD_DEBUG
+		void SetGlobalResourceName(std::unordered_map<size_t, StrongRef<String>> &names, size_t nameHash, const String *name, bool hasResource)
+		{
+			auto iterator = names.find(nameHash);
+			RN_DEBUG_ASSERT(iterator == names.end() || iterator->second->IsEqual(name), "RenderFrame global resource names have a hash collision");
+
+			if(hasResource) names[nameHash] = const_cast<String *>(name);
+			else names.erase(nameHash);
+		}
+#endif
+
 		uint64 _frameID = 0;
 		std::vector<StrongRef<RenderFramePresentationState>> _presentationStates;
 		std::deque<Pass> _passes;
@@ -483,6 +504,10 @@ namespace RN
 		std::unordered_map<MetaClass *, StrongRef<Object>> _attachmentSnapshots;
 		std::unordered_map<size_t, StrongRef<Texture>> _globalTextures;
 		std::unordered_map<size_t, StrongRef<GPUBuffer>> _globalBuffers;
+#if RN_BUILD_DEBUG
+		std::unordered_map<size_t, StrongRef<String>> _globalTextureNames;
+		std::unordered_map<size_t, StrongRef<String>> _globalBufferNames;
+#endif
 	};
 } // namespace RN
 
