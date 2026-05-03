@@ -241,25 +241,7 @@ namespace RN
 		{
 			String *name = RNSTR(resource.name);
 			uint8 materialTextureIndex = 0;
-			ArgumentTexture::Source textureSource = ArgumentTexture::Source::Frame;
-
-			//TODO: Move this into the shader base class
-			if(name->IsEqual(RNCSTR("directionalShadowTexture")))
-			{
-				materialTextureIndex = ArgumentTexture::IndexDirectionalShadowTexture;
-				textureSource = ArgumentTexture::Source::DirectionalShadow;
-			}
-			else if (name->IsEqual(RNCSTR("framebufferTexture")))
-			{
-				materialTextureIndex = ArgumentTexture::IndexFramebufferTexture;
-				textureSource = ArgumentTexture::Source::Framebuffer;
-			}
-			else if(name->HasPrefix(RNCSTR("texture")))
-			{
-				String *indexString = name->GetSubstring(Range(7, name->GetLength() - 7));
-				materialTextureIndex = std::stoi(indexString->GetUTF8String());
-				textureSource = ArgumentTexture::Source::Material;
-			}
+			ArgumentTexture::Source textureSource = ArgumentTexture::GetSourceForName(name, materialTextureIndex);
 
 			uint32 binding = reflector.get_decoration(resource.id, spv::DecorationBinding);
 			ArgumentTexture *argumentTexture = new ArgumentTexture(name, binding, materialTextureIndex, textureSource);

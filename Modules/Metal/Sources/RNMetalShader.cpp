@@ -134,38 +134,24 @@ namespace RN
 					String *name = RNSTR([[argument name] UTF8String]);
 					uint8 materialTextureIndex = 0;
 					bool isSubpassInput = false;
-					ArgumentTexture::Source textureSource = ArgumentTexture::Source::Frame;
+					ArgumentTexture::Source textureSource = ArgumentTexture::Source::Material;
 					
-					//TODO: Move this into the shader base class
-					if(name->IsEqual(RNCSTR("directionalShadowTexture")))
-					{
-						materialTextureIndex = ArgumentTexture::IndexDirectionalShadowTexture;
-						textureSource = ArgumentTexture::Source::DirectionalShadow;
-					}
-					else if (name->IsEqual(RNCSTR("framebufferTexture")))
-					{
-						materialTextureIndex = ArgumentTexture::IndexFramebufferTexture;
-						textureSource = ArgumentTexture::Source::Framebuffer;
-					}
-					else if(name->HasPrefix(RNCSTR("texture")))
-					{
-						String *indexString = name->GetSubstring(Range(7, name->GetLength() - 7));
-						materialTextureIndex = std::stoi(indexString->GetUTF8String());
-						textureSource = ArgumentTexture::Source::Material;
-					}
-					else if(name->HasPrefix(RNCSTR("colorInput")))
+					// Metal reports subpass inputs in the same texture argument list.
+					if(name->HasPrefix(RNCSTR("colorInput")))
 					{
 						String *indexString = name->GetSubstring(Range(10, name->GetLength() - 10));
 						materialTextureIndex = std::stoi(indexString->GetUTF8String());
 						isSubpassInput = true;
-						textureSource = ArgumentTexture::Source::Material;
 					}
 					else if(name->HasPrefix(RNCSTR("depthInput")))
 					{
 						String *indexString = name->GetSubstring(Range(10, name->GetLength() - 10));
 						materialTextureIndex = std::stoi(indexString->GetUTF8String()) + 128;
 						isSubpassInput = true;
-						textureSource = ArgumentTexture::Source::Material;
+					}
+					else
+					{
+						textureSource = ArgumentTexture::GetSourceForName(name, materialTextureIndex);
 					}
 					
 					ArgumentTexture *argumentTexture = new ArgumentTexture(name, static_cast<uint32>([argument index]), materialTextureIndex, textureSource);

@@ -646,6 +646,30 @@ namespace RN
 	{
 	}
 
+	Shader::ArgumentTexture::Source Shader::ArgumentTexture::GetSourceForName(const String *name, uint8 &materialTextureIndex)
+	{
+		materialTextureIndex = 0;
+
+		if(name->IsEqual(RNCSTR("directionalShadowTexture")))
+		{
+			materialTextureIndex = IndexDirectionalShadowTexture;
+			return Source::DirectionalShadow;
+		}
+		if(name->IsEqual(RNCSTR("framebufferTexture")))
+		{
+			materialTextureIndex = IndexFramebufferTexture;
+			return Source::Framebuffer;
+		}
+		if(name->HasPrefix(RNCSTR("texture")))
+		{
+			String *indexString = name->GetSubstring(Range(7, name->GetLength() - 7));
+			materialTextureIndex = std::stoi(indexString->GetUTF8String());
+			return Source::Material;
+		}
+
+		return Source::Frame;
+	}
+
 
 	Shader::Signature::Signature(Array *buffers, Array *samplers, Array *textures, Array *subpassInputs)
 	{

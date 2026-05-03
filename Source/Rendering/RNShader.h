@@ -300,6 +300,8 @@ namespace RN
 			RNAPI ArgumentTexture(const ArgumentTexture *other);
 			RNAPI ~ArgumentTexture();
 
+			RNAPI static Source GetSourceForName(const String *name, uint8 &materialTextureIndex);
+
 			uint8 GetMaterialTextureIndex() const { return _materialTextureIndex; }
 			Source GetSource() const { return _source; }
 
