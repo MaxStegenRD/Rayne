@@ -417,7 +417,7 @@ namespace RN
 						counter += 1;
 					}
 
-					RenderDrawable(baseDrawItem, stepSize, renderPass, framePass);
+					RenderDrawable(baseDrawItem, stepSize, renderPass, submission.renderFrame, framePass);
 				}
 			}
 
@@ -460,7 +460,7 @@ namespace RN
 					const MetalPreparedRenderPass &preparedPass = submission.preparedRenderPasses[renderPass.preparedRenderPassIndex];
 					RN_DEBUG_ASSERT(!preparedPass.drawItems.empty(), "Convert render pass requires a prepared draw item");
 					const RenderFrame::Pass &framePass = submission.renderFrame.GetPass(renderPass.renderFramePassIndex);
-					RenderDrawable(preparedPass.drawItems[0], 1, renderPass, framePass);
+					RenderDrawable(preparedPass.drawItems[0], 1, renderPass, submission.renderFrame, framePass);
 					break;
 				}
 
@@ -1637,7 +1637,7 @@ namespace RN
 		}
 	}
 
-	void MetalRenderer::RenderDrawable(const MetalPreparedDrawItem &preparedDrawItem, uint32 instanceCount, const MetalRenderPass &renderPass, const RenderFrame::Pass &framePass)
+	void MetalRenderer::RenderDrawable(const MetalPreparedDrawItem &preparedDrawItem, uint32 instanceCount, const MetalRenderPass &renderPass, const RenderFrame &renderFrame, const RenderFrame::Pass &framePass)
 	{
 		RN_PROFILE_SCOPE();
 		const RenderFrame::DrawItem &drawItem = *preparedDrawItem.drawItem;
@@ -1689,106 +1689,138 @@ namespace RN
 				[encoder setFragmentBuffer:(id <MTLBuffer>)buffer->_buffer offset:uniformBufferReference->offset atIndex:uniformBufferReference->shaderResourceIndex];
 			}
 
-			// Bind LightManager buffers (reflected) by semantic
 			const LightManager::DrawSnapshot &lightClusterSnapshot = framePass.GetLightClusterSnapshot();
-			if(renderPass.shaderHint == Shader::UsageHint::Default && metalFragmentShader && lightClusterSnapshot.IsValid())
-			{
-				metalFragmentShader->GetSignature()->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *arg, size_t index, bool &stop) {
-					uint32 bindIndex = arg->GetIndex();
-					switch(arg->GetSemantic())
-					{
-						case Shader::ArgumentBuffer::Semantic::LightClusterPointLights:
-						{
-							GPUBuffer *pl = lightClusterSnapshot.GetPointLightBuffer();
-							if(pl) [encoder setFragmentBuffer:(id<MTLBuffer>)static_cast<MetalGPUBuffer *>(pl)->_buffer offset:0 atIndex:bindIndex];
-							break;
-						}
-						case Shader::ArgumentBuffer::Semantic::LightClusterSpotLights:
-						{
-							GPUBuffer *sl = lightClusterSnapshot.GetSpotLightBuffer();
-							if(sl) [encoder setFragmentBuffer:(id<MTLBuffer>)static_cast<MetalGPUBuffer *>(sl)->_buffer offset:0 atIndex:bindIndex];
-							break;
-						}
-						case Shader::ArgumentBuffer::Semantic::LightClusterRecords:
-						{
-							GPUBuffer *cr = lightClusterSnapshot.GetClusterRecordsBuffer();
-							if(cr) [encoder setFragmentBuffer:(id<MTLBuffer>)static_cast<MetalGPUBuffer *>(cr)->_buffer offset:0 atIndex:bindIndex];
-							break;
-						}
-						case Shader::ArgumentBuffer::Semantic::LightClusterIndices:
-						{
-							GPUBuffer *ci = lightClusterSnapshot.GetClusterIndexBuffer();
-							if(ci) [encoder setFragmentBuffer:(id<MTLBuffer>)static_cast<MetalGPUBuffer *>(ci)->_buffer offset:0 atIndex:bindIndex];
-							break;
-						}
-						default: break;
-					}
+
+			auto getLightClusterBuffer = [](const LightManager::DrawSnapshot &lightClusterSnapshot, Shader::ArgumentBuffer::Semantic semantic) -> GPUBuffer * {
+				switch(semantic)
+				{
+					case Shader::ArgumentBuffer::Semantic::LightClusterPointLights:
+						return lightClusterSnapshot.GetPointLightBuffer();
+					case Shader::ArgumentBuffer::Semantic::LightClusterSpotLights:
+						return lightClusterSnapshot.GetSpotLightBuffer();
+					case Shader::ArgumentBuffer::Semantic::LightClusterRecords:
+						return lightClusterSnapshot.GetClusterRecordsBuffer();
+					case Shader::ArgumentBuffer::Semantic::LightClusterIndices:
+						return lightClusterSnapshot.GetClusterIndexBuffer();
+					case Shader::ArgumentBuffer::Semantic::None:
+						return nullptr;
+				}
+
+				return nullptr;
+			};
+
+			auto bindBuffer = [&](Shader::ArgumentBuffer *argument, GPUBuffer *buffer, bool vertexStage) {
+				if(!buffer)
+					return;
+
+				MetalGPUBuffer *metalBuffer = static_cast<MetalGPUBuffer *>(buffer->GetActiveBuffer());
+				if(vertexStage) [encoder setVertexBuffer:(id<MTLBuffer>)metalBuffer->_buffer offset:0 atIndex:argument->GetIndex()];
+				else [encoder setFragmentBuffer:(id<MTLBuffer>)metalBuffer->_buffer offset:0 atIndex:argument->GetIndex()];
+			};
+
+			auto bindLightClusterBuffers = [&](MetalShader *shader) {
+				if(!shader || !shader->GetSignature()) return;
+
+				shader->GetSignature()->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *argument, size_t index, bool &stop) {
+					bindBuffer(argument, getLightClusterBuffer(lightClusterSnapshot, argument->GetSemantic()), false);
 				});
-			}
+			};
+
+			auto bindGlobalBuffers = [&](MetalShader *shader, bool vertexStage) {
+				if(!shader || !shader->GetSignature()) return;
+
+				shader->GetSignature()->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *argument, size_t index, bool &stop) {
+					if(argument->GetSource() != Shader::ArgumentBuffer::Source::Frame)
+						return;
+
+					bindBuffer(argument, renderFrame.GetGlobalBuffer(argument->GetNameHash()), vertexStage);
+				});
+			};
+
+			bindLightClusterBuffers(metalFragmentShader);
+			bindGlobalBuffers(metalVertexShader, true);
+			bindGlobalBuffers(metalFragmentShader, false);
 		}
 
 		// Set textures
 		//TODO: Support vertex shader textures
 		const Array *textures = renderResources.mergedMaterialSnapshot.GetTextures();
 		metalFragmentShader->GetSignature()->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop){
-			if(argument->GetMaterialTextureIndex() == Shader::ArgumentTexture::IndexDirectionalShadowTexture)
+			switch(argument->GetSource())
 			{
-				Texture *directionalShadowDepthTexture = framePass.GetDirectionalShadowDepthTexture();
-				if(directionalShadowDepthTexture)
+				case Shader::ArgumentTexture::Source::DirectionalShadow:
 				{
-					MetalTexture *metalTexture = directionalShadowDepthTexture->Downcast<MetalTexture>();
-					[encoder setFragmentTexture:(id<MTLTexture>)metalTexture->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
-				}
-				else
-				{
-					[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
-				}
-			}
-			else if(argument->GetMaterialTextureIndex() == Shader::ArgumentTexture::IndexFramebufferTexture)
-			{
-				MetalFramebuffer *previousFramebuffer = renderPass.previousStoredFramebuffer;
-				if(previousFramebuffer)
-				{
-					MetalSwapChain *swapChain = previousFramebuffer->GetSwapChain();
-					if(swapChain)
+					Texture *directionalShadowDepthTexture = framePass.GetDirectionalShadowDepthTexture();
+					if(directionalShadowDepthTexture)
 					{
-						[encoder setFragmentTexture:swapChain->GetMetalColorTexture() atIndex:argument->GetIndex()];
+						MetalTexture *metalTexture = directionalShadowDepthTexture->Downcast<MetalTexture>();
+						[encoder setFragmentTexture:(id<MTLTexture>)metalTexture->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
 					}
 					else
 					{
-						MetalTexture *colorBuffer = previousFramebuffer->GetColorTexture()->Downcast<MetalTexture>();
-						[encoder setFragmentTexture:(id<MTLTexture>)colorBuffer->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
+						[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
 					}
+					break;
 				}
-				else
-				{
-					[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
-				}
-			}
-			else
-			{
-				uint8 materialTextureIndex = argument->GetMaterialTextureIndex();
-				if(textures && materialTextureIndex < textures->GetCount())
-				{
-					Object *textureObject = textures->GetObjectAtIndex(argument->GetMaterialTextureIndex());
 
-					id<MTLTexture> texture = nullptr;
-					if(textureObject->IsKindOfClass(MetalTexture::GetMetaClass()))
+				case Shader::ArgumentTexture::Source::Frame:
+				{
+					Texture *globalTexture = renderFrame.GetGlobalTexture(argument->GetNameHash());
+					MetalTexture *metalTexture = globalTexture ? globalTexture->Downcast<MetalTexture>() : nullptr;
+					if(metalTexture) [encoder setFragmentTexture:(id<MTLTexture>)metalTexture->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
+					else [encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
+					break;
+				}
+
+				case Shader::ArgumentTexture::Source::Framebuffer:
+				{
+					MetalFramebuffer *previousFramebuffer = renderPass.previousStoredFramebuffer;
+					if(previousFramebuffer)
 					{
-						texture = (id<MTLTexture>)static_cast<MetalTexture*>(textureObject)->__GetUnderlyingTexture();
+						MetalSwapChain *swapChain = previousFramebuffer->GetSwapChain();
+						if(swapChain)
+						{
+							[encoder setFragmentTexture:swapChain->GetMetalColorTexture() atIndex:argument->GetIndex()];
+						}
+						else
+						{
+							MetalTexture *colorBuffer = previousFramebuffer->GetColorTexture()->Downcast<MetalTexture>();
+							[encoder setFragmentTexture:(id<MTLTexture>)colorBuffer->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
+						}
 					}
 					else
 					{
-						MetalFramebuffer *framebuffer = static_cast<MetalFramebuffer*>(textureObject);
-						if(framebuffer->GetSwapChain()) texture = framebuffer->GetSwapChain()->GetMetalColorTexture();
-						else texture = (id<MTLTexture>)framebuffer->GetColorTexture()->Downcast<MetalTexture>()->__GetUnderlyingTexture();
+						[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
 					}
-
-					[encoder setFragmentTexture:texture atIndex:argument->GetIndex()];
+					break;
 				}
-				else
+
+				case Shader::ArgumentTexture::Source::Material:
 				{
-					[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
+					uint8 materialTextureIndex = argument->GetMaterialTextureIndex();
+					if(textures && materialTextureIndex < textures->GetCount())
+					{
+						Object *textureObject = textures->GetObjectAtIndex(materialTextureIndex);
+
+						id<MTLTexture> texture = nullptr;
+						if(textureObject->IsKindOfClass(MetalTexture::GetMetaClass()))
+						{
+							texture = (id<MTLTexture>)static_cast<MetalTexture*>(textureObject)->__GetUnderlyingTexture();
+						}
+						else
+						{
+							MetalFramebuffer *framebuffer = static_cast<MetalFramebuffer*>(textureObject);
+							if(framebuffer->GetSwapChain()) texture = framebuffer->GetSwapChain()->GetMetalColorTexture();
+							else texture = (id<MTLTexture>)framebuffer->GetColorTexture()->Downcast<MetalTexture>()->__GetUnderlyingTexture();
+						}
+
+						[encoder setFragmentTexture:texture atIndex:argument->GetIndex()];
+					}
+					else
+					{
+						[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
+					}
+					break;
 				}
 			}
 		});
