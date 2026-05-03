@@ -956,7 +956,7 @@ namespace RN
 				if(totalSize > 0)
 				{
 					state->constantBufferToArgumentMapping.push_back(buffer->Retain());
-					state->vertexConstantBuffers.push_back(renderer->GetConstantBufferReference(buffer->GetTotalUniformSize(), buffer->GetIndex())->Retain());
+					state->vertexConstantBuffers.push_back(renderer->GetConstantBufferReference(totalSize, buffer->GetIndex())->Retain());
 				}
 			});
 		}
@@ -968,7 +968,7 @@ namespace RN
 				if(totalSize > 0)
 				{
 					state->constantBufferToArgumentMapping.push_back(buffer->Retain());
-					state->fragmentConstantBuffers.push_back(renderer->GetConstantBufferReference(buffer->GetTotalUniformSize(), buffer->GetIndex())->Retain());
+					state->fragmentConstantBuffers.push_back(renderer->GetConstantBufferReference(totalSize, buffer->GetIndex())->Retain());
 				}
 			});
 		}
