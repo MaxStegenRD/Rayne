@@ -569,6 +569,10 @@ namespace RN
 
 		//SubmitCamera is called for each camera and creates draw items per camera
 		BeginRenderFrameSubmission(submission.renderFrame);
+		RenderFrame *previousRenderFrame = SetActiveRenderFrame(&submission.renderFrame);
+		ScopeGuard activeRenderFrameGuard([this, previousRenderFrame]() {
+			SetActiveRenderFrame(previousRenderFrame);
+		});
 		VulkanFrameSubmission *previousSubmission = _activeFrameSubmission;
 		_activeFrameSubmission = &submission;
 		function();
@@ -2243,6 +2247,7 @@ namespace RN
 			return false; //Don't submit a new frame if there are already 5 frames in flight
 		}
 
+		PrepareRendererAttachments(submission.renderFrame);
 		CreateMipMaps();
 		SubmitPendingResourceCommandBuffers();
 

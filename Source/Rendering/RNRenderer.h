@@ -39,6 +39,18 @@ namespace RN
 	class RendererDescriptor;
 	class RenderingDevice;
 	class Light;
+	class Renderer;
+	class RendererAttachment : public Object
+	{
+	public:
+		RNAPI virtual void PrepareRenderFrame(Renderer *renderer, RenderFrame &frame);
+
+	protected:
+		RNAPI RendererAttachment();
+		RNAPI ~RendererAttachment() override;
+
+		__RNDeclareMetaInternal(RendererAttachment)
+	};
 
 	class Renderer : public Object
 	{
@@ -89,6 +101,10 @@ namespace RN
 		RNAPI virtual void WarmupDrawable(Mesh *mesh, Material *material, Camera *camera); //If the renderer supports it, this will create the necessary render pipeline state or similar to speed things up when actually rendering the first time
 
 		RNAPI virtual void SubmitLight(const Light *light) = 0;
+
+		RNAPI void AddAttachment(RendererAttachment *attachment);
+		RNAPI void RemoveAttachment(RendererAttachment *attachment);
+		RNAPI void SubmitAttachmentSnapshot(Object *snapshot);
 		
 		RendererDescriptor *GetDescriptor() const { return _descriptor; }
 		RenderingDevice *GetDevice() const { return _device; }
@@ -97,6 +113,8 @@ namespace RN
 		RNAPI Renderer(RendererDescriptor *descriptor, RenderingDevice *device);
 		RNAPI void BeginRenderFrameSubmission(RenderFrame &frame);
 		RNAPI void FinishRenderFrameSubmission(const RenderFrame &frame);
+		RNAPI RenderFrame *SetActiveRenderFrame(RenderFrame *frame);
+		RNAPI void PrepareRendererAttachments(RenderFrame &frame);
 		RNAPI void QueueDrawableDeletion(Drawable *drawable);
 		RNAPI void FlushAllDeletedDrawables();
 		RNAPI void PrintFrameStatistics(const RenderFrame &frame, float interval = RN_RENDERING_FRAME_STATISTICS_INTERVAL);
@@ -119,7 +137,10 @@ namespace RN
 		size_t _lastRenderFrameDrawItemCount;
 		std::vector<DeletedDrawable> _pendingDeletedDrawables;
 		std::vector<Drawable *> _drawablesPendingSnapshotDrain;
+		std::vector<StrongRef<RendererAttachment>> _rendererAttachments;
+		RenderFrame *_activeRenderFrame;
 		Lockable _frameLifecycleLock;
+		Lockable _rendererAttachmentsLock;
 
 		RenderingDevice *_device;
 		RendererDescriptor *_descriptor;

@@ -10,8 +10,10 @@
 #define __RAYNE_RENDERFRAME_H__
 
 #include "RNDrawable.h"
+#include "RNGPUBuffer.h"
 #include "RNRenderingConfig.h"
 #include "RNRenderPass.h"
+#include "RNTexture.h"
 #include "../Objects/RNObject.h"
 #include "../Scene/RNCamera.h"
 #include "../Scene/RNLight.h"
@@ -19,8 +21,6 @@
 
 namespace RN
 {
-	class Texture;
-
 	class RenderFramePresentationState : public Object
 	{
 	public:
@@ -190,11 +190,12 @@ namespace RN
 		class DrawItem
 		{
 		public:
-			DrawItem(Drawable *sourceDrawable, const Drawable::DrawSnapshotBundle &drawSnapshot, const Matrix &modelMatrix, const Matrix &inverseModelMatrix) :
+			DrawItem(Drawable *sourceDrawable, const Drawable::DrawSnapshotBundle &drawSnapshot, const Matrix &modelMatrix, const Matrix &inverseModelMatrix, uint64 sourceNodeUID) :
 				_sourceDrawable(sourceDrawable),
 				_drawSnapshot(drawSnapshot),
 				_modelMatrix(modelMatrix),
-				_inverseModelMatrix(inverseModelMatrix)
+				_inverseModelMatrix(inverseModelMatrix),
+				_sourceNodeUID(sourceNodeUID)
 			{
 				sourceDrawable->GetMeshBufferSnapshot(_meshBuffers);
 			}
@@ -206,6 +207,7 @@ namespace RN
 			const Skeleton::DrawSnapshot &GetSkeleton() const { return _drawSnapshot.GetSkeleton(); }
 			const Matrix &GetModelMatrix() const { return _modelMatrix; }
 			const Matrix &GetInverseModelMatrix() const { return _inverseModelMatrix; }
+			uint64 GetSourceNodeUID() const { return _sourceNodeUID; }
 			uint64 GetMaterialSnapshotVersion() const { return _drawSnapshot.GetMaterialSnapshotVersion(); }
 			bool CanInstanceWith(const DrawItem &other) const { return GetMesh().CanInstanceWith(other.GetMesh()) && _meshBuffers.CanInstanceWith(other._meshBuffers); }
 
@@ -215,6 +217,7 @@ namespace RN
 			Mesh::BufferSnapshot _meshBuffers;
 			Matrix _modelMatrix;
 			Matrix _inverseModelMatrix;
+			uint64 _sourceNodeUID;
 		};
 
 		class Pass
@@ -283,6 +286,7 @@ namespace RN
 
 		static constexpr size_t InvalidPassIndex = static_cast<size_t>(-1);
 		static constexpr size_t InvalidDrawItemIndex = static_cast<size_t>(-1);
+		static constexpr uint64 InvalidSourceNodeUID = static_cast<uint64>(-1);
 
 		void Clear()
 		{
@@ -291,6 +295,7 @@ namespace RN
 			_passes.clear();
 			_drawItems.clear();
 			_cameraStatistics.clear();
+			_attachmentSnapshots.clear();
 		}
 
 		uint64 GetFrameID() const { return _frameID; }
@@ -337,6 +342,25 @@ namespace RN
 			CancelPresentationStatesOnRenderThread(_presentationStates.size());
 		}
 
+		void AddAttachmentSnapshot(Object *snapshot)
+		{
+			RN_ASSERT(snapshot, "RenderFrame attachment snapshot mustn't be NULL");
+			_attachmentSnapshots[snapshot->GetClass()] = snapshot;
+		}
+
+		template<class T>
+		T *GetAttachmentSnapshot() const
+		{
+			auto iterator = _attachmentSnapshots.find(T::GetMetaClass());
+			return iterator == _attachmentSnapshots.end() ? nullptr : iterator->second.Get()->Downcast<T>();
+		}
+
+		Object *GetAttachmentSnapshot(MetaClass *meta) const
+		{
+			auto iterator = _attachmentSnapshots.find(meta);
+			return iterator == _attachmentSnapshots.end() ? nullptr : iterator->second.Get();
+		}
+
 		size_t AddPass(const RenderPass::DrawSnapshot &drawSnapshot, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialCacheIdentity, uint64 overrideMaterialSnapshotVersion)
 		{
 			_passes.emplace_back(drawSnapshot, overrideMaterialSnapshot, overrideMaterialCacheIdentity, overrideMaterialSnapshotVersion);
@@ -353,7 +377,7 @@ namespace RN
 
 			sourceDrawable->UpdateTransform(node);
 			Drawable::DrawSnapshotBundle drawSnapshot = sourceDrawable->GetDrawSnapshotBundleForFrame(_frameID);
-			_drawItems.emplace_back(sourceDrawable, drawSnapshot, sourceDrawable->GetModelMatrix(), sourceDrawable->GetInverseModelMatrix());
+			_drawItems.emplace_back(sourceDrawable, drawSnapshot, sourceDrawable->GetModelMatrix(), sourceDrawable->GetInverseModelMatrix(), node ? node->GetUID() : InvalidSourceNodeUID);
 			return _drawItems.size() - 1;
 		}
 
@@ -418,6 +442,7 @@ namespace RN
 		std::deque<Pass> _passes;
 		std::vector<DrawItem> _drawItems;
 		std::vector<CameraStatistics> _cameraStatistics;
+		std::unordered_map<MetaClass *, StrongRef<Object>> _attachmentSnapshots;
 	};
 } // namespace RN
 

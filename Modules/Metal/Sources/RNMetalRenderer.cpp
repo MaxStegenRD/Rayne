@@ -293,6 +293,10 @@ namespace RN
 
 		//Submit camera is called for each camera and creates draw items per camera
 		BeginRenderFrameSubmission(submission.renderFrame);
+		RenderFrame *previousRenderFrame = SetActiveRenderFrame(&submission.renderFrame);
+		ScopeGuard activeRenderFrameGuard([this, previousRenderFrame]() {
+			SetActiveRenderFrame(previousRenderFrame);
+		});
 		MetalFrameSubmission *previousSubmission = _activeFrameSubmission;
 		_activeFrameSubmission = &submission;
 		function();
@@ -1455,6 +1459,7 @@ namespace RN
 	{
 		RN_PROFILE_SCOPE();
 		AssertOnRenderThread();
+		PrepareRendererAttachments(submission.renderFrame);
 		CreateMipMaps();
 
 		submission.preparedRenderPasses.clear();

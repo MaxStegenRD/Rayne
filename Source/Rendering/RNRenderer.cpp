@@ -15,6 +15,7 @@
 namespace RN
 {
 	RNDefineMeta(RenderFramePresentationState, Object)
+	RNDefineMeta(RendererAttachment, Object)
 	RNDefineMeta(Renderer, Object)
 
 	RNExceptionImp(ShaderCompilation)
@@ -26,6 +27,7 @@ namespace RN
 		_lastStartedRenderFrameID(0),
 		_completedRenderFrameID(0),
 		_lastRenderFrameDrawItemCount(0),
+		_activeRenderFrame(nullptr),
 		_device(device),
 		_descriptor(descriptor)
 	{
@@ -69,6 +71,15 @@ namespace RN
 	RenderFramePresentationState::~RenderFramePresentationState()
 	{}
 
+	RendererAttachment::RendererAttachment()
+	{}
+
+	RendererAttachment::~RendererAttachment()
+	{}
+
+	void RendererAttachment::PrepareRenderFrame(Renderer *renderer, RenderFrame &frame)
+	{}
+
 	bool RenderFramePresentationState::BeginFrameOnRenderThread()
 	{
 		return true;
@@ -89,6 +100,55 @@ namespace RN
 	void Renderer::Deactivate()
 	{
 		_activeRenderer = nullptr;
+	}
+
+	void Renderer::AddAttachment(RendererAttachment *attachment)
+	{
+		RN_ASSERT(attachment, "RendererAttachment mustn't be NULL");
+
+		LockGuard<Lockable> lock(_rendererAttachmentsLock);
+		for(const StrongRef<RendererAttachment> &existingAttachment : _rendererAttachments)
+		{
+			if(existingAttachment.Get() == attachment)
+				return;
+		}
+
+		_rendererAttachments.push_back(attachment);
+	}
+
+	void Renderer::RemoveAttachment(RendererAttachment *attachment)
+	{
+		LockGuard<Lockable> lock(_rendererAttachmentsLock);
+		_rendererAttachments.erase(std::remove_if(_rendererAttachments.begin(), _rendererAttachments.end(), [attachment](const StrongRef<RendererAttachment> &existingAttachment) {
+			return existingAttachment.Get() == attachment;
+		}), _rendererAttachments.end());
+	}
+
+	void Renderer::SubmitAttachmentSnapshot(Object *snapshot)
+	{
+		RN_ASSERT(_activeRenderFrame, "SubmitAttachmentSnapshot() called outside render frame submission");
+		_activeRenderFrame->AddAttachmentSnapshot(snapshot);
+	}
+
+	RenderFrame *Renderer::SetActiveRenderFrame(RenderFrame *frame)
+	{
+		RenderFrame *previousFrame = _activeRenderFrame;
+		_activeRenderFrame = frame;
+		return previousFrame;
+	}
+
+	void Renderer::PrepareRendererAttachments(RenderFrame &frame)
+	{
+		std::vector<StrongRef<RendererAttachment>> attachments;
+		{
+			LockGuard<Lockable> lock(_rendererAttachmentsLock);
+			attachments = _rendererAttachments;
+		}
+
+		for(const StrongRef<RendererAttachment> &attachment : attachments)
+		{
+			attachment->PrepareRenderFrame(this, frame);
+		}
 	}
 
 	void Renderer::BeginRenderFrameSubmission(RenderFrame &frame)
