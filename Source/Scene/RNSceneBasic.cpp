@@ -13,21 +13,24 @@
 #include "../Rendering/RNMesh.h"
 #include "../Rendering/RNModel.h"
 #include "../Scene/RNEntity.h"
+#include "../Scene/RNLightManager.h"
 #include "../Threads/RNWorkGroup.h"
 #include "../Threads/RNWorkQueue.h"
-#include "../Scene/RNLightManager.h"
 
 #define kRNSceneUpdateBatchSize 8192 //1024
-
-#define OCCLUSION_FRAMECOUNT 50
-#define OCCLUSION_JITTER 0.15f
 
 namespace RN
 {
 	RNDefineMeta(SceneBasic, Scene)
 	RNDefineMeta(SceneBasicInfo, SceneInfo)
 
-    
+	SceneBasic::OcclusionCullingParameters::OcclusionCullingParameters(uint16 textureWidth, uint16 textureHeight, size_t maxOccluders, uint16 frameCount, float jitter) :
+		textureWidth(textureWidth > 0 ? textureWidth : 1),
+		textureHeight(textureHeight > 0 ? textureHeight : 1),
+		maxOccluders(maxOccluders),
+		frameCount(frameCount),
+		jitter(jitter)
+	{}
 
 	SceneBasicInfo::SceneBasicInfo(Scene *scene) :
 		SceneInfo(scene), occludedFrameCounter(0)
@@ -35,19 +38,19 @@ namespace RN
 		RN_PROFILE_SCOPE();
 	}
 
-    SceneBasic::SceneBasic() :
-        _nodesToRemove(new Array()), _currentFrameCount(0)
-    {
-        RN_PROFILE_SCOPE();
-        _occlusionCuller = new OcclusionCuller(40, 40);
-    }
+	SceneBasic::SceneBasic(const OcclusionCullingParameters &occlusionCullingParameters) :
+		_nodesToRemove(new Array()), _occlusionCullingParameters(occlusionCullingParameters), _currentFrameCount(0)
+	{
+		RN_PROFILE_SCOPE();
+		_occlusionCuller = new OcclusionCuller(_occlusionCullingParameters.textureWidth, _occlusionCullingParameters.textureHeight);
+	}
 
-    SceneBasic::~SceneBasic()
-    {
-        RN_PROFILE_SCOPE();
-        _nodesToRemove->Release();
-        delete _occlusionCuller;
-    }
+	SceneBasic::~SceneBasic()
+	{
+		RN_PROFILE_SCOPE();
+		_nodesToRemove->Release();
+		delete _occlusionCuller;
+	}
 
 	void SceneBasic::Update(float delta)
 	{
@@ -145,7 +148,6 @@ namespace RN
 		_nodesToRemove->RemoveAllObjects();
 	}
 
-    
 
 	void SceneBasic::Render(Renderer *renderer)
 	{
@@ -203,7 +205,7 @@ namespace RN
 						SceneNode *node = nodeMember->Get();
 						if(node->GetRenderPriority() >= SceneNode::RenderPriority::RenderSky) break;
 
-						if(node->HasFlags(SceneNode::Flags::Occluder) && node->CanRender(renderer, camera))
+						if(_occlusionCullingParameters.maxOccluders > 0 && node->HasFlags(SceneNode::Flags::Occluder) && node->CanRender(renderer, camera))
 						{
 							SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo *>(node->GetSceneInfo());
 							sceneInfo->isActiveOccluder = false;
@@ -229,18 +231,18 @@ namespace RN
 				{
 					RN_PROFILE_SCOPE_N("Collect Entities with Occlusion Culling");
 					{
-						RN_PROFILE_SCOPE_N("Find 30 biggest occluders");
+						RN_PROFILE_SCOPE_N("Find Biggest Occluders");
 
 						//Sort occluders by approximated size on the screen
-						if(occluders.size() > 30)
+						if(occluders.size() > _occlusionCullingParameters.maxOccluders)
 						{
-							std::nth_element(occluders.begin(), occluders.begin() + 30, occluders.end(), [](SceneNode *a, SceneNode *b) {
+							std::nth_element(occluders.begin(), occluders.begin() + _occlusionCullingParameters.maxOccluders, occluders.end(), [](SceneNode *a, SceneNode *b) {
 								SceneBasicInfo *sceneInfoA = static_cast<SceneBasicInfo *>(a->GetSceneInfo());
 								SceneBasicInfo *sceneInfoB = static_cast<SceneBasicInfo *>(b->GetSceneInfo());
 								return sceneInfoA->occluderSize > sceneInfoB->occluderSize;
 							});
 
-							occluders.resize(30); //Only keep the biggest 30 occluders in the list
+							occluders.resize(_occlusionCullingParameters.maxOccluders);
 						}
 
 						//Sort remaining occluders front to back
@@ -251,12 +253,13 @@ namespace RN
 						});
 					}
 
-                    //Clear occlusion depth map
-                    _occlusionCuller->Clear();
+					//Clear occlusion depth map
+					_occlusionCuller->Clear();
 
 					Vector2 screenPixelSize = Vector2(1.0f / camera->GetRenderPass()->GetFrame().width, 1.0f / camera->GetRenderPass()->GetFrame().height);
 
-					Vector3 randomCameraOffset = RandomNumberGenerator::GetSharedGenerator()->GetRandomVector3Range(RN::Vector3(-OCCLUSION_JITTER, -OCCLUSION_JITTER, 0.0f), RN::Vector3(OCCLUSION_JITTER, OCCLUSION_JITTER, 0.0f));
+					float occlusionJitter = _occlusionCullingParameters.jitter;
+					Vector3 randomCameraOffset = RandomNumberGenerator::GetSharedGenerator()->GetRandomVector3Range(RN::Vector3(-occlusionJitter, -occlusionJitter, 0.0f), RN::Vector3(occlusionJitter, occlusionJitter, 0.0f));
 					Matrix matViewProj = camera->GetProjectionMatrix() * Matrix::WithTranslation(randomCameraOffset) * camera->GetViewMatrix();
 					if(camera->GetIsMultiviewCamera())
 					{
@@ -271,14 +274,14 @@ namespace RN
 						//Render occluders to depth buffer first (first test if the bounding box is visible at all)
 						for(SceneNode *node : occluders)
 						{
-                            bool testResult = _occlusionCuller->TestBoundingBox(matViewProj, node->GetBoundingBox(), screenPixelSize);
+							bool testResult = _occlusionCuller->TestBoundingBox(matViewProj, node->GetBoundingBox(), screenPixelSize);
 							SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo *>(node->GetSceneInfo());
 							sceneInfo->isActiveOccluder = true;
 							if(!testResult && sceneInfo->occludedFrameCounter < 1000)
 							{
 								sceneInfo->occludedFrameCounter += 1;
 							}
-							if(testResult || sceneInfo->occludedFrameCounter < OCCLUSION_FRAMECOUNT)
+							if(testResult || sceneInfo->occludedFrameCounter < _occlusionCullingParameters.frameCount)
 							{
 								if(testResult)
 								{
@@ -297,8 +300,8 @@ namespace RN
 									RN::Model::LODStage *lodStage = model->GetLODStage(0);
 									for(int i = 0; i < lodStage->GetCount(); i++)
 									{
-                                        RN::Mesh *mesh = lodStage->GetMeshAtIndex(i);
-                                        _occlusionCuller->RasterizeMesh(matModelViewProj, mesh);
+										RN::Mesh *mesh = lodStage->GetMeshAtIndex(i);
+										_occlusionCuller->RasterizeMesh(matModelViewProj, mesh);
 									}
 								}
 							}
@@ -331,20 +334,20 @@ namespace RN
 							if(node->GetFlags() & SceneNode::Flags::Occluder)
 							{
 								SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo *>(node->GetSceneInfo());
-								if(sceneInfo->isActiveOccluder && sceneInfo->occludedFrameCounter < OCCLUSION_FRAMECOUNT)
+								if(sceneInfo->isActiveOccluder && sceneInfo->occludedFrameCounter < _occlusionCullingParameters.frameCount)
 								{
 									sceneNodesToRender.push_back(node);
 									continue;
 								}
 							}
 
-                            bool testResult = _occlusionCuller->TestBoundingBox(matViewProj, node->GetBoundingBox(), screenPixelSize);
+							bool testResult = _occlusionCuller->TestBoundingBox(matViewProj, node->GetBoundingBox(), screenPixelSize);
 							SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo *>(node->GetSceneInfo());
 							if(!testResult && sceneInfo->occludedFrameCounter < 1000)
 							{
 								sceneInfo->occludedFrameCounter += 1;
 							}
-							if(testResult || sceneInfo->occludedFrameCounter < OCCLUSION_FRAMECOUNT)
+							if(testResult || sceneInfo->occludedFrameCounter < _occlusionCullingParameters.frameCount)
 							{
 								if(testResult)
 								{
@@ -418,7 +421,7 @@ namespace RN
 								}
 								sceneNodesToRender.push_back(node);
 							}
-							
+
 							nodeMember = nodeMember->GetNext();
 						}
 					}

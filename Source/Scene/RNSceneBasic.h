@@ -9,21 +9,32 @@
 #ifndef __RAYNE_SCENEBASIC_H__
 #define __RAYNE_SCENEBASIC_H__
 
-#include "RNScene.h"
 #include "RNOcclusionCuller.h"
+#include "RNScene.h"
 
 namespace RN
 {
 	class SceneBasic : public Scene
 	{
 	public:
+		struct OcclusionCullingParameters
+		{
+			RNAPI OcclusionCullingParameters(uint16 textureWidth = 40, uint16 textureHeight = 40, size_t maxOccluders = 300, uint16 frameCount = 50, float jitter = 0.15f);
+
+			uint16 textureWidth;
+			uint16 textureHeight;
+			size_t maxOccluders;
+			uint16 frameCount;
+			float jitter;
+		};
+
 		RNAPI ~SceneBasic();
 
 		RNAPI void AddNode(SceneNode *node) override;
 		RNAPI void RemoveNode(SceneNode *node) override;
 
 	protected:
-		RNAPI SceneBasic();
+		RNAPI SceneBasic(const OcclusionCullingParameters &occlusionCullingParameters = OcclusionCullingParameters());
 
 		RNAPI void Update(float delta) override;
 		RNAPI void Render(Renderer *renderer) override;
@@ -40,7 +51,6 @@ namespace RN
 		OcclusionCuller *_occlusionCuller;
 
 	private:
-
 		IntrusiveList<SceneNode> _updateNodes[4];
 		IntrusiveList<SceneNode> _renderNodes;
 		IntrusiveList<Light> _lights;
@@ -48,6 +58,7 @@ namespace RN
 		Array *_nodesToRemove;
 		Array *_nodesToAdd;
 
+		OcclusionCullingParameters _occlusionCullingParameters;
 		size_t _currentFrameCount;
 
 		__RNDeclareMetaInternal(SceneBasic)
