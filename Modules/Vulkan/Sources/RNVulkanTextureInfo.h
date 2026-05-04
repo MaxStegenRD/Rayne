@@ -31,6 +31,9 @@ namespace RN
 		VkImageAspectFlags GetAspectMask(Texture::Format format);
 		VkImageLayout GetReadOnlyLayout(Texture::Format format);
 		VkImageLayout GetRenderTargetLayout(Texture::Format format);
+		VkImageType GetImageType(Texture::Type type);
+		VkImageViewType GetImageViewType(Texture::Type type);
+		uint32 GetImageLayerCount(const Texture::Descriptor &descriptor);
 	}
 }
 

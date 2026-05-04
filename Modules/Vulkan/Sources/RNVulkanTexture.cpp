@@ -15,199 +15,118 @@ namespace RN
 {
 	RNDefineMeta(VulkanTexture, Texture)
 
-	static VkImageType VkImageTypeFromTextureType(Texture::Type type)
-	{
-		switch(type)
-		{
-			case Texture::Type::Type1D:
-			case Texture::Type::Type1DArray:
-				return VK_IMAGE_TYPE_1D;
-
-			case Texture::Type::Type2D:
-			case Texture::Type::Type2DArray:
-			case Texture::Type::TypeCube:
-				return VK_IMAGE_TYPE_2D;
-
-			case Texture::Type::Type3D:
-				return VK_IMAGE_TYPE_3D;
-
-			default:
-				throw InconsistencyException("Invalid texture type for Vulkan");
-		}
-	}
-
-	static VkImageViewType VkImageViewTypeFromTextureType(Texture::Type type)
-	{
-		switch(type)
-		{
-			case Texture::Type::Type1D:
-				return VK_IMAGE_VIEW_TYPE_1D;
-			case Texture::Type::Type1DArray:
-				return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
-
-			case Texture::Type::Type2D:
-				return VK_IMAGE_VIEW_TYPE_2D;
-			case Texture::Type::Type2DArray:
-				return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-
-			case Texture::Type::Type3D:
-				return VK_IMAGE_VIEW_TYPE_3D;
-
-			case Texture::Type::TypeCube:
-				return VK_IMAGE_VIEW_TYPE_CUBE;
-
-			default:
-				throw InconsistencyException("Invalid texture type for Vulkan");
-		}
-	}
-
-	static bool VkFormatIsDepthFormat(VkFormat format)
-	{
-		switch(format)
-		{
-			case VK_FORMAT_X8_D24_UNORM_PACK32:
-			case VK_FORMAT_D16_UNORM:
-			case VK_FORMAT_D16_UNORM_S8_UINT:
-			case VK_FORMAT_D24_UNORM_S8_UINT:
-			case VK_FORMAT_D32_SFLOAT:
-			case VK_FORMAT_D32_SFLOAT_S8_UINT:
-				return true;
-
-			default:
-				return false;
-		}
-	}
-
-	static bool VkFormatIsStencilFormat(VkFormat format)
-	{
-		switch(format)
-		{
-			case VK_FORMAT_S8_UINT:
-			case VK_FORMAT_D16_UNORM_S8_UINT:
-			case VK_FORMAT_D24_UNORM_S8_UINT:
-			case VK_FORMAT_D32_SFLOAT_S8_UINT:
-				return true;
-
-			default:
-				return false;
-		}
-	}
-
-	static VkImageUsageFlags VkImageUsageFromDescriptor(const Texture::Descriptor &descriptor, VkFormat format)
-	{
-		VkImageUsageFlags flags = 0;
-
-        if(descriptor.sampleCount <= 1)
-        {
-            switch(descriptor.accessOptions)
-            {
-                case GPUResource::AccessOptions::ReadWrite:
-                    flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-                    break;
-                case GPUResource::AccessOptions::WriteOnly:
-                    flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-                    break;
-                case GPUResource::AccessOptions::Private:
-                    flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-                    break;
-            }
-        }
-
-		if(descriptor.usageHint & Texture::UsageHint::RenderTarget || descriptor.usageHint & Texture::UsageHint::InputAttachment)
-		{
-			bool depth = VkFormatIsDepthFormat(format);
-			bool stencil = VkFormatIsStencilFormat(format);
-
-			if(!depth && !stencil)
-				flags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-			else
-				flags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-
-			if(descriptor.sampleCount > 1)
-			{
-				flags |= VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
-			}
-			else if(descriptor.usageHint & Texture::UsageHint::RenderTarget)
-			{
-				flags |= VK_IMAGE_USAGE_SAMPLED_BIT;
-			}
-			
-			if(descriptor.usageHint & Texture::UsageHint::InputAttachment)
-			{
-				flags |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
-			}
-		}
-		else
-		{
-			flags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT|VK_IMAGE_USAGE_TRANSFER_DST_BIT|VK_IMAGE_USAGE_SAMPLED_BIT;
-		}
-
-		return flags;
-	}
-
-	static VkImageAspectFlags VkImageAspectFlagsFromFormat(VkFormat format)
-	{
-		bool depth = VkFormatIsDepthFormat(format);
-		bool stencil = VkFormatIsStencilFormat(format);
-
-		if(!depth && !stencil)
-			return VK_IMAGE_ASPECT_COLOR_BIT;
-
-		VkImageAspectFlags flags = 0;
-
-		if(depth)
-			flags |= VK_IMAGE_ASPECT_DEPTH_BIT;
-		if(stencil)
-			flags |= VK_IMAGE_ASPECT_STENCIL_BIT;
-
-		return flags;
-	}
-
 	VulkanTexture::VulkanTexture(const Descriptor &descriptor, VulkanRenderer *renderer) :
 		Texture(descriptor),
 		_renderer(renderer),
 		_uploadImage(VK_NULL_HANDLE),
 		_uploadAllocation(VK_NULL_HANDLE),
 		_uploadData(nullptr),
+		_isFirstUpload(false),
+		_isFromSwapchain(false),
+		_format(VulkanTextureInfo::GetFormat(descriptor.format)),
 		_image(VK_NULL_HANDLE),
 		_imageView(VK_NULL_HANDLE),
 		_allocation(VK_NULL_HANDLE),
-		_format(VulkanTextureInfo::GetFormat(descriptor.format)),
-		_isFromSwapchain(false)
+		_currentLayout(VK_IMAGE_LAYOUT_UNDEFINED)
 	{
-		VulkanDevice *device = renderer->GetVulkanDevice();
+		CreateOwnedImage();
+	}
 
-		VkFormatProperties properties;
-		vk::GetPhysicalDeviceFormatProperties(device->GetPhysicalDevice(), _format, &properties);
-		RN_ASSERT(properties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT, "Requested texture format is not supported by this device (%i)", descriptor.format);
+	VulkanTexture::VulkanTexture(const Descriptor &descriptor, VulkanRenderer *renderer, VkImage image, bool fromSwapchain) :
+		Texture(descriptor),
+		_renderer(renderer),
+		_uploadImage(VK_NULL_HANDLE),
+		_uploadAllocation(VK_NULL_HANDLE),
+		_uploadData(nullptr),
+		_isFirstUpload(false),
+		_isFromSwapchain(fromSwapchain),
+		_format(VulkanTextureInfo::GetFormat(descriptor.format)),
+		_image(image),
+		_imageView(VK_NULL_HANDLE),
+		_allocation(VK_NULL_HANDLE),
+		_currentLayout(VK_IMAGE_LAYOUT_UNDEFINED)
+	{
+		RN_ASSERT(_format != VK_FORMAT_UNDEFINED, "Requested texture format is not supported by Vulkan (%i)", _descriptor.format);
+		CreateImageView();
+	}
+
+	void VulkanTexture::CreateOwnedImage()
+	{
+		VulkanDevice *device = _renderer->GetVulkanDevice();
+		const VulkanTextureInfo::FormatInfo &formatInfo = VulkanTextureInfo::GetFormatInfo(_descriptor.format);
+		RN_ASSERT(formatInfo.format != VK_FORMAT_UNDEFINED, "Requested texture format is not supported by Vulkan (%i)", _descriptor.format);
 
 		VkImageCreateInfo imageInfo = {};
 		imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 		imageInfo.pNext = nullptr;
-		imageInfo.imageType = VkImageTypeFromTextureType(descriptor.type);
+		imageInfo.imageType = VulkanTextureInfo::GetImageType(_descriptor.type);
 		imageInfo.format = _format;
-		imageInfo.extent = { descriptor.width, descriptor.height, imageInfo.imageType != VK_IMAGE_TYPE_2D ? descriptor.depth : 1 };
-		imageInfo.arrayLayers = descriptor.depth;
+		const bool isDepthStencil = formatInfo.isDepth || formatInfo.isStencil;
+		const uint32 imageDepth = _descriptor.type == Texture::Type::Type3D ? _descriptor.depth : 1;
+		const uint32 imageLayers = VulkanTextureInfo::GetImageLayerCount(_descriptor);
+		imageInfo.extent = { _descriptor.width, _descriptor.height, imageDepth };
+		imageInfo.arrayLayers = imageLayers;
 		imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		imageInfo.samples = static_cast<VkSampleCountFlagBits>(descriptor.sampleCount);
-		imageInfo.usage = VkImageUsageFromDescriptor(descriptor, imageInfo.format);
-		imageInfo.flags = (descriptor.usageHint & UsageHint::Subsampled && device->GetSupportsFragmentDensityMaps())? VK_IMAGE_CREATE_SUBSAMPLED_BIT_EXT : 0;
+		imageInfo.samples = static_cast<VkSampleCountFlagBits>(_descriptor.sampleCount);
+		imageInfo.usage = 0;
+		imageInfo.flags = 0;
 		imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-		imageInfo.mipLevels = descriptor.mipMaps;
+		imageInfo.mipLevels = _descriptor.mipMaps;
+
+		if(_descriptor.sampleCount <= 1)
+		{
+			switch(_descriptor.accessOptions)
+			{
+				case GPUResource::AccessOptions::ReadWrite:
+					imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+					break;
+				case GPUResource::AccessOptions::WriteOnly:
+					imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+					break;
+				case GPUResource::AccessOptions::Private:
+					imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+					break;
+			}
+		}
+
+		if(_descriptor.usageHint & Texture::UsageHint::RenderTarget || _descriptor.usageHint & Texture::UsageHint::InputAttachment)
+		{
+			imageInfo.usage |= isDepthStencil ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+			if(_descriptor.sampleCount > 1)
+				imageInfo.usage |= VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
+			else if(_descriptor.usageHint & Texture::UsageHint::RenderTarget)
+				imageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+
+			if(_descriptor.usageHint & Texture::UsageHint::InputAttachment)
+				imageInfo.usage |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+		}
+		else
+		{
+			imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+		}
+
+		if(_descriptor.usageHint & Texture::UsageHint::ShaderWrite)
+			imageInfo.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+
+		if(_descriptor.type == Texture::Type::TypeCube || _descriptor.type == Texture::Type::TypeCubeArray)
+		{
+			RN_ASSERT(_descriptor.width == _descriptor.height, "Vulkan cube textures must be square");
+			RN_ASSERT(imageLayers >= 6 && imageLayers % 6 == 0, "Vulkan cube textures need a layer count that is a multiple of six");
+			imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+		}
+
+		if(_descriptor.usageHint & UsageHint::Subsampled && device->GetSupportsFragmentDensityMaps())
+			imageInfo.flags |= VK_IMAGE_CREATE_SUBSAMPLED_BIT_EXT;
 
 		VmaAllocationCreateInfo allocCreateInfo = {};
 		allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
 
-		if(descriptor.type == Texture::Type::TypeCube)
-		{
-			imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-		}
-
-		if(descriptor.usageHint & UsageHint::RenderTarget)
+		if(_descriptor.usageHint & UsageHint::RenderTarget)
 		{
 			allocCreateInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-			if(descriptor.sampleCount > 1) allocCreateInfo.preferredFlags = VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT;
+			if(_descriptor.sampleCount > 1) allocCreateInfo.preferredFlags = VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT;
 			allocCreateInfo.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
 			allocCreateInfo.priority = 1.0f;
 		}
@@ -217,96 +136,52 @@ namespace RN
 		VkImageFormatProperties formatProperties;
 		RNVulkanValidate(vk::GetPhysicalDeviceImageFormatProperties(device->GetPhysicalDevice(), imageInfo.format, imageInfo.imageType, imageInfo.tiling, imageInfo.usage, imageInfo.flags, &formatProperties));
 
-		RN_ASSERT(formatProperties.sampleCounts & descriptor.sampleCount, "Requested sample count for texture format is not supported by this device");
+		VkFormatProperties properties;
+		vk::GetPhysicalDeviceFormatProperties(device->GetPhysicalDevice(), _format, &properties);
+		if(imageInfo.usage & VK_IMAGE_USAGE_SAMPLED_BIT)
+			RN_ASSERT(properties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT, "Requested texture format is not supported as a sampled image by this device (%i)", _descriptor.format);
+		if(imageInfo.usage & VK_IMAGE_USAGE_STORAGE_BIT)
+			RN_ASSERT(properties.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT, "Requested texture format is not supported as a storage image by this device (%i)", _descriptor.format);
+		if(imageInfo.usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+			RN_ASSERT(properties.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT, "Requested texture format is not supported as a color attachment by this device (%i)", _descriptor.format);
+		if(imageInfo.usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+			RN_ASSERT(properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT, "Requested texture format is not supported as a depth/stencil attachment by this device (%i)", _descriptor.format);
 
-/*		uint32 requestedSampleCount = descriptor.sampleCount;
-		uint32 availableSampleCount = descriptor.sampleCount;
-		while(!(formatProperties.sampleCounts & availableSampleCount))
+		RN_ASSERT(formatProperties.sampleCounts & _descriptor.sampleCount, "Requested sample count for texture format is not supported by this device");
+
+		RNVulkanValidate(vmaCreateImage(_renderer->_internals->memoryAllocator, &imageInfo, &allocCreateInfo, &_image, &_allocation, nullptr));
+
+		if(_descriptor.usageHint & UsageHint::RenderTarget)
 		{
-			availableSampleCount = availableSampleCount >> 1;
+			VkImageAspectFlags aspectMask = VulkanTextureInfo::GetAspectMask(_descriptor.format);
+			VkImageLayout targetLayout = VulkanTextureInfo::GetRenderTargetLayout(_descriptor.format);
+
+			VulkanCommandBuffer *commandBuffer = _renderer->StartResourcesCommandBuffer();
+			SetImageLayout(commandBuffer->GetCommandBuffer(), _image, 0, _descriptor.mipMaps, 0, imageLayers, aspectMask, _currentLayout, targetLayout, BarrierIntent::RenderTarget);
+			_currentLayout = targetLayout;
+			_renderer->EndResourcesCommandBuffer();
 		}
 
-		imageInfo.samples = static_cast<VkSampleCountFlagBits>(availableSampleCount);
-		if(availableSampleCount != requestedSampleCount)
-		{
-			RNDebug(RNSTR("Requested sample count: " << requestedSampleCount << ", But available sample count: " << availableSampleCount));
-		}*/
-
-		RNVulkanValidate(vmaCreateImage(renderer->_internals->memoryAllocator, &imageInfo, &allocCreateInfo, &_image, &_allocation, nullptr));
-
-		if(descriptor.usageHint & UsageHint::RenderTarget)
-		{
-			if(VkFormatIsDepthFormat(_format) || VkFormatIsStencilFormat(_format))
-			{
-				VulkanCommandBuffer *commandBuffer = _renderer->StartResourcesCommandBuffer();
-				uint32 aspectFlagBits = 0;
-				if(VkFormatIsDepthFormat(_format))
-				{
-					aspectFlagBits |= VK_IMAGE_ASPECT_DEPTH_BIT;
-				}
-				if(VkFormatIsStencilFormat(_format))
-				{
-					aspectFlagBits |= VK_IMAGE_ASPECT_STENCIL_BIT;
-				}
-				SetImageLayout(commandBuffer->GetCommandBuffer(), _image, 0, _descriptor.mipMaps, 0, _descriptor.depth, aspectFlagBits, _currentLayout, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, BarrierIntent::RenderTarget);
-				_currentLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-				_renderer->EndResourcesCommandBuffer();
-			}
-			else //Any color rendertarget
-			{
-				VulkanCommandBuffer *commandBuffer = _renderer->StartResourcesCommandBuffer();
-				SetImageLayout(commandBuffer->GetCommandBuffer(), _image, 0, _descriptor.mipMaps, 0, _descriptor.depth, VK_IMAGE_ASPECT_COLOR_BIT, _currentLayout, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, BarrierIntent::RenderTarget);
-				_currentLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-				_renderer->EndResourcesCommandBuffer();
-			}
-		}
-
-		VkImageViewCreateInfo imageViewInfo = {};
-		imageViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		imageViewInfo.pNext = nullptr;
-		imageViewInfo.viewType = VkImageViewTypeFromTextureType(descriptor.type);
-		imageViewInfo.format = imageInfo.format;
-		imageViewInfo.flags = 0;
-		imageViewInfo.subresourceRange = {};
-		imageViewInfo.subresourceRange.aspectMask = VkImageAspectFlagsFromFormat(imageInfo.format);
-		imageViewInfo.subresourceRange.baseMipLevel = 0;
-		imageViewInfo.subresourceRange.levelCount = descriptor.mipMaps;
-		imageViewInfo.subresourceRange.baseArrayLayer = 0;
-		imageViewInfo.subresourceRange.layerCount = descriptor.depth;
-		imageViewInfo.image = _image;
-
-		RNVulkanValidate(vk::CreateImageView(device->GetDevice(), &imageViewInfo, _renderer->GetAllocatorCallback(), &_imageView));
+		CreateImageView();
 	}
 
-	VulkanTexture::VulkanTexture(const Descriptor &descriptor, VulkanRenderer *renderer, VkImage image, bool fromSwapchain) :
-		Texture(descriptor),
-		_renderer(renderer),
-		_uploadImage(VK_NULL_HANDLE),
-		_uploadAllocation(VK_NULL_HANDLE),
-		_uploadData(nullptr),
-		_image(image),
-		_imageView(VK_NULL_HANDLE),
-		_allocation(VK_NULL_HANDLE),
-		_format(VulkanTextureInfo::GetFormat(descriptor.format)),
-		_currentLayout(VK_IMAGE_LAYOUT_UNDEFINED),
-		_isFromSwapchain(fromSwapchain)
+	void VulkanTexture::CreateImageView()
 	{
-		VkFormat format = VulkanTextureInfo::GetFormat(descriptor.format);
 		VkImageViewCreateInfo imageViewInfo = {};
 		imageViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		imageViewInfo.pNext = nullptr;
-		imageViewInfo.viewType = VkImageViewTypeFromTextureType(descriptor.type);
-		imageViewInfo.format = format;
+		imageViewInfo.viewType = VulkanTextureInfo::GetImageViewType(_descriptor.type);
+		imageViewInfo.format = _format;
 		imageViewInfo.flags = 0;
 		imageViewInfo.subresourceRange = {};
-		imageViewInfo.subresourceRange.aspectMask = VkImageAspectFlagsFromFormat(format);
+		imageViewInfo.subresourceRange.aspectMask = VulkanTextureInfo::GetAspectMask(_descriptor.format);
 		imageViewInfo.subresourceRange.baseMipLevel = 0;
-		imageViewInfo.subresourceRange.levelCount = descriptor.mipMaps;
+		imageViewInfo.subresourceRange.levelCount = _descriptor.mipMaps;
 		imageViewInfo.subresourceRange.baseArrayLayer = 0;
-		imageViewInfo.subresourceRange.layerCount = descriptor.depth;
+		imageViewInfo.subresourceRange.layerCount = VulkanTextureInfo::GetImageLayerCount(_descriptor);
 		imageViewInfo.image = _image;
 
-		VulkanDevice *device = renderer->GetVulkanDevice();
+		VulkanDevice *device = _renderer->GetVulkanDevice();
 		RNVulkanValidate(vk::CreateImageView(device->GetDevice(), &imageViewInfo, _renderer->GetAllocatorCallback(), &_imageView));
 	}
 
@@ -347,13 +222,12 @@ namespace RN
 		VkImageCreateInfo imageInfo = {};
 		imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 		imageInfo.pNext = nullptr;
-		imageInfo.imageType = VkImageTypeFromTextureType(_descriptor.type);
+		imageInfo.imageType = VulkanTextureInfo::GetImageType(_descriptor.type);
 		imageInfo.format = _format;
 		imageInfo.extent = { region.width, region.height, region.depth };
 		imageInfo.arrayLayers = 1;
 		imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-		imageInfo.usage = VkImageUsageFromDescriptor(_descriptor, imageInfo.format);
 		imageInfo.flags = 0;
 		imageInfo.mipLevels = 1;
 		imageInfo.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
@@ -489,13 +363,12 @@ namespace RN
 		VkImageCreateInfo imageInfo = {};
 		imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 		imageInfo.pNext = nullptr;
-		imageInfo.imageType = VkImageTypeFromTextureType(_descriptor.type);
+		imageInfo.imageType = VulkanTextureInfo::GetImageType(_descriptor.type);
 		imageInfo.format = _format;
 		imageInfo.extent = { _descriptor.width, _descriptor.height, _descriptor.depth };
 		imageInfo.arrayLayers = 1;
 		imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-		imageInfo.usage = VkImageUsageFromDescriptor(_descriptor, imageInfo.format);
 		imageInfo.flags = 0;
 		imageInfo.mipLevels = 1;
 		imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;

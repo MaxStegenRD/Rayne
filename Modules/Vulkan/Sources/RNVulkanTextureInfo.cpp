@@ -114,5 +114,56 @@ namespace RN
 			return (formatInfo.isDepth || formatInfo.isStencil) ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		}
 
+		VkImageType GetImageType(Texture::Type type)
+		{
+			switch(type)
+			{
+				case Texture::Type::Type1D:
+				case Texture::Type::Type1DArray:
+					return VK_IMAGE_TYPE_1D;
+
+				case Texture::Type::Type2D:
+				case Texture::Type::Type2DArray:
+				case Texture::Type::TypeCube:
+				case Texture::Type::TypeCubeArray:
+					return VK_IMAGE_TYPE_2D;
+
+				case Texture::Type::Type3D:
+					return VK_IMAGE_TYPE_3D;
+			}
+
+			throw InconsistencyException("Invalid texture type for Vulkan");
+		}
+
+		VkImageViewType GetImageViewType(Texture::Type type)
+		{
+			switch(type)
+			{
+				case Texture::Type::Type1D:
+					return VK_IMAGE_VIEW_TYPE_1D;
+				case Texture::Type::Type1DArray:
+					return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+
+				case Texture::Type::Type2D:
+					return VK_IMAGE_VIEW_TYPE_2D;
+				case Texture::Type::Type2DArray:
+					return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+
+				case Texture::Type::Type3D:
+					return VK_IMAGE_VIEW_TYPE_3D;
+
+				case Texture::Type::TypeCube:
+					return VK_IMAGE_VIEW_TYPE_CUBE;
+				case Texture::Type::TypeCubeArray:
+					return VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
+			}
+
+			throw InconsistencyException("Invalid texture type for Vulkan");
+		}
+
+		uint32 GetImageLayerCount(const Texture::Descriptor &descriptor)
+		{
+			return descriptor.type == Texture::Type::Type3D ? 1 : descriptor.depth;
+		}
 	}
 }

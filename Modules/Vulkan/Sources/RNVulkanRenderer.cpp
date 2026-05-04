@@ -631,13 +631,14 @@ namespace RN
 				//Set textures layout for reading for render targets that are used in this frame
 				for(VulkanTexture *vulkanTexture : renderPass.renderTargetsUsedInShader)
 				{
-					const Texture::Format format = vulkanTexture->GetDescriptor().format;
+					const Texture::Descriptor &descriptor = vulkanTexture->GetDescriptor();
+					const Texture::Format format = descriptor.format;
 					VkImageAspectFlags aspectMask = VulkanTextureInfo::GetAspectMask(format);
 					VkImageLayout targetLayout = VulkanTextureInfo::GetReadOnlyLayout(format);
 
 					if(vulkanTexture->GetCurrentLayout() == targetLayout) continue; //Nothing to do if the layout is already correct
 
-					VulkanTexture::SetImageLayout(commandBuffer, vulkanTexture->GetVulkanImage(), 0, vulkanTexture->GetDescriptor().mipMaps, 0, vulkanTexture->GetDescriptor().depth, aspectMask, vulkanTexture->GetCurrentLayout(), targetLayout, VulkanTexture::BarrierIntent::ShaderSource);
+					VulkanTexture::SetImageLayout(commandBuffer, vulkanTexture->GetVulkanImage(), 0, descriptor.mipMaps, 0, VulkanTextureInfo::GetImageLayerCount(descriptor), aspectMask, vulkanTexture->GetCurrentLayout(), targetLayout, VulkanTexture::BarrierIntent::ShaderSource);
 					vulkanTexture->SetCurrentLayout(targetLayout);
 				}
 
@@ -789,13 +790,14 @@ namespace RN
 				//Set textures layout for writing for render targets that are used in this frame
 				for(VulkanTexture *vulkanTexture : renderPass.renderTargetsUsedInShader)
 				{
-					const Texture::Format format = vulkanTexture->GetDescriptor().format;
+					const Texture::Descriptor &descriptor = vulkanTexture->GetDescriptor();
+					const Texture::Format format = descriptor.format;
 					VkImageAspectFlags aspectMask = VulkanTextureInfo::GetAspectMask(format);
 					VkImageLayout targetLayout = VulkanTextureInfo::GetRenderTargetLayout(format);
 
 					if(vulkanTexture->GetCurrentLayout() == targetLayout) continue; //Nothing to do if the layout is already correct
 
-					VulkanTexture::SetImageLayout(commandBuffer, vulkanTexture->GetVulkanImage(), 0, vulkanTexture->GetDescriptor().mipMaps, 0, vulkanTexture->GetDescriptor().depth, aspectMask, vulkanTexture->GetCurrentLayout(), targetLayout, VulkanTexture::BarrierIntent::RenderTarget);
+					VulkanTexture::SetImageLayout(commandBuffer, vulkanTexture->GetVulkanImage(), 0, descriptor.mipMaps, 0, VulkanTextureInfo::GetImageLayerCount(descriptor), aspectMask, vulkanTexture->GetCurrentLayout(), targetLayout, VulkanTexture::BarrierIntent::RenderTarget);
 					vulkanTexture->SetCurrentLayout(targetLayout);
 				}
 
@@ -1382,7 +1384,8 @@ namespace RN
 				VulkanTexture::SetImageLayout(commandBuffer->GetCommandBuffer(), texture->GetVulkanImage(), i + 1, 1, 0, 1, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VulkanTexture::BarrierIntent::CopySource);
 			}
 
-			VulkanTexture::SetImageLayout(commandBuffer->GetCommandBuffer(), texture->GetVulkanImage(), 0, texture->GetDescriptor().mipMaps, 0, texture->GetDescriptor().depth, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VulkanTexture::BarrierIntent::ShaderSource);
+			const Texture::Descriptor &descriptor = texture->GetDescriptor();
+			VulkanTexture::SetImageLayout(commandBuffer->GetCommandBuffer(), texture->GetVulkanImage(), 0, descriptor.mipMaps, 0, VulkanTextureInfo::GetImageLayerCount(descriptor), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VulkanTexture::BarrierIntent::ShaderSource);
 		});
 
 		EndResourcesCommandBuffer();
