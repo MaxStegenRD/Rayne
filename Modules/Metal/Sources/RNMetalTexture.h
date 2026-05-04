@@ -29,15 +29,11 @@ namespace RN
 
 		MTLAPI void GenerateMipMaps() final;
 
-		static MTLPixelFormat PixelFormatForTextureFormat(Format format);
-		static MTLTextureDescriptor *DescriptorForTextureDescriptor(const Descriptor &descriptor, bool isIOSurfaceBacked = false);
-
 		void *__GetUnderlyingTexture() const { return _texture; }
 
 	private:
 		MetalTexture(MetalRenderer *renderer, void *texture, const Descriptor &descriptor);
 		Region GetFullRegionForMipMapLevel(uint32 mipmapLevel) const;
-		uint32 GetBlockHeight() const;
 
 		MetalRenderer *_renderer;
 		void *_texture;

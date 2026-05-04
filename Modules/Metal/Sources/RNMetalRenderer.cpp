@@ -14,6 +14,7 @@
 #include "RNMetalGPUBuffer.h"
 #include "RNMetalDynamicGPUBuffer.h"
 #include "RNMetalTexture.h"
+#include "RNMetalTextureInfo.h"
 #include "RNMetalUniformBuffer.h"
 #include "RNMetalDevice.h"
 #include "RNMetalRendererDescriptor.h"
@@ -894,7 +895,7 @@ namespace RN
 	Texture *MetalRenderer::CreateTextureWithDescriptor(const Texture::Descriptor &descriptor)
 	{
 		RN_PROFILE_SCOPE();
-		MTLTextureDescriptor *metalDescriptor = MetalTexture::DescriptorForTextureDescriptor(descriptor);
+		MTLTextureDescriptor *metalDescriptor = MetalTextureInfo::CreateTextureDescriptor(descriptor);
 		id<MTLTexture> texture = [_internals->device newTextureWithDescriptor:metalDescriptor];
 		[metalDescriptor release];
 
@@ -904,7 +905,7 @@ namespace RN
 	Texture *MetalRenderer::CreateTextureWithDescriptorAndIOSurface(const Texture::Descriptor &descriptor, IOSurfaceRef ioSurface)
 	{
 		RN_PROFILE_SCOPE();
-		MTLTextureDescriptor *metalDescriptor = MetalTexture::DescriptorForTextureDescriptor(descriptor, true);
+		MTLTextureDescriptor *metalDescriptor = MetalTextureInfo::CreateTextureDescriptor(descriptor, true);
 		id<MTLTexture> texture = [_internals->device newTextureWithDescriptor:metalDescriptor iosurface:ioSurface plane:0];
 		[metalDescriptor release];
 

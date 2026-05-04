@@ -29,6 +29,7 @@ set(SOURCES
         Sources/RNMetalShaderLibrary.cpp
         Sources/RNMetalStateCoordinator.cpp
         Sources/RNMetalTexture.cpp
+        Sources/RNMetalTextureInfo.cpp
         Sources/RNMetalUniformBuffer.cpp
         Sources/RNMetalWindow.cpp
         Sources/RNMetalSwapChain.cpp
@@ -61,6 +62,7 @@ set(HEADERS
         Sources/RNMetalShaderLibrary.h
         Sources/RNMetalStateCoordinator.h
         Sources/RNMetalTexture.h
+        Sources/RNMetalTextureInfo.h
         Sources/RNMetalUniformBuffer.h
         Sources/RNMetalWindow.h
         Sources/RNMetalSwapChain.h)

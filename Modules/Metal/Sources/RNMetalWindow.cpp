@@ -11,7 +11,7 @@
 #include "RNMetalInternals.h"
 #include "RNMetalRenderer.h"
 #include "RNMetalSwapChain.h"
-#include "RNMetalTexture.h"
+#include "RNMetalTextureInfo.h"
 
 namespace RN
 {
@@ -47,7 +47,7 @@ namespace RN
 #if RN_PLATFORM_IOS
 		CAMetalLayer *metalLayer = (CAMetalLayer*)Kernel::GetSharedInstance()->GetMetalLayer();
 		metalLayer.device = renderer->_internals->device;
-		[metalLayer setPixelFormat:MetalTexture::PixelFormatForTextureFormat(descriptor.colorFormat)];
+		[metalLayer setPixelFormat:MetalTextureInfo::GetPixelFormat(descriptor.colorFormat)];
 		[metalLayer setFramebufferOnly:YES];
 		_internals->metalLayerContainer = new RNMetalLayerContainer(metalLayer);
 

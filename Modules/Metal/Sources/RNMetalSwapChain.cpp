@@ -8,7 +8,7 @@
 
 #include "RNMetalSwapChain.h"
 #include "RNMetalInternals.h"
-#include "RNMetalTexture.h"
+#include "RNMetalTextureInfo.h"
 
 namespace RN
 {
@@ -17,7 +17,7 @@ namespace RN
 #if RN_PLATFORM_MAC_OS
 	MetalSwapChain::MetalSwapChain(const Vector2 size, id<MTLDevice> device, Screen *screen, const Window::SwapChainDescriptor &descriptor) : _frameIndex(0), _frameDivider(1), _drawable(nullptr)
 	{
-		_metalView = [[RNMetalView alloc] initWithFrame:NSMakeRect(0, 0, size.x, size.y) device:device screen:screen andFormat:MetalTexture::PixelFormatForTextureFormat(descriptor.colorFormat)];
+		_metalView = [[RNMetalView alloc] initWithFrame:NSMakeRect(0, 0, size.x, size.y) device:device screen:screen andFormat:MetalTextureInfo::GetPixelFormat(descriptor.colorFormat)];
 		CGSize realSize = [_metalView getSize];
 		_size = Vector2(realSize.width, realSize.height);
 

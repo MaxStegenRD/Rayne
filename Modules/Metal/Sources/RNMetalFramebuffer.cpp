@@ -9,6 +9,7 @@
 #include "RNMetalFramebuffer.h"
 #include "RNMetalSwapChain.h"
 #include "RNMetalTexture.h"
+#include "RNMetalTextureInfo.h"
 
 #import <QuartzCore/QuartzCore.h>
 
@@ -207,7 +208,7 @@ namespace RN
 	{
 		MetalTargetView *newTarget = new MetalTargetView;
 		newTarget->targetView = target;
-		newTarget->pixelFormat = MetalTexture::PixelFormatForTextureFormat(colorFormat);
+		newTarget->pixelFormat = MetalTextureInfo::GetPixelFormat(colorFormat);
 
 		if(_depthStencilTarget)
 		{
@@ -595,7 +596,7 @@ namespace RN
 		colorTarget->targetView.mipmap = 0;
 		colorTarget->targetView.slice = 0;
 		colorTarget->targetView.length = 1;
-		colorTarget->pixelFormat = MetalTexture::PixelFormatForTextureFormat(colorFormat);
+		colorTarget->pixelFormat = MetalTextureInfo::GetPixelFormat(colorFormat);
 		_colorTargets.push_back(colorTarget);
 
 		if(depthStencilFormat != Texture::Format::Invalid)
