@@ -2133,6 +2133,10 @@ namespace RN
 
 		StrongRef<Camera> cameraRef(camera);
 		VulkanFrameSubmission submission;
+		RenderFrame *previousRenderFrame = SetActiveRenderFrame(&submission.renderFrame);
+		ScopeGuard activeRenderFrameGuard([this, previousRenderFrame]() {
+			SetActiveRenderFrame(previousRenderFrame);
+		});
 		SubmitCamera(submission, camera, RN::MakeFunction([](){}));
 		if(submission.renderPasses.empty())
 			return;
