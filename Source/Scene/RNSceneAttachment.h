@@ -15,6 +15,7 @@
 namespace RN
 {
 	class Scene;
+	class Camera;
 	class Renderer;
 	class SceneAttachment : public Object
 	{
@@ -28,14 +29,19 @@ namespace RN
 
 	protected:
 		RNAPI SceneAttachment();
+		RNAPI virtual void DidAttachToRenderer(Renderer *renderer);
 		RNAPI virtual void Update(float delta);
 		RNAPI virtual void WillUpdate(float delta);
 		RNAPI virtual void DidUpdate(float delta);
 		RNAPI virtual void WillRender(Renderer *renderer);
 		RNAPI virtual void DidRender(Renderer *renderer);
+		RNAPI virtual void SubmitCameraPassAttachmentSnapshots(Renderer *renderer, Camera *camera);
 
 	private:
+		void __AttachToRenderer(Renderer *renderer);
+
 		Scene *_scene;
+		Renderer *_attachedRenderer;
 
 		__RNDeclareMetaInternal(SceneAttachment)
 	};

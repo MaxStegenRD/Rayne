@@ -13,10 +13,29 @@ namespace RN
 	RNDefineMeta(SceneAttachment, Object)
 
 	SceneAttachment::SceneAttachment() :
-		_scene(nullptr)
+		_scene(nullptr),
+		_attachedRenderer(nullptr)
 	{}
 	SceneAttachment::~SceneAttachment()
 	{}
+
+	void SceneAttachment::__AttachToRenderer(Renderer *renderer)
+	{
+		RN_ASSERT(renderer, "Renderer mustn't be NULL");
+
+		if(_attachedRenderer)
+		{
+			RN_ASSERT(_attachedRenderer == renderer, "SceneAttachment is already attached to a different renderer");
+			return;
+		}
+
+		_attachedRenderer = renderer;
+		DidAttachToRenderer(renderer);
+	}
+
+	void SceneAttachment::DidAttachToRenderer(Renderer *renderer)
+	{
+	}
 
 	void SceneAttachment::Update(float delta)
 	{
@@ -35,6 +54,10 @@ namespace RN
 	}
 
 	void SceneAttachment::DidRender(Renderer *renderer)
+	{
+	}
+
+	void SceneAttachment::SubmitCameraPassAttachmentSnapshots(Renderer *renderer, Camera *camera)
 	{
 	}
 } // namespace RN

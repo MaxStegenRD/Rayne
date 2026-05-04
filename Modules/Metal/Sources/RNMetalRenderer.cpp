@@ -596,6 +596,10 @@ namespace RN
 
 		// Now distribute drawables across the newly created passes for this camera.
 		frameSubmission.activeRenderPassIndex = previousRenderPassIndex;
+		BeginCameraPassAttachmentSnapshots();
+		ScopeGuard cameraPassAttachmentSnapshotsGuard([this]() {
+			FinishCameraPassAttachmentSnapshots();
+		});
 		function();
 
 		LightManager::DrawSnapshot lightClusterSnapshot;
@@ -612,6 +616,7 @@ namespace RN
 
 			RenderFrame::Pass &framePass = frameSubmission.renderFrame.GetPass(submittedRenderPass.renderFramePassIndex);
 			framePass.SetLightClusterSnapshot(lightClusterSnapshot);
+			AddCameraPassAttachmentSnapshots(submittedRenderPass.renderFramePassIndex);
 		}
 	}
 

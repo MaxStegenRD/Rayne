@@ -1136,6 +1136,10 @@ namespace RN
 		const size_t submittedRenderPassEndIndex = frameSubmission.renderPasses.size();
 
 		// Run once to submit all scene nodes; SubmitDrawable will route to all matching passes
+		BeginCameraPassAttachmentSnapshots();
+		ScopeGuard cameraPassAttachmentSnapshotsGuard([this]() {
+			FinishCameraPassAttachmentSnapshots();
+		});
 		LightManager::DrawSnapshot lightClusterSnapshot;
 		_lock.Lock();
 		function();
@@ -1151,6 +1155,7 @@ namespace RN
 
 			RenderFrame::Pass &submittedFramePass = frameSubmission.renderFrame.GetPass(submittedRenderPass.renderFramePassIndex);
 			submittedFramePass.SetLightClusterSnapshot(lightClusterSnapshot);
+			AddCameraPassAttachmentSnapshots(submittedRenderPass.renderFramePassIndex);
 		};
 
 		for(size_t i = previousRenderPassIndex; i < submittedRenderPassEndIndex; i++)

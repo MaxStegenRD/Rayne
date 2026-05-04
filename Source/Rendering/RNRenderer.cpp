@@ -78,7 +78,7 @@ namespace RN
 	RendererAttachment::~RendererAttachment()
 	{}
 
-	void RendererAttachment::PrepareRenderFrame(Renderer *renderer, RenderFrame &frame)
+	void RendererAttachment::PrepareRenderFrame(Renderer *, RenderFrame &)
 	{}
 
 	bool RenderFramePresentationState::BeginFrameOnRenderThread()
@@ -125,16 +125,33 @@ namespace RN
 		}), _rendererAttachments.end());
 	}
 
+	bool Renderer::HasAttachment(MetaClass *meta)
+	{
+		RN_ASSERT(meta, "RendererAttachment MetaClass mustn't be NULL");
+
+		LockGuard<Lockable> lock(_rendererAttachmentsLock);
+		for(const StrongRef<RendererAttachment> &attachment : _rendererAttachments)
+		{
+			if(attachment->IsKindOfClass(meta))
+				return true;
+		}
+
+		return false;
+	}
+
 	void Renderer::SubmitAttachmentSnapshot(Object *snapshot)
 	{
 		RN_ASSERT(_activeRenderFrame, "SubmitAttachmentSnapshot() called outside render frame submission");
 		_activeRenderFrame->AddAttachmentSnapshot(snapshot);
 	}
 
-	void Renderer::SubmitPassAttachmentSnapshot(size_t passIndex, Object *snapshot)
+	void Renderer::SubmitCameraPassAttachmentSnapshot(Object *snapshot)
 	{
-		RN_ASSERT(_activeRenderFrame, "SubmitPassAttachmentSnapshot() called outside render frame submission");
-		_activeRenderFrame->GetPass(passIndex).AddAttachmentSnapshot(snapshot);
+		RN_ASSERT(snapshot, "Camera pass attachment snapshot mustn't be NULL");
+		RN_ASSERT(_activeRenderFrame, "SubmitCameraPassAttachmentSnapshot() called outside render frame submission");
+		RN_ASSERT(!_cameraPassAttachmentSnapshotStack.empty(), "SubmitCameraPassAttachmentSnapshot() called outside camera submission");
+
+		_cameraPassAttachmentSnapshotStack.back().push_back(snapshot);
 	}
 
 	void Renderer::RegisterArgumentSource(const String *name, Shader::ArgumentBuffer::Source source)
@@ -235,6 +252,30 @@ namespace RN
 		RenderFrame *previousFrame = _activeRenderFrame;
 		_activeRenderFrame = frame;
 		return previousFrame;
+	}
+
+	void Renderer::BeginCameraPassAttachmentSnapshots()
+	{
+		RN_ASSERT(_activeRenderFrame, "BeginCameraPassAttachmentSnapshots() called outside render frame submission");
+		_cameraPassAttachmentSnapshotStack.emplace_back();
+	}
+
+	void Renderer::AddCameraPassAttachmentSnapshots(size_t passIndex)
+	{
+		RN_ASSERT(_activeRenderFrame, "AddCameraPassAttachmentSnapshots() called outside render frame submission");
+		RN_ASSERT(!_cameraPassAttachmentSnapshotStack.empty(), "AddCameraPassAttachmentSnapshots() called outside camera submission");
+
+		RenderFrame::Pass &pass = _activeRenderFrame->GetPass(passIndex);
+		for(const StrongRef<Object> &snapshot : _cameraPassAttachmentSnapshotStack.back())
+		{
+			pass.AddAttachmentSnapshot(snapshot.Get());
+		}
+	}
+
+	void Renderer::FinishCameraPassAttachmentSnapshots()
+	{
+		RN_ASSERT(!_cameraPassAttachmentSnapshotStack.empty(), "FinishCameraPassAttachmentSnapshots() called outside camera submission");
+		_cameraPassAttachmentSnapshotStack.pop_back();
 	}
 
 	void Renderer::PrepareRendererAttachments(RenderFrame &frame)

@@ -104,8 +104,9 @@ namespace RN
 
 		RNAPI void AddAttachment(RendererAttachment *attachment);
 		RNAPI void RemoveAttachment(RendererAttachment *attachment);
+		RNAPI bool HasAttachment(MetaClass *meta);
 		RNAPI void SubmitAttachmentSnapshot(Object *snapshot);
-		RNAPI void SubmitPassAttachmentSnapshot(size_t passIndex, Object *snapshot);
+		RNAPI void SubmitCameraPassAttachmentSnapshot(Object *snapshot);
 
 		RNAPI void RegisterArgumentSource(const String *name, Shader::ArgumentBuffer::Source source);
 		RNAPI void RegisterArgumentSource(const String *name, Shader::ArgumentTexture::Source source);
@@ -120,6 +121,9 @@ namespace RN
 		RNAPI void BeginRenderFrameSubmission(RenderFrame &frame);
 		RNAPI void FinishRenderFrameSubmission(const RenderFrame &frame);
 		RNAPI RenderFrame *SetActiveRenderFrame(RenderFrame *frame);
+		RNAPI void BeginCameraPassAttachmentSnapshots();
+		RNAPI void AddCameraPassAttachmentSnapshots(size_t passIndex);
+		RNAPI void FinishCameraPassAttachmentSnapshots();
 		RNAPI void PrepareRendererAttachments(RenderFrame &frame);
 		RNAPI void QueueDrawableDeletion(Drawable *drawable);
 		RNAPI void FlushAllDeletedDrawables();
@@ -147,10 +151,11 @@ namespace RN
 		std::vector<DeletedDrawable> _pendingDeletedDrawables;
 		std::vector<Drawable *> _drawablesPendingSnapshotDrain;
 		std::vector<StrongRef<RendererAttachment>> _rendererAttachments;
+		std::vector<std::vector<StrongRef<Object>>> _cameraPassAttachmentSnapshotStack;
 		std::unordered_map<size_t, Shader::ArgumentBuffer::Source> _argumentBufferSources;
 		std::unordered_map<size_t, Shader::ArgumentTexture::Source> _argumentTextureSources;
 #if RN_BUILD_DEBUG
-		std::unordered_map<size_t, StrongRef<String>> _argumentSourceNames;
+		mutable std::unordered_map<size_t, StrongRef<String>> _argumentSourceNames;
 #endif
 		RenderFrame *_activeRenderFrame;
 		Lockable _frameLifecycleLock;

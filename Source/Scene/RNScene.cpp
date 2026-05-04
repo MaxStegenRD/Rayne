@@ -97,6 +97,7 @@ namespace RN
 		if(_attachments)
 		{
 			_attachments->Enumerate<SceneAttachment>([renderer](SceneAttachment *attachment, size_t index, bool &stop) {
+				attachment->__AttachToRenderer(renderer);
 				attachment->WillRender(renderer);
 			});
 		}
@@ -107,6 +108,16 @@ namespace RN
 		{
 			_attachments->Enumerate<SceneAttachment>([renderer](SceneAttachment *attachment, size_t index, bool &stop) {
 				attachment->DidRender(renderer);
+			});
+		}
+	}
+
+	void Scene::SubmitCameraPassAttachmentSnapshots(Renderer *renderer, Camera *camera)
+	{
+		if(_attachments)
+		{
+			_attachments->Enumerate<SceneAttachment>([renderer, camera](SceneAttachment *attachment, size_t index, bool &stop) {
+				attachment->SubmitCameraPassAttachmentSnapshots(renderer, camera);
 			});
 		}
 	}
