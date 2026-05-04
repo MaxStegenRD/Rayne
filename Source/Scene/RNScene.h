@@ -47,7 +47,7 @@ namespace RN
 
 		RNAPI virtual void WillRender(Renderer *renderer);
 		RNAPI virtual void DidRender(Renderer *renderer);
-		RNAPI void SubmitCameraPassAttachmentSnapshots(Renderer *renderer, Camera *camera);
+		RNAPI void SubmitCameraPassAttachmentSnapshots(Renderer *renderer, Camera *camera, const SceneCameraPassContext &context);
 
 		RNAPI virtual void Update(float delta);
 		RNAPI virtual void Render(Renderer *renderer) = 0;

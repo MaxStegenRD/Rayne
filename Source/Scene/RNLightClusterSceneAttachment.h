@@ -25,7 +25,7 @@ namespace RN
 
 	protected:
 		RNAPI void DidAttachToRenderer(Renderer *renderer) override;
-		RNAPI void SubmitCameraPassAttachmentSnapshots(Renderer *renderer, Camera *camera) override;
+		RNAPI void SubmitCameraPassAttachmentSnapshots(Renderer *renderer, Camera *camera, const SceneCameraPassContext &context) override;
 
 	private:
 		__RNDeclareMetaInternal(LightClusterSceneAttachment)

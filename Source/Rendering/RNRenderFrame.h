@@ -48,12 +48,16 @@ namespace RN
 		class CameraSnapshot
 		{
 		public:
+			static constexpr uint64 InvalidSourceCameraUID = static_cast<uint64>(-1);
+
 			CameraSnapshot() :
+				_sourceCameraUID(InvalidSourceCameraUID),
 				_tag(0)
 			{}
 
-			CameraSnapshot(const Vector3 &viewPosition, const Matrix &viewMatrix, const Matrix &inverseViewMatrix, const Matrix &projectionMatrix, const Matrix &inverseProjectionMatrix, const Matrix &projectionViewMatrix, const Matrix &inverseProjectionViewMatrix, const Color &ambientColor, const Vector4 &customData, const Color &fogColor0, const Color &fogColor1, const Vector2 &clipDistance, const Vector2 &fogDistance, int32 tag, const Rect &frame) :
+			CameraSnapshot(const Vector3 &viewPosition, uint64 sourceCameraUID, const Matrix &viewMatrix, const Matrix &inverseViewMatrix, const Matrix &projectionMatrix, const Matrix &inverseProjectionMatrix, const Matrix &projectionViewMatrix, const Matrix &inverseProjectionViewMatrix, const Color &ambientColor, const Vector4 &customData, const Color &fogColor0, const Color &fogColor1, const Vector2 &clipDistance, const Vector2 &fogDistance, int32 tag, const Rect &frame) :
 				_viewPosition(viewPosition),
+				_sourceCameraUID(sourceCameraUID),
 				_viewMatrix(viewMatrix),
 				_inverseViewMatrix(inverseViewMatrix),
 				_projectionMatrix(projectionMatrix),
@@ -81,6 +85,7 @@ namespace RN
 			}
 
 			const Vector3 &GetViewPosition() const { return _viewPosition; }
+			uint64 GetSourceCameraUID() const { return _sourceCameraUID; }
 			const Matrix &GetViewMatrix() const { return _viewMatrix; }
 			const Matrix &GetInverseViewMatrix() const { return _inverseViewMatrix; }
 			const Matrix &GetProjectionMatrix() const { return _projectionMatrix; }
@@ -102,10 +107,11 @@ namespace RN
 				Matrix viewMatrix = camera->GetViewMatrix();
 				Matrix inverseViewMatrix = camera->GetInverseViewMatrix();
 				Matrix inverseProjectionMatrix = camera->GetInverseProjectionMatrix();
-				return CameraSnapshot(camera->GetWorldPosition(), viewMatrix, inverseViewMatrix, projectionMatrix, inverseProjectionMatrix, projectionMatrix * viewMatrix, inverseViewMatrix * inverseProjectionMatrix, camera->GetAmbientColor(), camera->GetCustomData(), camera->GetFogColor0(), camera->GetFogColor1(), Vector2(camera->GetClipNear(), camera->GetClipFar()), Vector2(camera->GetFogNear(), camera->GetFogFar()), camera->GetTag(), frame);
+				return CameraSnapshot(camera->GetWorldPosition(), camera->GetUID(), viewMatrix, inverseViewMatrix, projectionMatrix, inverseProjectionMatrix, projectionMatrix * viewMatrix, inverseViewMatrix * inverseProjectionMatrix, camera->GetAmbientColor(), camera->GetCustomData(), camera->GetFogColor0(), camera->GetFogColor1(), Vector2(camera->GetClipNear(), camera->GetClipFar()), Vector2(camera->GetFogNear(), camera->GetFogFar()), camera->GetTag(), frame);
 			}
 
 			Vector3 _viewPosition;
+			uint64 _sourceCameraUID;
 			Matrix _viewMatrix;
 			Matrix _inverseViewMatrix;
 			Matrix _projectionMatrix;

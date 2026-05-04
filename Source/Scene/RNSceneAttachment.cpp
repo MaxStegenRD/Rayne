@@ -57,7 +57,7 @@ namespace RN
 	{
 	}
 
-	void SceneAttachment::SubmitCameraPassAttachmentSnapshots(Renderer *renderer, Camera *camera)
+	void SceneAttachment::SubmitCameraPassAttachmentSnapshots(Renderer *, Camera *, const SceneCameraPassContext &)
 	{
 	}
 } // namespace RN

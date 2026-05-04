@@ -505,7 +505,8 @@ namespace RN
 					{
 						lm->BuildForCamera(camera, visibleLights);
 					}
-					SubmitCameraPassAttachmentSnapshots(renderer, camera);
+					SceneCameraPassContext cameraPassContext(visibleLights);
+					SubmitCameraPassAttachmentSnapshots(renderer, camera, cameraPassContext);
 
 					//Submit all drawables for rendering
 					for(SceneNode *node : sceneNodesToRender)

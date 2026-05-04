@@ -16,7 +16,18 @@ namespace RN
 {
 	class Scene;
 	class Camera;
+	class Light;
 	class Renderer;
+
+	struct SceneCameraPassContext
+	{
+		SceneCameraPassContext(const std::vector<Light *> &visibleLights) :
+			visibleLights(visibleLights)
+		{}
+
+		const std::vector<Light *> &visibleLights;
+	};
+
 	class SceneAttachment : public Object
 	{
 	public:
@@ -35,7 +46,7 @@ namespace RN
 		RNAPI virtual void DidUpdate(float delta);
 		RNAPI virtual void WillRender(Renderer *renderer);
 		RNAPI virtual void DidRender(Renderer *renderer);
-		RNAPI virtual void SubmitCameraPassAttachmentSnapshots(Renderer *renderer, Camera *camera);
+		RNAPI virtual void SubmitCameraPassAttachmentSnapshots(Renderer *renderer, Camera *camera, const SceneCameraPassContext &context);
 
 	private:
 		void __AttachToRenderer(Renderer *renderer);

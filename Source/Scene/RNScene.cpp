@@ -112,12 +112,12 @@ namespace RN
 		}
 	}
 
-	void Scene::SubmitCameraPassAttachmentSnapshots(Renderer *renderer, Camera *camera)
+	void Scene::SubmitCameraPassAttachmentSnapshots(Renderer *renderer, Camera *camera, const SceneCameraPassContext &context)
 	{
 		if(_attachments)
 		{
-			_attachments->Enumerate<SceneAttachment>([renderer, camera](SceneAttachment *attachment, size_t index, bool &stop) {
-				attachment->SubmitCameraPassAttachmentSnapshots(renderer, camera);
+			_attachments->Enumerate<SceneAttachment>([renderer, camera, &context](SceneAttachment *attachment, size_t index, bool &stop) {
+				attachment->SubmitCameraPassAttachmentSnapshots(renderer, camera, context);
 			});
 		}
 	}

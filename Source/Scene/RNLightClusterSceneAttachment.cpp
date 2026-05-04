@@ -42,7 +42,7 @@ namespace RN
 		SafeRelease(attachment);
 	}
 
-	void LightClusterSceneAttachment::SubmitCameraPassAttachmentSnapshots(Renderer *renderer, Camera *camera)
+	void LightClusterSceneAttachment::SubmitCameraPassAttachmentSnapshots(Renderer *renderer, Camera *camera, const SceneCameraPassContext &)
 	{
 		RN_ASSERT(renderer, "Renderer mustn't be NULL");
 

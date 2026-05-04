@@ -173,7 +173,8 @@ namespace RN
 					{
 						lm->BuildForCamera(camera, visibleLights);
 					}
-					SubmitCameraPassAttachmentSnapshots(renderer, camera);
+					SceneCameraPassContext cameraPassContext(visibleLights);
+					SubmitCameraPassAttachmentSnapshots(renderer, camera, cameraPassContext);
 					RenderVolumeList(renderer, camera, _defaultVolume);
 					if(volume)
 					{
