@@ -267,7 +267,7 @@ namespace RN
 		RNAPI static Texture *WithPNGData(const Data *data, const Dictionary *settings = nullptr);
 		RNAPI static Texture *WithDescriptor(const Descriptor &descriptor);
 
-		RNAPI virtual void StartStreamingData(const Region &region) {};
+		RNAPI virtual void StartStreamingData() {};
 		RNAPI virtual void StopStreamingData() {};
 
 		RNAPI virtual void SetData(uint32 mipmapLevel, const void *bytes, size_t bytesPerRow, size_t numberOfRows) = 0;

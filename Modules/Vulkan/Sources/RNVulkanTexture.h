@@ -23,7 +23,6 @@ namespace RN
 
 		enum BarrierIntent
 		{
-			UploadSource,
 			UploadDestination,
 			CopySource,
 			CopyDestination,
@@ -36,7 +35,7 @@ namespace RN
 		VKAPI VulkanTexture(const Descriptor &descriptor, VulkanRenderer *renderer, VkImage image, bool fromSwapchain);
 		VKAPI ~VulkanTexture() override;
 
-		VKAPI void StartStreamingData(const Region &region) override;
+		VKAPI void StartStreamingData() override;
 		VKAPI void StopStreamingData() override;
 
 		VKAPI void SetData(uint32 mipmapLevel, const void *bytes, size_t bytesPerRow, size_t numberOfRows) final;
@@ -55,20 +54,35 @@ namespace RN
 		VkImageLayout GetCurrentLayout() const { return _currentLayout; }
 		void SetCurrentLayout(VkImageLayout layout) { _currentLayout = layout; }
 
-
 		VKAPI static void SetImageLayout(VkCommandBuffer buffer, VkImage image, uint32 baseMipmap, uint32 mipmapCount, uint32 baseLayer, uint32 layerCount, VkImageAspectFlags aspectMask, VkImageLayout fromLayout, VkImageLayout toLayout, BarrierIntent intent);
 
 	private:
+		struct StagingBuffer
+		{
+			VkBuffer buffer;
+			VmaAllocation allocation;
+			void *data;
+			size_t size;
+			size_t frameValue;
+		};
+
+		struct BufferImageCopySetup
+		{
+			VkBufferImageCopy region;
+			size_t size;
+		};
+
 		void CreateOwnedImage();
 		void CreateImageView();
+		BufferImageCopySetup GetBufferImageCopySetup(const Region &region, uint32 mipmapLevel, uint32 slice, size_t bytesPerRow, size_t numberOfRows) const;
+		void CreateStagingBuffer(StagingBuffer &buffer, size_t size, VkBufferUsageFlags usage, VmaAllocationCreateFlags accessFlags) const;
+		void ReleaseStagingBuffer(StagingBuffer &buffer) const;
+		StagingBuffer &AcquireStreamingUploadBuffer(size_t size);
 
 		VulkanRenderer *_renderer;
 
-		VkImage _uploadImage;
-		VmaAllocation _uploadAllocation;
-		VkSubresourceLayout _uploadSubresourceLayout;
-		void *_uploadData;
-		bool _isFirstUpload;
+		bool _isStreamingData;
+		std::vector<StagingBuffer> _streamingUploadBuffers;
 		bool _isFromSwapchain;
 
 		VkFormat _format;
