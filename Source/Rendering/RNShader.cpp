@@ -632,6 +632,44 @@ namespace RN
 		_defaultAnisotropy = anisotropy;
 	}
 
+	Shader::ArgumentSampler *Shader::ArgumentSampler::GetSamplerForName(String *name, uint32 index, const Array *samplers)
+	{
+		ArgumentSampler *argumentSampler = nullptr;
+
+		if(samplers)
+		{
+			samplers->Enumerate<ArgumentSampler>([&](ArgumentSampler *sampler, size_t, bool &stop) {
+				if(sampler->GetName()->IsEqual(name))
+				{
+					argumentSampler = sampler->Copy();
+					argumentSampler->SetIndex(index);
+					stop = true;
+				}
+			});
+		}
+
+		if(argumentSampler)
+			return argumentSampler;
+
+		if(name->IsEqual(RNCSTR("directionalShadowSampler")))
+			return new ArgumentSampler(name, index, WrapMode::Clamp, Filter::Linear, ComparisonFunction::Greater);
+
+		WrapMode wrapMode = WrapMode::Repeat;
+		if(name->HasSuffix(RNCSTR("ClampSampler")))
+			wrapMode = WrapMode::Clamp;
+		else if(!name->HasSuffix(RNCSTR("RepeatSampler")))
+			return new ArgumentSampler(name, index);
+
+		if(name->HasPrefix(RNCSTR("linear")))
+			return new ArgumentSampler(name, index, wrapMode, Filter::Linear);
+		if(name->HasPrefix(RNCSTR("nearest")))
+			return new ArgumentSampler(name, index, wrapMode, Filter::Nearest);
+		if(name->HasPrefix(RNCSTR("anisotropic")))
+			return new ArgumentSampler(name, index, wrapMode, Filter::Anisotropic);
+
+		return new ArgumentSampler(name, index);
+	}
+
 	Shader::ArgumentTexture::ArgumentTexture(String *name, uint32 index, uint8 materialTextureIndex, Source source) :
 		Argument(name, index), _materialTextureIndex(materialTextureIndex), _source(source)
 	{

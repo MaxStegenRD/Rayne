@@ -166,29 +166,8 @@ namespace RN
 
 				case MTLArgumentTypeSampler:
 				{
-					//TODO: Move this into the shader base class
 					String *name = RNSTR([[argument name] UTF8String]);
-					ArgumentSampler *argumentSampler = nullptr;
-					if(name->IsEqual(RNCSTR("directionalShadowSampler")))
-					{
-						argumentSampler = new ArgumentSampler(name, static_cast<uint32>([argument index]), ArgumentSampler::WrapMode::Clamp, ArgumentSampler::Filter::Linear, ArgumentSampler::ComparisonFunction::Greater);
-					}
-					else //TODO: Pre define some special names like linearRepeatSampler
-					{
-						_rnSamplers->Enumerate<ArgumentSampler>([&](ArgumentSampler *sampler, size_t index, bool &stop){
-							if(sampler->GetName()->IsEqual(name))
-							{
-								argumentSampler = sampler->Copy();
-								argumentSampler->SetIndex(static_cast<uint32>([argument index]));
-								stop = true;
-							}
-						});
-						
-						if(!argumentSampler)
-						{
-							argumentSampler = new ArgumentSampler(name, static_cast<uint32>([argument index]));
-						}
-					}
+					ArgumentSampler *argumentSampler = ArgumentSampler::GetSamplerForName(name, static_cast<uint32>([argument index]), _rnSamplers);
 					
 					samplersArray->AddObject(argumentSampler->Autorelease());
 					

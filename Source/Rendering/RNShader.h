@@ -263,6 +263,7 @@ namespace RN
 
 			RNAPI static uint32 GetDefaultAnisotropy();
 			RNAPI static void SetDefaultAnisotropy(uint32 anisotropy);
+			RNAPI static ArgumentSampler *GetSamplerForName(String *name, uint32 index, const Array *samplers);
 
 			WrapMode GetWrapMode() const { return _wrapMode; }
 			Filter GetFilter() const { return _filter; }

@@ -250,30 +250,9 @@ namespace RN
 
 		for(auto &resource : resources.separate_samplers)
 		{
-			//TODO: Move this into the shader base class
 			String *name = RNSTR(resource.name);
 			uint32 binding = reflector.get_decoration(resource.id, spv::DecorationBinding);
-			ArgumentSampler *argumentSampler = nullptr;
-			if(name->IsEqual(RNCSTR("directionalShadowSampler")))
-			{
-				argumentSampler = new ArgumentSampler(name, binding, ArgumentSampler::WrapMode::Clamp, ArgumentSampler::Filter::Linear, ArgumentSampler::ComparisonFunction::Greater);
-			}
-			else //TODO: Pre define some special names like linearRepeatSampler
-			{
-				samplers->Enumerate<ArgumentSampler>([&](ArgumentSampler *sampler, size_t index, bool &stop){
-					if(sampler->GetName()->IsEqual(name))
-					{
-						argumentSampler = sampler->Copy();
-						argumentSampler->SetIndex(binding);
-						stop = true;
-					}
-				});
-
-				if(!argumentSampler)
-				{
-					argumentSampler = new ArgumentSampler(name, binding);
-				}
-			}
+			ArgumentSampler *argumentSampler = ArgumentSampler::GetSamplerForName(name, binding, samplers);
 
 			samplersArray->AddObject(argumentSampler->Autorelease());
 		}
