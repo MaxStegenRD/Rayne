@@ -109,6 +109,7 @@ namespace RN
 				case MTLArgumentTypeBuffer:
 				{
 					//RNDebug("buffer: " << [[argument name] UTF8String]);
+					String *argumentName = RNSTR([[argument name] UTF8String]);
 					MTLStructType *structType = [argument bufferStructType];
 					size_t numberOfElements = 0;
 					Array *uniformDescriptors = GetBufferStructElements(structType, numberOfElements);
@@ -116,13 +117,14 @@ namespace RN
 					if(uniformDescriptors->GetCount() > 0)
 					{
 						//numberOfElements will only be > 0 for per instance data. In this case marking it as storage buffer will make the renderer not limit the number of instances per draw call, as metal can handle this just fine (it's different with vulkan on some mobile hardware!)
-						ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR([[argument name] UTF8String]), static_cast<uint32>([argument index]), uniformDescriptors, numberOfElements > 0? ArgumentBuffer::Type::StorageBuffer : ArgumentBuffer::Type::UniformBuffer, ArgumentBuffer::Source::Draw, numberOfElements > 0? 0 : 1);
+						ArgumentBuffer *argumentBuffer = new ArgumentBuffer(argumentName, static_cast<uint32>([argument index]), uniformDescriptors, numberOfElements > 0? ArgumentBuffer::Type::StorageBuffer : ArgumentBuffer::Type::UniformBuffer, ArgumentBuffer::Source::Draw, numberOfElements > 0? 0 : 1);
 						buffersArray->AddObject(argumentBuffer->Autorelease());
 					}
 					else
 					{
+						ArgumentBuffer::Source source = argumentName->HasPrefix(RNCSTR("vertexBuffer.")) ? ArgumentBuffer::Source::Draw : ArgumentBuffer::Source::Frame;
 						// No reflected members: treat as raw/storage buffer (e.g., ByteAddressBuffer)
-						ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR([[argument name] UTF8String]), static_cast<uint32>([argument index]), uniformDescriptors, ArgumentBuffer::Type::StorageBuffer, ArgumentBuffer::Source::Frame, 0);
+						ArgumentBuffer *argumentBuffer = new ArgumentBuffer(argumentName, static_cast<uint32>([argument index]), uniformDescriptors, ArgumentBuffer::Type::StorageBuffer, source, 0);
 						buffersArray->AddObject(argumentBuffer->Autorelease());
 					}
 					
