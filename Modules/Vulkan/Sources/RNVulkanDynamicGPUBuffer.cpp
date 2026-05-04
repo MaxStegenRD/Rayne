@@ -12,7 +12,7 @@
 
 namespace RN
 {
-	RNDefineMeta(VulkanDynamicGPUBuffer, GPUBuffer)
+	RNDefineMeta(VulkanDynamicGPUBuffer, VulkanGPUBuffer)
 	RNDefineMeta(VulkanDynamicBufferReference, Object)
 
 	VulkanDynamicGPUBuffer::VulkanDynamicGPUBuffer(Renderer *renderer, size_t size, GPUResource::UsageOptions usageOptions) :
