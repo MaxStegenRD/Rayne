@@ -55,7 +55,6 @@ namespace RN
 		VkImageLayout GetCurrentLayout() const { return _currentLayout; }
 		void SetCurrentLayout(VkImageLayout layout) { _currentLayout = layout; }
 
-		static VkFormat VulkanImageFormatFromTextureFormat(Texture::Format format);
 
 		VKAPI static void SetImageLayout(VkCommandBuffer buffer, VkImage image, uint32 baseMipmap, uint32 mipmapCount, uint32 baseLayer, uint32 layerCount, VkImageAspectFlags aspectMask, VkImageLayout fromLayout, VkImageLayout toLayout, BarrierIntent intent);
 

@@ -9,6 +9,7 @@
 #include "RNVulkanFramebuffer.h"
 #include "RNVulkanDevice.h"
 #include "RNVulkanRenderer.h"
+#include "RNVulkanTextureInfo.h"
 #include "RNVulkanInternals.h"
 
 namespace RN
@@ -24,7 +25,7 @@ namespace RN
 		vulkanTargetView->vulkanTargetViewDescriptor = {};
 		vulkanTargetView->vulkanTargetViewDescriptor.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		vulkanTargetView->vulkanTargetViewDescriptor.pNext = NULL;
-		vulkanTargetView->vulkanTargetViewDescriptor.format = VulkanTexture::VulkanImageFormatFromTextureFormat(targetView.texture->GetDescriptor().format);
+		vulkanTargetView->vulkanTargetViewDescriptor.format = VulkanTextureInfo::GetFormat(targetView.texture->GetDescriptor().format);
 		vulkanTargetView->vulkanTargetViewDescriptor.components = {
 			VK_COMPONENT_SWIZZLE_R,
 			VK_COMPONENT_SWIZZLE_G,
@@ -32,22 +33,7 @@ namespace RN
 			VK_COMPONENT_SWIZZLE_A
 		};
 
-		if(targetView.texture->GetDescriptor().format == Texture::Format::Depth_24_Stencil_8 || targetView.texture->GetDescriptor().format == Texture::Format::Depth_32F_Stencil_8)
-		{
-			vulkanTargetView->vulkanTargetViewDescriptor.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT|VK_IMAGE_ASPECT_STENCIL_BIT;
-		}
-		else if(targetView.texture->GetDescriptor().format == Texture::Format::Depth_16I || targetView.texture->GetDescriptor().format == Texture::Format::Depth_24I || targetView.texture->GetDescriptor().format == Texture::Format::Depth_32F)
-		{
-			vulkanTargetView->vulkanTargetViewDescriptor.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-		}
-		else if (targetView.texture->GetDescriptor().format == Texture::Format::Stencil_8)
-		{
-			vulkanTargetView->vulkanTargetViewDescriptor.subresourceRange.aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
-		}
-		else
-		{
-			vulkanTargetView->vulkanTargetViewDescriptor.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		}
+		vulkanTargetView->vulkanTargetViewDescriptor.subresourceRange.aspectMask = VulkanTextureInfo::GetAspectMask(targetView.texture->GetDescriptor().format);
 		vulkanTargetView->vulkanTargetViewDescriptor.flags = 0;
 		vulkanTargetView->vulkanTargetViewDescriptor.image = targetView.texture->Downcast<VulkanTexture>()->GetVulkanImage();
 		vulkanTargetView->vulkanTargetViewDescriptor.subresourceRange.baseMipLevel = targetView.mipmap;

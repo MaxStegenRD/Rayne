@@ -12,6 +12,7 @@
 #include "RNVulkanShader.h"
 #include "RNVulkanShaderLibrary.h"
 #include "RNVulkanFramebuffer.h"
+#include "RNVulkanTextureInfo.h"
 #include "RNVulkanDynamicGPUBuffer.h"
 #include "RNVulkanStaticGPUBuffer.h"
 #include "../../../Source/Scene/RNLight.h"
@@ -631,23 +632,8 @@ namespace RN
 				for(VulkanTexture *vulkanTexture : renderPass.renderTargetsUsedInShader)
 				{
 					const Texture::Format format = vulkanTexture->GetDescriptor().format;
-					VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-					VkImageLayout targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-					if(format == Texture::Format::Depth_24_Stencil_8 || format == Texture::Format::Depth_32F_Stencil_8)
-					{
-						aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-						targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-					}
-					else if(format == Texture::Format::Depth_16I || format == Texture::Format::Depth_24I || format == Texture::Format::Depth_32F)
-					{
-						aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-						targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-					}
-					else if(format == Texture::Format::Stencil_8)
-					{
-						aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
-						targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-					}
+					VkImageAspectFlags aspectMask = VulkanTextureInfo::GetAspectMask(format);
+					VkImageLayout targetLayout = VulkanTextureInfo::GetReadOnlyLayout(format);
 
 					if(vulkanTexture->GetCurrentLayout() == targetLayout) continue; //Nothing to do if the layout is already correct
 
@@ -804,23 +790,8 @@ namespace RN
 				for(VulkanTexture *vulkanTexture : renderPass.renderTargetsUsedInShader)
 				{
 					const Texture::Format format = vulkanTexture->GetDescriptor().format;
-					VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-					VkImageLayout targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-					if(format == Texture::Format::Depth_24_Stencil_8 || format == Texture::Format::Depth_32F_Stencil_8)
-					{
-						aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-						targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-					}
-					else if(format == Texture::Format::Depth_16I || format == Texture::Format::Depth_24I || format == Texture::Format::Depth_32F)
-					{
-						aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-						targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-					}
-					else if(format == Texture::Format::Stencil_8)
-					{
-						aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
-						targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-					}
+					VkImageAspectFlags aspectMask = VulkanTextureInfo::GetAspectMask(format);
+					VkImageLayout targetLayout = VulkanTextureInfo::GetRenderTargetLayout(format);
 
 					if(vulkanTexture->GetCurrentLayout() == targetLayout) continue; //Nothing to do if the layout is already correct
 

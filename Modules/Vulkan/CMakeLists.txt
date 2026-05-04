@@ -67,6 +67,7 @@ set(SOURCES
         Sources/RNVulkanRenderer.cpp
         Sources/RNVulkanRendererDescriptor.cpp
         Sources/RNVulkanTexture.cpp
+        Sources/RNVulkanTextureInfo.cpp
         Sources/RNVulkanWindow.cpp
         Sources/RNVulkanSwapChain.cpp
         Sources/RNVulkanInit.cpp
@@ -92,6 +93,7 @@ set(HEADERS
         Sources/RNVulkanRenderer.h
         Sources/RNVulkanRendererDescriptor.h
         Sources/RNVulkanTexture.h
+        Sources/RNVulkanTextureInfo.h
         Sources/RNVulkanWindow.h
         Sources/RNVulkanSwapChain.h
         Sources/RNVulkanInternals.h
