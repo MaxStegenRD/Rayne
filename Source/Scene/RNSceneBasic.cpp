@@ -378,11 +378,22 @@ namespace RN
 								continue;
 							}
 
-							if(node->GetFlags() & SceneNode::Flags::Occluder)
+							SceneNode::Flags nodeFlags = node->GetFlags();
+							SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo *>(node->GetSceneInfo());
+							if(nodeFlags & SceneNode::Flags::Occluder)
 							{
 								AddCachedOccluderNode(node);
+							}
 
-								SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo *>(node->GetSceneInfo());
+							if(nodeFlags & SceneNode::Flags::NoCulling)
+							{
+								sceneInfo->occludedFrameCounter = 0;
+								sceneNodesToRender.push_back(node);
+								continue;
+							}
+
+							if(nodeFlags & SceneNode::Flags::Occluder)
+							{
 								if(sceneInfo->isActiveOccluder && sceneInfo->occludedFrameCounter < _occlusionCullingParameters.frameCount)
 								{
 									sceneNodesToRender.push_back(node);
@@ -391,7 +402,6 @@ namespace RN
 							}
 
 							bool testResult = _occlusionCuller->TestBoundingBox(matViewProj, node->GetBoundingBox(), screenPixelSize);
-							SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo *>(node->GetSceneInfo());
 							if(!testResult && sceneInfo->occludedFrameCounter < 1000)
 							{
 								sceneInfo->occludedFrameCounter += 1;
