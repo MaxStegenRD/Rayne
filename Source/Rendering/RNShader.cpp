@@ -154,11 +154,15 @@ namespace RN
 		_name(name->Copy()),
 		_nameHash(name->GetHash()),
 		_identifier(Identifier::Custom),
+		_source(Source::Draw),
 		_type(type),
 		_offset(offset),
 		_elementCount(elementCount),
 		_location(location)
 	{
+		if(!Renderer::IsHeadless())
+			_source = Renderer::GetActiveRenderer()->GetShaderSource(name, _source);
+
 		if(name->IsEqual(RNCSTR("global_time")) || name->IsEqual(RNCSTR("time")))
 		{
 			_identifier = Time;
@@ -580,7 +584,7 @@ namespace RN
 		Argument(name, index), _totalUniformSize(0), _type(type), _source(source), _maxInstanceCount(maxInstanceCount)
 	{
 		if(!Renderer::IsHeadless())
-			_source = Renderer::GetActiveRenderer()->GetArgumentSource(name, _source);
+			_source = Renderer::GetActiveRenderer()->GetShaderSource(name, _source);
 
 		_uniformDescriptors = SafeRetain(uniformDescriptors);
 
@@ -661,7 +665,7 @@ namespace RN
 		}
 
 		if(!Renderer::IsHeadless())
-			return Renderer::GetActiveRenderer()->GetArgumentSource(name, Source::Frame);
+			return Renderer::GetActiveRenderer()->GetShaderSource(name, Source::Frame);
 
 		return Source::Frame;
 	}

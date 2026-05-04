@@ -15,14 +15,14 @@ namespace RN
 	RNDefineMeta(LightClusterPassSnapshot, Object)
 	RNDefineMeta(LightClusterRendererAttachment, RendererAttachment)
 
-	void LightClusterRendererAttachment::RegisterArgumentSources(Renderer *renderer)
+	void LightClusterRendererAttachment::RegisterShaderSources(Renderer *renderer)
 	{
 		RN_ASSERT(renderer, "Renderer mustn't be NULL");
 
-		renderer->RegisterArgumentSource(RNCSTR("lightClusterPointLights"), Shader::ArgumentBuffer::Source::Pass);
-		renderer->RegisterArgumentSource(RNCSTR("lightClusterSpotLights"), Shader::ArgumentBuffer::Source::Pass);
-		renderer->RegisterArgumentSource(RNCSTR("lightClusterRecords"), Shader::ArgumentBuffer::Source::Pass);
-		renderer->RegisterArgumentSource(RNCSTR("lightClusterIndices"), Shader::ArgumentBuffer::Source::Pass);
+		renderer->RegisterShaderSource(RNCSTR("lightClusterPointLights"), Shader::ArgumentBuffer::Source::Pass);
+		renderer->RegisterShaderSource(RNCSTR("lightClusterSpotLights"), Shader::ArgumentBuffer::Source::Pass);
+		renderer->RegisterShaderSource(RNCSTR("lightClusterRecords"), Shader::ArgumentBuffer::Source::Pass);
+		renderer->RegisterShaderSource(RNCSTR("lightClusterIndices"), Shader::ArgumentBuffer::Source::Pass);
 	}
 
 	void LightClusterRendererAttachment::PrepareRenderFrame(Renderer *, RenderFrame &frame)

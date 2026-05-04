@@ -941,6 +941,12 @@ namespace RN
 		const Matrix &inverseModelMatrix = drawItem.GetInverseModelMatrix();
 
 		argument->GetUniformDescriptors()->Enumerate<Shader::UniformDescriptor>([&](Shader::UniformDescriptor *descriptor, size_t index, bool &stop) {
+			if(descriptor->GetSource() == Shader::UniformDescriptor::Source::Pass)
+			{
+				framePass.CopyPassUniform(descriptor->GetNameHash(), buffer + descriptor->GetOffset(), descriptor->GetSize());
+				return;
+			}
+
 			switch(descriptor->GetIdentifier())
 			{
 				case Shader::UniformDescriptor::Identifier::Time:

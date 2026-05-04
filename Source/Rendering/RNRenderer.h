@@ -109,10 +109,12 @@ namespace RN
 		RNAPI void SubmitAttachmentSnapshot(Object *snapshot);
 		RNAPI void SubmitCameraPassAttachmentSnapshot(Object *snapshot);
 
-		RNAPI void RegisterArgumentSource(const String *name, Shader::ArgumentBuffer::Source source);
-		RNAPI void RegisterArgumentSource(const String *name, Shader::ArgumentTexture::Source source);
-		RNAPI Shader::ArgumentBuffer::Source GetArgumentSource(const String *name, Shader::ArgumentBuffer::Source defaultSource) const;
-		RNAPI Shader::ArgumentTexture::Source GetArgumentSource(const String *name, Shader::ArgumentTexture::Source defaultSource) const;
+		RNAPI void RegisterShaderSource(const String *name, Shader::ArgumentBuffer::Source source);
+		RNAPI void RegisterShaderSource(const String *name, Shader::ArgumentTexture::Source source);
+		RNAPI void RegisterShaderSource(const String *name, Shader::UniformDescriptor::Source source);
+		RNAPI Shader::ArgumentBuffer::Source GetShaderSource(const String *name, Shader::ArgumentBuffer::Source defaultSource) const;
+		RNAPI Shader::ArgumentTexture::Source GetShaderSource(const String *name, Shader::ArgumentTexture::Source defaultSource) const;
+		RNAPI Shader::UniformDescriptor::Source GetShaderSource(const String *name, Shader::UniformDescriptor::Source defaultSource) const;
 		
 		RendererDescriptor *GetDescriptor() const { return _descriptor; }
 		RenderingDevice *GetDevice() const { return _device; }
@@ -141,9 +143,9 @@ namespace RN
 		void UnregisterDrawableFromSnapshotDrain(Drawable *drawable);
 		void DrainDrawableSnapshots(uint64 completedFrameID);
 		void FlushDeletedDrawables();
-		void RegisterDefaultArgumentSources();
+		void RegisterDefaultShaderSources();
 #if RN_BUILD_DEBUG
-		void TrackArgumentSourceName(size_t nameHash, const String *name) const;
+		void TrackShaderSourceName(size_t nameHash, const String *name) const;
 #endif
 
 		double _frameStatisticsTimer;
@@ -156,14 +158,15 @@ namespace RN
 		std::vector<std::vector<StrongRef<Object>>> _cameraPassAttachmentSnapshotStack;
 		std::unordered_map<size_t, Shader::ArgumentBuffer::Source> _argumentBufferSources;
 		std::unordered_map<size_t, Shader::ArgumentTexture::Source> _argumentTextureSources;
+		std::unordered_map<size_t, Shader::UniformDescriptor::Source> _uniformDescriptorSources;
 #if RN_BUILD_DEBUG
-		mutable std::unordered_map<size_t, StrongRef<String>> _argumentSourceNames;
+		mutable std::unordered_map<size_t, StrongRef<String>> _shaderSourceNames;
 #endif
 		RenderFrame *_activeRenderFrame;
 		Lockable _frameLifecycleLock;
 		Lockable _rendererAttachmentsLock;
-		mutable Lockable _argumentSourceRegistryLock;
-		mutable bool _hasResolvedArgumentSources;
+		mutable Lockable _shaderSourceRegistryLock;
+		mutable bool _hasResolvedShaderSources;
 
 		RenderingDevice *_device;
 		RendererDescriptor *_descriptor;

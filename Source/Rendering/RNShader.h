@@ -62,6 +62,11 @@ namespace RN
 		class UniformDescriptor : public Object
 		{
 		public:
+			enum class Source
+			{
+				Draw,
+				Pass
+			};
 			enum Identifier
 			{
 				Custom,
@@ -138,6 +143,7 @@ namespace RN
 			PrimitiveType GetType() const { return _type; }
 			size_t GetOffset() const { return _offset; }
 			Identifier GetIdentifier() const { return _identifier; }
+			Source GetSource() const { return _source; }
 			RNAPI size_t GetSize() const;
 
 			size_t GetElementCount() const { return _elementCount; }
@@ -151,6 +157,7 @@ namespace RN
 			String *_name;
 			size_t _nameHash;
 			Identifier _identifier;
+			Source _source;
 			PrimitiveType _type;
 			size_t _offset;
 

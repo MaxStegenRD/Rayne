@@ -29,14 +29,14 @@ namespace RN
 		_completedRenderFrameID(0),
 		_lastRenderFrameDrawItemCount(0),
 		_activeRenderFrame(nullptr),
-		_hasResolvedArgumentSources(false),
+		_hasResolvedShaderSources(false),
 		_device(device),
 		_descriptor(descriptor)
 	{
 		RN_ASSERT(descriptor, "Descriptor mustn't be NULL");
 		RN_ASSERT(device, "Device mustn't be NULL");
 
-		RegisterDefaultArgumentSources();
+		RegisterDefaultShaderSources();
 
 		for(size_t typeIndex = 0; typeIndex < Shader::Type::COUNT; typeIndex++)
 		{
@@ -157,13 +157,13 @@ namespace RN
 		_cameraPassAttachmentSnapshotStack.back().push_back(snapshot);
 	}
 
-	void Renderer::RegisterArgumentSource(const String *name, Shader::ArgumentBuffer::Source source)
+	void Renderer::RegisterShaderSource(const String *name, Shader::ArgumentBuffer::Source source)
 	{
-		RN_ASSERT(name, "Argument source name mustn't be NULL");
-		RN_ASSERT(source == Shader::ArgumentBuffer::Source::Pass || source == Shader::ArgumentBuffer::Source::Frame, "Only pass and frame buffer argument sources can be registered");
+		RN_ASSERT(name, "Shader source name mustn't be NULL");
+		RN_ASSERT(source == Shader::ArgumentBuffer::Source::Pass || source == Shader::ArgumentBuffer::Source::Frame, "Only pass and frame buffer shader sources can be registered");
 
-		LockGuard<Lockable> lock(_argumentSourceRegistryLock);
-		RN_ASSERT(!_hasResolvedArgumentSources, "Argument sources must be registered before shader reflection");
+		LockGuard<Lockable> lock(_shaderSourceRegistryLock);
+		RN_ASSERT(!_hasResolvedShaderSources, "Shader sources must be registered before shader reflection");
 
 		size_t nameHash = name->GetHash();
 		auto iterator = _argumentBufferSources.find(nameHash);
@@ -174,18 +174,18 @@ namespace RN
 		}
 
 #if RN_BUILD_DEBUG
-		TrackArgumentSourceName(nameHash, name);
+		TrackShaderSourceName(nameHash, name);
 #endif
 		_argumentBufferSources.emplace(nameHash, source);
 	}
 
-	void Renderer::RegisterArgumentSource(const String *name, Shader::ArgumentTexture::Source source)
+	void Renderer::RegisterShaderSource(const String *name, Shader::ArgumentTexture::Source source)
 	{
-		RN_ASSERT(name, "Argument source name mustn't be NULL");
-		RN_ASSERT(source == Shader::ArgumentTexture::Source::Pass || source == Shader::ArgumentTexture::Source::Frame, "Only pass and frame texture argument sources can be registered");
+		RN_ASSERT(name, "Shader source name mustn't be NULL");
+		RN_ASSERT(source == Shader::ArgumentTexture::Source::Pass || source == Shader::ArgumentTexture::Source::Frame, "Only pass and frame texture shader sources can be registered");
 
-		LockGuard<Lockable> lock(_argumentSourceRegistryLock);
-		RN_ASSERT(!_hasResolvedArgumentSources, "Argument sources must be registered before shader reflection");
+		LockGuard<Lockable> lock(_shaderSourceRegistryLock);
+		RN_ASSERT(!_hasResolvedShaderSources, "Shader sources must be registered before shader reflection");
 
 		size_t nameHash = name->GetHash();
 		auto iterator = _argumentTextureSources.find(nameHash);
@@ -196,18 +196,40 @@ namespace RN
 		}
 
 #if RN_BUILD_DEBUG
-		TrackArgumentSourceName(nameHash, name);
+		TrackShaderSourceName(nameHash, name);
 #endif
 		_argumentTextureSources.emplace(nameHash, source);
 	}
 
-	Shader::ArgumentBuffer::Source Renderer::GetArgumentSource(const String *name, Shader::ArgumentBuffer::Source defaultSource) const
+	void Renderer::RegisterShaderSource(const String *name, Shader::UniformDescriptor::Source source)
+	{
+		RN_ASSERT(name, "Shader source name mustn't be NULL");
+		RN_ASSERT(source == Shader::UniformDescriptor::Source::Pass, "Only pass uniform shader sources can be registered");
+
+		LockGuard<Lockable> lock(_shaderSourceRegistryLock);
+		RN_ASSERT(!_hasResolvedShaderSources, "Shader sources must be registered before shader reflection");
+
+		size_t nameHash = name->GetHash();
+		auto iterator = _uniformDescriptorSources.find(nameHash);
+		if(iterator != _uniformDescriptorSources.end())
+		{
+			RN_ASSERT(iterator->second == source, "Uniform shader source has already been registered with a different source");
+			return;
+		}
+
+#if RN_BUILD_DEBUG
+		TrackShaderSourceName(nameHash, name);
+#endif
+		_uniformDescriptorSources.emplace(nameHash, source);
+	}
+
+	Shader::ArgumentBuffer::Source Renderer::GetShaderSource(const String *name, Shader::ArgumentBuffer::Source defaultSource) const
 	{
 		if(!name)
 			return defaultSource;
 
-		LockGuard<Lockable> lock(_argumentSourceRegistryLock);
-		_hasResolvedArgumentSources = true;
+		LockGuard<Lockable> lock(_shaderSourceRegistryLock);
+		_hasResolvedShaderSources = true;
 
 		size_t nameHash = name->GetHash();
 		auto iterator = _argumentBufferSources.find(nameHash);
@@ -215,18 +237,18 @@ namespace RN
 			return defaultSource;
 
 #if RN_BUILD_DEBUG
-		TrackArgumentSourceName(nameHash, name);
+		TrackShaderSourceName(nameHash, name);
 #endif
 		return iterator->second;
 	}
 
-	Shader::ArgumentTexture::Source Renderer::GetArgumentSource(const String *name, Shader::ArgumentTexture::Source defaultSource) const
+	Shader::ArgumentTexture::Source Renderer::GetShaderSource(const String *name, Shader::ArgumentTexture::Source defaultSource) const
 	{
 		if(!name)
 			return defaultSource;
 
-		LockGuard<Lockable> lock(_argumentSourceRegistryLock);
-		_hasResolvedArgumentSources = true;
+		LockGuard<Lockable> lock(_shaderSourceRegistryLock);
+		_hasResolvedShaderSources = true;
 
 		size_t nameHash = name->GetHash();
 		auto iterator = _argumentTextureSources.find(nameHash);
@@ -234,25 +256,44 @@ namespace RN
 			return defaultSource;
 
 #if RN_BUILD_DEBUG
-		TrackArgumentSourceName(nameHash, name);
+		TrackShaderSourceName(nameHash, name);
+#endif
+		return iterator->second;
+	}
+
+	Shader::UniformDescriptor::Source Renderer::GetShaderSource(const String *name, Shader::UniformDescriptor::Source defaultSource) const
+	{
+		if(!name)
+			return defaultSource;
+
+		LockGuard<Lockable> lock(_shaderSourceRegistryLock);
+		_hasResolvedShaderSources = true;
+
+		size_t nameHash = name->GetHash();
+		auto iterator = _uniformDescriptorSources.find(nameHash);
+		if(iterator == _uniformDescriptorSources.end())
+			return defaultSource;
+
+#if RN_BUILD_DEBUG
+		TrackShaderSourceName(nameHash, name);
 #endif
 		return iterator->second;
 	}
 
 #if RN_BUILD_DEBUG
-	void Renderer::TrackArgumentSourceName(size_t nameHash, const String *name) const
+	void Renderer::TrackShaderSourceName(size_t nameHash, const String *name) const
 	{
-		auto iterator = _argumentSourceNames.find(nameHash);
-		RN_DEBUG_ASSERT(iterator == _argumentSourceNames.end() || iterator->second->IsEqual(name), "Argument source names have a hash collision");
+		auto iterator = _shaderSourceNames.find(nameHash);
+		RN_DEBUG_ASSERT(iterator == _shaderSourceNames.end() || iterator->second->IsEqual(name), "Shader source names have a hash collision");
 
-		if(iterator == _argumentSourceNames.end())
-			_argumentSourceNames[nameHash] = const_cast<String *>(name);
+		if(iterator == _shaderSourceNames.end())
+			_shaderSourceNames[nameHash] = const_cast<String *>(name);
 	}
 #endif
 
-	void Renderer::RegisterDefaultArgumentSources()
+	void Renderer::RegisterDefaultShaderSources()
 	{
-		LightClusterRendererAttachment::RegisterArgumentSources(this);
+		LightClusterRendererAttachment::RegisterShaderSources(this);
 	}
 
 	RenderFrame *Renderer::SetActiveRenderFrame(RenderFrame *frame)

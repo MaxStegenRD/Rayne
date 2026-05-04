@@ -305,6 +305,45 @@ namespace RN
 				return iterator == _passResourceTextures.end() ? nullptr : iterator->second.Get();
 			}
 
+			void SetPassUniform(const String *name, const void *data, size_t size)
+			{
+				size_t nameHash = name->GetHash();
+				if(data && size > 0)
+				{
+					const uint8 *bytes = static_cast<const uint8 *>(data);
+					_passUniforms[nameHash].assign(bytes, bytes + size);
+				}
+				else
+				{
+					_passUniforms.erase(nameHash);
+				}
+			}
+
+			const std::vector<uint8> *GetPassUniform(const String *name) const
+			{
+				return GetPassUniform(name->GetHash());
+			}
+
+			const std::vector<uint8> *GetPassUniform(size_t nameHash) const
+			{
+				auto iterator = _passUniforms.find(nameHash);
+				return iterator == _passUniforms.end() ? nullptr : &iterator->second;
+			}
+
+			void CopyPassUniform(size_t nameHash, void *destination, size_t size) const
+			{
+				std::memset(destination, 0, size);
+
+				const std::vector<uint8> *passUniform = GetPassUniform(nameHash);
+				RN_DEBUG_ASSERT(passUniform, "Missing pass uniform");
+				if(passUniform)
+				{
+					RN_DEBUG_ASSERT(passUniform->size() <= size, "Pass uniform is larger than shader uniform descriptor");
+					size_t copySize = std::min(passUniform->size(), size);
+					std::memcpy(destination, passUniform->data(), copySize);
+				}
+			}
+
 			void SetDirectionalShadowDepthTexture(Texture *texture) { _directionalShadowDepthTexture = texture; }
 			Texture *GetDirectionalShadowDepthTexture() const { return _directionalShadowDepthTexture; }
 			void SetDirectionalShadowMatrices(const std::vector<Matrix> &matrices) { _directionalShadowMatrices = matrices; }
@@ -333,6 +372,7 @@ namespace RN
 			std::unordered_map<MetaClass *, StrongRef<Object>> _attachmentSnapshots;
 			std::unordered_map<size_t, StrongRef<GPUBuffer>> _passResourceBuffers;
 			std::unordered_map<size_t, StrongRef<Texture>> _passResourceTextures;
+			std::unordered_map<size_t, std::vector<uint8>> _passUniforms;
 			std::vector<Matrix> _directionalShadowMatrices;
 			Texture *_directionalShadowDepthTexture = nullptr;
 			Vector2 _directionalShadowInfo;

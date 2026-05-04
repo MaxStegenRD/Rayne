@@ -1502,6 +1502,12 @@ namespace RN
 		for(size_t index = 0; index < count; index ++)
 		{
 			Shader::UniformDescriptor *descriptor = static_cast<Shader::UniformDescriptor*>(uniformDescriptors->GetObjectAtIndex(index));
+			if(descriptor->GetSource() == Shader::UniformDescriptor::Source::Pass)
+			{
+				framePass.CopyPassUniform(descriptor->GetNameHash(), buffer + descriptor->GetOffset(), descriptor->GetSize());
+				continue;
+			}
+
 			switch(descriptor->GetIdentifier())
 			{
 				case Shader::UniformDescriptor::Identifier::Time:

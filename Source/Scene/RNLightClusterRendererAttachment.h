@@ -16,7 +16,7 @@ namespace RN
 	class LightClusterRendererAttachment : public RendererAttachment
 	{
 	public:
-		RNAPI static void RegisterArgumentSources(Renderer *renderer);
+		RNAPI static void RegisterShaderSources(Renderer *renderer);
 		RNAPI void PrepareRenderFrame(Renderer *renderer, RenderFrame &frame) override;
 
 	private:
