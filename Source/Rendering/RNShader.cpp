@@ -163,267 +163,267 @@ namespace RN
 		if(!Renderer::IsHeadless())
 			_source = Renderer::GetActiveRenderer()->GetShaderSource(name, _source);
 
-		if(name->IsEqual(RNCSTR("global_time")) || name->IsEqual(RNCSTR("time")))
+		if(name->IsEqual(RNCSTR("time")))
 		{
 			_identifier = Time;
 			_type = PrimitiveType::Float;
 		}
-		else if(name->IsEqual(RNCSTR("transform_model")) || name->IsEqual(RNCSTR("modelMatrix")) || name->IsEqual(RNCSTR("in_var_INSTANCE_MODELMATRIX")))
+		else if(name->IsEqual(RNCSTR("modelMatrix")) || name->IsEqual(RNCSTR("in_var_INSTANCE_MODELMATRIX")))
 		{
 			_identifier = ModelMatrix;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("transform_inversemodel")) || name->IsEqual(RNCSTR("inverseModelMatrix")) || name->IsEqual(RNCSTR("in_var_INSTANCE_INVERSEMODELMATRIX")))
+		else if(name->IsEqual(RNCSTR("inverseModelMatrix")) || name->IsEqual(RNCSTR("in_var_INSTANCE_INVERSEMODELMATRIX")))
 		{
 			_identifier = InverseModelMatrix;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("transform_normal")) || name->IsEqual(RNCSTR("normalMatrix")) || name->IsEqual(RNCSTR("in_var_INSTANCE_NORMALMATRIX")))
+		else if(name->IsEqual(RNCSTR("normalMatrix")) || name->IsEqual(RNCSTR("in_var_INSTANCE_NORMALMATRIX")))
 		{
 			_identifier = NormalMatrix;
 			_type = PrimitiveType::Matrix3x3;
 		}
-		else if(name->IsEqual(RNCSTR("transform_modelview")) || name->IsEqual(RNCSTR("modelViewMatrix")))
+		else if(name->IsEqual(RNCSTR("modelViewMatrix")))
 		{
 			_identifier = ModelViewMatrix;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("transform_modelview_multiview")) || name->IsEqual(RNCSTR("modelViewMatrix_multiview")))
+		else if(name->IsEqual(RNCSTR("modelViewMatrix_multiview")))
 		{
 			_identifier = ModelViewMatrixMultiview;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("transform_modelviewprojection")) || name->IsEqual(RNCSTR("modelViewProjectionMatrix")))
+		else if(name->IsEqual(RNCSTR("modelViewProjectionMatrix")))
 		{
 			_identifier = ModelViewProjectionMatrix;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("transform_modelviewprojection_multiview")) || name->IsEqual(RNCSTR("modelViewProjectionMatrix_multiview")))
+		else if(name->IsEqual(RNCSTR("modelViewProjectionMatrix_multiview")))
 		{
 			_identifier = ModelViewProjectionMatrixMultiview;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("transform_view")) || name->IsEqual(RNCSTR("viewMatrix")))
+		else if(name->IsEqual(RNCSTR("viewMatrix")))
 		{
 			_identifier = ViewMatrix;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("transform_view_multiview")) || name->IsEqual(RNCSTR("viewMatrix_multiview")))
+		else if(name->IsEqual(RNCSTR("viewMatrix_multiview")))
 		{
 			_identifier = ViewMatrixMultiview;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("transform_viewprojection")) || name->IsEqual(RNCSTR("viewProjectionMatrix")))
+		else if(name->IsEqual(RNCSTR("viewProjectionMatrix")))
 		{
 			_identifier = ViewProjectionMatrix;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("transform_viewprojection_multiview")) || name->IsEqual(RNCSTR("viewProjectionMatrix_multiview")))
+		else if(name->IsEqual(RNCSTR("viewProjectionMatrix_multiview")))
 		{
 			_identifier = ViewProjectionMatrixMultiview;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("transform_projection")) || name->IsEqual(RNCSTR("projectionMatrix")))
+		else if(name->IsEqual(RNCSTR("projectionMatrix")))
 		{
 			_identifier = ProjectionMatrix;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("transform_projection_multiview")) || name->IsEqual(RNCSTR("projectionMatrix_multiview")))
+		else if(name->IsEqual(RNCSTR("projectionMatrix_multiview")))
 		{
 			_identifier = ProjectionMatrixMultiview;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("transform_inversemodelview")) || name->IsEqual(RNCSTR("inverseModelViewMatrix")))
+		else if(name->IsEqual(RNCSTR("inverseModelViewMatrix")))
 		{
 			_identifier = InverseModelViewMatrix;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("transform_inversemodelview_multiview")) || name->IsEqual(RNCSTR("inverseModelViewMatrix_multiview")))
+		else if(name->IsEqual(RNCSTR("inverseModelViewMatrix_multiview")))
 		{
 			_identifier = InverseModelViewMatrixMultiview;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("transform_inversemodelviewprojection")) || name->IsEqual(RNCSTR("inverseModelViewProjectionMatrix")))
+		else if(name->IsEqual(RNCSTR("inverseModelViewProjectionMatrix")))
 		{
 			_identifier = InverseModelViewProjectionMatrix;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("transform_inversemodelviewprojection_multiview")) || name->IsEqual(RNCSTR("inverseModelViewProjectionMatrix_multiview")))
+		else if(name->IsEqual(RNCSTR("inverseModelViewProjectionMatrix_multiview")))
 		{
 			_identifier = InverseModelViewProjectionMatrixMultiview;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("transform_inverseview")) || name->IsEqual(RNCSTR("inverseViewMatrix")))
+		else if(name->IsEqual(RNCSTR("inverseViewMatrix")))
 		{
 			_identifier = InverseViewMatrix;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("transform_inverseview_multiview")) || name->IsEqual(RNCSTR("inverseViewMatrix_multiview")))
+		else if(name->IsEqual(RNCSTR("inverseViewMatrix_multiview")))
 		{
 			_identifier = InverseViewMatrixMultiview;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("transform_inverseviewprojection")) || name->IsEqual(RNCSTR("inverseViewProjectionMatrix")))
+		else if(name->IsEqual(RNCSTR("inverseViewProjectionMatrix")))
 		{
 			_identifier = InverseViewProjectionMatrix;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("transform_inverseviewprojection_multiview")) || name->IsEqual(RNCSTR("inverseViewProjectionMatrix_multiview")))
+		else if(name->IsEqual(RNCSTR("inverseViewProjectionMatrix_multiview")))
 		{
 			_identifier = InverseViewProjectionMatrixMultiview;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("transform_inverseprojection")) || name->IsEqual(RNCSTR("inverseProjectionMatrix")))
+		else if(name->IsEqual(RNCSTR("inverseProjectionMatrix")))
 		{
 			_identifier = InverseProjectionMatrix;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("transform_inverseprojection_multiview")) || name->IsEqual(RNCSTR("inverseProjectionMatrix_multiview")))
+		else if(name->IsEqual(RNCSTR("inverseProjectionMatrix_multiview")))
 		{
 			_identifier = InverseProjectionMatrixMultiview;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("camera_position_multiview")) || name->IsEqual(RNCSTR("cameraPosition_multiview")))
+		else if(name->IsEqual(RNCSTR("cameraPosition_multiview")))
 		{
 			_identifier = CameraPositionMultiview;
 			_type = PrimitiveType::Vector4;
 		}
-		else if(name->IsEqual(RNCSTR("camera_position")) || name->IsEqual(RNCSTR("cameraPosition")))
+		else if(name->IsEqual(RNCSTR("cameraPosition")))
 		{
 			_identifier = CameraPosition;
 			_type = PrimitiveType::Vector4;
 		}
-		else if(name->IsEqual(RNCSTR("camera_clipdistance")) || name->IsEqual(RNCSTR("cameraClipDistance")))
+		else if(name->IsEqual(RNCSTR("cameraClipDistance")))
 		{
 			_identifier = CameraClipDistance;
 			_type = PrimitiveType::Vector2;
 		}
-		else if(name->IsEqual(RNCSTR("camera_fogdistance")) || name->IsEqual(RNCSTR("cameraFogDistance")))
+		else if(name->IsEqual(RNCSTR("cameraFogDistance")))
 		{
 			_identifier = CameraFogDistance;
 			_type = PrimitiveType::Vector2;
 		}
-		else if(name->IsEqual(RNCSTR("camera_tag")) || name->IsEqual(RNCSTR("cameraTag")))
+		else if(name->IsEqual(RNCSTR("cameraTag")))
 		{
 			_identifier = CameraTag;
 			_type = PrimitiveType::Uint32;
 		}
-		else if(name->IsEqual(RNCSTR("camera_viewport")) || name->IsEqual(RNCSTR("cameraViewport")))
+		else if(name->IsEqual(RNCSTR("cameraViewport")))
 		{
 			_identifier = CameraViewport;
 			_type = PrimitiveType::Vector4;
 		}
-		else if(name->IsEqual(RNCSTR("camera_customdata")) || name->IsEqual(RNCSTR("cameraCustomData")))
+		else if(name->IsEqual(RNCSTR("cameraCustomData")))
 		{
 			_identifier = CameraCustomData;
 			_type = PrimitiveType::Vector4;
 		}
-		else if(name->IsEqual(RNCSTR("material_ambientcolor")) || name->IsEqual(RNCSTR("ambientColor")) || name->IsEqual(RNCSTR("in_var_INSTANCE_AMBIENTCOLOR")))
+		else if(name->IsEqual(RNCSTR("ambientColor")) || name->IsEqual(RNCSTR("in_var_INSTANCE_AMBIENTCOLOR")))
 		{
 			_identifier = AmbientColor;
 			_type = PrimitiveType::Color;
 		}
-		else if(name->IsEqual(RNCSTR("material_diffusecolor")) || name->IsEqual(RNCSTR("diffuseColor")) || name->IsEqual(RNCSTR("in_var_INSTANCE_DIFFUSECOLOR")))
+		else if(name->IsEqual(RNCSTR("diffuseColor")) || name->IsEqual(RNCSTR("in_var_INSTANCE_DIFFUSECOLOR")))
 		{
 			_identifier = DiffuseColor;
 			_type = PrimitiveType::Color;
 		}
-		else if(name->IsEqual(RNCSTR("material_specularcolor")) || name->IsEqual(RNCSTR("specularColor")) || name->IsEqual(RNCSTR("in_var_INSTANCE_SPECULARCOLOR")))
+		else if(name->IsEqual(RNCSTR("specularColor")) || name->IsEqual(RNCSTR("in_var_INSTANCE_SPECULARCOLOR")))
 		{
 			_identifier = SpecularColor;
 			_type = PrimitiveType::Color;
 		}
-		else if(name->IsEqual(RNCSTR("material_emissivecolor")) || name->IsEqual(RNCSTR("emissiveColor")) || name->IsEqual(RNCSTR("in_var_INSTANCE_EMISSIVECOLOR")))
+		else if(name->IsEqual(RNCSTR("emissiveColor")) || name->IsEqual(RNCSTR("in_var_INSTANCE_EMISSIVECOLOR")))
 		{
 			_identifier = EmissiveColor;
 			_type = PrimitiveType::Color;
 		}
-		else if(name->IsEqual(RNCSTR("material_custommatrix1")) || name->IsEqual(RNCSTR("customMatrix1")) || name->IsEqual(RNCSTR("in_var_INSTANCE_CUSTOMMATRIX1")))
+		else if(name->IsEqual(RNCSTR("customMatrix1")) || name->IsEqual(RNCSTR("in_var_INSTANCE_CUSTOMMATRIX1")))
 		{
 			_identifier = CustomMatrix1;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("material_custommatrix2")) || name->IsEqual(RNCSTR("customMatrix2")) || name->IsEqual(RNCSTR("in_var_INSTANCE_CUSTOMMATRIX2")))
+		else if(name->IsEqual(RNCSTR("customMatrix2")) || name->IsEqual(RNCSTR("in_var_INSTANCE_CUSTOMMATRIX2")))
 		{
 			_identifier = CustomMatrix2;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("material_uiclippingrect")) || name->IsEqual(RNCSTR("uiClippingRect")) || name->IsEqual(RNCSTR("in_var_INSTANCE_UICLIPPINGRECT")))
+		else if(name->IsEqual(RNCSTR("uiClippingRect")) || name->IsEqual(RNCSTR("in_var_INSTANCE_UICLIPPINGRECT")))
 		{
 			_identifier = UIClippingRect;
 			_type = PrimitiveType::Vector4;
 		}
-		else if(name->IsEqual(RNCSTR("material_uioffset")) || name->IsEqual(RNCSTR("uiOffset")) || name->IsEqual(RNCSTR("in_var_INSTANCE_UIOFFSET")))
+		else if(name->IsEqual(RNCSTR("uiOffset")) || name->IsEqual(RNCSTR("in_var_INSTANCE_UIOFFSET")))
 		{
 			_identifier = UIOffset;
 			_type = PrimitiveType::Vector2;
 		}
-		else if(name->IsEqual(RNCSTR("material_uioutlinecolor")) || name->IsEqual(RNCSTR("uiOutlineColor")) || name->IsEqual(RNCSTR("in_var_INSTANCE_UIOUTLINECOLOR")))
+		else if(name->IsEqual(RNCSTR("uiOutlineColor")) || name->IsEqual(RNCSTR("in_var_INSTANCE_UIOUTLINECOLOR")))
 		{
 			_identifier = UIOutlineColor;
 			_type = PrimitiveType::Color;
 		}
-		else if(name->IsEqual(RNCSTR("material_texturetilefactor")) || name->IsEqual(RNCSTR("textureTileFactor")) || name->IsEqual(RNCSTR("in_var_INSTANCE_TEXTURETILEFACTOR")))
+		else if(name->IsEqual(RNCSTR("textureTileFactor")) || name->IsEqual(RNCSTR("in_var_INSTANCE_TEXTURETILEFACTOR")))
 		{
 			_identifier = TextureTileFactor;
 			_type = PrimitiveType::Float;
 		}
-		else if(name->IsEqual(RNCSTR("material_alphatocoverageclamp")) || name->IsEqual(RNCSTR("alphaToCoverageClamp")) || name->IsEqual(RNCSTR("in_var_INSTANCE_ALPHATOCOVERAGECLAMP")))
+		else if(name->IsEqual(RNCSTR("alphaToCoverageClamp")) || name->IsEqual(RNCSTR("in_var_INSTANCE_ALPHATOCOVERAGECLAMP")))
 		{
 			_identifier = AlphaToCoverageClamp;
 			_type = PrimitiveType::Vector2;
 		}
-		else if(name->IsEqual(RNCSTR("camera_ambientcolor")) || name->IsEqual(RNCSTR("cameraAmbientColor")))
+		else if(name->IsEqual(RNCSTR("cameraAmbientColor")))
 		{
 			_identifier = CameraAmbientColor;
 			_type = PrimitiveType::Color;
 		}
-		else if(name->IsEqual(RNCSTR("camera_fogcolor")) || name->IsEqual(RNCSTR("cameraFogColor")) || name->IsEqual(RNCSTR("camera_fogcolor0")) || name->IsEqual(RNCSTR("cameraFogColor0")))
+		else if(name->IsEqual(RNCSTR("cameraFogColor")) || name->IsEqual(RNCSTR("cameraFogColor0")))
 		{
 			_identifier = CameraFogColor0;
 			_type = PrimitiveType::Color;
 		}
-		else if(name->IsEqual(RNCSTR("camera_fogcolor1")) || name->IsEqual(RNCSTR("cameraFogColor1")))
+		else if(name->IsEqual(RNCSTR("cameraFogColor1")))
 		{
 			_identifier = CameraFogColor1;
 			_type = PrimitiveType::Color;
 		}
-		else if(name->IsEqual(RNCSTR("lights_directionalcount")) || name->IsEqual(RNCSTR("directionalLightsCount")))
+		else if(name->IsEqual(RNCSTR("directionalLightsCount")))
 		{
 			_identifier = DirectionalLightsCount;
 			_type = PrimitiveType::Uint32;
 		}
-		else if(name->IsEqual(RNCSTR("lights_directional")) || name->IsEqual(RNCSTR("directionalLights")))
+		else if(name->IsEqual(RNCSTR("directionalLights")))
 		{
 			_identifier = DirectionalLights;
 			_type = PrimitiveType::Vector4;
 		}
-		else if(name->IsEqual(RNCSTR("shadows_directional_matrices")) || name->IsEqual(RNCSTR("directionalShadowMatrices")))
+		else if(name->IsEqual(RNCSTR("directionalShadowMatrices")))
 		{
 			_identifier = DirectionalShadowMatrices;
 			_type = PrimitiveType::Matrix4x4;
 		}
-		else if(name->IsEqual(RNCSTR("shadows_directional_matrices_count")) || name->IsEqual(RNCSTR("directionalShadowMatricesCount")))
+		else if(name->IsEqual(RNCSTR("directionalShadowMatricesCount")))
 		{
 			_identifier = DirectionalShadowMatricesCount;
 			_type = PrimitiveType::Uint32;
 		}
-		else if(name->IsEqual(RNCSTR("shadows_directional_info")) || name->IsEqual(RNCSTR("directionalShadowInfo")))
+		else if(name->IsEqual(RNCSTR("directionalShadowInfo")))
 		{
 			_identifier = DirectionalShadowInfo;
 			_type = PrimitiveType::Vector2;
 		}
-		else if(name->IsEqual(RNCSTR("lights_point")) || name->IsEqual(RNCSTR("pointLights")))
+		else if(name->IsEqual(RNCSTR("pointLights")))
 		{
 			_identifier = PointLights;
 			_type = PrimitiveType::Vector4;
 		}
-		else if(name->IsEqual(RNCSTR("lights_spot")) || name->IsEqual(RNCSTR("spotLights")))
+		else if(name->IsEqual(RNCSTR("spotLights")))
 		{
 			_identifier = SpotLights;
 			_type = PrimitiveType::Vector4;
 		}
-		else if(name->IsEqual(RNCSTR("bone_matrices")) || name->IsEqual(RNCSTR("boneMatrices")))
+		else if(name->IsEqual(RNCSTR("boneMatrices")))
 		{
 			_identifier = BoneMatrices;
 			_type = PrimitiveType::Matrix4x4;
@@ -432,19 +432,19 @@ namespace RN
 
 	bool Shader::UniformDescriptor::IsKnownStructName(RN::String *structName)
 	{
-		if(structName->IsEqual(RNCSTR("lights_directional")) || structName->IsEqual(RNCSTR("directionalLights")))
+		if(structName->IsEqual(RNCSTR("directionalLights")))
 		{
 			return true;
 		}
-		else if(structName->IsEqual(RNCSTR("shadows_directional_matrices")) || structName->IsEqual(RNCSTR("directionalShadowMatrices")))
+		else if(structName->IsEqual(RNCSTR("directionalShadowMatrices")))
 		{
 			return true;
 		}
-		else if(structName->IsEqual(RNCSTR("lights_point")) || structName->IsEqual(RNCSTR("pointLights")))
+		else if(structName->IsEqual(RNCSTR("pointLights")))
 		{
 			return true;
 		}
-		else if(structName->IsEqual(RNCSTR("lights_spot")) || structName->IsEqual(RNCSTR("spotLights")))
+		else if(structName->IsEqual(RNCSTR("spotLights")))
 		{
 			return true;
 		}
