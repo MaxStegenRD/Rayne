@@ -34,6 +34,7 @@ namespace RN
 
 		for(VulkanRenderPass &subpass : vulkanRenderPass.subpasses)
 		{
+			pruner.AddRenderFramePassSnapshotDependencies(consumerIndex, subpass.renderFramePassIndex);
 			pruner.AddExplicitRenderPassDependencies(consumerIndex, subpass.renderPass);
 		}
 	}

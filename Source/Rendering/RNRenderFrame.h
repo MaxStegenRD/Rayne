@@ -275,6 +275,15 @@ namespace RN
 				return iterator == _attachmentSnapshots.end() ? nullptr : iterator->second.Get();
 			}
 
+			template<class Callback>
+			void EnumerateAttachmentSnapshots(Callback callback) const
+			{
+				for(const auto &attachmentSnapshot : _attachmentSnapshots)
+				{
+					callback(attachmentSnapshot.second.Get());
+				}
+			}
+
 			void SetPassResourceBuffer(const String *name, GPUBuffer *buffer)
 			{
 				size_t nameHash = name->GetHash();
@@ -598,6 +607,33 @@ namespace RN
 		std::unordered_map<size_t, StrongRef<String>> _globalTextureNames;
 		std::unordered_map<size_t, StrongRef<String>> _globalBufferNames;
 #endif
+	};
+
+	class RenderPassDependencyCollector
+	{
+	public:
+		void ReadsTexture(Texture *texture)
+		{
+			if(texture)
+				_readTextures.push_back(texture);
+		}
+
+		const std::vector<Texture *> &GetReadTextures() const { return _readTextures; }
+
+	private:
+		std::vector<Texture *> _readTextures;
+	};
+
+	class RenderPassDependencyProvider : public Object
+	{
+	public:
+		RNAPI virtual void CollectRenderPassDependencies(const RenderFrame::Pass &pass, RenderPassDependencyCollector &collector) const;
+
+	protected:
+		RNAPI RenderPassDependencyProvider();
+		RNAPI ~RenderPassDependencyProvider() override;
+
+		__RNDeclareMetaInternal(RenderPassDependencyProvider)
 	};
 } // namespace RN
 

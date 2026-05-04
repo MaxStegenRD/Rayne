@@ -17,6 +17,7 @@
 namespace RN
 {
 	RNDefineMeta(RenderFramePresentationState, Object)
+	RNDefineMeta(RenderPassDependencyProvider, Object)
 	RNDefineMeta(RendererAttachment, Object)
 	RNDefineMeta(Renderer, Object)
 
@@ -74,6 +75,15 @@ namespace RN
 	{}
 
 	RenderFramePresentationState::~RenderFramePresentationState()
+	{}
+
+	RenderPassDependencyProvider::RenderPassDependencyProvider()
+	{}
+
+	RenderPassDependencyProvider::~RenderPassDependencyProvider()
+	{}
+
+	void RenderPassDependencyProvider::CollectRenderPassDependencies(const RenderFrame::Pass &, RenderPassDependencyCollector &) const
 	{}
 
 	RendererAttachment::RendererAttachment()

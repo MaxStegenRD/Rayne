@@ -61,6 +61,25 @@ namespace RN
 			}
 		}
 
+		void AddRenderFramePassSnapshotDependencies(size_t consumerIndex, size_t renderFramePassIndex)
+		{
+			if(renderFramePassIndex == RenderFrame::InvalidPassIndex)
+				return;
+
+			RenderPassDependencyCollector collector;
+			const RenderFrame::Pass &framePass = _submission.renderFrame.GetPass(renderFramePassIndex);
+			framePass.EnumerateAttachmentSnapshots([&](Object *snapshot) {
+				RenderPassDependencyProvider *provider = snapshot->Downcast<RenderPassDependencyProvider>();
+				if(provider)
+					provider->CollectRenderPassDependencies(framePass, collector);
+			});
+
+			for(Texture *texture : collector.GetReadTextures())
+			{
+				AddTextureDependency(consumerIndex, texture);
+			}
+		}
+
 	private:
 		struct PassState
 		{
@@ -98,6 +117,23 @@ namespace RN
 		bool FramebufferTargetsSkippedSwapChain(const FramebufferType *framebuffer) const
 		{
 			return framebuffer && framebuffer->GetSwapChain() && !UsesSubmittedSwapChain(framebuffer->GetSwapChain());
+		}
+
+		bool FramebufferProducesTexture(const FramebufferType *framebuffer, Texture *texture) const
+		{
+			if(!framebuffer || !texture) return false;
+
+			for(uint32 i = 0; i < framebuffer->GetColorTargetCount(); i++)
+			{
+				if(framebuffer->GetColorTexture(i) == texture) return true;
+			}
+
+			return framebuffer->GetDepthStencilTexture() == texture;
+		}
+
+		bool PassProducesTexture(const RenderPassType &renderPass, Texture *texture) const
+		{
+			return FramebufferProducesTexture(renderPass.framebuffer, texture) || FramebufferProducesTexture(renderPass.resolveFramebuffer, texture);
 		}
 
 		bool PassTargetsSubmittedSwapChain(const RenderPassType &renderPass) const
@@ -147,6 +183,17 @@ namespace RN
 			_passStates[producerIndex].pruneIfUnused = true;
 		}
 
+		void AddTextureDependency(size_t consumerIndex, Texture *texture)
+		{
+			if(!texture) return;
+
+			for(size_t producerIndex = 0; producerIndex < _submission.renderPasses.size(); producerIndex++)
+			{
+				if(PassProducesTexture(_submission.renderPasses[producerIndex], texture))
+					AddDependency(consumerIndex, producerIndex);
+			}
+		}
+
 		void BuildDependencies()
 		{
 			for(size_t i = 0; i < _submission.renderPasses.size(); i++)
@@ -156,6 +203,7 @@ namespace RN
 				if(renderPass.previousStoredFramebuffer)
 					AddDependency(i, FindFramebufferProducer(renderPass.previousStoredFramebuffer));
 
+				AddRenderFramePassSnapshotDependencies(i, renderPass.renderFramePassIndex);
 				FrameSubmissionAddRenderPassDependencies(*this, i, renderPass);
 			}
 		}
