@@ -370,9 +370,13 @@ namespace RN
 			}
 
 			// Always create an argument buffer (even if unstructured/empty like ByteAddressBuffer)
+			std::string argumentName = resource.name;
+			if(argumentName.compare(0, 5, "type_") == 0)
+				argumentName = argumentName.substr(5);
+
 			uint32 binding = reflector.get_decoration(resource.id, spv::DecorationBinding);
 			ArgumentBuffer::Source bufferSource = uniformDescriptors->GetCount() > 0 ? ArgumentBuffer::Source::Draw : ArgumentBuffer::Source::Frame;
-			ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR(resource.name), binding, uniformDescriptors->Autorelease(), ArgumentBuffer::Type::StorageBuffer, bufferSource, 0);
+			ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR(argumentName), binding, uniformDescriptors->Autorelease(), ArgumentBuffer::Type::StorageBuffer, bufferSource, 0);
 			buffersArray->AddObject(argumentBuffer->Autorelease());
 		}
 
@@ -380,14 +384,9 @@ namespace RN
 		{
 			Array *uniformDescriptors = new Array();
 			size_t maxInstanceCount = 1;
-
-			if(resource.name == "type_lightClusterPointLights" || resource.name == "type_lightClusterSpotLights" || resource.name == "type_lightClusterRecords" || resource.name == "type_lightClusterIndices")
-			{
-				uint32 binding = reflector.get_decoration(resource.id, spv::DecorationBinding);
-				ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR(resource.name.substr(5)), binding, uniformDescriptors->Autorelease(), ArgumentBuffer::Type::UniformBuffer, ArgumentBuffer::Source::Draw, maxInstanceCount);
-				buffersArray->AddObject(argumentBuffer->Autorelease());
-				continue;
-			}
+			std::string argumentName = resource.name;
+			if(argumentName.compare(0, 5, "type_") == 0)
+				argumentName = argumentName.substr(5);
 
 			spirv_cross::SPIRType type = reflector.get_type(resource.base_type_id);
 			unsigned memberCount = type.member_types.size();
@@ -488,12 +487,16 @@ namespace RN
 			if(uniformDescriptors->GetCount() > 0)
 			{
 				uint32 binding = reflector.get_decoration(resource.id, spv::DecorationBinding);
-				ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR(resource.name), binding, uniformDescriptors->Autorelease(), ArgumentBuffer::Type::UniformBuffer, ArgumentBuffer::Source::Draw, maxInstanceCount);
+				ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR(argumentName), binding, uniformDescriptors->Autorelease(), ArgumentBuffer::Type::UniformBuffer, ArgumentBuffer::Source::Draw, maxInstanceCount);
 				buffersArray->AddObject(argumentBuffer->Autorelease());
 			}
 			else
 			{
+				uint32 binding = reflector.get_decoration(resource.id, spv::DecorationBinding);
+				ArgumentBuffer *argumentBuffer = new ArgumentBuffer(RNSTR(argumentName), binding, uniformDescriptors, ArgumentBuffer::Type::UniformBuffer, ArgumentBuffer::Source::Draw, maxInstanceCount);
 				uniformDescriptors->Release();
+				if(argumentBuffer->GetSource() != ArgumentBuffer::Source::Draw) buffersArray->AddObject(argumentBuffer->Autorelease());
+				else argumentBuffer->Release();
 			}
 		}
 

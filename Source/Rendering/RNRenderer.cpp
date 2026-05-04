@@ -11,6 +11,7 @@
 #include "RNRenderPassResources.h"
 #include "../Base/RNKernel.h"
 #include "../Debug/RNLogger.h"
+#include "../Scene/RNLightClusterRendererAttachment.h"
 
 namespace RN
 {
@@ -34,6 +35,8 @@ namespace RN
 	{
 		RN_ASSERT(descriptor, "Descriptor mustn't be NULL");
 		RN_ASSERT(device, "Device mustn't be NULL");
+
+		RegisterDefaultArgumentSources();
 
 		for(size_t typeIndex = 0; typeIndex < Shader::Type::COUNT; typeIndex++)
 		{
@@ -246,6 +249,11 @@ namespace RN
 			_argumentSourceNames[nameHash] = const_cast<String *>(name);
 	}
 #endif
+
+	void Renderer::RegisterDefaultArgumentSources()
+	{
+		LightClusterRendererAttachment::RegisterArgumentSources(this);
+	}
 
 	RenderFrame *Renderer::SetActiveRenderFrame(RenderFrame *frame)
 	{

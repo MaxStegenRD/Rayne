@@ -13,6 +13,7 @@
 #include "../Rendering/RNMesh.h"
 #include "../Rendering/RNModel.h"
 #include "../Scene/RNEntity.h"
+#include "../Scene/RNLightClusterSceneAttachment.h"
 #include "../Scene/RNLightManager.h"
 #include "../Threads/RNWorkGroup.h"
 #include "../Threads/RNWorkQueue.h"
@@ -49,6 +50,8 @@ namespace RN
 	{
 		RN_PROFILE_SCOPE();
 		_occlusionCuller = new OcclusionCuller(_occlusionCullingParameters.textureWidth, _occlusionCullingParameters.textureHeight);
+
+		LightClusterSceneAttachment::AttachToScene(this);
 	}
 
 	SceneBasic::~SceneBasic()
@@ -523,6 +526,7 @@ namespace RN
 					{
 						lm->BuildForCamera(camera, visibleLights);
 					}
+					SubmitCameraPassAttachmentSnapshots(renderer, camera);
 
 					//Submit all drawables for rendering
 					for(SceneNode *node : sceneNodesToRender)

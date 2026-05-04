@@ -7,7 +7,6 @@
 //
 
 #include "RNLightManager.h"
-#include "RNScene.h"
 #include "../Rendering/RNRenderer.h"
 
 namespace RN

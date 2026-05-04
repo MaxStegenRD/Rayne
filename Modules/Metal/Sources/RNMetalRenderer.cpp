@@ -8,7 +8,7 @@
 
 #import <Metal/Metal.h>
 #include "RNMetalRenderer.h"
-#include "../../../Source/Scene/RNLightManager.h"
+#include "../../../Source/Scene/RNLight.h"
 #include "RNMetalInternals.h"
 #include "RNMetalShaderLibrary.h"
 #include "RNMetalGPUBuffer.h"
@@ -522,10 +522,10 @@ namespace RN
 
 	void MetalRenderer::SubmitCamera(Camera *camera, Function &&function)
 	{
-		SubmitCamera(GetActiveFrameSubmission(), camera, camera, std::move(function));
+		SubmitCamera(GetActiveFrameSubmission(), camera, std::move(function));
 	}
 
-	void MetalRenderer::SubmitCamera(MetalFrameSubmission &frameSubmission, Camera *camera, Camera *lightClusterCamera, Function &&function)
+	void MetalRenderer::SubmitCamera(MetalFrameSubmission &frameSubmission, Camera *camera, Function &&function)
 	{
 		RN_PROFILE_SCOPE();
 		const Array *multiviewCameras = camera->GetMultiviewCameras();
@@ -544,7 +544,7 @@ namespace RN
 					_currentMultiviewFallbackRenderPass = camera->GetRenderPass();
 
 					RN::Function submission = RN::MakeFunction([&function](){ function(); });
-					SubmitCamera(frameSubmission, multiviewCamera, lightClusterCamera, std::move(submission));
+					SubmitCamera(frameSubmission, multiviewCamera, std::move(submission));
 
 					_currentMultiviewLayer = 0;
 					_currentMultiviewFallbackRenderPass = nullptr;
@@ -602,20 +602,12 @@ namespace RN
 		});
 		function();
 
-		LightManager::DrawSnapshot lightClusterSnapshot;
-		if(LightManager *lightManager = lightClusterCamera ? lightClusterCamera->GetLightManager() : nullptr)
-		{
-			lightClusterSnapshot = lightManager->GetDrawSnapshot();
-		}
-
 		for(size_t pi = previousRenderPassIndex; pi < submittedRenderPassEndIndex; pi++)
 		{
 			MetalRenderPass &submittedRenderPass = frameSubmission.renderPasses[pi];
 			if(!submittedRenderPass.UsesDrawItems())
 				continue;
 
-			RenderFrame::Pass &framePass = frameSubmission.renderFrame.GetPass(submittedRenderPass.renderFramePassIndex);
-			framePass.SetLightClusterSnapshot(lightClusterSnapshot);
 			AddCameraPassAttachmentSnapshots(submittedRenderPass.renderFramePassIndex);
 		}
 	}
@@ -1694,43 +1686,6 @@ namespace RN
 				[encoder setFragmentBuffer:(id <MTLBuffer>)buffer->_buffer offset:uniformBufferReference->offset atIndex:uniformBufferReference->shaderResourceIndex];
 			}
 
-			const LightManager::DrawSnapshot &lightClusterSnapshot = framePass.GetLightClusterSnapshot();
-
-			auto getLightClusterBuffer = [](const LightManager::DrawSnapshot &lightClusterSnapshot, Shader::ArgumentBuffer::Semantic semantic) -> GPUBuffer * {
-				switch(semantic)
-				{
-					case Shader::ArgumentBuffer::Semantic::LightClusterPointLights:
-						return lightClusterSnapshot.GetPointLightBuffer();
-					case Shader::ArgumentBuffer::Semantic::LightClusterSpotLights:
-						return lightClusterSnapshot.GetSpotLightBuffer();
-					case Shader::ArgumentBuffer::Semantic::LightClusterRecords:
-						return lightClusterSnapshot.GetClusterRecordsBuffer();
-					case Shader::ArgumentBuffer::Semantic::LightClusterIndices:
-						return lightClusterSnapshot.GetClusterIndexBuffer();
-					case Shader::ArgumentBuffer::Semantic::None:
-						return nullptr;
-				}
-
-				return nullptr;
-			};
-
-			auto bindBuffer = [&](Shader::ArgumentBuffer *argument, GPUBuffer *buffer, bool vertexStage) {
-				if(!buffer)
-					return;
-
-				MetalGPUBuffer *metalBuffer = static_cast<MetalGPUBuffer *>(buffer->GetActiveBuffer());
-				if(vertexStage) [encoder setVertexBuffer:(id<MTLBuffer>)metalBuffer->_buffer offset:0 atIndex:argument->GetIndex()];
-				else [encoder setFragmentBuffer:(id<MTLBuffer>)metalBuffer->_buffer offset:0 atIndex:argument->GetIndex()];
-			};
-
-			auto bindLightClusterBuffers = [&](MetalShader *shader) {
-				if(!shader || !shader->GetSignature()) return;
-
-				shader->GetSignature()->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *argument, size_t index, bool &stop) {
-					bindBuffer(argument, getLightClusterBuffer(lightClusterSnapshot, argument->GetSemantic()), false);
-				});
-			};
-
 			auto bindRequiredBuffer = [&](Shader::ArgumentBuffer *argument, GPUBuffer *buffer, const char *missingMessage, bool vertexStage) {
 				MetalGPUBuffer *metalBuffer = buffer ? static_cast<MetalGPUBuffer *>(buffer->GetActiveBuffer()) : nullptr;
 				RN_DEBUG_ASSERT(metalBuffer, missingMessage);
@@ -1754,14 +1709,13 @@ namespace RN
 				if(!shader || !shader->GetSignature()) return;
 
 				shader->GetSignature()->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *argument, size_t index, bool &stop) {
-					if(argument->GetSource() != Shader::ArgumentBuffer::Source::Frame || argument->GetSemantic() != Shader::ArgumentBuffer::Semantic::None)
+					if(argument->GetSource() != Shader::ArgumentBuffer::Source::Frame)
 						return;
 
 					bindRequiredBuffer(argument, renderFrame.GetGlobalBuffer(argument->GetNameHash()), "Missing frame global buffer", vertexStage);
 				});
 			};
 
-			bindLightClusterBuffers(metalFragmentShader);
 			bindPassBuffers(metalVertexShader, true);
 			bindPassBuffers(metalFragmentShader, false);
 			bindGlobalBuffers(metalVertexShader, true);

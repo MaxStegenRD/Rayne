@@ -9,9 +9,10 @@
 #include "RNSceneWithVisibilityLists.h"
 #include "../Debug/RNLogger.h"
 #include "../Objects/RNAutoreleasePool.h"
+#include "../Scene/RNLightClusterSceneAttachment.h"
+#include "../Scene/RNLightManager.h"
 #include "../Threads/RNWorkGroup.h"
 #include "../Threads/RNWorkQueue.h"
-#include "../Scene/RNLightManager.h"
 
 #define kRNSceneUpdateBatchSize 64
 
@@ -42,6 +43,8 @@ namespace RN
 	{
 		_volumes = new Array();
 		_defaultVolume = new Volume();
+
+		LightClusterSceneAttachment::AttachToScene(this);
 	}
 	SceneWithVisibilityLists::~SceneWithVisibilityLists()
 	{
@@ -170,6 +173,7 @@ namespace RN
 					{
 						lm->BuildForCamera(camera, visibleLights);
 					}
+					SubmitCameraPassAttachmentSnapshots(renderer, camera);
 					RenderVolumeList(renderer, camera, _defaultVolume);
 					if(volume)
 					{

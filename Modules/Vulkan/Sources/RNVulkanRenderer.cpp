@@ -14,7 +14,7 @@
 #include "RNVulkanFramebuffer.h"
 #include "RNVulkanDynamicGPUBuffer.h"
 #include "RNVulkanStaticGPUBuffer.h"
-#include "../../../Source/Scene/RNLightManager.h"
+#include "../../../Source/Scene/RNLight.h"
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -979,10 +979,10 @@ namespace RN
 	//TODO: Merge parts of this with SubmitRenderPass and call it in here
 	void VulkanRenderer::SubmitCamera(Camera *camera, Function &&function)
 	{
-		SubmitCamera(GetActiveFrameSubmission(), camera, camera, std::move(function));
+		SubmitCamera(GetActiveFrameSubmission(), camera, std::move(function));
 	}
 
-	void VulkanRenderer::SubmitCamera(VulkanFrameSubmission &frameSubmission, Camera *camera, Camera *lightClusterCamera, Function &&function)
+	void VulkanRenderer::SubmitCamera(VulkanFrameSubmission &frameSubmission, Camera *camera, Function &&function)
 	{
 		RN_PROFILE_SCOPE();
 		VulkanRenderPass renderPass;
@@ -1020,12 +1020,12 @@ namespace RN
 						if(increment == 1)
 						{
 							_currentMultiviewFallbackRenderPass = camera->GetRenderPass();
-							SubmitCamera(frameSubmission, multiviewCameras->GetObjectAtIndex<Camera>(i), lightClusterCamera, std::move(cameraSubmission));
+							SubmitCamera(frameSubmission, multiviewCameras->GetObjectAtIndex<Camera>(i), std::move(cameraSubmission));
 							_currentMultiviewFallbackRenderPass = nullptr;
 						}
 						else
 						{
-							SubmitCamera(frameSubmission, camera, lightClusterCamera, std::move(cameraSubmission));
+							SubmitCamera(frameSubmission, camera, std::move(cameraSubmission));
 						}
 
 						_currentMultiviewLayer = 0;
@@ -1047,7 +1047,7 @@ namespace RN
 					_currentMultiviewFallbackRenderPass = camera->GetRenderPass();
 
 					RN::Function cameraSubmission = RN::MakeFunction([&function](){ function(); });
-					SubmitCamera(frameSubmission, multiviewCamera, lightClusterCamera, std::move(cameraSubmission));
+					SubmitCamera(frameSubmission, multiviewCamera, std::move(cameraSubmission));
 
 					_currentMultiviewLayer = 0;
 					_currentMultiviewCount = 0;
@@ -1140,31 +1140,28 @@ namespace RN
 		ScopeGuard cameraPassAttachmentSnapshotsGuard([this]() {
 			FinishCameraPassAttachmentSnapshots();
 		});
-		LightManager::DrawSnapshot lightClusterSnapshot;
-		_lock.Lock();
-		function();
-		if(LightManager *lightManager = lightClusterCamera ? lightClusterCamera->GetLightManager() : nullptr)
 		{
-			lightClusterSnapshot = lightManager->GetDrawSnapshot();
+			_lock.Lock();
+			ScopeGuard submissionLockGuard([this]() {
+				_lock.Unlock();
+			});
+			function();
 		}
-		_lock.Unlock();
 
-		auto setLightClusterSnapshot = [&](VulkanRenderPass &submittedRenderPass) {
+		auto addCameraPassAttachmentSnapshots = [&](VulkanRenderPass &submittedRenderPass) {
 			if(!submittedRenderPass.UsesDrawItems())
 				return;
 
-			RenderFrame::Pass &submittedFramePass = frameSubmission.renderFrame.GetPass(submittedRenderPass.renderFramePassIndex);
-			submittedFramePass.SetLightClusterSnapshot(lightClusterSnapshot);
 			AddCameraPassAttachmentSnapshots(submittedRenderPass.renderFramePassIndex);
 		};
 
 		for(size_t i = previousRenderPassIndex; i < submittedRenderPassEndIndex; i++)
 		{
 			VulkanRenderPass &submittedRenderPass = frameSubmission.renderPasses[i];
-			setLightClusterSnapshot(submittedRenderPass);
+			addCameraPassAttachmentSnapshots(submittedRenderPass);
 			for(VulkanRenderPass &subpass : submittedRenderPass.subpasses)
 			{
-				setLightClusterSnapshot(subpass);
+				addCameraPassAttachmentSnapshots(subpass);
 			}
 		}
 	}
@@ -2529,24 +2526,6 @@ namespace RN
 		uint32 totalTextureCount = 0;
 		uint32 totalSubpassInputCount = 0;
 
-		auto getLightClusterBuffer = [](const LightManager::DrawSnapshot &lightClusterSnapshot, Shader::ArgumentBuffer::Semantic semantic) -> GPUBuffer * {
-			switch(semantic)
-			{
-				case Shader::ArgumentBuffer::Semantic::LightClusterPointLights:
-					return lightClusterSnapshot.GetPointLightBuffer();
-				case Shader::ArgumentBuffer::Semantic::LightClusterSpotLights:
-					return lightClusterSnapshot.GetSpotLightBuffer();
-				case Shader::ArgumentBuffer::Semantic::LightClusterRecords:
-					return lightClusterSnapshot.GetClusterRecordsBuffer();
-				case Shader::ArgumentBuffer::Semantic::LightClusterIndices:
-					return lightClusterSnapshot.GetClusterIndexBuffer();
-				case Shader::ArgumentBuffer::Semantic::None:
-					return nullptr;
-			}
-
-			return nullptr;
-		};
-
 		auto resolveVulkanBuffer = [&](GPUBuffer *buffer, const char *missingMessage, const char *invalidMessage) -> GPUBuffer * {
 			RN_DEBUG_ASSERT(buffer, missingMessage);
 
@@ -2584,7 +2563,7 @@ namespace RN
 			if(!shader || !shader->GetSignature()) return;
 
 			shader->GetSignature()->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *argument, size_t index, bool &stop) {
-				if(argument->GetSource() != Shader::ArgumentBuffer::Source::Frame || argument->GetSemantic() != Shader::ArgumentBuffer::Semantic::None)
+				if(argument->GetSource() != Shader::ArgumentBuffer::Source::Frame)
 					return;
 
 				callback(argument, getFrameGlobalBuffer(argument));
@@ -2603,24 +2582,6 @@ namespace RN
 			});
 		};
 
-		auto enumerateLightClusterBufferDescriptors = [&](Shader *shader, const LightManager::DrawSnapshot &lightClusterSnapshot, auto &&callback) {
-			if(!shader || !shader->GetSignature()) return;
-
-			shader->GetSignature()->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *argument, size_t index, bool &stop) {
-				GPUBuffer *lightClusterBuffer = getLightClusterBuffer(lightClusterSnapshot, argument->GetSemantic());
-				if(lightClusterBuffer)
-				{
-					callback(argument, lightClusterBuffer);
-				}
-			});
-		};
-
-		auto countLightClusterBufferDescriptors = [&](Shader *shader, const LightManager::DrawSnapshot &lightClusterSnapshot) {
-			enumerateLightClusterBufferDescriptors(shader, lightClusterSnapshot, [&](Shader::ArgumentBuffer *, GPUBuffer *) {
-				totalConstantBufferCount += 1;
-			});
-		};
-
 		auto accumulateDescriptorCounts = [&](const VulkanRenderPass &renderPass) {
 			RN_DEBUG_ASSERT(renderPass.preparedRenderPassIndex < submission.preparedRenderPasses.size(), "Invalid prepared render pass index");
 			const VulkanPreparedRenderPass &preparedPass = submission.preparedRenderPasses[renderPass.preparedRenderPassIndex];
@@ -2629,7 +2590,6 @@ namespace RN
 				return;
 
 			const RenderFrame::Pass &framePass = submission.renderFrame.GetPass(renderPass.renderFramePassIndex);
-			const LightManager::DrawSnapshot &lightClusterSnapshot = framePass.GetLightClusterSnapshot();
 			uint32 stepSize = 0;
 			uint32 stepSizeIndex = 0;
 			for(size_t i = 0; i < drawItems.size(); i += stepSize)
@@ -2647,7 +2607,6 @@ namespace RN
 				countPassBufferDescriptors(framePass, pipelineState->descriptor.fragmentShader);
 				countGlobalBufferDescriptors(pipelineState->descriptor.vertexShader);
 				countGlobalBufferDescriptors(pipelineState->descriptor.fragmentShader);
-				countLightClusterBufferDescriptors(pipelineState->descriptor.fragmentShader, lightClusterSnapshot);
 
 				totalTextureCount += pipelineState->rootSignature->textureCount;
 				totalSubpassInputCount += pipelineState->rootSignature->subpassInputCount;
@@ -2712,12 +2671,6 @@ namespace RN
 		auto addGlobalBufferDescriptors = [&](VkDescriptorSet descriptorSet, Shader *shader) {
 			enumerateGlobalBufferDescriptors(shader, [&](Shader::ArgumentBuffer *argument, GPUBuffer *globalBuffer) {
 				addBufferDescriptor(descriptorSet, argument, globalBuffer, 0, globalBuffer->GetLength());
-			});
-		};
-
-		auto addLightClusterBufferDescriptors = [&](VkDescriptorSet descriptorSet, Shader *shader, const LightManager::DrawSnapshot &lightClusterSnapshot) {
-			enumerateLightClusterBufferDescriptors(shader, lightClusterSnapshot, [&](Shader::ArgumentBuffer *argument, GPUBuffer *lightClusterBuffer) {
-				addBufferDescriptor(descriptorSet, argument, lightClusterBuffer, 0, lightClusterBuffer->GetLength());
 			});
 		};
 
@@ -2863,10 +2816,6 @@ namespace RN
 						GPUBuffer *gpuBuffer = constantBuffer->dynamicBuffer->GetActiveGPUBuffer();
 						addBufferDescriptor(descriptorSet, argument, gpuBuffer, constantBuffer->offset, constantBuffer->size * instanceCount);
 					}
-
-					// Bind LightManager buffers by semantic for forward rendering
-					const LightManager::DrawSnapshot &lightClusterSnapshot = framePass.GetLightClusterSnapshot();
-					addLightClusterBufferDescriptors(descriptorSet, pipelineState->descriptor.fragmentShader, lightClusterSnapshot);
 
 					addPassBufferDescriptors(descriptorSet, framePass, pipelineState->descriptor.vertexShader);
 					addPassBufferDescriptors(descriptorSet, framePass, pipelineState->descriptor.fragmentShader);

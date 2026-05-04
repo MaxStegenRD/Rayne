@@ -17,7 +17,6 @@
 #include "../Objects/RNObject.h"
 #include "../Scene/RNCamera.h"
 #include "../Scene/RNLight.h"
-#include "../Scene/RNLightManager.h"
 
 namespace RN
 {
@@ -250,8 +249,6 @@ namespace RN
 			const std::vector<DirectionalLight> &GetDirectionalLights() const { return _directionalLights; }
 			const std::vector<PointLight> &GetPointLights() const { return _pointLights; }
 			const std::vector<SpotLight> &GetSpotLights() const { return _spotLights; }
-			void SetLightClusterSnapshot(const LightManager::DrawSnapshot &snapshot) { _lightClusterSnapshot = snapshot; }
-			const LightManager::DrawSnapshot &GetLightClusterSnapshot() const { return _lightClusterSnapshot; }
 
 			void AddAttachmentSnapshot(Object *snapshot)
 			{
@@ -333,7 +330,6 @@ namespace RN
 			std::vector<DirectionalLight> _directionalLights;
 			std::vector<PointLight> _pointLights;
 			std::vector<SpotLight> _spotLights;
-			LightManager::DrawSnapshot _lightClusterSnapshot;
 			std::unordered_map<MetaClass *, StrongRef<Object>> _attachmentSnapshots;
 			std::unordered_map<size_t, StrongRef<GPUBuffer>> _passResourceBuffers;
 			std::unordered_map<size_t, StrongRef<Texture>> _passResourceTextures;

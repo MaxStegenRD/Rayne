@@ -13,9 +13,10 @@
 #include "../Rendering/RNMesh.h"
 #include "../Rendering/RNModel.h"
 #include "../Scene/RNEntity.h"
+#include "../Scene/RNLightClusterSceneAttachment.h"
+#include "../Scene/RNLightManager.h"
 #include "../Threads/RNWorkGroup.h"
 #include "../Threads/RNWorkQueue.h"
-#include "../Scene/RNLightManager.h"
 
 #define kRNSceneUpdateBatchSize 8192 //1024
 
@@ -38,6 +39,8 @@ namespace RN
 	{
 		RN_PROFILE_SCOPE();
 		_occlusionCuller = new OcclusionCuller(40, 40);
+
+		LightClusterSceneAttachment::AttachToScene(this);
 
 		worldBounds.minExtend.y = 0.0f;
 		worldBounds.maxExtend.y = 0.0f;
@@ -502,6 +505,7 @@ namespace RN
 					{
 						lm->BuildForCamera(camera, visibleLights);
 					}
+					SubmitCameraPassAttachmentSnapshots(renderer, camera);
 
 					//Submit all drawables for rendering
 					for(SceneNode *node : sceneNodesToRender)
@@ -813,4 +817,3 @@ namespace RN
 		node->_scheduledForRemovalFromScene = true;
 	}
 } // namespace RN
-

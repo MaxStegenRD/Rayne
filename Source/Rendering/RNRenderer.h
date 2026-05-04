@@ -40,6 +40,7 @@ namespace RN
 	class RenderingDevice;
 	class Light;
 	class Renderer;
+
 	class RendererAttachment : public Object
 	{
 	public:
@@ -140,6 +141,7 @@ namespace RN
 		void UnregisterDrawableFromSnapshotDrain(Drawable *drawable);
 		void DrainDrawableSnapshots(uint64 completedFrameID);
 		void FlushDeletedDrawables();
+		void RegisterDefaultArgumentSources();
 #if RN_BUILD_DEBUG
 		void TrackArgumentSourceName(size_t nameHash, const String *name) const;
 #endif
