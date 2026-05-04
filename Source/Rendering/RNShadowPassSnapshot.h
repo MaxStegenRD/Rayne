@@ -11,12 +11,11 @@
 
 #include "../Math/RNMatrix.h"
 #include "../Math/RNVector.h"
-#include "../Objects/RNObject.h"
-#include "RNTexture.h"
+#include "RNRenderFrame.h"
 
 namespace RN
 {
-	class ShadowPassSnapshot : public Object
+	class ShadowPassSnapshot : public RenderPassDependencyProvider
 	{
 	public:
 		RNAPI ShadowPassSnapshot(Texture *directionalShadowTexture, const std::vector<Matrix> &directionalShadowMatrices, const Vector2 &directionalShadowInfo, const std::vector<uint64> &shadowCameraUIDs);
@@ -25,6 +24,7 @@ namespace RN
 		const std::vector<Matrix> &GetDirectionalShadowMatrices() const { return _directionalShadowMatrices; }
 		const Vector2 &GetDirectionalShadowInfo() const { return _directionalShadowInfo; }
 		RNAPI bool ContainsShadowCameraUID(uint64 uid) const;
+		RNAPI void CollectRenderPassDependencies(const RenderFrame::Pass &pass, RenderPassDependencyCollector &collector) const override;
 
 	private:
 		StrongRef<Texture> _directionalShadowTexture;

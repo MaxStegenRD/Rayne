@@ -10,7 +10,7 @@
 
 namespace RN
 {
-	RNDefineMeta(ShadowPassSnapshot, Object)
+	RNDefineMeta(ShadowPassSnapshot, RenderPassDependencyProvider)
 
 	ShadowPassSnapshot::ShadowPassSnapshot(Texture *directionalShadowTexture, const std::vector<Matrix> &directionalShadowMatrices, const Vector2 &directionalShadowInfo, const std::vector<uint64> &shadowCameraUIDs) :
 		_directionalShadowTexture(directionalShadowTexture),
@@ -28,5 +28,11 @@ namespace RN
 		}
 
 		return false;
+	}
+
+	void ShadowPassSnapshot::CollectRenderPassDependencies(const RenderFrame::Pass &pass, RenderPassDependencyCollector &collector) const
+	{
+		if(!ContainsShadowCameraUID(pass.GetCameraSnapshot().GetSourceCameraUID()))
+			collector.ReadsTexture(_directionalShadowTexture.Get());
 	}
 }
