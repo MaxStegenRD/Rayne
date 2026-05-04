@@ -971,6 +971,14 @@ namespace RN
 					break;
 				}
 
+				case Shader::UniformDescriptor::Identifier::SceneNodeUID:
+				{
+					uint32 sceneNodeUID = drawItem.GetSourceNodeUID() == RenderFrame::InvalidSourceNodeUID ? 0 : static_cast<uint32>(drawItem.GetSourceNodeUID());
+					std::memset(buffer + descriptor->GetOffset(), 0, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), &sceneNodeUID, std::min(descriptor->GetSize(), sizeof(sceneNodeUID)));
+					break;
+				}
+
 				case Shader::UniformDescriptor::Identifier::ModelViewMatrix:
 				{
 					Matrix result = cameraSnapshot.GetViewMatrix() * modelMatrix;

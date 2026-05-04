@@ -183,6 +183,11 @@ namespace RN
 			_identifier = NormalMatrix;
 			_type = PrimitiveType::Matrix3x3;
 		}
+		else if(name->IsEqual(RNCSTR("sceneNodeUID")))
+		{
+			_identifier = SceneNodeUID;
+			_type = (_type == PrimitiveType::Invalid) ? PrimitiveType::Vector4 : PrimitiveType::Uint32;
+		}
 		else if(name->IsEqual(RNCSTR("modelViewMatrix")))
 		{
 			_identifier = ModelViewMatrix;

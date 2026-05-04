@@ -74,6 +74,7 @@ namespace RN
 				InverseModelMatrix,
 
 				NormalMatrix,
+				SceneNodeUID,
 
 				ModelViewMatrix,
 				ModelViewMatrixMultiview,
