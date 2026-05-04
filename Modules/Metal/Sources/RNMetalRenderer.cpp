@@ -1649,7 +1649,7 @@ namespace RN
 
 			auto bindRequiredBuffer = [&](Shader::ArgumentBuffer *argument, GPUBuffer *buffer, const char *missingMessage, bool vertexStage) {
 				MetalGPUBuffer *metalBuffer = buffer ? static_cast<MetalGPUBuffer *>(buffer->GetActiveBuffer()) : nullptr;
-				RN_DEBUG_ASSERT(metalBuffer, missingMessage);
+				RN_DEBUG_ASSERT(metalBuffer, "%s '%s' at %s buffer index %u", missingMessage, argument->GetName()->GetUTF8String(), vertexStage ? "vertex" : "fragment", argument->GetIndex());
 
 				if(vertexStage) [encoder setVertexBuffer:(metalBuffer ? (id<MTLBuffer>)metalBuffer->_buffer : nil) offset:0 atIndex:argument->GetIndex()];
 				else [encoder setFragmentBuffer:(metalBuffer ? (id<MTLBuffer>)metalBuffer->_buffer : nil) offset:0 atIndex:argument->GetIndex()];
@@ -1693,7 +1693,7 @@ namespace RN
 				{
 					Texture *globalTexture = renderFrame.GetGlobalTexture(argument->GetNameHash());
 					MetalTexture *metalTexture = globalTexture ? globalTexture->Downcast<MetalTexture>() : nullptr;
-					RN_DEBUG_ASSERT(metalTexture, "Missing frame global texture");
+					RN_DEBUG_ASSERT(metalTexture, "Missing frame global texture '%s' at fragment texture index %u", argument->GetName()->GetUTF8String(), argument->GetIndex());
 					if(metalTexture) [encoder setFragmentTexture:(id<MTLTexture>)metalTexture->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
 					else [encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
 					break;
@@ -1703,7 +1703,7 @@ namespace RN
 				{
 					Texture *passTexture = framePass.GetPassResourceTexture(argument->GetNameHash());
 					MetalTexture *metalTexture = passTexture ? passTexture->Downcast<MetalTexture>() : nullptr;
-					RN_DEBUG_ASSERT(metalTexture, "Missing pass resource texture");
+					RN_DEBUG_ASSERT(metalTexture, "Missing pass resource texture '%s' at fragment texture index %u", argument->GetName()->GetUTF8String(), argument->GetIndex());
 					if(metalTexture) [encoder setFragmentTexture:(id<MTLTexture>)metalTexture->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
 					else [encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
 					break;
@@ -1762,7 +1762,7 @@ namespace RN
 
 				case Shader::ArgumentTexture::Source::SubpassInput:
 				{
-					RN_DEBUG_ASSERT(false, "Subpass input texture argument must be bound through subpass inputs");
+					RN_DEBUG_ASSERT(false, "Subpass input texture argument '%s' must be bound through subpass inputs", argument->GetName()->GetUTF8String());
 					[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
 					break;
 				}

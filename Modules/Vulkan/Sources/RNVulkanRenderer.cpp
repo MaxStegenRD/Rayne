@@ -2456,13 +2456,13 @@ namespace RN
 		uint32 totalTextureCount = 0;
 		uint32 totalSubpassInputCount = 0;
 
-		auto resolveVulkanBuffer = [&](GPUBuffer *buffer, const char *missingMessage, const char *invalidMessage) -> GPUBuffer * {
-			RN_DEBUG_ASSERT(buffer, missingMessage);
+		auto resolveVulkanBuffer = [&](Shader::ArgumentBuffer *argument, GPUBuffer *buffer, const char *missingMessage, const char *invalidMessage) -> GPUBuffer * {
+			RN_DEBUG_ASSERT(buffer, "%s '%s' at buffer binding %u", missingMessage, argument->GetName()->GetUTF8String(), argument->GetIndex());
 
 			if(buffer)
 			{
 				VulkanGPUBuffer *vulkanBuffer = buffer->Downcast<VulkanGPUBuffer>();
-				RN_DEBUG_ASSERT(vulkanBuffer, invalidMessage);
+				RN_DEBUG_ASSERT(vulkanBuffer, "%s '%s' at buffer binding %u", invalidMessage, argument->GetName()->GetUTF8String(), argument->GetIndex());
 				if(vulkanBuffer)
 					return buffer;
 			}
@@ -2471,11 +2471,11 @@ namespace RN
 		};
 
 		auto getPassResourceBuffer = [&](const RenderFrame::Pass &framePass, Shader::ArgumentBuffer *argument) -> GPUBuffer * {
-			return resolveVulkanBuffer(framePass.GetPassResourceBuffer(argument->GetNameHash()), "Missing pass resource buffer", "Pass resource buffer must be a Vulkan buffer");
+			return resolveVulkanBuffer(argument, framePass.GetPassResourceBuffer(argument->GetNameHash()), "Missing pass resource buffer", "Pass resource buffer must be a Vulkan buffer");
 		};
 
 		auto getFrameGlobalBuffer = [&](Shader::ArgumentBuffer *argument) -> GPUBuffer * {
-			return resolveVulkanBuffer(submission.renderFrame.GetGlobalBuffer(argument->GetNameHash()), "Missing frame global buffer", "Frame global buffer must be a Vulkan buffer");
+			return resolveVulkanBuffer(argument, submission.renderFrame.GetGlobalBuffer(argument->GetNameHash()), "Missing frame global buffer", "Frame global buffer must be a Vulkan buffer");
 		};
 
 		auto enumeratePassBufferDescriptors = [&](const RenderFrame::Pass &framePass, Shader *shader, auto &&callback) {
@@ -2818,7 +2818,7 @@ namespace RN
 								{
 									Texture *globalTexture = submission.renderFrame.GetGlobalTexture(argument->GetNameHash());
 									VulkanTexture *vulkanTexture = globalTexture ? globalTexture->Downcast<VulkanTexture>() : nullptr;
-									RN_DEBUG_ASSERT(vulkanTexture, "Missing frame global texture");
+									RN_DEBUG_ASSERT(vulkanTexture, "Missing frame global texture '%s' at texture binding %u", argument->GetName()->GetUTF8String(), argument->GetIndex());
 									if(!vulkanTexture)
 									{
 										vulkanTexture = _fallbackGlobalTexture->Downcast<VulkanTexture>();
@@ -2837,7 +2837,7 @@ namespace RN
 								{
 									Texture *passTexture = framePass.GetPassResourceTexture(argument->GetNameHash());
 									VulkanTexture *vulkanTexture = passTexture ? passTexture->Downcast<VulkanTexture>() : nullptr;
-									RN_DEBUG_ASSERT(vulkanTexture, "Missing pass resource texture");
+									RN_DEBUG_ASSERT(vulkanTexture, "Missing pass resource texture '%s' at texture binding %u", argument->GetName()->GetUTF8String(), argument->GetIndex());
 									if(!vulkanTexture)
 									{
 										vulkanTexture = _fallbackGlobalTexture->Downcast<VulkanTexture>();
@@ -2903,7 +2903,7 @@ namespace RN
 
 								case Shader::ArgumentTexture::Source::SubpassInput:
 								{
-									RN_DEBUG_ASSERT(false, "Subpass input texture argument must be bound through subpass inputs");
+									RN_DEBUG_ASSERT(false, "Subpass input texture argument '%s' must be bound through subpass inputs", argument->GetName()->GetUTF8String());
 									return;
 								}
 							}
