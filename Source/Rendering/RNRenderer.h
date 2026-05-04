@@ -106,6 +106,11 @@ namespace RN
 		RNAPI void RemoveAttachment(RendererAttachment *attachment);
 		RNAPI void SubmitAttachmentSnapshot(Object *snapshot);
 		RNAPI void SubmitPassAttachmentSnapshot(size_t passIndex, Object *snapshot);
+
+		RNAPI void RegisterArgumentSource(const String *name, Shader::ArgumentBuffer::Source source);
+		RNAPI void RegisterArgumentSource(const String *name, Shader::ArgumentTexture::Source source);
+		RNAPI Shader::ArgumentBuffer::Source GetArgumentSource(const String *name, Shader::ArgumentBuffer::Source defaultSource) const;
+		RNAPI Shader::ArgumentTexture::Source GetArgumentSource(const String *name, Shader::ArgumentTexture::Source defaultSource) const;
 		
 		RendererDescriptor *GetDescriptor() const { return _descriptor; }
 		RenderingDevice *GetDevice() const { return _device; }
@@ -131,6 +136,9 @@ namespace RN
 		void UnregisterDrawableFromSnapshotDrain(Drawable *drawable);
 		void DrainDrawableSnapshots(uint64 completedFrameID);
 		void FlushDeletedDrawables();
+#if RN_BUILD_DEBUG
+		void TrackArgumentSourceName(size_t nameHash, const String *name) const;
+#endif
 
 		double _frameStatisticsTimer;
 		uint64 _lastStartedRenderFrameID;
@@ -139,9 +147,16 @@ namespace RN
 		std::vector<DeletedDrawable> _pendingDeletedDrawables;
 		std::vector<Drawable *> _drawablesPendingSnapshotDrain;
 		std::vector<StrongRef<RendererAttachment>> _rendererAttachments;
+		std::unordered_map<size_t, Shader::ArgumentBuffer::Source> _argumentBufferSources;
+		std::unordered_map<size_t, Shader::ArgumentTexture::Source> _argumentTextureSources;
+#if RN_BUILD_DEBUG
+		std::unordered_map<size_t, StrongRef<String>> _argumentSourceNames;
+#endif
 		RenderFrame *_activeRenderFrame;
 		Lockable _frameLifecycleLock;
 		Lockable _rendererAttachmentsLock;
+		mutable Lockable _argumentSourceRegistryLock;
+		mutable bool _hasResolvedArgumentSources;
 
 		RenderingDevice *_device;
 		RendererDescriptor *_descriptor;

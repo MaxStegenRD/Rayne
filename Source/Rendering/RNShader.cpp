@@ -8,6 +8,7 @@
 
 #include "RNShader.h"
 #include "RNMesh.h"
+#include "RNRenderer.h"
 #include "RNShaderLibrary.h"
 
 namespace RN
@@ -578,6 +579,9 @@ namespace RN
 	Shader::ArgumentBuffer::ArgumentBuffer(String *name, uint32 index, Array *uniformDescriptors, Type type, Source source, size_t maxInstanceCount) :
 		Argument(name, index), _totalUniformSize(0), _type(type), _source(source), _semantic(Semantic::None), _maxInstanceCount(maxInstanceCount)
 	{
+		if(!Renderer::IsHeadless())
+			_source = Renderer::GetActiveRenderer()->GetArgumentSource(name, _source);
+
 		_uniformDescriptors = SafeRetain(uniformDescriptors);
 
 		if(_uniformDescriptors && _uniformDescriptors->GetCount() > 0)
@@ -664,6 +668,9 @@ namespace RN
 			materialTextureIndex = std::stoi(indexString->GetUTF8String());
 			return Source::Material;
 		}
+
+		if(!Renderer::IsHeadless())
+			return Renderer::GetActiveRenderer()->GetArgumentSource(name, Source::Frame);
 
 		return Source::Frame;
 	}
