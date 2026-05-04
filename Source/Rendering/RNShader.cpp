@@ -649,10 +649,6 @@ namespace RN
 	{
 		materialTextureIndex = 0;
 
-		if(name->IsEqual(RNCSTR("directionalShadowTexture")))
-		{
-			return Source::DirectionalShadow;
-		}
 		if(name->IsEqual(RNCSTR("framebufferTexture")))
 		{
 			return Source::Framebuffer;

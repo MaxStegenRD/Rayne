@@ -9,6 +9,7 @@
 #include "RNRenderer.h"
 #include "RNRenderFrame.h"
 #include "RNRenderPassResources.h"
+#include "RNShadowRendererAttachment.h"
 #include "../Base/RNKernel.h"
 #include "../Debug/RNLogger.h"
 #include "../Scene/RNLightClusterRendererAttachment.h"
@@ -94,6 +95,11 @@ namespace RN
 
 	void RenderFramePresentationState::CancelFrameOnRenderThread()
 	{}
+
+	Matrix Renderer::GetProjectionCorrectionMatrix() const
+	{
+		return Matrix();
+	}
 
 	void Renderer::Activate()
 	{
@@ -293,6 +299,7 @@ namespace RN
 
 	void Renderer::RegisterDefaultShaderSources()
 	{
+		ShadowRendererAttachment::RegisterShaderSources(this);
 		LightClusterRendererAttachment::RegisterShaderSources(this);
 	}
 

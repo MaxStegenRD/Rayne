@@ -80,6 +80,7 @@ namespace RN
 
 		RNAPI virtual size_t GetAlignmentForType(PrimitiveType type) const = 0;
 		RNAPI virtual size_t GetSizeForType(PrimitiveType type) const = 0;
+		RNAPI virtual Matrix GetProjectionCorrectionMatrix() const;
 
 		RNAPI virtual GPUBuffer *CreateBufferWithLength(size_t length, GPUResource::UsageOptions usageOptions, GPUResource::AccessOptions accessOptions, bool streameable) = 0;
 

@@ -350,13 +350,6 @@ namespace RN
 				}
 			}
 
-			void SetDirectionalShadowDepthTexture(Texture *texture) { _directionalShadowDepthTexture = texture; }
-			Texture *GetDirectionalShadowDepthTexture() const { return _directionalShadowDepthTexture; }
-			void SetDirectionalShadowMatrices(const std::vector<Matrix> &matrices) { _directionalShadowMatrices = matrices; }
-			const std::vector<Matrix> &GetDirectionalShadowMatrices() const { return _directionalShadowMatrices; }
-			void SetDirectionalShadowInfo(const Vector2 &info) { _directionalShadowInfo = info; }
-			const Vector2 &GetDirectionalShadowInfo() const { return _directionalShadowInfo; }
-
 			const RenderPass::DrawSnapshot &GetDrawSnapshot() const { return _drawSnapshot; }
 			const Material::DrawSnapshot *GetOverrideMaterialSnapshot() const { return _hasOverrideMaterial ? &_overrideMaterialSnapshot : nullptr; }
 			uint64 GetOverrideMaterialCacheIdentity() const { return _overrideMaterialCacheIdentity; }
@@ -379,9 +372,6 @@ namespace RN
 			std::unordered_map<size_t, StrongRef<GPUBuffer>> _passResourceBuffers;
 			std::unordered_map<size_t, StrongRef<Texture>> _passResourceTextures;
 			std::unordered_map<size_t, std::vector<uint8>> _passUniforms;
-			std::vector<Matrix> _directionalShadowMatrices;
-			Texture *_directionalShadowDepthTexture = nullptr;
-			Vector2 _directionalShadowInfo;
 		};
 
 		static constexpr size_t InvalidPassIndex = static_cast<size_t>(-1);

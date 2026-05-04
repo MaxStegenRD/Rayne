@@ -11,6 +11,7 @@
 #include "../Objects/RNAutoreleasePool.h"
 #include "../Scene/RNLightClusterSceneAttachment.h"
 #include "../Scene/RNLightManager.h"
+#include "../Scene/RNShadowSceneAttachment.h"
 #include "../Threads/RNWorkGroup.h"
 #include "../Threads/RNWorkQueue.h"
 
@@ -45,6 +46,7 @@ namespace RN
 		_defaultVolume = new Volume();
 
 		LightClusterSceneAttachment::AttachToScene(this);
+		ShadowSceneAttachment::AttachToScene(this);
 	}
 	SceneWithVisibilityLists::~SceneWithVisibilityLists()
 	{

@@ -100,23 +100,6 @@ namespace RN
 			return framebuffer && framebuffer->GetSwapChain() && !UsesSubmittedSwapChain(framebuffer->GetSwapChain());
 		}
 
-		bool FramebufferProducesTexture(const FramebufferType *framebuffer, Texture *texture) const
-		{
-			if(!framebuffer || !texture) return false;
-
-			for(uint32 i = 0; i < framebuffer->GetColorTargetCount(); i++)
-			{
-				if(framebuffer->GetColorTexture(i) == texture) return true;
-			}
-
-			return framebuffer->GetDepthStencilTexture() == texture;
-		}
-
-		bool PassProducesTexture(const RenderPassType &renderPass, Texture *texture) const
-		{
-			return FramebufferProducesTexture(renderPass.framebuffer, texture) || FramebufferProducesTexture(renderPass.resolveFramebuffer, texture);
-		}
-
 		bool PassTargetsSubmittedSwapChain(const RenderPassType &renderPass) const
 		{
 			return FramebufferTargetsSubmittedSwapChain(renderPass.framebuffer) || FramebufferTargetsSubmittedSwapChain(renderPass.resolveFramebuffer);
@@ -125,11 +108,6 @@ namespace RN
 		bool PassTargetsSkippedSwapChain(const RenderPassType &renderPass) const
 		{
 			return FramebufferTargetsSkippedSwapChain(renderPass.framebuffer) || FramebufferTargetsSkippedSwapChain(renderPass.resolveFramebuffer);
-		}
-
-		bool PassIsShadowProducer(const RenderPassType &renderPass) const
-		{
-			return renderPass.shaderHint == Shader::UsageHint::ShadowDepth || renderPass.shaderHint == Shader::UsageHint::ShadowDepthMultiview;
 		}
 
 		size_t FindRenderPassIndex(RenderPass *renderPass) const
@@ -178,16 +156,6 @@ namespace RN
 				if(renderPass.previousStoredFramebuffer)
 					AddDependency(i, FindFramebufferProducer(renderPass.previousStoredFramebuffer));
 
-				if(renderPass.renderFramePassIndex != RenderFrame::InvalidPassIndex)
-				{
-					Texture *shadowTexture = _submission.renderFrame.GetPass(renderPass.renderFramePassIndex).GetDirectionalShadowDepthTexture();
-					for(size_t producerIndex = 0; producerIndex < _submission.renderPasses.size(); producerIndex++)
-					{
-						if(PassProducesTexture(_submission.renderPasses[producerIndex], shadowTexture))
-							AddDependency(i, producerIndex);
-					}
-				}
-
 				FrameSubmissionAddRenderPassDependencies(*this, i, renderPass);
 			}
 		}
@@ -199,8 +167,6 @@ namespace RN
 				const RenderPassType &renderPass = _submission.renderPasses[i];
 				PassState &passState = _passStates[i];
 				passState.skippedBySwapChain = PassTargetsSkippedSwapChain(renderPass);
-				if(PassIsShadowProducer(renderPass))
-					passState.pruneIfUnused = true;
 
 				if(passState.skippedBySwapChain) continue;
 				if(!passState.pruneIfUnused || PassTargetsSubmittedSwapChain(renderPass))

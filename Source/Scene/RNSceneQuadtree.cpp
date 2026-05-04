@@ -15,6 +15,7 @@
 #include "../Scene/RNEntity.h"
 #include "../Scene/RNLightClusterSceneAttachment.h"
 #include "../Scene/RNLightManager.h"
+#include "../Scene/RNShadowSceneAttachment.h"
 #include "../Threads/RNWorkGroup.h"
 #include "../Threads/RNWorkQueue.h"
 
@@ -41,6 +42,7 @@ namespace RN
 		_occlusionCuller = new OcclusionCuller(40, 40);
 
 		LightClusterSceneAttachment::AttachToScene(this);
+		ShadowSceneAttachment::AttachToScene(this);
 
 		worldBounds.minExtend.y = 0.0f;
 		worldBounds.maxExtend.y = 0.0f;

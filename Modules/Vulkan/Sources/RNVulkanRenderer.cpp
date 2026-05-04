@@ -627,15 +627,6 @@ namespace RN
 					continue;
 				}
 
-				//Set shadow depth texture layout for reading
-				Texture *directionalShadowDepthTexture = submission.renderFrame.GetPass(renderPass.renderFramePassIndex).GetDirectionalShadowDepthTexture();
-				VulkanTexture *directionalShadowVulkanTexture = directionalShadowDepthTexture ? directionalShadowDepthTexture->Downcast<VulkanTexture>() : nullptr;
-				if(directionalShadowVulkanTexture)
-				{
-					VulkanTexture::SetImageLayout(commandBuffer, directionalShadowVulkanTexture->GetVulkanImage(), 0, directionalShadowVulkanTexture->GetDescriptor().mipMaps, 0, directionalShadowVulkanTexture->GetDescriptor().depth, VK_IMAGE_ASPECT_DEPTH_BIT, directionalShadowVulkanTexture->GetCurrentLayout(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VulkanTexture::BarrierIntent::ShaderSource);
-					directionalShadowVulkanTexture->SetCurrentLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
-				}
-
 				//Set textures layout for reading for render targets that are used in this frame
 				for(VulkanTexture *vulkanTexture : renderPass.renderTargetsUsedInShader)
 				{
@@ -807,15 +798,6 @@ namespace RN
 							dvt->SetCurrentLayout(depthLastIsReadOnly? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 						}
 					}
-				}
-
-				//Set shadow depth texture layout for writing
-				Texture *writeDirectionalShadowDepthTexture = submission.renderFrame.GetPass(renderPass.renderFramePassIndex).GetDirectionalShadowDepthTexture();
-				VulkanTexture *writeDirectionalShadowVulkanTexture = writeDirectionalShadowDepthTexture ? writeDirectionalShadowDepthTexture->Downcast<VulkanTexture>() : nullptr;
-				if(writeDirectionalShadowVulkanTexture)
-				{
-					VulkanTexture::SetImageLayout(commandBuffer, writeDirectionalShadowVulkanTexture->GetVulkanImage(), 0, writeDirectionalShadowVulkanTexture->GetDescriptor().mipMaps, 0, writeDirectionalShadowVulkanTexture->GetDescriptor().depth, VK_IMAGE_ASPECT_DEPTH_BIT, writeDirectionalShadowVulkanTexture->GetCurrentLayout(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VulkanTexture::BarrierIntent::RenderTarget);
-					writeDirectionalShadowVulkanTexture->SetCurrentLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 				}
 
 				//Set textures layout for writing for render targets that are used in this frame
@@ -1887,30 +1869,6 @@ namespace RN
 					break;
 				}
 
-				case Shader::UniformDescriptor::Identifier::DirectionalShadowMatricesCount:
-				{
-					//TODO: Limit matrixCount to descriptor->GetElementCount() of Shader::UniformDescriptor::Identifier::DirectionalShadowMatrices
-					uint32 matrixCount = framePass.GetDirectionalShadowMatrices().size();
-					std::memcpy(buffer + descriptor->GetOffset(), &matrixCount, descriptor->GetSize());
-					break;
-				}
-
-				case Shader::UniformDescriptor::Identifier::DirectionalShadowMatrices:
-				{
-					size_t matrixCount = std::min(framePass.GetDirectionalShadowMatrices().size(), descriptor->GetElementCount());
-					if(matrixCount > 0)
-					{
-						std::memcpy(buffer + descriptor->GetOffset(), &framePass.GetDirectionalShadowMatrices()[0].m[0], 64 * matrixCount);
-					}
-					break;
-				}
-
-				case Shader::UniformDescriptor::Identifier::DirectionalShadowInfo:
-				{
-					std::memcpy(buffer + descriptor->GetOffset(), &framePass.GetDirectionalShadowInfo().x, descriptor->GetSize());
-					break;
-				}
-
 				case Shader::UniformDescriptor::Identifier::PointLights:
 				{
 					size_t lightCount = std::min(framePass.GetPointLights().size(), descriptor->GetElementCount());
@@ -2130,47 +2088,13 @@ namespace RN
 		// Distribute the light to all passes belonging to the current camera range
 		size_t startIndex = frameSubmission.activeRenderPassIndex;
 
-		std::vector<Matrix> directionalShadowMatrices;
-		Vector2 directionalShadowInfo;
-		if(light->GetType() == Light::Type::DirectionalLight && light->HasShadows())
-		{
-			light->GetShadowDepthCameras()->Enumerate<Camera>([&](Camera *camera, size_t index, bool &stop) {
-				Matrix clipSpaceCorrectionMatrix;
-				clipSpaceCorrectionMatrix.m[5] = 1.0f;
-				Matrix shadowMatrix = clipSpaceCorrectionMatrix * camera->GetProjectionMatrix();
-				shadowMatrix = shadowMatrix * camera->GetWorldTransform().GetInverse();
-				directionalShadowMatrices.push_back(shadowMatrix);
-			});
-			directionalShadowInfo = Vector2(1.0f / light->GetShadowParameters().resolution);
-		}
-
-		auto submitLightToRenderPass = [&](VulkanRenderPass &renderPass, VulkanFramebuffer *framebuffer) {
+		auto submitLightToRenderPass = [&](VulkanRenderPass &renderPass) {
 			if(!renderPass.UsesDrawItems()) return;
 			RenderFrame::Pass &framePass = frameSubmission.renderFrame.GetPass(renderPass.renderFramePassIndex);
 
 			if(light->GetType() == Light::Type::DirectionalLight)
 			{
 				framePass.AddDirectionalLight(RenderFrame::DirectionalLight::WithLight(light));
-
-				if(light->HasShadows())
-				{
-					bool isShadowCamera = false;
-					light->GetShadowDepthCameras()->Enumerate<Camera>([&](Camera *camera, size_t index, bool &stop) {
-						if(framebuffer == camera->GetRenderPass()->GetFramebuffer())
-						{
-							stop = true;
-							isShadowCamera = true;
-						}
-					});
-
-					if(!isShadowCamera)
-					{
-						framePass.SetDirectionalShadowDepthTexture(light->GetShadowDepthTexture());
-					}
-
-					framePass.SetDirectionalShadowMatrices(directionalShadowMatrices);
-					framePass.SetDirectionalShadowInfo(directionalShadowInfo);
-				}
 			}
 			else if(light->GetType() == Light::Type::PointLight)
 			{
@@ -2185,10 +2109,10 @@ namespace RN
 		for(size_t pi = startIndex; pi < frameSubmission.renderPasses.size(); pi++)
 		{
 			VulkanRenderPass &renderPass = frameSubmission.renderPasses[pi];
-			submitLightToRenderPass(renderPass, renderPass.framebuffer);
+			submitLightToRenderPass(renderPass);
 			for(VulkanRenderPass &subpass : renderPass.subpasses)
 			{
-				submitLightToRenderPass(subpass, renderPass.framebuffer);
+				submitLightToRenderPass(subpass);
 			}
 		}
 	}
@@ -2888,7 +2812,6 @@ namespace RN
 						const Array *textures = renderResource.mergedMaterialSnapshot.GetTextures();
 						signature->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop) {
 							VkImageView imageView = VK_NULL_HANDLE;
-							Texture *directionalShadowDepthTexture = submission.renderFrame.GetPass(rootRenderPass.renderFramePassIndex).GetDirectionalShadowDepthTexture();
 							switch(argument->GetSource())
 							{
 								case Shader::ArgumentTexture::Source::Frame:
@@ -2926,19 +2849,6 @@ namespace RN
 									{
 										rootRenderPass.renderTargetsUsedInShader.push_back(vulkanTexture);
 									}
-									break;
-								}
-
-								case Shader::ArgumentTexture::Source::DirectionalShadow:
-								{
-									VulkanTexture *vulkanTexture = directionalShadowDepthTexture ? directionalShadowDepthTexture->Downcast<VulkanTexture>() : nullptr;
-									if(!vulkanTexture)
-									{
-										stop = true;
-										return;
-									}
-
-									imageView = vulkanTexture->_imageView;
 									break;
 								}
 

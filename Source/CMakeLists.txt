@@ -89,7 +89,9 @@ set(RAYNE_SOURCES
     Rendering/RNMesh.cpp
     Rendering/RNModel.cpp
     Rendering/RNSkeleton.cpp
+    Rendering/RNShadowPassSnapshot.cpp
     Rendering/RNShadowVolume.cpp
+    Rendering/RNShadowRendererAttachment.cpp
     Rendering/RNPostProcessing.cpp
     Rendering/RNRenderer.cpp
     Rendering/RNRendererDescriptor.cpp
@@ -115,6 +117,7 @@ set(RAYNE_SOURCES
     Scene/RNLightManager.cpp
     Scene/RNLightClusterSceneAttachment.cpp
     Scene/RNLightClusterRendererAttachment.cpp
+    Scene/RNShadowSceneAttachment.cpp
     Scene/RNParticleEmitter.cpp
     Scene/RNVoxelEntity.cpp
     System/RNFile.cpp
@@ -221,7 +224,9 @@ set(RAYNE_HEADERS
     Rendering/RNMesh.h
     Rendering/RNModel.h
     Rendering/RNSkeleton.h
+    Rendering/RNShadowPassSnapshot.h
     Rendering/RNShadowVolume.h
+    Rendering/RNShadowRendererAttachment.h
     Rendering/RNPostProcessing.h
     Rendering/RNRenderFrame.h
     Rendering/RNRenderer.h
@@ -251,6 +256,7 @@ set(RAYNE_HEADERS
     Scene/RNLightClusterPassSnapshot.h
     Scene/RNLightClusterSceneAttachment.h
     Scene/RNLightClusterRendererAttachment.h
+    Scene/RNShadowSceneAttachment.h
     Scene/RNParticleEmitter.h
     Scene/RNVoxelEntity.h
     System/RNFile.h

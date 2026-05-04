@@ -1179,30 +1179,6 @@ namespace RN
 					break;
 				}
 
-				case Shader::UniformDescriptor::Identifier::DirectionalShadowMatricesCount:
-				{
-					//TODO: Limit matrixCount to descriptor->GetElementCount() of Shader::UniformDescriptor::Identifier::DirectionalShadowMatrices
-					uint32 matrixCount = framePass.GetDirectionalShadowMatrices().size();
-					std::memcpy(buffer + descriptor->GetOffset(), &matrixCount, descriptor->GetSize());
-					break;
-				}
-
-				case Shader::UniformDescriptor::Identifier::DirectionalShadowMatrices:
-				{
-					size_t matrixCount = std::min(framePass.GetDirectionalShadowMatrices().size(), descriptor->GetElementCount());
-					if(matrixCount > 0)
-					{
-						std::memcpy(buffer + descriptor->GetOffset(), &framePass.GetDirectionalShadowMatrices()[0].m[0], 64 * matrixCount);
-					}
-					break;
-				}
-
-				case Shader::UniformDescriptor::Identifier::DirectionalShadowInfo:
-				{
-					std::memcpy(buffer + descriptor->GetOffset(), &framePass.GetDirectionalShadowInfo().x, descriptor->GetSize());
-					break;
-				}
-
 				case Shader::UniformDescriptor::Identifier::PointLights:
 				{
 					size_t lightCount = std::min(framePass.GetPointLights().size(), descriptor->GetElementCount());
@@ -1425,27 +1401,6 @@ namespace RN
 			if(light->GetType() == Light::Type::DirectionalLight)
 			{
 				framePass.AddDirectionalLight(RenderFrame::DirectionalLight::WithLight(light));
-
-				// Attach shadow texture/matrices to all non-shadow-camera passes
-				if(light->HasShadows())
-				{
-					bool isShadowCamera = false;
-					light->GetShadowDepthCameras()->Enumerate<Camera>([&](Camera *camera, size_t index, bool &stop) {
-						Framebuffer *shadowFB = camera->GetRenderPass()->GetFramebuffer();
-						if(renderPass.framebuffer == shadowFB)
-						{
-							isShadowCamera = true;
-							stop = true;
-						}
-					});
-
-					if(!isShadowCamera)
-					{
-						framePass.SetDirectionalShadowDepthTexture(light->GetShadowDepthTexture());
-						framePass.SetDirectionalShadowMatrices(light->GetShadowMatrices());
-						framePass.SetDirectionalShadowInfo(Vector2(1.0f / light->GetShadowParameters().resolution));
-					}
-				}
 			}
 			else if(light->GetType() == Light::Type::PointLight)
 			{
@@ -1734,21 +1689,6 @@ namespace RN
 		metalFragmentShader->GetSignature()->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop){
 			switch(argument->GetSource())
 			{
-				case Shader::ArgumentTexture::Source::DirectionalShadow:
-				{
-					Texture *directionalShadowDepthTexture = framePass.GetDirectionalShadowDepthTexture();
-					if(directionalShadowDepthTexture)
-					{
-						MetalTexture *metalTexture = directionalShadowDepthTexture->Downcast<MetalTexture>();
-						[encoder setFragmentTexture:(id<MTLTexture>)metalTexture->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
-					}
-					else
-					{
-						[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
-					}
-					break;
-				}
-
 				case Shader::ArgumentTexture::Source::Frame:
 				{
 					Texture *globalTexture = renderFrame.GetGlobalTexture(argument->GetNameHash());

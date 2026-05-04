@@ -286,7 +286,6 @@ namespace RN
 				Material,
 				Pass,
 				Frame,
-				DirectionalShadow,
 				Framebuffer,
 				SubpassInput
 			};
