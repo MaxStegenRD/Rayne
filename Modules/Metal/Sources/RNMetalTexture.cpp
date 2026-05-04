@@ -29,9 +29,9 @@ namespace RN
 
 	void MetalTexture::SetData(uint32 mipmapLevel, const void *bytes, size_t bytesPerRow, size_t numberOfRows)
 	{
-		SetData(Region::With2D(0, 0, _descriptor.width, _descriptor.height), mipmapLevel, bytes, bytesPerRow, numberOfRows);
+		SetData(GetFullRegionForMipMapLevel(mipmapLevel), mipmapLevel, bytes, bytesPerRow, numberOfRows);
 	}
-	void MetalTexture::SetData(const Region &region, uint32 mipmapLevel, const void *bytes, size_t bytesPerRow, size_t numberOfRows)
+	void MetalTexture::SetData(const Region &region, uint32 mipmapLevel, const void *bytes, size_t bytesPerRow, size_t)
 	{
 		id<MTLTexture> texture = (id<MTLTexture>)_texture;
 		[texture replaceRegion:MTLRegionMake3D(region.x, region.y, region.z, region.width, region.height, region.depth) mipmapLevel:mipmapLevel withBytes:bytes bytesPerRow:bytesPerRow];
@@ -44,11 +44,113 @@ namespace RN
 
 	void MetalTexture::GetData(void *bytes, uint32 mipmapLevel, size_t bytesPerRow, std::function<void(void)> callback) const
 	{
-		Region region = Region::With2D(0, 0, _descriptor.width, _descriptor.height);
+		const Region region = GetFullRegionForMipMapLevel(mipmapLevel);
+		const uint32 blockHeight = GetBlockHeight();
+		const uint32 blockRows = std::max<uint32>(1, (region.height + blockHeight - 1) / blockHeight);
+		const size_t bytesPerImage = bytesPerRow * blockRows;
+		const size_t readbackSize = bytesPerImage * region.depth;
+		RN_ASSERT(bytesPerRow > 0 && readbackSize > 0, "Metal texture readback requires a non-empty destination buffer layout");
 
-		id<MTLTexture> texture = (id<MTLTexture>)_texture;
-		[texture getBytes:bytes bytesPerRow:bytesPerRow fromRegion:MTLRegionMake3D(region.x, region.y, region.z, region.width, region.height, region.depth) mipmapLevel:mipmapLevel];
-		callback();
+		MetalRenderer *renderer = _renderer;
+		id<MTLTexture> texture = [(id<MTLTexture>)_texture retain];
+		std::function<void(void)> completion = callback;
+		renderer->ScheduleRenderThreadWork([renderer, texture, region, mipmapLevel, bytes, bytesPerRow, bytesPerImage, readbackSize, completion]() {
+			id<MTLCommandQueue> commandQueue = renderer->GetCommandQueue();
+			id<MTLDevice> device = [commandQueue device];
+			id<MTLBuffer> readbackBuffer = [device newBufferWithLength:readbackSize options:MetalRenderer::MetalResourceOptionsFromOptions(GPUResource::AccessOptions::ReadWrite)];
+			RN_ASSERT(readbackBuffer, "Failed to create Metal texture readback buffer");
+
+			id<MTLCommandBuffer> commandBuffer = [commandQueue commandBuffer];
+			RN_ASSERT(commandBuffer, "Failed to create Metal texture readback command buffer");
+			id<MTLBlitCommandEncoder> commandEncoder = [commandBuffer blitCommandEncoder];
+			RN_ASSERT(commandEncoder, "Failed to create Metal texture readback command encoder");
+			[commandEncoder copyFromTexture:texture
+								 sourceSlice:0
+								 sourceLevel:mipmapLevel
+								sourceOrigin:MTLOriginMake(region.x, region.y, region.z)
+								  sourceSize:MTLSizeMake(region.width, region.height, region.depth)
+									toBuffer:readbackBuffer
+						   destinationOffset:0
+					  destinationBytesPerRow:bytesPerRow
+					destinationBytesPerImage:bytesPerImage];
+#if RN_PLATFORM_MAC_OS
+			[commandEncoder synchronizeResource:readbackBuffer];
+#endif
+			[commandEncoder endEncoding];
+
+			[commandBuffer addCompletedHandler:^(id<MTLCommandBuffer>) {
+				memcpy(bytes, [readbackBuffer contents], readbackSize);
+				[readbackBuffer release];
+				[texture release];
+				completion();
+			}];
+			[commandBuffer commit];
+		});
+	}
+
+	Texture::Region MetalTexture::GetFullRegionForMipMapLevel(uint32 mipmapLevel) const
+	{
+		const uint32 mipDepth = _descriptor.type == Texture::Type::Type3D ? std::max<uint32>(1, _descriptor.depth >> mipmapLevel) : 1;
+		return Region(0, 0, 0, _descriptor.GetWidthForMipMapLevel(mipmapLevel), _descriptor.GetHeightForMipMapLevel(mipmapLevel), mipDepth);
+	}
+
+	uint32 MetalTexture::GetBlockHeight() const
+	{
+		switch(_descriptor.format)
+		{
+			case Format::RGBA_BC1_SRGB:
+			case Format::RGBA_BC2_SRGB:
+			case Format::RGBA_BC3_SRGB:
+			case Format::RGBA_BC7_SRGB:
+			case Format::RGBA_BC1:
+			case Format::RGBA_BC2:
+			case Format::RGBA_BC3:
+			case Format::RGBA_BC4:
+			case Format::RGBA_BC5:
+			case Format::RGBA_BC7:
+			case Format::RGBA_ASTC_4X4_SRGB:
+			case Format::RGBA_ASTC_5X4_SRGB:
+			case Format::RGBA_ASTC_4X4:
+			case Format::RGBA_ASTC_5X4:
+				return 4;
+
+			case Format::RGBA_ASTC_5X5_SRGB:
+			case Format::RGBA_ASTC_6X5_SRGB:
+			case Format::RGBA_ASTC_8X5_SRGB:
+			case Format::RGBA_ASTC_10X5_SRGB:
+			case Format::RGBA_ASTC_5X5:
+			case Format::RGBA_ASTC_6X5:
+			case Format::RGBA_ASTC_8X5:
+			case Format::RGBA_ASTC_10X5:
+				return 5;
+
+			case Format::RGBA_ASTC_6X6_SRGB:
+			case Format::RGBA_ASTC_8X6_SRGB:
+			case Format::RGBA_ASTC_10X6_SRGB:
+			case Format::RGBA_ASTC_6X6:
+			case Format::RGBA_ASTC_8X6:
+			case Format::RGBA_ASTC_10X6:
+				return 6;
+
+			case Format::RGBA_ASTC_8X8_SRGB:
+			case Format::RGBA_ASTC_10X8_SRGB:
+			case Format::RGBA_ASTC_8X8:
+			case Format::RGBA_ASTC_10X8:
+				return 8;
+
+			case Format::RGBA_ASTC_10X10_SRGB:
+			case Format::RGBA_ASTC_12X10_SRGB:
+			case Format::RGBA_ASTC_10X10:
+			case Format::RGBA_ASTC_12X10:
+				return 10;
+
+			case Format::RGBA_ASTC_12X12_SRGB:
+			case Format::RGBA_ASTC_12X12:
+				return 12;
+
+			default:
+				return 1;
+		}
 	}
 
 	void MetalTexture::GenerateMipMaps()

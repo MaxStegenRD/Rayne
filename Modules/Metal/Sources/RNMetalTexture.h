@@ -36,6 +36,8 @@ namespace RN
 
 	private:
 		MetalTexture(MetalRenderer *renderer, void *texture, const Descriptor &descriptor);
+		Region GetFullRegionForMipMapLevel(uint32 mipmapLevel) const;
+		uint32 GetBlockHeight() const;
 
 		MetalRenderer *_renderer;
 		void *_texture;
