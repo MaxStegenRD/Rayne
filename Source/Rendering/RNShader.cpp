@@ -371,7 +371,7 @@ namespace RN
 		else if(name->IsEqual(RNCSTR("textureTileFactor")) || name->IsEqual(RNCSTR("in_var_INSTANCE_TEXTURETILEFACTOR")))
 		{
 			_identifier = TextureTileFactor;
-			_type = PrimitiveType::Float;
+			_type = PrimitiveType::Vector2;
 		}
 		else if(name->IsEqual(RNCSTR("alphaToCoverageClamp")) || name->IsEqual(RNCSTR("in_var_INSTANCE_ALPHATOCOVERAGECLAMP")))
 		{

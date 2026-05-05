@@ -1740,7 +1740,7 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::TextureTileFactor:
 				{
-					std::memcpy(buffer + descriptor->GetOffset(), &mergedMaterialProperties.textureTileFactor, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), &mergedMaterialProperties.textureTileFactor.x, descriptor->GetSize());
 					break;
 				}
 

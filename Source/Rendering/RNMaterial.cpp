@@ -318,7 +318,7 @@ namespace RN
 		MarkPipelineDirty();
 	}
 
-	void Material::SetTextureTileFactor(float factor)
+	void Material::SetTextureTileFactor(const Vector2 &factor)
 	{
 		_properties.textureTileFactor = factor;
 		MarkDrawSnapshotDirty();

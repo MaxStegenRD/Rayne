@@ -99,7 +99,7 @@ namespace RN
 			Color uiOutlineColor;
 
 			Vector2 alphaToCoverageClamp;
-			float textureTileFactor;
+			Vector2 textureTileFactor;
 
 			RNAPI void CopyFromProperties(const Properties &properties);
 
@@ -244,7 +244,7 @@ namespace RN
 		RNAPI void SetCustomMatrix1(const Matrix &matrix);
 		RNAPI void SetCustomMatrix2(const Matrix &matrix);
 
-		RNAPI void SetTextureTileFactor(float factor);
+		RNAPI void SetTextureTileFactor(const Vector2 &factor);
 		RNAPI void SetCullMode(CullMode mode);
 
 		RNAPI void SetPolygonOffset(bool enable, float factor = 1.1f, float units = 0.1f);
@@ -272,7 +272,7 @@ namespace RN
 		const Matrix &GetCustomMatrix2() const { return _properties.customMatrix2; }
 
 		const Array *GetTextures() const { return _textures; }
-		float GetTextureTileFactor() const { return _properties.textureTileFactor; }
+		Vector2 GetTextureTileFactor() const { return _properties.textureTileFactor; }
 		Vector2 GetAlphaToCoverageClamp() const { return _properties.alphaToCoverageClamp; }
 		
 		uint8 GetColorWriteMask() const { return _pipelineProperties.colorWriteMask; }

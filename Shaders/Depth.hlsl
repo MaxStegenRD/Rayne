@@ -39,7 +39,7 @@ cbuffer vertexUniforms
 	RN_ANIMATION_VERTEX_UNIFORMS
 
 #if RN_UV0 && RN_ALPHA
-	float textureTileFactor;
+	float2 textureTileFactor;
 #endif
 };
 
