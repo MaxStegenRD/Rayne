@@ -504,14 +504,22 @@ namespace RN
 
 	void VulkanTexture::GenerateMipMaps(VkCommandBuffer commandBuffer)
 	{
+		if(_descriptor.mipMaps <= 1)
+			return;
+
+		const VkImageAspectFlags aspectMask = VulkanTextureInfo::GetAspectMask(_descriptor.format);
+		const uint32 imageLayers = VulkanTextureInfo::GetImageLayerCount(_descriptor);
+		const VkImageLayout sourceLayout = GetLayoutForUsage(_currentUsage);
+		RN_ASSERT(aspectMask == VK_IMAGE_ASPECT_COLOR_BIT, "Vulkan mipmap generation currently only supports color textures");
+
 		//TODO: Fix mipmap generation for texture arrays
-		SetImageLayout(commandBuffer, _image, 0, 1, 0, 1, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, BarrierIntent::CopySource);
-		SetImageLayout(commandBuffer, _image, 1, _descriptor.mipMaps-1, 0, 1, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, BarrierIntent::CopyDestination);
+		SetImageLayout(commandBuffer, _image, 0, 1, 0, 1, aspectMask, sourceLayout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, BarrierIntent::CopySource);
+		SetImageLayout(commandBuffer, _image, 1, _descriptor.mipMaps-1, 0, 1, aspectMask, sourceLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, BarrierIntent::CopyDestination);
 		for(uint16 i = 0; i < _descriptor.mipMaps-1; i++)
 		{
 			VkImageBlit imageBlit = {};
 
-			imageBlit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			imageBlit.srcSubresource.aspectMask = aspectMask;
 			imageBlit.srcSubresource.mipLevel = i;
 			imageBlit.srcSubresource.baseArrayLayer = 0;
 			imageBlit.srcSubresource.layerCount = 1;
@@ -523,7 +531,7 @@ namespace RN
 			imageBlit.srcOffsets[1].y = _descriptor.GetHeightForMipMapLevel(i);
 			imageBlit.srcOffsets[1].z = 1;
 
-			imageBlit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			imageBlit.dstSubresource.aspectMask = aspectMask;
 			imageBlit.dstSubresource.mipLevel = i+1;
 			imageBlit.dstSubresource.baseArrayLayer = 0;
 			imageBlit.dstSubresource.layerCount = 1;
@@ -537,10 +545,10 @@ namespace RN
 
 			vk::CmdBlitImage(commandBuffer, _image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, _image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageBlit, VK_FILTER_LINEAR);
 
-			SetImageLayout(commandBuffer, _image, i + 1, 1, 0, 1, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, BarrierIntent::CopySource);
+			SetImageLayout(commandBuffer, _image, i + 1, 1, 0, 1, aspectMask, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, BarrierIntent::CopySource);
 		}
 
-		SetImageLayout(commandBuffer, _image, 0, _descriptor.mipMaps, 0, VulkanTextureInfo::GetImageLayerCount(_descriptor), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, BarrierIntent::ShaderSource);
+		SetImageLayout(commandBuffer, _image, 0, _descriptor.mipMaps, 0, imageLayers, aspectMask, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, BarrierIntent::ShaderSource);
 		AdoptLayoutUsage(LayoutUsage::ShaderRead);
 	}
 
