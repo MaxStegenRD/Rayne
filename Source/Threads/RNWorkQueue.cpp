@@ -121,17 +121,34 @@ namespace RN
 	{
 		_threadLock.Lock();
 		std::vector<Thread *> threads = _threads;
+		// Worker threads can remove themselves from _threads while shutting down; keep the objects alive until after WaitForExit().
+		for(Thread *thread : threads)
+			thread->Retain();
 		_threadLock.Unlock();
-
 
 		// Cancel all threads, wake them up and then wait for their exit
 		for(Thread *thread : threads)
 			thread->Cancel();
 
+		// Wake every internal wait path so canceled workers can reach their exit check.
+		_suspended.store(0, std::memory_order_release);
+		{
+			LockGuard<Lockable> lock(_barrierLock);
+			_barrier.store(false, std::memory_order_release);
+			_barrierSignal.NotifyAll();
+		}
+		{
+			LockGuard<Lockable> lock(_syncLock);
+			_syncSignal.NotifyAll();
+		}
+
 		_internals->workSignal.NotifyAll();
 
 		for(Thread *thread : threads)
+		{
 			thread->WaitForExit();
+			thread->Release();
+		}
 
 		_identifier->Release();
 	}
