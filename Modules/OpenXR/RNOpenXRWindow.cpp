@@ -546,7 +546,8 @@ namespace RN
 		SafeRelease(_layersUnderlay);
 		SafeRelease(_layersOverlay);
 		SafeRelease(_runtimeName);
-		xrDestroyInstance(_internals->instance);
+		XrResult result = xrDestroyInstance(_internals->instance);
+		if(XR_FAILED(result)) RNWarning("Failed destroying OpenXR instance with result: " << result);
 		delete _internals;
 	}
 
@@ -592,6 +593,8 @@ namespace RN
 		_hasInputFocus = false;
 		_isSessionRunning = false;
 		SetLayersSessionActive(false);
+		// Layer deactivation can enqueue render-thread work; finish it before layers or the session are destroyed.
+		SynchronizeRenderThread();
 
 		ResetTilePropertiesHintCache();
 		ResetCurrentFrameState();
@@ -627,7 +630,8 @@ namespace RN
 
 		if(_internals->session != XR_NULL_HANDLE)
 		{
-			xrDestroySession(_internals->session);
+			XrResult result = xrDestroySession(_internals->session);
+			if(XR_FAILED(result)) RNWarning("Failed destroying OpenXR session with result: " << result);
 			_internals->session = XR_NULL_HANDLE;
 		}
 
