@@ -179,6 +179,88 @@ namespace RN
 		RNVulkanValidate(vk::CreateImageView(device->GetDevice(), &imageViewInfo, _renderer->GetAllocatorCallback(), &_imageView));
 	}
 
+	VulkanTexture::SubresourceRange VulkanTexture::GetWholeSubresourceRange() const
+	{
+		return {
+			0,
+			_descriptor.mipMaps,
+			0,
+			VulkanTextureInfo::GetImageLayerCount(_descriptor),
+			VulkanTextureInfo::GetAspectMask(_descriptor.format)
+		};
+	}
+
+	bool VulkanTexture::IsWholeSubresourceRange(const SubresourceRange &range) const
+	{
+		const SubresourceRange wholeRange = GetWholeSubresourceRange();
+		return range.baseMipmap == wholeRange.baseMipmap &&
+			range.mipmapCount == wholeRange.mipmapCount &&
+			range.baseLayer == wholeRange.baseLayer &&
+			range.layerCount == wholeRange.layerCount &&
+			range.aspectMask == wholeRange.aspectMask;
+	}
+
+	VkImageLayout VulkanTexture::GetLayoutForUsage(LayoutUsage usage) const
+	{
+		switch(usage)
+		{
+			case LayoutUsage::ShaderRead:
+				return VulkanTextureInfo::GetReadOnlyLayout(_descriptor.format);
+			case LayoutUsage::RenderTarget:
+				return VulkanTextureInfo::GetRenderTargetLayout(_descriptor.format);
+			case LayoutUsage::FragmentDensityMap:
+				return VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT;
+		}
+
+		RN_ASSERT(false, "Invalid Vulkan texture layout usage");
+		return VK_IMAGE_LAYOUT_UNDEFINED;
+	}
+
+	VulkanTexture::BarrierIntent VulkanTexture::GetBarrierIntentForUsage(LayoutUsage usage)
+	{
+		switch(usage)
+		{
+			case LayoutUsage::ShaderRead:
+				return BarrierIntent::ShaderSource;
+			case LayoutUsage::RenderTarget:
+				return BarrierIntent::RenderTarget;
+			case LayoutUsage::FragmentDensityMap:
+				return BarrierIntent::ShaderSource;
+		}
+
+		RN_ASSERT(false, "Invalid Vulkan texture layout usage");
+		return BarrierIntent::ShaderSource;
+	}
+
+	void VulkanTexture::TransitionToUsage(VkCommandBuffer buffer, LayoutUsage usage)
+	{
+		TransitionToUsage(buffer, usage, GetWholeSubresourceRange());
+	}
+
+	void VulkanTexture::TransitionToUsage(VkCommandBuffer buffer, LayoutUsage usage, const SubresourceRange &range)
+	{
+		const VkImageLayout targetLayout = GetLayoutForUsage(usage);
+		const bool isWholeImage = IsWholeSubresourceRange(range);
+		if(isWholeImage && _currentLayout == targetLayout)
+			return;
+
+		SetImageLayout(buffer, _image, range.baseMipmap, range.mipmapCount, range.baseLayer, range.layerCount, range.aspectMask, _currentLayout, targetLayout, GetBarrierIntentForUsage(usage));
+
+		if(isWholeImage)
+			_currentLayout = targetLayout;
+	}
+
+	void VulkanTexture::AdoptLayoutUsage(LayoutUsage usage)
+	{
+		AdoptLayoutUsage(usage, GetWholeSubresourceRange());
+	}
+
+	void VulkanTexture::AdoptLayoutUsage(LayoutUsage usage, const SubresourceRange &range)
+	{
+		RN_ASSERT(IsWholeSubresourceRange(range), "Partial Vulkan texture layout adoption needs per-subresource tracking");
+		_currentLayout = GetLayoutForUsage(usage);
+	}
+
 	VulkanTexture::~VulkanTexture()
 	{
 		StopStreamingData();
@@ -374,7 +456,7 @@ namespace RN
 	{
 		//TODO: Force main thread, or make it more flexible
 
-		const VkImageLayout initialLayout = GetCurrentLayout();
+		const VkImageLayout initialLayout = _currentLayout;
 		const uint32 mipWidth = _descriptor.GetWidthForMipMapLevel(mipmapLevel);
 		const uint32 mipHeight = _descriptor.GetHeightForMipMapLevel(mipmapLevel);
 		const uint32 mipDepth = _descriptor.type == Texture::Type::Type3D ? std::max<uint32>(1, _descriptor.depth >> mipmapLevel) : VulkanTextureInfo::GetImageLayerCount(_descriptor);
@@ -410,18 +492,6 @@ namespace RN
 	{
 		_renderer->CreateMipMapForTexture(this);
 	}
-
-/*	void VulkanTexture::TransitionToLayout(VkCommandBuffer buffer, VkImageLayout targetLayout)
-	{
-		TransitionToLayout(buffer, targetLayout, 0, _descriptor.mipMaps, VK_IMAGE_ASPECT_COLOR_BIT);
-		_currentLayout = targetLayout;
-	}
-
-	void VulkanTexture::TransitionToLayout(VkCommandBuffer buffer, VkImageLayout targetLayout, uint32 baseMipmap, uint32 mipmapCount, VkImageAspectFlags aspectMask)
-	{
-		SetImageLayout(buffer, _image, baseMipmap, mipmapCount, aspectMask, _currentLayout, targetLayout);
-		_currentLayout = targetLayout;
-	}*/
 
 	void VulkanTexture::SetImageLayout(VkCommandBuffer buffer, VkImage image, uint32 baseMipmap, uint32 mipmapCount, uint32 baseLayer, uint32 layerCount, VkImageAspectFlags aspectMask, VkImageLayout fromLayout, VkImageLayout toLayout, BarrierIntent intent)
 	{

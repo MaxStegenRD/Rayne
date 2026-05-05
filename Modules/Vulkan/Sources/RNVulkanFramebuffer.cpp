@@ -582,8 +582,7 @@ namespace RN
 				colorTextureDescriptor.format = colorFormat;
 
 				VulkanTexture *bufferTexture = new VulkanTexture(colorTextureDescriptor, _renderer, colorBuffer, true);
-				VulkanTexture::SetImageLayout(commandBuffer->GetCommandBuffer(), colorBuffer, 0, 1, 0, layerCount, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VulkanTexture::BarrierIntent::RenderTarget);
-				bufferTexture->SetCurrentLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+				bufferTexture->TransitionToUsage(commandBuffer->GetCommandBuffer(), VulkanTexture::LayoutUsage::RenderTarget);
 
 				TargetView targetView;
 				targetView.texture = bufferTexture->Autorelease();
@@ -612,8 +611,7 @@ namespace RN
 					fragmentDensityTextureDescriptor.format = fragmentDensityFormat;
 
 					VulkanTexture *bufferTexture = new VulkanTexture(fragmentDensityTextureDescriptor, _renderer, fragmentDensityBuffer, true);
-                    VulkanTexture::SetImageLayout(commandBuffer->GetCommandBuffer(), fragmentDensityBuffer, 0, 1, 0, layerCount, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT, VulkanTexture::BarrierIntent::ShaderSource);
-                    bufferTexture->SetCurrentLayout(VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT);
+					bufferTexture->TransitionToUsage(commandBuffer->GetCommandBuffer(), VulkanTexture::LayoutUsage::FragmentDensityMap);
 
 					TargetView targetView;
 					targetView.texture = bufferTexture->Autorelease();

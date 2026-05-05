@@ -631,15 +631,7 @@ namespace RN
 				//Set textures layout for reading for render targets that are used in this frame
 				for(VulkanTexture *vulkanTexture : renderPass.renderTargetsUsedInShader)
 				{
-					const Texture::Descriptor &descriptor = vulkanTexture->GetDescriptor();
-					const Texture::Format format = descriptor.format;
-					VkImageAspectFlags aspectMask = VulkanTextureInfo::GetAspectMask(format);
-					VkImageLayout targetLayout = VulkanTextureInfo::GetReadOnlyLayout(format);
-
-					if(vulkanTexture->GetCurrentLayout() == targetLayout) continue; //Nothing to do if the layout is already correct
-
-					VulkanTexture::SetImageLayout(commandBuffer, vulkanTexture->GetVulkanImage(), 0, descriptor.mipMaps, 0, VulkanTextureInfo::GetImageLayerCount(descriptor), aspectMask, vulkanTexture->GetCurrentLayout(), targetLayout, VulkanTexture::BarrierIntent::ShaderSource);
-					vulkanTexture->SetCurrentLayout(targetLayout);
+					vulkanTexture->TransitionToUsage(commandBuffer, VulkanTexture::LayoutUsage::ShaderRead);
 				}
 
 				//Set previous framebuffer texture layout for reading
@@ -649,11 +641,7 @@ namespace RN
 					if(texture)
 					{
 						VulkanTexture *vulkanTexture = texture->Downcast<VulkanTexture>();
-						if(vulkanTexture->GetCurrentLayout() != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-						{
-							VulkanTexture::SetImageLayout(commandBuffer, vulkanTexture->GetVulkanImage(), 0, vulkanTexture->GetDescriptor().mipMaps, 0, vulkanTexture->GetDescriptor().depth, VK_IMAGE_ASPECT_COLOR_BIT, vulkanTexture->GetCurrentLayout(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VulkanTexture::BarrierIntent::ShaderSource);
-							vulkanTexture->SetCurrentLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-						}
+						vulkanTexture->TransitionToUsage(commandBuffer, VulkanTexture::LayoutUsage::ShaderRead);
 					}
 				}
 
@@ -671,14 +659,7 @@ namespace RN
 
 						VulkanTexture *vulkanTexture = t->Downcast<VulkanTexture>();
 						const auto colorAttachment = subpass.GetColorAttachment(ci);
-						VkImageLayout initialLayout = colorAttachment.GetFirstUseIsRead() ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-						VkImageLayout targetLayout = colorAttachment.GetLastUseIsRead() ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-						if(vulkanTexture->GetCurrentLayout() != initialLayout)
-						{
-							VulkanTexture::SetImageLayout(commandBuffer, vulkanTexture->GetVulkanImage(), 0, vulkanTexture->GetDescriptor().mipMaps, 0, vulkanTexture->GetDescriptor().depth, VK_IMAGE_ASPECT_COLOR_BIT, vulkanTexture->GetCurrentLayout(), initialLayout, colorAttachment.GetFirstUseIsRead() ? VulkanTexture::BarrierIntent::ShaderSource : VulkanTexture::BarrierIntent::RenderTarget);
-							vulkanTexture->SetCurrentLayout(initialLayout);
-						}
+						vulkanTexture->TransitionToUsage(commandBuffer, colorAttachment.GetFirstUseIsRead() ? VulkanTexture::LayoutUsage::ShaderRead : VulkanTexture::LayoutUsage::RenderTarget);
 					}
 
 					if(renderPass.framebuffer->GetDepthStencilTexture())
@@ -687,17 +668,9 @@ namespace RN
 						if(t)
 						{
 							bool depthFirstIsReadOnly = subpass.GetDepthFirstUseIsRead();
-							bool depthLastIsReadOnly = subpass.GetDepthLastUseIsRead();
 
 							VulkanTexture *vulkanTexture = t->Downcast<VulkanTexture>();
-							VkImageLayout initialLayout = depthFirstIsReadOnly ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-							VkImageLayout targetLayout = depthLastIsReadOnly ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-							if(vulkanTexture->GetCurrentLayout() != initialLayout)
-							{
-								VulkanTexture::SetImageLayout(commandBuffer, vulkanTexture->GetVulkanImage(), 0, vulkanTexture->GetDescriptor().mipMaps, 0, vulkanTexture->GetDescriptor().depth, VK_IMAGE_ASPECT_DEPTH_BIT, vulkanTexture->GetCurrentLayout(), initialLayout, depthFirstIsReadOnly ? VulkanTexture::BarrierIntent::ShaderSource : VulkanTexture::BarrierIntent::RenderTarget);
-								vulkanTexture->SetCurrentLayout(initialLayout);
-							}
+							vulkanTexture->TransitionToUsage(commandBuffer, depthFirstIsReadOnly ? VulkanTexture::LayoutUsage::ShaderRead : VulkanTexture::LayoutUsage::RenderTarget);
 						}
 					}
 
@@ -753,12 +726,14 @@ namespace RN
 				}
 
 				RN_DEBUG_ASSERT(renderPass.subpasses.size() > 0 || renderPass.preparedRenderPassIndex < submission.preparedRenderPasses.size(), "Invalid prepared render pass index");
-				if(renderPass.subpasses.size() > 0 || !submission.preparedRenderPasses[renderPass.preparedRenderPassIndex].drawItems.empty())
+				const bool didRecordRenderPass = renderPass.subpasses.size() > 0 || !submission.preparedRenderPasses[renderPass.preparedRenderPassIndex].drawItems.empty();
+				if(didRecordRenderPass)
 				{
 					vk::CmdEndRenderPass(commandBuffer);
 				}
 
 				// Update tracked layouts for attachments to match final layouts of this render pass
+				if(didRecordRenderPass)
 				{
 					VulkanFramebuffer *fb = renderPass.framebuffer;
 					if(fb)
@@ -772,7 +747,7 @@ namespace RN
 							Texture *t = fb->GetColorTexture(ci);
 							if(!t) continue;
 							VulkanTexture *vt = t->Downcast<VulkanTexture>();
-							vt->SetCurrentLayout(subpass.GetColorAttachment(ci).GetLastUseIsRead()? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+							vt->AdoptLayoutUsage(subpass.GetColorAttachment(ci).GetLastUseIsRead() ? VulkanTexture::LayoutUsage::ShaderRead : VulkanTexture::LayoutUsage::RenderTarget);
 						}
 
 						// Depth-stencil
@@ -782,7 +757,7 @@ namespace RN
 							bool depthLastIsReadOnly = subpass.GetDepthLastUseIsRead();
 
 							VulkanTexture *dvt = dt->Downcast<VulkanTexture>();
-							dvt->SetCurrentLayout(depthLastIsReadOnly? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+							dvt->AdoptLayoutUsage(depthLastIsReadOnly ? VulkanTexture::LayoutUsage::ShaderRead : VulkanTexture::LayoutUsage::RenderTarget);
 						}
 					}
 				}
@@ -790,15 +765,7 @@ namespace RN
 				//Set textures layout for writing for render targets that are used in this frame
 				for(VulkanTexture *vulkanTexture : renderPass.renderTargetsUsedInShader)
 				{
-					const Texture::Descriptor &descriptor = vulkanTexture->GetDescriptor();
-					const Texture::Format format = descriptor.format;
-					VkImageAspectFlags aspectMask = VulkanTextureInfo::GetAspectMask(format);
-					VkImageLayout targetLayout = VulkanTextureInfo::GetRenderTargetLayout(format);
-
-					if(vulkanTexture->GetCurrentLayout() == targetLayout) continue; //Nothing to do if the layout is already correct
-
-					VulkanTexture::SetImageLayout(commandBuffer, vulkanTexture->GetVulkanImage(), 0, descriptor.mipMaps, 0, VulkanTextureInfo::GetImageLayerCount(descriptor), aspectMask, vulkanTexture->GetCurrentLayout(), targetLayout, VulkanTexture::BarrierIntent::RenderTarget);
-					vulkanTexture->SetCurrentLayout(targetLayout);
+					vulkanTexture->TransitionToUsage(commandBuffer, VulkanTexture::LayoutUsage::RenderTarget);
 				}
 
 				//Set previous framebuffer texture layout for writing
@@ -808,11 +775,7 @@ namespace RN
 					if(texture)
 					{
 						VulkanTexture *vulkanTexture = texture->Downcast<VulkanTexture>();
-						if(vulkanTexture->GetCurrentLayout() != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-						{
-							VulkanTexture::SetImageLayout(commandBuffer, vulkanTexture->GetVulkanImage(), 0, vulkanTexture->GetDescriptor().mipMaps, 0, vulkanTexture->GetDescriptor().depth, VK_IMAGE_ASPECT_COLOR_BIT, vulkanTexture->GetCurrentLayout(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VulkanTexture::BarrierIntent::RenderTarget);
-							vulkanTexture->SetCurrentLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-						}
+						vulkanTexture->TransitionToUsage(commandBuffer, VulkanTexture::LayoutUsage::RenderTarget);
 					}
 				}
 

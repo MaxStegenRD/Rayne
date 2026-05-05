@@ -21,14 +21,20 @@ namespace RN
 	public:
 		friend class VulkanRenderer;
 
-		enum BarrierIntent
+		enum class LayoutUsage
 		{
-			UploadDestination,
-			CopySource,
-			CopyDestination,
-			ShaderSource,
+			ShaderRead,
 			RenderTarget,
-			ExternalSource
+			FragmentDensityMap
+		};
+
+		struct SubresourceRange
+		{
+			uint32 baseMipmap;
+			uint32 mipmapCount;
+			uint32 baseLayer;
+			uint32 layerCount;
+			VkImageAspectFlags aspectMask;
 		};
 
 		VKAPI VulkanTexture(const Descriptor &descriptor, VulkanRenderer *renderer);
@@ -48,15 +54,22 @@ namespace RN
 		VkImage GetVulkanImage() const { return _image; }
 		VkFormat GetVulkanFormat() const { return _format; }
 
-/*		VKAPI void TransitionToLayout(VkCommandBuffer buffer, VkImageLayout targetLayout, uint32 baseMipmap, uint32 mipmapCount, VkImageAspectFlags aspectMask);
-		VKAPI void TransitionToLayout(VkCommandBuffer buffer, VkImageLayout targetLayout);*/
-
-		VkImageLayout GetCurrentLayout() const { return _currentLayout; }
-		void SetCurrentLayout(VkImageLayout layout) { _currentLayout = layout; }
-
-		VKAPI static void SetImageLayout(VkCommandBuffer buffer, VkImage image, uint32 baseMipmap, uint32 mipmapCount, uint32 baseLayer, uint32 layerCount, VkImageAspectFlags aspectMask, VkImageLayout fromLayout, VkImageLayout toLayout, BarrierIntent intent);
+		VKAPI void TransitionToUsage(VkCommandBuffer buffer, LayoutUsage usage);
+		VKAPI void TransitionToUsage(VkCommandBuffer buffer, LayoutUsage usage, const SubresourceRange &range);
+		VKAPI void AdoptLayoutUsage(LayoutUsage usage);
+		VKAPI void AdoptLayoutUsage(LayoutUsage usage, const SubresourceRange &range);
 
 	private:
+		enum BarrierIntent
+		{
+			UploadDestination,
+			CopySource,
+			CopyDestination,
+			ShaderSource,
+			RenderTarget,
+			ExternalSource
+		};
+
 		struct StagingBuffer
 		{
 			VkBuffer buffer;
@@ -74,6 +87,11 @@ namespace RN
 
 		void CreateOwnedImage();
 		void CreateImageView();
+		SubresourceRange GetWholeSubresourceRange() const;
+		bool IsWholeSubresourceRange(const SubresourceRange &range) const;
+		VkImageLayout GetLayoutForUsage(LayoutUsage usage) const;
+		static BarrierIntent GetBarrierIntentForUsage(LayoutUsage usage);
+		static void SetImageLayout(VkCommandBuffer buffer, VkImage image, uint32 baseMipmap, uint32 mipmapCount, uint32 baseLayer, uint32 layerCount, VkImageAspectFlags aspectMask, VkImageLayout fromLayout, VkImageLayout toLayout, BarrierIntent intent);
 		BufferImageCopySetup GetBufferImageCopySetup(const Region &region, uint32 mipmapLevel, uint32 slice, size_t bytesPerRow, size_t numberOfRows) const;
 		void CreateStagingBuffer(StagingBuffer &buffer, size_t size, VkBufferUsageFlags usage, VmaAllocationCreateFlags accessFlags) const;
 		void ReleaseStagingBuffer(StagingBuffer &buffer) const;
