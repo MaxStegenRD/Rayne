@@ -30,6 +30,10 @@ cbuffer vertexUniforms
 	float4 uiClippingRect;
 	float2 uiOffset;
 
+#if RN_UV0 || RN_UI_CIRCLE || RN_UI_GRADIENT
+	float2 textureTileFactor;
+#endif
+
 #if RN_UI_OUTLINE
 	float4 uiOutlineColor;
 #endif
@@ -85,7 +89,7 @@ FragmentVertex ui_vertex(InputVertex vert)
 	FragmentVertex result;
 
 #if RN_UV0 || RN_UI_CIRCLE || RN_UI_GRADIENT
-	result.texCoords = vert.texCoords;
+	result.texCoords = vert.texCoords * textureTileFactor;
 #endif
 
 #if RN_UV1
