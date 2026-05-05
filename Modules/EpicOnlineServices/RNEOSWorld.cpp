@@ -46,7 +46,7 @@ namespace RN
 	}
 
 	EOSWorld::EOSWorld(String *productName, String *productVersion, String *productID, String *sandboxID, String *deploymentID, String *clientID, String *clientSecret, std::function<void(std::function<void(String *, const String *, EOSAuthServiceType)>)> externalLoginCallback, bool allowFallbackToDeviceID) :
-		_hosts(new Dictionary()), _externalLoginCallback(nullptr), _loginState(LoginStateIsNotLoggedIn), _loggedInUserID(nullptr), _platformHandle(nullptr), _connectInterfaceHandle(nullptr), _p2pInterfaceHandle(nullptr), _authExpirationNotificationID(EOS_INVALID_NOTIFICATIONID), _loginStatusChangedNotificationID(EOS_INVALID_NOTIFICATIONID), _lobbyManager(nullptr), _allowFallbackToDeviceID(allowFallbackToDeviceID)
+		_hosts(new Dictionary()), _externalLoginCallback(nullptr), _allowFallbackToDeviceID(allowFallbackToDeviceID), _loginState(LoginStateIsNotLoggedIn), _loggedInUserID(nullptr), _platformHandle(nullptr), _connectInterfaceHandle(nullptr), _p2pInterfaceHandle(nullptr), _authExpirationNotificationID(EOS_INVALID_NOTIFICATIONID), _loginStatusChangedNotificationID(EOS_INVALID_NOTIFICATIONID), _lobbyManager(nullptr)
 	{
 		RN_ASSERT(!_instance, "There already is an EOSWorld!");
 
@@ -119,6 +119,12 @@ namespace RN
 		//platformOptions.TaskNetworkTimeoutSeconds = &timeout;
 
 		_platformHandle = EOS_Platform_Create(&platformOptions);
+		if(!_platformHandle)
+		{
+			RNDebug("Failed creating EOS platform.");
+			EOS_Shutdown();
+			return;
+		}
 
 		_connectInterfaceHandle = EOS_Platform_GetConnectInterface(_platformHandle);
 		_p2pInterfaceHandle = EOS_Platform_GetP2PInterface(_platformHandle);
@@ -165,11 +171,16 @@ namespace RN
 
 		_connectInterfaceHandle = nullptr;
 		_p2pInterfaceHandle = nullptr;
-		if(_platformHandle) EOS_Platform_Release(_platformHandle);
-		_platformHandle = nullptr;
 
 		_instance = nullptr;
-		EOS_Shutdown();
+		if(_platformHandle)
+		{
+			EOS_Platform_Release(_platformHandle);
+			_platformHandle = nullptr;
+
+			EOS_EResult result = EOS_Shutdown();
+			RNInfo("RN_SHUTDOWN EOSWorld EOS_Shutdown finished: " << EOS_EResult_ToString(result));
+		}
 	}
 
 	void EOSWorld::Update(float delta)
