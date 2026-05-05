@@ -89,6 +89,7 @@ namespace RN
 
 		void CreateOwnedImage();
 		void CreateImageView();
+		void GenerateMipMaps(VkCommandBuffer commandBuffer);
 		SubresourceRange GetWholeSubresourceRange() const;
 		bool IsWholeSubresourceRange(const SubresourceRange &range) const;
 		VkImageLayout GetLayoutForUsage(LayoutUsage usage) const;

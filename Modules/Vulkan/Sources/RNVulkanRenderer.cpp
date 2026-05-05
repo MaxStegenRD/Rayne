@@ -1310,45 +1310,7 @@ namespace RN
 		VulkanCommandBuffer *commandBuffer = StartResourcesCommandBuffer();
 
 		mipMapTextures->Enumerate<VulkanTexture>([&](VulkanTexture *texture, size_t index, bool &stop) {
-
-			//TODO: Fix mipmap generation for texture arrays
-			VulkanTexture::SetImageLayout(commandBuffer->GetCommandBuffer(), texture->GetVulkanImage(), 0, 1, 0, 1, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VulkanTexture::BarrierIntent::CopySource);
-			VulkanTexture::SetImageLayout(commandBuffer->GetCommandBuffer(), texture->GetVulkanImage(), 1, texture->GetDescriptor().mipMaps-1, 0, 1, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VulkanTexture::BarrierIntent::CopyDestination);
-			for(uint16 i = 0; i < texture->GetDescriptor().mipMaps-1; i++)
-			{
-				VkImageBlit imageBlit = {};
-
-				imageBlit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-				imageBlit.srcSubresource.mipLevel = i;
-				imageBlit.srcSubresource.baseArrayLayer = 0;
-				imageBlit.srcSubresource.layerCount = 1;
-
-				imageBlit.srcOffsets[0].x = 0;
-				imageBlit.srcOffsets[0].y = 0;
-				imageBlit.srcOffsets[0].z = 0;
-				imageBlit.srcOffsets[1].x = texture->GetDescriptor().GetWidthForMipMapLevel(i);
-				imageBlit.srcOffsets[1].y = texture->GetDescriptor().GetHeightForMipMapLevel(i);
-				imageBlit.srcOffsets[1].z = 1;
-
-				imageBlit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-				imageBlit.dstSubresource.mipLevel = i+1;
-				imageBlit.dstSubresource.baseArrayLayer = 0;
-				imageBlit.dstSubresource.layerCount = 1;
-
-				imageBlit.dstOffsets[0].x = 0;
-				imageBlit.dstOffsets[0].y = 0;
-				imageBlit.dstOffsets[0].z = 0;
-				imageBlit.dstOffsets[1].x = texture->GetDescriptor().GetWidthForMipMapLevel(i+1);
-				imageBlit.dstOffsets[1].y = texture->GetDescriptor().GetHeightForMipMapLevel(i+1);
-				imageBlit.dstOffsets[1].z = 1;
-
-				vk::CmdBlitImage(commandBuffer->GetCommandBuffer(), texture->GetVulkanImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, texture->GetVulkanImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageBlit, VK_FILTER_LINEAR);
-
-				VulkanTexture::SetImageLayout(commandBuffer->GetCommandBuffer(), texture->GetVulkanImage(), i + 1, 1, 0, 1, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VulkanTexture::BarrierIntent::CopySource);
-			}
-
-			const Texture::Descriptor &descriptor = texture->GetDescriptor();
-			VulkanTexture::SetImageLayout(commandBuffer->GetCommandBuffer(), texture->GetVulkanImage(), 0, descriptor.mipMaps, 0, VulkanTextureInfo::GetImageLayerCount(descriptor), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VulkanTexture::BarrierIntent::ShaderSource);
+			texture->GenerateMipMaps(commandBuffer->GetCommandBuffer());
 		});
 
 		EndResourcesCommandBuffer();

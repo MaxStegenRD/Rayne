@@ -502,6 +502,48 @@ namespace RN
 		_renderer->CreateMipMapForTexture(this);
 	}
 
+	void VulkanTexture::GenerateMipMaps(VkCommandBuffer commandBuffer)
+	{
+		//TODO: Fix mipmap generation for texture arrays
+		SetImageLayout(commandBuffer, _image, 0, 1, 0, 1, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, BarrierIntent::CopySource);
+		SetImageLayout(commandBuffer, _image, 1, _descriptor.mipMaps-1, 0, 1, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, BarrierIntent::CopyDestination);
+		for(uint16 i = 0; i < _descriptor.mipMaps-1; i++)
+		{
+			VkImageBlit imageBlit = {};
+
+			imageBlit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			imageBlit.srcSubresource.mipLevel = i;
+			imageBlit.srcSubresource.baseArrayLayer = 0;
+			imageBlit.srcSubresource.layerCount = 1;
+
+			imageBlit.srcOffsets[0].x = 0;
+			imageBlit.srcOffsets[0].y = 0;
+			imageBlit.srcOffsets[0].z = 0;
+			imageBlit.srcOffsets[1].x = _descriptor.GetWidthForMipMapLevel(i);
+			imageBlit.srcOffsets[1].y = _descriptor.GetHeightForMipMapLevel(i);
+			imageBlit.srcOffsets[1].z = 1;
+
+			imageBlit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			imageBlit.dstSubresource.mipLevel = i+1;
+			imageBlit.dstSubresource.baseArrayLayer = 0;
+			imageBlit.dstSubresource.layerCount = 1;
+
+			imageBlit.dstOffsets[0].x = 0;
+			imageBlit.dstOffsets[0].y = 0;
+			imageBlit.dstOffsets[0].z = 0;
+			imageBlit.dstOffsets[1].x = _descriptor.GetWidthForMipMapLevel(i+1);
+			imageBlit.dstOffsets[1].y = _descriptor.GetHeightForMipMapLevel(i+1);
+			imageBlit.dstOffsets[1].z = 1;
+
+			vk::CmdBlitImage(commandBuffer, _image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, _image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageBlit, VK_FILTER_LINEAR);
+
+			SetImageLayout(commandBuffer, _image, i + 1, 1, 0, 1, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, BarrierIntent::CopySource);
+		}
+
+		SetImageLayout(commandBuffer, _image, 0, _descriptor.mipMaps, 0, VulkanTextureInfo::GetImageLayerCount(_descriptor), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, BarrierIntent::ShaderSource);
+		AdoptLayoutUsage(LayoutUsage::ShaderRead);
+	}
+
 	void VulkanTexture::SetImageLayout(VkCommandBuffer buffer, VkImage image, uint32 baseMipmap, uint32 mipmapCount, uint32 baseLayer, uint32 layerCount, VkImageAspectFlags aspectMask, VkImageLayout fromLayout, VkImageLayout toLayout, BarrierIntent intent)
 	{
 		VkImageMemoryBarrier imageMemoryBarrier = {};
