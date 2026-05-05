@@ -41,18 +41,16 @@ namespace RN
 		_application(application),
 		_androidState(androidState),
 		_exit(false),
-		_isActive(true),
-		_wantsToExit(false)
+		_isActive(true)
 	{}
-	#else
+#else
 	Kernel::Kernel(Application *application, const ArgumentParser &arguments) :
 		_arguments(arguments),
 		_application(application),
 		_exit(false),
-		_isActive(true),
-		_wantsToExit(false)
+		_isActive(true)
 	{}
-	#endif
+#endif
 
 	Kernel::~Kernel()
 	{}
@@ -372,6 +370,25 @@ namespace RN
 #if RN_ENABLE_VTUNE
 		__itt_frame_begin_v3(VTuneDomain, nullptr);
 #endif
+		auto finishFrame = [&] {
+#if RN_PLATFORM_MAC_OS
+			[nsautoreleasePool release];
+#endif
+
+			// Make sure the run loop wakes up again afterwards
+			_runLoop->WakeUp();
+
+#if RN_ENABLE_VTUNE
+			__itt_frame_end_v3(VTuneDomain, nullptr);
+#endif
+		};
+		auto finishIfExiting = [&] {
+			if(!RN_EXPECT_FALSE(_exit)) return false;
+
+			_runLoop->Stop();
+			finishFrame();
+			return true;
+		};
 
 		AutoreleasePool pool;
 
@@ -394,7 +411,13 @@ namespace RN
 
 		_time.store(_time.load(std::memory_order_relaxed) + _delta, std::memory_order_relaxed);
 
+#if RN_PLATFORM_ANDROID
+		HandleSystemEvents();
+		if(finishIfExiting()) return;
+#endif
+
 		_application->WillStep(static_cast<float>(_delta));
+		if(finishIfExiting()) return;
 
 		// Perform work submitted to the main queue
 		{
@@ -413,11 +436,13 @@ namespace RN
 		START_TASK(__inputTask);
 		// System event handling
 		HandleSystemEvents();
+		const bool exitRequested = _exit;
 
 		// Update input and then run scene updates
-		if(_isActive)
+		if(!exitRequested && _isActive)
 			_inputManager->Update(static_cast<float>(_delta));
 		END_TASK();
+		if(finishIfExiting()) return;
 
 		START_TASK(__updateTask);
 		_sceneManager->Update(static_cast<float>(_delta));
@@ -454,16 +479,7 @@ namespace RN
 			}
 		}
 
-#if RN_PLATFORM_MAC_OS
-		[nsautoreleasePool release];
-#endif
-
-		// Make sure the run loop wakes up again afterwards
-		_runLoop->WakeUp();
-
-#if RN_ENABLE_VTUNE
-		__itt_frame_end_v3(VTuneDomain, nullptr);
-#endif
+		finishFrame();
 	}
 
 	void Kernel::HandleSystemEvents()
@@ -493,8 +509,7 @@ namespace RN
 
 			if(message.message == WM_CLOSE || message.message == WM_DESTROY || message.message == WM_QUIT)
 			{
-				//Close application
-				_wantsToExit = true; //This can be queried to then trigger a shutdown of everything
+				Exit();
 			}
 
 			TranslateMessage(&message);
@@ -520,7 +535,10 @@ namespace RN
 #endif
 #if RN_PLATFORM_ANDROID
 		DrainAndroidStateChanges();
-		if(GetAndroidState()->GetDestroyRequested()) _wantsToExit = true;
+		if(GetAndroidState()->GetDestroyRequested())
+		{
+			Exit();
+		}
 #endif
 	}
 

@@ -2076,8 +2076,9 @@ namespace RN
 						{
 							RNInfo("Session State: Exiting");
 							StopRendering();
-
 							_hmdTrackingState.mode = VRHMDTrackingState::Mode::Disconnected;
+							Kernel *kernel = Kernel::GetSharedInstance();
+							if(kernel) kernel->Exit();
 						}
 						else if(sessionStateChangedEvent.state == XR_SESSION_STATE_SYNCHRONIZED)
 						{
