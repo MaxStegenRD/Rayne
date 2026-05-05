@@ -33,6 +33,7 @@ namespace RN
 	private:
 		SceneManager();
 		~SceneManager();
+		void PrepareForShutdown();
 
 		Array *_scenes;
 	};

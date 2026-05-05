@@ -30,6 +30,7 @@ namespace RN
 
 		RNAPI void Update(float delta) override;
 		RNAPI void Render(Renderer *renderer) override;
+		RNAPI void PrepareForShutdown() override;
 
 		RNAPI void TraverseTree(RN::Camera *camera, std::vector<SceneNode *> &sceneNodesToRender);
 		RNAPI uint32 FindTreeNode(const AABB& box, bool isInserting, uint8 maxDepth = UINT8_MAX);
@@ -81,6 +82,8 @@ namespace RN
 		Array *_nodesToRemove;
 		Array *_nodesToAdd;
 
+		void RemoveAllNodes();
+
 		size_t _currentFrameCount;
 
 		__RNDeclareMetaInternal(SceneQuadtree)
@@ -106,5 +109,4 @@ namespace RN
 
 
 #endif /* __RAYNE_SCENEQUADTREE_H__ */
-
 

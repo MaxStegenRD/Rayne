@@ -7,6 +7,7 @@
 //
 
 #include "RNSceneManager.h"
+#include "../Objects/RNAutoreleasePool.h"
 
 namespace RN
 {
@@ -40,6 +41,14 @@ namespace RN
 		scene->WillResignActive();
 		_scenes->RemoveObject(scene);
 		scene->DidResignActive();
+	}
+
+	void SceneManager::PrepareForShutdown()
+	{
+		AutoreleasePool pool;
+		_scenes->Enumerate<Scene>([&](Scene *scene, size_t index, bool &stop) {
+			scene->PrepareForShutdown();
+		});
 	}
 
 	void SceneManager::Update(float delta)

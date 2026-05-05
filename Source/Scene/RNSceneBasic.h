@@ -38,6 +38,7 @@ namespace RN
 
 		RNAPI void Update(float delta) override;
 		RNAPI void Render(Renderer *renderer) override;
+		RNAPI void PrepareForShutdown() override;
 
 		RNAPI void FlushAdditionQueue();
 		RNAPI void FlushDeletionQueue();
@@ -61,6 +62,7 @@ namespace RN
 		bool IsOccluderCacheCandidate(SceneNode *node) const;
 		void AddCachedOccluderNode(SceneNode *node);
 		void RemoveCachedOccluderNode(SceneNode *node);
+		void RemoveAllNodes();
 
 		std::vector<SceneNode *> _occluderNodes;
 

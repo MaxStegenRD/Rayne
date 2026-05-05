@@ -50,6 +50,7 @@ namespace RN
 	}
 	SceneWithVisibilityLists::~SceneWithVisibilityLists()
 	{
+		PrepareForShutdown();
 		SafeRelease(_volumes);
 		SafeRelease(_defaultVolume);
 	}
@@ -191,6 +192,26 @@ namespace RN
 		DidRender(renderer);
 	}
 
+	void SceneWithVisibilityLists::PrepareForShutdown()
+	{
+		Scene::PrepareForShutdown();
+		Array *nodes = new Array();
+		auto addNode = [&](SceneNode *node) {
+			if(!nodes->ContainsObject(node))
+				nodes->AddObject(node);
+		};
+
+		_volumes->Enumerate<Volume>([&](Volume *volume, size_t index, bool &stop) {
+			for(SceneNode *node : volume->nodes)
+				addNode(node);
+		});
+
+		nodes->Enumerate<SceneNode>([&](SceneNode *node, size_t index, bool &stop) {
+			RemoveNode(node);
+		});
+		nodes->Release();
+	}
+
 	void SceneWithVisibilityLists::AddVolume(Volume *volume)
 	{
 		_volumes->AddObject(volume);
@@ -220,6 +241,8 @@ namespace RN
 
 	void SceneWithVisibilityLists::AddNode(SceneNode *node)
 	{
+		if(_isPreparedForShutdown) return;
+
 		RN_ASSERT(node->GetSceneInfo() == nullptr, "AddNode() must be called on a Node not owned by a scene");
 
 		if(node->IsKindOfClass(Camera::GetMetaClass()))
@@ -251,7 +274,9 @@ namespace RN
 
 	void SceneWithVisibilityLists::RemoveNode(SceneNode *node)
 	{
-		RN_ASSERT(node->GetSceneInfo() && node->GetSceneInfo()->GetScene() == this, "RemoveNode() must be called on a Node owned by the scene");
+		SceneInfo *sceneInfo = node->GetSceneInfo();
+		if(!sceneInfo && _isPreparedForShutdown) return;
+		RN_ASSERT(sceneInfo && sceneInfo->GetScene() == this, "RemoveNode() must be called on a Node owned by the scene");
 
 		if(node->IsKindOfClass(Camera::GetMetaClass()))
 		{
@@ -269,8 +294,8 @@ namespace RN
 			_updateNodes[static_cast<size_t>(node->GetUpdatePriority())].Erase(node->_sceneUpdateEntry);
 		}
 
-		SceneWithVisibilityListsInfo *sceneInfo = node->GetSceneInfo()->Downcast<SceneWithVisibilityListsInfo>();
-		for(Volume *volume : sceneInfo->volumes)
+		SceneWithVisibilityListsInfo *visibilitySceneInfo = sceneInfo->Downcast<SceneWithVisibilityListsInfo>();
+		for(Volume *volume : visibilitySceneInfo->volumes)
 		{
 			auto iterator = std::find(volume->nodes.begin(), volume->nodes.end(), node);
 			if(iterator != volume->nodes.end())

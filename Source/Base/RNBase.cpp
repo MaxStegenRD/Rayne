@@ -295,6 +295,11 @@ namespace RN
 
 		static void TearDownKernel(Kernel *kernel)
 		{
+#if RN_PLATFORM_ANDROID
+			const AndroidState *androidState = kernel->GetAndroidState();
+			JavaVM *javaVM = androidState? androidState->GetJavaVM() : nullptr;
+#endif
+
 #if RN_PLATFORM_MAC_OS || RN_PLATFORM_IOS || RN_PLATFORM_VISIONOS
 			@autoreleasepool
 			{
@@ -305,8 +310,6 @@ namespace RN
 #endif
 
 #if RN_PLATFORM_ANDROID
-			const AndroidState *androidState = kernel->GetAndroidState();
-			JavaVM *javaVM = androidState? androidState->GetJavaVM() : nullptr;
 			if(javaVM)
 			{
 				javaVM->DetachCurrentThread();
@@ -442,11 +445,6 @@ namespace RN
 			ANativeActivity_finish(androidApp->activity);
 		}
 
-		while(!androidApp->destroyRequested)
-		{
-			__KernelBootstrapHelper::ProcessAndroidEvents(androidState, -1);
-		}
-
 		androidApp->onAppCmd = nullptr;
 		__KernelBootstrapHelper::DestroyAndroidState(androidState);
 
@@ -455,7 +453,7 @@ namespace RN
 			std::rethrow_exception(gameThreadException);
 		}
 
-		return;
+		std::_Exit(EXIT_SUCCESS);
 #else
 		Kernel *result = __BootstrapKernel(app, arguments, object);
 #if RN_PLATFORM_MAC_OS

@@ -247,6 +247,9 @@ namespace RN
 	{
 		RN_UNUSED ScopeAllocator rootAllocator(BumpAllocator::GetThreadAllocator());
 		AutoreleasePool pool;
+
+		RNInfo("RN_SHUTDOWN Kernel::TearDown begin");
+		_sceneManager->PrepareForShutdown();
 		_application->WillExit();
 		delete _application;
 		_application = nullptr;
@@ -261,7 +264,7 @@ namespace RN
 		if(_renderer)
 		{
 			_renderer->Deactivate();
-			delete _renderer;
+			_renderer = nullptr;
 		}
 
 		delete _fileManager;
@@ -272,6 +275,7 @@ namespace RN
 		delete _notificationManager;
 		delete _performanceScenarioRunner;
 
+		RNInfo("RN_SHUTDOWN Kernel engine cleanup finished");
 		_logger->Flush();
 		delete _logger;
 
@@ -537,6 +541,7 @@ namespace RN
 		DrainAndroidStateChanges();
 		if(GetAndroidState()->GetDestroyRequested())
 		{
+			RNInfo("RN_SHUTDOWN Android destroy requested");
 			Exit();
 		}
 #endif

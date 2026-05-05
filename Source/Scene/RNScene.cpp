@@ -14,6 +14,7 @@ namespace RN
 	RNDefineMeta(SceneInfo, Object)
 
 	Scene::Scene() :
+		_isPreparedForShutdown(false),
 		_attachments(nullptr)
 	{
 	}
@@ -33,6 +34,11 @@ namespace RN
 				attachment->Update(delta);
 			});
 		}
+	}
+
+	void Scene::PrepareForShutdown()
+	{
+		_isPreparedForShutdown = true;
 	}
 
 	void Scene::UpdateNode(SceneNode *node, float delta)

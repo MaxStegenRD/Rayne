@@ -278,9 +278,10 @@ namespace RN
 
 		if(_sceneInfo)
 		{
+			Scene *scene = _sceneInfo->GetScene();
 			_children->Enumerate<SceneNode>([&](SceneNode *node, size_t index, bool &stop) {
 				if(node->_sceneInfo != nullptr)
-					_sceneInfo->GetScene()->RemoveNode(node);
+					scene->RemoveNode(node);
 			});
 		}
 

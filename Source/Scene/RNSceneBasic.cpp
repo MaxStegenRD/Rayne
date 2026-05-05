@@ -59,6 +59,7 @@ namespace RN
 	SceneBasic::~SceneBasic()
 	{
 		RN_PROFILE_SCOPE();
+		PrepareForShutdown();
 		_nodesToRemove->Release();
 		delete _occlusionCuller;
 	}
@@ -137,6 +138,36 @@ namespace RN
 		DidUpdate(delta);
 
 		FlushDeletionQueue();
+	}
+
+	void SceneBasic::PrepareForShutdown()
+	{
+		Scene::PrepareForShutdown();
+		RemoveAllNodes();
+		FlushDeletionQueue();
+	}
+
+	void SceneBasic::RemoveAllNodes()
+	{
+		Array *nodes = new Array();
+		auto addNode = [&](SceneNode *node) {
+			if(!nodes->ContainsObject(node))
+				nodes->AddObject(node);
+		};
+
+		for(IntrusiveList<SceneNode>::Member *member = _renderNodes.GetHead(); member; member = member->GetNext())
+			addNode(member->Get());
+
+		for(IntrusiveList<Light>::Member *member = _lights.GetHead(); member; member = member->GetNext())
+			addNode(member->Get());
+
+		for(IntrusiveList<Camera>::Member *member = _cameras.GetHead(); member; member = member->GetNext())
+			addNode(member->Get());
+
+		nodes->Enumerate<SceneNode>([&](SceneNode *node, size_t index, bool &stop) {
+			RemoveNode(node);
+		});
+		nodes->Release();
 	}
 
 	void SceneBasic::FlushDeletionQueue()
@@ -626,6 +657,8 @@ namespace RN
 	void SceneBasic::AddNode(SceneNode *node)
 	{
 		RN_PROFILE_SCOPE();
+		if(_isPreparedForShutdown) return;
+
 		//Remove from deletion list if scheduled for deletion if the scene didn't change.
 		if(node->GetSceneInfo() && node->GetSceneInfo()->GetScene() == this && node->_scheduledForRemovalFromScene)
 		{
@@ -672,7 +705,9 @@ namespace RN
 	void SceneBasic::RemoveNode(SceneNode *node)
 	{
 		RN_PROFILE_SCOPE();
-		RN_ASSERT(node->GetSceneInfo() && node->GetSceneInfo()->GetScene() == this, "RemoveNode() must be called on a Node owned by the scene");
+		SceneInfo *sceneInfo = node->GetSceneInfo();
+		if(!sceneInfo && _isPreparedForShutdown) return;
+		RN_ASSERT(sceneInfo && sceneInfo->GetScene() == this, "RemoveNode() must be called on a Node owned by the scene");
 
 		if(node->_scheduledForRemovalFromScene) return; //Already queued for removal
 

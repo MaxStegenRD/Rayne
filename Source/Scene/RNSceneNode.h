@@ -202,7 +202,6 @@ namespace RN
 		RNAPI void UpdateInternalInverseTransformData() const;
 		RNAPI void UpdateInternalBoundsData() const;
 
-		void __RemoveSceneInfo();
 		void __CompleteAttachmentWithScene(SceneInfo *sceneInfo);
 
 		AABB _boundingBox;

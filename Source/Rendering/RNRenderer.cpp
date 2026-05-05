@@ -58,6 +58,9 @@ namespace RN
 				SafeRelease(_defaultShaderCache[typeIndex][hintIndex]);
 			}
 		}
+
+		if(_activeRenderer == this)
+			_activeRenderer = nullptr;
 	}
 
 	bool Renderer::IsHeadless()
@@ -115,11 +118,17 @@ namespace RN
 	{
 		RN_ASSERT(!_activeRenderer, "Rayne only supports one active renderer at a time");
 		_activeRenderer = this;
+		Retain();
 	}
 
 	void Renderer::Deactivate()
 	{
-		_activeRenderer = nullptr;
+		RN_ASSERT(_activeRenderer == this, "Deactivate() must be called on the active renderer");
+
+		Renderer *renderer = _activeRenderer;
+		renderer->Release();
+		if(_activeRenderer == renderer)
+			_activeRenderer = nullptr;
 	}
 
 	void Renderer::AddAttachment(RendererAttachment *attachment)

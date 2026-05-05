@@ -49,10 +49,13 @@ namespace RN
 		RNAPI virtual void DidRender(Renderer *renderer);
 		RNAPI void SubmitCameraPassAttachmentSnapshots(Renderer *renderer, Camera *camera, const SceneCameraPassContext &context);
 
+		RNAPI virtual void PrepareForShutdown();
 		RNAPI virtual void Update(float delta);
 		RNAPI virtual void Render(Renderer *renderer) = 0;
 
 		RNAPI void UpdateNode(SceneNode *node, float delta);
+
+		bool _isPreparedForShutdown;
 
 	private:
 		Array *_attachments;

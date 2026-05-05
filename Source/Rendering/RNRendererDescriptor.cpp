@@ -145,24 +145,14 @@ namespace RN
 		if(!device || !devices->ContainsObject(device))
 			throw InconsistencyException("Invalid preferred rendering device");
 
+		Renderer *renderer = descriptor->CreateRenderer(device);
+		if(!renderer)
+			throw InconsistencyException("Renderer creation failed");
 
-		Renderer *renderer = nullptr;
+		renderer->Activate();
+		renderer->Release();
 
-		try
-		{
-			renderer = descriptor->CreateRenderer(device);
-			if(!renderer)
-				throw InconsistencyException("Renderer creation failed");
-
-			renderer->Activate();
-
-			RNInfo("Using renderer: " << renderer << ", device: " << device);
-		}
-		catch(...)
-		{
-			delete renderer;
-			std::rethrow_exception(std::current_exception());
-		}
+		RNInfo("Using renderer: " << renderer << ", device: " << device);
 
 		return renderer;
 	}
