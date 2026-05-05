@@ -23,8 +23,11 @@ namespace RN
 
 		enum class LayoutUsage
 		{
+			Undefined,
 			ShaderRead,
 			RenderTarget,
+			TransferSource,
+			TransferDestination,
 			FragmentDensityMap
 		};
 
@@ -62,7 +65,6 @@ namespace RN
 	private:
 		enum BarrierIntent
 		{
-			UploadDestination,
 			CopySource,
 			CopyDestination,
 			ShaderSource,
@@ -107,7 +109,7 @@ namespace RN
 		VkImage _image;
 		VkImageView _imageView;
 		VmaAllocation _allocation;
-		VkImageLayout _currentLayout;
+		LayoutUsage _currentUsage;
 
 		RNDeclareMetaAPI(VulkanTexture, VKAPI);
 	};

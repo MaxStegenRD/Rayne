@@ -24,7 +24,7 @@ namespace RN
 		_image(VK_NULL_HANDLE),
 		_imageView(VK_NULL_HANDLE),
 		_allocation(VK_NULL_HANDLE),
-		_currentLayout(VK_IMAGE_LAYOUT_UNDEFINED)
+		_currentUsage(LayoutUsage::Undefined)
 	{
 		CreateOwnedImage();
 	}
@@ -38,7 +38,7 @@ namespace RN
 		_image(image),
 		_imageView(VK_NULL_HANDLE),
 		_allocation(VK_NULL_HANDLE),
-		_currentLayout(VK_IMAGE_LAYOUT_UNDEFINED)
+		_currentUsage(LayoutUsage::Undefined)
 	{
 		RN_ASSERT(_format != VK_FORMAT_UNDEFINED, "Requested texture format is not supported by Vulkan (%i)", _descriptor.format);
 		CreateImageView();
@@ -125,7 +125,7 @@ namespace RN
 			allocCreateInfo.priority = 1.0f;
 		}
 
-		_currentLayout = imageInfo.initialLayout;
+		_currentUsage = LayoutUsage::Undefined;
 
 		VkImageFormatProperties formatProperties;
 		RNVulkanValidate(vk::GetPhysicalDeviceImageFormatProperties(device->GetPhysicalDevice(), imageInfo.format, imageInfo.imageType, imageInfo.tiling, imageInfo.usage, imageInfo.flags, &formatProperties));
@@ -147,12 +147,8 @@ namespace RN
 
 		if(_descriptor.usageHint & UsageHint::RenderTarget)
 		{
-			VkImageAspectFlags aspectMask = VulkanTextureInfo::GetAspectMask(_descriptor.format);
-			VkImageLayout targetLayout = VulkanTextureInfo::GetRenderTargetLayout(_descriptor.format);
-
 			VulkanCommandBuffer *commandBuffer = _renderer->StartResourcesCommandBuffer();
-			SetImageLayout(commandBuffer->GetCommandBuffer(), _image, 0, _descriptor.mipMaps, 0, imageLayers, aspectMask, _currentLayout, targetLayout, BarrierIntent::RenderTarget);
-			_currentLayout = targetLayout;
+			TransitionToUsage(commandBuffer->GetCommandBuffer(), LayoutUsage::RenderTarget);
 			_renderer->EndResourcesCommandBuffer();
 		}
 
@@ -204,10 +200,16 @@ namespace RN
 	{
 		switch(usage)
 		{
+			case LayoutUsage::Undefined:
+				return VK_IMAGE_LAYOUT_UNDEFINED;
 			case LayoutUsage::ShaderRead:
 				return VulkanTextureInfo::GetReadOnlyLayout(_descriptor.format);
 			case LayoutUsage::RenderTarget:
 				return VulkanTextureInfo::GetRenderTargetLayout(_descriptor.format);
+			case LayoutUsage::TransferSource:
+				return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			case LayoutUsage::TransferDestination:
+				return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 			case LayoutUsage::FragmentDensityMap:
 				return VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT;
 		}
@@ -220,10 +222,16 @@ namespace RN
 	{
 		switch(usage)
 		{
+			case LayoutUsage::Undefined:
+				return BarrierIntent::ExternalSource;
 			case LayoutUsage::ShaderRead:
 				return BarrierIntent::ShaderSource;
 			case LayoutUsage::RenderTarget:
 				return BarrierIntent::RenderTarget;
+			case LayoutUsage::TransferSource:
+				return BarrierIntent::CopySource;
+			case LayoutUsage::TransferDestination:
+				return BarrierIntent::CopyDestination;
 			case LayoutUsage::FragmentDensityMap:
 				return BarrierIntent::ShaderSource;
 		}
@@ -239,15 +247,22 @@ namespace RN
 
 	void VulkanTexture::TransitionToUsage(VkCommandBuffer buffer, LayoutUsage usage, const SubresourceRange &range)
 	{
+		const VkImageLayout sourceLayout = GetLayoutForUsage(_currentUsage);
 		const VkImageLayout targetLayout = GetLayoutForUsage(usage);
 		const bool isWholeImage = IsWholeSubresourceRange(range);
-		if(isWholeImage && _currentLayout == targetLayout)
+		if(sourceLayout == targetLayout)
+		{
+			if(isWholeImage)
+				_currentUsage = usage;
 			return;
+		}
 
-		SetImageLayout(buffer, _image, range.baseMipmap, range.mipmapCount, range.baseLayer, range.layerCount, range.aspectMask, _currentLayout, targetLayout, GetBarrierIntentForUsage(usage));
+		SetImageLayout(buffer, _image, range.baseMipmap, range.mipmapCount, range.baseLayer, range.layerCount, range.aspectMask, sourceLayout, targetLayout, GetBarrierIntentForUsage(usage));
 
 		if(isWholeImage)
-			_currentLayout = targetLayout;
+		{
+			_currentUsage = usage;
+		}
 	}
 
 	void VulkanTexture::AdoptLayoutUsage(LayoutUsage usage)
@@ -258,7 +273,7 @@ namespace RN
 	void VulkanTexture::AdoptLayoutUsage(LayoutUsage usage, const SubresourceRange &range)
 	{
 		RN_ASSERT(IsWholeSubresourceRange(range), "Partial Vulkan texture layout adoption needs per-subresource tracking");
-		_currentLayout = GetLayoutForUsage(usage);
+		_currentUsage = usage;
 	}
 
 	VulkanTexture::~VulkanTexture()
@@ -325,22 +340,16 @@ namespace RN
 		memcpy(activeUploadBuffer.data, bytes, copySetup.size);
 		RNVulkanValidate(vmaFlushAllocation(_renderer->_internals->memoryAllocator, activeUploadBuffer.allocation, 0, copySetup.size));
 
-		VkImageLayout targetLayout = _currentLayout;
-		if(targetLayout == VK_IMAGE_LAYOUT_UNDEFINED || targetLayout == VK_IMAGE_LAYOUT_PREINITIALIZED)
-			targetLayout = VulkanTextureInfo::GetReadOnlyLayout(_descriptor.format);
+		LayoutUsage restoreUsage = _currentUsage;
+		if(restoreUsage == LayoutUsage::Undefined)
+			restoreUsage = LayoutUsage::ShaderRead;
 
 		VulkanCommandBuffer *commandBuffer = _renderer->StartResourcesCommandBuffer();
 
-		const uint32 imageLayers = VulkanTextureInfo::GetImageLayerCount(_descriptor);
-		const VkImageAspectFlags aspectMask = VulkanTextureInfo::GetAspectMask(_descriptor.format);
-		SetImageLayout(commandBuffer->GetCommandBuffer(), _image, 0, _descriptor.mipMaps, 0, imageLayers, aspectMask, _currentLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, BarrierIntent::UploadDestination);
-		_currentLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		TransitionToUsage(commandBuffer->GetCommandBuffer(), LayoutUsage::TransferDestination);
 
 		vk::CmdCopyBufferToImage(commandBuffer->GetCommandBuffer(), activeUploadBuffer.buffer, _image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copySetup.region);
-		const bool targetIsRenderTarget = targetLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL || targetLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-		const BarrierIntent targetIntent = targetIsRenderTarget ? BarrierIntent::RenderTarget : BarrierIntent::ShaderSource;
-		SetImageLayout(commandBuffer->GetCommandBuffer(), _image, 0, _descriptor.mipMaps, 0, imageLayers, aspectMask, _currentLayout, targetLayout, targetIntent);
-		_currentLayout = targetLayout;
+		TransitionToUsage(commandBuffer->GetCommandBuffer(), restoreUsage);
 
 		if(_isStreamingData)
 			activeUploadBuffer.frameValue = _renderer->_currentFrame;
@@ -456,7 +465,10 @@ namespace RN
 	{
 		//TODO: Force main thread, or make it more flexible
 
-		const VkImageLayout initialLayout = _currentLayout;
+		VulkanTexture *texture = const_cast<VulkanTexture *>(this);
+		LayoutUsage restoreUsage = _currentUsage;
+		if(restoreUsage == LayoutUsage::Undefined)
+			restoreUsage = LayoutUsage::ShaderRead;
 		const uint32 mipWidth = _descriptor.GetWidthForMipMapLevel(mipmapLevel);
 		const uint32 mipHeight = _descriptor.GetHeightForMipMapLevel(mipmapLevel);
 		const uint32 mipDepth = _descriptor.type == Texture::Type::Type3D ? std::max<uint32>(1, _descriptor.depth >> mipmapLevel) : VulkanTextureInfo::GetImageLayerCount(_descriptor);
@@ -464,18 +476,15 @@ namespace RN
 		const VulkanTextureInfo::FormatInfo &formatInfo = VulkanTextureInfo::GetFormatInfo(_descriptor.format);
 		const uint32 blockRows = std::max<uint32>(1, (mipHeight + formatInfo.blockHeight - 1) / formatInfo.blockHeight);
 		const BufferImageCopySetup copySetup = GetBufferImageCopySetup(Region(0, 0, 0, mipWidth, mipHeight, mipDepth), mipmapLevel, 0, bytesPerRow, blockRows);
-		const VkImageSubresourceLayers &subresource = copySetup.region.imageSubresource;
 
 		StagingBuffer downloadBuffer = {};
 		CreateStagingBuffer(downloadBuffer, copySetup.size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT);
 
 		VulkanCommandBuffer *commandBuffer = _renderer->GetCommandBuffer();
 		commandBuffer->Begin();
-		SetImageLayout(commandBuffer->GetCommandBuffer(), _image, mipmapLevel, 1, 0, subresource.layerCount, subresource.aspectMask, initialLayout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VulkanTexture::BarrierIntent::CopySource);
+		texture->TransitionToUsage(commandBuffer->GetCommandBuffer(), LayoutUsage::TransferSource);
 		vk::CmdCopyImageToBuffer(commandBuffer->GetCommandBuffer(), _image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, downloadBuffer.buffer, 1, &copySetup.region);
-		const bool restoreAsRenderTarget = initialLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL || initialLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-		const BarrierIntent restoreIntent = restoreAsRenderTarget ? VulkanTexture::BarrierIntent::RenderTarget : VulkanTexture::BarrierIntent::ShaderSource;
-		SetImageLayout(commandBuffer->GetCommandBuffer(), _image, mipmapLevel, 1, 0, subresource.layerCount, subresource.aspectMask, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, initialLayout, restoreIntent);
+		texture->TransitionToUsage(commandBuffer->GetCommandBuffer(), restoreUsage);
 
 		commandBuffer->End();
 		_renderer->SubmitCommandBuffer(commandBuffer);
@@ -531,12 +540,6 @@ namespace RN
 		}
 
 		if(intent == BarrierIntent::CopyDestination)
-		{
-			srcStageFlags = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-			destStageFlags = VK_PIPELINE_STAGE_TRANSFER_BIT;
-		}
-
-		if(intent == BarrierIntent::UploadDestination)
 		{
 			srcStageFlags = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 			destStageFlags = VK_PIPELINE_STAGE_TRANSFER_BIT;
