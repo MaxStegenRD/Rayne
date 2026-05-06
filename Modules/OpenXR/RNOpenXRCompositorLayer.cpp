@@ -216,9 +216,12 @@ namespace RN
 			_internals->layerQuad.size.height = _scale.y;
 		}
 
+		// Keep quad layers on the runtime recommendation path so they can be downscaled or hidden independently.
+		const bool shouldUseRecommendedResolution = (_type == TypeQuad || _window->_isDynamicResolutionEnabled);
+
 		// Don't use dynamic resolution on Pico as it adjusts resolution before it goes up with GPU levels.
 		const bool canUseDynamicResolution = (_window->_supportsDynamicResolution &&
-			_window->_isDynamicResolutionEnabled &&
+			shouldUseRecommendedResolution &&
 			_type != TypePassthrough &&
 			_window->_deviceType != VRWindow::DeviceType::PicoVR);
 		if(!canUseDynamicResolution && _type != TypePassthrough)
