@@ -178,6 +178,7 @@ namespace RN
 
 		View::View() :
 			_clipToBounds(false),
+			_isClippingEnabled(true),
 			_isHidden(false),
 			_isHiddenByParent(false),
 			_needsMeshUpdate(true),
@@ -768,6 +769,14 @@ namespace RN
 			CalculateScissorRect();
 		}
 
+		void View::SetClippingEnabled(bool enabled)
+		{
+			if(_isClippingEnabled == enabled) return;
+
+			_isClippingEnabled = enabled;
+			CalculateScissorRect();
+		}
+
 		void View::SetRenderPriorityOverride(int32 renderPriority)
 		{
 			_renderPriorityOverride = renderPriority;
@@ -885,6 +894,13 @@ namespace RN
 		// MARK: Layout
 		// ---------------------
 
+		Vector4 View::GetClippingRect() const
+		{
+			if(!_isClippingEnabled) return Vector4(0.0f, _frame.width, 0.0f, _frame.height);
+
+			return Vector4(_scissorRect.GetLeft(), _scissorRect.GetRight(), _scissorRect.GetTop(), _scissorRect.GetBottom());
+		}
+
 		void View::CalculateScissorRect()
 		{
 			Lock();
@@ -936,7 +952,7 @@ namespace RN
 					Model::LODStage *lodStage = model->GetLODStage(0);
 					for(int i = 0; i < lodStage->GetCount(); i++)
 					{
-						lodStage->GetMaterialAtIndex(i)->SetUIClippingRect(Vector4(_scissorRect.GetLeft(), _scissorRect.GetRight(), _scissorRect.GetTop(), _scissorRect.GetBottom()));
+						lodStage->GetMaterialAtIndex(i)->SetUIClippingRect(GetClippingRect());
 					}
 				}
 
@@ -1608,7 +1624,7 @@ namespace RN
 
 				ApplyDefaultUIShaders(material, shaderOptions);
 
-				material->SetUIClippingRect(Vector4(_scissorRect.GetLeft(), _scissorRect.GetRight(), _scissorRect.GetTop(), _scissorRect.GetBottom()));
+				material->SetUIClippingRect(GetClippingRect());
 				material->SetUIOffset(Vector2(0.0f, 0.0f));
 
 				model = new Model();
@@ -1637,7 +1653,7 @@ namespace RN
 		void View::Draw(bool isParentHidden)
 		{
 			_isHiddenByParent = isParentHidden;
-			bool isHidden = _isHidden || isParentHidden || !_bounds.IntersectsRect(_scissorRect) || _combinedOpacityFactor <= k::EpsilonFloat;
+			bool isHidden = _isHidden || isParentHidden || (_isClippingEnabled && !_bounds.IntersectsRect(_scissorRect)) || _combinedOpacityFactor <= k::EpsilonFloat;
 			if(isHidden)
 			{
 				AddFlags(SceneNode::Flags::Hidden);

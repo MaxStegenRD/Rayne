@@ -79,6 +79,8 @@ namespace RN
 			UIAPI virtual bool UpdateCursorPosition(const Vector2 &cursorPosition);
 
 			UIAPI void SetClipToBounds(bool enabled);
+			UIAPI void SetClippingEnabled(bool enabled);
+			bool GetClippingEnabled() const { return _isClippingEnabled; }
 			UIAPI void SetRenderPriorityOverride(int32 renderPriority);
 			UIAPI void SetRenderPriorityOffset(int32 offset);
 			int32 GetRenderPriorityOffset() const { return _renderPriorityOffset; }
@@ -99,6 +101,8 @@ namespace RN
 			UIAPI virtual void DidMoveToSuperview(View *superview);
 
 			UIAPI virtual void SetOpacityFromParent(float parentCombinedOpacity);
+
+			Vector4 GetClippingRect() const;
 
 			UIAPI virtual void UpdateModel();
 
@@ -142,6 +146,7 @@ namespace RN
 			Vector2 _oldFrameSize; //Used to check if the frame size changed since the last frame, in which case the mesh needs updating. This is delayed to catch multiple changes to the size that end up the same as before
 
 			bool _clipToBounds;
+			bool _isClippingEnabled;
 			bool _isHidden;
 			bool _isHiddenByParent;
 			Rect _scissorRect;

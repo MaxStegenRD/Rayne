@@ -145,8 +145,7 @@ namespace RN
 				//TODO: Skip rendering stuff should also depend on the outline being visible or not... see background gradient...
 			}
 
-			const Rect &scissorRect = GetScissorRect();
-			material->SetUIClippingRect(Vector4(scissorRect.GetLeft(), scissorRect.GetRight(), scissorRect.GetTop(), scissorRect.GetBottom()));
+			material->SetUIClippingRect(GetClippingRect());
 			material->SetUIOffset(Vector2(0.0f, 0.0f));
 
 			if(_framebuffer) material->AddTexture(_framebuffer);
