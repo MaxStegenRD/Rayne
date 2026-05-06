@@ -102,7 +102,7 @@ namespace RN
 
 			UIAPI virtual void SetOpacityFromParent(float parentCombinedOpacity);
 
-			Vector4 GetClippingRect() const;
+			UIAPI Vector4 GetClippingRect() const;
 
 			UIAPI virtual void UpdateModel();
 
