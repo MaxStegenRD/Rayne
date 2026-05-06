@@ -91,7 +91,7 @@ namespace RN
 		layerState.layer = layer;
 		layerState.type = layer->GetType();
 		layerState.isActive = layer->_isActive.load();
-		layerState.shouldDisplay = layer->_shouldDisplay;
+		layerState.shouldDisplay = layer->_shouldDisplay.load();
 		layerState.internals = *layer->_internals;
 
 		auto iterator = _layers.begin();

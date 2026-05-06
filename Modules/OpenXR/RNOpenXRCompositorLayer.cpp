@@ -226,7 +226,7 @@ namespace RN
 			_window->_deviceType != VRWindow::DeviceType::PicoVR);
 		if(!canUseDynamicResolution && _type != TypePassthrough)
 		{
-			_shouldDisplay = true;
+			_shouldDisplay.store(true);
 			if(_swapChain && _swapChain->GetSwapChainFramebuffer())
 			{
 				_swapChain->GetSwapChainFramebuffer()->SetRenderAreaSize(_swapChain->GetSwapChainSize());
@@ -259,7 +259,7 @@ namespace RN
 						_internals->layerQuad.subImage.imageRect.extent.height = std::min(recommendedLayerResolution.recommendedImageDimensions.height, _internals->layerQuad.subImage.imageRect.extent.height);
 					}
 
-					_shouldDisplay = (recommendedLayerResolution.recommendedImageDimensions.width > 0 && recommendedLayerResolution.recommendedImageDimensions.height > 0);
+					_shouldDisplay.store(recommendedLayerResolution.recommendedImageDimensions.width > 0 && recommendedLayerResolution.recommendedImageDimensions.height > 0);
 
 					//RNDebug("new recommended resolution: " << recommendedLayerResolution.recommendedImageDimensions.width << " x " << recommendedLayerResolution.recommendedImageDimensions.height);
 					Vector2 recommendedRenderAreaSize(std::max(recommendedLayerResolution.recommendedImageDimensions.width, 2),
