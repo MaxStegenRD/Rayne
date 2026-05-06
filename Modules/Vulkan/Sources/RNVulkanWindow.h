@@ -34,6 +34,7 @@ namespace RN
 
 		VKAPI Vector2 GetSize() const final;
 		VKAPI Framebuffer *GetFramebuffer() const final;
+		VKAPI bool SetSwapChainReleaseCallback(std::function<void()> callback) final;
 
 		VKAPI void UpdateSize();
 

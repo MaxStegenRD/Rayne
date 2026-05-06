@@ -66,6 +66,7 @@ namespace RN
 
 		std::vector<VkSemaphore> _presentSemaphores;
         std::vector<VkSemaphore> _renderSemaphores;
+		std::function<void()> _releaseCallback;
 
 		Vector2 _newSize;
 
@@ -85,6 +86,7 @@ namespace RN
 
 		void CreateSurface();
 		void CreateSwapChain();
+		void SetReleaseCallback(std::function<void()> callback);
 		void ResizeSwapchain(const Vector2 &size);
 		void SetFullscreen(bool fullscreen);
 		bool GetIsFullscreen() const { return _isFullscreen; }

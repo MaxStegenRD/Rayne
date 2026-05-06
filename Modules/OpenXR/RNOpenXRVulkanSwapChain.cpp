@@ -134,6 +134,9 @@ namespace RN
 	OpenXRVulkanSwapChain::~OpenXRVulkanSwapChain()
 	{
 		_framebuffer->Release();
+		_framebuffer = nullptr;
+		_presentSemaphores.clear();
+		_renderSemaphores.clear();
 		xrDestroySwapchain(_internals->swapchain);
 		delete[] _swapchainImages;
 		if(_swapchainFoveationImages)

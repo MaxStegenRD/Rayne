@@ -11,6 +11,10 @@
 #include "RNVulkanFramebuffer.h"
 #include "RNVulkanInternals.h"
 
+#if RN_PLATFORM_ANDROID
+	#include <android/native_window.h>
+#endif
+
 namespace RN
 {
 	RNDefineMeta(VulkanSwapChain, Object)
@@ -87,6 +91,10 @@ VulkanSwapChain::VulkanSwapChain(const Vector2& size, VulkanRenderer* renderer, 
 	{
 		_device = _renderer->GetVulkanDevice()->GetDevice();
 
+#if RN_PLATFORM_ANDROID
+		if(_window) ANativeWindow_acquire(_window);
+#endif
+
 		CreateSurface();
 		CreateSwapChain();
 	}
@@ -100,6 +108,9 @@ VulkanSwapChain::VulkanSwapChain(const Vector2& size, VulkanRenderer* renderer, 
 		_swapchain(VK_NULL_HANDLE),
 		_framebuffer(nullptr),
 		_isFullscreen(false)
+#if RN_PLATFORM_ANDROID
+		, _window(nullptr)
+#endif
 	{
 
 	}
@@ -107,6 +118,70 @@ VulkanSwapChain::VulkanSwapChain(const Vector2& size, VulkanRenderer* renderer, 
 	VulkanSwapChain::~VulkanSwapChain()
 	{
 		SafeRelease(_framebuffer);
+		_framebuffer = nullptr;
+		std::function<void()> releaseCallback = _releaseCallback;
+		_releaseCallback = nullptr;
+
+		if(!_swapchain && !_surface && _presentSemaphores.empty() && _renderSemaphores.empty())
+		{
+			if(releaseCallback) releaseCallback();
+			return;
+		}
+
+		VulkanRenderer *renderer = _renderer;
+		VkDevice device = _device;
+		VkInstance instance = renderer->GetVulkanInstance()->GetInstance();
+		VkSwapchainKHR swapchain = _swapchain;
+		VkSurfaceKHR surface = _surface;
+		std::vector<VkSemaphore> presentSemaphores = _presentSemaphores;
+		std::vector<VkSemaphore> renderSemaphores = _renderSemaphores;
+#if RN_PLATFORM_ANDROID
+		ANativeWindow *window = _window;
+#endif
+
+		_swapchain = VK_NULL_HANDLE;
+		_surface = VK_NULL_HANDLE;
+		_presentSemaphores.clear();
+		_renderSemaphores.clear();
+#if RN_PLATFORM_ANDROID
+		_window = nullptr;
+#endif
+
+		renderer->AddFrameFinishedCallback([device, instance, swapchain, surface, presentSemaphores, renderSemaphores, releaseCallback
+#if RN_PLATFORM_ANDROID
+											, window
+#endif
+		]() {
+			for(VkSemaphore semaphore : presentSemaphores)
+			{
+				vk::DestroySemaphore(device, semaphore, nullptr);
+			}
+
+			for(VkSemaphore semaphore : renderSemaphores)
+			{
+				vk::DestroySemaphore(device, semaphore, nullptr);
+			}
+
+			if(swapchain)
+			{
+				vk::DestroySwapchainKHR(device, swapchain, nullptr);
+			}
+
+			if(surface)
+			{
+				vk::DestroySurfaceKHR(instance, surface, nullptr);
+			}
+
+#if RN_PLATFORM_ANDROID
+			if(window) ANativeWindow_release(window);
+#endif
+			if(releaseCallback) releaseCallback();
+		}, _descriptor.bufferCount);
+	}
+
+	void VulkanSwapChain::SetReleaseCallback(std::function<void()> callback)
+	{
+		_releaseCallback = callback;
 	}
 
 	void VulkanSwapChain::CreateSurface()

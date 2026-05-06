@@ -33,6 +33,7 @@ namespace RN
 
 		ImageView::~ImageView()
 		{
+			SafeRelease(_framebuffer);
 			SafeRelease(_image);
 			SafeRelease(_imageMaterial);
 		}

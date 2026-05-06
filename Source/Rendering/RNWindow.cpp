@@ -33,6 +33,11 @@ namespace RN
 		SafeRelease(_screen);
 	}
 
+	bool Window::SetSwapChainReleaseCallback(std::function<void()> callback)
+	{
+		return false;
+	}
+
 	void Window::TrapMouseCursor()
 	{
 		uint64 windowHandle = GetWindowHandle();

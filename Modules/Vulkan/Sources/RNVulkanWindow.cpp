@@ -347,6 +347,16 @@ namespace RN
 		return _swapChain->GetFramebuffer();
 	}
 
+	bool VulkanWindow::SetSwapChainReleaseCallback(std::function<void()> callback)
+	{
+		if(_swapChain)
+		{
+			_swapChain->SetReleaseCallback(callback);
+			return true;
+		}
+		return false;
+	}
+
 	void VulkanWindow::UpdateSize()
 	{
 		if(!_swapChain) return;

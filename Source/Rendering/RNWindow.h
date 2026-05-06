@@ -50,6 +50,7 @@ namespace RN
 		RNAPI virtual Vector2 GetSize() const = 0;
 
 		RNAPI virtual Framebuffer *GetFramebuffer() const = 0;
+		RNAPI virtual bool SetSwapChainReleaseCallback(std::function<void()> callback);
 
 		RNAPI virtual const Window::SwapChainDescriptor &GetSwapChainDescriptor() const = 0;
 
