@@ -141,8 +141,9 @@ namespace RN
 		_renderer(renderer),
 		_swapChain(swapChain),
 		_depthStencilTarget(nullptr),
-        _currentVariantIndex(0)
+		_currentVariantIndex(0)
 	{
+		RegisterFramebuffer();
 		DidUpdateSwapChain(size, layerCount, colorFormat, depthStencilFormat, fragmentDensityFormat);
 	}
 
@@ -154,6 +155,7 @@ namespace RN
 		_depthStencilTarget(nullptr),
 		_currentVariantIndex(0)
 	{
+		RegisterFramebuffer();
 /*		_colorFormat = D3D12ImageFormatFromTextureFormat(descriptor.colorFormat);
 		_depthFormat = D3D12ImageFormatFromTextureFormat(descriptor.depthFormat);
 
@@ -176,24 +178,8 @@ namespace RN
 
 	VulkanFramebuffer::~VulkanFramebuffer()
 	{
-		//TODO: Maybe release swap chain resources!?
-
-		//Release cached vulkan framebuffers and their resources
-		VkDevice device = _renderer->GetVulkanDevice()->GetDevice();
-		for(const VulkanFramebufferVariant &variant : _framebufferVariants)
-		{
-			VkFramebuffer framebuffer = variant.framebuffer;
-			std::vector<VkImageView> imageViews = variant.attachments;
-
-			_renderer->AddFrameFinishedCallback([this, device, imageViews, framebuffer]() {
-				vk::DestroyFramebuffer(device, framebuffer, _renderer->GetAllocatorCallback());
-
-				for(VkImageView imageView : imageViews)
-				{
-					vk::DestroyImageView(device, imageView, _renderer->GetAllocatorCallback());
-				}
-			});
-		}
+		UnregisterFramebuffer();
+		DestroyFramebufferVariants();
 
 		for(VulkanTargetView *targetView : _colorTargets)
 		{
@@ -205,6 +191,84 @@ namespace RN
 		{
 			_depthStencilTarget->targetView.texture->Release();
 			delete _depthStencilTarget;
+		}
+	}
+
+	std::vector<VulkanFramebuffer *> &VulkanFramebuffer::GetLiveFramebuffers()
+	{
+		static std::vector<VulkanFramebuffer *> liveFramebuffers;
+		return liveFramebuffers;
+	}
+
+	void VulkanFramebuffer::RegisterFramebuffer()
+	{
+		GetLiveFramebuffers().push_back(this);
+	}
+
+	void VulkanFramebuffer::UnregisterFramebuffer()
+	{
+		std::vector<VulkanFramebuffer *> &liveFramebuffers = GetLiveFramebuffers();
+		for(auto iterator = liveFramebuffers.begin(); iterator != liveFramebuffers.end(); iterator++)
+		{
+			if(*iterator == this)
+			{
+				liveFramebuffers.erase(iterator);
+				break;
+			}
+		}
+
+		for(VulkanFramebuffer *framebuffer : liveFramebuffers)
+		{
+			framebuffer->InvalidateFramebufferVariantsReferencing(this);
+		}
+	}
+
+	void VulkanFramebuffer::DestroyFramebufferVariant(const VulkanFramebufferVariant &variant)
+	{
+		VkDevice device = _renderer->GetVulkanDevice()->GetDevice();
+		VkAllocationCallbacks *allocator = _renderer->GetAllocatorCallback();
+		VkFramebuffer framebuffer = variant.framebuffer;
+		std::vector<VkImageView> imageViews = variant.attachments;
+
+		_renderer->AddFrameFinishedCallback([device, allocator, imageViews, framebuffer]() {
+			vk::DestroyFramebuffer(device, framebuffer, allocator);
+
+			for(VkImageView imageView : imageViews)
+			{
+				vk::DestroyImageView(device, imageView, allocator);
+			}
+		});
+	}
+
+	void VulkanFramebuffer::DestroyFramebufferVariants()
+	{
+		for(const VulkanFramebufferVariant &variant : _framebufferVariants)
+		{
+			DestroyFramebufferVariant(variant);
+		}
+		_framebufferVariants.clear();
+		_currentVariantIndex = 0;
+	}
+
+	void VulkanFramebuffer::InvalidateFramebufferVariantsReferencing(VulkanFramebuffer *resolveFramebuffer)
+	{
+		bool didInvalidateVariant = false;
+		for(auto iterator = _framebufferVariants.begin(); iterator != _framebufferVariants.end();)
+		{
+			if(iterator->resolveFramebuffer == resolveFramebuffer)
+			{
+				DestroyFramebufferVariant(*iterator);
+				iterator = _framebufferVariants.erase(iterator);
+				didInvalidateVariant = true;
+			}
+			else
+			{
+				iterator++;
+			}
+		}
+		if(didInvalidateVariant)
+		{
+			_currentVariantIndex = 0;
 		}
 	}
 
@@ -515,23 +579,7 @@ namespace RN
 
 	void VulkanFramebuffer::WillUpdateSwapChain()
 	{
-		VulkanDevice* device = _renderer->GetVulkanDevice();
-
-		for(const VulkanFramebufferVariant& variant : _framebufferVariants)
-		{
-			VkFramebuffer framebuffer = variant.framebuffer;
-			std::vector<VkImageView> imageViews = variant.attachments;
-
-			_renderer->AddFrameFinishedCallback([this, device, imageViews, framebuffer]() {
-				vk::DestroyFramebuffer(device->GetDevice(), framebuffer, _renderer->GetAllocatorCallback());
-
-				for (VkImageView imageView : imageViews)
-				{
-					vk::DestroyImageView(device->GetDevice(), imageView, _renderer->GetAllocatorCallback());
-				}
-			});
-		}
-		_framebufferVariants.clear();
+		DestroyFramebufferVariants();
 
 		for(VulkanTargetView *targetView : _colorTargets)
 		{

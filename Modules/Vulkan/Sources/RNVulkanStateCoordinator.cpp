@@ -1004,9 +1004,16 @@ namespace RN
 
 		if(resolveFramebuffer)
 		{
-			for(const VulkanFramebuffer::VulkanTargetView *targetView : framebuffer->_colorTargets)
+			const bool resolvesToSwapChain = resolveFramebuffer->_swapChain;
+			for(uint32 sourceTargetIndex = 0; sourceTargetIndex < framebuffer->_colorTargets.size(); sourceTargetIndex += 1)
 			{
-				renderPassState.resolveFormats.push_back(targetView->vulkanTargetViewDescriptor.format);
+				VkFormat resolveFormat = VK_FORMAT_UNDEFINED;
+				uint32 resolveTargetIndex = resolvesToSwapChain? 0 : sourceTargetIndex;
+				if((!resolvesToSwapChain || sourceTargetIndex == 0) && resolveTargetIndex < resolveFramebuffer->_colorTargets.size())
+				{
+					resolveFormat = resolveFramebuffer->_colorTargets[resolveTargetIndex]->vulkanTargetViewDescriptor.format;
+				}
+				renderPassState.resolveFormats.push_back(resolveFormat);
 			}
 		}
 

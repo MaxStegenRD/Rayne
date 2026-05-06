@@ -70,6 +70,13 @@ namespace RN
 		VKAPI void DidUpdateSwapChain(Vector2 size, uint8 layerCount, Texture::Format colorFormat, Texture::Format depthStencilFormat, Texture::Format fragmentDensityFormat);
 
 	private:
+		void RegisterFramebuffer();
+		void UnregisterFramebuffer();
+		void DestroyFramebufferVariant(const VulkanFramebufferVariant &variant);
+		void DestroyFramebufferVariants();
+		void InvalidateFramebufferVariantsReferencing(VulkanFramebuffer *resolveFramebuffer);
+		static std::vector<VulkanFramebuffer *> &GetLiveFramebuffers();
+
 		void PrepareAsRendertargetForFrame(const RenderFrame &renderFrame, const VulkanRenderPass *renderPass);
 		void SetAsRendertarget(VkCommandBuffer commandBuffer, VulkanFramebuffer *resolveFramebuffer, const RenderPass::DrawSnapshot &drawSnapshot) const;
 
