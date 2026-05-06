@@ -14,7 +14,7 @@
 #include "rayne.hlsl"
 
 #if RN_UV0 && RN_ALPHA
-SamplerState linearRepeatSampler;
+SamplerState anisotropicRepeatSampler;
 Texture2D texture0;
 #endif
 
@@ -111,7 +111,7 @@ void depth_fragment(
 	)
 {
 #if RN_UV0 && RN_ALPHA
-	float4 color = texture0.Sample(linearRepeatSampler, vert.texCoords).rgba;
+	float4 color = texture0.Sample(anisotropicRepeatSampler, vert.texCoords).rgba;
 	clip(color.a - 0.5f);
 #endif
 }

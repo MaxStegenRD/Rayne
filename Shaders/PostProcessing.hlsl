@@ -16,7 +16,7 @@
 	Texture2D framebufferTexture;
 #endif
 
-SamplerState linearClampSampler;
+SamplerState anisotropicClampSampler;
 
 struct InputVertex
 {
@@ -42,9 +42,9 @@ FragmentVertex pp_vertex(InputVertex vert)
 float4 pp_blit_fragment(FragmentVertex vert) : SV_TARGET
 {
 #if RN_PP_VR
-	float4 color = framebufferTexture.Sample(linearClampSampler, float3(frac(vert.texCoords * float2(2.0, 1.0)), vert.texCoords.x > 0.5? 1.0:0.0)).rgba;
+	float4 color = framebufferTexture.Sample(anisotropicClampSampler, float3(frac(vert.texCoords * float2(2.0, 1.0)), vert.texCoords.x > 0.5? 1.0:0.0)).rgba;
 #else
-	float4 color = framebufferTexture.Sample(linearClampSampler, vert.texCoords).rgba;
+	float4 color = framebufferTexture.Sample(anisotropicClampSampler, vert.texCoords).rgba;
 #endif
 	return color;
 }

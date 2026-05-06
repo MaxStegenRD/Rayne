@@ -10,7 +10,7 @@
 
 #if RN_UV0
 Texture2D texture0;
-SamplerState linearRepeatSampler;
+SamplerState anisotropicRepeatSampler;
 #endif
 
 cbuffer vertexUniforms
@@ -75,7 +75,7 @@ float4 particles_fragment(FragmentVertex vert) : SV_TARGET
 	float4 color = vert.color;
 
 #if RN_UV0
-	color *= texture0.Sample(linearRepeatSampler, vert.texCoords).rgba;
+	color *= texture0.Sample(anisotropicRepeatSampler, vert.texCoords).rgba;
 #endif
 
 	color.rgb *= color.a;

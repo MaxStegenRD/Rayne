@@ -19,7 +19,7 @@
 
 #if RN_UV0
 	Texture2D texture0;
-	SamplerState linearRepeatSampler;
+	SamplerState anisotropicRepeatSampler;
 #endif
 
 cbuffer vertexUniforms
@@ -171,7 +171,7 @@ float4 gouraud_fragment(FragmentVertex vert) : SV_TARGET
 {
 	float4 color = diffuseColor;
 #if RN_UV0
-	color *= texture0.Sample(linearRepeatSampler, vert.texCoords).rgba;
+	color *= texture0.Sample(anisotropicRepeatSampler, vert.texCoords).rgba;
 
 	#if RN_ALPHA
 		color.a = smoothstep(alphaToCoverageClamp.x, alphaToCoverageClamp.y, color.a);

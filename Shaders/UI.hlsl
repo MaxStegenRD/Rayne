@@ -7,7 +7,7 @@
 
 #if RN_UV0
 Texture2D texture0;
-SamplerState linearClampSampler;
+SamplerState anisotropicClampSampler;
 #endif
 
 cbuffer vertexUniforms
@@ -143,7 +143,7 @@ half4 ui_fragment(FragmentVertex vert) : SV_TARGET
 #endif
 
 #if RN_UV0 && !RN_UI_SDF
-	color *= texture0.Sample(linearClampSampler, vert.texCoords.xy).rgba;
+	color *= texture0.Sample(anisotropicClampSampler, vert.texCoords.xy).rgba;
 #endif
 
 #if RN_UV1
@@ -157,7 +157,7 @@ half4 ui_fragment(FragmentVertex vert) : SV_TARGET
 #endif
 
 #if RN_UI_SDF && RN_UV0
-	float3 msd = texture0.Sample(linearClampSampler, vert.texCoords.xy).rgb;
+	float3 msd = texture0.Sample(anisotropicClampSampler, vert.texCoords.xy).rgb;
 	float sd = max(min(msd.r, msd.g), min(max(msd.r, msd.g), msd.b)) - 0.5;
 	color.a *= clamp(sd/fwidth(sd) + 0.5, 0.0, 1.0);
 #endif

@@ -10,7 +10,7 @@
 #pragma permutator RN_COLOR
 
 #if RN_UV0
-SamplerState linearClampSampler;
+SamplerState anisotropicClampSampler;
 Texture2D texture0;
 #endif
 
@@ -91,7 +91,7 @@ float4 sky_fragment(FragmentVertex vert) : SV_TARGET
 	float4 color = diffuseColor;
 
 #if RN_UV0
-	color *= texture0.Sample(linearClampSampler, vert.texCoords).rgba;
+	color *= texture0.Sample(anisotropicClampSampler, vert.texCoords).rgba;
 #endif
 
 #if RN_COLOR

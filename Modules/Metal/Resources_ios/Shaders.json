@@ -127,12 +127,6 @@
                     "options": [
                         "RN_COLOR",
                         "RN_UV0"
-                    ],
-                    "samplers": [
-                        {
-                            "name": "linearClampSampler",
-                            "wrap": "clamp"
-                        }
                     ]
                 },
                 "type": "fragment"
@@ -171,12 +165,6 @@
                         "RN_UI_CIRCLE",
                         "RN_UI_SDF",
                         "RN_UI_GRADIENT"
-                    ],
-                    "samplers": [
-                        {
-                            "name": "linearClampSampler",
-                            "wrap": "clamp"
-                        }
                     ]
                 },
                 "type": "fragment"
@@ -200,12 +188,6 @@
                 "signature": {
                     "options": [
                         "RN_PP_VR"
-                    ],
-                    "samplers": [
-                        {
-                            "name": "linearClampSampler",
-                            "wrap": "clamp"
-                        }
                     ]
                 },
                 "type": "fragment"
