@@ -201,6 +201,7 @@ namespace RN
 
 	private:
 		EOSAPI EOSLobbyManager(EOSWorld *world);
+		void RemoveLobbyAudioNotifications(EOSConnectedLobbyInfo *connectedLobbyInfo, bool removeBeforeRender = true, bool removeBeforeSend = true);
 
 		static void LobbyOnCreateCallback(const EOS_Lobby_CreateLobbyCallbackInfo *Data);
 		static void LobbyOnJoinCallback(const EOS_Lobby_JoinLobbyCallbackInfo *Data);

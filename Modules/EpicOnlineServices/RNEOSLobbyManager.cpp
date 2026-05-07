@@ -324,9 +324,27 @@ namespace RN
 		ResetLobbySearchCallback();
 		for(auto *connectedLobby : _connectedLobbies)
 		{
+			RemoveLobbyAudioNotifications(connectedLobby);
 			connectedLobby->Release();
 		}
 		if(_lobbyInterfaceHandle && _memberStatusReceivedNotificationID != EOS_INVALID_NOTIFICATIONID) EOS_Lobby_RemoveNotifyLobbyMemberStatusReceived(_lobbyInterfaceHandle, _memberStatusReceivedNotificationID);
+	}
+
+	void EOSLobbyManager::RemoveLobbyAudioNotifications(EOSConnectedLobbyInfo *connectedLobbyInfo, bool removeBeforeRender, bool removeBeforeSend)
+	{
+		if(!_rtcAudioInterfaceHandle || !connectedLobbyInfo) return;
+
+		if(removeBeforeRender && connectedLobbyInfo->_audioBeforeRenderNotificationID != 0)
+		{
+			EOS_RTCAudio_RemoveNotifyAudioBeforeRender(_rtcAudioInterfaceHandle, connectedLobbyInfo->_audioBeforeRenderNotificationID);
+			connectedLobbyInfo->_audioBeforeRenderNotificationID = 0;
+		}
+
+		if(removeBeforeSend && connectedLobbyInfo->_audioBeforeSendNotificationID != 0)
+		{
+			EOS_RTCAudio_RemoveNotifyAudioBeforeSend(_rtcAudioInterfaceHandle, connectedLobbyInfo->_audioBeforeSendNotificationID);
+			connectedLobbyInfo->_audioBeforeSendNotificationID = 0;
+		}
 	}
 
 	size_t EOSLobbyManager::GetConnectedLobbyCount() const
@@ -359,6 +377,16 @@ namespace RN
 
 	void EOSLobbyManager::SetGlobalAudioOptions(bool voiceEnabled, bool unmixed, std::function<void(RN::String *eosUserID, RN::uint32 sampleRate, RN::uint32 channels, RN::uint32 framesCount, RN::int16 *frames, EOSConnectedLobbyInfo *connectedLobbyInfo)> audioReceivedCallback, std::function<void(RN::uint32 sampleRate, RN::uint32 channels, RN::uint32 framesCount, RN::int16 *frames, EOSConnectedLobbyInfo *connectedLobbyInfo)> audioBeforeSendCallback)
 	{
+		const bool removeBeforeRender = !voiceEnabled || !audioReceivedCallback;
+		const bool removeBeforeSend = !voiceEnabled || !audioBeforeSendCallback;
+		if(removeBeforeRender || removeBeforeSend)
+		{
+			for(auto *connectedLobby : _connectedLobbies)
+			{
+				RemoveLobbyAudioNotifications(connectedLobby, removeBeforeRender, removeBeforeSend);
+			}
+		}
+
 		_audioReceivedCallback = audioReceivedCallback;
 		_audioBeforeSendCallback = audioBeforeSendCallback;
 		_isVoiceEnabled = voiceEnabled;
@@ -1093,17 +1121,7 @@ namespace RN
 		connectedLobbyInfo->_status = EOSConnectedLobbyInfo::Status::Disconnected;
 		SafeRelease(connectedLobbyInfo->_lobbyID);
 
-		if(connectedLobbyInfo->_audioBeforeRenderNotificationID != 0)
-		{
-			EOS_RTCAudio_RemoveNotifyAudioBeforeRender(lobbyManager->_rtcAudioInterfaceHandle, connectedLobbyInfo->_audioBeforeRenderNotificationID);
-			connectedLobbyInfo->_audioBeforeRenderNotificationID = 0;
-		}
-
-		if(connectedLobbyInfo->_audioBeforeSendNotificationID != 0)
-		{
-			EOS_RTCAudio_RemoveNotifyAudioBeforeSend(lobbyManager->_rtcAudioInterfaceHandle, connectedLobbyInfo->_audioBeforeSendNotificationID);
-			connectedLobbyInfo->_audioBeforeSendNotificationID = 0;
-		}
+		lobbyManager->RemoveLobbyAudioNotifications(connectedLobbyInfo);
 		
 		auto position = std::find(lobbyManager->_connectedLobbies.begin(), lobbyManager->_connectedLobbies.end(), connectedLobbyInfo);
 		if(position != lobbyManager->_connectedLobbies.end())
@@ -1227,17 +1245,7 @@ namespace RN
 		connectedLobbyInfo->_status = EOSConnectedLobbyInfo::Status::Disconnected;
 		SafeRelease(connectedLobbyInfo->_lobbyID);
 
-		if(connectedLobbyInfo->_audioBeforeRenderNotificationID != 0)
-		{
-			EOS_RTCAudio_RemoveNotifyAudioBeforeRender(lobbyManager->_rtcAudioInterfaceHandle, connectedLobbyInfo->_audioBeforeRenderNotificationID);
-			connectedLobbyInfo->_audioBeforeRenderNotificationID = 0;
-		}
-
-		if(connectedLobbyInfo->_audioBeforeSendNotificationID != 0)
-		{
-			EOS_RTCAudio_RemoveNotifyAudioBeforeSend(lobbyManager->_rtcAudioInterfaceHandle, connectedLobbyInfo->_audioBeforeSendNotificationID);
-			connectedLobbyInfo->_audioBeforeSendNotificationID = 0;
-		}
+		lobbyManager->RemoveLobbyAudioNotifications(connectedLobbyInfo);
 		
 		auto position = std::find(lobbyManager->_connectedLobbies.begin(), lobbyManager->_connectedLobbies.end(), connectedLobbyInfo);
 		if(position != lobbyManager->_connectedLobbies.end())
