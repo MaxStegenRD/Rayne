@@ -362,7 +362,7 @@ namespace RN
 		const RenderFrame::Pass &framePass = renderFrame.GetPass(renderPass->renderFramePassIndex);
 		const RenderPass::DrawSnapshot &drawSnapshot = framePass.GetDrawSnapshot();
 		RenderPass::Flags flags = drawSnapshot.GetFlags();
-		uint8 multiviewCount = framePass.GetMultiviewCameraCount();
+		uint8 multiviewCount = renderPass->multiviewCount;
 		uint8 multiviewLayer = renderPass->multiviewLayer;
 		Vector2 framebufferExtent = drawSnapshot.GetFramebufferResourceSize();
 

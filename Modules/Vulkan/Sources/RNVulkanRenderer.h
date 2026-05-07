@@ -113,6 +113,8 @@ namespace RN
 		bool PrepareRenderFrame(VulkanFrameSubmission &submission);
 		void UpdateDescriptorSets(VulkanFrameSubmission &submission);
 		void RenderDrawable(VkCommandBuffer commandBuffer, const VulkanPreparedDrawItem &drawItem, uint32 instanceCount);
+		bool ShouldInheritViews(RenderPass::ViewMode viewMode, bool isSubpass, bool hasInheritedViewState, bool destinationSupportsViewState) const;
+		bool SupportsViewState(const VulkanFramebuffer *framebuffer, uint8 multiviewLayer, uint8 multiviewCount) const;
 		void FillUniformBuffer(Shader::ArgumentBuffer *argumentBuffer, VulkanDynamicBufferReference *dynamicBufferReference, const RenderFrame::DrawItem &drawItem, const Material::Properties &mergedMaterialProperties, const RenderFrame::Pass &framePass);
 		void ResetDrawBindStateCache();
 		VulkanFrameSubmission &GetActiveFrameSubmission();

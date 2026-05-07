@@ -27,6 +27,73 @@ namespace RN
 {
 	RNDefineMeta(VulkanRenderer, Renderer)
 
+	bool VulkanRenderer::ShouldInheritViews(RenderPass::ViewMode viewMode, bool isSubpass, bool hasInheritedViewState, bool destinationSupportsViewState) const
+	{
+		if(isSubpass)
+			return hasInheritedViewState;
+
+		switch(viewMode)
+		{
+			case RenderPass::ViewMode::Auto:
+				return hasInheritedViewState && destinationSupportsViewState;
+
+			case RenderPass::ViewMode::InheritViews:
+				if(hasInheritedViewState)
+				{
+					RN_ASSERT(destinationSupportsViewState, "Render pass requested InheritViews, but the destination framebuffer does not support the incoming view state");
+				}
+				return hasInheritedViewState;
+
+			case RenderPass::ViewMode::SingleView:
+				return false;
+		}
+
+		return false;
+	}
+
+	bool VulkanRenderer::SupportsViewState(const VulkanFramebuffer *framebuffer, uint8 multiviewLayer, uint8 multiviewCount) const
+	{
+		if(multiviewLayer == 0 && multiviewCount == 0)
+			return true;
+		if(!framebuffer)
+			return false;
+
+		auto supportsTargetView = [multiviewLayer, multiviewCount](const VulkanFramebuffer::VulkanTargetView *targetView) {
+			if(!targetView)
+				return true;
+
+			const uint32 requiredLayerCount = (multiviewCount > 0) ? multiviewCount : 1;
+			const VkImageViewCreateInfo &descriptor = targetView->vulkanTargetViewDescriptor;
+			switch(descriptor.viewType)
+			{
+				case VK_IMAGE_VIEW_TYPE_1D_ARRAY:
+				case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
+				case VK_IMAGE_VIEW_TYPE_3D:
+					return multiviewLayer + requiredLayerCount <= descriptor.subresourceRange.layerCount;
+
+				default:
+					return false;
+			}
+		};
+
+		for(const VulkanFramebuffer::VulkanTargetView *targetView : framebuffer->_colorTargets)
+		{
+			if(!supportsTargetView(targetView))
+				return false;
+		}
+
+		if(!supportsTargetView(framebuffer->_depthStencilTarget))
+			return false;
+
+		for(const VulkanFramebuffer::VulkanTargetView *targetView : framebuffer->_fragmentDensityTargets)
+		{
+			if(!supportsTargetView(targetView))
+				return false;
+		}
+
+		return !(framebuffer->_colorTargets.empty() && !framebuffer->_depthStencilTarget && framebuffer->_fragmentDensityTargets.empty());
+	}
+
 	VulkanRenderer::VulkanRenderer(VulkanRendererDescriptor *descriptor, VulkanDevice *device) :
 		Renderer(descriptor, device),
 		_mainWindow(nullptr),
@@ -181,9 +248,7 @@ namespace RN
 
 	VkRenderPass VulkanRenderer::GetVulkanRenderPass(const RenderFrame &renderFrame, const VulkanRenderPass *renderPass)
 	{
-		const RenderFrame::Pass &framePass = renderFrame.GetPass(renderPass->renderFramePassIndex);
-		uint8 multiviewCount = framePass.GetMultiviewCameraCount();
-		return _internals->stateCoordinator.GetRenderPassState(renderFrame, renderPass, multiviewCount)->renderPass;
+		return _internals->stateCoordinator.GetRenderPassState(renderFrame, renderPass, renderPass->multiviewCount)->renderPass;
 	}
 
 	void VulkanRenderer::CreateVulkanCommandBuffers(size_t count, std::vector<VkCommandBuffer> &buffers)
@@ -858,6 +923,7 @@ namespace RN
 		RN_PROFILE_SCOPE();
 		RN_PROFILE_VULKAN_SCOPE_CMD_N(_internals->tracyVulkanCtx, commandBuffer, "SetupRendertargets");
 		const RenderFrame::Pass &framePass = submission.renderFrame.GetPass(renderPass.renderFramePassIndex);
+		const RenderPass::DrawSnapshot &drawSnapshot = framePass.GetDrawSnapshot();
 
 		//TODO: Call PrepareAsRendertargetForFrame() only once per framebuffer per frame, find new solution for setting things up for msaa while reusing a framebuffer?
 		{
@@ -870,8 +936,8 @@ namespace RN
 		}
 		ResetDrawBindStateCache();
 
-		//Setup viewport and scissor rect
-		Rect cameraRect = framePass.GetCameraSnapshot().GetFrame();
+		// Follow-up passes render into their own target frame, not the previous camera frame.
+		Rect cameraRect = drawSnapshot.IsSubpass() ? framePass.GetCameraSnapshot().GetFrame() : drawSnapshot.GetFrame();
 
 		// Update dynamic viewport state
 		VkViewport viewport = {};
@@ -993,6 +1059,7 @@ namespace RN
 		renderPass.resolveFramebuffer = nullptr;
 
 		renderPass.shaderHint = rootDrawSnapshot.GetShaderHint();
+		renderPass.multiviewCount = (_currentMultiviewCount > 0) ? _currentMultiviewCount : static_cast<uint8>(multiviewSnapshotCameras.size());
 		renderPass.renderFramePassIndex = frameSubmission.renderFrame.AddPass(rootDrawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetIdentity(), renderPassResources->GetOverrideMaterialSnapshotVersion());
 
 		Matrix clipSpaceCorrectionMatrix;
@@ -1121,15 +1188,6 @@ namespace RN
 			}
 		}
 
-		if(vulkanRenderPass.type != VulkanRenderPass::Type::ResolveMSAA && !isPostProcessingStage && vulkanRenderPass.type != VulkanRenderPass::Type::Convert)
-		{
-			vulkanRenderPass.multiviewLayer = previousRenderPass.multiviewLayer;
-		}
-		else
-		{
-			vulkanRenderPass.multiviewLayer = 0;
-		}
-
 		vulkanRenderPass.renderPass = renderPass;
 		vulkanRenderPass.frameStatisticsIndex = previousRenderPass.frameStatisticsIndex;
 		vulkanRenderPass.previousStoredFramebuffer = nullptr;
@@ -1151,15 +1209,27 @@ namespace RN
 			frameSubmission.AddSwapChain(vulkanRenderPass.framebuffer->GetSwapChain());
 		}
 
+		const RenderFrame::Pass &previousFramePass = frameSubmission.renderFrame.GetPass(previousRenderPass.renderFramePassIndex);
+		const uint8 inheritedMultiviewLayer = previousRenderPass.multiviewLayer;
+		const uint8 inheritedMultiviewCount = previousRenderPass.multiviewCount;
+		const bool hasInheritedViewState = inheritedMultiviewLayer > 0 || inheritedMultiviewCount > 0;
+		const bool destinationSupportsViewState = drawSnapshot.IsSubpass() ? false : SupportsViewState(vulkanRenderPass.framebuffer, inheritedMultiviewLayer, inheritedMultiviewCount);
+		const bool shouldInheritViews = ShouldInheritViews(renderPass->GetViewMode(), drawSnapshot.IsSubpass(), hasInheritedViewState, destinationSupportsViewState);
+
+		vulkanRenderPass.multiviewLayer = shouldInheritViews ? inheritedMultiviewLayer : 0;
+		vulkanRenderPass.multiviewCount = shouldInheritViews ? inheritedMultiviewCount : 0;
+
 		if(vulkanRenderPass.type != VulkanRenderPass::Type::ResolveMSAA)
 		{
 			vulkanRenderPass.renderFramePassIndex = frameSubmission.renderFrame.AddPass(drawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetIdentity(), renderPassResources->GetOverrideMaterialSnapshotVersion());
 			RenderFrame::Pass &framePass = frameSubmission.renderFrame.GetPass(vulkanRenderPass.renderFramePassIndex);
-			const RenderFrame::Pass &previousFramePass = frameSubmission.renderFrame.GetPass(previousRenderPass.renderFramePassIndex);
 			framePass.SetCameraSnapshot(previousFramePass.GetCameraSnapshot());
-			for(const RenderFrame::CameraSnapshot &multiviewCameraSnapshot : previousFramePass.GetMultiviewCameraSnapshots())
+			if(shouldInheritViews)
 			{
-				framePass.AddMultiviewCameraSnapshot(multiviewCameraSnapshot);
+				for(const RenderFrame::CameraSnapshot &multiviewCameraSnapshot : previousFramePass.GetMultiviewCameraSnapshots())
+				{
+					framePass.AddMultiviewCameraSnapshot(multiviewCameraSnapshot);
+				}
 			}
 			if(drawSnapshot.IsSubpass())
 			{

@@ -221,7 +221,8 @@ namespace RN
 		VulkanFramebuffer *resolveFramebuffer;
 		Shader::UsageHint shaderHint;
 
-		uint8 multiviewLayer;
+		uint8 multiviewLayer = 0;
+		uint8 multiviewCount = 0; // Explicit inherited view span; 1 also represents layered single-view fallback.
 
 		std::vector<VulkanTexture *> renderTargetsUsedInShader;
 	};

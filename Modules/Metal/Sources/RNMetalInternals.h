@@ -180,6 +180,7 @@ namespace RN
 		Vector2 resolveRenderAreaSize;
 
 		uint8 multiviewLayer = 0;
+		uint8 multiviewCount = 0; // Explicit inherited view span; 1 also represents layered single-view fallback.
 	};
 
 	struct MetalPreparedDrawItem

@@ -15,7 +15,7 @@ namespace RN
 	RNDefineMeta(RenderPass, Object)
 
     RenderPass::RenderPass(bool isSubpass) :
-        _flags(Flags::Defaults), _framebuffer(nullptr), _clearDepth(0.0f), _clearStencil(0), _nextRenderPasses(new Array()), _isSubpass(isSubpass), _isRoot(false), _renderGroupMask(0xffff), _subpassWritesDepthStencil(false), _subpassReadDepthStencilAttachment(false), _shaderHint(Shader::UsageHint::Default), _overrideMaterial(nullptr), _subpassNeedToStoreDepthStencil(false), _subpassNeedToPreserveDepthStencil(false), _subpassLastDepthStencilWrite(false), _subpassFirstDepthStencilWrite(false), _depthFirstUseIsRead(false), _depthLastUseIsRead(false), _subpassIndex(0), _subpassCount(0), _renderResources(nullptr), _drawSnapshotVersion(1)
+        _flags(Flags::Defaults), _framebuffer(nullptr), _clearDepth(0.0f), _clearStencil(0), _nextRenderPasses(new Array()), _isSubpass(isSubpass), _isRoot(false), _renderGroupMask(0xffff), _subpassWritesDepthStencil(false), _subpassReadDepthStencilAttachment(false), _shaderHint(Shader::UsageHint::Default), _viewMode(ViewMode::Auto), _overrideMaterial(nullptr), _subpassNeedToStoreDepthStencil(false), _subpassNeedToPreserveDepthStencil(false), _subpassLastDepthStencilWrite(false), _subpassFirstDepthStencilWrite(false), _depthFirstUseIsRead(false), _depthLastUseIsRead(false), _subpassIndex(0), _subpassCount(0), _renderResources(nullptr), _drawSnapshotVersion(1)
 	{
 	}
 
@@ -83,6 +83,12 @@ namespace RN
 	void RenderPass::SetShaderHint(Shader::UsageHint hint)
 	{
 		_shaderHint = hint;
+		MarkDrawSnapshotDirty();
+	}
+
+	void RenderPass::SetViewMode(ViewMode viewMode)
+	{
+		_viewMode = viewMode;
 		MarkDrawSnapshotDirty();
 	}
 

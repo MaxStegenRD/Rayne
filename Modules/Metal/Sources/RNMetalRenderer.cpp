@@ -25,6 +25,68 @@ namespace RN
 {
 	RNDefineMeta(MetalRenderer, Renderer)
 
+	bool MetalRenderer::ShouldInheritViews(RenderPass::ViewMode viewMode, bool isSubpass, bool hasInheritedViewState, bool destinationSupportsViewState) const
+	{
+		if(isSubpass)
+			return hasInheritedViewState;
+
+		switch(viewMode)
+		{
+			case RenderPass::ViewMode::Auto:
+				return hasInheritedViewState && destinationSupportsViewState;
+
+			case RenderPass::ViewMode::InheritViews:
+				if(hasInheritedViewState)
+				{
+					RN_ASSERT(destinationSupportsViewState, "Render pass requested InheritViews, but the destination framebuffer does not support the incoming view state");
+				}
+				return hasInheritedViewState;
+
+			case RenderPass::ViewMode::SingleView:
+				return false;
+		}
+
+		return false;
+	}
+
+	bool MetalRenderer::SupportsViewState(const MetalFramebuffer *framebuffer, uint8 multiviewLayer, uint8 multiviewCount) const
+	{
+		if(multiviewLayer == 0 && multiviewCount == 0)
+			return true;
+		if(!framebuffer)
+			return false;
+
+		auto supportsTargetView = [multiviewLayer, multiviewCount](const MetalFramebuffer::MetalTargetView *targetView) {
+			if(!targetView)
+				return true;
+			if(!targetView->targetView.texture)
+				return false;
+
+			const uint32 requiredLayerCount = (multiviewCount > 0) ? multiviewCount : 1;
+			switch(targetView->targetView.texture->GetDescriptor().type)
+			{
+				case Texture::Type::Type1DArray:
+				case Texture::Type::Type2DArray:
+				case Texture::Type::Type3D:
+					return multiviewLayer + requiredLayerCount <= targetView->targetView.length;
+
+				default:
+					return false;
+			}
+		};
+
+		for(const MetalFramebuffer::MetalTargetView *targetView : framebuffer->_colorTargets)
+		{
+			if(!supportsTargetView(targetView))
+				return false;
+		}
+
+		if(!supportsTargetView(framebuffer->_depthStencilTarget))
+			return false;
+
+		return !(framebuffer->_colorTargets.empty() && !framebuffer->_depthStencilTarget);
+	}
+
 	MetalRenderer::MetalRenderer(MetalRendererDescriptor *descriptor, MetalDevice *device) :
 		Renderer(descriptor, device),
 		_mipMapTextures(new Set()),
@@ -341,11 +403,11 @@ namespace RN
 			}
 
 			_internals->currentRenderState = nullptr; //This is a property of the encoder and needs to be set to nullptr here to force setting it again.
-			MTLRenderPassDescriptor *descriptor = renderPass.framebuffer->GetRenderPassDescriptor(drawSnapshot, renderPass.resolveFramebuffer, renderPass.multiviewLayer, 0);
+			MTLRenderPassDescriptor *descriptor = renderPass.framebuffer->GetRenderPassDescriptor(drawSnapshot, renderPass.resolveFramebuffer, renderPass.multiviewLayer, renderPass.multiviewCount);
 			_internals->commandEncoder = [_internals->commandBuffer renderCommandEncoderWithDescriptor:descriptor];
 			[descriptor release];
 
-			Rect cameraRect = framePass.GetCameraSnapshot().GetFrame();
+			Rect cameraRect = drawSnapshot.IsSubpass() ? framePass.GetCameraSnapshot().GetFrame() : drawSnapshot.GetFrame();
 			MTLViewport viewPort;
 			viewPort.originX = cameraRect.x;
 			viewPort.originY = cameraRect.y;
@@ -503,11 +565,12 @@ namespace RN
 				}
 
 				const RenderFrame::Pass &framePass = submission.renderFrame.GetPass(renderPass.renderFramePassIndex);
-				MTLRenderPassDescriptor *descriptor = renderPass.framebuffer->GetRenderPassDescriptor(framePass.GetDrawSnapshot(), nullptr, 0, 0);
+				const RenderPass::DrawSnapshot &drawSnapshot = framePass.GetDrawSnapshot();
+				MTLRenderPassDescriptor *descriptor = renderPass.framebuffer->GetRenderPassDescriptor(drawSnapshot, nullptr, 0, 0);
 				id<MTLBlitCommandEncoder> commandEncoder = [[_internals->commandBuffer blitCommandEncoder] retain];
 				[descriptor release];
 
-				Rect targetRect = framePass.GetCameraSnapshot().GetFrame();
+				Rect targetRect = drawSnapshot.GetFrame();
 				[commandEncoder copyFromTexture:sourceMTLTexture sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(0, 0, 0) sourceSize:MTLSizeMake(sourceTextureSize.x, sourceTextureSize.y, sourceTextureSize.z) toTexture:destinationMTLTexture destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(targetRect.x, targetRect.y, 0)];
 
 				[commandEncoder endEncoding];
@@ -571,6 +634,7 @@ namespace RN
 		renderPass.frameStatisticsIndex = frameStatisticsIndex;
 
 		renderPass.multiviewLayer = _currentMultiviewLayer;
+		renderPass.multiviewCount = (_currentMultiviewFallbackRenderPass || _currentMultiviewLayer > 0) ? 1 : 0;
 
 		renderPass.renderAreaSize = drawSnapshot.GetFrame().GetSize();
 
@@ -666,10 +730,8 @@ namespace RN
 			metalRenderPass.previousStoredRenderAreaSize = previousRenderPass.resolveFramebuffer ? previousRenderPass.resolveRenderAreaSize : previousRenderPass.renderAreaSize;
 		}
 
-		//This forces passes to not use multiview
 		metalRenderPass.shaderHint = GetMetalShaderHint(drawSnapshot.GetShaderHint());
 
-		metalRenderPass.multiviewLayer = previousRenderPass.multiviewLayer;
 		Framebuffer *framebuffer = nullptr;
 		if(drawSnapshot.IsSubpass())
 		{
@@ -685,6 +747,15 @@ namespace RN
 		metalRenderPass.framebuffer = framebuffer? framebuffer->Downcast<MetalFramebuffer>() : nullptr;
 		if(!drawSnapshot.IsSubpass())
 			frameSubmission.AddSwapChain(metalRenderPass.framebuffer ? metalRenderPass.framebuffer->GetSwapChain() : nullptr);
+
+		const uint8 inheritedMultiviewLayer = previousRenderPass.multiviewLayer;
+		const uint8 inheritedMultiviewCount = previousRenderPass.multiviewCount;
+		const bool hasInheritedViewState = inheritedMultiviewLayer > 0 || inheritedMultiviewCount > 0;
+		const bool destinationSupportsViewState = drawSnapshot.IsSubpass() ? false : SupportsViewState(metalRenderPass.framebuffer, inheritedMultiviewLayer, inheritedMultiviewCount);
+		const bool shouldInheritViews = ShouldInheritViews(renderPass->GetViewMode(), drawSnapshot.IsSubpass(), hasInheritedViewState, destinationSupportsViewState);
+
+		metalRenderPass.multiviewLayer = shouldInheritViews ? inheritedMultiviewLayer : 0;
+		metalRenderPass.multiviewCount = shouldInheritViews ? inheritedMultiviewCount : 0;
 
 		if(metalRenderPass.type != MetalRenderPass::Type::ResolveMSAA)
 		{

@@ -33,6 +33,13 @@ namespace RN
 				   StoreDepthStencil = (1 << 5),
 				   Defaults = ClearDepthStencil | StoreColor);
 
+		enum class ViewMode : uint8
+		{
+			Auto,
+			InheritViews,
+			SingleView
+		};
+
 		class SubpassSnapshot
 		{
 		private:
@@ -182,6 +189,7 @@ namespace RN
 		RNAPI void SetRenderGroupMask(uint16 mask);
 
 		RNAPI void SetShaderHint(Shader::UsageHint hint);
+		RNAPI void SetViewMode(ViewMode viewMode);
 		RNAPI void SetOverrideMaterial(Material *material);
 
 		RNAPI void SetSubpassWritesDepthStencilAttachment(bool writesDepthStencil);
@@ -199,6 +207,7 @@ namespace RN
 		uint16 GetRenderGroupMask() const { return _renderGroupMask; }
 
 		Shader::UsageHint GetShaderHint() const { return _shaderHint; }
+		ViewMode GetViewMode() const { return _viewMode; }
 		Material *GetOverrideMaterial() const { return _overrideMaterial; }
 		RNAPI virtual Material *GetEffectiveOverrideMaterial() const;
 		RNAPI RenderPassResources *GetRenderResources(Renderer *renderer);
@@ -237,6 +246,7 @@ namespace RN
 		uint16 _renderGroupMask;
 
 		Shader::UsageHint _shaderHint;
+		ViewMode _viewMode;
 		Material *_overrideMaterial;
 
 		bool _subpassWritesDepthStencil;

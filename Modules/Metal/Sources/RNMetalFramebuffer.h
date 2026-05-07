@@ -19,6 +19,8 @@ namespace RN
 	class MetalFramebuffer : public Framebuffer
 	{
 	public:
+		friend class MetalRenderer;
+
 		struct MetalTargetView
 		{
 			TargetView targetView;
