@@ -104,6 +104,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <deque>
 
 #include "../Math/RNConstants.h"
 #include "../Math/RNMath.h"

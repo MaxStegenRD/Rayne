@@ -93,10 +93,10 @@ namespace RN
 	private:
 		Thread();
 
-		void Initialize();
+		RNAPI void Initialize();
 		void Entry();
 		void Exit();
-		void AutoAssignName();
+		RNAPI void AutoAssignName();
 		void __UnscheduleExecuteOnExit(void *context);
 
 		Lockable _generalMutex;

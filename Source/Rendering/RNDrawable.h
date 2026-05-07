@@ -129,7 +129,7 @@ namespace RN
 		static constexpr uint8 SkeletonSnapshotDirty = 1 << 2;
 		static constexpr uint8 AllSnapshotsDirty = MeshSnapshotDirty | MaterialSnapshotDirty | SkeletonSnapshotDirty;
 
-		void UpdateTransform(const SceneNode *node);
+		RNAPI void UpdateTransform(const SceneNode *node);
 		const Matrix &GetModelMatrix() const { return _modelMatrix; }
 		const Matrix &GetInverseModelMatrix() const { return _inverseModelMatrix; }
 
