@@ -263,6 +263,29 @@ namespace RN
 		const RenderPass::SubpassSnapshot &subpass = drawSnapshot.GetSubpass();
 		bool isSubpass = drawSnapshot.IsSubpass();
 		RenderPass::Flags renderPassFlags = drawSnapshot.GetFlags();
+		const bool hasViewState = multiviewCount > 0 || multiviewLayer > 0;
+
+		auto getTargetSlice = [hasViewState, multiviewLayer, multiviewCount](const TargetView &targetView) {
+			if(!hasViewState)
+				return static_cast<uint32>(targetView.slice);
+
+			RN_ASSERT(targetView.texture, "Inherited view state requires a texture-backed Metal target view");
+			switch(targetView.texture->GetDescriptor().type)
+			{
+				case Texture::Type::Type1DArray:
+				case Texture::Type::Type2DArray:
+				case Texture::Type::Type3D:
+				{
+					const uint32 requiredLayerCount = (multiviewCount > 0) ? multiviewCount : 1;
+					RN_ASSERT(multiviewLayer + requiredLayerCount <= targetView.length, "Requested multiview range exceeds the target view slice span");
+					return static_cast<uint32>(targetView.slice + multiviewLayer);
+				}
+
+				default:
+					RN_ASSERT(false, "Inherited view state requires an array-backed Metal target view");
+					return static_cast<uint32>(targetView.slice);
+			}
+		};
 
 		int counter = 0;
 		int attachmentCounter = 0;
@@ -364,16 +387,8 @@ namespace RN
 			}
 			[colorAttachment setClearColor:MTLClearColorMake(clearColor.r, clearColor.g, clearColor.b, clearColor.a)];
 			
-			if(multiviewCount > 0 || multiviewLayer > 0)
-			{
-				[colorAttachment setSlice:multiviewLayer];
-				if(resolveFramebuffer) [colorAttachment setResolveSlice:multiviewLayer];
-			}
-			else
-			{
-				[colorAttachment setSlice:metalTarget->targetView.slice];
-				if(resolveFramebuffer) [colorAttachment setResolveSlice:metalTarget->targetView.slice];
-			}
+			[colorAttachment setSlice:getTargetSlice(metalTarget->targetView)];
+			if(resolveFramebuffer) [colorAttachment setResolveSlice:getTargetSlice(resolveFramebuffer->_colorTargets[counter]->targetView)];
 			[colorAttachment setLevel:metalTarget->targetView.mipmap];
 			
 			attachmentCounter += 1;
@@ -473,14 +488,7 @@ namespace RN
 					}
 				}
 				
-				if(multiviewCount > 0 || multiviewLayer > 0)
-				{
-					[depthAttachment setSlice:multiviewLayer];
-				}
-				else
-				{
-					[depthAttachment setSlice:_depthStencilTarget->targetView.slice];
-				}
+				[depthAttachment setSlice:getTargetSlice(_depthStencilTarget->targetView)];
 				
 				[depthAttachment setLevel:_depthStencilTarget->targetView.mipmap];
 			}
@@ -567,14 +575,7 @@ namespace RN
 					}
 				}
 				
-				if(multiviewCount > 0 || multiviewLayer > 0)
-				{
-					[stencilAttachment setSlice:multiviewLayer];
-				}
-				else
-				{
-					[stencilAttachment setSlice:_depthStencilTarget->targetView.slice];
-				}
+				[stencilAttachment setSlice:getTargetSlice(_depthStencilTarget->targetView)];
 				
 				[stencilAttachment setLevel:_depthStencilTarget->targetView.mipmap];
 			}

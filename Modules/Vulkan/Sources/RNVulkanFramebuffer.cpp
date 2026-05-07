@@ -104,25 +104,30 @@ namespace RN
 			{
 				multiviewCount = 1;
 			}
+
+			const uint32 originalBaseArrayLayer = oldInfo.subresourceRange.baseArrayLayer;
+			const uint32 originalLayerCount = oldInfo.subresourceRange.layerCount;
+			RN_ASSERT(multiviewLayer + multiviewCount <= originalLayerCount, "Requested multiview range exceeds the target view slice span");
+
 			switch(newInfo.viewType)
 			{
 				case VK_IMAGE_VIEW_TYPE_1D_ARRAY:
 				{
-					newInfo.subresourceRange.baseArrayLayer = multiviewLayer;
+					newInfo.subresourceRange.baseArrayLayer = originalBaseArrayLayer + multiviewLayer;
 					newInfo.subresourceRange.layerCount = multiviewCount;
 					break;
 				}
 
 				case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
 				{
-					newInfo.subresourceRange.baseArrayLayer = multiviewLayer;
+					newInfo.subresourceRange.baseArrayLayer = originalBaseArrayLayer + multiviewLayer;
 					newInfo.subresourceRange.layerCount = multiviewCount;
 					break;
 				}
 
 				case VK_IMAGE_VIEW_TYPE_3D:
 				{
-					newInfo.subresourceRange.baseArrayLayer = multiviewLayer;
+					newInfo.subresourceRange.baseArrayLayer = originalBaseArrayLayer + multiviewLayer;
 					newInfo.subresourceRange.layerCount = multiviewCount;
 					break;
 				}
