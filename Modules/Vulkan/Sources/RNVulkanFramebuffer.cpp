@@ -278,9 +278,10 @@ namespace RN
 		RN_ASSERT(!_swapChain, "A swap chain framebuffer can not have additional color targets!");
 		RN_ASSERT(target.texture, "The color target needs a texture!");
 
-		_sampleCount = target.texture->GetDescriptor().sampleCount;
+		TargetView resolvedTarget = target.GetResolvedTargetView();
+		_sampleCount = resolvedTarget.texture->GetDescriptor().sampleCount;
 
-		VulkanTargetView *targetView = VulkanTargetViewFromTargetView(target);
+		VulkanTargetView *targetView = VulkanTargetViewFromTargetView(resolvedTarget);
 		if(index < _colorTargets.size())
 		{
 			_colorTargets[index]->targetView.texture->Release();
@@ -300,7 +301,8 @@ namespace RN
 		RN_ASSERT(!_swapChain || !_swapChain->HasDepthBuffer(), "A swap chain framebuffer can not have additional depth targets, if the swap chain has them!");
 		RN_ASSERT(target.texture, "The depth stencil target needs a texture!");
 
-		VulkanTargetView *targetView = VulkanTargetViewFromTargetView(target);
+		TargetView resolvedTarget = target.GetResolvedTargetView();
+		VulkanTargetView *targetView = VulkanTargetViewFromTargetView(resolvedTarget);
 		if(_depthStencilTarget)
 		{
 			SafeRelease(_depthStencilTarget->targetView.texture);

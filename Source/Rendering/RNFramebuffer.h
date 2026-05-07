@@ -21,13 +21,41 @@ namespace RN
 	public:
 		struct TargetView
 		{
-			static TargetView WithTexture(Texture *texture, uint16 mipmap = 0, uint16 slice = 0, uint16 length = 1)
+			static TargetView WithTexture(Texture *texture, uint16 mipmap = 0, uint16 slice = 0, uint16 length = 0)
 			{
 				TargetView targetView;
 				targetView.texture = texture;
 				targetView.mipmap = mipmap;
 				targetView.slice = slice;
 				targetView.length = length;
+				return targetView;
+			}
+
+			uint16 GetResolvedLength() const
+			{
+				if(length != 0 || !texture)
+					return length;
+
+				const Texture::Descriptor &descriptor = texture->GetDescriptor();
+				switch(descriptor.type)
+				{
+					case Texture::Type::Type1DArray:
+					case Texture::Type::Type2DArray:
+					case Texture::Type::TypeCube:
+					case Texture::Type::TypeCubeArray:
+					case Texture::Type::Type3D:
+						RN_ASSERT(slice < descriptor.depth, "Target view slice exceeds texture layer count");
+						return static_cast<uint16>(descriptor.depth - slice);
+
+					default:
+						return 1;
+				}
+			}
+
+			TargetView GetResolvedTargetView() const
+			{
+				TargetView targetView = *this;
+				targetView.length = GetResolvedLength();
 				return targetView;
 			}
 

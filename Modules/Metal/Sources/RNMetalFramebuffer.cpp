@@ -161,12 +161,13 @@ namespace RN
 		RN_ASSERT(target.texture, "The color target needs a texture!");
 		RN_ASSERT((_colorTargets.size() == 0 && !_depthStencilTarget) || _sampleCount == target.texture->GetDescriptor().sampleCount, "Texture sample count differs from other framebuffer textures sample count");
 		
-		target.texture->Retain();
-		_sampleCount = target.texture->GetDescriptor().sampleCount;
+		TargetView resolvedTarget = target.GetResolvedTargetView();
+		resolvedTarget.texture->Retain();
+		_sampleCount = resolvedTarget.texture->GetDescriptor().sampleCount;
 		
-		id<MTLTexture> mtlTexture = static_cast< id<MTLTexture> >(target.texture->Downcast<MetalTexture>()->__GetUnderlyingTexture());
+		id<MTLTexture> mtlTexture = static_cast< id<MTLTexture> >(resolvedTarget.texture->Downcast<MetalTexture>()->__GetUnderlyingTexture());
 		MetalTargetView *newTarget = new MetalTargetView;
-		newTarget->targetView = target;
+		newTarget->targetView = resolvedTarget;
 		newTarget->pixelFormat = [mtlTexture pixelFormat];
 
 		if(index < _colorTargets.size())
@@ -187,12 +188,13 @@ namespace RN
 		RN_ASSERT(target.texture->GetDescriptor().accessOptions == GPUResource::AccessOptions::Private, "The framebuffer target needs to be in private storage");
 		RN_ASSERT(_colorTargets.size() == 0 || _sampleCount == target.texture->GetDescriptor().sampleCount, "Texture sample count differs from other framebuffer textures sample count");
 		
-		target.texture->Retain();
-		_sampleCount = target.texture->GetDescriptor().sampleCount;
+		TargetView resolvedTarget = target.GetResolvedTargetView();
+		resolvedTarget.texture->Retain();
+		_sampleCount = resolvedTarget.texture->GetDescriptor().sampleCount;
 
-		id<MTLTexture> mtlTexture = static_cast< id<MTLTexture> >(target.texture->Downcast<MetalTexture>()->__GetUnderlyingTexture());
+		id<MTLTexture> mtlTexture = static_cast< id<MTLTexture> >(resolvedTarget.texture->Downcast<MetalTexture>()->__GetUnderlyingTexture());
 		MetalTargetView *newTarget = new MetalTargetView;
-		newTarget->targetView = target;
+		newTarget->targetView = resolvedTarget;
 		newTarget->pixelFormat = [mtlTexture pixelFormat];
 
 		if(_depthStencilTarget)
