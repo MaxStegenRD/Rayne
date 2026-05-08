@@ -23,6 +23,7 @@ namespace RN
 	class MetalDevice;
 	class MetalWindow;
 	class MetalTexture;
+	class MetalFramebuffer;
 	class MetalUniformBuffer;
 	struct MetalRenderPass;
 	class GPUBuffer;
