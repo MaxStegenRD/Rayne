@@ -55,6 +55,7 @@ namespace RN
 		VulkanDevice(VulkanInstance *instance, VkPhysicalDevice device);
 
 		static Descriptor DescriptorForDevice(VkPhysicalDevice device);
+		static bool AddDeviceExtensionIfAvailable(std::vector<const char *> &enabledExtensions, const std::vector<VkExtensionProperties> &availableExtensions, const char *name);
 
 		RN::Array *_deviceExtensions;
 

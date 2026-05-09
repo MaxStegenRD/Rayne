@@ -123,6 +123,20 @@ namespace RN
 		}
 	}
 
+	bool VulkanDevice::AddDeviceExtensionIfAvailable(std::vector<const char *> &enabledExtensions, const std::vector<VkExtensionProperties> &availableExtensions, const char *name)
+	{
+		for(const VkExtensionProperties &extension : availableExtensions)
+		{
+			if(std::strcmp(extension.extensionName, name) == 0)
+			{
+				enabledExtensions.push_back(name);
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	void VulkanDevice::GetQueueProperties(std::vector<VkQueueFamilyProperties> &queues)
 	{
 		uint32_t count = 0;
@@ -196,80 +210,68 @@ namespace RN
 		//Check if optional extensions are available and add to extensions list if they are
 		std::vector<VkExtensionProperties> rawDeviceExtensions;
 		_instance->EnumerateDeviceExtensions(_physicalDevice, nullptr, rawDeviceExtensions);
-		for(const auto &extension : rawDeviceExtensions)
+
+#if RN_PLATFORM_WINDOWS
+		if(AddDeviceExtensionIfAvailable(deviceExtensions, rawDeviceExtensions, VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME))
+			_supportsFullscreenExclusive = true;
+#endif
+
+		if(AddDeviceExtensionIfAvailable(deviceExtensions, rawDeviceExtensions, VK_KHR_MULTIVIEW_EXTENSION_NAME))
 		{
-			#if RN_PLATFORM_WINDOWS
-			if(std::strcmp(extension.extensionName, VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME) == 0)
-			{
-				deviceExtensions.push_back(extension.extensionName);
-				_supportsFullscreenExclusive = true;
-			} else
-			#endif
-			//check for multiview extension
-			if(std::strcmp(extension.extensionName, VK_KHR_MULTIVIEW_EXTENSION_NAME) == 0)
-			{
-				deviceExtensions.push_back(extension.extensionName);
+			VkPhysicalDeviceMultiviewPropertiesKHR multiviewProperties;
+			multiviewProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES_KHR;
+			multiviewProperties.pNext = NULL;
 
-				VkPhysicalDeviceMultiviewPropertiesKHR multiviewProperties;
-				multiviewProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES_KHR;
-				multiviewProperties.pNext = NULL;
-				
-				VkPhysicalDeviceProperties2 deviceProperties;
-				deviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-				deviceProperties.pNext = &multiviewProperties;
+			VkPhysicalDeviceProperties2 deviceProperties;
+			deviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+			deviceProperties.pNext = &multiviewProperties;
 
-				vk::GetPhysicalDeviceProperties2KHR(_physicalDevice, &deviceProperties);
+			vk::GetPhysicalDeviceProperties2(_physicalDevice, &deviceProperties);
 
-				_maxMultiviewViewCount = multiviewProperties.maxMultiviewViewCount;
+			_maxMultiviewViewCount = multiviewProperties.maxMultiviewViewCount;
 
-				RNDebug("Maximum number of multiviews: " << _maxMultiviewViewCount << " instances: " << multiviewProperties.maxMultiviewInstanceIndex);
-			}
-			//check for fragment density map extension
-			else if(std::strcmp(extension.extensionName, VK_EXT_FRAGMENT_DENSITY_MAP_EXTENSION_NAME) == 0)
-			{
-				deviceExtensions.push_back(extension.extensionName);
+			RNDebug("Maximum number of multiviews: " << _maxMultiviewViewCount << " instances: " << multiviewProperties.maxMultiviewInstanceIndex);
+		}
 
-				VkPhysicalDeviceFragmentDensityMapPropertiesEXT fragmentDensityMapProperties;
-				fragmentDensityMapProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_PROPERTIES_EXT;
-				fragmentDensityMapProperties.pNext = NULL;
+		if(AddDeviceExtensionIfAvailable(deviceExtensions, rawDeviceExtensions, VK_EXT_FRAGMENT_DENSITY_MAP_EXTENSION_NAME))
+		{
+			VkPhysicalDeviceFragmentDensityMapPropertiesEXT fragmentDensityMapProperties;
+			fragmentDensityMapProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_PROPERTIES_EXT;
+			fragmentDensityMapProperties.pNext = NULL;
 
-				VkPhysicalDeviceProperties2 deviceProperties;
-				deviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-				deviceProperties.pNext = &fragmentDensityMapProperties;
+			VkPhysicalDeviceProperties2 deviceProperties;
+			deviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+			deviceProperties.pNext = &fragmentDensityMapProperties;
 
-				vk::GetPhysicalDeviceProperties2KHR(_physicalDevice, &deviceProperties);
-				_minFragmentDensityTexelSize.x = fragmentDensityMapProperties.minFragmentDensityTexelSize.width;
-				_minFragmentDensityTexelSize.y = fragmentDensityMapProperties.minFragmentDensityTexelSize.height;
-				_maxFragmentDensityTexelSize.x = fragmentDensityMapProperties.maxFragmentDensityTexelSize.width;
-				_maxFragmentDensityTexelSize.y = fragmentDensityMapProperties.maxFragmentDensityTexelSize.height;
-				_supportsFragmentDensityMaps = true;
-			}
-			//check for fragment density map 2 extension
-			else if(std::strcmp(extension.extensionName, VK_EXT_FRAGMENT_DENSITY_MAP_2_EXTENSION_NAME) == 0)
-			{
-				deviceExtensions.push_back(extension.extensionName);
+			vk::GetPhysicalDeviceProperties2(_physicalDevice, &deviceProperties);
+			_minFragmentDensityTexelSize.x = fragmentDensityMapProperties.minFragmentDensityTexelSize.width;
+			_minFragmentDensityTexelSize.y = fragmentDensityMapProperties.minFragmentDensityTexelSize.height;
+			_maxFragmentDensityTexelSize.x = fragmentDensityMapProperties.maxFragmentDensityTexelSize.width;
+			_maxFragmentDensityTexelSize.y = fragmentDensityMapProperties.maxFragmentDensityTexelSize.height;
+			_supportsFragmentDensityMaps = true;
+		}
 
-				VkPhysicalDeviceFragmentDensityMap2PropertiesEXT fragmentDensityMap2Properties;
-				fragmentDensityMap2Properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_2_PROPERTIES_EXT;
-				fragmentDensityMap2Properties.pNext = NULL;
+		if(AddDeviceExtensionIfAvailable(deviceExtensions, rawDeviceExtensions, VK_EXT_FRAGMENT_DENSITY_MAP_2_EXTENSION_NAME))
+		{
+			VkPhysicalDeviceFragmentDensityMap2PropertiesEXT fragmentDensityMap2Properties;
+			fragmentDensityMap2Properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_2_PROPERTIES_EXT;
+			fragmentDensityMap2Properties.pNext = NULL;
 
-				VkPhysicalDeviceProperties2 deviceProperties;
-				deviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-				deviceProperties.pNext = &fragmentDensityMap2Properties;
+			VkPhysicalDeviceProperties2 deviceProperties;
+			deviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+			deviceProperties.pNext = &fragmentDensityMap2Properties;
 
-				vk::GetPhysicalDeviceProperties2KHR(_physicalDevice, &deviceProperties);
-				_hasFragmentDensitySubsampledLoads = fragmentDensityMap2Properties.subsampledLoads;
-				_hasFragmentDensitySubsampledCoarseReconstructionEarlyAccess = fragmentDensityMap2Properties.subsampledCoarseReconstructionEarlyAccess;
-				_maxFragmentDensitySubsampledLayers = fragmentDensityMap2Properties.maxSubsampledArrayLayers;
-				_maxFragmentDensitySubsampledSamplers = fragmentDensityMap2Properties.maxDescriptorSetSubsampledSamplers;
-				_supportsFragmentDensityMaps2 = true;
-			}
-			//check for qualcomm tile properties extension
-			else if(std::strcmp(extension.extensionName, VK_QCOM_TILE_PROPERTIES_EXTENSION_NAME) == 0)
-			{
-				deviceExtensions.push_back(extension.extensionName);
-				_supportsTileProperties = true;
-			}
+			vk::GetPhysicalDeviceProperties2(_physicalDevice, &deviceProperties);
+			_hasFragmentDensitySubsampledLoads = fragmentDensityMap2Properties.subsampledLoads;
+			_hasFragmentDensitySubsampledCoarseReconstructionEarlyAccess = fragmentDensityMap2Properties.subsampledCoarseReconstructionEarlyAccess;
+			_maxFragmentDensitySubsampledLayers = fragmentDensityMap2Properties.maxSubsampledArrayLayers;
+			_maxFragmentDensitySubsampledSamplers = fragmentDensityMap2Properties.maxDescriptorSetSubsampledSamplers;
+			_supportsFragmentDensityMaps2 = true;
+		}
+
+		if(AddDeviceExtensionIfAvailable(deviceExtensions, rawDeviceExtensions, VK_QCOM_TILE_PROPERTIES_EXTENSION_NAME))
+		{
+			_supportsTileProperties = true;
 		}
 
 		VkPhysicalDeviceTilePropertiesFeaturesQCOM tilePropertiesFeatures = {};
@@ -291,7 +293,7 @@ namespace RN
 		features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
 		features.pNext = &multiviewFeatures;
 
-		vk::GetPhysicalDeviceFeatures2KHR(_physicalDevice, &features);
+		vk::GetPhysicalDeviceFeatures2(_physicalDevice, &features);
 
 		_supportsSamplerAnisotropy = (features.features.samplerAnisotropy == VK_TRUE);
 

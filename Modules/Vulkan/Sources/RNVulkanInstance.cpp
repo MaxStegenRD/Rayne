@@ -23,7 +23,6 @@ namespace RN
 		_devices(nullptr)
 	{
 		_requiredExtensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-		_requiredExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 
 #if RN_PLATFORM_WINDOWS
 		_requiredExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
