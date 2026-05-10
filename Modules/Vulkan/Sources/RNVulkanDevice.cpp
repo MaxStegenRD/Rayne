@@ -71,8 +71,12 @@ namespace RN
 		_supportsTileProperties(false),
 		_supportsSamplerAnisotropy(false),
 		_supportsFullscreenExclusive(false),
-		_maxSamplerAnisotropy(1.0f)
+		_maxSamplerAnisotropy(1.0f),
+		_hasDeviceLUID(false)
 	{
+		for(size_t i = 0; i < VK_LUID_SIZE; i++)
+			_deviceLUID[i] = 0;
+
 		std::vector<VkQueueFamilyProperties> queues;
 		GetQueueProperties(queues);
 
@@ -101,12 +105,25 @@ namespace RN
 
 		vk::GetPhysicalDeviceMemoryProperties(device, &_memoryProperties);
 
-		VkPhysicalDeviceProperties properties;
-		vk::GetPhysicalDeviceProperties(device, &properties);
-		_maxSamplerAnisotropy = properties.limits.maxSamplerAnisotropy;
+		VkPhysicalDeviceIDProperties idProperties = {};
+		idProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES;
+
+		VkPhysicalDeviceProperties2 deviceProperties = {};
+		deviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+		deviceProperties.pNext = &idProperties;
+
+		vk::GetPhysicalDeviceProperties2(device, &deviceProperties);
+		_maxSamplerAnisotropy = deviceProperties.properties.limits.maxSamplerAnisotropy;
 		for(int i = 0; i < VK_UUID_SIZE; i++)
 		{
-			pipelineCacheUUID[i] = properties.pipelineCacheUUID[i];
+			pipelineCacheUUID[i] = deviceProperties.properties.pipelineCacheUUID[i];
+		}
+
+		if(idProperties.deviceLUIDValid == VK_TRUE)
+		{
+			_hasDeviceLUID = true;
+			for(size_t i = 0; i < VK_LUID_SIZE; i++)
+				_deviceLUID[i] = idProperties.deviceLUID[i];
 		}
 	}
 
@@ -135,6 +152,16 @@ namespace RN
 		}
 
 		return false;
+	}
+
+	bool VulkanDevice::GetDeviceLUID(uint8 *luid) const
+	{
+		if(!_hasDeviceLUID || !luid) return false;
+
+		for(size_t i = 0; i < VK_LUID_SIZE; i++)
+			luid[i] = _deviceLUID[i];
+
+		return true;
 	}
 
 	void VulkanDevice::GetQueueProperties(std::vector<VkQueueFamilyProperties> &queues)

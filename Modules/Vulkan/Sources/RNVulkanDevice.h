@@ -49,6 +49,8 @@ namespace RN
 		bool GetSupportsFullscreenExclusive() const { return _supportsFullscreenExclusive; }
 		bool GetSupportsTileProperties() const { return _supportsTileProperties; }
 
+		VKAPI bool GetDeviceLUID(uint8 *luid) const;
+
 		VKAPI void SetExtensions(Array *extensions) final;
 
 	private:
@@ -72,6 +74,9 @@ namespace RN
 		bool _supportsFullscreenExclusive;
 		float _maxSamplerAnisotropy;
 		bool _supportsTileProperties;
+
+		bool _hasDeviceLUID;
+		uint8 _deviceLUID[VK_LUID_SIZE];
 
 		VulkanInstance *_instance;
 		VkPhysicalDevice _physicalDevice;
