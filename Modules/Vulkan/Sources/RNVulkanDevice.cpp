@@ -72,6 +72,8 @@ namespace RN
 		_supportsSamplerAnisotropy(false),
 		_supportsFullscreenExclusive(false),
 		_maxSamplerAnisotropy(1.0f),
+		_supportsExternalTextureImport(false),
+		_supportsExternalTextureSynchronization(false),
 		_hasDeviceLUID(false)
 	{
 		for(size_t i = 0; i < VK_LUID_SIZE; i++)
@@ -300,6 +302,11 @@ namespace RN
 		{
 			_supportsTileProperties = true;
 		}
+
+#if RN_PLATFORM_WINDOWS
+		_supportsExternalTextureImport = AddDeviceExtensionIfAvailable(deviceExtensions, rawDeviceExtensions, VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME);
+		_supportsExternalTextureSynchronization = AddDeviceExtensionIfAvailable(deviceExtensions, rawDeviceExtensions, VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME);
+#endif
 
 		VkPhysicalDeviceTilePropertiesFeaturesQCOM tilePropertiesFeatures = {};
 		tilePropertiesFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_PROPERTIES_FEATURES_QCOM;

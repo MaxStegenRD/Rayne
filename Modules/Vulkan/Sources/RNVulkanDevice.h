@@ -48,6 +48,8 @@ namespace RN
 		float GetMaxSamplerAnisotropy() const { return _maxSamplerAnisotropy; }
 		bool GetSupportsFullscreenExclusive() const { return _supportsFullscreenExclusive; }
 		bool GetSupportsTileProperties() const { return _supportsTileProperties; }
+		bool GetSupportsExternalTextureImport() const { return _supportsExternalTextureImport; }
+		bool GetSupportsExternalTextureSynchronization() const { return _supportsExternalTextureSynchronization; }
 
 		VKAPI bool GetDeviceLUID(uint8 *luid) const;
 
@@ -74,6 +76,8 @@ namespace RN
 		bool _supportsFullscreenExclusive;
 		float _maxSamplerAnisotropy;
 		bool _supportsTileProperties;
+		bool _supportsExternalTextureImport;
+		bool _supportsExternalTextureSynchronization;
 
 		bool _hasDeviceLUID;
 		uint8 _deviceLUID[VK_LUID_SIZE];
