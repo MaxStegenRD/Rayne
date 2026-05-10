@@ -245,34 +245,54 @@ namespace RN
 			_supportsFullscreenExclusive = true;
 #endif
 
-		if(AddDeviceExtensionIfAvailable(deviceExtensions, rawDeviceExtensions, VK_KHR_MULTIVIEW_EXTENSION_NAME))
-		{
-			VkPhysicalDeviceMultiviewPropertiesKHR multiviewProperties;
-			multiviewProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES_KHR;
-			multiviewProperties.pNext = NULL;
+		bool supportsMultiview = AddDeviceExtensionIfAvailable(deviceExtensions, rawDeviceExtensions, VK_KHR_MULTIVIEW_EXTENSION_NAME);
+		bool supportsFragmentDensityMap = AddDeviceExtensionIfAvailable(deviceExtensions, rawDeviceExtensions, VK_EXT_FRAGMENT_DENSITY_MAP_EXTENSION_NAME);
+		bool supportsFragmentDensityMap2 = AddDeviceExtensionIfAvailable(deviceExtensions, rawDeviceExtensions, VK_EXT_FRAGMENT_DENSITY_MAP_2_EXTENSION_NAME);
 
-			VkPhysicalDeviceProperties2 deviceProperties;
+		VkPhysicalDeviceMultiviewPropertiesKHR multiviewProperties = {};
+		multiviewProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES_KHR;
+
+		VkPhysicalDeviceFragmentDensityMapPropertiesEXT fragmentDensityMapProperties = {};
+		fragmentDensityMapProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_PROPERTIES_EXT;
+
+		VkPhysicalDeviceFragmentDensityMap2PropertiesEXT fragmentDensityMap2Properties = {};
+		fragmentDensityMap2Properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_2_PROPERTIES_EXT;
+
+		void *optionalProperties = nullptr;
+		if(supportsMultiview)
+		{
+			multiviewProperties.pNext = optionalProperties;
+			optionalProperties = &multiviewProperties;
+		}
+		if(supportsFragmentDensityMap)
+		{
+			fragmentDensityMapProperties.pNext = optionalProperties;
+			optionalProperties = &fragmentDensityMapProperties;
+		}
+		if(supportsFragmentDensityMap2)
+		{
+			fragmentDensityMap2Properties.pNext = optionalProperties;
+			optionalProperties = &fragmentDensityMap2Properties;
+		}
+
+		if(optionalProperties)
+		{
+			VkPhysicalDeviceProperties2 deviceProperties = {};
 			deviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-			deviceProperties.pNext = &multiviewProperties;
+			deviceProperties.pNext = optionalProperties;
 
 			vk::GetPhysicalDeviceProperties2(_physicalDevice, &deviceProperties);
+		}
 
+		if(supportsMultiview)
+		{
 			_maxMultiviewViewCount = multiviewProperties.maxMultiviewViewCount;
 
 			RNDebug("Maximum number of multiviews: " << _maxMultiviewViewCount << " instances: " << multiviewProperties.maxMultiviewInstanceIndex);
 		}
 
-		if(AddDeviceExtensionIfAvailable(deviceExtensions, rawDeviceExtensions, VK_EXT_FRAGMENT_DENSITY_MAP_EXTENSION_NAME))
+		if(supportsFragmentDensityMap)
 		{
-			VkPhysicalDeviceFragmentDensityMapPropertiesEXT fragmentDensityMapProperties;
-			fragmentDensityMapProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_PROPERTIES_EXT;
-			fragmentDensityMapProperties.pNext = NULL;
-
-			VkPhysicalDeviceProperties2 deviceProperties;
-			deviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-			deviceProperties.pNext = &fragmentDensityMapProperties;
-
-			vk::GetPhysicalDeviceProperties2(_physicalDevice, &deviceProperties);
 			_minFragmentDensityTexelSize.x = fragmentDensityMapProperties.minFragmentDensityTexelSize.width;
 			_minFragmentDensityTexelSize.y = fragmentDensityMapProperties.minFragmentDensityTexelSize.height;
 			_maxFragmentDensityTexelSize.x = fragmentDensityMapProperties.maxFragmentDensityTexelSize.width;
@@ -280,17 +300,8 @@ namespace RN
 			_supportsFragmentDensityMaps = true;
 		}
 
-		if(AddDeviceExtensionIfAvailable(deviceExtensions, rawDeviceExtensions, VK_EXT_FRAGMENT_DENSITY_MAP_2_EXTENSION_NAME))
+		if(supportsFragmentDensityMap2)
 		{
-			VkPhysicalDeviceFragmentDensityMap2PropertiesEXT fragmentDensityMap2Properties;
-			fragmentDensityMap2Properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_2_PROPERTIES_EXT;
-			fragmentDensityMap2Properties.pNext = NULL;
-
-			VkPhysicalDeviceProperties2 deviceProperties;
-			deviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-			deviceProperties.pNext = &fragmentDensityMap2Properties;
-
-			vk::GetPhysicalDeviceProperties2(_physicalDevice, &deviceProperties);
 			_hasFragmentDensitySubsampledLoads = fragmentDensityMap2Properties.subsampledLoads;
 			_hasFragmentDensitySubsampledCoarseReconstructionEarlyAccess = fragmentDensityMap2Properties.subsampledCoarseReconstructionEarlyAccess;
 			_maxFragmentDensitySubsampledLayers = fragmentDensityMap2Properties.maxSubsampledArrayLayers;
