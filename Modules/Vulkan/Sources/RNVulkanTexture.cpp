@@ -20,10 +20,12 @@ namespace RN
 		_renderer(renderer),
 		_isStreamingData(false),
 		_isFromSwapchain(false),
+		_isExternalMemory(false),
 		_format(VulkanTextureInfo::GetFormat(descriptor.format)),
 		_image(VK_NULL_HANDLE),
 		_imageView(VK_NULL_HANDLE),
 		_allocation(VK_NULL_HANDLE),
+		_externalMemory(VK_NULL_HANDLE),
 		_currentUsage(LayoutUsage::Undefined)
 	{
 		CreateOwnedImage();
@@ -34,23 +36,42 @@ namespace RN
 		_renderer(renderer),
 		_isStreamingData(false),
 		_isFromSwapchain(fromSwapchain),
+		_isExternalMemory(false),
 		_format(VulkanTextureInfo::GetFormat(descriptor.format)),
 		_image(image),
 		_imageView(VK_NULL_HANDLE),
 		_allocation(VK_NULL_HANDLE),
+		_externalMemory(VK_NULL_HANDLE),
 		_currentUsage(LayoutUsage::Undefined)
 	{
 		RN_ASSERT(_format != VK_FORMAT_UNDEFINED, "Requested texture format is not supported by Vulkan (%i)", _descriptor.format);
 		CreateImageView();
 	}
 
-	void VulkanTexture::CreateOwnedImage()
+	VulkanTexture::VulkanTexture(const Descriptor &descriptor, VulkanRenderer *renderer, const ExternalMemoryDescriptor &externalMemoryDescriptor) :
+		Texture(descriptor),
+		_renderer(renderer),
+		_isStreamingData(false),
+		_isFromSwapchain(false),
+		_isExternalMemory(true),
+		_format(VulkanTextureInfo::GetFormat(descriptor.format)),
+		_image(VK_NULL_HANDLE),
+		_imageView(VK_NULL_HANDLE),
+		_allocation(VK_NULL_HANDLE),
+		_externalMemory(VK_NULL_HANDLE),
+		_currentUsage(LayoutUsage::Undefined)
+	{
+		CreateImageWithExternalMemory(externalMemoryDescriptor);
+		CreateImageView();
+	}
+
+	void VulkanTexture::GetVulkanImageCreateInfo(VkImageCreateInfo &imageInfo) const
 	{
 		VulkanDevice *device = _renderer->GetVulkanDevice();
 		const VulkanTextureInfo::FormatInfo &formatInfo = VulkanTextureInfo::GetFormatInfo(_descriptor.format);
 		RN_ASSERT(formatInfo.format != VK_FORMAT_UNDEFINED, "Requested texture format is not supported by Vulkan (%i)", _descriptor.format);
 
-		VkImageCreateInfo imageInfo = {};
+		imageInfo = {};
 		imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 		imageInfo.pNext = nullptr;
 		imageInfo.imageType = VulkanTextureInfo::GetImageType(_descriptor.type);
@@ -113,19 +134,11 @@ namespace RN
 
 		if(_descriptor.usageHint & UsageHint::Subsampled && device->GetSupportsFragmentDensityMaps())
 			imageInfo.flags |= VK_IMAGE_CREATE_SUBSAMPLED_BIT_EXT;
+	}
 
-		VmaAllocationCreateInfo allocCreateInfo = {};
-		allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
-
-		if(_descriptor.usageHint & UsageHint::RenderTarget)
-		{
-			allocCreateInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-			if(_descriptor.sampleCount > 1) allocCreateInfo.preferredFlags = VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT;
-			allocCreateInfo.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
-			allocCreateInfo.priority = 1.0f;
-		}
-
-		_currentUsage = LayoutUsage::Undefined;
+	void VulkanTexture::ValidateImageCreateInfo(const VkImageCreateInfo &imageInfo) const
+	{
+		VulkanDevice *device = _renderer->GetVulkanDevice();
 
 		VkImageFormatProperties formatProperties;
 		RNVulkanValidate(vk::GetPhysicalDeviceImageFormatProperties(device->GetPhysicalDevice(), imageInfo.format, imageInfo.imageType, imageInfo.tiling, imageInfo.usage, imageInfo.flags, &formatProperties));
@@ -142,6 +155,27 @@ namespace RN
 			RN_ASSERT(properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT, "Requested texture format is not supported as a depth/stencil attachment by this device (%i)", _descriptor.format);
 
 		RN_ASSERT(formatProperties.sampleCounts & _descriptor.sampleCount, "Requested sample count for texture format is not supported by this device");
+	}
+
+	void VulkanTexture::CreateOwnedImage()
+	{
+		VkImageCreateInfo imageInfo;
+		GetVulkanImageCreateInfo(imageInfo);
+
+		VmaAllocationCreateInfo allocCreateInfo = {};
+		allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
+
+		if(_descriptor.usageHint & UsageHint::RenderTarget)
+		{
+			allocCreateInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+			if(_descriptor.sampleCount > 1) allocCreateInfo.preferredFlags = VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT;
+			allocCreateInfo.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+			allocCreateInfo.priority = 1.0f;
+		}
+
+		_currentUsage = LayoutUsage::Undefined;
+
+		ValidateImageCreateInfo(imageInfo);
 
 		RNVulkanValidate(vmaCreateImage(_renderer->_internals->memoryAllocator, &imageInfo, &allocCreateInfo, &_image, &_allocation, nullptr));
 
@@ -153,6 +187,95 @@ namespace RN
 		}
 
 		CreateImageView();
+	}
+
+	void VulkanTexture::CreateImageWithExternalMemory(const ExternalMemoryDescriptor &externalMemoryDescriptor)
+	{
+#if RN_PLATFORM_WINDOWS
+		VulkanDevice *device = _renderer->GetVulkanDevice();
+		RN_ASSERT(device->GetSupportsExternalTextureImport(), "Vulkan device does not support external texture import");
+		RN_ASSERT(externalMemoryDescriptor.handle, "External Vulkan texture import requires a valid Win32 handle");
+		RN_ASSERT(_format != VK_FORMAT_UNDEFINED, "Requested texture format is not supported by Vulkan (%i)", _descriptor.format);
+		VkExternalMemoryHandleTypeFlagBits handleType = externalMemoryDescriptor.handleType;
+		if(handleType == 0) handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT;
+
+		VkImageCreateInfo imageInfo;
+		GetVulkanImageCreateInfo(imageInfo);
+
+		VkExternalMemoryImageCreateInfo externalMemoryImageCreateInfo = {};
+		externalMemoryImageCreateInfo.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
+		externalMemoryImageCreateInfo.pNext = imageInfo.pNext;
+		externalMemoryImageCreateInfo.handleTypes = handleType;
+		imageInfo.pNext = &externalMemoryImageCreateInfo;
+
+		ValidateImageCreateInfo(imageInfo);
+
+		VkPhysicalDeviceExternalImageFormatInfo externalImageFormatInfo = {};
+		externalImageFormatInfo.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO;
+		externalImageFormatInfo.handleType = handleType;
+
+		VkPhysicalDeviceImageFormatInfo2 imageFormatInfo = {};
+		imageFormatInfo.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2;
+		imageFormatInfo.pNext = &externalImageFormatInfo;
+		imageFormatInfo.format = imageInfo.format;
+		imageFormatInfo.type = imageInfo.imageType;
+		imageFormatInfo.tiling = imageInfo.tiling;
+		imageFormatInfo.usage = imageInfo.usage;
+		imageFormatInfo.flags = imageInfo.flags;
+
+		VkExternalImageFormatProperties externalImageFormatProperties = {};
+		externalImageFormatProperties.sType = VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES;
+
+		VkImageFormatProperties2 imageFormatProperties = {};
+		imageFormatProperties.sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2;
+		imageFormatProperties.pNext = &externalImageFormatProperties;
+
+		RNVulkanValidate(vk::GetPhysicalDeviceImageFormatProperties2(device->GetPhysicalDevice(), &imageFormatInfo, &imageFormatProperties));
+
+		const VkExternalMemoryFeatureFlags externalMemoryFeatures = externalImageFormatProperties.externalMemoryProperties.externalMemoryFeatures;
+		RN_ASSERT(externalMemoryFeatures & VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT, "Requested Vulkan texture format can not import external memory");
+		RN_ASSERT(externalMemoryDescriptor.dedicatedAllocation || !(externalMemoryFeatures & VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT), "Requested Vulkan texture external memory import requires a dedicated allocation");
+		RN_ASSERT(imageFormatProperties.imageFormatProperties.sampleCounts & _descriptor.sampleCount, "Requested sample count for external Vulkan texture format is not supported by this device");
+
+		RNVulkanValidate(vk::CreateImage(device->GetDevice(), &imageInfo, _renderer->GetAllocatorCallback(), &_image));
+
+		VkMemoryRequirements memoryRequirements = {};
+		vk::GetImageMemoryRequirements(device->GetDevice(), _image, &memoryRequirements);
+
+		VkMemoryWin32HandlePropertiesKHR handleProperties = {};
+		handleProperties.sType = VK_STRUCTURE_TYPE_MEMORY_WIN32_HANDLE_PROPERTIES_KHR;
+		HANDLE win32Handle = reinterpret_cast<HANDLE>(externalMemoryDescriptor.handle);
+		RNVulkanValidate(vk::GetMemoryWin32HandlePropertiesKHR(device->GetDevice(), handleType, win32Handle, &handleProperties));
+
+		uint32 memoryTypeIndex = 0;
+		RN_ASSERT(device->GetMemoryWithType(memoryRequirements.memoryTypeBits & handleProperties.memoryTypeBits, 0, memoryTypeIndex) == VK_TRUE, "No compatible memory type found for external Vulkan texture import");
+
+		VkImportMemoryWin32HandleInfoKHR importMemoryInfo = {};
+		importMemoryInfo.sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_KHR;
+		importMemoryInfo.handleType = handleType;
+		importMemoryInfo.handle = win32Handle;
+		importMemoryInfo.name = nullptr;
+
+		VkMemoryDedicatedAllocateInfo dedicatedAllocateInfo = {};
+		dedicatedAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO;
+		dedicatedAllocateInfo.pNext = &importMemoryInfo;
+		dedicatedAllocateInfo.image = _image;
+		dedicatedAllocateInfo.buffer = VK_NULL_HANDLE;
+
+		VkMemoryAllocateInfo allocateInfo = {};
+		allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocateInfo.pNext = externalMemoryDescriptor.dedicatedAllocation ? static_cast<const void *>(&dedicatedAllocateInfo) : static_cast<const void *>(&importMemoryInfo);
+		allocateInfo.allocationSize = memoryRequirements.size;
+		allocateInfo.memoryTypeIndex = memoryTypeIndex;
+
+		RNVulkanValidate(vk::AllocateMemory(device->GetDevice(), &allocateInfo, _renderer->GetAllocatorCallback(), &_externalMemory));
+		RNVulkanValidate(vk::BindImageMemory(device->GetDevice(), _image, _externalMemory, 0));
+
+		_currentUsage = LayoutUsage::Undefined;
+#else
+		(void)externalMemoryDescriptor;
+		RN_ASSERT(false, "External Vulkan texture import is not supported on this platform");
+#endif
 	}
 
 	void VulkanTexture::CreateImageView()
@@ -285,8 +408,10 @@ namespace RN
 			VkImageView imageView = _imageView;
 			VkImage image = _isFromSwapchain? VK_NULL_HANDLE : _image;
 			VmaAllocation allocation = _allocation;
+			VkDeviceMemory externalMemory = _externalMemory;
+			bool isExternalMemory = _isExternalMemory;
 			VulkanRenderer *renderer = _renderer;
-			renderer->AddFrameFinishedCallback([renderer, imageView, image, allocation]() {
+			renderer->AddFrameFinishedCallback([renderer, imageView, image, allocation, externalMemory, isExternalMemory]() {
 				if(imageView != VK_NULL_HANDLE)
 				{
 					VulkanDevice *device = renderer->GetVulkanDevice();
@@ -295,7 +420,17 @@ namespace RN
 
 				if(image != VK_NULL_HANDLE)
 				{
-					vmaDestroyImage(renderer->_internals->memoryAllocator, image, allocation);
+					if(isExternalMemory)
+					{
+						VulkanDevice *device = renderer->GetVulkanDevice();
+						vk::DestroyImage(device->GetDevice(), image, renderer->GetAllocatorCallback());
+						if(externalMemory != VK_NULL_HANDLE)
+							vk::FreeMemory(device->GetDevice(), externalMemory, renderer->GetAllocatorCallback());
+					}
+					else
+					{
+						vmaDestroyImage(renderer->_internals->memoryAllocator, image, allocation);
+					}
 				}
 			});
 		}

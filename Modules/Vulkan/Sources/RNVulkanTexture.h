@@ -42,6 +42,16 @@ namespace RN
 
 		VKAPI VulkanTexture(const Descriptor &descriptor, VulkanRenderer *renderer);
 		VKAPI VulkanTexture(const Descriptor &descriptor, VulkanRenderer *renderer, VkImage image, bool fromSwapchain);
+
+		struct ExternalMemoryDescriptor
+		{
+			uint64 handle = 0;
+			VkExternalMemoryHandleTypeFlagBits handleType = static_cast<VkExternalMemoryHandleTypeFlagBits>(0);
+			bool dedicatedAllocation = true;
+		};
+
+		VKAPI VulkanTexture(const Descriptor &descriptor, VulkanRenderer *renderer, const ExternalMemoryDescriptor &externalMemoryDescriptor);
+
 		VKAPI ~VulkanTexture() override;
 
 		VKAPI void StartStreamingData() override;
@@ -88,7 +98,10 @@ namespace RN
 		};
 
 		void CreateOwnedImage();
+		void CreateImageWithExternalMemory(const ExternalMemoryDescriptor &externalMemoryDescriptor);
 		void CreateImageView();
+		void GetVulkanImageCreateInfo(VkImageCreateInfo &imageInfo) const;
+		void ValidateImageCreateInfo(const VkImageCreateInfo &imageInfo) const;
 		void GenerateMipMaps(VkCommandBuffer commandBuffer);
 		SubresourceRange GetWholeSubresourceRange() const;
 		bool IsWholeSubresourceRange(const SubresourceRange &range) const;
@@ -105,11 +118,13 @@ namespace RN
 		bool _isStreamingData;
 		std::vector<StagingBuffer> _streamingUploadBuffers;
 		bool _isFromSwapchain;
+		bool _isExternalMemory;
 
 		VkFormat _format;
 		VkImage _image;
 		VkImageView _imageView;
 		VmaAllocation _allocation;
+		VkDeviceMemory _externalMemory;
 		LayoutUsage _currentUsage;
 
 		RNDeclareMetaAPI(VulkanTexture, VKAPI);
