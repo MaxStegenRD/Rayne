@@ -93,6 +93,10 @@ namespace RN
 		void DestroySession();
 		void ResetTilePropertiesHintCache();
 		void UpdateTilePropertiesHint(OpenXRFramePresentationState &state);
+#if XR_USE_PLATFORM_ANDROID
+		void RegisterAndroidApplicationThreads();
+		void RegisterAndroidThreadType(int threadType, int threadID);
+#endif
 		bool BeginRenderFrame();
 		void ResetCurrentFrameState();
 		void EndFrameWithPresentationState(OpenXRFramePresentationState &state, bool submitCompositionLayers);

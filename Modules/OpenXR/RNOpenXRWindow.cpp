@@ -704,6 +704,37 @@ namespace RN
 #endif
 	}
 
+#if XR_USE_PLATFORM_ANDROID
+	void OpenXRWindow::RegisterAndroidApplicationThreads()
+	{
+		if(!_internals->SetAndroidApplicationThreadKHR || _internals->session == XR_NULL_HANDLE)
+			return;
+
+		RegisterAndroidThreadType(XR_ANDROID_THREAD_TYPE_APPLICATION_MAIN_KHR, _mainThreadID);
+
+		Renderer *renderer = Renderer::GetActiveRenderer();
+		if(!renderer)
+			return;
+
+		renderer->ScheduleRenderThreadWork([this]() {
+			RegisterAndroidThreadType(XR_ANDROID_THREAD_TYPE_RENDERER_MAIN_KHR, gettid());
+		});
+	}
+
+	void OpenXRWindow::RegisterAndroidThreadType(int threadType, int threadID)
+	{
+		if(!_internals->SetAndroidApplicationThreadKHR || _internals->session == XR_NULL_HANDLE)
+			return;
+
+		XrResult result = _internals->SetAndroidApplicationThreadKHR(
+			_internals->session, static_cast<XrAndroidThreadTypeKHR>(threadType), threadID);
+		if(XR_FAILED(result))
+		{
+			RNWarning("Failed registering OpenXR Android thread type " << threadType << " with result: " << result);
+		}
+	}
+#endif
+
 	void OpenXRWindow::InitializeInput()
 	{
 		XrActionSetCreateInfo actionSetInfo;
@@ -1763,10 +1794,7 @@ namespace RN
 		}
 
 #if XR_USE_PLATFORM_ANDROID
-		if(_internals->SetAndroidApplicationThreadKHR)
-		{
-			_internals->SetAndroidApplicationThreadKHR(_internals->session, XR_ANDROID_THREAD_TYPE_APPLICATION_MAIN_KHR, _mainThreadID);
-		}
+		RegisterAndroidApplicationThreads();
 #endif
 
 		_mainLayer->SetFixedFoveatedRenderingLevel(_fixedFoveatedRenderingLevel, _fixedFoveatedRenderingDynamic);
