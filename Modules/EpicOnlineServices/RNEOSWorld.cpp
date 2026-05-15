@@ -556,6 +556,9 @@ namespace RN
 
 	void EOSWorld::LoggingCallback(const EOS_LogMessage *Message)
 	{
+		//EOS emits this for lobby search result details while not connected to the lobby yet which are needed to get user counts
+		if(Message->Message && RNSTR(Message->Message)->IsEqual(RNCSTR("Lobby membership count inconsistency"))) return;
+
 		RNInfo(Message->Message);
 	}
 
