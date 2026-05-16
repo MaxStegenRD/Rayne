@@ -66,7 +66,7 @@ namespace RN
 		EOSAPI void RemoveHost(EOSHost *host);
 		const Dictionary *GetAllHosts() const { return _hosts; }
 
-		EOSAPI EOSLobbyManager *GetLobbyManager();
+		EOSAPI EOSLobbyManager *GetLobbyManager(bool create = false);
 		EOSAPI EOS_HPlatform GetPlatformHandle() const { return _platformHandle; }
 		EOSAPI EOS_HP2P GetP2PHandle() const { return _p2pInterfaceHandle; }
 		EOSAPI EOS_ProductUserId GetUserID() const { return _loggedInUserID; }

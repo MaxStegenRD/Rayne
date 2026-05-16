@@ -72,6 +72,8 @@ namespace RN
 	void EOSConnectedLobbyInfo::RetrievePeers()
 	{
 		RN_ASSERT(_status == Status::Connected, "Cannot retrieve peers: not connected to lobby.");
+		EOSWorld *world = EOSWorld::GetInstance();
+		if(!world) return;
 
 		EOS_LobbyDetails_GetMemberCountOptions getMemberCountOptions {};
 		getMemberCountOptions.ApiVersion = EOS_LOBBYDETAILS_GETMEMBERCOUNT_API_LATEST;
@@ -85,7 +87,7 @@ namespace RN
 			getMemberOptions.MemberIndex = i;
 			EOS_ProductUserId memberId = EOS_LobbyDetails_GetMemberByIndex(_lobbyDetails, &getMemberOptions);
 
-			if(memberId != EOSWorld::GetInstance()->GetUserID())
+			if(memberId != world->GetUserID())
 			{
 				_remotePeers.push_back(memberId);
 			}
@@ -680,7 +682,10 @@ namespace RN
 	void EOSLobbyManager::LobbyOnCreateCallback(const EOS_Lobby_CreateLobbyCallbackInfo *Data)
 	{
 		EOSConnectedLobbyInfo *connectedLobbyInfo = static_cast<EOSConnectedLobbyInfo *>(Data->ClientData);
-		EOSLobbyManager *lobbyManager = EOSWorld::GetInstance()->GetLobbyManager();
+		EOSWorld *world = EOSWorld::GetInstance();
+		if(!world) return;
+		EOSLobbyManager *lobbyManager = world->GetLobbyManager();
+		if(!lobbyManager) return;
 
 		if(Data->ResultCode == EOS_EResult::EOS_Success)
 		{
@@ -692,7 +697,7 @@ namespace RN
 
 			EOS_Lobby_CopyLobbyDetailsHandleOptions copyOptions;
 			copyOptions.ApiVersion = EOS_LOBBY_COPYLOBBYDETAILSHANDLE_API_LATEST;
-			copyOptions.LocalUserId = EOSWorld::GetInstance()->GetUserID();
+			copyOptions.LocalUserId = world->GetUserID();
 			copyOptions.LobbyId = Data->LobbyId;
 			EOS_EResult copyDetailsResult = EOS_Lobby_CopyLobbyDetailsHandle(lobbyManager->_lobbyInterfaceHandle, &copyOptions, &connectedLobbyInfo->_lobbyDetails);
 
@@ -701,7 +706,7 @@ namespace RN
 				EOS_Lobby_GetRTCRoomNameOptions roomNameOptions = {};
 				roomNameOptions.ApiVersion = EOS_LOBBY_GETRTCROOMNAME_API_LATEST;
 				roomNameOptions.LobbyId = Data->LobbyId;
-				roomNameOptions.LocalUserId = EOSWorld::GetInstance()->GetUserID();
+				roomNameOptions.LocalUserId = world->GetUserID();
 				char roomNameBuffer[512];
 				RN::uint32 roomNameLength = 512;
 				if(EOS_Lobby_GetRTCRoomName(lobbyManager->_lobbyInterfaceHandle, &roomNameOptions, roomNameBuffer, &roomNameLength) == EOS_EResult::EOS_Success)
@@ -710,7 +715,7 @@ namespace RN
 					{
 						EOS_RTCAudio_AddNotifyAudioBeforeRenderOptions options = {};
 						options.ApiVersion = EOS_RTCAUDIO_ADDNOTIFYAUDIOBEFORERENDER_API_LATEST;
-						options.LocalUserId = EOSWorld::GetInstance()->GetUserID();
+						options.LocalUserId = world->GetUserID();
 						options.bUnmixedAudio = lobbyManager->_isVoiceUnmixed;
 						options.RoomName = roomNameBuffer;
 
@@ -721,7 +726,7 @@ namespace RN
 					{
 						EOS_RTCAudio_AddNotifyAudioBeforeSendOptions options = {};
 						options.ApiVersion = EOS_RTCAUDIO_ADDNOTIFYAUDIOBEFORESEND_API_LATEST;
-						options.LocalUserId = EOSWorld::GetInstance()->GetUserID();
+						options.LocalUserId = world->GetUserID();
 						options.RoomName = roomNameBuffer;
 
 						connectedLobbyInfo->_audioBeforeSendNotificationID = EOS_RTCAudio_AddNotifyAudioBeforeSend(lobbyManager->_rtcAudioInterfaceHandle, &options, connectedLobbyInfo, LobbyAudioOnBeforeSendCallback);
@@ -733,7 +738,7 @@ namespace RN
 			{
 				EOS_RTCAudio_SetInputDeviceSettingsOptions audioInputSettings = {};
 				audioInputSettings.ApiVersion = EOS_RTCAUDIO_SETINPUTDEVICESETTINGS_API_LATEST;
-				audioInputSettings.LocalUserId = EOSWorld::GetInstance()->GetUserID();
+				audioInputSettings.LocalUserId = world->GetUserID();
 				audioInputSettings.bPlatformAEC = EOS_TRUE;
 				EOS_RTCAudio_SetInputDeviceSettings(lobbyManager->_rtcAudioInterfaceHandle, &audioInputSettings, nullptr, nullptr);
 			}
@@ -741,7 +746,7 @@ namespace RN
 			EOS_Lobby_UpdateLobbyModificationOptions modificationOptions = {0};
 			modificationOptions.ApiVersion = EOS_LOBBY_UPDATELOBBYMODIFICATION_API_LATEST;
 			modificationOptions.LobbyId = Data->LobbyId;
-			modificationOptions.LocalUserId = EOSWorld::GetInstance()->GetUserID();
+			modificationOptions.LocalUserId = world->GetUserID();
 
 			EOS_HLobbyModification modificationHandle;
 			if(EOS_Lobby_UpdateLobbyModification(lobbyManager->_lobbyInterfaceHandle, &modificationOptions, &modificationHandle) != EOS_EResult::EOS_Success)
@@ -1005,7 +1010,10 @@ namespace RN
 	void EOSLobbyManager::LobbyOnJoinCallback(const EOS_Lobby_JoinLobbyCallbackInfo *Data)
 	{
 		EOSConnectedLobbyInfo *connectedLobbyInfo = static_cast<EOSConnectedLobbyInfo *>(Data->ClientData);
-		EOSLobbyManager *lobbyManager = EOSWorld::GetInstance()->GetLobbyManager();
+		EOSWorld *world = EOSWorld::GetInstance();
+		if(!world) return;
+		EOSLobbyManager *lobbyManager = world->GetLobbyManager();
+		if(!lobbyManager) return;
 
 		if(Data->ResultCode == EOS_EResult::EOS_Success)
 		{
@@ -1016,7 +1024,7 @@ namespace RN
 
 			EOS_Lobby_CopyLobbyDetailsHandleOptions copyOptions;
 			copyOptions.ApiVersion = EOS_LOBBY_COPYLOBBYDETAILSHANDLE_API_LATEST;
-			copyOptions.LocalUserId = EOSWorld::GetInstance()->GetUserID();
+			copyOptions.LocalUserId = world->GetUserID();
 			copyOptions.LobbyId = Data->LobbyId;
 			EOS_EResult copyDetailsResult = EOS_Lobby_CopyLobbyDetailsHandle(lobbyManager->_lobbyInterfaceHandle, &copyOptions, &connectedLobbyInfo->_lobbyDetails);
 			if(copyDetailsResult == EOS_EResult::EOS_Success)
@@ -1034,7 +1042,7 @@ namespace RN
 				EOS_Lobby_GetRTCRoomNameOptions roomNameOptions = {};
 				roomNameOptions.ApiVersion = EOS_LOBBY_GETRTCROOMNAME_API_LATEST;
 				roomNameOptions.LobbyId = Data->LobbyId;
-				roomNameOptions.LocalUserId = EOSWorld::GetInstance()->GetUserID();
+				roomNameOptions.LocalUserId = world->GetUserID();
 				char roomNameBuffer[512];
 				RN::uint32 roomNameLength = 512;
 				if(EOS_Lobby_GetRTCRoomName(lobbyManager->_lobbyInterfaceHandle, &roomNameOptions, roomNameBuffer, &roomNameLength) == EOS_EResult::EOS_Success)
@@ -1043,7 +1051,7 @@ namespace RN
 					{
 						EOS_RTCAudio_AddNotifyAudioBeforeRenderOptions options = {};
 						options.ApiVersion = EOS_RTCAUDIO_ADDNOTIFYAUDIOBEFORERENDER_API_LATEST;
-						options.LocalUserId = EOSWorld::GetInstance()->GetUserID();
+						options.LocalUserId = world->GetUserID();
 						options.bUnmixedAudio = lobbyManager->_isVoiceUnmixed;
 						options.RoomName = roomNameBuffer;
 
@@ -1054,7 +1062,7 @@ namespace RN
 					{
 						EOS_RTCAudio_AddNotifyAudioBeforeSendOptions options = {};
 						options.ApiVersion = EOS_RTCAUDIO_ADDNOTIFYAUDIOBEFORESEND_API_LATEST;
-						options.LocalUserId = EOSWorld::GetInstance()->GetUserID();
+						options.LocalUserId = world->GetUserID();
 						options.RoomName = roomNameBuffer;
 
 						connectedLobbyInfo->_audioBeforeSendNotificationID = EOS_RTCAudio_AddNotifyAudioBeforeSend(lobbyManager->_rtcAudioInterfaceHandle, &options, connectedLobbyInfo, LobbyAudioOnBeforeSendCallback);
@@ -1066,7 +1074,7 @@ namespace RN
 			{
 				EOS_RTCAudio_SetInputDeviceSettingsOptions audioInputSettings = {};
 				audioInputSettings.ApiVersion = EOS_RTCAUDIO_SETINPUTDEVICESETTINGS_API_LATEST;
-				audioInputSettings.LocalUserId = EOSWorld::GetInstance()->GetUserID();
+				audioInputSettings.LocalUserId = world->GetUserID();
 				audioInputSettings.bPlatformAEC = EOS_TRUE;
 				EOS_RTCAudio_SetInputDeviceSettings(lobbyManager->_rtcAudioInterfaceHandle, &audioInputSettings, nullptr, nullptr);
 			}
@@ -1102,7 +1110,10 @@ namespace RN
 	void EOSLobbyManager::LobbyOnLeaveCallback(const EOS_Lobby_LeaveLobbyCallbackInfo *Data)
 	{
 		EOSConnectedLobbyInfo *connectedLobbyInfo = static_cast<EOSConnectedLobbyInfo *>(Data->ClientData);
-		EOSLobbyManager *lobbyManager = EOSWorld::GetInstance()->GetLobbyManager();
+		EOSWorld *world = EOSWorld::GetInstance();
+		if(!world) return;
+		EOSLobbyManager *lobbyManager = world->GetLobbyManager();
+		if(!lobbyManager) return;
 
 		if(Data->ResultCode == EOS_EResult::EOS_Success)
 		{
@@ -1133,7 +1144,10 @@ namespace RN
 
 	void EOSLobbyManager::LobbyOnMemberStatusReceived(const EOS_Lobby_LobbyMemberStatusReceivedCallbackInfo *Data)
 	{
-		EOSLobbyManager *lobbyManager = EOSWorld::GetInstance()->GetLobbyManager();
+		EOSWorld *world = EOSWorld::GetInstance();
+		if(!world) return;
+		EOSLobbyManager *lobbyManager = world->GetLobbyManager();
+		if(!lobbyManager) return;
 		EOSConnectedLobbyInfo *connectedLobbyInfo = nullptr;
 		String *lobbyID = new String(Data->LobbyId);
 		for(auto lobby : lobbyManager->_connectedLobbies)
@@ -1182,7 +1196,7 @@ namespace RN
 			{
 				RNDebug("Member disconnected from lobby: " << Data->TargetUserId);
 				connectedLobbyInfo->RemoveRemotePeer(Data->TargetUserId);
-				if(Data->TargetUserId == EOSWorld::GetInstance()->GetUserID())
+				if(Data->TargetUserId == world->GetUserID())
 				{
 					if(connectedLobbyInfo->_associatedHost)
 					{
@@ -1201,7 +1215,7 @@ namespace RN
 			case EOS_ELobbyMemberStatus::EOS_LMS_PROMOTED:
 			{
 				RNDebug("Host migrating to: " << Data->TargetUserId);
-				connectedLobbyInfo->_isHost = EOSWorld::GetInstance()->GetUserID() == Data->TargetUserId;
+				connectedLobbyInfo->_isHost = world->GetUserID() == Data->TargetUserId;
 				
 				if(connectedLobbyInfo->_associatedHost)
 				{
@@ -1226,7 +1240,10 @@ namespace RN
 	void EOSLobbyManager::LobbyOnDestroyCallback(const EOS_Lobby_DestroyLobbyCallbackInfo *Data)
 	{
 		EOSConnectedLobbyInfo *connectedLobbyInfo = static_cast<EOSConnectedLobbyInfo *>(Data->ClientData);
-		EOSLobbyManager *lobbyManager = EOSWorld::GetInstance()->GetLobbyManager();
+		EOSWorld *world = EOSWorld::GetInstance();
+		if(!world) return;
+		EOSLobbyManager *lobbyManager = world->GetLobbyManager();
+		if(!lobbyManager) return;
 
 		if(Data->ResultCode == EOS_EResult::EOS_Success)
 		{
@@ -1270,7 +1287,10 @@ namespace RN
 	void EOSLobbyManager::LobbyAudioOnBeforeSendCallback(const EOS_RTCAudio_AudioBeforeSendCallbackInfo *Data)
 	{
 		EOSConnectedLobbyInfo *connectedLobbyInfo = static_cast<EOSConnectedLobbyInfo *>(Data->ClientData);
-		EOSLobbyManager *lobbyManager = EOSWorld::GetInstance()->GetLobbyManager();
+		EOSWorld *world = EOSWorld::GetInstance();
+		if(!world) return;
+		EOSLobbyManager *lobbyManager = world->GetLobbyManager();
+		if(!lobbyManager) return;
 		if(lobbyManager->_audioBeforeSendCallback)
 		{
 			lobbyManager->_audioBeforeSendCallback(Data->Buffer->SampleRate, Data->Buffer->Channels, Data->Buffer->FramesCount, Data->Buffer->Frames, connectedLobbyInfo);
@@ -1280,7 +1300,10 @@ namespace RN
 	void EOSLobbyManager::LobbyAudioOnBeforeRenderCallback(const EOS_RTCAudio_AudioBeforeRenderCallbackInfo *Data)
 	{
 		EOSConnectedLobbyInfo *connectedLobbyInfo = static_cast<EOSConnectedLobbyInfo *>(Data->ClientData);
-		EOSLobbyManager *lobbyManager = EOSWorld::GetInstance()->GetLobbyManager();
+		EOSWorld *world = EOSWorld::GetInstance();
+		if(!world) return;
+		EOSLobbyManager *lobbyManager = world->GetLobbyManager();
+		if(!lobbyManager) return;
 		if(lobbyManager->_audioReceivedCallback)
 		{
 			AutoreleasePool pool;
@@ -1289,7 +1312,7 @@ namespace RN
 
 			if(Data->ParticipantId)
 			{
-				eosUserID = EOSWorld::GetInstance()->GetUserIDString(Data->ParticipantId);
+				eosUserID = world->GetUserIDString(Data->ParticipantId);
 			}
 			lobbyManager->_audioReceivedCallback(eosUserID, Data->Buffer->SampleRate, Data->Buffer->Channels, Data->Buffer->FramesCount, Data->Buffer->Frames, connectedLobbyInfo);
 		}

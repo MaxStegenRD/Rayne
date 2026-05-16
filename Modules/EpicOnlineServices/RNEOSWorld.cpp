@@ -151,7 +151,9 @@ namespace RN
 
 	EOSWorld::~EOSWorld()
 	{
-		SafeRelease(_lobbyManager);
+		EOSLobbyManager *lobbyManager = _lobbyManager;
+		_lobbyManager = nullptr;
+		SafeRelease(lobbyManager);
 		SafeRelease(_hosts);
 
 		if(_connectInterfaceHandle)
@@ -252,9 +254,9 @@ namespace RN
 		_hosts->RemoveObjectForKey(host->GetSocketID());
 	}
 
-	EOSLobbyManager *EOSWorld::GetLobbyManager()
+	EOSLobbyManager *EOSWorld::GetLobbyManager(bool create)
 	{
-		if(!_lobbyManager)
+		if(create && !_lobbyManager)
 		{
 			_lobbyManager = new EOSLobbyManager(this);
 		}
