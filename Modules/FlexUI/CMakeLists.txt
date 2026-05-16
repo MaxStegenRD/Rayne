@@ -46,7 +46,7 @@ FetchContent_Declare(Yoga
 FetchContent_MakeAvailable(Yoga)
 
 target_link_libraries(RayneFlexUI PRIVATE yogacore)
-target_include_directories(RayneFlexUI SYSTEM PUBLIC "${Yoga_SOURCE_DIR}")
+target_include_directories(RayneFlexUI SYSTEM PUBLIC "${yoga_SOURCE_DIR}")
 
 target_compile_definitions(RayneFlexUI PRIVATE "${DEFINES}")
 

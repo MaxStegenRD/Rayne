@@ -105,8 +105,13 @@ add_dependencies(RayneOpenXR OpenXRSDK)
 
 target_link_libraries(RayneOpenXR PRIVATE OpenXRLoader)
 
+if(ANDROID)
+	target_link_libraries(RayneOpenXR PRIVATE log)
+endif()
+
 if(NOT APPLE AND ${RN_BUILD_VULKAN_MODULE})
 	target_link_libraries(RayneOpenXR PRIVATE RayneVulkan)
+	target_include_directories(RayneOpenXR SYSTEM PRIVATE ${RAYNE_VULKAN_VMA_INCLUDE_DIRECTORY})
 	list(APPEND PRIVATE_DEFINES XR_USE_GRAPHICS_API_VULKAN)
 endif()
 

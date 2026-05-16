@@ -31,6 +31,7 @@ FetchContent_MakeAvailable(VulkanHeaders)
 set(vulkanheaders_SOURCE_DIR "${vulkanheaders_SOURCE_DIR}" CACHE PATH "Path to Vulkan-Headers sources" FORCE)
 
 set(VMA_SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/VulkanMemoryAllocator-prefix/src/VulkanMemoryAllocator)
+set(RAYNE_VULKAN_VMA_INCLUDE_DIRECTORY "${VMA_SOURCE_DIR}/include" CACHE INTERNAL "RayneVulkan private VMA include directory")
 ExternalProject_Add(VulkanMemoryAllocator
         GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
         GIT_TAG b8e57472fffa3bd6e0a0b675f4615bf0a823ec4d #origin/master is usually fine, but broke at the time of changing this, with a pull request waiting to be merged
@@ -130,7 +131,7 @@ add_dependencies(RayneVulkan VulkanMemoryAllocator)
 
 target_include_directories(RayneVulkan SYSTEM PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/spirvcross-prefix/src/spirvcross
-    ${VMA_SOURCE_DIR}/include)
+    ${RAYNE_VULKAN_VMA_INCLUDE_DIRECTORY})
 target_include_directories(RayneVulkan SYSTEM PUBLIC
     ${vulkanheaders_SOURCE_DIR}/include
     ${vulkanheaders_SOURCE_DIR}/include/vulkan)
