@@ -28,18 +28,18 @@ set(HEADERS
 set(DEFINES RN_BUILD_OPENAL AL_LIBTYPE_STATIC)
 
 set(COMPILE_OPTIONS "")
-set(RAYNE_LIBRARIES Rayne)
+set(PRIVATE_LIBRARIES)
 
 if(APPLE)
         set(COMPILE_OPTIONS -xobjective-c++)
         find_library(AVFOUNDATION_LIBRARY AVFoundation)
-        set(RAYNE_LIBRARIES ${RAYNE_LIBRARIES} ${AVFOUNDATION_LIBRARY})
+        list(APPEND PRIVATE_LIBRARIES ${AVFOUNDATION_LIBRARY})
 endif()
 
 set(VENDOR_INCLUDES
         "${CMAKE_CURRENT_BINARY_DIR}/openal-prefix/src/openal/include")
 
-rayne_add_library(RayneOpenAL "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
+rayne_add_library(RayneOpenAL "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne PRIVATE_LIBRARIES ${PRIVATE_LIBRARIES})
 rayne_set_module_output_directory(RayneOpenAL)
 
 target_include_directories(RayneOpenAL SYSTEM PRIVATE ${VENDOR_INCLUDES})

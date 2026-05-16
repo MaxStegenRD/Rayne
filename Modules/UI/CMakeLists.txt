@@ -52,14 +52,12 @@ set(DEFINES
         "RN_BUILD_UI"
         "SK_RELEASE")
 
-set(RAYNE_LIBRARIES Rayne)
-
 set(KALLIGRAPH_SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Kalligraph-prefix/src/Kalligraph)
 set(KALLIGRAPH_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/Kalligraph-prefix/src/Kalligraph-build)
 
 set(VENDOR_INCLUDES ${KALLIGRAPH_SOURCE_DIR}/Sources ${CMAKE_CURRENT_SOURCE_DIR}/Vendor)
 
-rayne_add_library(RayneUI "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
+rayne_add_library(RayneUI "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne)
 rayne_set_module_output_directory(RayneUI)
 
 FetchContent_Declare(ArteryFont

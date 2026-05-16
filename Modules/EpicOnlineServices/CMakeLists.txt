@@ -50,10 +50,7 @@ else()
         set(EOSSDK_DYNAMIC_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/EOS-SDK/SDK/Bin/libEOSSDK-Mac-Shipping.dylib)
 endif()
 
-set(RAYNE_LIBRARIES Rayne)
-
-
-rayne_add_library(RayneEOS "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
+rayne_add_library(RayneEOS "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne)
 rayne_set_module_output_directory(RayneEOS)
 
 target_link_libraries(RayneEOS PRIVATE EOSSDK)

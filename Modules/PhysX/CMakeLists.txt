@@ -262,7 +262,6 @@ set(PRIVATE_HEADERS
 
 set(DEFINES RN_BUILD_PHYSX PX_PHYSX_STATIC_LIB)
 
-set(RAYNE_LIBRARIES Rayne)
 set(PHYSX_LIBRARIES)
 
 if(ANDROID)
@@ -276,7 +275,7 @@ set(VENDOR_INCLUDES
     "${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx/pxshared/include"
     "${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx/physx/include")
 
-rayne_add_library(RaynePhysX "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
+rayne_add_library(RaynePhysX "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 
 if(IOS OR VISIONOS)
     target_link_libraries(RaynePhysX PRIVATE

@@ -20,9 +20,7 @@ set(HEADERS
 set(DEFINES
         RN_BUILD_OGG)
 
-set(RAYNE_LIBRARIES Rayne)
-
-rayne_add_library(RayneOgg "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
+rayne_add_library(RayneOgg "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne)
 rayne_set_module_output_directory(RayneOgg)
 
 target_include_directories(RayneOgg SYSTEM PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/Vendor)

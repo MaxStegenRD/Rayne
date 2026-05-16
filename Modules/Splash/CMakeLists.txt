@@ -24,9 +24,7 @@ set(HEADERS
 
 set(DEFINES RN_BUILD_SPLASH)
 
-set(RAYNE_LIBRARIES Rayne)
-
-rayne_add_library(RayneSplash "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
+rayne_add_library(RayneSplash "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne)
 rayne_set_module_output_directory(RayneSplash)
 
 target_compile_definitions(RayneSplash PRIVATE "${DEFINES}")

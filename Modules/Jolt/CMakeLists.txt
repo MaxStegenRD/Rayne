@@ -148,10 +148,7 @@ set(PRIVATE_HEADERS
 
 set(DEFINES RN_BUILD_JOLT)
 
-set(RAYNE_LIBRARIES Rayne)
-
-rayne_add_library(RayneJolt "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
-target_link_libraries(RayneJolt PRIVATE Jolt)
+rayne_add_library(RayneJolt "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne PRIVATE_LIBRARIES Jolt PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 target_include_directories(RayneJolt SYSTEM PRIVATE ${JoltPhysics_SOURCE_DIR}/..)
 
 rayne_set_module_output_directory(RayneJolt)

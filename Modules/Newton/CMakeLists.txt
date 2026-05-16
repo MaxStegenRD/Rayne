@@ -37,7 +37,6 @@ set(PRIVATE_HEADERS
 
 set(DEFINES RN_BUILD_NEWTON _NEWTON_STATIC_LIB _CUSTOM_JOINTS_STATIC_LIB)
 
-set(RAYNE_LIBRARIES Rayne)
 set(NEWTON_LIBRARIES)
 
 if(APPLE)
@@ -51,7 +50,7 @@ set(VENDOR_INCLUDES
         "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/dCustomJoints"
         "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-extensions")
 
-rayne_add_library(RayneNewton "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
+rayne_add_library(RayneNewton "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 target_link_libraries(RayneNewton PRIVATE ${NEWTON_LIBRARIES})
 
 if(NOT APPLE)

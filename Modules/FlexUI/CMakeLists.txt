@@ -33,9 +33,8 @@ set(HEADERS
         RNFlexUI.h)
 
 set(DEFINES "RN_BUILD_FLEXUI")
-set(RAYNE_LIBRARIES Rayne RayneUI)
 
-rayne_add_library(RayneFlexUI "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
+rayne_add_library(RayneFlexUI "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne RayneUI)
 rayne_set_module_output_directory(RayneFlexUI)
 
 FetchContent_Declare(Yoga

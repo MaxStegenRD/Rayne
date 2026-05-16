@@ -27,23 +27,23 @@ set(HEADERS
 
 set(DEFINES RN_BUILD_VR)
 
-set(RAYNE_LIBRARIES Rayne)
+set(PRIVATE_LIBRARIES)
 
 if(APPLE)
 	if(${RN_BUILD_METAL_MODULE})
-		set(RAYNE_LIBRARIES ${RAYNE_LIBRARIES} RayneMetal)
+		list(APPEND PRIVATE_LIBRARIES RayneMetal)
 	endif()
 elseif(ANDROID OR UNIX)
 	if(${RN_BUILD_VULKAN_MODULE})
-		set(RAYNE_LIBRARIES ${RAYNE_LIBRARIES} RayneVulkan)
+		list(APPEND PRIVATE_LIBRARIES RayneVulkan)
 	endif()
 else(WIN32)
 	if(${RN_BUILD_VULKAN_MODULE})
-		set(RAYNE_LIBRARIES ${RAYNE_LIBRARIES} RayneVulkan)
+		list(APPEND PRIVATE_LIBRARIES RayneVulkan)
 	endif()
 endif()
 
-rayne_add_library(RayneVR "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
+rayne_add_library(RayneVR "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne PRIVATE_LIBRARIES ${PRIVATE_LIBRARIES})
 rayne_set_module_output_directory(RayneVR)
 
 target_compile_definitions(RayneVR PRIVATE "${DEFINES}")

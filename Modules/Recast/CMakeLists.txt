@@ -116,15 +116,13 @@ set(HEADERS
 
 set(DEFINES RN_BUILD_RECAST)
 
-set(RAYNE_LIBRARIES Rayne)
-
 set(VENDOR_INCLUDES
         "${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Include"
         "${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Include"
         "${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DetourCrowd/Include"
         "${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DebugUtils/Include")
 
-rayne_add_library(RayneRecast "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
+rayne_add_library(RayneRecast "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne)
 rayne_set_module_output_directory(RayneRecast)
 
 target_include_directories(RayneRecast SYSTEM PRIVATE ${VENDOR_INCLUDES})

@@ -28,7 +28,6 @@ set(PRIVATE_HEADERS
 set(DEFINES RN_BUILD_BHAPTICS)
 
 set(COMPILE_OPTIONS "")
-set(RAYNE_LIBRARIES Rayne)
 
 set(VENDOR_INCLUDES)
 
@@ -38,7 +37,7 @@ if(WIN32)
                 "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/BhapticsCPP")
 endif()
 
-rayne_add_library(RayneBHaptics "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
+rayne_add_library(RayneBHaptics "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneBHaptics)
 
 target_include_directories(RayneBHaptics SYSTEM PRIVATE ${VENDOR_INCLUDES})

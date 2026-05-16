@@ -90,12 +90,10 @@ set(PRIVATE_HEADERS
 
 set(DEFINES RN_BUILD_BULLET)
 
-set(RAYNE_LIBRARIES Rayne)
-
 set(VENDOR_INCLUDES
         "${CMAKE_CURRENT_BINARY_DIR}/bullet-prefix/src/bullet/src")
 
-rayne_add_library(RayneBullet "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
+rayne_add_library(RayneBullet "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneBullet)
 
 add_dependencies(RayneBullet bullet)

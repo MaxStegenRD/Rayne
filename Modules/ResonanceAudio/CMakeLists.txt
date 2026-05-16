@@ -260,19 +260,19 @@ set(VENDOR_INCLUDES
         "${resonance_SOURCE_DIR}"
         "${resonance_SOURCE_DIR}/third_party/eigen")
 
-set(RAYNE_LIBRARIES Rayne)
+set(PRIVATE_LIBRARIES)
 if(APPLE)
         find_library(AUDIOTOOLBOX_LIB AudioToolbox)
         find_library(AVFAUDIO_LIB AVFAudio)
         find_library(COREAUDIO_LIB CoreAudio)
         find_library(COREFOUNDATION_LIB CoreFoundation)
         find_library(AVFOUNDATION_LIBRARY AVFoundation)
-        set(RAYNE_LIBRARIES Rayne ${COREAUDIO_LIB} ${COREFOUNDATION_LIB} ${AVFAUDIO_LIB} ${AUDIOTOOLBOX_LIB} ${AVFOUNDATION_LIBRARY})
+        list(APPEND PRIVATE_LIBRARIES ${COREAUDIO_LIB} ${COREFOUNDATION_LIB} ${AVFAUDIO_LIB} ${AUDIOTOOLBOX_LIB} ${AVFOUNDATION_LIBRARY})
 elseif(WIN32)
-        #set(RAYNE_LIBRARIES Rayne winmm ole32)
+        #list(APPEND PRIVATE_LIBRARIES winmm ole32)
 endif()
 
-rayne_add_library(RayneResonanceAudio "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
+rayne_add_library(RayneResonanceAudio "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne PRIVATE_LIBRARIES ${PRIVATE_LIBRARIES} PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneResonanceAudio)
 
 target_include_directories(RayneResonanceAudio SYSTEM PRIVATE ${VENDOR_INCLUDES})

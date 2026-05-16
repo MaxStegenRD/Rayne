@@ -120,15 +120,9 @@ elseif(UNIX AND NOT APPLE)
     list(APPEND PUBLIC_DEFINES VK_USE_PLATFORM_XCB_KHR)
 endif()
 
-set(RAYNE_LIBRARIES Rayne)
-
-rayne_add_library(RayneVulkan "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
+rayne_add_library(RayneVulkan "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneVulkan)
 rayne_set_module_resources(RayneVulkan ${RESOURCES})
-
-if(RAYNE_PROFILER STREQUAL "TRACY")
-    target_compile_definitions(RayneVulkan PUBLIC TRACY_ENABLE RN_PROFILE_TRACY)
-endif()
 
 add_dependencies(RayneVulkan VulkanGenerateDispatchTable)
 add_dependencies(RayneVulkan spirvcross)

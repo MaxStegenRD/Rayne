@@ -30,17 +30,16 @@ set(PRIVATE_HEADERS
         RNENetInternals.h)
 
 set(DEFINES RN_BUILD_ENET)
+set(PRIVATE_LIBRARIES)
 
 if(WIN32)
-        set(RAYNE_LIBRARIES Rayne ws2_32.lib winmm.lib)
-else()
-        set(RAYNE_LIBRARIES Rayne)
+        list(APPEND PRIVATE_LIBRARIES ws2_32.lib winmm.lib)
 endif()
 
 set(VENDOR_INCLUDES
         "${CMAKE_CURRENT_BINARY_DIR}/enet-prefix/src/enet/include")
 
-rayne_add_library(RayneENet "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
+rayne_add_library(RayneENet "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne PRIVATE_LIBRARIES ${PRIVATE_LIBRARIES} PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneENet)
 
 target_include_directories(RayneENet SYSTEM PRIVATE ${VENDOR_INCLUDES})

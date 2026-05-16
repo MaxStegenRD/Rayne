@@ -72,31 +72,25 @@ set(PRIVATE_HEADERS
 set(DEFINES
         "RN_BUILD_METAL")
 
-
-set(RAYNE_LIBRARIES Rayne)
+set(PRIVATE_LIBRARIES)
 
 find_library(METAL_LIBRARY Metal)
 if(IOS OR VISIONOS)
         find_library(FOUNDATION_LIBRARY Foundation)
         find_library(UIKIT_LIBRARY UIKit)
-        set(LINK_LIBRARIES ${FOUNDATION_LIBRARY} ${UIKIT_LIBRARY} ${METAL_LIBRARY})
+        set(PRIVATE_LIBRARIES ${FOUNDATION_LIBRARY} ${UIKIT_LIBRARY} ${METAL_LIBRARY})
 elseif(APPLE)
         find_library(COCOA_LIBRARY Cocoa)
         find_library(QUARTZCORE_LIBRARY QuartzCore)
-        set(LINK_LIBRARIES ${COCOA_LIBRARY} ${QUARTZCORE_LIBRARY} ${METAL_LIBRARY})
+        set(PRIVATE_LIBRARIES ${COCOA_LIBRARY} ${QUARTZCORE_LIBRARY} ${METAL_LIBRARY})
 endif()
 
-rayne_add_library(RayneMetal "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
+rayne_add_library(RayneMetal "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne PRIVATE_LIBRARIES ${PRIVATE_LIBRARIES} PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneMetal)
 rayne_set_module_resources(RayneMetal ${RESOURCES})
 
-target_link_libraries(RayneMetal PUBLIC "${LINK_LIBRARIES}")
 target_compile_options(RayneMetal PRIVATE "-xobjective-c++")
 target_compile_definitions(RayneMetal PRIVATE "${DEFINES}")
-
-if(RAYNE_PROFILER STREQUAL "TRACY")
-    target_compile_definitions(RayneMetal PUBLIC TRACY_ENABLE RN_PROFILE_TRACY)
-endif()
 
 if(IOS OR VISIONOS)
         add_custom_command(TARGET RayneMetal PRE_BUILD COMMAND ${CMAKE_COMMAND} -E rm -rf "$<TARGET_FILE_DIR:RayneMetal>/ResourceFiles/Resources")

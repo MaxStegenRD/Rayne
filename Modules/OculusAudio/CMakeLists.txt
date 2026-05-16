@@ -65,7 +65,6 @@ set(PRIVATE_HEADERS
 
 set(DEFINES RN_BUILD_OCULUS_AUDIO)
 
-set(RAYNE_LIBRARIES Rayne)
 set(OCULUS_AUDIO_LIBRARIES)
 
 if(APPLE)
@@ -81,7 +80,7 @@ elseif(ANDROID)
         set(VENDOR_INCLUDES "${CMAKE_CURRENT_BINARY_DIR}/oboe-prefix/src/oboe/include" "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Include")
 endif()
 
-rayne_add_library(RayneOculusAudio "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
+rayne_add_library(RayneOculusAudio "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneOculusAudio)
 
 target_include_directories(RayneOculusAudio SYSTEM PRIVATE ${VENDOR_INCLUDES})

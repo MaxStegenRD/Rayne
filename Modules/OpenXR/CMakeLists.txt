@@ -99,21 +99,19 @@ endif()
 ExternalProject_Get_property(OpenXRSDK SOURCE_DIR)
 set(OpenXRSDK_SOURCE_DIR ${SOURCE_DIR})
 
-set(RAYNE_LIBRARIES Rayne RayneVR)
-
-rayne_add_library(RayneOpenXR "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
+rayne_add_library(RayneOpenXR "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne RayneVR PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneOpenXR)
 add_dependencies(RayneOpenXR OpenXRSDK)
 
 target_link_libraries(RayneOpenXR PRIVATE OpenXRLoader)
 
 if(NOT APPLE AND ${RN_BUILD_VULKAN_MODULE})
-	target_link_libraries(RayneOpenXR PUBLIC RayneVulkan)
+	target_link_libraries(RayneOpenXR PRIVATE RayneVulkan)
 	list(APPEND PRIVATE_DEFINES XR_USE_GRAPHICS_API_VULKAN)
 endif()
 
 if(APPLE AND ${RN_BUILD_METAL_MODULE})
-	target_link_libraries(RayneOpenXR PUBLIC RayneMetal)
+	target_link_libraries(RayneOpenXR PRIVATE RayneMetal)
 	list(APPEND PRIVATE_DEFINES XR_USE_GRAPHICS_API_METAL)
 	target_compile_options(RayneOpenXR PRIVATE "-xobjective-c++")
 endif()

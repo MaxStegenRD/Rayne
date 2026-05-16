@@ -53,7 +53,6 @@ set(PRIVATE_HEADERS
         RNSteamAudioInternals.h)
 
 set(DEFINES RN_BUILD_STEAMAUDIO SOUNDIO_STATIC_LIBRARY)
-set(RAYNE_LIBRARIES Rayne)
 set(STEAM_AUDIO_LIBRARIES)
 if(APPLE)
         find_package(CoreAudio)
@@ -69,7 +68,7 @@ set(VENDOR_INCLUDES
         "${CMAKE_CURRENT_BINARY_DIR}/libsoundio-prefix/src/libsoundio"
         "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/steamaudio/include")
 
-rayne_add_library(RayneSteamAudio "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
+rayne_add_library(RayneSteamAudio "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneSteamAudio)
 
 target_include_directories(RayneSteamAudio SYSTEM PRIVATE ${VENDOR_INCLUDES})

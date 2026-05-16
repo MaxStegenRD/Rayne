@@ -18,36 +18,35 @@ set(SOURCES
 
 set(HEADERS
 		RNAppleXR.h
-        RNAppleXRWindow.h
+        RNAppleXRWindow.h)
+
+set(PRIVATE_HEADERS
         RNAppleXRSwapChain.h)
 
 set(DEFINES RN_BUILD_APPLEXR APPLEXR_BUILD_STATIC)
 
 find_library(COMPOSITORSERVICES_LIBRARY CompositorServices)
 find_library(ARKIT_LIBRARY ARKit)
-set(RAYNE_LIBRARIES Rayne RayneVR ${COMPOSITORSERVICES_LIBRARY} ${ARKIT_LIBRARY})
+set(PRIVATE_LIBRARIES ${COMPOSITORSERVICES_LIBRARY} ${ARKIT_LIBRARY})
 
 if(APPLE AND ${RN_BUILD_METAL_MODULE})
     set(SOURCES
         ${SOURCES}
         RNAppleXRMetalSwapChain.cpp)
 
-    set(HEADERS
-        ${HEADERS}
+    set(PRIVATE_HEADERS
+        ${PRIVATE_HEADERS}
         RNAppleXRMetalSwapChain.h)
 
-    set(RAYNE_LIBRARIES ${RAYNE_LIBRARIES} RayneMetal)
+    list(APPEND PRIVATE_LIBRARIES RayneMetal)
 endif()
 
-rayne_add_library(RayneAppleXR "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
+rayne_add_library(RayneAppleXR "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne RayneVR PRIVATE_LIBRARIES ${PRIVATE_LIBRARIES} PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneAppleXR)
 
 if(APPLE AND ${RN_BUILD_METAL_MODULE})
     target_compile_definitions(RayneAppleXR PRIVATE -DRN_APPLEXR_SUPPORTS_METAL)
-    target_link_libraries(RayneAppleXR PUBLIC RayneMetal)
     target_compile_options(RayneAppleXR PRIVATE "-xobjective-c++")
-    #FIND_LIBRARY(IOSURFACE_LIBRARY IOSurface)
-    #target_link_libraries(RayneAppleXR PUBLIC ${IOSURFACE_LIBRARY})
 endif()
 
 target_compile_definitions(RayneAppleXR PRIVATE "${DEFINES}")

@@ -335,8 +335,7 @@ set(VENDOR_INCLUDES
         ${zlib_BINARY_DIR})
 
 set(COMPILE_OPTIONS "")
-set(LINK_LIBRARIES "")
-set(RAYNE_LIBRARIES "")
+set(PRIVATE_LIBRARIES "")
 
 set(COMPILE_DEFINITIONS "-DRN_BUILD_LIBRARY=1")
 
@@ -346,17 +345,17 @@ if(APPLE)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wmost")
 
     find_library(FOUNDATION_LIBRARY Foundation)
-    set(LINK_LIBRARIES ${FOUNDATION_LIBRARY})
+    set(PRIVATE_LIBRARIES ${FOUNDATION_LIBRARY})
     if(NOT IOS AND NOT VISIONOS)
         find_library(COCOA_LIBRARY Cocoa)
         find_library(IOKIT_LIBRARY IOKit)
 
-        set(LINK_LIBRARIES ${COCOA_LIBRARY} ${FOUNDATION_LIBRARY} ${IOKIT_LIBRARY})
+        set(PRIVATE_LIBRARIES ${COCOA_LIBRARY} ${FOUNDATION_LIBRARY} ${IOKIT_LIBRARY})
     endif()
 
     if(IOS)
         list(APPEND VENDOR_INCLUDES ${OIS_SOURCE_DIR}/includes)
-        set(LINK_LIBRARIES ${LINK_LIBRARIES} OIS)
+        list(APPEND PRIVATE_LIBRARIES OIS)
     endif()
 endif()
 
@@ -384,7 +383,7 @@ if(WIN32)
         find_library(DBGHELP_LIBRARY Dbghelp)
         find_library(PSAPI_LIBRARY Psapi)
 
-        set(LINK_LIBRARIES
+        set(PRIVATE_LIBRARIES
                 ${DBGHELP_LIBRARY}
                 ${PSAPI_LIBRARY})
         set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} -latomic")
@@ -401,15 +400,15 @@ if(WIN32)
         message(FATAL_ERROR "Setup API library not found")
     endif()
 
-    set(LINK_LIBRARIES
-            ${LINK_LIBRARIES}
+    set(PRIVATE_LIBRARIES
+            ${PRIVATE_LIBRARIES}
             ${SETUPAPI_LIBRARY})
 
     if(VTUNE_FOUND)
         set(RAYNE_HAS_VTUNE 1)
 
-        set(LINK_LIBRARIES
-                ${LINK_LIBRARIES}
+        set(PRIVATE_LIBRARIES
+                ${PRIVATE_LIBRARIES}
                 ${VTune_LIBRARY})
 
         list(APPEND VENDOR_INCLUDES ${VTune_INCLUDE_DIRS})
@@ -422,7 +421,7 @@ if(UNIX AND (NOT APPLE) AND (NOT ANDROID))
     find_library(PTHREAD_LIBRARY pthread)
     find_library(DL_LIBRARY dl)
 
-    set(LINK_LIBRARIES ${PTHREAD_LIBRARY} ${DL_LIBRARY} ${XCB_LIBRARIES} -lX11 -lXi) #-ludev -levdev would be needed for hid stuff, but require root...
+    set(PRIVATE_LIBRARIES ${PTHREAD_LIBRARY} ${DL_LIBRARY} ${XCB_LIBRARIES} -lX11 -lXi) #-ludev -levdev would be needed for hid stuff, but require root...
     list(APPEND VENDOR_INCLUDES ${XCB_INCLUDE_DIRS})
 endif()
 
@@ -432,10 +431,10 @@ if(ANDROID)
     #list(APPEND VENDOR_INCLUDES ${ANDROID_NDK}/sources/android/native_app_glue)
     list(APPEND VENDOR_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/../Vendor/android_native_app_glue)
 
-    set(LINK_LIBRARIES ${LINK_LIBRARIES} android log)
+    list(APPEND PRIVATE_LIBRARIES android log)
 endif()
 
-set(LINK_LIBRARIES ${LINK_LIBRARIES} jansson zlibstatic png_static zip)
+list(APPEND PRIVATE_LIBRARIES jansson zlibstatic png_static zip)
 
 set(TARGET_SOURCES ${RAYNE_SOURCES} ${RAYNE_HEADERS} ${RAYNE_HEADERS_PRIVATE} ${RAYNE_PLATFORM_SOURCES} ${RAYNE_PLATFORM_HEADERS_PRIVATE})
 set(TARGET_HEADERS ${RAYNE_HEADERS})
@@ -445,7 +444,7 @@ set(RAYNE_GENERATED_INCLUDE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/generated)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/RayneConfig.h.in ${RAYNE_GENERATED_INCLUDE_DIRECTORY}/RayneConfig.h)
 
 set(RAYNE_PUBLIC_HEADER_INSTALL_DIRECTORY include/Rayne)
-rayne_add_library(Rayne "${TARGET_SOURCES}" "${TARGET_HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
+rayne_add_library(Rayne "${TARGET_SOURCES}" "${TARGET_HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_LIBRARIES ${PRIVATE_LIBRARIES})
 
 target_sources(Rayne PUBLIC
     FILE_SET generated_headers
@@ -457,7 +456,6 @@ target_include_directories(Rayne PUBLIC
     $<INSTALL_INTERFACE:include/Rayne>)
 
 target_include_directories(Rayne SYSTEM PRIVATE ${VENDOR_INCLUDES})
-target_link_libraries(Rayne PUBLIC ${LINK_LIBRARIES})
 target_compile_definitions(Rayne PRIVATE "${COMPILE_DEFINITIONS}")
 target_compile_definitions(Rayne PUBLIC $<$<CONFIG:RelWithDebInfo>:RN_BUILD_PROFILING=1>)
 target_compile_options(Rayne PRIVATE ${COMPILE_OPTIONS})
