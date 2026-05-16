@@ -58,37 +58,43 @@ set(HEADERS
         RNOculusAudioSystem.h
         RNOculusAudioSampler.h
         RNOculusAudioSource.h
-        RNOculusAudioPlayer.h
+        RNOculusAudioPlayer.h)
+
+set(PRIVATE_HEADERS
         RNOculusAudioInternals.h)
 
 set(DEFINES RN_BUILD_OCULUS_AUDIO)
 
+set(RAYNE_LIBRARIES Rayne)
+set(OCULUS_AUDIO_LIBRARIES)
+
 if(APPLE)
         find_library(COREAUDIO_LIB CoreAudio)
         find_library(COREFOUNDATION_LIB CoreFoundation)
-        set(RAYNE_LIBRARIES Rayne ${COREAUDIO_LIB} ${COREFOUNDATION_LIB} ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Lib/macub/OVRAudio.framework/Versions/A/OVRAudio)
+        set(OCULUS_AUDIO_LIBRARIES ${COREAUDIO_LIB} ${COREFOUNDATION_LIB} ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Lib/macub/OVRAudio.framework/Versions/A/OVRAudio)
         set(VENDOR_INCLUDES "${CMAKE_CURRENT_BINARY_DIR}/rtaudio-prefix/src/rtaudio" "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Include")
 elseif(WIN32)
-        set(RAYNE_LIBRARIES Rayne winmm ole32 ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Lib/x64/ovraudio64.lib)
+        set(OCULUS_AUDIO_LIBRARIES winmm ole32 ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Lib/x64/ovraudio64.lib)
         set(VENDOR_INCLUDES "${CMAKE_CURRENT_BINARY_DIR}/rtaudio-prefix/src/rtaudio" "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Include")
 elseif(ANDROID)
-        set(RAYNE_LIBRARIES Rayne ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Lib/Android/arm64-v8a/libovraudiostatic64.a)
+        set(OCULUS_AUDIO_LIBRARIES ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Lib/Android/arm64-v8a/libovraudiostatic64.a)
         set(VENDOR_INCLUDES "${CMAKE_CURRENT_BINARY_DIR}/oboe-prefix/src/oboe/include" "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Include")
 endif()
 
-rayne_add_library(RayneOculusAudio "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
+rayne_add_library(RayneOculusAudio "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneOculusAudio)
 
 target_include_directories(RayneOculusAudio SYSTEM PRIVATE ${VENDOR_INCLUDES})
+target_link_libraries(RayneOculusAudio PRIVATE ${OCULUS_AUDIO_LIBRARIES})
 target_compile_definitions(RayneOculusAudio PRIVATE "${DEFINES}")
 
 if(ANDROID)
         add_dependencies(RayneOculusAudio oboe)
-        target_link_libraries(RayneOculusAudio 
+        target_link_libraries(RayneOculusAudio PRIVATE
                 "${CMAKE_CURRENT_BINARY_DIR}/oboe-prefix/src/oboe-build/liboboe.a")
 else()
         add_dependencies(RayneOculusAudio rtaudio)
-        target_link_libraries(RayneOculusAudio 
+        target_link_libraries(RayneOculusAudio PRIVATE
                 debug "${CMAKE_CURRENT_BINARY_DIR}/rtaudio-prefix/src/rtaudio-build/Debug/librtaudio.a"
                 optimized "${CMAKE_CURRENT_BINARY_DIR}/rtaudio-prefix/src/rtaudio-build/Release/librtaudio.a")
 endif()

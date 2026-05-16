@@ -10,8 +10,18 @@
 #define __RAYNE_EOSLOBBYMANAGER_H_
 
 #include "RNEOS.h"
-#include "eos_lobby.h"
-#include "eos_p2p.h"
+
+struct EOS_LobbyHandle;
+typedef struct EOS_LobbyHandle *EOS_HLobby;
+
+struct EOS_LobbyDetailsHandle;
+typedef struct EOS_LobbyDetailsHandle *EOS_HLobbyDetails;
+
+struct EOS_LobbySearchHandle;
+typedef struct EOS_LobbySearchHandle *EOS_HLobbySearch;
+
+struct EOS_ProductUserIdDetails;
+typedef struct EOS_ProductUserIdDetails *EOS_ProductUserId;
 
 struct EOS_RTCHandle;
 typedef struct EOS_RTCHandle *EOS_HRTC;
@@ -26,6 +36,7 @@ typedef struct _tagEOS_Lobby_JoinLobbyCallbackInfo EOS_Lobby_JoinLobbyCallbackIn
 typedef struct _tagEOS_Lobby_LeaveLobbyCallbackInfo EOS_Lobby_LeaveLobbyCallbackInfo;
 typedef struct _tagEOS_Lobby_DestroyLobbyCallbackInfo EOS_Lobby_DestroyLobbyCallbackInfo;
 typedef struct _tagEOS_Lobby_KickMemberCallbackInfo EOS_Lobby_KickMemberCallbackInfo;
+typedef struct _tagEOS_Lobby_LobbyMemberStatusReceivedCallbackInfo EOS_Lobby_LobbyMemberStatusReceivedCallbackInfo;
 
 typedef struct _tagEOS_RTCAudio_AudioBeforeSendCallbackInfo EOS_RTCAudio_AudioBeforeSendCallbackInfo;
 typedef struct _tagEOS_RTCAudio_AudioBeforeRenderCallbackInfo EOS_RTCAudio_AudioBeforeRenderCallbackInfo;

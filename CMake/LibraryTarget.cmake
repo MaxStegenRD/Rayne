@@ -38,7 +38,7 @@ elseif(IS_VISIONOS_SIMULATOR GREATER -1)
     set(RN_IOS_SHADER_TYPE visionos_sim)
 endif()
 
-macro(__rayne_create_target _NAME _TYPE _SOURCES _HEADERS _RAYNE_LIBRARIES _VERSION _ABI)
+macro(__rayne_create_target _NAME _TYPE _SOURCES _HEADERS _PRIVATE_HEADERS _RAYNE_LIBRARIES _VERSION _ABI)
     # Input check
     if(NOT (("${_TYPE}" STREQUAL "STATIC") OR ("${_TYPE}" STREQUAL "SHARED")))
         message(FATAL_ERROR "Type must be either \"STATIC\" or \"SHARED\", is \"${_TYPE}\"")
@@ -63,6 +63,9 @@ macro(__rayne_create_target _NAME _TYPE _SOURCES _HEADERS _RAYNE_LIBRARIES _VERS
 
     add_library("${TARGET_NAME}" ${_TYPE})
     target_sources("${TARGET_NAME}" PRIVATE ${_SOURCES})
+    if(NOT ("${_PRIVATE_HEADERS}" STREQUAL ""))
+        target_sources("${TARGET_NAME}" PRIVATE ${_PRIVATE_HEADERS})
+    endif()
     #set_target_properties("${TARGET_NAME}" PROPERTIES VERSION ${_VERSION} SOVERSION ${_ABI})
 
     if(IOS OR VISIONOS)
@@ -151,7 +154,12 @@ endmacro()
 
 macro(rayne_add_library _NAME _SOURCES _HEADERS _RAYNE_LIBRARIES _VERSION _ABI)
 
-    __rayne_create_target(${_NAME} SHARED "${_SOURCES}" "${_HEADERS}" "${_RAYNE_LIBRARIES}" "${_VERSION}" "${_ABI}")
+    cmake_parse_arguments(RAYNE_ADD_LIBRARY "" "" "PRIVATE_HEADERS" ${ARGN})
+    if(RAYNE_ADD_LIBRARY_UNPARSED_ARGUMENTS)
+        message(FATAL_ERROR "Unknown rayne_add_library arguments: ${RAYNE_ADD_LIBRARY_UNPARSED_ARGUMENTS}")
+    endif()
+
+    __rayne_create_target(${_NAME} SHARED "${_SOURCES}" "${_HEADERS}" "${RAYNE_ADD_LIBRARY_PRIVATE_HEADERS}" "${_RAYNE_LIBRARIES}" "${_VERSION}" "${_ABI}")
 
 endmacro()
 

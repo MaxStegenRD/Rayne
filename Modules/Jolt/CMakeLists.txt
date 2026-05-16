@@ -133,24 +133,26 @@ set(SOURCES
         RNJoltKinematicController.cpp)
 
 set(HEADERS
-	RNJolt.h
+        RNJolt.h
         RNJoltWorld.h
         RNJoltDynamicBody.h
         RNJoltStaticBody.h
-        RNJoltInternals.h
         RNJoltCollisionObject.h
         RNJoltMaterial.h
         RNJoltShape.h
         RNJoltConstraint.h
         RNJoltKinematicController.h)
 
+set(PRIVATE_HEADERS
+        RNJoltInternals.h)
+
 set(DEFINES RN_BUILD_JOLT)
 
 set(RAYNE_LIBRARIES Rayne)
 
-rayne_add_library(RayneJolt "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
-target_link_libraries(RayneJolt PUBLIC Jolt)
-target_include_directories(RayneJolt PUBLIC ${JoltPhysics_SOURCE_DIR}/..)
+rayne_add_library(RayneJolt "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
+target_link_libraries(RayneJolt PRIVATE Jolt)
+target_include_directories(RayneJolt SYSTEM PRIVATE ${JoltPhysics_SOURCE_DIR}/..)
 
 rayne_set_module_output_directory(RayneJolt)
 

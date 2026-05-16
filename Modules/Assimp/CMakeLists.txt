@@ -41,8 +41,10 @@ set(SOURCES
         RNAssimpAssetLoader.cpp)
 
 set(HEADERS
-        RNAssimpAssetLoader.h
         RNAssimp.h)
+
+set(PRIVATE_HEADERS
+        RNAssimpAssetLoader.h)
 
 set(DEFINES
         RN_BUILD_ASSIMP)
@@ -52,7 +54,7 @@ set(VENDOR_INCLUDES
         ${CMAKE_CURRENT_BINARY_DIR}/assimp-prefix/src/assimp/include
         ${CMAKE_CURRENT_BINARY_DIR}/assimp-prefix/src/assimp-build/include)
 
-rayne_add_library(RayneAssimp "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
+rayne_add_library(RayneAssimp "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneAssimp)
 
 target_include_directories(RayneAssimp SYSTEM PRIVATE ${VENDOR_INCLUDES})
@@ -60,7 +62,7 @@ target_compile_definitions(RayneAssimp PRIVATE "${DEFINES}")
 
 add_dependencies(RayneAssimp assimp)
 
-target_link_libraries(RayneAssimp "${LINK_LIBRARIES}"
+target_link_libraries(RayneAssimp PRIVATE "${LINK_LIBRARIES}"
         debug "${CMAKE_CURRENT_BINARY_DIR}/assimp-prefix/src/assimp-build/code/Debug/libassimpd.a"
         debug "${CMAKE_CURRENT_BINARY_DIR}/assimp-prefix/src/assimp-build/contrib/irrXML/Debug/libIrrXMLd.a"
         optimized "${CMAKE_CURRENT_BINARY_DIR}/assimp-prefix/src/assimp-build/code/Release/libassimp.a"

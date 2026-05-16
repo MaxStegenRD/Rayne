@@ -24,7 +24,9 @@ set(HEADERS
         RNENetWorld.h
         RNENetHost.h
         RNENetClient.h
-        RNENetServer.h
+        RNENetServer.h)
+
+set(PRIVATE_HEADERS
         RNENetInternals.h)
 
 set(DEFINES RN_BUILD_ENET)
@@ -38,7 +40,7 @@ endif()
 set(VENDOR_INCLUDES
         "${CMAKE_CURRENT_BINARY_DIR}/enet-prefix/src/enet/include")
 
-rayne_add_library(RayneENet "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
+rayne_add_library(RayneENet "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneENet)
 
 target_include_directories(RayneENet SYSTEM PRIVATE ${VENDOR_INCLUDES})
@@ -72,14 +74,14 @@ ExternalProject_Add(enet
 add_dependencies(RayneENet enet)
 
 if(ANDROID OR UNIX AND NOT APPLE)
-        target_link_libraries(RayneENet 
+        target_link_libraries(RayneENet PRIVATE
                 "${CMAKE_CURRENT_BINARY_DIR}/enet-prefix/src/enet-build/libenet.a")
 elseif(APPLE)
-        target_link_libraries(RayneENet 
+        target_link_libraries(RayneENet PRIVATE
                 debug "${CMAKE_CURRENT_BINARY_DIR}/enet-prefix/src/enet-build/Debug/libenet.a"
                 optimized "${CMAKE_CURRENT_BINARY_DIR}/enet-prefix/src/enet-build/Release/libenet.a")
 else()
-        target_link_libraries(RayneENet 
+        target_link_libraries(RayneENet PRIVATE
                 debug "${CMAKE_CURRENT_BINARY_DIR}/enet-prefix/src/enet-build/Debug/enet.lib"
                 optimized "${CMAKE_CURRENT_BINARY_DIR}/enet-prefix/src/enet-build/Release/enet.lib")
 endif()

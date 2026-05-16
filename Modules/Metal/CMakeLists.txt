@@ -55,7 +55,6 @@ set(HEADERS
         Sources/RNMetalFramebuffer.h
         Sources/RNMetalGPUBuffer.h
         Sources/RNMetalDynamicGPUBuffer.h
-        Sources/RNMetalInternals.h
         Sources/RNMetalRenderer.h
         Sources/RNMetalRendererDescriptor.h
         Sources/RNMetalShader.h
@@ -66,6 +65,9 @@ set(HEADERS
         Sources/RNMetalUniformBuffer.h
         Sources/RNMetalWindow.h
         Sources/RNMetalSwapChain.h)
+
+set(PRIVATE_HEADERS
+        Sources/RNMetalInternals.h)
 
 set(DEFINES
         "RN_BUILD_METAL")
@@ -84,7 +86,7 @@ elseif(APPLE)
         set(LINK_LIBRARIES ${COCOA_LIBRARY} ${QUARTZCORE_LIBRARY} ${METAL_LIBRARY})
 endif()
 
-rayne_add_library(RayneMetal "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
+rayne_add_library(RayneMetal "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneMetal)
 rayne_set_module_resources(RayneMetal ${RESOURCES})
 

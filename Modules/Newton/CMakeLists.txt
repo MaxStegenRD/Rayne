@@ -25,20 +25,23 @@ set(HEADERS
 	RNNewton.h
         RNNewtonWorld.h
         RNNewtonRigidBody.h
-        RNNewtonInternals.h
         RNNewtonCollisionObject.h
  #       RNNewtonMaterial.h
         RNNewtonShape.h
         RNNewtonConstraint.h
-        RNNewtonCharacterController.h
+        RNNewtonCharacterController.h)
+
+set(PRIVATE_HEADERS
+        RNNewtonInternals.h
         Vendor/newton-extensions/KCJoint.h)
 
 set(DEFINES RN_BUILD_NEWTON _NEWTON_STATIC_LIB _CUSTOM_JOINTS_STATIC_LIB)
 
-if(NOT APPLE)
-        set(RAYNE_LIBRARIES Rayne)
-else()
-        set(RAYNE_LIBRARIES Rayne ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/build/lib/libNewton.a ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/build/lib/libdMath.a ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/build/lib/libdContainers.a ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/build/lib/libdCustomJoints.a)
+set(RAYNE_LIBRARIES Rayne)
+set(NEWTON_LIBRARIES)
+
+if(APPLE)
+        set(NEWTON_LIBRARIES ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/build/lib/libNewton.a ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/build/lib/libdMath.a ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/build/lib/libdContainers.a ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/build/lib/libdCustomJoints.a)
 endif()
 
 set(VENDOR_INCLUDES
@@ -48,10 +51,11 @@ set(VENDOR_INCLUDES
         "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/dCustomJoints"
         "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-extensions")
 
-rayne_add_library(RayneNewton "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
+rayne_add_library(RayneNewton "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
+target_link_libraries(RayneNewton PRIVATE ${NEWTON_LIBRARIES})
 
 if(NOT APPLE)
-        target_link_libraries(RayneNewton debug ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/projects/visualStudio_2015_static_md/x64/dgCore/Debug/dgCore_d.lib debug ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/projects/visualStudio_2015_static_md/x64/dgPhysics/Debug/dgPhysics_d.lib debug ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/projects/visualStudio_2015_static_md/x64/newton/Debug/newton_d.lib debug ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/projects/visualStudio_2015_static_md/x64/dMath/Debug/dMath_d.lib debug ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/projects/visualStudio_2015_static_md/x64/dContainers/Debug/dContainers_d.lib debug ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/projects/visualStudio_2015_static_md/x64/dCustomJoints/Debug/dCustomJoints_d.lib optimized ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/projects/visualStudio_2015_static_md/x64/dgCore/Release/dgCore.lib optimized ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/projects/visualStudio_2015_static_md/x64/dgPhysics/Release/dgPhysics.lib optimized ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/projects/visualStudio_2015_static_md/x64/newton/Release/newton.lib optimized ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/projects/visualStudio_2015_static_md/x64/dMath/Release/dMath.lib optimized ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/projects/visualStudio_2015_static_md/x64/dContainers/Release/dContainers.lib optimized ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/projects/visualStudio_2015_static_md/x64/dCustomJoints/Release/dCustomJoints.lib)
+        target_link_libraries(RayneNewton PRIVATE debug ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/projects/visualStudio_2015_static_md/x64/dgCore/Debug/dgCore_d.lib debug ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/projects/visualStudio_2015_static_md/x64/dgPhysics/Debug/dgPhysics_d.lib debug ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/projects/visualStudio_2015_static_md/x64/newton/Debug/newton_d.lib debug ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/projects/visualStudio_2015_static_md/x64/dMath/Debug/dMath_d.lib debug ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/projects/visualStudio_2015_static_md/x64/dContainers/Debug/dContainers_d.lib debug ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/projects/visualStudio_2015_static_md/x64/dCustomJoints/Debug/dCustomJoints_d.lib optimized ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/projects/visualStudio_2015_static_md/x64/dgCore/Release/dgCore.lib optimized ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/projects/visualStudio_2015_static_md/x64/dgPhysics/Release/dgPhysics.lib optimized ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/projects/visualStudio_2015_static_md/x64/newton/Release/newton.lib optimized ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/projects/visualStudio_2015_static_md/x64/dMath/Release/dMath.lib optimized ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/projects/visualStudio_2015_static_md/x64/dContainers/Release/dContainers.lib optimized ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/projects/visualStudio_2015_static_md/x64/dCustomJoints/Release/dCustomJoints.lib)
 endif()
 
 rayne_set_module_output_directory(RayneNewton)

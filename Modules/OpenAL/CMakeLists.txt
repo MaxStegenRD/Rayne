@@ -151,11 +151,11 @@ else()
 endif()
 
 add_dependencies(OpenALLib openal)
-target_link_libraries(RayneOpenAL PUBLIC OpenALLib)
+target_link_libraries(RayneOpenAL PRIVATE OpenALLib)
 
 if(IOS OR VISIONOS)
         find_library(AUDIOTOOLBOX_LIB AudioToolbox)
-        target_link_libraries(RayneOpenAL PUBLIC ${AUDIOTOOLBOX_LIB})
+        target_link_libraries(RayneOpenAL PRIVATE ${AUDIOTOOLBOX_LIB})
 endif()
 
 

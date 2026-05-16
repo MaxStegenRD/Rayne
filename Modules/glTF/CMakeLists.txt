@@ -36,8 +36,10 @@ set(SOURCES
         RNglTFAssetLoader.cpp)
 
 set(HEADERS
-        RNglTFAssetLoader.h
         RNglTF.h)
+
+set(PRIVATE_HEADERS
+        RNglTFAssetLoader.h)
 
 set(DEFINES
         RN_BUILD_GLTF)
@@ -46,7 +48,7 @@ set(RAYNE_LIBRARIES Rayne)
 set(VENDOR_INCLUDES
         ${CMAKE_CURRENT_BINARY_DIR}/tinygltf-prefix/src/tinygltf)
 
-rayne_add_library(RayneGlTF "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
+rayne_add_library(RayneGlTF "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneGlTF)
 
 target_include_directories(RayneGlTF SYSTEM PRIVATE ${VENDOR_INCLUDES})
@@ -55,9 +57,9 @@ target_compile_definitions(RayneGlTF PRIVATE "${DEFINES}")
 add_dependencies(RayneGlTF tinygltf)
 
 if(ANDROID)
-        target_link_libraries(RayneGlTF "${LINK_LIBRARIES}" "${CMAKE_CURRENT_BINARY_DIR}/tinygltf-prefix/src/tinygltf-build/libtinygltf.a")
+        target_link_libraries(RayneGlTF PRIVATE "${LINK_LIBRARIES}" "${CMAKE_CURRENT_BINARY_DIR}/tinygltf-prefix/src/tinygltf-build/libtinygltf.a")
 else()
-        target_link_libraries(RayneGlTF "${LINK_LIBRARIES}"
+        target_link_libraries(RayneGlTF PRIVATE "${LINK_LIBRARIES}"
                 debug "${CMAKE_CURRENT_BINARY_DIR}/tinygltf-prefix/src/tinygltf-build/Debug/libtinygltf.a"
                 optimized "${CMAKE_CURRENT_BINARY_DIR}/tinygltf-prefix/src/tinygltf-build/Release/libtinygltf.a")
 endif()

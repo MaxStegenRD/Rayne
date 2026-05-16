@@ -67,7 +67,7 @@ FetchContent_Declare(ArteryFont
     GIT_TAG 888674220216d1d326c6f29cf89165b545279c1f
 )
 FetchContent_MakeAvailable(ArteryFont)
-target_include_directories(RayneUI PUBLIC "${arteryfont_SOURCE_DIR}/artery-font")
+target_include_directories(RayneUI SYSTEM PRIVATE "${arteryfont_SOURCE_DIR}/artery-font")
 
 ExternalProject_Add(Kalligraph
         GIT_REPOSITORY https://github.com/Slin/Kalligraph.git
@@ -123,7 +123,7 @@ endif()
 
 add_dependencies(KalligraphLib Kalligraph)
 add_dependencies(RayneUI KalligraphLib)
-target_link_libraries(RayneUI PUBLIC KalligraphLib)
+target_link_libraries(RayneUI PRIVATE KalligraphLib)
 
 target_include_directories(RayneUI SYSTEM PRIVATE ${VENDOR_INCLUDES})
 target_compile_definitions(RayneUI PRIVATE "${DEFINES}")

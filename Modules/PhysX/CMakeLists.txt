@@ -250,7 +250,6 @@ set(HEADERS
         RNPhysXWorld.h
         RNPhysXDynamicBody.h
         RNPhysXStaticBody.h
-        RNPhysXInternals.h
         RNPhysXCollisionObject.h
         RNPhysXMaterial.h
         RNPhysXShape.h
@@ -258,16 +257,18 @@ set(HEADERS
         RNPhysXKinematicController.h
         RNPhysXVehicle4WheelDrive.h)
 
+set(PRIVATE_HEADERS
+        RNPhysXInternals.h)
+
 set(DEFINES RN_BUILD_PHYSX PX_PHYSX_STATIC_LIB)
 
-if(APPLE)
-    set(RAYNE_LIBRARIES Rayne)
-elseif(ANDROID)
-    set(RAYNE_LIBRARIES Rayne ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/android.arm64-v8a.fp-soft/release/libPhysXCharacterKinematic_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/android.arm64-v8a.fp-soft/release/libPhysXExtensions_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/android.arm64-v8a.fp-soft/release/libPhysX_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/android.arm64-v8a.fp-soft/release/libPhysXPvdSDK_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/android.arm64-v8a.fp-soft/release/libPhysXVehicle_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/android.arm64-v8a.fp-soft/release/libPhysXCooking_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/android.arm64-v8a.fp-soft/release/libPhysXCommon_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/android.arm64-v8a.fp-soft/release/libPhysXFoundation_static_64.a)
-elseif(UNIX)
-    set(RAYNE_LIBRARIES Rayne ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/linux.clang/release/libPhysXFoundation_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/linux.clang/release/libPhysXCommon_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/linux.clang/release/libPhysX_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/linux.clang/release/libPhysXCooking_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/linux.clang/release/libPhysXCharacterKinematic_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/linux.clang/release/libPhysXVehicle_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/linux.clang/release/libPhysXExtensions_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/linux.clang/release/libPhysXPvdSDK_static_64.a)
-else()
-    set(RAYNE_LIBRARIES Rayne)
+set(RAYNE_LIBRARIES Rayne)
+set(PHYSX_LIBRARIES)
+
+if(ANDROID)
+    list(APPEND PHYSX_LIBRARIES ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/android.arm64-v8a.fp-soft/release/libPhysXCharacterKinematic_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/android.arm64-v8a.fp-soft/release/libPhysXExtensions_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/android.arm64-v8a.fp-soft/release/libPhysX_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/android.arm64-v8a.fp-soft/release/libPhysXPvdSDK_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/android.arm64-v8a.fp-soft/release/libPhysXVehicle_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/android.arm64-v8a.fp-soft/release/libPhysXCooking_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/android.arm64-v8a.fp-soft/release/libPhysXCommon_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/android.arm64-v8a.fp-soft/release/libPhysXFoundation_static_64.a)
+elseif(UNIX AND NOT APPLE)
+    list(APPEND PHYSX_LIBRARIES ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/linux.clang/release/libPhysXFoundation_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/linux.clang/release/libPhysXCommon_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/linux.clang/release/libPhysX_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/linux.clang/release/libPhysXCooking_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/linux.clang/release/libPhysXCharacterKinematic_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/linux.clang/release/libPhysXVehicle_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/linux.clang/release/libPhysXExtensions_static_64.a ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/linux.clang/release/libPhysXPvdSDK_static_64.a)
 endif()
 
 
@@ -275,10 +276,10 @@ set(VENDOR_INCLUDES
     "${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx/pxshared/include"
     "${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx/physx/include")
 
-rayne_add_library(RaynePhysX "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
+rayne_add_library(RaynePhysX "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 
 if(IOS OR VISIONOS)
-    target_link_libraries(RaynePhysX PUBLIC
+    target_link_libraries(RaynePhysX PRIVATE
         debug ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/ios.arm_64/debug/libPhysXFoundation_static_64.a
         debug ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/ios.arm_64/debug/libPhysXCommon_static_64.a
         debug ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/ios.arm_64/debug/libPhysX_static_64.a
@@ -297,16 +298,17 @@ if(IOS OR VISIONOS)
         optimized ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/ios.arm_64/release/libPhysXExtensions_static_64.a
         optimized ${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx-build/physx/bin/ios.arm_64/release/libPhysXPvdSDK_static_64.a)
 elseif(APPLE AND CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "arm64")
-    target_link_libraries(RaynePhysX PUBLIC ${RN_PHYSX_BUILD_DIR}/release/libPhysXFoundation_static_64.a ${RN_PHYSX_BUILD_DIR}/release/libPhysXCommon_static_64.a ${RN_PHYSX_BUILD_DIR}/release/libPhysX_static_64.a ${RN_PHYSX_BUILD_DIR}/release/libPhysXCooking_static_64.a ${RN_PHYSX_BUILD_DIR}/release/libPhysXCharacterKinematic_static_64.a ${RN_PHYSX_BUILD_DIR}/release/libPhysXVehicle_static_64.a ${RN_PHYSX_BUILD_DIR}/release/libPhysXExtensions_static_64.a ${RN_PHYSX_BUILD_DIR}/release/libPhysXPvdSDK_static_64.a)
+    target_link_libraries(RaynePhysX PRIVATE ${RN_PHYSX_BUILD_DIR}/release/libPhysXFoundation_static_64.a ${RN_PHYSX_BUILD_DIR}/release/libPhysXCommon_static_64.a ${RN_PHYSX_BUILD_DIR}/release/libPhysX_static_64.a ${RN_PHYSX_BUILD_DIR}/release/libPhysXCooking_static_64.a ${RN_PHYSX_BUILD_DIR}/release/libPhysXCharacterKinematic_static_64.a ${RN_PHYSX_BUILD_DIR}/release/libPhysXVehicle_static_64.a ${RN_PHYSX_BUILD_DIR}/release/libPhysXExtensions_static_64.a ${RN_PHYSX_BUILD_DIR}/release/libPhysXPvdSDK_static_64.a)
 elseif(APPLE)
-    target_link_libraries(RaynePhysX PUBLIC debug ${RN_PHYSX_BUILD_DIR}/debug/libPhysXFoundation_static_64.a debug ${RN_PHYSX_BUILD_DIR}/debug/libPhysXCommon_static_64.a debug ${RN_PHYSX_BUILD_DIR}/debug/libPhysX_static_64.a debug ${RN_PHYSX_BUILD_DIR}/debug/libPhysXCooking_static_64.a debug ${RN_PHYSX_BUILD_DIR}/debug/libPhysXCharacterKinematic_static_64.a debug ${RN_PHYSX_BUILD_DIR}/debug/libPhysXVehicle_static_64.a debug ${RN_PHYSX_BUILD_DIR}/debug/libPhysXExtensions_static_64.a debug ${RN_PHYSX_BUILD_DIR}/debug/libPhysXPvdSDK_static_64.a
+    target_link_libraries(RaynePhysX PRIVATE debug ${RN_PHYSX_BUILD_DIR}/debug/libPhysXFoundation_static_64.a debug ${RN_PHYSX_BUILD_DIR}/debug/libPhysXCommon_static_64.a debug ${RN_PHYSX_BUILD_DIR}/debug/libPhysX_static_64.a debug ${RN_PHYSX_BUILD_DIR}/debug/libPhysXCooking_static_64.a debug ${RN_PHYSX_BUILD_DIR}/debug/libPhysXCharacterKinematic_static_64.a debug ${RN_PHYSX_BUILD_DIR}/debug/libPhysXVehicle_static_64.a debug ${RN_PHYSX_BUILD_DIR}/debug/libPhysXExtensions_static_64.a debug ${RN_PHYSX_BUILD_DIR}/debug/libPhysXPvdSDK_static_64.a
 
     optimized ${RN_PHYSX_BUILD_DIR}/release/libPhysXFoundation_static_64.a optimized ${RN_PHYSX_BUILD_DIR}/release/libPhysXCommon_static_64.a optimized ${RN_PHYSX_BUILD_DIR}/release/libPhysX_static_64.a optimized ${RN_PHYSX_BUILD_DIR}/release/libPhysXCooking_static_64.a optimized ${RN_PHYSX_BUILD_DIR}/release/libPhysXCharacterKinematic_static_64.a optimized ${RN_PHYSX_BUILD_DIR}/release/libPhysXVehicle_static_64.a optimized ${RN_PHYSX_BUILD_DIR}/release/libPhysXExtensions_static_64.a optimized ${RN_PHYSX_BUILD_DIR}/release/libPhysXPvdSDK_static_64.a)
 elseif(WIN32)
-    target_link_libraries(RaynePhysX PUBLIC debug ${RN_PHYSX_BUILD_DIR}/debug/PhysXFoundation_static_64.lib debug ${RN_PHYSX_BUILD_DIR}/debug/PhysXCommon_static_64.lib debug ${RN_PHYSX_BUILD_DIR}/debug/PhysX_static_64.lib debug ${RN_PHYSX_BUILD_DIR}/debug/PhysXCooking_static_64.lib debug ${RN_PHYSX_BUILD_DIR}/debug/PhysXCharacterKinematic_static_64.lib debug ${RN_PHYSX_BUILD_DIR}/debug/PhysXVehicle_static_64.lib debug ${RN_PHYSX_BUILD_DIR}/debug/PhysXExtensions_static_64.lib debug ${RN_PHYSX_BUILD_DIR}/debug/PhysXPvdSDK_static_64.lib
+    target_link_libraries(RaynePhysX PRIVATE debug ${RN_PHYSX_BUILD_DIR}/debug/PhysXFoundation_static_64.lib debug ${RN_PHYSX_BUILD_DIR}/debug/PhysXCommon_static_64.lib debug ${RN_PHYSX_BUILD_DIR}/debug/PhysX_static_64.lib debug ${RN_PHYSX_BUILD_DIR}/debug/PhysXCooking_static_64.lib debug ${RN_PHYSX_BUILD_DIR}/debug/PhysXCharacterKinematic_static_64.lib debug ${RN_PHYSX_BUILD_DIR}/debug/PhysXVehicle_static_64.lib debug ${RN_PHYSX_BUILD_DIR}/debug/PhysXExtensions_static_64.lib debug ${RN_PHYSX_BUILD_DIR}/debug/PhysXPvdSDK_static_64.lib
 
     optimized ${RN_PHYSX_BUILD_DIR}/release/PhysXFoundation_static_64.lib optimized ${RN_PHYSX_BUILD_DIR}/release/PhysXCommon_static_64.lib optimized ${RN_PHYSX_BUILD_DIR}/release/PhysX_static_64.lib optimized ${RN_PHYSX_BUILD_DIR}/release/PhysXCooking_static_64.lib optimized ${RN_PHYSX_BUILD_DIR}/release/PhysXCharacterKinematic_static_64.lib optimized ${RN_PHYSX_BUILD_DIR}/release/PhysXVehicle_static_64.lib optimized ${RN_PHYSX_BUILD_DIR}/release/PhysXExtensions_static_64.lib optimized ${RN_PHYSX_BUILD_DIR}/release/PhysXPvdSDK_static_64.lib)
 endif()
+target_link_libraries(RaynePhysX PRIVATE ${PHYSX_LIBRARIES})
 add_dependencies(RaynePhysX physx)
 
 rayne_set_module_output_directory(RaynePhysX)

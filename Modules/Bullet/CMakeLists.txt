@@ -83,7 +83,9 @@ set(HEADERS
         RNBulletMaterial.h
         RNBulletRigidBody.h
         RNBulletShape.h
-        RNBulletConstraint.h
+        RNBulletConstraint.h)
+
+set(PRIVATE_HEADERS
         RNBulletInternals.h)
 
 set(DEFINES RN_BUILD_BULLET)
@@ -93,18 +95,18 @@ set(RAYNE_LIBRARIES Rayne)
 set(VENDOR_INCLUDES
         "${CMAKE_CURRENT_BINARY_DIR}/bullet-prefix/src/bullet/src")
 
-rayne_add_library(RayneBullet "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
+rayne_add_library(RayneBullet "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneBullet)
 
 add_dependencies(RayneBullet bullet)
 
 if(ANDROID)
-        target_link_libraries(RayneBullet PUBLIC
+        target_link_libraries(RayneBullet PRIVATE
         "${CMAKE_CURRENT_BINARY_DIR}/bullet-prefix/src/bullet-build/src/BulletDynamics/libBulletDynamics.a"
         "${CMAKE_CURRENT_BINARY_DIR}/bullet-prefix/src/bullet-build/src/BulletCollision/libBulletCollision.a"
         "${CMAKE_CURRENT_BINARY_DIR}/bullet-prefix/src/bullet-build/src/LinearMath/libLinearMath.a")
 elseif(WIN32)
-        target_link_libraries(RayneBullet PUBLIC
+        target_link_libraries(RayneBullet PRIVATE
         debug "${CMAKE_CURRENT_BINARY_DIR}/bullet-prefix/src/bullet-build/lib/Debug/BulletDynamics_Debug.lib"
         debug "${CMAKE_CURRENT_BINARY_DIR}/bullet-prefix/src/bullet-build/lib/Debug/BulletCollision_Debug.lib"
         debug "${CMAKE_CURRENT_BINARY_DIR}/bullet-prefix/src/bullet-build/lib/Debug/LinearMath_Debug.lib"
@@ -113,7 +115,7 @@ elseif(WIN32)
         optimized "${CMAKE_CURRENT_BINARY_DIR}/bullet-prefix/src/bullet-build/lib/Release/BulletCollision.lib"
         optimized "${CMAKE_CURRENT_BINARY_DIR}/bullet-prefix/src/bullet-build/lib/Release/LinearMath.lib")
 else()
-        target_link_libraries(RayneBullet PUBLIC
+        target_link_libraries(RayneBullet PRIVATE
         debug "${CMAKE_CURRENT_BINARY_DIR}/bullet-prefix/src/bullet-build/src/BulletDynamics/Debug/libBulletDynamics.a"
         debug "${CMAKE_CURRENT_BINARY_DIR}/bullet-prefix/src/bullet-build/src/BulletCollision/Debug/libBulletCollision.a"
         debug "${CMAKE_CURRENT_BINARY_DIR}/bullet-prefix/src/bullet-build/src/LinearMath/Debug/libLinearMath.a"

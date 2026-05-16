@@ -38,10 +38,6 @@ set(RAYNE_LIBRARIES Rayne RayneUI)
 rayne_add_library(RayneFlexUI "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
 rayne_set_module_output_directory(RayneFlexUI)
 
-if(NOT TARGET RayneUI)
-    message(FATAL_ERROR "RayneFlexUI requires RayneUI. Enable RN_BUILD_UI_MODULE.")
-endif()
-
 FetchContent_Declare(Yoga
     GIT_REPOSITORY https://github.com/facebook/yoga.git
     GIT_TAG v3.2.1
@@ -50,11 +46,8 @@ FetchContent_Declare(Yoga
 )
 FetchContent_MakeAvailable(Yoga)
 
-target_link_libraries(RayneFlexUI PUBLIC yogacore)
-
-if(DEFINED Yoga_SOURCE_DIR AND EXISTS "${Yoga_SOURCE_DIR}")
-    target_include_directories(RayneFlexUI SYSTEM PUBLIC "${Yoga_SOURCE_DIR}")
-endif()
+target_link_libraries(RayneFlexUI PRIVATE yogacore)
+target_include_directories(RayneFlexUI SYSTEM PUBLIC "${Yoga_SOURCE_DIR}")
 
 target_compile_definitions(RayneFlexUI PRIVATE "${DEFINES}")
 

@@ -68,63 +68,57 @@ set(SOURCES
 
 set(HEADERS
 	RNOpenXR.h
-	RNOpenXRInternals.h
-	RNOpenXRFramePresentationState.h
-	RNOpenXRSwapChain.h
 	RNOpenXRWindow.h
 	RNOpenXRCompositorLayer.h)
 
-set(DEFINES RN_BUILD_OPENXR)
+set(PRIVATE_HEADERS
+	RNOpenXRInternals.h
+	RNOpenXRFramePresentationState.h
+	RNOpenXRSwapChain.h)
+
+set(PRIVATE_DEFINES RN_BUILD_OPENXR)
 
 if(ANDROID)
-	set(DEFINES ${DEFINES} XR_USE_PLATFORM_ANDROID)
+	list(APPEND PRIVATE_DEFINES XR_USE_PLATFORM_ANDROID)
 elseif(WIN32)
-	set(DEFINES ${DEFINES} XR_USE_PLATFORM_WIN32)
+	list(APPEND PRIVATE_DEFINES XR_USE_PLATFORM_WIN32)
 elseif(UNIX AND NOT APPLE)
-	set(DEFINES ${DEFINES} XR_USE_PLATFORM_XLIB)
+	list(APPEND PRIVATE_DEFINES XR_USE_PLATFORM_XLIB)
 endif()
 
 if(NOT APPLE AND ${RN_BUILD_VULKAN_MODULE})
 	set(SOURCES ${SOURCES} RNOpenXRVulkanSwapChain.cpp)
-	set(HEADERS ${HEADERS} RNOpenXRVulkanSwapChain.h)
+	list(APPEND PRIVATE_HEADERS RNOpenXRVulkanSwapChain.h)
 endif()
 
 if(APPLE AND ${RN_BUILD_METAL_MODULE})
 	set(SOURCES ${SOURCES} RNOpenXRMetalSwapChain.cpp)
-	set(HEADERS ${HEADERS} RNOpenXRMetalSwapChain.h)
+	list(APPEND PRIVATE_HEADERS RNOpenXRMetalSwapChain.h)
 endif()
 
 ExternalProject_Get_property(OpenXRSDK SOURCE_DIR)
 set(OpenXRSDK_SOURCE_DIR ${SOURCE_DIR})
 
 set(RAYNE_LIBRARIES Rayne RayneVR)
-set(VENDOR_INCLUDES)
 
-rayne_add_library(RayneOpenXR "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
+rayne_add_library(RayneOpenXR "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneOpenXR)
 add_dependencies(RayneOpenXR OpenXRSDK)
 
 target_link_libraries(RayneOpenXR PRIVATE OpenXRLoader)
 
 if(NOT APPLE AND ${RN_BUILD_VULKAN_MODULE})
-	ExternalProject_Get_property(VulkanMemoryAllocator SOURCE_DIR)
-	set(VulkanMemoryAllocator_SOURCE_DIR ${SOURCE_DIR})
-
 	target_link_libraries(RayneOpenXR PUBLIC RayneVulkan)
-	list(APPEND VENDOR_INCLUDES
-		"${vulkanheaders_SOURCE_DIR}/include"
-		"${vulkanheaders_SOURCE_DIR}/include/vulkan"
-		"${VulkanMemoryAllocator_SOURCE_DIR}/include")
-	set(DEFINES ${DEFINES} XR_USE_GRAPHICS_API_VULKAN)
+	list(APPEND PRIVATE_DEFINES XR_USE_GRAPHICS_API_VULKAN)
 endif()
 
 if(APPLE AND ${RN_BUILD_METAL_MODULE})
 	target_link_libraries(RayneOpenXR PUBLIC RayneMetal)
-	set(DEFINES ${DEFINES} XR_USE_GRAPHICS_API_METAL)
+	list(APPEND PRIVATE_DEFINES XR_USE_GRAPHICS_API_METAL)
 	target_compile_options(RayneOpenXR PRIVATE "-xobjective-c++")
 endif()
 
-target_include_directories(RayneOpenXR SYSTEM PRIVATE ${VENDOR_INCLUDES} ${OpenXRSDK_SOURCE_DIR}/include ${OpenXRSDK_SOURCE_DIR}/src/common)
-target_compile_definitions(RayneOpenXR PRIVATE "${DEFINES}")
+target_include_directories(RayneOpenXR SYSTEM PRIVATE ${OpenXRSDK_SOURCE_DIR}/include ${OpenXRSDK_SOURCE_DIR}/src/common)
+target_compile_definitions(RayneOpenXR PRIVATE "${PRIVATE_DEFINES}")
 
 rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneOpenXR/. DESTINATION lib/Rayne/RayneOpenXR)

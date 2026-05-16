@@ -88,45 +88,41 @@ set(HEADERS
         Sources/RNVulkanDebug.h
         Sources/RNVulkanDevice.h
         Sources/RNVulkanDispatchTable.h
-        Sources/RNVulkanFramebuffer.h
         Sources/RNVulkanInstance.h
         Sources/RNVulkanRenderer.h
         Sources/RNVulkanRendererDescriptor.h
-        Sources/RNVulkanTexture.h
-        Sources/RNVulkanTextureInfo.h
-        Sources/RNVulkanWindow.h
-        Sources/RNVulkanSwapChain.h
+        Sources/RNVulkanWindow.h)
+
+set(PRIVATE_HEADERS
+        Sources/RNVulkanFramebuffer.h
+        Sources/RNVulkanGPUBuffer.h
         Sources/RNVulkanInternals.h
         Sources/RNVulkanShader.h
         Sources/RNVulkanShaderLibrary.h
         Sources/RNVulkanStateCoordinator.h
-        Sources/RNVulkanGPUBuffer.h
+        Sources/RNVulkanSwapChain.h
+        Sources/RNVulkanTexture.h
+        Sources/RNVulkanTextureInfo.h
         Sources/RNVulkanDynamicGPUBuffer.h
-        Sources/RNVulkanStaticGPUBuffer.h
-        #../../Vendor/SPIRV-Cross/spirv.hpp
-        #../../Vendor/SPIRV-Cross/spirv_common.hpp
-        #../../Vendor/SPIRV-Cross/spirv_cfg.hpp
-        #../../Vendor/SPIRV-Cross/spirv_cross_parsed_ir.hpp
-        #../../Vendor/SPIRV-Cross/spirv_parser.hpp
-        #../../Vendor/SPIRV-Cross/spirv_cross.hpp
-        )
+        Sources/RNVulkanStaticGPUBuffer.h)
 
 set(RESOURCES
         Resources)
 
-set(DEFINES "RN_BUILD_VULKAN")
+set(PRIVATE_DEFINES RN_BUILD_VULKAN)
+set(PUBLIC_DEFINES)
 
 if(WIN32)
-    set(DEFINES ${DEFINES} "VK_USE_PLATFORM_WIN32_KHR")
+    list(APPEND PUBLIC_DEFINES VK_USE_PLATFORM_WIN32_KHR)
 elseif(ANDROID)
-    set(DEFINES ${DEFINES} "VK_USE_PLATFORM_ANDROID_KHR")
+    list(APPEND PUBLIC_DEFINES VK_USE_PLATFORM_ANDROID_KHR)
 elseif(UNIX AND NOT APPLE)
-    set(DEFINES ${DEFINES} "VK_USE_PLATFORM_XCB_KHR")
+    list(APPEND PUBLIC_DEFINES VK_USE_PLATFORM_XCB_KHR)
 endif()
 
 set(RAYNE_LIBRARIES Rayne)
 
-rayne_add_library(RayneVulkan "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
+rayne_add_library(RayneVulkan "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneVulkan)
 rayne_set_module_resources(RayneVulkan ${RESOURCES})
 
@@ -138,10 +134,14 @@ add_dependencies(RayneVulkan VulkanGenerateDispatchTable)
 add_dependencies(RayneVulkan spirvcross)
 add_dependencies(RayneVulkan VulkanMemoryAllocator)
 
-target_include_directories(RayneVulkan SYSTEM PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/spirvcross-prefix/src/spirvcross)
-target_include_directories(RayneVulkan SYSTEM PRIVATE ${VMA_SOURCE_DIR}/include)
-target_include_directories(RayneVulkan SYSTEM PRIVATE ${vulkanheaders_SOURCE_DIR}/include)
-target_include_directories(RayneVulkan SYSTEM PRIVATE ${vulkanheaders_SOURCE_DIR}/include/vulkan)
-target_compile_definitions(RayneVulkan PRIVATE "${DEFINES}")
+target_include_directories(RayneVulkan SYSTEM PRIVATE
+    ${CMAKE_CURRENT_BINARY_DIR}/spirvcross-prefix/src/spirvcross
+    ${VMA_SOURCE_DIR}/include)
+target_include_directories(RayneVulkan SYSTEM PUBLIC
+    ${vulkanheaders_SOURCE_DIR}/include
+    ${vulkanheaders_SOURCE_DIR}/include/vulkan)
+target_compile_definitions(RayneVulkan
+    PRIVATE "${PRIVATE_DEFINES}"
+    PUBLIC "${PUBLIC_DEFINES}")
 
 rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneVulkan/. DESTINATION lib/Rayne/RayneVulkan)

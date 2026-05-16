@@ -247,7 +247,9 @@ set(HEADERS
         RNResonanceAudioListenerContext.h
         RNResonanceAudioSystem.h
         RNResonanceAudioSampler.h
-        RNResonanceAudioSource.h
+        RNResonanceAudioSource.h)
+
+set(PRIVATE_HEADERS
         RNResonanceAudioInternals.h)
 
 set(DEFINES RN_BUILD_RESONANCE_AUDIO)
@@ -270,7 +272,7 @@ elseif(WIN32)
         #set(RAYNE_LIBRARIES Rayne winmm ole32)
 endif()
 
-rayne_add_library(RayneResonanceAudio "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
+rayne_add_library(RayneResonanceAudio "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneResonanceAudio)
 
 target_include_directories(RayneResonanceAudio SYSTEM PRIVATE ${VENDOR_INCLUDES})
@@ -284,4 +286,3 @@ add_dependencies(RayneResonanceAudio miniaudio)
 target_link_libraries(RayneResonanceAudio PRIVATE ResonanceAudioStaticCustom)
 
 rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneResonanceAudio/. DESTINATION lib/Rayne/RayneResonanceAudio)
-

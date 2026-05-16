@@ -36,19 +36,22 @@ set(HEADERS
         RNODEWorld.h
         RNODECollisionObject.h
         RNODEBody.h
-        RNODEShape.h
+        RNODEShape.h)
+
+set(PRIVATE_HEADERS
         RNODEInternals.h)
 
 set(DEFINES RN_BUILD_ODE)
 
-set(RAYNE_LIBRARIES Rayne ODE)
+set(RAYNE_LIBRARIES Rayne)
 set(VENDOR_INCLUDES
         "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/ode/include")
 
-rayne_add_library(RayneODE "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
+rayne_add_library(RayneODE "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}" PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneODE)
 
 target_include_directories(RayneODE SYSTEM PRIVATE ${VENDOR_INCLUDES})
+target_link_libraries(RayneODE PRIVATE ODE)
 target_compile_definitions(RayneODE PRIVATE "${DEFINES}")
 
 rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneODE/. DESTINATION lib/Rayne/RayneODE)
