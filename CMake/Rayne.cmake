@@ -18,16 +18,13 @@ macro(rayne_link_with _TARGET)
         set_target_properties(${_TARGET} PROPERTIES XCODE_EMBED_FRAMEWORKS_CODE_SIGN_ON_COPY ON)
 
         target_link_libraries(${_TARGET}Lib PUBLIC Rayne)
-        target_include_directories(${_TARGET}Lib SYSTEM PRIVATE ${Rayne_BINARY_DIR}/include)
-        target_include_directories(${_TARGET} SYSTEM PRIVATE ${Rayne_BINARY_DIR}/include)
     else()
         add_custom_command(TARGET ${_TARGET} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:Rayne>" "$<TARGET_FILE_DIR:${_TARGET}>/$<TARGET_FILE_NAME:Rayne>")
         target_link_libraries(${_TARGET} PUBLIC Rayne)
-        target_include_directories(${_TARGET} SYSTEM PRIVATE ${Rayne_BINARY_DIR}/include)
     endif()
 
     if(ANDROID)
-        target_include_directories(${_TARGET} SYSTEM PRIVATE ${Rayne_BINARY_DIR}/include ${DIR_OF_RAYNE_CMAKE}/../Vendor/android_native_app_glue)
+        target_include_directories(${_TARGET} SYSTEM PRIVATE ${DIR_OF_RAYNE_CMAKE}/../Vendor/android_native_app_glue)
 
         set(_ANDROID_APP_GLUE_TARGET ${_TARGET}-android-app-glue)
         add_library(${_ANDROID_APP_GLUE_TARGET} OBJECT ${DIR_OF_RAYNE_CMAKE}/../Vendor/android_native_app_glue/android_native_app_glue.c)
@@ -74,8 +71,6 @@ macro(rayne_use_modules _TARGET _MODULES)
         
         if(IOS OR VISIONOS)
             target_link_libraries(${_TARGET}Lib PUBLIC ${_MODULE_TARGET})
-            target_include_directories(${_TARGET}Lib SYSTEM PRIVATE ${${_MODULE_TARGET}_BINARY_DIR}/include)
-            target_include_directories(${_TARGET} SYSTEM PRIVATE ${${_MODULE_TARGET}_BINARY_DIR}/include)
 
             get_target_property(CURRENT_EMBED_FRAMEWORKS ${_TARGET} XCODE_EMBED_FRAMEWORKS)
             if(CURRENT_EMBED_FRAMEWORKS)
@@ -87,7 +82,6 @@ macro(rayne_use_modules _TARGET _MODULES)
             set_target_properties(${_TARGET} PROPERTIES XCODE_EMBED_FRAMEWORKS_CODE_SIGN_ON_COPY ON)
         else()
             target_link_libraries(${_TARGET} PUBLIC ${_MODULE_TARGET})
-            target_include_directories(${_TARGET} SYSTEM PRIVATE ${${_MODULE_TARGET}_BINARY_DIR}/include)
         endif()
 
 

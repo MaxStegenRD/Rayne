@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.23)
 project(RayneBullet)
 
 include(../../CMake/LibraryTarget.cmake)
@@ -90,8 +90,7 @@ set(DEFINES RN_BUILD_BULLET)
 
 set(RAYNE_LIBRARIES Rayne)
 
-set(INCLUDE_DIRECTORIES
-        "${Rayne_BINARY_DIR}/include"
+set(VENDOR_INCLUDES
         "${CMAKE_CURRENT_BINARY_DIR}/bullet-prefix/src/bullet/src")
 
 rayne_add_library(RayneBullet "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
@@ -124,7 +123,7 @@ else()
         optimized "${CMAKE_CURRENT_BINARY_DIR}/bullet-prefix/src/bullet-build/src/LinearMath/Release/libLinearMath.a")
 endif()
 
-target_include_directories(RayneBullet SYSTEM PRIVATE "${INCLUDE_DIRECTORIES}")
+target_include_directories(RayneBullet SYSTEM PRIVATE ${VENDOR_INCLUDES})
 target_compile_definitions(RayneBullet PRIVATE "${DEFINES}")
 
 rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneBullet/. DESTINATION lib/Rayne/RayneBullet)

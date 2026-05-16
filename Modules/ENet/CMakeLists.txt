@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.23)
 project(RayneENet)
 
 include(../../CMake/LibraryTarget.cmake)
@@ -35,14 +35,13 @@ else()
         set(RAYNE_LIBRARIES Rayne)
 endif()
 
-set(INCLUDE_DIRECTORIES
-        "${Rayne_BINARY_DIR}/include"
+set(VENDOR_INCLUDES
         "${CMAKE_CURRENT_BINARY_DIR}/enet-prefix/src/enet/include")
 
 rayne_add_library(RayneENet "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
 rayne_set_module_output_directory(RayneENet)
 
-target_include_directories(RayneENet SYSTEM PRIVATE "${INCLUDE_DIRECTORIES}")
+target_include_directories(RayneENet SYSTEM PRIVATE ${VENDOR_INCLUDES})
 target_compile_definitions(RayneENet PRIVATE "${DEFINES}")
 
 ExternalProject_Add(enet

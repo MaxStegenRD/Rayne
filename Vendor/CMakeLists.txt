@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.23)
 project(Rayne-Vendor)
 
 #Force better default values.
@@ -42,10 +42,9 @@ option(OIS_BUILD_DEMOS "Build demo applications" OFF)
 option(ZLIB_BUILD_EXAMPLES "Enable Zlib Examples" OFF)
 add_subdirectory("zlib" EXCLUDE_FROM_ALL)
 
-#Force static zlib to be used
-set(ZLIB_FOUND 1)
-set(ZLIB_LIBRARIES $<TARGET_FILE:zlibstatic>)
-set(ZLIB_LIBRARY $<TARGET_FILE:zlibstatic>)
+#Force packages that call find_package(ZLIB) to use Rayne's vendored zlib.
+add_library(ZLIB::ZLIB ALIAS zlibstatic)
+set(ZLIB_LIBRARY zlibstatic)
 set(ZLIB_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/zlib ${CMAKE_CURRENT_BINARY_DIR}/zlib)
 set(ZLIB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/zlib ${CMAKE_CURRENT_BINARY_DIR}/zlib CACHE PATH "Path to directory containing zlib header files" FORCE)
 

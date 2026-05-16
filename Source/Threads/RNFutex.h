@@ -9,11 +9,7 @@
 #ifndef __RAYNE_THREADPARK_H_
 #define __RAYNE_THREADPARK_H_
 
-#ifdef RN_BUILD_LIBRARY
-	#include <RayneConfig.h>
-#else
-	#include "../RayneConfig.h"
-#endif
+#include <RayneConfig.h>
 
 #include "../Base/RNOptions.h"
 #include <atomic>

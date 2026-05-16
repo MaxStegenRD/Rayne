@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.23)
 project(Rayne)
 
 include(../CMake/CompilerCheck.cmake)
@@ -325,8 +325,7 @@ elseif(UNIX)
             Input/RNInputLinux.h)
 endif()
 
-set(INCLUDE_DIRECTORIES
-        ${CMAKE_CURRENT_BINARY_DIR}/include
+set(VENDOR_INCLUDES
         ${CMAKE_CURRENT_SOURCE_DIR}/../Vendor/utf8_v2_3_4/source
         ${CMAKE_CURRENT_SOURCE_DIR}/../Vendor/concurrentqueue
         ${jansson_BINARY_DIR}/include
@@ -356,7 +355,7 @@ if(APPLE)
     endif()
 
     if(IOS)
-        set(INCLUDE_DIRECTORIES ${INCLUDE_DIRECTORIES} ${OIS_SOURCE_DIR}/includes)
+        list(APPEND VENDOR_INCLUDES ${OIS_SOURCE_DIR}/includes)
         set(LINK_LIBRARIES ${LINK_LIBRARIES} OIS)
     endif()
 endif()
@@ -413,9 +412,7 @@ if(WIN32)
                 ${LINK_LIBRARIES}
                 ${VTune_LIBRARY})
 
-        set(INCLUDE_DIRECTORIES
-                ${INCLUDE_DIRECTORIES}
-                ${VTune_INCLUDE_DIRS})
+        list(APPEND VENDOR_INCLUDES ${VTune_INCLUDE_DIRS})
     endif()
 
 endif()
@@ -426,14 +423,14 @@ if(UNIX AND (NOT APPLE) AND (NOT ANDROID))
     find_library(DL_LIBRARY dl)
 
     set(LINK_LIBRARIES ${PTHREAD_LIBRARY} ${DL_LIBRARY} ${XCB_LIBRARIES} -lX11 -lXi) #-ludev -levdev would be needed for hid stuff, but require root...
-    set(INCLUDE_DIRECTORIES ${INCLUDE_DIRECTORIES} ${XCB_INCLUDE_DIRS})
+    list(APPEND VENDOR_INCLUDES ${XCB_INCLUDE_DIRS})
 endif()
 
 if(ANDROID)
     #set(RAYNE_PLATFORM_SOURCES ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c)
     #set(RAYNE_HEADERS ${RAYNE_HEADERS} ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.h)
-    #set(INCLUDE_DIRECTORIES ${INCLUDE_DIRECTORIES} ${ANDROID_NDK}/sources/android/native_app_glue)
-    set(INCLUDE_DIRECTORIES ${INCLUDE_DIRECTORIES} ${CMAKE_CURRENT_SOURCE_DIR}/../Vendor/android_native_app_glue)
+    #list(APPEND VENDOR_INCLUDES ${ANDROID_NDK}/sources/android/native_app_glue)
+    list(APPEND VENDOR_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/../Vendor/android_native_app_glue)
 
     set(LINK_LIBRARIES ${LINK_LIBRARIES} android log)
 endif()
@@ -444,11 +441,22 @@ set(TARGET_SOURCES ${RAYNE_SOURCES} ${RAYNE_HEADERS} ${RAYNE_HEADERS_PRIVATE} ${
 set(TARGET_HEADERS ${RAYNE_HEADERS})
 
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/RayneConfig.h.in ${CMAKE_CURRENT_BINARY_DIR}/include/RayneConfig.h)
+set(RAYNE_GENERATED_INCLUDE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/generated)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/RayneConfig.h.in ${RAYNE_GENERATED_INCLUDE_DIRECTORY}/RayneConfig.h)
 
+set(RAYNE_PUBLIC_HEADER_INSTALL_DIRECTORY include/Rayne)
 rayne_add_library(Rayne "${TARGET_SOURCES}" "${TARGET_HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
 
-target_include_directories(Rayne SYSTEM PRIVATE "${INCLUDE_DIRECTORIES}")
+target_sources(Rayne PUBLIC
+    FILE_SET generated_headers
+    TYPE HEADERS
+    BASE_DIRS "${RAYNE_GENERATED_INCLUDE_DIRECTORY}"
+    FILES "${RAYNE_GENERATED_INCLUDE_DIRECTORY}/RayneConfig.h")
+target_include_directories(Rayne PUBLIC
+    $<BUILD_INTERFACE:${RAYNE_GENERATED_INCLUDE_DIRECTORY}>
+    $<INSTALL_INTERFACE:include/Rayne>)
+
+target_include_directories(Rayne SYSTEM PRIVATE ${VENDOR_INCLUDES})
 target_link_libraries(Rayne PUBLIC ${LINK_LIBRARIES})
 target_compile_definitions(Rayne PRIVATE "${COMPILE_DEFINITIONS}")
 target_compile_definitions(Rayne PUBLIC $<$<CONFIG:RelWithDebInfo>:RN_BUILD_PROFILING=1>)
@@ -461,4 +469,4 @@ if(RAYNE_PROFILER STREQUAL "TRACY")
 endif()
 
 #rayne_install(Rayne Rayne ${_TARGETS} LIBRARY DESTINATION lib ARCHIVE DESTINATION lib)
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/. DESTINATION include/Rayne)
+rayne_install(FILES ${RAYNE_GENERATED_INCLUDE_DIRECTORY}/RayneConfig.h DESTINATION include/Rayne)

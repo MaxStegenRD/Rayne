@@ -9,11 +9,7 @@
 #ifndef __RAYNE_MEMORY_H__
 #define __RAYNE_MEMORY_H__
 
-#ifdef RN_BUILD_LIBRARY
-	#include <RayneConfig.h>
-#else
-	#include "../RayneConfig.h"
-#endif
+#include <RayneConfig.h>
 
 #include <new>
 

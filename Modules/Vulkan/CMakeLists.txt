@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.23)
 project(Vulkan)
 
 find_package(Python COMPONENTS Interpreter)
@@ -134,13 +134,12 @@ if(RAYNE_PROFILER STREQUAL "TRACY")
     target_compile_definitions(RayneVulkan PUBLIC TRACY_ENABLE RN_PROFILE_TRACY)
 endif()
 
-add_dependencies(RayneVulkan_copyHeaderTarget VulkanGenerateDispatchTable)
-add_dependencies(RayneVulkan_copyHeaderTarget spirvcross)
-add_dependencies(RayneVulkan_copyHeaderTarget VulkanMemoryAllocator)
+add_dependencies(RayneVulkan VulkanGenerateDispatchTable)
+add_dependencies(RayneVulkan spirvcross)
+add_dependencies(RayneVulkan VulkanMemoryAllocator)
 
 target_include_directories(RayneVulkan SYSTEM PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/spirvcross-prefix/src/spirvcross)
 target_include_directories(RayneVulkan SYSTEM PRIVATE ${VMA_SOURCE_DIR}/include)
-target_include_directories(RayneVulkan SYSTEM PRIVATE ${Rayne_BINARY_DIR}/include)
 target_include_directories(RayneVulkan SYSTEM PRIVATE ${vulkanheaders_SOURCE_DIR}/include)
 target_include_directories(RayneVulkan SYSTEM PRIVATE ${vulkanheaders_SOURCE_DIR}/include/vulkan)
 target_compile_definitions(RayneVulkan PRIVATE "${DEFINES}")

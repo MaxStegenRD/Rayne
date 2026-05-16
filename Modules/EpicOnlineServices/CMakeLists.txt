@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.23)
 project(RayneEOS)
 
 include(../../CMake/LibraryTarget.cmake)
@@ -31,8 +31,6 @@ set(HEADERS
 
 set(DEFINES RN_BUILD_EOS)
 
-set(INCLUDE_DIRECTORIES "${Rayne_BINARY_DIR}/include")
-
 add_library(EOSSDK SHARED IMPORTED)
 if(ANDROID)
         set_property(TARGET EOSSDK PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/EOS-SDK-Android/SDK/Lib/libEOSSDK.so)
@@ -61,7 +59,6 @@ endif()
 rayne_add_library(RayneEOS "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
 rayne_set_module_output_directory(RayneEOS)
 
-target_include_directories(RayneEOS SYSTEM PRIVATE "${INCLUDE_DIRECTORIES}")
 target_compile_definitions(RayneEOS PRIVATE "${DEFINES}")
 
 if(ANDROID OR IOS OR VISIONOS)

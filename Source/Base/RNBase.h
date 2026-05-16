@@ -9,11 +9,7 @@
 #ifndef _RAYNE_BASE_H_
 #define _RAYNE_BASE_H_
 
-#ifdef RN_BUILD_LIBRARY
-	#include <RayneConfig.h>
-#else
-	#include "../RayneConfig.h"
-#endif
+#include <RayneConfig.h>
 
 // ---------------------------
 // Platform dependent includes

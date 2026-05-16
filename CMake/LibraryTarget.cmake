@@ -61,11 +61,9 @@ macro(__rayne_create_target _NAME _TYPE _SOURCES _HEADERS _RAYNE_LIBRARIES _VERS
     elseif(WIN32)
     endif()
 
-    set(ALL_SOURCES "${_SOURCES}" "${_HEADERS}")
-
-    add_library("${TARGET_NAME}" ${_TYPE} ${ALL_SOURCES})
+    add_library("${TARGET_NAME}" ${_TYPE})
+    target_sources("${TARGET_NAME}" PRIVATE ${_SOURCES})
     #set_target_properties("${TARGET_NAME}" PROPERTIES VERSION ${_VERSION} SOVERSION ${_ABI})
-    #set_target_properties("${TARGET_NAME}" PROPERTIES PUBLIC_HEADER "${_HEADERS}")
 
     if(IOS OR VISIONOS)
         set_target_properties("${TARGET_NAME}" PROPERTIES FRAMEWORK TRUE)
@@ -85,14 +83,43 @@ macro(__rayne_create_target _NAME _TYPE _SOURCES _HEADERS _RAYNE_LIBRARIES _VERS
     endif()
 
     if(NOT ("${_HEADERS}" STREQUAL ""))
-        #Copy headers to the include folder next to the binary
-        add_custom_target("${TARGET_NAME}_copyHeaderTarget")
+        set(PUBLIC_HEADER_INSTALL_ROOT "include/Rayne/${TARGET_NAME}")
+        if(DEFINED RAYNE_PUBLIC_HEADER_INSTALL_DIRECTORY)
+            set(PUBLIC_HEADER_INSTALL_ROOT "${RAYNE_PUBLIC_HEADER_INSTALL_DIRECTORY}")
+        endif()
+
+        set(PUBLIC_HEADER_BUILD_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}")
+        set(PUBLIC_HEADER_INSTALL_DIRECTORIES "${PUBLIC_HEADER_INSTALL_ROOT}")
         foreach(HEADER ${_HEADERS})
-            add_custom_command(TARGET "${TARGET_NAME}_copyHeaderTarget" PRE_BUILD
-                COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/include"
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/${HEADER}" "${CMAKE_CURRENT_BINARY_DIR}/include/${HEADER}"
-                BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/include/${HEADER})
-            add_dependencies("${TARGET_NAME}" "${TARGET_NAME}_copyHeaderTarget")
+            get_filename_component(HEADER_DIRECTORY "${HEADER}" DIRECTORY)
+            if(NOT ("${HEADER_DIRECTORY}" STREQUAL ""))
+                list(APPEND PUBLIC_HEADER_BUILD_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/${HEADER_DIRECTORY}")
+                list(APPEND PUBLIC_HEADER_INSTALL_DIRECTORIES "${PUBLIC_HEADER_INSTALL_ROOT}/${HEADER_DIRECTORY}")
+            endif()
+        endforeach()
+        list(REMOVE_DUPLICATES PUBLIC_HEADER_BUILD_DIRECTORIES)
+        list(REMOVE_DUPLICATES PUBLIC_HEADER_INSTALL_DIRECTORIES)
+
+        target_sources("${TARGET_NAME}" PUBLIC
+            FILE_SET public_headers
+            TYPE HEADERS
+            BASE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}"
+            FILES ${_HEADERS})
+
+        foreach(PUBLIC_HEADER_BUILD_DIRECTORY ${PUBLIC_HEADER_BUILD_DIRECTORIES})
+            target_include_directories("${TARGET_NAME}" PUBLIC "$<BUILD_INTERFACE:${PUBLIC_HEADER_BUILD_DIRECTORY}>")
+        endforeach()
+        foreach(PUBLIC_HEADER_INSTALL_DIRECTORY ${PUBLIC_HEADER_INSTALL_DIRECTORIES})
+            target_include_directories("${TARGET_NAME}" PUBLIC "$<INSTALL_INTERFACE:${PUBLIC_HEADER_INSTALL_DIRECTORY}>")
+        endforeach()
+
+        foreach(HEADER ${_HEADERS})
+            get_filename_component(HEADER_DIRECTORY "${HEADER}" DIRECTORY)
+            if("${HEADER_DIRECTORY}" STREQUAL "")
+                install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/${HEADER}" DESTINATION "${PUBLIC_HEADER_INSTALL_ROOT}")
+            else()
+                install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/${HEADER}" DESTINATION "${PUBLIC_HEADER_INSTALL_ROOT}/${HEADER_DIRECTORY}")
+            endif()
         endforeach()
     endif()
 

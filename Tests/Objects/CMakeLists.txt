@@ -1,8 +1,7 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.23)
 project(Objects-Tests)
 
 include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
-include_directories(${Rayne_BINARY_DIR}/include)
 
 add_executable(objectTests
         ObjectTests.cpp

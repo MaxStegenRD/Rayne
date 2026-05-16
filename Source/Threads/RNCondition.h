@@ -9,11 +9,7 @@
 #ifndef __RAYNE_CONDITION_H_
 #define __RAYNE_CONDITION_H_
 
-#ifdef RN_BUILD_LIBRARY
-	#include <RayneConfig.h>
-#else
-	#include "../RayneConfig.h"
-#endif
+#include <RayneConfig.h>
 
 #include <atomic>
 

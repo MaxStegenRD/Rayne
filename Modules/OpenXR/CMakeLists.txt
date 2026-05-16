@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.23)
 project(RayneOpenXR)
 
 include(../../CMake/LibraryTarget.cmake)
@@ -98,9 +98,7 @@ ExternalProject_Get_property(OpenXRSDK SOURCE_DIR)
 set(OpenXRSDK_SOURCE_DIR ${SOURCE_DIR})
 
 set(RAYNE_LIBRARIES Rayne RayneVR)
-set(INCLUDE_DIRECTORIES
-	"${Rayne_BINARY_DIR}/include"
-	"${CMAKE_CURRENT_BINARY_DIR}/../VRWrapper/include")
+set(VENDOR_INCLUDES)
 
 rayne_add_library(RayneOpenXR "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
 rayne_set_module_output_directory(RayneOpenXR)
@@ -113,23 +111,20 @@ if(NOT APPLE AND ${RN_BUILD_VULKAN_MODULE})
 	set(VulkanMemoryAllocator_SOURCE_DIR ${SOURCE_DIR})
 
 	target_link_libraries(RayneOpenXR PUBLIC RayneVulkan)
-	set(INCLUDE_DIRECTORIES ${INCLUDE_DIRECTORIES}
-		"${RayneVulkan_BINARY_DIR}/include"
+	list(APPEND VENDOR_INCLUDES
 		"${vulkanheaders_SOURCE_DIR}/include"
 		"${vulkanheaders_SOURCE_DIR}/include/vulkan"
-		"${VulkanMemoryAllocator_SOURCE_DIR}/include"
-		"${CMAKE_CURRENT_BINARY_DIR}/../Vulkan/include/Sources")
+		"${VulkanMemoryAllocator_SOURCE_DIR}/include")
 	set(DEFINES ${DEFINES} XR_USE_GRAPHICS_API_VULKAN)
 endif()
 
 if(APPLE AND ${RN_BUILD_METAL_MODULE})
 	target_link_libraries(RayneOpenXR PUBLIC RayneMetal)
-	set(INCLUDE_DIRECTORIES ${INCLUDE_DIRECTORIES} ${RayneMetal_BINARY_DIR}/include "${CMAKE_CURRENT_BINARY_DIR}/../Metal/include/Sources")
 	set(DEFINES ${DEFINES} XR_USE_GRAPHICS_API_METAL)
 	target_compile_options(RayneOpenXR PRIVATE "-xobjective-c++")
 endif()
 
-target_include_directories(RayneOpenXR SYSTEM PRIVATE "${INCLUDE_DIRECTORIES}" ${OpenXRSDK_SOURCE_DIR}/include ${OpenXRSDK_SOURCE_DIR}/src/common)
+target_include_directories(RayneOpenXR SYSTEM PRIVATE ${VENDOR_INCLUDES} ${OpenXRSDK_SOURCE_DIR}/include ${OpenXRSDK_SOURCE_DIR}/src/common)
 target_compile_definitions(RayneOpenXR PRIVATE "${DEFINES}")
 
 rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneOpenXR/. DESTINATION lib/Rayne/RayneOpenXR)

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.23)
 project(RayneOgg)
 
 include(../../CMake/LibraryTarget.cmake)
@@ -25,7 +25,6 @@ set(RAYNE_LIBRARIES Rayne)
 rayne_add_library(RayneOgg "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
 rayne_set_module_output_directory(RayneOgg)
 
-target_include_directories(RayneOgg SYSTEM PRIVATE ${Rayne_BINARY_DIR}/include)
 target_include_directories(RayneOgg SYSTEM PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/Vendor)
 target_compile_definitions(RayneOgg PRIVATE "${DEFINES}")
 

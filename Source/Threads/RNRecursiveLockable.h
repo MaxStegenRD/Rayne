@@ -9,11 +9,7 @@
 #ifndef __RAYNE_RECURSIVELOCKABLE_H_
 #define __RAYNE_RECURSIVELOCKABLE_H_
 
-#ifdef RN_BUILD_LIBRARY
-	#include <RayneConfig.h>
-#else
-	#include "../RayneConfig.h"
-#endif
+#include <RayneConfig.h>
 
 #include <atomic>
 #include <thread>

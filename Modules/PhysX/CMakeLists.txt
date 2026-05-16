@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.23)
 cmake_policy(SET CMP0097 NEW)
 project(RaynePhysX)
 
@@ -271,8 +271,7 @@ else()
 endif()
 
 
-set(INCLUDE_DIRECTORIES
-    "${Rayne_BINARY_DIR}/include"
+set(VENDOR_INCLUDES
     "${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx/pxshared/include"
     "${CMAKE_CURRENT_BINARY_DIR}/physx-prefix/src/physx/physx/include")
 
@@ -312,7 +311,7 @@ add_dependencies(RaynePhysX physx)
 
 rayne_set_module_output_directory(RaynePhysX)
 
-target_include_directories(RaynePhysX SYSTEM PRIVATE "${INCLUDE_DIRECTORIES}")
+target_include_directories(RaynePhysX SYSTEM PRIVATE ${VENDOR_INCLUDES})
 target_compile_definitions(RaynePhysX PRIVATE "${DEFINES}")
 
 rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RaynePhysX/. DESTINATION lib/Rayne/RaynePhysX)

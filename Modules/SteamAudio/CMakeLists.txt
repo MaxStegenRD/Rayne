@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.23)
 project(RayneSteamAudio)
 
 include(../../CMake/LibraryTarget.cmake)
@@ -61,15 +61,14 @@ elseif(ANDROID)
         set(RAYNE_LIBRARIES Rayne ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/steamaudio/lib/Android/libphonon.so)
 endif()
 
-set(INCLUDE_DIRECTORIES
-        "${Rayne_BINARY_DIR}/include"
+set(VENDOR_INCLUDES
         "${CMAKE_CURRENT_BINARY_DIR}/libsoundio-prefix/src/libsoundio"
         "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/steamaudio/include")
 
 rayne_add_library(RayneSteamAudio "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
 rayne_set_module_output_directory(RayneSteamAudio)
 
-target_include_directories(RayneSteamAudio SYSTEM PRIVATE "${INCLUDE_DIRECTORIES}")
+target_include_directories(RayneSteamAudio SYSTEM PRIVATE ${VENDOR_INCLUDES})
 target_compile_definitions(RayneSteamAudio PRIVATE "${DEFINES}")
 
 add_dependencies(RayneSteamAudio libsoundio)

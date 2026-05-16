@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.23)
 project(RayneMetal LANGUAGES OBJCXX)
 
 if((CMAKE_SYSTEM_NAME STREQUAL "visionOS"))
@@ -72,7 +72,6 @@ set(DEFINES
 
 
 set(RAYNE_LIBRARIES Rayne)
-set(INCLUDE_DIRECTORIES ${Rayne_BINARY_DIR}/include)
 
 find_library(METAL_LIBRARY Metal)
 if(IOS OR VISIONOS)
@@ -89,7 +88,6 @@ rayne_add_library(RayneMetal "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${V
 rayne_set_module_output_directory(RayneMetal)
 rayne_set_module_resources(RayneMetal ${RESOURCES})
 
-target_include_directories(RayneMetal SYSTEM PRIVATE "${INCLUDE_DIRECTORIES}")
 target_link_libraries(RayneMetal PUBLIC "${LINK_LIBRARIES}")
 target_compile_options(RayneMetal PRIVATE "-xobjective-c++")
 target_compile_definitions(RayneMetal PRIVATE "${DEFINES}")

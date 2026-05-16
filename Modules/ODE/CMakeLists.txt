@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.23)
 project(RayneODE)
 
 include(../../CMake/LibraryTarget.cmake)
@@ -42,14 +42,13 @@ set(HEADERS
 set(DEFINES RN_BUILD_ODE)
 
 set(RAYNE_LIBRARIES Rayne ODE)
-set(INCLUDE_DIRECTORIES
-        "${Rayne_BINARY_DIR}/include"
+set(VENDOR_INCLUDES
         "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/ode/include")
 
 rayne_add_library(RayneODE "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
 rayne_set_module_output_directory(RayneODE)
 
-target_include_directories(RayneODE SYSTEM PRIVATE "${INCLUDE_DIRECTORIES}")
+target_include_directories(RayneODE SYSTEM PRIVATE ${VENDOR_INCLUDES})
 target_compile_definitions(RayneODE PRIVATE "${DEFINES}")
 
 rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneODE/. DESTINATION lib/Rayne/RayneODE)

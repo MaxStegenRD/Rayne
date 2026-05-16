@@ -12,11 +12,7 @@
 #include <string>
 #include <vector>
 
-#ifdef RN_BUILD_LIBRARY
-	#include <RayneConfig.h>
-#else
-	#include "../RayneConfig.h"
-#endif
+#include <RayneConfig.h>
 
 namespace RN
 {

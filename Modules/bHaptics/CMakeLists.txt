@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.23)
 project(RayneBHaptics)
 
 include(../../CMake/LibraryTarget.cmake)
@@ -28,17 +28,16 @@ set(DEFINES RN_BUILD_BHAPTICS)
 set(COMPILE_OPTIONS "")
 set(RAYNE_LIBRARIES Rayne)
 
-set(INCLUDE_DIRECTORIES
-        "${Rayne_BINARY_DIR}/include")
+set(VENDOR_INCLUDES)
 
 if(WIN32)
-        set(INCLUDE_DIRECTORIES ${INCLUDE_DIRECTORIES} "${CMAKE_CURRENT_BINARY_DIR}/bhaptics-prefix/src/bhaptics/include/shared")
+        list(APPEND VENDOR_INCLUDES "${CMAKE_CURRENT_BINARY_DIR}/bhaptics-prefix/src/bhaptics/include/shared")
 endif()
 
 rayne_add_library(RayneBHaptics "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
 rayne_set_module_output_directory(RayneBHaptics)
 
-target_include_directories(RayneBHaptics SYSTEM PRIVATE "${INCLUDE_DIRECTORIES}")
+target_include_directories(RayneBHaptics SYSTEM PRIVATE ${VENDOR_INCLUDES})
 target_compile_definitions(RayneBHaptics PRIVATE "${DEFINES}")
 target_compile_options(RayneBHaptics PRIVATE ${COMPILE_OPTIONS})
 

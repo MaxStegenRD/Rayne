@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.23)
 project(RayneOpenAL)
 
 include(../../CMake/LibraryTarget.cmake)
@@ -36,14 +36,13 @@ if(APPLE)
         set(RAYNE_LIBRARIES ${RAYNE_LIBRARIES} ${AVFOUNDATION_LIBRARY})
 endif()
 
-set(INCLUDE_DIRECTORIES
-        "${Rayne_BINARY_DIR}/include"
+set(VENDOR_INCLUDES
         "${CMAKE_CURRENT_BINARY_DIR}/openal-prefix/src/openal/include")
 
 rayne_add_library(RayneOpenAL "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
 rayne_set_module_output_directory(RayneOpenAL)
 
-target_include_directories(RayneOpenAL SYSTEM PRIVATE "${INCLUDE_DIRECTORIES}")
+target_include_directories(RayneOpenAL SYSTEM PRIVATE ${VENDOR_INCLUDES})
 target_compile_definitions(RayneOpenAL PRIVATE "${DEFINES}")
 target_compile_options(RayneOpenAL PRIVATE ${COMPILE_OPTIONS})
 

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.23)
 project(RayneNewton)
 
 include(../../CMake/LibraryTarget.cmake)
@@ -41,8 +41,7 @@ else()
         set(RAYNE_LIBRARIES Rayne ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/build/lib/libNewton.a ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/build/lib/libdMath.a ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/build/lib/libdContainers.a ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/build/lib/libdCustomJoints.a)
 endif()
 
-set(INCLUDE_DIRECTORIES
-        "${Rayne_BINARY_DIR}/include"
+set(VENDOR_INCLUDES
         "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/dgNewton"
         "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/dMath"
         "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/newton-dynamics/sdk/dContainers"
@@ -57,7 +56,7 @@ endif()
 
 rayne_set_module_output_directory(RayneNewton)
 
-target_include_directories(RayneNewton SYSTEM PRIVATE "${INCLUDE_DIRECTORIES}")
+target_include_directories(RayneNewton SYSTEM PRIVATE ${VENDOR_INCLUDES})
 target_compile_definitions(RayneNewton PRIVATE "${DEFINES}")
 
 rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneNewton/. DESTINATION lib/Rayne/RayneNewton)

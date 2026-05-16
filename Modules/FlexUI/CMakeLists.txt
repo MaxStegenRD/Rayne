@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.23)
 project(RayneFlexUI)
 
 include(../../CMake/LibraryTarget.cmake)
@@ -34,7 +34,6 @@ set(HEADERS
 
 set(DEFINES "RN_BUILD_FLEXUI")
 set(RAYNE_LIBRARIES Rayne RayneUI)
-set(INCLUDE_DIRECTORIES ${Rayne_BINARY_DIR}/include)
 
 rayne_add_library(RayneFlexUI "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
 rayne_set_module_output_directory(RayneFlexUI)
@@ -57,9 +56,6 @@ if(DEFINED Yoga_SOURCE_DIR AND EXISTS "${Yoga_SOURCE_DIR}")
     target_include_directories(RayneFlexUI SYSTEM PUBLIC "${Yoga_SOURCE_DIR}")
 endif()
 
-target_include_directories(RayneFlexUI SYSTEM PRIVATE "${INCLUDE_DIRECTORIES}")
 target_compile_definitions(RayneFlexUI PRIVATE "${DEFINES}")
-
-target_include_directories(RayneFlexUI SYSTEM PUBLIC "${RayneUI_BINARY_DIR}/include" PUBLIC "${CMAKE_BINARY_DIR}/Modules/UI/include")
 
 rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneFlexUI/. DESTINATION lib/Rayne/RayneFlexUI)

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.23)
 project(RayneUI)
 
 include(../../CMake/LibraryTarget.cmake)
@@ -57,7 +57,7 @@ set(RAYNE_LIBRARIES Rayne)
 set(KALLIGRAPH_SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Kalligraph-prefix/src/Kalligraph)
 set(KALLIGRAPH_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/Kalligraph-prefix/src/Kalligraph-build)
 
-set(INCLUDE_DIRECTORIES ${Rayne_BINARY_DIR}/include ${KALLIGRAPH_SOURCE_DIR}/Sources ${CMAKE_CURRENT_SOURCE_DIR}/Vendor)
+set(VENDOR_INCLUDES ${KALLIGRAPH_SOURCE_DIR}/Sources ${CMAKE_CURRENT_SOURCE_DIR}/Vendor)
 
 rayne_add_library(RayneUI "${SOURCES}" "${HEADERS}" "${RAYNE_LIBRARIES}" "${VERSION_STRING}" "${VERSION_ABI}")
 rayne_set_module_output_directory(RayneUI)
@@ -125,7 +125,7 @@ add_dependencies(KalligraphLib Kalligraph)
 add_dependencies(RayneUI KalligraphLib)
 target_link_libraries(RayneUI PUBLIC KalligraphLib)
 
-target_include_directories(RayneUI SYSTEM PRIVATE "${INCLUDE_DIRECTORIES}")
+target_include_directories(RayneUI SYSTEM PRIVATE ${VENDOR_INCLUDES})
 target_compile_definitions(RayneUI PRIVATE "${DEFINES}")
 
 
