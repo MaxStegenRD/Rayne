@@ -314,18 +314,45 @@ namespace RN
 
 	void Kernel::DrainAndroidStateChanges()
 	{
-		_androidState->DrainPendingState([&](bool windowChanged, bool didResume, bool didDestroy, bool didLowMemory) {
+		_androidState->DrainPendingState([&](bool windowChanged, bool didStart, bool didResume, bool didPause, bool didStop, bool didDestroy, bool didLowMemory) {
 			if(windowChanged)
+			{
+				RNInfo("Android lifecycle: window changed");
 				NotificationManager::GetSharedInstance()->PostNotification(kRNAndroidWindowDidChange, nullptr);
+			}
+
+			if(didStart)
+			{
+				RNInfo("Android lifecycle: started");
+			}
 
 			if(didResume)
+			{
+				RNInfo("Android lifecycle: resumed");
 				NotificationManager::GetSharedInstance()->PostNotification(kRNAndroidOnResume, nullptr);
+			}
+
+			if(didPause)
+			{
+				RNInfo("Android lifecycle: paused");
+			}
+
+			if(didStop)
+			{
+				RNInfo("Android lifecycle: stopped");
+			}
 
 			if(didDestroy)
+			{
+				RNInfo("Android lifecycle: destroy requested");
 				NotificationManager::GetSharedInstance()->PostNotification(kRNAndroidOnDestroy, nullptr);
+			}
 
 			if(didLowMemory)
+			{
+				RNWarning("Android lifecycle: low memory");
 				NotificationManager::GetSharedInstance()->PostNotification(kRNAndroidOnLowMemory, nullptr);
+			}
 		});
 	}
 #endif

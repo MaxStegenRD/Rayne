@@ -17,7 +17,7 @@ namespace RN
 		_activityState(APP_CMD_STOP),
 		_destroyRequested(false),
 		_rayneMainThreadJNIEnv(nullptr),
-		_pendingState{nullptr, APP_CMD_STOP, false, false, false, false, false, false}
+		_pendingState{nullptr, APP_CMD_STOP, false, false, false, false, false, false, false, false, false}
 	{}
 
 	AndroidState::~AndroidState()
@@ -219,18 +219,28 @@ namespace RN
 			app? app->activityState : APP_CMD_STOP,
 			app? (app->destroyRequested != 0) : false,
 			windowChanged,
+			false,
 			didResume,
+			false,
+			false,
 			didDestroy,
 			false,
 			true
 		};
 
 		LockGuard<Lockable> lock(_pendingStateLock);
+		int32 previousActivityState = _pendingState.hasPendingState ? _pendingState.activityState : _activityState.load(std::memory_order_acquire);
+		state.didStart = previousActivityState != APP_CMD_START && state.activityState == APP_CMD_START;
+		state.didPause = previousActivityState != APP_CMD_PAUSE && state.activityState == APP_CMD_PAUSE;
+		state.didStop = previousActivityState != APP_CMD_STOP && state.activityState == APP_CMD_STOP;
 		state.didLowMemory = _pendingState.didLowMemory;
 		if(_pendingState.hasPendingState)
 		{
 			state.windowChanged = state.windowChanged || _pendingState.windowChanged;
+			state.didStart = state.didStart || _pendingState.didStart;
 			state.didResume = state.didResume || _pendingState.didResume;
+			state.didPause = state.didPause || _pendingState.didPause;
+			state.didStop = state.didStop || _pendingState.didStop;
 			state.didDestroy = state.didDestroy || _pendingState.didDestroy;
 		}
 		_pendingState = state;
@@ -335,9 +345,9 @@ namespace RN
 		return permissionState;
 	}
 
-	bool AndroidState::DrainPendingState(const std::function<void(bool, bool, bool, bool)> &callback)
+	bool AndroidState::DrainPendingState(const std::function<void(bool, bool, bool, bool, bool, bool, bool)> &callback)
 	{
-		PendingState state = {nullptr, APP_CMD_STOP, false, false, false, false, false, false};
+		PendingState state = {nullptr, APP_CMD_STOP, false, false, false, false, false, false, false, false, false};
 
 		{
 			LockGuard<Lockable> lock(_pendingStateLock);
@@ -360,7 +370,10 @@ namespace RN
 		if(callback)
 		{
 			callback(state.windowChanged || previousWindow != state.window,
+					 state.didStart || (previousActivityState != APP_CMD_START && state.activityState == APP_CMD_START),
 					 state.didResume || (previousActivityState != APP_CMD_RESUME && state.activityState == APP_CMD_RESUME),
+					 state.didPause || (previousActivityState != APP_CMD_PAUSE && state.activityState == APP_CMD_PAUSE),
+					 state.didStop || (previousActivityState != APP_CMD_STOP && state.activityState == APP_CMD_STOP),
 					 state.didDestroy || (!previousDestroyRequested && state.destroyRequested),
 					 state.didLowMemory);
 		}

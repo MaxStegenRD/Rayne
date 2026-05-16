@@ -82,7 +82,7 @@ namespace RN
 		void SetRayneMainThreadJNIEnv(JNIEnv *jniEnv);
 		void SynchronizeState();
 		void SynchronizeState(bool windowChanged, bool didResume, bool didDestroy);
-		bool DrainPendingState(const std::function<void(bool, bool, bool, bool)> &callback);
+		bool DrainPendingState(const std::function<void(bool, bool, bool, bool, bool, bool, bool)> &callback);
 
 		struct PendingState
 		{
@@ -90,7 +90,10 @@ namespace RN
 			int32 activityState;
 			bool destroyRequested;
 			bool windowChanged;
+			bool didStart;
 			bool didResume;
+			bool didPause;
+			bool didStop;
 			bool didDestroy;
 			bool didLowMemory;
 			bool hasPendingState;
