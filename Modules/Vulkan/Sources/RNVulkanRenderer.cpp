@@ -34,6 +34,30 @@ namespace RN
 			return (bytes + bytesPerMegabyte - 1) / bytesPerMegabyte;
 		};
 
+		auto estimateTextureBytes = [](const Texture::Descriptor &descriptor) -> uint64 {
+			const VulkanTextureInfo::FormatInfo &formatInfo = VulkanTextureInfo::GetFormatInfo(descriptor.format);
+			if(formatInfo.bytesPerBlock == 0)
+				return 0;
+
+			const uint32 blockWidth = std::max<uint32>(1, formatInfo.blockWidth);
+			const uint32 blockHeight = std::max<uint32>(1, formatInfo.blockHeight);
+			const uint32 imageLayers = descriptor.type == Texture::Type::Type3D ? 1 : descriptor.depth;
+			const uint32 sampleCount = std::max<uint32>(1, descriptor.sampleCount);
+			uint64 totalBytes = 0;
+
+			for(uint32 mipmap = 0; mipmap < descriptor.mipMaps; mipmap++)
+			{
+				const uint32 mipWidth = descriptor.GetWidthForMipMapLevel(mipmap);
+				const uint32 mipHeight = descriptor.GetHeightForMipMapLevel(mipmap);
+				const uint32 mipDepth = descriptor.type == Texture::Type::Type3D ? std::max<uint32>(1, descriptor.depth >> mipmap) : 1;
+				const uint32 blocksPerRow = std::max<uint32>(1, (mipWidth + blockWidth - 1) / blockWidth);
+				const uint32 blockRows = std::max<uint32>(1, (mipHeight + blockHeight - 1) / blockHeight);
+				totalBytes += static_cast<uint64>(blocksPerRow) * blockRows * mipDepth * imageLayers * sampleCount * formatInfo.bytesPerBlock;
+			}
+
+			return totalBytes;
+		};
+
 		VmaTotalStatistics allocatorStatistics;
 		vmaCalculateStatistics(_internals->memoryAllocator, &allocatorStatistics);
 
@@ -51,6 +75,71 @@ namespace RN
 			<< "MiB unused=" << bytesToMegabytes(unusedBytes)
 			<< "MiB allocations=" << totalStatistics.allocationCount
 			<< " blocks=" << totalStatistics.blockCount;
+
+		uint32 swapchainFramebufferCount = 0;
+		uint32 swapchainColorImageCount = 0;
+		uint32 swapchainFragmentDensityImageCount = 0;
+		uint64 swapchainColorBytes = 0;
+		uint64 swapchainFragmentDensityBytes = 0;
+		std::ostringstream swapchainStatsStream;
+		for(VulkanFramebuffer *framebuffer : VulkanFramebuffer::GetLiveFramebuffers())
+		{
+			if(!framebuffer->_swapChain)
+				continue;
+
+			const uint32 swapchainIndex = swapchainFramebufferCount++;
+			uint64 framebufferColorBytes = 0;
+			uint64 framebufferFragmentDensityBytes = 0;
+			for(const VulkanFramebuffer::VulkanTargetView *targetView : framebuffer->_colorTargets)
+			{
+				swapchainColorImageCount++;
+				const uint64 targetBytes = estimateTextureBytes(targetView->targetView.texture->GetDescriptor());
+				swapchainColorBytes += targetBytes;
+				framebufferColorBytes += targetBytes;
+			}
+
+			for(const VulkanFramebuffer::VulkanTargetView *targetView : framebuffer->_fragmentDensityTargets)
+			{
+				swapchainFragmentDensityImageCount++;
+				const uint64 targetBytes = estimateTextureBytes(targetView->targetView.texture->GetDescriptor());
+				swapchainFragmentDensityBytes += targetBytes;
+				framebufferFragmentDensityBytes += targetBytes;
+			}
+
+			swapchainStatsStream << "\n    swapchain " << swapchainIndex << " |";
+			if(!framebuffer->_colorTargets.empty())
+			{
+				const Texture::Descriptor &descriptor = framebuffer->_colorTargets[0]->targetView.texture->GetDescriptor();
+				swapchainStatsStream << " colorImages=" << framebuffer->_colorTargets.size()
+					<< " " << descriptor.width << "x" << descriptor.height
+					<< " layers=" << VulkanTextureInfo::GetImageLayerCount(descriptor)
+					<< " samples=" << static_cast<uint32>(descriptor.sampleCount)
+					<< " vkFormat=" << static_cast<uint32>(VulkanTextureInfo::GetFormat(descriptor.format))
+					<< " logical=" << bytesToMegabytes(framebufferColorBytes) << "MiB";
+			}
+
+			if(!framebuffer->_fragmentDensityTargets.empty())
+			{
+				const Texture::Descriptor &descriptor = framebuffer->_fragmentDensityTargets[0]->targetView.texture->GetDescriptor();
+				swapchainStatsStream << " fragmentDensityImages=" << framebuffer->_fragmentDensityTargets.size()
+					<< " " << descriptor.width << "x" << descriptor.height
+					<< " layers=" << VulkanTextureInfo::GetImageLayerCount(descriptor)
+					<< " samples=" << static_cast<uint32>(descriptor.sampleCount)
+					<< " vkFormat=" << static_cast<uint32>(VulkanTextureInfo::GetFormat(descriptor.format))
+					<< " logical=" << bytesToMegabytes(framebufferFragmentDensityBytes) << "MiB";
+			}
+		}
+
+		if(swapchainFramebufferCount > 0)
+		{
+			statsStream << "\n  vulkan swapchains | framebuffers=" << swapchainFramebufferCount
+				<< " colorImages=" << swapchainColorImageCount
+				<< " logicalColor=" << bytesToMegabytes(swapchainColorBytes)
+				<< "MiB fragmentDensityImages=" << swapchainFragmentDensityImageCount
+				<< " logicalFragmentDensity=" << bytesToMegabytes(swapchainFragmentDensityBytes)
+				<< "MiB"
+				<< swapchainStatsStream.str();
+		}
 
 		for(uint32 heapIndex = 0; heapIndex < memoryProperties.memoryHeapCount; heapIndex++)
 		{
