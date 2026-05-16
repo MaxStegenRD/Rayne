@@ -178,8 +178,8 @@ namespace RN
 			resolvePass = new PostProcessingAPIStage(PostProcessingAPIStage::Type::ResolveMSAA);
 			resolvePass->SetFramebuffer(resolvedFramebuffer);
 
-			_head->GetRenderPass()->SetFramebuffer(msaaFramebuffer);
-			_head->GetRenderPass()->AddRenderPass(resolvePass);
+			_head->GetRenderPass()->SetFramebuffer(msaaFramebuffer->Autorelease());
+			_head->GetRenderPass()->AddRenderPass(resolvePass->Autorelease());
 		}
 		else
 		{

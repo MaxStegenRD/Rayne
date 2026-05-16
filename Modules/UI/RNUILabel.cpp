@@ -22,6 +22,7 @@ namespace RN
 		}
 		Label::~Label()
 		{
+			SafeRelease(_attributedText);
 			SafeRelease(_textMaterial);
 			SafeRelease(_shadowMaterial);
 		}

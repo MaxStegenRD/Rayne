@@ -25,6 +25,7 @@ namespace RN
 			_renderResources->Delete();
 		SafeRelease(_framebuffer);
 		SafeRelease(_overrideMaterial);
+		SafeRelease(_nextRenderPasses);
 	}
 
 	void RenderPass::MarkDrawSnapshotDirty()

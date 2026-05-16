@@ -115,8 +115,8 @@ namespace RN
 	}
 	void Screen::TeardownScreens()
 	{
+		_mainScreen = nullptr;
 		SafeRelease(_screens);
-		SafeRelease(_mainScreen);
 	}
 
 #if RN_PLATFORM_MAC_OS

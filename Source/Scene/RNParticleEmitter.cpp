@@ -82,6 +82,12 @@ namespace RN
 
 	ParticleEmitter::~ParticleEmitter()
 	{
+		if(_drawable && !Renderer::IsHeadless())
+		{
+			Renderer::GetActiveRenderer()->DeleteDrawable(_drawable);
+			_drawable = nullptr;
+		}
+
 		SafeRelease(_material);
 		SafeRelease(_mesh);
 		SafeRelease(_rng);
