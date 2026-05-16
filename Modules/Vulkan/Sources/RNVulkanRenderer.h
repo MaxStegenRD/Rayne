@@ -70,8 +70,7 @@ namespace RN
 		VKAPI ShaderLibrary *GetDefaultShaderLibrary() final;
 
 		VKAPI Texture *CreateTextureWithDescriptor(const Texture::Descriptor &descriptor) final;
-		VKAPI void CreateMipMapForTexture(VulkanTexture *texture);
-		VKAPI void CreateMipMaps();
+		VKAPI Texture *CreateTextureWithExternalMemory(const Texture::Descriptor &descriptor, const Texture::ExternalMemoryDescriptor &externalMemoryDescriptor) final;
 
 		VKAPI Framebuffer *CreateFramebuffer(const Vector2 &size) final;
 
@@ -126,6 +125,8 @@ namespace RN
 		void SetupRendertargets(VkCommandBuffer commandBuffer, const VulkanFrameSubmission &submission, const VulkanRenderPass &renderPass);
 		VkRenderPass GetVulkanRenderPass(const RenderFrame &renderFrame, const VulkanRenderPass *renderPass);
 		void SubmitPendingResourceCommandBuffers();
+		void CreateMipMapForTexture(VulkanTexture *texture);
+		void CreateMipMaps();
 
 		void CreateVulkanCommandBuffers(size_t count, std::vector<VkCommandBuffer> &buffers);
 		VkCommandBuffer CreateVulkanCommandBuffer();

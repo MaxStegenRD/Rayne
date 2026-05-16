@@ -99,4 +99,9 @@ namespace RN
 	{
 		_renderer->CreateMipMapForTexture(this);
 	}
+
+	void *MetalTexture::GetAPITexture() const
+	{
+		return _texture;
+	}
 }

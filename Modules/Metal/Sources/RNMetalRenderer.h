@@ -63,6 +63,7 @@ namespace RN
 		MTLAPI ShaderLibrary *GetDefaultShaderLibrary() final;
 
 		MTLAPI Texture *CreateTextureWithDescriptor(const Texture::Descriptor &descriptor) final;
+		MTLAPI Texture *CreateTextureWithExternalMemory(const Texture::Descriptor &descriptor, const Texture::ExternalMemoryDescriptor &externalMemoryDescriptor) final;
 		MTLAPI Texture *CreateTextureWithDescriptorAndIOSurface(const Texture::Descriptor &descriptor, IOSurfaceRef ioSurface);
 
 		MTLAPI Framebuffer *CreateFramebuffer(const Vector2 &size) final;

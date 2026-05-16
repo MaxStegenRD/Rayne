@@ -91,6 +91,7 @@ namespace RN
 		RNAPI virtual ShaderLibrary *GetDefaultShaderLibrary() = 0;
 
 		RNAPI virtual Texture *CreateTextureWithDescriptor(const Texture::Descriptor &descriptor) = 0;
+		RNAPI virtual Texture *CreateTextureWithExternalMemory(const Texture::Descriptor &descriptor, const Texture::ExternalMemoryDescriptor &externalMemoryDescriptor);
 
 		RNAPI virtual Framebuffer *CreateFramebuffer(const Vector2 &size) = 0;
 

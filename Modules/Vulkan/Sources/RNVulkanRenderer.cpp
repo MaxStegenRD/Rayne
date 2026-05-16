@@ -1607,6 +1607,11 @@ namespace RN
 		return texture;
 	}
 
+	Texture *VulkanRenderer::CreateTextureWithExternalMemory(const Texture::Descriptor &descriptor, const Texture::ExternalMemoryDescriptor &externalMemoryDescriptor)
+	{
+		return new VulkanTexture(descriptor, this, externalMemoryDescriptor);
+	}
+
 	Framebuffer *VulkanRenderer::CreateFramebuffer(const Vector2 &size)
 	{
 		return new VulkanFramebuffer(size, this);

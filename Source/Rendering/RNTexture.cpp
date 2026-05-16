@@ -192,6 +192,17 @@ namespace RN
 		return texture->Autorelease();
 	}
 
+	Texture *Texture::WithExternalMemory(const Descriptor &descriptor, const ExternalMemoryDescriptor &externalMemoryDescriptor)
+	{
+		Texture *texture = Renderer::GetActiveRenderer()->CreateTextureWithExternalMemory(descriptor, externalMemoryDescriptor);
+		return texture->Autorelease();
+	}
+
+	void *Texture::GetAPITexture() const
+	{
+		return nullptr;
+	}
+
 	bool Texture::HasColorChannel(ColorChannel channel) const
 	{
 #define ColorChannel(format, r, g, b, a) \

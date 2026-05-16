@@ -43,14 +43,7 @@ namespace RN
 		VKAPI VulkanTexture(const Descriptor &descriptor, VulkanRenderer *renderer);
 		VKAPI VulkanTexture(const Descriptor &descriptor, VulkanRenderer *renderer, VkImage image, bool fromSwapchain);
 
-		struct ExternalMemoryDescriptor
-		{
-			uint64 handle = 0;
-			VkExternalMemoryHandleTypeFlagBits handleType = static_cast<VkExternalMemoryHandleTypeFlagBits>(0);
-			bool dedicatedAllocation = true;
-		};
-
-		VKAPI VulkanTexture(const Descriptor &descriptor, VulkanRenderer *renderer, const ExternalMemoryDescriptor &externalMemoryDescriptor);
+		VKAPI VulkanTexture(const Descriptor &descriptor, VulkanRenderer *renderer, const Texture::ExternalMemoryDescriptor &externalMemoryDescriptor);
 
 		VKAPI ~VulkanTexture() override;
 
@@ -66,6 +59,7 @@ namespace RN
 
 		VkImage GetVulkanImage() const { return _image; }
 		VkFormat GetVulkanFormat() const { return _format; }
+		VKAPI void *GetAPITexture() const final;
 
 		VKAPI void TransitionToUsage(VkCommandBuffer buffer, LayoutUsage usage);
 		VKAPI void TransitionToUsage(VkCommandBuffer buffer, LayoutUsage usage, const SubresourceRange &range);
@@ -98,10 +92,11 @@ namespace RN
 		};
 
 		void CreateOwnedImage();
-		void CreateImageWithExternalMemory(const ExternalMemoryDescriptor &externalMemoryDescriptor);
+		void CreateImageWithExternalMemory(const Texture::ExternalMemoryDescriptor &externalMemoryDescriptor);
 		void CreateImageView();
 		void GetVulkanImageCreateInfo(VkImageCreateInfo &imageInfo) const;
 		void ValidateImageCreateInfo(const VkImageCreateInfo &imageInfo) const;
+		static VkExternalMemoryHandleTypeFlagBits GetVulkanExternalMemoryHandleType(Texture::ExternalMemoryHandleType handleType);
 		void GenerateMipMaps(VkCommandBuffer commandBuffer);
 		SubresourceRange GetWholeSubresourceRange() const;
 		bool IsWholeSubresourceRange(const SubresourceRange &range) const;

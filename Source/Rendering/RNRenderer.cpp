@@ -592,6 +592,12 @@ namespace RN
 	{
 	}
 
+	Texture *Renderer::CreateTextureWithExternalMemory(const Texture::Descriptor &descriptor, const Texture::ExternalMemoryDescriptor &externalMemoryDescriptor)
+	{
+		RN_ASSERT(false, "External texture memory import is not supported by this renderer");
+		return nullptr;
+	}
+
 	RenderPassResources *Renderer::CreateRenderPassResources()
 	{
 		return new RenderPassResources(this);

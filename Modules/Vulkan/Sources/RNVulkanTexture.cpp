@@ -15,6 +15,20 @@ namespace RN
 {
 	RNDefineMeta(VulkanTexture, Texture)
 
+	VkExternalMemoryHandleTypeFlagBits VulkanTexture::GetVulkanExternalMemoryHandleType(Texture::ExternalMemoryHandleType handleType)
+	{
+#if RN_PLATFORM_WINDOWS
+		switch(handleType)
+		{
+			case Texture::ExternalMemoryHandleType::D3D11Texture:
+				return VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT;
+		}
+#endif
+
+		RN_ASSERT(false, "Unsupported external texture memory handle type");
+		return static_cast<VkExternalMemoryHandleTypeFlagBits>(0);
+	}
+
 	VulkanTexture::VulkanTexture(const Descriptor &descriptor, VulkanRenderer *renderer) :
 		Texture(descriptor),
 		_renderer(renderer),
@@ -48,7 +62,7 @@ namespace RN
 		CreateImageView();
 	}
 
-	VulkanTexture::VulkanTexture(const Descriptor &descriptor, VulkanRenderer *renderer, const ExternalMemoryDescriptor &externalMemoryDescriptor) :
+	VulkanTexture::VulkanTexture(const Descriptor &descriptor, VulkanRenderer *renderer, const Texture::ExternalMemoryDescriptor &externalMemoryDescriptor) :
 		Texture(descriptor),
 		_renderer(renderer),
 		_isStreamingData(false),
@@ -189,15 +203,14 @@ namespace RN
 		CreateImageView();
 	}
 
-	void VulkanTexture::CreateImageWithExternalMemory(const ExternalMemoryDescriptor &externalMemoryDescriptor)
+	void VulkanTexture::CreateImageWithExternalMemory(const Texture::ExternalMemoryDescriptor &externalMemoryDescriptor)
 	{
 #if RN_PLATFORM_WINDOWS
 		VulkanDevice *device = _renderer->GetVulkanDevice();
 		RN_ASSERT(device->GetSupportsExternalTextureImport(), "Vulkan device does not support external texture import");
 		RN_ASSERT(externalMemoryDescriptor.handle, "External Vulkan texture import requires a valid Win32 handle");
 		RN_ASSERT(_format != VK_FORMAT_UNDEFINED, "Requested texture format is not supported by Vulkan (%i)", _descriptor.format);
-		VkExternalMemoryHandleTypeFlagBits handleType = externalMemoryDescriptor.handleType;
-		if(handleType == 0) handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT;
+		VkExternalMemoryHandleTypeFlagBits handleType = GetVulkanExternalMemoryHandleType(externalMemoryDescriptor.handleType);
 
 		VkImageCreateInfo imageInfo;
 		GetVulkanImageCreateInfo(imageInfo);
@@ -273,9 +286,13 @@ namespace RN
 
 		_currentUsage = LayoutUsage::Undefined;
 #else
-		(void)externalMemoryDescriptor;
 		RN_ASSERT(false, "External Vulkan texture import is not supported on this platform");
 #endif
+	}
+
+	void *VulkanTexture::GetAPITexture() const
+	{
+		return reinterpret_cast<void *>(_image);
 	}
 
 	void VulkanTexture::CreateImageView()

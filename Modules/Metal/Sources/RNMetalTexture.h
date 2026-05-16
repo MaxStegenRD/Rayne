@@ -29,6 +29,7 @@ namespace RN
 
 		MTLAPI void GenerateMipMaps() final;
 
+		MTLAPI void *GetAPITexture() const final;
 		void *__GetUnderlyingTexture() const { return _texture; }
 
 	private:

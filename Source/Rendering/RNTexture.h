@@ -120,6 +120,24 @@ namespace RN
 				   InputAttachment = (1 << 3),
 				   Subsampled = (1 << 4));
 
+		enum class ExternalMemoryHandleType
+		{
+			D3D11Texture
+		};
+
+		struct ExternalMemoryDescriptor
+		{
+			ExternalMemoryDescriptor() :
+				handle(0),
+				handleType(ExternalMemoryHandleType::D3D11Texture),
+				dedicatedAllocation(true)
+			{}
+
+			uint64 handle;
+			ExternalMemoryHandleType handleType;
+			bool dedicatedAllocation;
+		};
+
 		struct Descriptor
 		{
 			Descriptor() :
@@ -266,6 +284,7 @@ namespace RN
 		RNAPI static Texture *WithName(const String *name, const Dictionary *settings = nullptr);
 		RNAPI static Texture *WithPNGData(const Data *data, const Dictionary *settings = nullptr);
 		RNAPI static Texture *WithDescriptor(const Descriptor &descriptor);
+		RNAPI static Texture *WithExternalMemory(const Descriptor &descriptor, const ExternalMemoryDescriptor &externalMemoryDescriptor);
 
 		RNAPI virtual void StartStreamingData() {};
 		RNAPI virtual void StopStreamingData() {};
@@ -277,6 +296,7 @@ namespace RN
 
 		RNAPI virtual void GenerateMipMaps() = 0;
 		RNAPI virtual bool HasColorChannel(ColorChannel channel) const;
+		RNAPI virtual void *GetAPITexture() const;
 
 		const Descriptor &GetDescriptor() const RN_NOEXCEPT { return _descriptor; }
 

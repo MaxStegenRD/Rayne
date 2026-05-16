@@ -973,6 +973,12 @@ namespace RN
 		return new MetalTexture(this, texture, descriptor);
 	}
 
+	Texture *MetalRenderer::CreateTextureWithExternalMemory(const Texture::Descriptor &descriptor, const Texture::ExternalMemoryDescriptor &externalMemoryDescriptor)
+	{
+		RN_ASSERT(false, "Metal renderer does not support external texture memory import");
+		return nullptr;
+	}
+
 	Texture *MetalRenderer::CreateTextureWithDescriptorAndIOSurface(const Texture::Descriptor &descriptor, IOSurfaceRef ioSurface)
 	{
 		RN_PROFILE_SCOPE();
