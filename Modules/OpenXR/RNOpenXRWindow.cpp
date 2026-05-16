@@ -159,6 +159,13 @@ namespace RN
 		_internals->SetAndroidApplicationThreadKHR = nullptr;
 #endif
 
+#if RN_PLATFORM_ANDROID
+		NotificationManager::GetSharedInstance()->AddSubscriber(kRNAndroidOnDestroy, [this](Notification *notification) {
+			RNInfo("RN_SHUTDOWN OpenXRWindow Android destroy requested");
+			StopRendering();
+		}, this);
+#endif
+
 		std::vector<const char *> extensions;
 		XrBaseInStructure *platformSpecificInstanceCreateInfo = nullptr;
 
@@ -540,6 +547,9 @@ namespace RN
 
 	OpenXRWindow::~OpenXRWindow()
 	{
+#if RN_PLATFORM_ANDROID
+		NotificationManager::GetSharedInstance()->RemoveSubscriber(kRNAndroidOnDestroy, this);
+#endif
 		StopRendering();
 
 		SafeRelease(_pendingPresentationState);
