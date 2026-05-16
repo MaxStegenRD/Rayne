@@ -27,6 +27,81 @@ namespace RN
 {
 	RNDefineMeta(VulkanRenderer, Renderer)
 
+	String *VulkanRenderer::GetBackendFrameStatistics() const
+	{
+		const uint64 bytesPerMegabyte = 1024ull * 1024ull;
+		auto bytesToMegabytes = [bytesPerMegabyte](uint64 bytes) -> uint64 {
+			return (bytes + bytesPerMegabyte - 1) / bytesPerMegabyte;
+		};
+
+		VmaTotalStatistics allocatorStatistics;
+		vmaCalculateStatistics(_internals->memoryAllocator, &allocatorStatistics);
+
+		const VmaStatistics &totalStatistics = allocatorStatistics.total.statistics;
+		const uint64 unusedBytes = totalStatistics.blockBytes - totalStatistics.allocationBytes;
+		VmaBudget heapBudgets[VK_MAX_MEMORY_HEAPS];
+		vmaGetHeapBudgets(_internals->memoryAllocator, heapBudgets);
+
+		VkPhysicalDeviceMemoryProperties memoryProperties;
+		vk::GetPhysicalDeviceMemoryProperties(GetVulkanDevice()->GetPhysicalDevice(), &memoryProperties);
+
+		std::ostringstream statsStream;
+		statsStream << "\n  vulkan memory | used=" << bytesToMegabytes(totalStatistics.allocationBytes)
+			<< "MiB reserved=" << bytesToMegabytes(totalStatistics.blockBytes)
+			<< "MiB unused=" << bytesToMegabytes(unusedBytes)
+			<< "MiB allocations=" << totalStatistics.allocationCount
+			<< " blocks=" << totalStatistics.blockCount;
+
+		for(uint32 heapIndex = 0; heapIndex < memoryProperties.memoryHeapCount; heapIndex++)
+		{
+			const VmaStatistics &heapStatistics = allocatorStatistics.memoryHeap[heapIndex].statistics;
+			if(heapStatistics.blockBytes == 0 && heapStatistics.allocationBytes == 0 && heapBudgets[heapIndex].usage == 0)
+				continue;
+
+			statsStream << "\n    heap " << heapIndex
+				<< " | used=" << bytesToMegabytes(heapStatistics.allocationBytes)
+				<< "MiB reserved=" << bytesToMegabytes(heapStatistics.blockBytes)
+				<< "MiB usage=" << bytesToMegabytes(heapBudgets[heapIndex].usage)
+				<< "MiB budget=" << bytesToMegabytes(heapBudgets[heapIndex].budget)
+				<< "MiB allocations=" << heapStatistics.allocationCount
+				<< " blocks=" << heapStatistics.blockCount;
+		}
+
+		for(uint32 typeIndex = 0; typeIndex < memoryProperties.memoryTypeCount; typeIndex++)
+		{
+			const VmaStatistics &typeStatistics = allocatorStatistics.memoryType[typeIndex].statistics;
+			if(typeStatistics.blockBytes == 0 && typeStatistics.allocationBytes == 0)
+				continue;
+
+			const VkMemoryPropertyFlags flags = memoryProperties.memoryTypes[typeIndex].propertyFlags;
+			statsStream << "\n    type " << typeIndex
+				<< " heap=" << memoryProperties.memoryTypes[typeIndex].heapIndex
+				<< " used=" << bytesToMegabytes(typeStatistics.allocationBytes)
+				<< "MiB reserved=" << bytesToMegabytes(typeStatistics.blockBytes)
+				<< "MiB allocations=" << typeStatistics.allocationCount
+				<< " blocks=" << typeStatistics.blockCount
+				<< " flags=";
+
+			bool hasFlag = false;
+			auto appendFlag = [&statsStream, &hasFlag, flags](VkMemoryPropertyFlagBits flag, const char *name) {
+				if(flags & flag)
+				{
+					if(hasFlag) statsStream << ",";
+					statsStream << name;
+					hasFlag = true;
+				}
+			};
+			appendFlag(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, "deviceLocal");
+			appendFlag(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, "hostVisible");
+			appendFlag(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, "hostCoherent");
+			appendFlag(VK_MEMORY_PROPERTY_HOST_CACHED_BIT, "hostCached");
+			appendFlag(VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT, "lazy");
+			if(!hasFlag) statsStream << "none";
+		}
+
+		return RNSTR(statsStream.str());
+	}
+
 	bool VulkanRenderer::ShouldInheritViews(RenderPass::ViewMode viewMode, bool isSubpass, bool hasInheritedViewState, bool destinationSupportsViewState) const
 	{
 		if(isSubpass)

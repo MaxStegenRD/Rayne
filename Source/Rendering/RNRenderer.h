@@ -132,6 +132,7 @@ namespace RN
 		RNAPI void QueueDrawableDeletion(Drawable *drawable);
 		RNAPI void FlushAllDeletedDrawables();
 		RNAPI void PrintFrameStatistics(const RenderFrame &frame, float interval = RN_RENDERING_FRAME_STATISTICS_INTERVAL);
+		RNAPI virtual String *GetBackendFrameStatistics() const;
 
 	private:
 		struct DeletedDrawable

@@ -97,6 +97,8 @@ namespace RN
 		VKAPI void UpdateDynamicBufferReference(VulkanDynamicBufferReference *reference, bool align);
 
 	private:
+		VKAPI String *GetBackendFrameStatistics() const final;
+
 		void StartRenderThread();
 		void StopRenderThread();
 		bool IsOnRenderThread() const;

@@ -540,8 +540,17 @@ namespace RN
 				}
 			}
 
+			String *backendStatistics = GetBackendFrameStatistics();
+			if(backendStatistics && backendStatistics->GetLength() > 0)
+				statsStream << backendStatistics->GetUTF8String();
+
 			RNInfo(statsStream.str());
 		}
+	}
+
+	String *Renderer::GetBackendFrameStatistics() const
+	{
+		return nullptr;
 	}
 
 	void Renderer::ScheduleRenderThreadWork(Function &&function)
