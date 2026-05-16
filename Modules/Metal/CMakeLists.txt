@@ -52,22 +52,22 @@ endif()
 set(HEADERS
         Sources/RNMetal.h
         Sources/RNMetalDevice.h
+        Sources/RNMetalRenderer.h
+        Sources/RNMetalRendererDescriptor.h
+        Sources/RNMetalWindow.h)
+
+set(PRIVATE_HEADERS
         Sources/RNMetalFramebuffer.h
         Sources/RNMetalGPUBuffer.h
         Sources/RNMetalDynamicGPUBuffer.h
-        Sources/RNMetalRenderer.h
-        Sources/RNMetalRendererDescriptor.h
+        Sources/RNMetalInternals.h
         Sources/RNMetalShader.h
         Sources/RNMetalShaderLibrary.h
         Sources/RNMetalStateCoordinator.h
         Sources/RNMetalTexture.h
         Sources/RNMetalTextureInfo.h
         Sources/RNMetalUniformBuffer.h
-        Sources/RNMetalWindow.h
         Sources/RNMetalSwapChain.h)
-
-set(PRIVATE_HEADERS
-        Sources/RNMetalInternals.h)
 
 set(DEFINES
         "RN_BUILD_METAL")

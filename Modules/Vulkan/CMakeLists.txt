@@ -86,7 +86,6 @@ set(SOURCES
 
 set(HEADERS
         Sources/RNVulkan.h
-        Sources/RNVulkanDebug.h
         Sources/RNVulkanDevice.h
         Sources/RNVulkanDispatchTable.h
         Sources/RNVulkanInstance.h
@@ -95,6 +94,7 @@ set(HEADERS
         Sources/RNVulkanWindow.h)
 
 set(PRIVATE_HEADERS
+        Sources/RNVulkanDebug.h
         Sources/RNVulkanFramebuffer.h
         Sources/RNVulkanGPUBuffer.h
         Sources/RNVulkanInternals.h

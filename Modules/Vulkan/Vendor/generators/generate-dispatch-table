@@ -34,7 +34,7 @@ def generate_header(guard):
     lines.append("#ifndef %s" % guard)
     lines.append("#define %s" % guard)
     lines.append("")
-    lines.append('#include "vulkan.h"')
+    lines.append('#include <vulkan/vulkan.h>')
     lines.append("")
     lines.append("namespace vk {")
     lines.append("")
