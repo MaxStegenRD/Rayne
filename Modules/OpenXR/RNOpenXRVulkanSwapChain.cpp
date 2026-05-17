@@ -127,7 +127,7 @@ namespace RN
 			_renderSemaphores.push_back(renderSemaphore);
 		}
 
-		_framebuffer = new VulkanFramebuffer(_size, _descriptor.layerCount, this, renderer, _descriptor.colorFormat, _descriptor.depthStencilFormat, _swapchainFoveationImages ? Texture::Format::RG_8 : Texture::Format::Invalid);
+		_framebuffer = CreateSwapChainFramebuffer(_descriptor.layerCount, _swapchainFoveationImages ? Texture::Format::RG_8 : Texture::Format::Invalid);
 		
 	}
 

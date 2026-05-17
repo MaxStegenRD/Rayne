@@ -10,6 +10,9 @@
 #include "RNOpenXRCompositorLayer.h"
 #include "RNOpenXRSwapChain.h"
 #include "RNOpenXRWindow.h"
+#if XR_USE_GRAPHICS_API_VULKAN
+	#include "RNVulkanRenderer.h"
+#endif
 
 namespace RN
 {
@@ -125,11 +128,11 @@ namespace RN
 		Framebuffer *framebufferObject = _tilePropertiesFramebuffer.Get();
 		if(!framebufferObject) return nullptr;
 
-		VulkanFramebuffer *framebuffer = framebufferObject->Downcast<VulkanFramebuffer>();
-		if(!framebuffer) return nullptr;
+		Renderer *renderer = Renderer::GetActiveRenderer();
+		VulkanRenderer *vulkanRenderer = renderer ? renderer->Downcast<VulkanRenderer>() : nullptr;
+		if(!vulkanRenderer) return nullptr;
 
-		const std::vector<VkTilePropertiesQCOM> &tileProperties = framebuffer->GetCurrentVariantTileProperties();
-		return tileProperties.empty() ? nullptr : &tileProperties;
+		return vulkanRenderer->GetFramebufferTileProperties(framebufferObject);
 	}
 #endif
 

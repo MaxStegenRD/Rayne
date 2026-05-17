@@ -71,7 +71,8 @@ namespace RN
 		}*/
 
 		MetalRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<MetalRenderer>();
-		_framebuffer = new MetalFramebuffer(_size, this, _descriptor.colorFormat, _descriptor.depthStencilFormat);
+		_renderer = renderer;
+		_framebuffer = CreateSwapChainFramebuffer();
 	}
 
 	OpenXRMetalSwapChain::~OpenXRMetalSwapChain()

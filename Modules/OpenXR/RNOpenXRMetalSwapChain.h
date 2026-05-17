@@ -9,7 +9,6 @@
 #ifndef __RAYNE_OpenXRMETALSWAPCHAIN_H_
 #define __RAYNE_OpenXRMETALSWAPCHAIN_H_
 
-#include "RNMetalFramebuffer.h"
 #include "RNMetalRenderer.h"
 #include "RNMetalSwapChain.h"
 

@@ -1618,6 +1618,15 @@ namespace RN
 		return new VulkanFramebuffer(size, this);
 	}
 
+	const std::vector<VkTilePropertiesQCOM> *VulkanRenderer::GetFramebufferTileProperties(const Framebuffer *framebuffer) const
+	{
+		const VulkanFramebuffer *vulkanFramebuffer = framebuffer ? framebuffer->Downcast<VulkanFramebuffer>() : nullptr;
+		if(!vulkanFramebuffer) return nullptr;
+
+		const std::vector<VkTilePropertiesQCOM> &tileProperties = vulkanFramebuffer->GetCurrentVariantTileProperties();
+		return tileProperties.empty() ? nullptr : &tileProperties;
+	}
+
 	void VulkanRenderer::FillUniformBuffer(Shader::ArgumentBuffer *argumentBuffer, VulkanDynamicBufferReference *dynamicBufferReference, const RenderFrame::DrawItem &drawItem, const Material::Properties &mergedMaterialProperties, const RenderFrame::Pass &framePass)
 	{
 		uint8 *buffer = reinterpret_cast<uint8 *>(dynamicBufferReference->dynamicBuffer->GetBuffer()) + dynamicBufferReference->offset;

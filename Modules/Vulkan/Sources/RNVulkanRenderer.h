@@ -73,6 +73,7 @@ namespace RN
 		VKAPI Texture *CreateTextureWithExternalMemory(const Texture::Descriptor &descriptor, const Texture::ExternalMemoryDescriptor &externalMemoryDescriptor) final;
 
 		VKAPI Framebuffer *CreateFramebuffer(const Vector2 &size) final;
+		VKAPI const std::vector<VkTilePropertiesQCOM> *GetFramebufferTileProperties(const Framebuffer *framebuffer) const;
 
 		VKAPI Drawable *CreateDrawable() final;
 		VKAPI void DeleteDrawable(Drawable *drawable) final;

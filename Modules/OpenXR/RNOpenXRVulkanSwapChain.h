@@ -9,7 +9,6 @@
 #ifndef __RAYNE_OpenXRVULKANSWAPCHAIN_H_
 #define __RAYNE_OpenXRVULKANSWAPCHAIN_H_
 
-#include "RNVulkanFramebuffer.h"
 #include "RNVulkanRenderer.h"
 #include "RNVulkanSwapChain.h"
 
