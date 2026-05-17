@@ -130,7 +130,9 @@ namespace RN
 			throw InvalidArgumentException(RNSTR("Couldn't resolve module name: " << name));
 
 		_path->Retain();
-		_name = _name->GetLastPathComponent();
+		String *resolvedName = _name->GetLastPathComponent()->Retain();
+		SafeRelease(_name);
+		_name = resolvedName;
 
 		// Resolve extra paths
 		if(isDirectory)
