@@ -15,6 +15,8 @@ def getCmakeArgumentsFromProjectProperty = { ->
     return cmakeArguments
 }
 
+def rayneAssetsDir = layout.buildDirectory.dir("generated/assets").get().asFile
+
 android {
     namespace "__RN_BUNDLE_ID__"
     compileSdk 32
@@ -28,6 +30,7 @@ android {
     sourceSets {
         main {
             jniLibs.srcDirs 'src/main/libs'
+            assets.srcDir rayneAssetsDir
         }
         debug {
             jniLibs.srcDirs 'src/debug/libs'
@@ -44,7 +47,7 @@ android {
             cmake {
                 arguments = getCmakeArgumentsFromProjectProperty()
                 arguments.add("-DANDROID_STL=c++_shared")
-                arguments.add("-DANDROID_ASSETS_DIRECTORIES='"+"${sourceSets.main.assets.srcDirs}".toString()+"'")
+                arguments.add("-DRAYNE_ANDROID_ASSETS_DIRECTORY=${rayneAssetsDir.absolutePath}")
                 
                 // Tell Clang to emit full .eh_frame CFI in each object
                 arguments.add("-DCMAKE_C_FLAGS=-funwind-tables -fasynchronous-unwind-tables")
@@ -108,6 +111,15 @@ android {
     }
     lint {
         abortOnError false
+    }
+}
+
+afterEvaluate {
+    android.applicationVariants.all { variant ->
+        def variantTaskName = variant.name.capitalize()
+        tasks.named("merge${variantTaskName}Assets") {
+            dependsOn "externalNativeBuild${variantTaskName}"
+        }
     }
 }
 
