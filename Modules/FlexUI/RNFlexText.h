@@ -25,7 +25,7 @@ namespace RN
 	public:
 		FLXAPI explicit FlexText(RN::UI::Label *label);
 
-		FLXAPI YGSize Measure(float width, YGMeasureMode widthMode, float height, YGMeasureMode heightMode) override;
+		FLXAPI RN::Vector2 Measure(float width, FlexMeasureMode widthMode, float height, FlexMeasureMode heightMode) override;
 
 		RN::UI::Label *GetLabel() const { return _label; }
 

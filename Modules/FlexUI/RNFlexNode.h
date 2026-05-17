@@ -2,7 +2,7 @@
 //  RNFlexNode.h
 //  Rayne
 //
-//  Flex layout tree node backed by Yoga.
+//  Flex layout tree node.
 //
 
 #ifndef __RN_FLEX_NODE_H_
@@ -10,8 +10,6 @@
 
 #include "RNFlexMeasure.h"
 #include "RNFlexStyle.h"
-
-#include <yoga/Yoga.h>
 
 #include <cstddef>
 
@@ -34,8 +32,6 @@ namespace RN
 		FLXAPI void SetView(RN::UI::View *view);
 		RN::UI::View *GetView() const { return _view; }
 
-		YGNodeRef GetYGNode() const { return _node; }
-
 		FLXAPI void SetStyle(const FlexStyle &style);
 		const FlexStyle &GetStyle() const { return _style; }
 
@@ -53,11 +49,12 @@ namespace RN
 		FLXAPI void MarkDirty();
 
 	private:
-		static YGSize MeasureCallback(const YGNode *node, float width, YGMeasureMode widthMode, float height, YGMeasureMode heightMode);
+		friend class FlexLayout;
+
 		void ApplyStyle();
 
 		RN::UI::View *_view;
-		YGNodeRef _node;
+		void *_node;
 		FlexStyle _style;
 		FlexMeasure *_measure;
 		bool _ownsMeasure;

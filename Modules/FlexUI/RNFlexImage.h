@@ -25,7 +25,7 @@ namespace RN
 	public:
 		FLXAPI explicit FlexImage(RN::UI::ImageView *imageView);
 
-		FLXAPI YGSize Measure(float width, YGMeasureMode widthMode, float height, YGMeasureMode heightMode) override;
+		FLXAPI RN::Vector2 Measure(float width, FlexMeasureMode widthMode, float height, FlexMeasureMode heightMode) override;
 
 		RN::UI::ImageView *GetImageView() const { return _imageView; }
 

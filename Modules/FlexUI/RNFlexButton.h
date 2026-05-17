@@ -25,7 +25,7 @@ namespace RN
 	public:
 		FLXAPI explicit FlexButton(RN::UI::Button *button);
 
-		FLXAPI YGSize Measure(float width, YGMeasureMode widthMode, float height, YGMeasureMode heightMode) override;
+		FLXAPI RN::Vector2 Measure(float width, FlexMeasureMode widthMode, float height, FlexMeasureMode heightMode) override;
 
 		RN::UI::Button *GetButton() const { return _button; }
 

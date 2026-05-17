@@ -6,9 +6,41 @@
 #include "RNFlexNode.h"
 
 #include <RNUI.h>
+#include <yoga/Yoga.h>
 
 namespace RN
 {
+	static YGNodeRef GetYGNode(void *node)
+	{
+		return static_cast<YGNodeRef>(node);
+	}
+
+	static FlexMeasureMode ToFlexMeasureMode(YGMeasureMode mode)
+	{
+		switch(mode)
+		{
+			case YGMeasureModeUndefined:
+				return FlexMeasureMode::Undefined;
+			case YGMeasureModeExactly:
+				return FlexMeasureMode::Exactly;
+			case YGMeasureModeAtMost:
+				return FlexMeasureMode::AtMost;
+		}
+		return FlexMeasureMode::Undefined;
+	}
+
+	static YGSize MeasureCallback(const YGNode *node, float width, YGMeasureMode widthMode, float height, YGMeasureMode heightMode)
+	{
+		FlexNode *flexNode = static_cast<FlexNode *>(YGNodeGetContext(node));
+		if(!flexNode || !flexNode->GetMeasure())
+		{
+			return YGSize {0.0f, 0.0f};
+		}
+
+		const RN::Vector2 size = flexNode->GetMeasure()->Measure(width, ToFlexMeasureMode(widthMode), height, ToFlexMeasureMode(heightMode));
+		return YGSize {size.x, size.y};
+	}
+
 	static YGFlexDirection ToYGFlexDirection(FlexDirection direction)
 	{
 		switch(direction)
@@ -61,7 +93,8 @@ namespace RN
 		_measure(nullptr),
 		_ownsMeasure(false)
 	{
-		YGNodeSetContext(_node, this);
+		YGNodeRef node = GetYGNode(_node);
+		YGNodeSetContext(node, this);
 		ApplyStyle();
 	}
 
@@ -72,13 +105,14 @@ namespace RN
 			delete _measure;
 		}
 		_measure = nullptr;
-		const uint32 childCount = YGNodeGetChildCount(_node);
+		YGNodeRef node = GetYGNode(_node);
+		const uint32 childCount = YGNodeGetChildCount(node);
 		RN_ASSERT(childCount == 0, "FlexNode destroyed while still owning child nodes. Remove children before destroying the parent.");
-		while(YGNodeGetChildCount(_node) > 0)
+		while(YGNodeGetChildCount(node) > 0)
 		{
-			YGNodeRemoveChild(_node, YGNodeGetChild(_node, 0));
+			YGNodeRemoveChild(node, YGNodeGetChild(node, 0));
 		}
-		YGNodeFree(_node);
+		YGNodeFree(node);
 	}
 
 	void FlexNode::SetView(RN::UI::View *view)
@@ -94,7 +128,8 @@ namespace RN
 
 	void FlexNode::SetMeasure(FlexMeasure *measure, bool takeOwnership)
 	{
-		if(measure && YGNodeGetChildCount(_node) > 0)
+		YGNodeRef node = GetYGNode(_node);
+		if(measure && YGNodeGetChildCount(node) > 0)
 		{
 			return;
 		}
@@ -109,11 +144,11 @@ namespace RN
 
 		if(_measure)
 		{
-			YGNodeSetMeasureFunc(_node, static_cast<YGMeasureFunc>(&FlexNode::MeasureCallback));
+			YGNodeSetMeasureFunc(node, static_cast<YGMeasureFunc>(&MeasureCallback));
 		}
 		else
 		{
-			YGNodeSetMeasureFunc(_node, nullptr);
+			YGNodeSetMeasureFunc(node, nullptr);
 		}
 	}
 
@@ -121,91 +156,91 @@ namespace RN
 	{
 		if(!child) return;
 		if(_measure) return;
-		const uint32 count = YGNodeGetChildCount(_node);
+		YGNodeRef node = GetYGNode(_node);
+		YGNodeRef childNode = GetYGNode(child->_node);
+		const uint32 count = YGNodeGetChildCount(node);
 		const uint32 insertIndex = (index == static_cast<size_t>(-1) || index > count) ? count : static_cast<uint32>(index);
-		YGNodeInsertChild(_node, child->_node, insertIndex);
+		YGNodeInsertChild(node, childNode, insertIndex);
 	}
 
 	void FlexNode::RemoveChild(FlexNode *child)
 	{
 		if(!child) return;
-		YGNodeRemoveChild(_node, child->_node);
+		YGNodeRef node = GetYGNode(_node);
+		YGNodeRef childNode = GetYGNode(child->_node);
+		YGNodeRemoveChild(node, childNode);
 	}
 
 	void FlexNode::SetDirection(FlexDirection direction)
 	{
-		YGNodeStyleSetFlexDirection(_node, ToYGFlexDirection(direction));
+		YGNodeRef node = GetYGNode(_node);
+		YGNodeStyleSetFlexDirection(node, ToYGFlexDirection(direction));
 	}
 
 	void FlexNode::SetJustify(FlexJustify justify)
 	{
-		YGNodeStyleSetJustifyContent(_node, ToYGJustify(justify));
+		YGNodeRef node = GetYGNode(_node);
+		YGNodeStyleSetJustifyContent(node, ToYGJustify(justify));
 	}
 
 	void FlexNode::SetAlign(FlexAlign align)
 	{
-		YGNodeStyleSetAlignItems(_node, ToYGAlign(align));
+		YGNodeRef node = GetYGNode(_node);
+		YGNodeStyleSetAlignItems(node, ToYGAlign(align));
 	}
 
 	void FlexNode::SetPadding(const RN::Vector4 &padding)
 	{
-		YGNodeStyleSetPadding(_node, YGEdgeLeft, padding.x);
-		YGNodeStyleSetPadding(_node, YGEdgeTop, padding.y);
-		YGNodeStyleSetPadding(_node, YGEdgeRight, padding.z);
-		YGNodeStyleSetPadding(_node, YGEdgeBottom, padding.w);
+		YGNodeRef node = GetYGNode(_node);
+		YGNodeStyleSetPadding(node, YGEdgeLeft, padding.x);
+		YGNodeStyleSetPadding(node, YGEdgeTop, padding.y);
+		YGNodeStyleSetPadding(node, YGEdgeRight, padding.z);
+		YGNodeStyleSetPadding(node, YGEdgeBottom, padding.w);
 	}
 
 	void FlexNode::SetGap(float gap)
 	{
-		YGNodeStyleSetGap(_node, YGGutterAll, gap);
+		YGNodeRef node = GetYGNode(_node);
+		YGNodeStyleSetGap(node, YGGutterAll, gap);
 	}
 
 	void FlexNode::MarkDirty()
 	{
 		if(_measure)
 		{
-			YGNodeMarkDirty(_node);
+			YGNodeRef node = GetYGNode(_node);
+			YGNodeMarkDirty(node);
 		}
-	}
-
-	YGSize FlexNode::MeasureCallback(const YGNode *node, float width, YGMeasureMode widthMode, float height, YGMeasureMode heightMode)
-	{
-		FlexNode *flexNode = static_cast<FlexNode *>(YGNodeGetContext(node));
-		if(!flexNode || !flexNode->_measure)
-		{
-			return YGSize {0.0f, 0.0f};
-		}
-
-		return flexNode->_measure->Measure(width, widthMode, height, heightMode);
 	}
 
 	void FlexNode::ApplyStyle()
 	{
+		YGNodeRef node = GetYGNode(_node);
 		if(_style.width >= 0.0f)
-			YGNodeStyleSetWidth(_node, _style.width);
+			YGNodeStyleSetWidth(node, _style.width);
 		else
-			YGNodeStyleSetWidthAuto(_node);
+			YGNodeStyleSetWidthAuto(node);
 
 		if(_style.height >= 0.0f)
-			YGNodeStyleSetHeight(_node, _style.height);
+			YGNodeStyleSetHeight(node, _style.height);
 		else
-			YGNodeStyleSetHeightAuto(_node);
+			YGNodeStyleSetHeightAuto(node);
 
-		YGNodeStyleSetMinWidth(_node, _style.minWidth >= 0.0f ? _style.minWidth : YGUndefined);
-		YGNodeStyleSetMinHeight(_node, _style.minHeight >= 0.0f ? _style.minHeight : YGUndefined);
-		YGNodeStyleSetMaxWidth(_node, _style.maxWidth >= 0.0f ? _style.maxWidth : YGUndefined);
-		YGNodeStyleSetMaxHeight(_node, _style.maxHeight >= 0.0f ? _style.maxHeight : YGUndefined);
+		YGNodeStyleSetMinWidth(node, _style.minWidth >= 0.0f ? _style.minWidth : YGUndefined);
+		YGNodeStyleSetMinHeight(node, _style.minHeight >= 0.0f ? _style.minHeight : YGUndefined);
+		YGNodeStyleSetMaxWidth(node, _style.maxWidth >= 0.0f ? _style.maxWidth : YGUndefined);
+		YGNodeStyleSetMaxHeight(node, _style.maxHeight >= 0.0f ? _style.maxHeight : YGUndefined);
 
-		YGNodeStyleSetFlexGrow(_node, std::max(_style.flexGrow, 0.0f));
-		YGNodeStyleSetFlexShrink(_node, std::max(_style.flexShrink, 0.0f));
+		YGNodeStyleSetFlexGrow(node, std::max(_style.flexGrow, 0.0f));
+		YGNodeStyleSetFlexShrink(node, std::max(_style.flexShrink, 0.0f));
 		if(_style.flexBasis >= 0.0f)
-			YGNodeStyleSetFlexBasis(_node, _style.flexBasis);
+			YGNodeStyleSetFlexBasis(node, _style.flexBasis);
 		else
-			YGNodeStyleSetFlexBasisAuto(_node);
+			YGNodeStyleSetFlexBasisAuto(node);
 
-		YGNodeStyleSetMargin(_node, YGEdgeLeft, _style.marginLeft);
-		YGNodeStyleSetMargin(_node, YGEdgeTop, _style.marginTop);
-		YGNodeStyleSetMargin(_node, YGEdgeRight, _style.marginRight);
-		YGNodeStyleSetMargin(_node, YGEdgeBottom, _style.marginBottom);
+		YGNodeStyleSetMargin(node, YGEdgeLeft, _style.marginLeft);
+		YGNodeStyleSetMargin(node, YGEdgeTop, _style.marginTop);
+		YGNodeStyleSetMargin(node, YGEdgeRight, _style.marginRight);
+		YGNodeStyleSetMargin(node, YGEdgeBottom, _style.marginBottom);
 	}
 } // namespace RN

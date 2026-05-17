@@ -14,16 +14,12 @@ namespace RN
 	{
 	}
 
-	YGSize FlexText::Measure(float width, YGMeasureMode widthMode, float height, YGMeasureMode heightMode)
+	RN::Vector2 FlexText::Measure(float width, FlexMeasureMode widthMode, float height, FlexMeasureMode heightMode)
 	{
 		if(!_label)
-			return YGSize {0.0f, 0.0f};
+			return RN::Vector2(0.0f, 0.0f);
 
 		const RN::Vector2 textSize = _label->GetTextSize();
-
-		YGSize result;
-		result.width = ResolveSize(textSize.x, width, widthMode);
-		result.height = ResolveSize(textSize.y, height, heightMode);
-		return result;
+		return RN::Vector2(ResolveSize(textSize.x, width, widthMode), ResolveSize(textSize.y, height, heightMode));
 	}
 } // namespace RN

@@ -14,10 +14,10 @@ namespace RN
 	{
 	}
 
-	YGSize FlexButton::Measure(float width, YGMeasureMode widthMode, float height, YGMeasureMode heightMode)
+	RN::Vector2 FlexButton::Measure(float width, FlexMeasureMode widthMode, float height, FlexMeasureMode heightMode)
 	{
 		if(!_button)
-			return YGSize {0.0f, 0.0f};
+			return RN::Vector2(0.0f, 0.0f);
 
 		RN::Vector2 size(0.0f, 0.0f);
 
@@ -46,9 +46,6 @@ namespace RN
 			size.y = std::max(size.y, frameSize.y);
 		}
 
-		YGSize result;
-		result.width = ResolveSize(size.x, width, widthMode);
-		result.height = ResolveSize(size.y, height, heightMode);
-		return result;
+		return RN::Vector2(ResolveSize(size.x, width, widthMode), ResolveSize(size.y, height, heightMode));
 	}
 } // namespace RN

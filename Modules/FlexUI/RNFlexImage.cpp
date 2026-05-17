@@ -14,10 +14,10 @@ namespace RN
 	{
 	}
 
-	YGSize FlexImage::Measure(float width, YGMeasureMode widthMode, float height, YGMeasureMode heightMode)
+	RN::Vector2 FlexImage::Measure(float width, FlexMeasureMode widthMode, float height, FlexMeasureMode heightMode)
 	{
 		if(!_imageView)
-			return YGSize {0.0f, 0.0f};
+			return RN::Vector2(0.0f, 0.0f);
 
 		RN::Vector2 size(0.0f, 0.0f);
 		if(RN::Framebuffer *framebuffer = _imageView->GetFramebuffer())
@@ -34,9 +34,6 @@ namespace RN
 			size = _imageView->GetFrame().GetSize();
 		}
 
-		YGSize result;
-		result.width = ResolveSize(size.x, width, widthMode);
-		result.height = ResolveSize(size.y, height, heightMode);
-		return result;
+		return RN::Vector2(ResolveSize(size.x, width, widthMode), ResolveSize(size.y, height, heightMode));
 	}
 } // namespace RN

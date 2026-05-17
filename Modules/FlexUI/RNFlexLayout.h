@@ -2,7 +2,7 @@
 //  RNFlexLayout.h
 //  Rayne
 //
-//  Yoga layout runner.
+//  Flex layout runner.
 //
 
 #ifndef __RN_FLEX_LAYOUT_H_
@@ -12,10 +12,17 @@
 
 namespace RN
 {
+	enum class FlexLayoutDirection
+	{
+		LeftToRight,
+		RightToLeft
+	};
+
 	class FlexLayout
 	{
 	public:
-		static void Layout(FlexNode *root, float width, float height, YGDirection direction = YGDirectionLTR, bool applyRoot = false);
+		static void Layout(FlexNode *root, float width, float height, FlexLayoutDirection direction = FlexLayoutDirection::LeftToRight, bool applyRoot = false);
+		static RN::Vector2 Measure(FlexNode *root, float width = -1.0f, float height = -1.0f, FlexLayoutDirection direction = FlexLayoutDirection::LeftToRight);
 
 	private:
 		static void ApplyLayoutRecursive(FlexNode *node, const RN::Vector2 &offset, bool applySelf);

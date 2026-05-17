@@ -25,9 +25,9 @@ namespace RN
 	public:
 		explicit FlexViewMeasure(FlexView *view, FlexView *parent) : _view(view), _parent(parent) {}
 
-		YGSize Measure(float width, YGMeasureMode widthMode, float height, YGMeasureMode heightMode) override
+		RN::Vector2 Measure(float width, FlexMeasureMode widthMode, float height, FlexMeasureMode heightMode) override
 		{
-			if(!_view) return {0.0f, 0.0f};
+			if(!_view) return RN::Vector2(0.0f, 0.0f);
 
 			const RN::Vector2 intrinsicSize = _view->GetContentSize(-1.0f, -1.0f);
 
@@ -52,29 +52,29 @@ namespace RN
 			}
 
 			float measuredWidth = intrinsicSize.x;
-			if(widthMode == YGMeasureModeExactly)
+			if(widthMode == FlexMeasureMode::Exactly)
 			{
 				measuredWidth = width;
 			}
-			else if(widthMode == YGMeasureModeAtMost)
+			else if(widthMode == FlexMeasureMode::AtMost)
 			{
 				if(parentIsRow && hasMainAxisSize) measuredWidth = width;
 				else measuredWidth = std::min(measuredWidth, width);
 			}
 
 			float measuredHeight = 0.0f;
-			if(heightMode == YGMeasureModeExactly)
+			if(heightMode == FlexMeasureMode::Exactly)
 			{
 				measuredHeight = height;
 			}
 			else
 			{
-				const float heightWidthConstraint = (widthMode == YGMeasureModeUndefined) ? -1.0f : measuredWidth;
-				const RN::Vector2 sizeForHeight = (widthMode == YGMeasureModeUndefined && heightMode == YGMeasureModeUndefined)
+				const float heightWidthConstraint = (widthMode == FlexMeasureMode::Undefined) ? -1.0f : measuredWidth;
+				const RN::Vector2 sizeForHeight = (widthMode == FlexMeasureMode::Undefined && heightMode == FlexMeasureMode::Undefined)
 					? intrinsicSize
 					: _view->GetContentSize(heightWidthConstraint, -1.0f);
 				measuredHeight = sizeForHeight.y;
-				if(heightMode == YGMeasureModeAtMost)
+				if(heightMode == FlexMeasureMode::AtMost)
 				{
 					if(!parentIsRow && hasMainAxisSize) measuredHeight = height;
 					else measuredHeight = std::min(measuredHeight, height);
@@ -83,7 +83,7 @@ namespace RN
 
 			if(_parent && _parent->GetAlign() == FlexAlign::Stretch && _parent->GetDirection() == FlexDirection::Column)
 			{
-				if(!YGFloatIsUndefined(width) && widthMode != YGMeasureModeUndefined)
+				if(!IsUndefined(width) && widthMode != FlexMeasureMode::Undefined)
 				{
 					measuredWidth = width;
 				}
@@ -111,7 +111,7 @@ namespace RN
 
 			if(_parent && _parent->GetAlign() == FlexAlign::Stretch && _parent->GetDirection() == FlexDirection::Row)
 			{
-				if(!YGFloatIsUndefined(height) && heightMode != YGMeasureModeUndefined)
+				if(!IsUndefined(height) && heightMode != FlexMeasureMode::Undefined)
 				{
 					measuredHeight = height;
 				}
@@ -137,7 +137,7 @@ namespace RN
 				}
 			}
 
-			return {measuredWidth, measuredHeight};
+			return RN::Vector2(measuredWidth, measuredHeight);
 		}
 
 	private:
@@ -422,7 +422,7 @@ namespace RN
 		_needsLayout = true;
 
 		// If this FlexView is measured as a leaf in a parent FlexView, mark that measured
-		// node dirty so Yoga re-runs the parent measure callback with updated content size.
+		// node dirty so the parent measure callback sees the updated content size.
 		if(FlexView *parentFlex = dynamic_cast<FlexView *>(GetSuperview()))
 		{
 			if(Item *item = parentFlex->FindItem(this))
@@ -575,19 +575,13 @@ namespace RN
 
 		const RN::Rect bounds = GetBounds();
 		_isApplyingLayout = true;
-		FlexLayout::Layout(&_rootNode, bounds.width, bounds.height, YGDirectionLTR, false);
+		FlexLayout::Layout(&_rootNode, bounds.width, bounds.height, FlexLayoutDirection::LeftToRight, false);
 		_isApplyingLayout = false;
 	}
 
 	RN::Vector2 FlexView::GetContentSize(float width, float height)
 	{
-		const float resolvedWidth = (width < 0.0f) ? YGUndefined : width;
-		const float resolvedHeight = (height < 0.0f) ? YGUndefined : height;
-
-		YGNodeCalculateLayout(_rootNode.GetYGNode(), resolvedWidth, resolvedHeight, YGDirectionLTR);
-		const float layoutWidth = YGNodeLayoutGetWidth(_rootNode.GetYGNode());
-		const float layoutHeight = YGNodeLayoutGetHeight(_rootNode.GetYGNode());
-		return RN::Vector2(layoutWidth, layoutHeight);
+		return FlexLayout::Measure(&_rootNode, width, height, FlexLayoutDirection::LeftToRight);
 	}
 
 	void FlexView::SizeToFitContent(float width, float maxHeight)
