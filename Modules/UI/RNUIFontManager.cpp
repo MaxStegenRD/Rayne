@@ -37,7 +37,7 @@ namespace RN
 		}
 
 		Font::Font(RN::String *filepath, bool preloadASCII) :
-			_fontInfo(nullptr), _arFont(nullptr), _fontTexture(nullptr)
+			_arFont(nullptr), _fontTexture(nullptr), _fontInfo(nullptr), _fontData(nullptr), _meshes(nullptr)
 		{
 			Lock();
 			_meshes = new RN::Dictionary();
@@ -174,7 +174,7 @@ namespace RN
 				delete[] vertexUVBuffer;
 				delete[] indexBuffer;
 
-				_meshes->SetObjectForKey(mesh, RN::Number::WithInt32(codepoint));
+				_meshes->SetObjectForKey(mesh->Autorelease(), RN::Number::WithInt32(codepoint));
 				Unlock();
 
 				return mesh;
@@ -349,7 +349,7 @@ namespace RN
 			mesh->SetElementData(RN::Mesh::VertexAttribute::Feature::Indices, triangleMesh.indices.data());
 			mesh->EndChanges();
 
-			_meshes->SetObjectForKey(mesh, RN::Number::WithInt32(codepoint));
+			_meshes->SetObjectForKey(mesh->Autorelease(), RN::Number::WithInt32(codepoint));
 			Unlock();
 
 			return mesh;
@@ -487,7 +487,7 @@ namespace RN
 			}
 
 			font = new Font(filepath, preloadASCII);
-			_fonts->SetObjectForKey(font, filepath);
+			_fonts->SetObjectForKey(font->Autorelease(), filepath);
 			Unlock();
 
 			return font;
@@ -503,6 +503,13 @@ namespace RN
 			}
 
 			return _sharedInstance;
+		}
+
+		void FontManager::ReleaseSharedInstance()
+		{
+			FontManager *sharedInstance = _sharedInstance;
+			_sharedInstance = nullptr;
+			SafeRelease(sharedInstance);
 		}
 	} // namespace UI
 } // namespace RN

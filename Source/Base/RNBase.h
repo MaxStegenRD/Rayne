@@ -220,24 +220,16 @@ namespace RN
 
 	class Initializer
 	{
+		friend class Kernel;
+
 	public:
 		typedef void (*Callback)();
 
-		Initializer(Callback ctor, Callback dtor) :
-			_dtor(dtor)
-		{
-			if(ctor)
-				ctor();
-		}
-
-		~Initializer()
-		{
-			if(_dtor)
-				_dtor();
-		}
+		RNAPI Initializer(Callback ctor, Callback dtor);
+		~Initializer() = default;
 
 	private:
-		Callback _dtor;
+		RNAPI static void RunDestructors();
 	};
 
 	class Range

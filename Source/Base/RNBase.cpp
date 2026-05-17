@@ -153,6 +153,42 @@ namespace RN
 	__itt_domain *VTuneDomain;
 #endif
 
+	static bool __didRunInitializerDestructors = false;
+
+	static std::vector<Initializer::Callback> &GetInitializerDestructors()
+	{
+		static std::vector<Initializer::Callback> destructors;
+		return destructors;
+	}
+
+	Initializer::Initializer(Callback ctor, Callback dtor)
+	{
+		if(ctor)
+			ctor();
+
+		if(dtor)
+		{
+			if(__didRunInitializerDestructors)
+				dtor();
+			else
+				GetInitializerDestructors().push_back(dtor);
+		}
+	}
+
+	void Initializer::RunDestructors()
+	{
+		if(__didRunInitializerDestructors) return;
+		__didRunInitializerDestructors = true;
+
+		std::vector<Callback> destructors;
+		destructors.swap(GetInitializerDestructors());
+
+		for(auto iterator = destructors.rbegin(); iterator != destructors.rend(); ++iterator)
+		{
+			(*iterator)();
+		}
+	}
+
 	struct __KernelBootstrapHelper
 	{
 	public:
