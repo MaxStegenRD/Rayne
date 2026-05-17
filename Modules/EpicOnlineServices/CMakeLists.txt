@@ -66,5 +66,3 @@ else()
                 add_custom_command(TARGET RayneEOS POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/EOS-SDK/SDK/Bin/x64/xaudio2_9redist.dll" "$<TARGET_FILE_DIR:RayneEOS>")
         endif()
 endif()
-
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneEOS/. DESTINATION lib/Rayne/RayneEOS)

@@ -51,5 +51,3 @@ rayne_set_module_output_directory(RayneODE)
 
 target_include_directories(RayneODE SYSTEM PRIVATE ${VENDOR_INCLUDES})
 target_compile_definitions(RayneODE PRIVATE "${DEFINES}")
-
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneODE/. DESTINATION lib/Rayne/RayneODE)

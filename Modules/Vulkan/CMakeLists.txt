@@ -145,4 +145,3 @@ target_compile_definitions(RayneVulkan
     PUBLIC "${PUBLIC_DEFINES}")
 
 rayne_install(DIRECTORY "${vulkanheaders_SOURCE_DIR}/include/" DESTINATION "${RAYNE_VULKAN_HEADERS_INSTALL_DIRECTORY}")
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneVulkan/. DESTINATION lib/Rayne/RayneVulkan)

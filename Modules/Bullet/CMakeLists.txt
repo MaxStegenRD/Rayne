@@ -125,5 +125,3 @@ endif()
 
 target_include_directories(RayneBullet SYSTEM PRIVATE ${VENDOR_INCLUDES})
 target_compile_definitions(RayneBullet PRIVATE "${DEFINES}")
-
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneBullet/. DESTINATION lib/Rayne/RayneBullet)

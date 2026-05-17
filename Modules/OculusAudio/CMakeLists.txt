@@ -98,8 +98,6 @@ else()
                 optimized "${CMAKE_CURRENT_BINARY_DIR}/rtaudio-prefix/src/rtaudio-build/Release/librtaudio.a")
 endif()
 
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneOculusAudio/. DESTINATION lib/Rayne/RayneOculusAudio)
-
 if(APPLE)
         add_custom_command(TARGET RayneOculusAudio PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Lib/macub/OVRAudio.framework" "$<TARGET_FILE_DIR:RayneOculusAudio>/OVRAudio.framework")
 endif()

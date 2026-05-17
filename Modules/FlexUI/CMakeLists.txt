@@ -56,4 +56,3 @@ target_compile_definitions(RayneFlexUI PRIVATE "${DEFINES}")
 rayne_install(DIRECTORY "${yoga_SOURCE_DIR}/yoga"
     DESTINATION "include/Rayne/ThirdParty/Yoga"
     FILES_MATCHING PATTERN "*.h")
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneFlexUI/. DESTINATION lib/Rayne/RayneFlexUI)

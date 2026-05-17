@@ -165,5 +165,3 @@ if(${CMAKE_GENERATOR} STREQUAL "Xcode" AND NOT IOS AND NOT VISIONOS)
 elseif(WIN32)
         add_custom_command(TARGET RayneOpenAL PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/openal-prefix/src/openal-build/$<CONFIG>/OpenAL32.dll" "$<TARGET_FILE_DIR:RayneOpenAL>/OpenAL32.dll")
 endif()
-
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneOpenAL/. DESTINATION lib/Rayne/RayneOpenAL)

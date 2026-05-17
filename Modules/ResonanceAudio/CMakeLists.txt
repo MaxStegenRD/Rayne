@@ -284,5 +284,3 @@ endif()
 
 add_dependencies(RayneResonanceAudio miniaudio)
 target_link_libraries(RayneResonanceAudio PRIVATE ResonanceAudioStaticCustom)
-
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneResonanceAudio/. DESTINATION lib/Rayne/RayneResonanceAudio)

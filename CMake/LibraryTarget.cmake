@@ -149,6 +149,10 @@ macro(__rayne_create_target _NAME _TYPE _SOURCES _HEADERS _PRIVATE_HEADERS _PUBL
     endif()
 
     install(TARGETS "${TARGET_NAME}" ${RAYNE_TARGET_INSTALL_ARGS})
+    if(NOT ("${TARGET_NAME}" STREQUAL "Rayne"))
+        install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/../../Build/${TARGET_NAME}/."
+            DESTINATION "${RAYNE_TARGET_INSTALL_DIRECTORY}")
+    endif()
 
 endmacro()
 

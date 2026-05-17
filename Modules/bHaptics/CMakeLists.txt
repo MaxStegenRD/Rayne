@@ -56,5 +56,3 @@ if(WIN32)
 
         add_custom_command(TARGET RayneBHaptics POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy "${BHAPTICS_DYNAMIC_LIBRARY}" "$<TARGET_FILE_DIR:RayneBHaptics>")
 endif()
-
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneBHaptics/. DESTINATION lib/Rayne/RayneBHaptics)

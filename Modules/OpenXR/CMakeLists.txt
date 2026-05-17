@@ -122,5 +122,3 @@ endif()
 
 target_include_directories(RayneOpenXR SYSTEM PRIVATE ${OpenXRSDK_SOURCE_DIR}/include ${OpenXRSDK_SOURCE_DIR}/src/common)
 target_compile_definitions(RayneOpenXR PRIVATE "${PRIVATE_DEFINES}")
-
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneOpenXR/. DESTINATION lib/Rayne/RayneOpenXR)

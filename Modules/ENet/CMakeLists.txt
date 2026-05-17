@@ -84,5 +84,3 @@ else()
                 debug "${CMAKE_CURRENT_BINARY_DIR}/enet-prefix/src/enet-build/Debug/enet.lib"
                 optimized "${CMAKE_CURRENT_BINARY_DIR}/enet-prefix/src/enet-build/Release/enet.lib")
 endif()
-
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneENet/. DESTINATION lib/Rayne/RayneENet)

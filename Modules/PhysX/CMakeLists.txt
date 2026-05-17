@@ -317,5 +317,3 @@ rayne_set_module_output_directory(RaynePhysX)
 
 target_include_directories(RaynePhysX SYSTEM PRIVATE ${VENDOR_INCLUDES})
 target_compile_definitions(RaynePhysX PRIVATE "${DEFINES}")
-
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RaynePhysX/. DESTINATION lib/Rayne/RaynePhysX)

@@ -25,5 +25,3 @@ rayne_set_module_output_directory(RayneOgg)
 
 target_include_directories(RayneOgg SYSTEM PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/Vendor)
 target_compile_definitions(RayneOgg PRIVATE "${DEFINES}")
-
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneOgg/. DESTINATION lib/Rayne/RayneOgg)

@@ -61,5 +61,3 @@ rayne_set_module_output_directory(RayneNewton)
 
 target_include_directories(RayneNewton SYSTEM PRIVATE ${VENDOR_INCLUDES})
 target_compile_definitions(RayneNewton PRIVATE "${DEFINES}")
-
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneNewton/. DESTINATION lib/Rayne/RayneNewton)

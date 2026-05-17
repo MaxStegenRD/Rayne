@@ -129,5 +129,3 @@ target_include_directories(RayneRecast SYSTEM PRIVATE ${VENDOR_INCLUDES})
 target_compile_definitions(RayneRecast PRIVATE "${DEFINES}")
 
 add_dependencies(RayneRecast recast)
-
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneRecast/. DESTINATION lib/Rayne/RayneRecast)

@@ -66,6 +66,3 @@ target_link_libraries(RayneAssimp PRIVATE
         debug "${CMAKE_CURRENT_BINARY_DIR}/assimp-prefix/src/assimp-build/contrib/irrXML/Debug/libIrrXMLd.a"
         optimized "${CMAKE_CURRENT_BINARY_DIR}/assimp-prefix/src/assimp-build/code/Release/libassimp.a"
         optimized "${CMAKE_CURRENT_BINARY_DIR}/assimp-prefix/src/assimp-build/contrib/irrXML/Release/libIrrXML.a")
-
-
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneAssimp/. DESTINATION lib/Rayne/RayneAssimp)

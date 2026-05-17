@@ -125,6 +125,3 @@ target_link_libraries(RayneUI PRIVATE KalligraphLib)
 
 target_include_directories(RayneUI SYSTEM PRIVATE ${VENDOR_INCLUDES})
 target_compile_definitions(RayneUI PRIVATE "${DEFINES}")
-
-
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneUI/. DESTINATION lib/Rayne/RayneUI)

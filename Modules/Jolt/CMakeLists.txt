@@ -154,5 +154,3 @@ target_include_directories(RayneJolt SYSTEM PRIVATE ${JoltPhysics_SOURCE_DIR}/..
 rayne_set_module_output_directory(RayneJolt)
 
 target_compile_definitions(RayneJolt PRIVATE "${DEFINES}")
-
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneJolt/. DESTINATION lib/Rayne/RayneJolt)

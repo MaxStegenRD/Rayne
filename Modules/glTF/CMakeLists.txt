@@ -62,6 +62,3 @@ else()
                 debug "${CMAKE_CURRENT_BINARY_DIR}/tinygltf-prefix/src/tinygltf-build/Debug/libtinygltf.a"
                 optimized "${CMAKE_CURRENT_BINARY_DIR}/tinygltf-prefix/src/tinygltf-build/Release/libtinygltf.a")
 endif()
-
-
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneGlTF/. DESTINATION lib/Rayne/RayneGlTF)

@@ -28,5 +28,3 @@ rayne_add_library(RayneSplash "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${V
 rayne_set_module_output_directory(RayneSplash)
 
 target_compile_definitions(RayneSplash PRIVATE "${DEFINES}")
-
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneSplash/. DESTINATION lib/Rayne/RayneSplash)

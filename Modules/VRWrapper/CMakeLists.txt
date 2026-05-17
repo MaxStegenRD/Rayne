@@ -47,5 +47,3 @@ rayne_add_library(RayneVR "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSI
 rayne_set_module_output_directory(RayneVR)
 
 target_compile_definitions(RayneVR PRIVATE "${DEFINES}")
-
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneVR/. DESTINATION lib/Rayne/RayneVR)

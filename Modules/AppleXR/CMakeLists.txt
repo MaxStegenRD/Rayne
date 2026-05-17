@@ -50,5 +50,3 @@ if(APPLE AND ${RN_BUILD_METAL_MODULE})
 endif()
 
 target_compile_definitions(RayneAppleXR PRIVATE "${DEFINES}")
-
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneAppleXR/. DESTINATION lib/Rayne/RayneAppleXR)

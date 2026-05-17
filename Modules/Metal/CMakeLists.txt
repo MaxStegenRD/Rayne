@@ -99,6 +99,3 @@ else()
         add_custom_command(TARGET RayneMetal PRE_BUILD COMMAND ${CMAKE_COMMAND} -E rm -rf "$<TARGET_FILE_DIR:RayneMetal>/Resources")
         add_custom_command(TARGET RayneMetal PRE_BUILD COMMAND ${CMAKE_COMMAND} -E rename "$<TARGET_FILE_DIR:RayneMetal>/${RESOURCES}" "$<TARGET_FILE_DIR:RayneMetal>/Resources")
 endif()
-
-
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneMetal/. DESTINATION lib/Rayne/RayneMetal)

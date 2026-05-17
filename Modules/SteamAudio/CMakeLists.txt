@@ -80,8 +80,6 @@ target_link_libraries(RayneSteamAudio PRIVATE
         debug "${CMAKE_CURRENT_BINARY_DIR}/libsoundio-prefix/src/libsoundio-build/Debug/libsoundio.a"
         optimized "${CMAKE_CURRENT_BINARY_DIR}/libsoundio-prefix/src/libsoundio-build/Release/libsoundio.a")
 
-rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneSteamAudio/. DESTINATION lib/Rayne/RayneSteamAudio)
-
 if(APPLE)
         add_custom_command(TARGET RayneSteamAudio PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/steamaudio/lib/OSX/libphonon.dylib" "$<TARGET_FILE_DIR:RayneSteamAudio>/libphonon.dylib")
 elseif(WIN32)
