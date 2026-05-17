@@ -67,6 +67,19 @@ macro(__rayne_link_target_libraries _TARGET_NAME _TYPE _VISIBILITY _LIBRARIES)
     endforeach()
 endmacro()
 
+function(__rayne_get_install_directories _TARGET_NAME _HEADER_DIRECTORY _LIBRARY_DIRECTORY)
+    set(INSTALL_COMPONENT "${_TARGET_NAME}")
+    string(REGEX REPLACE "-static$" "" INSTALL_COMPONENT "${INSTALL_COMPONENT}")
+
+    if("${INSTALL_COMPONENT}" STREQUAL "Rayne")
+        set("${_HEADER_DIRECTORY}" "include/Rayne" PARENT_SCOPE)
+        set("${_LIBRARY_DIRECTORY}" "lib/Rayne" PARENT_SCOPE)
+    else()
+        set("${_HEADER_DIRECTORY}" "include/Modules/${INSTALL_COMPONENT}" PARENT_SCOPE)
+        set("${_LIBRARY_DIRECTORY}" "lib/Modules/${INSTALL_COMPONENT}" PARENT_SCOPE)
+    endif()
+endfunction()
+
 macro(__rayne_create_target _NAME _TYPE _SOURCES _HEADERS _PRIVATE_HEADERS _PUBLIC_LIBRARIES _PRIVATE_LIBRARIES _VERSION _ABI)
     # Input check
     if(NOT (("${_TYPE}" STREQUAL "STATIC") OR ("${_TYPE}" STREQUAL "SHARED")))
@@ -110,8 +123,9 @@ macro(__rayne_create_target _NAME _TYPE _SOURCES _HEADERS _PRIVATE_HEADERS _PUBL
         target_compile_options(${TARGET_NAME} PRIVATE -m64)
     endif()
 
+    __rayne_get_install_directories("${TARGET_NAME}" PUBLIC_HEADER_INSTALL_ROOT RAYNE_TARGET_INSTALL_DIRECTORY)
+
     if(NOT ("${_HEADERS}" STREQUAL ""))
-        set(PUBLIC_HEADER_INSTALL_ROOT "include/Rayne/${TARGET_NAME}")
         if(DEFINED RAYNE_PUBLIC_HEADER_INSTALL_DIRECTORY)
             set(PUBLIC_HEADER_INSTALL_ROOT "${RAYNE_PUBLIC_HEADER_INSTALL_DIRECTORY}")
         endif()
@@ -145,12 +159,6 @@ macro(__rayne_create_target _NAME _TYPE _SOURCES _HEADERS _PRIVATE_HEADERS _PUBL
 
     __rayne_link_target_libraries("${TARGET_NAME}" "${_TYPE}" PUBLIC "${_PUBLIC_LIBRARIES}")
     __rayne_link_target_libraries("${TARGET_NAME}" "${_TYPE}" PRIVATE "${_PRIVATE_LIBRARIES}")
-
-    if("${TARGET_NAME}" STREQUAL "Rayne")
-        set(RAYNE_TARGET_INSTALL_DIRECTORY "lib")
-    else()
-        set(RAYNE_TARGET_INSTALL_DIRECTORY "lib/Rayne/${TARGET_NAME}")
-    endif()
 
     set(RAYNE_TARGET_INSTALL_ARGS
         EXPORT RayneTargets
@@ -241,11 +249,7 @@ function(rayne_add_runtime_dependency _TARGET _DEPENDENCY)
         message(FATAL_ERROR "Unknown rayne_add_runtime_dependency arguments: ${RAYNE_RUNTIME_DEPENDENCY_UNPARSED_ARGUMENTS}")
     endif()
 
-    if("${_TARGET}" STREQUAL "Rayne")
-        set(RAYNE_RUNTIME_INSTALL_DIRECTORY "lib")
-    else()
-        set(RAYNE_RUNTIME_INSTALL_DIRECTORY "lib/Rayne/${_TARGET}")
-    endif()
+    __rayne_get_install_directories("${_TARGET}" RAYNE_RUNTIME_HEADER_DIRECTORY RAYNE_RUNTIME_INSTALL_DIRECTORY)
 
     set(RAYNE_ANDROID_RUNTIME_DIRECTORY)
     if(ANDROID AND ANDROID_ASSETS_DIRECTORIES AND ANDROID_ABI)

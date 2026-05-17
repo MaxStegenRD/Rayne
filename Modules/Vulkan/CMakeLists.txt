@@ -129,7 +129,7 @@ target_include_directories(RayneVulkan SYSTEM PRIVATE
     ${RAYNE_VULKAN_VMA_INCLUDE_DIRECTORY})
 rayne_add_public_header_directory(RayneVulkan
     BUILD_DIRECTORY "${vulkanheaders_SOURCE_DIR}/include"
-    INSTALL_DIRECTORY "include/Rayne/ThirdParty/Vulkan-Headers")
+    INSTALL_DIRECTORY "include/Modules/RayneVulkan/ThirdParty/Vulkan-Headers")
 target_compile_definitions(RayneVulkan
     PRIVATE "${PRIVATE_DEFINES}"
     PUBLIC "${PUBLIC_DEFINES}")

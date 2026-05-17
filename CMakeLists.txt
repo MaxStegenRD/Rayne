@@ -131,7 +131,7 @@ add_subdirectory("Tests")
 
 include(CMakePackageConfigHelpers)
 
-set(RAYNE_CMAKE_INSTALL_DIR "lib/cmake/Rayne")
+set(RAYNE_CMAKE_INSTALL_DIR "cmake/Rayne")
 
 configure_package_config_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/CMake/RayneConfig.cmake.in"
