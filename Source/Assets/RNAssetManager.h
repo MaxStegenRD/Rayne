@@ -49,6 +49,7 @@ namespace RN
 		AssetManager();
 		~AssetManager();
 
+		void ReleaseKeepAliveAssets();
 		void UpdateMagicSize();
 
 		AssetLoader *PickAssetLoader(MetaClass *base, File *file, const String *name, bool requiresBackgroundSupport);

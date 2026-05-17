@@ -55,11 +55,21 @@ namespace RN
 	void Asset::SetKeepAlive(bool keepAlive)
 	{
 		if(_keepAlive == keepAlive) return;
+		if(keepAlive && !_coordinator)
+		{
+			RN_DEBUG_ASSERT(false, "Only AssetManager-owned assets can be kept alive");
+			return;
+		}
+
 		_keepAlive = keepAlive;
 
 		if(keepAlive)
+		{
 			Retain();
+		}
 		else
+		{
 			Release();
+		}
 	}
 } // namespace RN

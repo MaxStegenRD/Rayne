@@ -45,6 +45,8 @@ namespace RN
 	}
 	AssetManager::~AssetManager()
 	{
+		ReleaseKeepAliveAssets();
+
 		SafeRelease(_loaders);
 		SafeRelease(_requests);
 		SafeRelease(_resources);
@@ -54,6 +56,31 @@ namespace RN
 		SafeRelease(_defaultQueue);
 
 		__sharedInstance = nullptr;
+	}
+
+	void AssetManager::ReleaseKeepAliveAssets()
+	{
+		std::unordered_set<Asset *> keepAliveAssets;
+
+		{
+			LockGuard<Lockable> lock(_lock);
+			_resources->Enumerate<Array, String>([&](Array *resources, const String *name, bool &stop) {
+				resources->Enumerate<LoadedAsset>([&](LoadedAsset *wrapper, size_t index, bool &stop) {
+					Asset *asset = wrapper->GetAsset();
+					if(asset && asset->_keepAlive)
+						keepAliveAssets.insert(asset);
+				});
+			});
+		}
+
+		for(Asset *asset : keepAliveAssets)
+		{
+			if(!asset->_keepAlive)
+				continue;
+
+			asset->_keepAlive = false;
+			asset->Release();
+		}
 	}
 
 	AssetManager *AssetManager::GetSharedInstance()
