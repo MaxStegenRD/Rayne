@@ -21,12 +21,15 @@
 #include "../Threads/RNRunLoop.h"
 #include "../Threads/RNThread.h"
 #include "../Threads/RNWorkQueue.h"
-#include "RNAndroidState.h"
 #include "RNApplication.h"
 #include "RNArgumentParser.h"
 #include "RNBase.h"
 #include "RNNotificationManager.h"
 #include "RNSettings.h"
+
+#if RN_PLATFORM_ANDROID
+	#include "RNAndroidState.h"
+#endif
 
 #define kRNManifestApplicationKey RNCSTR("RNApplication")
 #define kRNManifestSearchPathsKey RNCSTR("RNSearchPaths")
