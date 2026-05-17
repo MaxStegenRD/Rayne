@@ -47,12 +47,11 @@ FetchContent_MakeAvailable(Yoga)
 set_property(DIRECTORY "${yoga_SOURCE_DIR}" PROPERTY EXCLUDE_FROM_ALL TRUE)
 
 target_link_libraries(RayneFlexUI PRIVATE yogacore)
-target_include_directories(RayneFlexUI SYSTEM PUBLIC
-    "$<BUILD_INTERFACE:${yoga_SOURCE_DIR}>"
-    "$<INSTALL_INTERFACE:include/Rayne/ThirdParty/Yoga>")
 
 target_compile_definitions(RayneFlexUI PRIVATE "${DEFINES}")
 
-rayne_install(DIRECTORY "${yoga_SOURCE_DIR}/yoga"
-    DESTINATION "include/Rayne/ThirdParty/Yoga"
-    FILES_MATCHING PATTERN "*.h")
+rayne_add_public_header_directory(RayneFlexUI
+    BUILD_DIRECTORY "${yoga_SOURCE_DIR}"
+    INSTALL_DIRECTORY "include/Rayne/ThirdParty/Yoga"
+    INSTALL_SOURCE "${yoga_SOURCE_DIR}/yoga"
+    INSTALL_OPTIONS FILES_MATCHING PATTERN "*.h")

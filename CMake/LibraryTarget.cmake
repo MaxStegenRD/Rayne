@@ -196,9 +196,26 @@ macro(rayne_set_module_resources _TARGET _RESOURCES)
 endmacro()
 
 
-macro(rayne_install)
-    install(${ARGV})
-endmacro(rayne_install)
+function(rayne_add_public_header_directory _TARGET)
+    cmake_parse_arguments(RAYNE_PUBLIC_HEADER_DIRECTORY "" "BUILD_DIRECTORY;INSTALL_DIRECTORY;INSTALL_SOURCE" "INSTALL_OPTIONS" ${ARGN})
+    if(RAYNE_PUBLIC_HEADER_DIRECTORY_UNPARSED_ARGUMENTS)
+        message(FATAL_ERROR "Unknown rayne_add_public_header_directory arguments: ${RAYNE_PUBLIC_HEADER_DIRECTORY_UNPARSED_ARGUMENTS}")
+    endif()
+
+    target_include_directories("${_TARGET}" SYSTEM PUBLIC
+        "$<BUILD_INTERFACE:${RAYNE_PUBLIC_HEADER_DIRECTORY_BUILD_DIRECTORY}>"
+        "$<INSTALL_INTERFACE:${RAYNE_PUBLIC_HEADER_DIRECTORY_INSTALL_DIRECTORY}>")
+
+    if(RAYNE_PUBLIC_HEADER_DIRECTORY_INSTALL_SOURCE)
+        set(_INSTALL_SOURCE "${RAYNE_PUBLIC_HEADER_DIRECTORY_INSTALL_SOURCE}")
+    else()
+        set(_INSTALL_SOURCE "${RAYNE_PUBLIC_HEADER_DIRECTORY_BUILD_DIRECTORY}/")
+    endif()
+
+    install(DIRECTORY "${_INSTALL_SOURCE}"
+        DESTINATION "${RAYNE_PUBLIC_HEADER_DIRECTORY_INSTALL_DIRECTORY}"
+        ${RAYNE_PUBLIC_HEADER_DIRECTORY_INSTALL_OPTIONS})
+endfunction()
 
 
 macro(rayne_set_module_output_directory _TARGET)

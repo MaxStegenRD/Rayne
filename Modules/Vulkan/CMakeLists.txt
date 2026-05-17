@@ -134,14 +134,9 @@ add_dependencies(RayneVulkan VulkanMemoryAllocator)
 target_include_directories(RayneVulkan SYSTEM PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/spirvcross-prefix/src/spirvcross
     ${RAYNE_VULKAN_VMA_INCLUDE_DIRECTORY})
-set(RAYNE_VULKAN_HEADERS_INSTALL_DIRECTORY "include/Rayne/ThirdParty/Vulkan-Headers")
-target_include_directories(RayneVulkan SYSTEM PUBLIC
-    "$<BUILD_INTERFACE:${vulkanheaders_SOURCE_DIR}/include>"
-    "$<BUILD_INTERFACE:${vulkanheaders_SOURCE_DIR}/include/vulkan>"
-    "$<INSTALL_INTERFACE:${RAYNE_VULKAN_HEADERS_INSTALL_DIRECTORY}>"
-    "$<INSTALL_INTERFACE:${RAYNE_VULKAN_HEADERS_INSTALL_DIRECTORY}/vulkan>")
+rayne_add_public_header_directory(RayneVulkan
+    BUILD_DIRECTORY "${vulkanheaders_SOURCE_DIR}/include"
+    INSTALL_DIRECTORY "include/Rayne/ThirdParty/Vulkan-Headers")
 target_compile_definitions(RayneVulkan
     PRIVATE "${PRIVATE_DEFINES}"
     PUBLIC "${PUBLIC_DEFINES}")
-
-rayne_install(DIRECTORY "${vulkanheaders_SOURCE_DIR}/include/" DESTINATION "${RAYNE_VULKAN_HEADERS_INSTALL_DIRECTORY}")

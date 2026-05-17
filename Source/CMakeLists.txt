@@ -444,22 +444,18 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/RayneConfig.h.in ${RAYNE_GENERATED_IN
 set(RAYNE_PUBLIC_HEADER_INSTALL_DIRECTORY include/Rayne)
 rayne_add_library(Rayne "${TARGET_SOURCES}" "${TARGET_HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES ${PUBLIC_LIBRARIES} PRIVATE_LIBRARIES ${PRIVATE_LIBRARIES})
 
-target_sources(Rayne PRIVATE
-    FILE_SET generated_headers
+target_sources(Rayne PUBLIC
+    FILE_SET public_headers
     TYPE HEADERS
     BASE_DIRS "${RAYNE_GENERATED_INCLUDE_DIRECTORY}"
     FILES "${RAYNE_GENERATED_INCLUDE_DIRECTORY}/RayneConfig.h")
-target_include_directories(Rayne PUBLIC
-    $<BUILD_INTERFACE:${RAYNE_GENERATED_INCLUDE_DIRECTORY}>
-    $<INSTALL_INTERFACE:include/Rayne>)
 
 target_include_directories(Rayne SYSTEM PRIVATE ${VENDOR_INCLUDES})
 if(ANDROID)
-    target_include_directories(Rayne SYSTEM PUBLIC
-        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../Vendor/android_native_app_glue>"
-        "$<INSTALL_INTERFACE:include/Rayne/ThirdParty/android_native_app_glue>")
-    rayne_install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../Vendor/android_native_app_glue/android_native_app_glue.h"
-        DESTINATION "include/Rayne/ThirdParty/android_native_app_glue")
+    rayne_add_public_header_directory(Rayne
+        BUILD_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../Vendor/android_native_app_glue"
+        INSTALL_DIRECTORY "include/Rayne/ThirdParty/android_native_app_glue"
+        INSTALL_OPTIONS FILES_MATCHING PATTERN "*.h")
 endif()
 target_compile_definitions(Rayne PRIVATE "${COMPILE_DEFINITIONS}")
 target_compile_definitions(Rayne PUBLIC $<$<CONFIG:RelWithDebInfo>:RN_BUILD_PROFILING=1>)
@@ -470,5 +466,3 @@ if(RAYNE_PROFILER STREQUAL "TRACY")
     target_link_libraries(Rayne PUBLIC TracyClient)
     target_compile_definitions(Rayne PUBLIC TRACY_ENABLE RN_PROFILE_TRACY)
 endif()
-
-rayne_install(FILES ${RAYNE_GENERATED_INCLUDE_DIRECTORY}/RayneConfig.h DESTINATION include/Rayne)
