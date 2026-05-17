@@ -3,7 +3,6 @@ project(RayneResonanceAudio)
 
 include(../../CMake/LibraryTarget.cmake)
 include(../../CMake/Rayne.cmake)
-include(ExternalProject)
 
 #Resonance does the audio simulation
 FetchContent_Declare(
@@ -216,15 +215,15 @@ target_include_directories(ResonanceAudioStaticCustom PRIVATE ${RESONANCE_PFFFT_
 
 
 #Miniaudio is a single header library that offers low level multi platform audio in and output
-ExternalProject_Add(miniaudio
+FetchContent_Declare(miniaudio
         GIT_REPOSITORY https://github.com/mackron/miniaudio.git
         GIT_SHALLOW ON
-        GIT_PROGRESS ON
-        UPDATE_COMMAND ""
-        CONFIGURE_COMMAND ""
-        BUILD_COMMAND ""
-        BUILD_BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/miniaudio-prefix/src/miniaudio/miniaudio.h"
-        INSTALL_COMMAND "")
+        GIT_PROGRESS ON)
+FetchContent_GetProperties(miniaudio)
+if(NOT miniaudio_POPULATED)
+        FetchContent_Populate(miniaudio)
+endif()
+FetchContent_GetProperties(miniaudio SOURCE_DIR MINIAUDIO_SOURCE_DIR)
 
 set(VERSION_MAJOR 0)
 set(VERSION_MINOR 5)
@@ -255,7 +254,7 @@ set(PRIVATE_HEADERS
 set(DEFINES RN_BUILD_RESONANCE_AUDIO)
 set(VENDOR_INCLUDES
         "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/ResonanceAudio/Include"
-        "${CMAKE_CURRENT_BINARY_DIR}/miniaudio-prefix/src/miniaudio"
+        "${MINIAUDIO_SOURCE_DIR}"
         "${resonance_SOURCE_DIR}/resonance_audio"
         "${resonance_SOURCE_DIR}"
         "${resonance_SOURCE_DIR}/third_party/eigen")
@@ -282,5 +281,4 @@ if(APPLE)
         target_compile_options(RayneResonanceAudio PRIVATE -xobjective-c++)
 endif()
 
-add_dependencies(RayneResonanceAudio miniaudio)
 target_link_libraries(RayneResonanceAudio PRIVATE ResonanceAudioStaticCustom)

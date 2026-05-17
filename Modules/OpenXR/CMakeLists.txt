@@ -3,54 +3,19 @@ project(RayneOpenXR)
 
 include(../../CMake/LibraryTarget.cmake)
 include(../../CMake/Rayne.cmake)
-include(ExternalProject)
 
-ExternalProject_Add(OpenXRSDK
+set(BUILD_TESTS OFF)
+set(BUILD_API_LAYERS OFF)
+set(BUILD_CONFORMANCE_TESTS OFF)
+set(BUILD_LOADER ON)
+set(DYNAMIC_LOADER OFF)
+
+rayne_fetch_content(OpenXRSDK
 	GIT_REPOSITORY https://github.com/KhronosGroup/OpenXR-SDK.git
 	GIT_TAG refs/tags/release-1.1.58
 	GIT_SHALLOW ON
-	GIT_PROGRESS ON
-	UPDATE_COMMAND ""
-	CMAKE_CACHE_ARGS
-		"-DCMAKE_OSX_ARCHITECTURES:STRING=${CMAKE_OSX_ARCHITECTURES}"
-		"-DCMAKE_XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH:BOOL=False"
-		"-DCMAKE_TOOLCHAIN_FILE:PATH=${CMAKE_TOOLCHAIN_FILE}"
-		"-DANDROID_NATIVE_API_LEVEL:STRING=${ANDROID_NATIVE_API_LEVEL}"
-		"-DANDROID_ABI:STRING=${ANDROID_ABI}"
-		"-DANDROID_NDK:STRING=${ANDROID_NDK}"
-		"-DANDROID_STL:STRING=${ANDROID_STL}"
-		"-DCMAKE_SYSTEM_VERSION:STRING=${CMAKE_SYSTEM_VERSION}"
-		"-DDYNAMIC_LOADER:BOOL=OFF"
-	BUILD_BYPRODUCTS
-		"${CMAKE_CURRENT_BINARY_DIR}/OpenXRSDK-prefix/src/OpenXRSDK-build/src/loader/Debug/openxr_loaderd.lib"
-		"${CMAKE_CURRENT_BINARY_DIR}/OpenXRSDK-prefix/src/OpenXRSDK-build/src/loader/RelWithDebInfo/openxr_loader.lib"
-		"${CMAKE_CURRENT_BINARY_DIR}/OpenXRSDK-prefix/src/OpenXRSDK-build/src/loader/Release/openxr_loader.lib"
-
-		"${CMAKE_CURRENT_BINARY_DIR}/OpenXRSDK-prefix/src/OpenXRSDK-build/src/loader/Debug/libopenxr_loader.a"
-		"${CMAKE_CURRENT_BINARY_DIR}/OpenXRSDK-prefix/src/OpenXRSDK-build/src/loader/RelWithDebInfo/libopenxr_loader.a"
-		"${CMAKE_CURRENT_BINARY_DIR}/OpenXRSDK-prefix/src/OpenXRSDK-build/src/loader/Release/libopenxr_loader.a"
-
-		"${CMAKE_CURRENT_BINARY_DIR}/OpenXRSDK-prefix/src/OpenXRSDK-build/src/loader/libopenxr_loader.a"
-	INSTALL_COMMAND "")
-
-add_library(OpenXRLoader STATIC IMPORTED)
-
-if(APPLE)
-	set_target_properties(OpenXRLoader PROPERTIES
-		IMPORTED_CONFIGURATIONS "Debug;Release;RelWithDebInfo"
-		IMPORTED_LOCATION_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/OpenXRSDK-prefix/src/OpenXRSDK-build/src/loader/Debug/libopenxr_loader.a"
-		IMPORTED_LOCATION_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/OpenXRSDK-prefix/src/OpenXRSDK-build/src/loader/Release/libopenxr_loader.a"
-		IMPORTED_LOCATION_RELWITHDEBINFO "${CMAKE_CURRENT_BINARY_DIR}/OpenXRSDK-prefix/src/OpenXRSDK-build/src/loader/RelWithDebInfo/libopenxr_loader.a")
-elseif(ANDROID)
-	set_target_properties(OpenXRLoader PROPERTIES
-		IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/OpenXRSDK-prefix/src/OpenXRSDK-build/src/loader/libopenxr_loader.a")
-else()
-	set_target_properties(OpenXRLoader PROPERTIES
-		IMPORTED_CONFIGURATIONS "Debug;Release;RelWithDebInfo"
-		IMPORTED_LOCATION_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/OpenXRSDK-prefix/src/OpenXRSDK-build/src/loader/Debug/openxr_loaderd.lib"
-		IMPORTED_LOCATION_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/OpenXRSDK-prefix/src/OpenXRSDK-build/src/loader/Release/openxr_loader.lib"
-		IMPORTED_LOCATION_RELWITHDEBINFO "${CMAKE_CURRENT_BINARY_DIR}/OpenXRSDK-prefix/src/OpenXRSDK-build/src/loader/RelWithDebInfo/openxr_loader.lib")
-endif()
+	GIT_PROGRESS ON)
+FetchContent_GetProperties(OpenXRSDK SOURCE_DIR OpenXRSDK_SOURCE_DIR)
 
 set(VERSION_MAJOR 0)
 set(VERSION_MINOR 5)
@@ -96,14 +61,10 @@ if(APPLE AND ${RN_BUILD_METAL_MODULE})
 	list(APPEND PRIVATE_HEADERS RNOpenXRMetalSwapChain.h)
 endif()
 
-ExternalProject_Get_property(OpenXRSDK SOURCE_DIR)
-set(OpenXRSDK_SOURCE_DIR ${SOURCE_DIR})
-
 rayne_add_library(RayneOpenXR "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne RayneVR PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneOpenXR)
-add_dependencies(RayneOpenXR OpenXRSDK)
 
-target_link_libraries(RayneOpenXR PRIVATE OpenXRLoader)
+target_link_libraries(RayneOpenXR PRIVATE openxr_loader)
 
 if(ANDROID)
 	target_link_libraries(RayneOpenXR PRIVATE android log)

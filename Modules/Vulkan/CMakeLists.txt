@@ -4,43 +4,38 @@ project(Vulkan)
 find_package(Python COMPONENTS Interpreter)
 
 include(../../CMake/LibraryTarget.cmake)
-include(ExternalProject)
-include(FetchContent)
 
-ExternalProject_Add(spirvcross
+FetchContent_Declare(spirvcross
         GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Cross.git
         GIT_TAG refs/tags/2020-04-03
         GIT_SHALLOW ON
-        GIT_PROGRESS ON
-        UPDATE_COMMAND ""
-        CONFIGURE_COMMAND ""
-        BUILD_COMMAND ""
-        BUILD_BYPRODUCTS
-            ${CMAKE_CURRENT_BINARY_DIR}/spirvcross-prefix/src/spirvcross/spirv_cfg.cpp
-            ${CMAKE_CURRENT_BINARY_DIR}/spirvcross-prefix/src/spirvcross/spirv_cross_parsed_ir.cpp
-            ${CMAKE_CURRENT_BINARY_DIR}/spirvcross-prefix/src/spirvcross/spirv_parser.cpp
-            ${CMAKE_CURRENT_BINARY_DIR}/spirvcross-prefix/src/spirvcross/spirv_cross.cpp
-        INSTALL_COMMAND "")
+        GIT_PROGRESS ON)
+FetchContent_GetProperties(spirvcross)
+if(NOT spirvcross_POPULATED)
+        FetchContent_Populate(spirvcross)
+endif()
+FetchContent_GetProperties(spirvcross SOURCE_DIR SPIRVCROSS_SOURCE_DIR)
 
-FetchContent_Declare(VulkanHeaders
+rayne_fetch_content(VulkanHeaders
         GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Headers.git
         GIT_TAG refs/tags/v1.4.348
         GIT_SHALLOW TRUE
         GIT_PROGRESS ON)
-FetchContent_MakeAvailable(VulkanHeaders)
-set(vulkanheaders_SOURCE_DIR "${vulkanheaders_SOURCE_DIR}" CACHE PATH "Path to Vulkan-Headers sources" FORCE)
+FetchContent_GetProperties(VulkanHeaders SOURCE_DIR VULKAN_HEADERS_SOURCE_DIR)
+set(vulkanheaders_SOURCE_DIR "${VULKAN_HEADERS_SOURCE_DIR}" CACHE PATH "Path to Vulkan-Headers sources" FORCE)
 
-set(VMA_SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/VulkanMemoryAllocator-prefix/src/VulkanMemoryAllocator)
-set(RAYNE_VULKAN_VMA_INCLUDE_DIRECTORY "${VMA_SOURCE_DIR}/include" CACHE INTERNAL "RayneVulkan private VMA include directory")
-ExternalProject_Add(VulkanMemoryAllocator
+FetchContent_Declare(vulkanmemoryallocator
         GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
-        GIT_TAG b8e57472fffa3bd6e0a0b675f4615bf0a823ec4d #origin/master is usually fine, but broke at the time of changing this, with a pull request waiting to be merged
-        #GIT_SHALLOW ON #not allowed with commit hashes...
-        GIT_PROGRESS ON
-        UPDATE_COMMAND ""
-        CONFIGURE_COMMAND ""
-        BUILD_COMMAND ""
-        INSTALL_COMMAND "")
+        GIT_TAG b8e57472fffa3bd6e0a0b675f4615bf0a823ec4d
+        GIT_PROGRESS ON)
+FetchContent_GetProperties(vulkanmemoryallocator)
+if(NOT vulkanmemoryallocator_POPULATED)
+        FetchContent_Populate(vulkanmemoryallocator)
+endif()
+FetchContent_GetProperties(vulkanmemoryallocator SOURCE_DIR VULKAN_MEMORY_ALLOCATOR_SOURCE_DIR)
+
+set(VMA_SOURCE_DIR "${VULKAN_MEMORY_ALLOCATOR_SOURCE_DIR}")
+set(RAYNE_VULKAN_VMA_INCLUDE_DIRECTORY "${VMA_SOURCE_DIR}/include" CACHE INTERNAL "RayneVulkan private VMA include directory")
 
 
 set(VERSION_MAJOR 0)
@@ -79,10 +74,10 @@ set(SOURCES
         Sources/RNVulkanGPUBuffer.cpp
         Sources/RNVulkanDynamicGPUBuffer.cpp
         Sources/RNVulkanStaticGPUBuffer.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/spirvcross-prefix/src/spirvcross/spirv_cfg.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/spirvcross-prefix/src/spirvcross/spirv_cross_parsed_ir.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/spirvcross-prefix/src/spirvcross/spirv_parser.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/spirvcross-prefix/src/spirvcross/spirv_cross.cpp)
+        ${SPIRVCROSS_SOURCE_DIR}/spirv_cfg.cpp
+        ${SPIRVCROSS_SOURCE_DIR}/spirv_cross_parsed_ir.cpp
+        ${SPIRVCROSS_SOURCE_DIR}/spirv_parser.cpp
+        ${SPIRVCROSS_SOURCE_DIR}/spirv_cross.cpp)
 
 set(HEADERS
         Sources/RNVulkan.h
@@ -128,11 +123,9 @@ rayne_set_module_output_directory(RayneVulkan)
 rayne_set_module_resources(RayneVulkan ${RESOURCES})
 
 add_dependencies(RayneVulkan VulkanGenerateDispatchTable)
-add_dependencies(RayneVulkan spirvcross)
-add_dependencies(RayneVulkan VulkanMemoryAllocator)
 
 target_include_directories(RayneVulkan SYSTEM PRIVATE
-    ${CMAKE_CURRENT_BINARY_DIR}/spirvcross-prefix/src/spirvcross
+    ${SPIRVCROSS_SOURCE_DIR}
     ${RAYNE_VULKAN_VMA_INCLUDE_DIRECTORY})
 rayne_add_public_header_directory(RayneVulkan
     BUILD_DIRECTORY "${vulkanheaders_SOURCE_DIR}/include"

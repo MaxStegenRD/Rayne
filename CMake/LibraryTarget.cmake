@@ -1,3 +1,5 @@
+include(FetchContent)
+
 if((CMAKE_SYSTEM_NAME STREQUAL "visionOS"))
     set(VISIONOS 1)
 endif()
@@ -37,6 +39,21 @@ elseif(IS_VISIONOS GREATER -1)
 elseif(IS_VISIONOS_SIMULATOR GREATER -1)
     set(RN_IOS_SHADER_TYPE visionos_sim)
 endif()
+
+function(rayne_fetch_content _NAME)
+    FetchContent_Declare("${_NAME}"
+        ${ARGN}
+        EXCLUDE_FROM_ALL
+        SYSTEM)
+
+    block(SCOPE_FOR VARIABLES)
+        set(CMAKE_SKIP_INSTALL_RULES TRUE)
+        set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+        set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+        set(CMAKE_POLICY_DEFAULT_CMP0126 NEW)
+        FetchContent_MakeAvailable("${_NAME}")
+    endblock()
+endfunction()
 
 macro(__rayne_link_target_libraries _TARGET_NAME _TYPE _VISIBILITY _LIBRARIES)
     foreach(LIBRARY ${_LIBRARIES})
@@ -230,16 +247,33 @@ function(rayne_add_runtime_dependency _TARGET _DEPENDENCY)
         set(RAYNE_RUNTIME_INSTALL_DIRECTORY "lib/Rayne/${_TARGET}")
     endif()
 
-    if(TARGET "${_DEPENDENCY}")
-        target_link_libraries("${_TARGET}" PRIVATE "${_DEPENDENCY}")
+    set(RAYNE_ANDROID_RUNTIME_DIRECTORY)
+    if(ANDROID AND ANDROID_ASSETS_DIRECTORIES AND ANDROID_ABI)
+        list(GET ANDROID_ASSETS_DIRECTORIES 0 RAYNE_ANDROID_RUNTIME_DIRECTORY)
+        string(REGEX REPLACE "^\"|\"$" "" RAYNE_ANDROID_RUNTIME_DIRECTORY "${RAYNE_ANDROID_RUNTIME_DIRECTORY}")
+        cmake_path(CONVERT "${RAYNE_ANDROID_RUNTIME_DIRECTORY}" TO_CMAKE_PATH_LIST RAYNE_ANDROID_RUNTIME_DIRECTORY NORMALIZE)
+        set(RAYNE_ANDROID_RUNTIME_DIRECTORY "${RAYNE_ANDROID_RUNTIME_DIRECTORY}/../libs/${ANDROID_ABI}")
+    endif()
 
+    if(TARGET "${_DEPENDENCY}")
         get_target_property(RAYNE_RUNTIME_DEPENDENCY_TYPE "${_DEPENDENCY}" TYPE)
-        if(RAYNE_RUNTIME_DEPENDENCY_TYPE STREQUAL "STATIC_LIBRARY" OR RAYNE_RUNTIME_DEPENDENCY_TYPE STREQUAL "INTERFACE_LIBRARY" OR RAYNE_RUNTIME_DEPENDENCY_TYPE STREQUAL "OBJECT_LIBRARY")
+        if(RAYNE_RUNTIME_DEPENDENCY_TYPE STREQUAL "INTERFACE_LIBRARY" OR RAYNE_RUNTIME_DEPENDENCY_TYPE STREQUAL "OBJECT_LIBRARY")
+            message(FATAL_ERROR "Runtime dependency target must produce a linkable library: ${_DEPENDENCY}")
+        endif()
+
+        get_target_property(RAYNE_RUNTIME_DEPENDENCY_IMPORTED "${_DEPENDENCY}" IMPORTED)
+        if(NOT RAYNE_RUNTIME_DEPENDENCY_IMPORTED)
+            add_dependencies("${_TARGET}" "${_DEPENDENCY}")
+        endif()
+        target_link_libraries("${_TARGET}" PRIVATE "$<TARGET_LINKER_FILE:${_DEPENDENCY}>")
+
+        if(RAYNE_RUNTIME_DEPENDENCY_TYPE STREQUAL "STATIC_LIBRARY")
             return()
         endif()
 
         if(RAYNE_RUNTIME_DEPENDENCY_OUTPUT_NAME)
             set(RAYNE_RUNTIME_OUTPUT_FILE "$<TARGET_FILE_DIR:${_TARGET}>/${RAYNE_RUNTIME_DEPENDENCY_OUTPUT_NAME}")
+            set(RAYNE_RUNTIME_OUTPUT_NAME "${RAYNE_RUNTIME_DEPENDENCY_OUTPUT_NAME}")
             add_custom_command(TARGET "${_TARGET}" POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:${_DEPENDENCY}>" "${RAYNE_RUNTIME_OUTPUT_FILE}")
             install(FILES "$<TARGET_FILE:${_DEPENDENCY}>"
@@ -247,10 +281,17 @@ function(rayne_add_runtime_dependency _TARGET _DEPENDENCY)
                 RENAME "${RAYNE_RUNTIME_DEPENDENCY_OUTPUT_NAME}")
         else()
             set(RAYNE_RUNTIME_OUTPUT_FILE "$<TARGET_FILE_DIR:${_TARGET}>/$<TARGET_FILE_NAME:${_DEPENDENCY}>")
+            set(RAYNE_RUNTIME_OUTPUT_NAME "$<TARGET_FILE_NAME:${_DEPENDENCY}>")
             add_custom_command(TARGET "${_TARGET}" POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:${_DEPENDENCY}>" "${RAYNE_RUNTIME_OUTPUT_FILE}")
             install(FILES "$<TARGET_FILE:${_DEPENDENCY}>"
                 DESTINATION "${RAYNE_RUNTIME_INSTALL_DIRECTORY}")
+        endif()
+
+        if(RAYNE_ANDROID_RUNTIME_DIRECTORY)
+            add_custom_command(TARGET "${_TARGET}" PRE_BUILD
+                COMMAND ${CMAKE_COMMAND} -E make_directory "${RAYNE_ANDROID_RUNTIME_DIRECTORY}"
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:${_DEPENDENCY}>" "${RAYNE_ANDROID_RUNTIME_DIRECTORY}/${RAYNE_RUNTIME_OUTPUT_NAME}")
         endif()
 
         set_property(TARGET "${_TARGET}" APPEND PROPERTY RAYNE_RUNTIME_DEPENDENCY_FILES "${RAYNE_RUNTIME_OUTPUT_FILE}")
@@ -280,6 +321,12 @@ function(rayne_add_runtime_dependency _TARGET _DEPENDENCY)
             else()
                 install(FILES "${_DEPENDENCY}"
                     DESTINATION "${RAYNE_RUNTIME_INSTALL_DIRECTORY}")
+            endif()
+
+            if(RAYNE_ANDROID_RUNTIME_DIRECTORY)
+                add_custom_command(TARGET "${_TARGET}" PRE_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E make_directory "${RAYNE_ANDROID_RUNTIME_DIRECTORY}"
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_DEPENDENCY}" "${RAYNE_ANDROID_RUNTIME_DIRECTORY}/${RAYNE_RUNTIME_OUTPUT_NAME}")
             endif()
 
             set_property(TARGET "${_TARGET}" APPEND PROPERTY RAYNE_RUNTIME_DEPENDENCY_FILES "${RAYNE_RUNTIME_OUTPUT_FILE}")

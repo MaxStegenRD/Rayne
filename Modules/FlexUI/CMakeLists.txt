@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.28)
 project(RayneFlexUI)
 
 include(../../CMake/LibraryTarget.cmake)
-include(FetchContent)
 
 set(VERSION_MAJOR 0)
 set(VERSION_MINOR 1)
@@ -37,16 +36,14 @@ set(DEFINES "RN_BUILD_FLEXUI")
 rayne_add_library(RayneFlexUI "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne RayneUI)
 rayne_set_module_output_directory(RayneFlexUI)
 
-FetchContent_Declare(Yoga
-    GIT_REPOSITORY https://github.com/facebook/yoga.git
-    GIT_TAG v3.2.1
-    GIT_SHALLOW ON
-    GIT_PROGRESS ON
-)
-FetchContent_MakeAvailable(Yoga)
-set_property(DIRECTORY "${yoga_SOURCE_DIR}" PROPERTY EXCLUDE_FROM_ALL TRUE)
+rayne_fetch_content(Yoga
+        GIT_REPOSITORY https://github.com/facebook/yoga.git
+        GIT_TAG v3.2.1
+        GIT_SHALLOW ON
+        GIT_PROGRESS ON)
+FetchContent_GetProperties(Yoga SOURCE_DIR YOGA_SOURCE_DIR)
 
 target_link_libraries(RayneFlexUI PRIVATE yogacore)
-target_include_directories(RayneFlexUI SYSTEM PRIVATE "${yoga_SOURCE_DIR}")
+target_include_directories(RayneFlexUI SYSTEM PRIVATE "${YOGA_SOURCE_DIR}")
 
 target_compile_definitions(RayneFlexUI PRIVATE "${DEFINES}")

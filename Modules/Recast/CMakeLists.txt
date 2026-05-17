@@ -3,68 +3,17 @@ project(RayneRecast)
 
 include(../../CMake/LibraryTarget.cmake)
 include(../../CMake/Rayne.cmake)
-include(ExternalProject)
 
-ExternalProject_Add(recast
+FetchContent_Declare(recast
         GIT_REPOSITORY https://github.com/recastnavigation/recastnavigation.git
         GIT_TAG origin/main
         GIT_SHALLOW ON
-        GIT_PROGRESS ON
-        UPDATE_COMMAND ""
-        CONFIGURE_COMMAND ""
-        BUILD_COMMAND ""
-        BUILD_BYPRODUCTS
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Source/Recast.cpp
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Source/RecastAlloc.cpp
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Source/RecastArea.cpp
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Source/RecastAssert.cpp
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Source/RecastContour.cpp
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Source/RecastFilter.cpp
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Source/RecastLayers.cpp
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Source/RecastMesh.cpp
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Source/RecastMeshDetail.cpp
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Source/RecastRasterization.cpp
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Source/RecastRegion.cpp
-
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Source/DetourAlloc.cpp
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Source/DetourAssert.cpp
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Source/DetourCommon.cpp
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Source/DetourNavMesh.cpp
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Source/DetourNavMeshBuilder.cpp
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Source/DetourNavMeshQuery.cpp
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Source/DetourNode.cpp
-
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DetourCrowd/Source/DetourCrowd.cpp
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DetourCrowd/Source/DetourLocalBoundary.cpp
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DetourCrowd/Source/DetourObstacleAvoidance.cpp
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DetourCrowd/Source/DetourPathCorridor.cpp
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DetourCrowd/Source/DetourPathQueue.cpp
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DetourCrowd/Source/DetourProximityGrid.cpp
-
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Include/Recast.h
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Include/RecastAlloc.h
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Include/RecastAssert.h
-
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Include/DetourAlloc.h
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Include/DetourAssert.h
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Include/DetourCommon.h
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Include/DetourMath.h
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Include/DetourNavMesh.h
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Include/DetourNavMeshBuilder.h
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Include/DetourNavMeshQuery.h
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Include/DetourNode.h
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Include/DetourStatus.h
-
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DetourCrowd/Include/DetourCrowd.h
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DetourCrowd/Include/DetourLocalBoundary.h
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DetourCrowd/Include/DetourObstacleAvoidance.h
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DetourCrowd/Include/DetourPathCorridor.h
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DetourCrowd/Include/DetourPathQueue.h
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DetourCrowd/Include/DetourProximityGrid.h
-
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DebugUtils/Source/RecastDump.cpp
-                ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DebugUtils/Include/RecastDump.h
-        INSTALL_COMMAND "")
+        GIT_PROGRESS ON)
+FetchContent_GetProperties(recast)
+if(NOT recast_POPULATED)
+        FetchContent_Populate(recast)
+endif()
+FetchContent_GetProperties(recast SOURCE_DIR RECAST_SOURCE_DIR)
 
 
 set(VERSION_MAJOR 0)
@@ -79,34 +28,34 @@ set(SOURCES
         RNRecastMesh.cpp
         RNRecastAgent.cpp
 
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Source/Recast.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Source/RecastAlloc.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Source/RecastArea.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Source/RecastAssert.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Source/RecastContour.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Source/RecastFilter.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Source/RecastLayers.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Source/RecastMesh.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Source/RecastMeshDetail.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Source/RecastRasterization.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Source/RecastRegion.cpp
+        ${RECAST_SOURCE_DIR}/Recast/Source/Recast.cpp
+        ${RECAST_SOURCE_DIR}/Recast/Source/RecastAlloc.cpp
+        ${RECAST_SOURCE_DIR}/Recast/Source/RecastArea.cpp
+        ${RECAST_SOURCE_DIR}/Recast/Source/RecastAssert.cpp
+        ${RECAST_SOURCE_DIR}/Recast/Source/RecastContour.cpp
+        ${RECAST_SOURCE_DIR}/Recast/Source/RecastFilter.cpp
+        ${RECAST_SOURCE_DIR}/Recast/Source/RecastLayers.cpp
+        ${RECAST_SOURCE_DIR}/Recast/Source/RecastMesh.cpp
+        ${RECAST_SOURCE_DIR}/Recast/Source/RecastMeshDetail.cpp
+        ${RECAST_SOURCE_DIR}/Recast/Source/RecastRasterization.cpp
+        ${RECAST_SOURCE_DIR}/Recast/Source/RecastRegion.cpp
 
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Source/DetourAlloc.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Source/DetourAssert.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Source/DetourCommon.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Source/DetourNavMesh.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Source/DetourNavMeshBuilder.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Source/DetourNavMeshQuery.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Source/DetourNode.cpp
+        ${RECAST_SOURCE_DIR}/Detour/Source/DetourAlloc.cpp
+        ${RECAST_SOURCE_DIR}/Detour/Source/DetourAssert.cpp
+        ${RECAST_SOURCE_DIR}/Detour/Source/DetourCommon.cpp
+        ${RECAST_SOURCE_DIR}/Detour/Source/DetourNavMesh.cpp
+        ${RECAST_SOURCE_DIR}/Detour/Source/DetourNavMeshBuilder.cpp
+        ${RECAST_SOURCE_DIR}/Detour/Source/DetourNavMeshQuery.cpp
+        ${RECAST_SOURCE_DIR}/Detour/Source/DetourNode.cpp
 
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DetourCrowd/Source/DetourCrowd.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DetourCrowd/Source/DetourLocalBoundary.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DetourCrowd/Source/DetourObstacleAvoidance.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DetourCrowd/Source/DetourPathCorridor.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DetourCrowd/Source/DetourPathQueue.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DetourCrowd/Source/DetourProximityGrid.cpp
+        ${RECAST_SOURCE_DIR}/DetourCrowd/Source/DetourCrowd.cpp
+        ${RECAST_SOURCE_DIR}/DetourCrowd/Source/DetourLocalBoundary.cpp
+        ${RECAST_SOURCE_DIR}/DetourCrowd/Source/DetourObstacleAvoidance.cpp
+        ${RECAST_SOURCE_DIR}/DetourCrowd/Source/DetourPathCorridor.cpp
+        ${RECAST_SOURCE_DIR}/DetourCrowd/Source/DetourPathQueue.cpp
+        ${RECAST_SOURCE_DIR}/DetourCrowd/Source/DetourProximityGrid.cpp
 
-        ${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DebugUtils/Source/RecastDump.cpp)
+        ${RECAST_SOURCE_DIR}/DebugUtils/Source/RecastDump.cpp)
 
 set(HEADERS
 	RNRecast.h
@@ -117,15 +66,13 @@ set(HEADERS
 set(DEFINES RN_BUILD_RECAST)
 
 set(VENDOR_INCLUDES
-        "${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Recast/Include"
-        "${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/Detour/Include"
-        "${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DetourCrowd/Include"
-        "${CMAKE_CURRENT_BINARY_DIR}/recast-prefix/src/recast/DebugUtils/Include")
+        "${RECAST_SOURCE_DIR}/Recast/Include"
+        "${RECAST_SOURCE_DIR}/Detour/Include"
+        "${RECAST_SOURCE_DIR}/DetourCrowd/Include"
+        "${RECAST_SOURCE_DIR}/DebugUtils/Include")
 
 rayne_add_library(RayneRecast "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne)
 rayne_set_module_output_directory(RayneRecast)
 
 target_include_directories(RayneRecast SYSTEM PRIVATE ${VENDOR_INCLUDES})
 target_compile_definitions(RayneRecast PRIVATE "${DEFINES}")
-
-add_dependencies(RayneRecast recast)

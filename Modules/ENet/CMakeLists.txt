@@ -3,7 +3,6 @@ project(RayneENet)
 
 include(../../CMake/LibraryTarget.cmake)
 include(../../CMake/Rayne.cmake)
-include(ExternalProject)
 
 set(VERSION_MAJOR 0)
 set(VERSION_MINOR 5)
@@ -36,51 +35,19 @@ if(WIN32)
         list(APPEND PRIVATE_LIBRARIES ws2_32.lib winmm.lib)
 endif()
 
-set(VENDOR_INCLUDES
-        "${CMAKE_CURRENT_BINARY_DIR}/enet-prefix/src/enet/include")
+set(BUILD_SHARED_LIBS OFF)
+rayne_fetch_content(enet
+        GIT_REPOSITORY https://github.com/lsalzman/enet.git
+        GIT_TAG origin/master
+        GIT_SHALLOW ON
+        GIT_PROGRESS ON)
+FetchContent_GetProperties(enet SOURCE_DIR ENET_SOURCE_DIR)
 
-rayne_add_library(RayneENet "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne PRIVATE_LIBRARIES ${PRIVATE_LIBRARIES} PRIVATE_HEADERS "${PRIVATE_HEADERS}")
+set(VENDOR_INCLUDES
+        "${ENET_SOURCE_DIR}/include")
+
+rayne_add_library(RayneENet "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne PRIVATE_LIBRARIES ${PRIVATE_LIBRARIES} enet PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneENet)
 
 target_include_directories(RayneENet SYSTEM PRIVATE ${VENDOR_INCLUDES})
 target_compile_definitions(RayneENet PRIVATE "${DEFINES}")
-
-ExternalProject_Add(enet
-        GIT_REPOSITORY https://github.com/lsalzman/enet.git
-        GIT_TAG origin/master
-        GIT_SHALLOW ON
-        GIT_PROGRESS ON
-        UPDATE_COMMAND ""
-        CMAKE_CACHE_ARGS
-                "-DCMAKE_C_FLAGS:STRING=${CMAKE_C_FLAGS}"
-                "-DCMAKE_CXX_FLAGS:STRING=${CMAKE_CXX_FLAGS}"
-                "-DCMAKE_OSX_ARCHITECTURES:STRING=${CMAKE_OSX_ARCHITECTURES}"
-                "-DCMAKE_XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH:BOOL=False"
-                "-DCMAKE_TOOLCHAIN_FILE:PATH=${CMAKE_TOOLCHAIN_FILE}"
-                "-DANDROID_NATIVE_API_LEVEL:STRING=${ANDROID_NATIVE_API_LEVEL}"
-                "-DANDROID_ABI:STRING=${ANDROID_ABI}"
-                "-DANDROID_NDK:STRING=${ANDROID_NDK}"
-                "-DANDROID_STL:STRING=${ANDROID_STL}"
-                "-DCMAKE_SYSTEM_VERSION:STRING=${CMAKE_SYSTEM_VERSION}"
-        BUILD_BYPRODUCTS
-                "${CMAKE_CURRENT_BINARY_DIR}/enet-prefix/src/enet-build/Debug/libenet.a"
-                "${CMAKE_CURRENT_BINARY_DIR}/enet-prefix/src/enet-build/Release/libenet.a"
-                "${CMAKE_CURRENT_BINARY_DIR}/enet-prefix/src/enet-build/libenet.a"
-                "${CMAKE_CURRENT_BINARY_DIR}/enet-prefix/src/enet-build/Debug/enet.lib"
-                "${CMAKE_CURRENT_BINARY_DIR}/enet-prefix/src/enet-build/Release/enet.lib"
-        INSTALL_COMMAND "")
-
-add_dependencies(RayneENet enet)
-
-if(ANDROID OR UNIX AND NOT APPLE)
-        target_link_libraries(RayneENet PRIVATE
-                "${CMAKE_CURRENT_BINARY_DIR}/enet-prefix/src/enet-build/libenet.a")
-elseif(APPLE)
-        target_link_libraries(RayneENet PRIVATE
-                debug "${CMAKE_CURRENT_BINARY_DIR}/enet-prefix/src/enet-build/Debug/libenet.a"
-                optimized "${CMAKE_CURRENT_BINARY_DIR}/enet-prefix/src/enet-build/Release/libenet.a")
-else()
-        target_link_libraries(RayneENet PRIVATE
-                debug "${CMAKE_CURRENT_BINARY_DIR}/enet-prefix/src/enet-build/Debug/enet.lib"
-                optimized "${CMAKE_CURRENT_BINARY_DIR}/enet-prefix/src/enet-build/Release/enet.lib")
-endif()

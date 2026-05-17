@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.28)
 cmake_policy(SET CMP0097 NEW)
 project(RayneJolt)
 
-include(FetchContent)
 include(../../CMake/LibraryTarget.cmake)
 include(../../CMake/Rayne.cmake)
 
@@ -34,14 +33,10 @@ set(FLOATING_POINT_EXCEPTIONS_ENABLED OFF)
 # Number of bits to use in ObjectLayer. Can be 16 or 32.
 set(OBJECT_LAYER_BITS 16)
 
-# Include Jolt
-FetchContent_Declare(
-        JoltPhysics
+rayne_fetch_content(JoltPhysics
         GIT_REPOSITORY "https://github.com/jrouwe/JoltPhysics.git"
         GIT_TAG "v5.4.0"
-        SOURCE_SUBDIR "Build"
-)
-FetchContent_MakeAvailable(JoltPhysics)
+        SOURCE_SUBDIR "Build")
 
 if (MSVC)
     # 64 bit architecture

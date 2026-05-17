@@ -2,28 +2,18 @@ cmake_minimum_required(VERSION 3.28)
 project(RayneGlTF)
 
 include(../../CMake/LibraryTarget.cmake)
-include(ExternalProject)
 
-ExternalProject_Add(tinygltf
-    GIT_REPOSITORY https://github.com/syoyo/tinygltf.git
-    GIT_SHALLOW ON
-    GIT_PROGRESS ON
-    UPDATE_COMMAND ""
-    CMAKE_CACHE_ARGS
-        "-DCMAKE_XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH:BOOL=False"
-        "-DCMAKE_OSX_ARCHITECTURES:STRING=${CMAKE_OSX_ARCHITECTURES}"
-        "-DBUILD_SHARED_LIBS:BOOL=False"
-        "-DCMAKE_TOOLCHAIN_FILE:PATH=${CMAKE_TOOLCHAIN_FILE}"
-        "-DANDROID_NATIVE_API_LEVEL:STRING=${ANDROID_NATIVE_API_LEVEL}"
-        "-DANDROID_ABI:STRING=${ANDROID_ABI}"
-        "-DANDROID_NDK:STRING=${ANDROID_NDK}"
-        "-DANDROID_STL:STRING=${ANDROID_STL}"
-        "-DCMAKE_SYSTEM_VERSION:STRING=${CMAKE_SYSTEM_VERSION}"
-    BUILD_BYPRODUCTS
-		"${CMAKE_CURRENT_BINARY_DIR}/tinygltf-prefix/src/tinygltf-build/Debug/libtinygltf.a"
-		"${CMAKE_CURRENT_BINARY_DIR}/tinygltf-prefix/src/tinygltf-build/Release/libtinygltf.a"
-                "${CMAKE_CURRENT_BINARY_DIR}/tinygltf-prefix/src/tinygltf-build/libtinygltf.a"
-    INSTALL_COMMAND "")
+set(BUILD_SHARED_LIBS OFF)
+set(TINYGLTF_HEADER_ONLY OFF)
+set(TINYGLTF_BUILD_LOADER_EXAMPLE OFF)
+set(TINYGLTF_BUILD_GL_EXAMPLES OFF)
+set(TINYGLTF_BUILD_VALIDATOR_EXAMPLE OFF)
+
+rayne_fetch_content(tinygltf
+        GIT_REPOSITORY https://github.com/syoyo/tinygltf.git
+        GIT_SHALLOW ON
+        GIT_PROGRESS ON)
+FetchContent_GetProperties(tinygltf SOURCE_DIR TINYGLTF_SOURCE_DIR)
 
 set(VERSION_MAJOR 0)
 set(VERSION_MINOR 5)
@@ -45,20 +35,10 @@ set(DEFINES
         RN_BUILD_GLTF)
 
 set(VENDOR_INCLUDES
-        ${CMAKE_CURRENT_BINARY_DIR}/tinygltf-prefix/src/tinygltf)
+        ${TINYGLTF_SOURCE_DIR})
 
-rayne_add_library(RayneGlTF "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne PRIVATE_HEADERS "${PRIVATE_HEADERS}")
+rayne_add_library(RayneGlTF "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne PRIVATE_LIBRARIES tinygltf PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneGlTF)
 
 target_include_directories(RayneGlTF SYSTEM PRIVATE ${VENDOR_INCLUDES})
 target_compile_definitions(RayneGlTF PRIVATE "${DEFINES}")
-
-add_dependencies(RayneGlTF tinygltf)
-
-if(ANDROID)
-        target_link_libraries(RayneGlTF PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/tinygltf-prefix/src/tinygltf-build/libtinygltf.a")
-else()
-        target_link_libraries(RayneGlTF PRIVATE
-                debug "${CMAKE_CURRENT_BINARY_DIR}/tinygltf-prefix/src/tinygltf-build/Debug/libtinygltf.a"
-                optimized "${CMAKE_CURRENT_BINARY_DIR}/tinygltf-prefix/src/tinygltf-build/Release/libtinygltf.a")
-endif()

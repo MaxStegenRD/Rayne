@@ -2,33 +2,20 @@ cmake_minimum_required(VERSION 3.28)
 project(RayneAssimp)
 
 include(../../CMake/LibraryTarget.cmake)
-include(ExternalProject)
 
-ExternalProject_Add(assimp
-    GIT_REPOSITORY https://github.com/assimp/assimp.git
-    GIT_TAG refs/tags/v5.0.1
-    GIT_SHALLOW ON
-    GIT_PROGRESS ON
-    UPDATE_COMMAND ""
-    PATCH_COMMAND grep -qxF "target_compile_definitions(assimp PRIVATE -DNOUNCRYPT)" <SOURCE_DIR>/CMakeLists.txt || echo "target_compile_definitions(assimp PRIVATE -DNOUNCRYPT)" >> <SOURCE_DIR>/CMakeLists.txt
-    CMAKE_CACHE_ARGS
-        "-DCMAKE_XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH:BOOL=False"
-        "-DCMAKE_OSX_ARCHITECTURES:STRING=${CMAKE_OSX_ARCHITECTURES}"
-        "-DCMAKE_SYSTEM_VERSION:STRING=${CMAKE_SYSTEM_VERSION}"
-        "-DBUILD_SHARED_LIBS:BOOL=False"
-        "-DASSIMP_BUILD_TESTS:BOOL=False"
-        "-DASSIMP_NO_EXPORT:BOOL=True"
-        "-DASSIMP_BUILD_ASSIMP_TOOLS:BOOL=False"
-        "-DANDROID_NATIVE_API_LEVEL:STRING=${ANDROID_NATIVE_API_LEVEL}"
-        "-DANDROID_ABI:STRING=${ANDROID_ABI}"
-        "-DANDROID_NDK:STRING=${ANDROID_NDK}"
-        "-DANDROID_STL:STRING=${ANDROID_STL}"
-    BUILD_BYPRODUCTS
-        "${CMAKE_CURRENT_BINARY_DIR}/assimp-prefix/src/assimp-build/code/Debug/libassimpd.a"
-        "${CMAKE_CURRENT_BINARY_DIR}/assimp-prefix/src/assimp-build/contrib/irrXML/Debug/libIrrXMLd.a"
-        "${CMAKE_CURRENT_BINARY_DIR}/assimp-prefix/src/assimp-build/code/Release/libassimp.a"
-        "${CMAKE_CURRENT_BINARY_DIR}/assimp-prefix/src/assimp-build/contrib/irrXML/Release/libIrrXML.a"
-    INSTALL_COMMAND "")
+set(BUILD_SHARED_LIBS OFF)
+set(ASSIMP_BUILD_TESTS OFF)
+set(ASSIMP_NO_EXPORT ON)
+set(ASSIMP_BUILD_ASSIMP_TOOLS OFF)
+set(ASSIMP_BUILD_ZLIB OFF)
+
+rayne_fetch_content(assimp
+        GIT_REPOSITORY https://github.com/assimp/assimp.git
+        GIT_TAG refs/tags/v5.0.1
+        GIT_SHALLOW ON
+        GIT_PROGRESS ON)
+FetchContent_GetProperties(assimp SOURCE_DIR ASSIMP_SOURCE_DIR BINARY_DIR ASSIMP_BINARY_DIR)
+target_compile_definitions(assimp PRIVATE NOUNCRYPT)
 
 set(VERSION_MAJOR 0)
 set(VERSION_MINOR 5)
@@ -50,19 +37,11 @@ set(DEFINES
         RN_BUILD_ASSIMP)
 
 set(VENDOR_INCLUDES
-        ${CMAKE_CURRENT_BINARY_DIR}/assimp-prefix/src/assimp/include
-        ${CMAKE_CURRENT_BINARY_DIR}/assimp-prefix/src/assimp-build/include)
+        ${ASSIMP_SOURCE_DIR}/include
+        ${ASSIMP_BINARY_DIR}/include)
 
-rayne_add_library(RayneAssimp "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne PRIVATE_HEADERS "${PRIVATE_HEADERS}")
+rayne_add_library(RayneAssimp "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne PRIVATE_LIBRARIES assimp PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneAssimp)
 
 target_include_directories(RayneAssimp SYSTEM PRIVATE ${VENDOR_INCLUDES})
 target_compile_definitions(RayneAssimp PRIVATE "${DEFINES}")
-
-add_dependencies(RayneAssimp assimp)
-
-target_link_libraries(RayneAssimp PRIVATE
-        debug "${CMAKE_CURRENT_BINARY_DIR}/assimp-prefix/src/assimp-build/code/Debug/libassimpd.a"
-        debug "${CMAKE_CURRENT_BINARY_DIR}/assimp-prefix/src/assimp-build/contrib/irrXML/Debug/libIrrXMLd.a"
-        optimized "${CMAKE_CURRENT_BINARY_DIR}/assimp-prefix/src/assimp-build/code/Release/libassimp.a"
-        optimized "${CMAKE_CURRENT_BINARY_DIR}/assimp-prefix/src/assimp-build/contrib/irrXML/Release/libIrrXML.a")

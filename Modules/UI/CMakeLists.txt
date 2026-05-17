@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.28)
 project(RayneUI)
 
 include(../../CMake/LibraryTarget.cmake)
-include(ExternalProject)
 
 set(VERSION_MAJOR 0)
 set(VERSION_MINOR 5)
@@ -52,76 +51,22 @@ set(DEFINES
         "RN_BUILD_UI"
         "SK_RELEASE")
 
-set(KALLIGRAPH_SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Kalligraph-prefix/src/Kalligraph)
-set(KALLIGRAPH_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/Kalligraph-prefix/src/Kalligraph-build)
-
-set(VENDOR_INCLUDES ${KALLIGRAPH_SOURCE_DIR}/Sources ${CMAKE_CURRENT_SOURCE_DIR}/Vendor)
-
-rayne_add_library(RayneUI "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne)
-rayne_set_module_output_directory(RayneUI)
-
-FetchContent_Declare(ArteryFont
-    GIT_REPOSITORY https://github.com/Chlumsky/artery-font-format.git
-    GIT_TAG 888674220216d1d326c6f29cf89165b545279c1f
-)
-FetchContent_MakeAvailable(ArteryFont)
-target_include_directories(RayneUI SYSTEM PRIVATE "${arteryfont_SOURCE_DIR}/artery-font")
-
-ExternalProject_Add(Kalligraph
+rayne_fetch_content(ArteryFont
+        GIT_REPOSITORY https://github.com/Chlumsky/artery-font-format.git
+        GIT_TAG 888674220216d1d326c6f29cf89165b545279c1f)
+rayne_fetch_content(Kalligraph
         GIT_REPOSITORY https://github.com/Slin/Kalligraph.git
         GIT_TAG origin/master
         GIT_SHALLOW ON
-        GIT_PROGRESS ON
-        CMAKE_CACHE_ARGS
-                "-DCMAKE_XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH:BOOL=False"
-                "-DCMAKE_OSX_ARCHITECTURES:STRING=${CMAKE_OSX_ARCHITECTURES}"
-                "-DCMAKE_TOOLCHAIN_FILE:PATH=${CMAKE_TOOLCHAIN_FILE}"
-                "-DANDROID_NATIVE_API_LEVEL:STRING=${ANDROID_NATIVE_API_LEVEL}"
-                "-DANDROID_ABI:STRING=${ANDROID_ABI}"
-                "-DANDROID_NDK:STRING=${ANDROID_NDK}"
-                "-DANDROID_STL:STRING=${ANDROID_STL}"
-                "-DCMAKE_SYSTEM_NAME:STRING=${CMAKE_SYSTEM_NAME}"
-                "-DCMAKE_OSX_SYSROOT:STRING=${CMAKE_OSX_SYSROOT}"
-                "-DCMAKE_SYSTEM_VERSION:STRING=${CMAKE_SYSTEM_VERSION}"
-        BUILD_BYPRODUCTS
-                ${KALLIGRAPH_BINARY_DIR}/libKalligraph.a
-                ${KALLIGRAPH_BINARY_DIR}/Debug/libKalligraph.a
-                ${KALLIGRAPH_BINARY_DIR}/Release/libKalligraph.a
-                ${KALLIGRAPH_BINARY_DIR}/Debug-${APPLE_SDK_NAME}/libKalligraph.a
-                ${KALLIGRAPH_BINARY_DIR}/Release-${APPLE_SDK_NAME}/libKalligraph.a
-                ${KALLIGRAPH_BINARY_DIR}/Debug/Kalligraph.lib
-                ${KALLIGRAPH_BINARY_DIR}/Release/Kalligraph.lib
-        INSTALL_COMMAND ""
-        UPDATE_COMMAND ""
-       )
+        GIT_PROGRESS ON)
+FetchContent_GetProperties(ArteryFont SOURCE_DIR ARTERYFONT_SOURCE_DIR)
 
-add_library(KalligraphLib STATIC IMPORTED)
+set(VENDOR_INCLUDES
+        "${ARTERYFONT_SOURCE_DIR}/artery-font"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Vendor")
 
-if(WIN32)
-        SET_PROPERTY(TARGET KalligraphLib PROPERTY IMPORTED_CONFIGURATIONS "Debug;Release;RelWithDebInfo")
-
-        SET_PROPERTY(TARGET KalligraphLib PROPERTY IMPORTED_LOCATION_DEBUG "${KALLIGRAPH_BINARY_DIR}/Debug/Kalligraph.lib")
-        SET_PROPERTY(TARGET KalligraphLib PROPERTY IMPORTED_LOCATION_RELEASE "${KALLIGRAPH_BINARY_DIR}/Release/Kalligraph.lib")
-        SET_PROPERTY(TARGET KalligraphLib PROPERTY IMPORTED_LOCATION_RELWITHDEBINFO "${KALLIGRAPH_BINARY_DIR}/RelWithDebInfo/Kalligraph.lib")
-
-elseif(ANDROID)
-        SET_PROPERTY(TARGET KalligraphLib PROPERTY IMPORTED_LOCATION "${KALLIGRAPH_BINARY_DIR}/libKalligraph.a")
-elseif(IOS OR VISIONOS)
-        SET_PROPERTY(TARGET KalligraphLib PROPERTY IMPORTED_CONFIGURATIONS "Debug;Release;RelWithDebInfo")
-        SET_PROPERTY(TARGET KalligraphLib PROPERTY IMPORTED_LOCATION_DEBUG "${KALLIGRAPH_BINARY_DIR}/Debug-${APPLE_SDK_NAME}/libKalligraph.a")
-        SET_PROPERTY(TARGET KalligraphLib PROPERTY IMPORTED_LOCATION_RELEASE "${KALLIGRAPH_BINARY_DIR}/Release-${APPLE_SDK_NAME}/libKalligraph.a")
-        SET_PROPERTY(TARGET KalligraphLib PROPERTY IMPORTED_LOCATION_RELWITHDEBINFO "${KALLIGRAPH_BINARY_DIR}/RelWithDebInfo-${APPLE_SDK_NAME}/libKalligraph.a")
-else()
-        SET_PROPERTY(TARGET KalligraphLib PROPERTY IMPORTED_CONFIGURATIONS "Debug;Release;RelWithDebInfo")
-
-        SET_PROPERTY(TARGET KalligraphLib PROPERTY IMPORTED_LOCATION_DEBUG "${KALLIGRAPH_BINARY_DIR}/Debug/libKalligraph.a")
-        SET_PROPERTY(TARGET KalligraphLib PROPERTY IMPORTED_LOCATION_RELEASE "${KALLIGRAPH_BINARY_DIR}/Release/libKalligraph.a")
-        SET_PROPERTY(TARGET KalligraphLib PROPERTY IMPORTED_LOCATION_RELWITHDEBINFO "${KALLIGRAPH_BINARY_DIR}/RelWithDebInfo/libKalligraph.a")
-endif()
-
-add_dependencies(KalligraphLib Kalligraph)
-add_dependencies(RayneUI KalligraphLib)
-target_link_libraries(RayneUI PRIVATE KalligraphLib)
+rayne_add_library(RayneUI "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne PRIVATE_LIBRARIES Kalligraph)
+rayne_set_module_output_directory(RayneUI)
 
 target_include_directories(RayneUI SYSTEM PRIVATE ${VENDOR_INCLUDES})
 target_compile_definitions(RayneUI PRIVATE "${DEFINES}")

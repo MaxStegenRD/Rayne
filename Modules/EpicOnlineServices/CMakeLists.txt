@@ -3,7 +3,6 @@ project(RayneEOS)
 
 include(../../CMake/LibraryTarget.cmake)
 include(../../CMake/Rayne.cmake)
-include(ExternalProject)
 
 set(VERSION_MAJOR 0)
 set(VERSION_MINOR 5)

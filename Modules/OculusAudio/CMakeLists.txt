@@ -3,38 +3,24 @@ project(RayneOculusAudio)
 
 include(../../CMake/LibraryTarget.cmake)
 include(../../CMake/Rayne.cmake)
-include(ExternalProject)
 
 if(ANDROID)
-        ExternalProject_Add(oboe
-        GIT_REPOSITORY https://github.com/google/oboe.git
-        GIT_TAG refs/tags/1.4.2
-        GIT_SHALLOW ON
-        GIT_PROGRESS ON
-        UPDATE_COMMAND ""
-        CMAKE_CACHE_ARGS
-                "-DCMAKE_TOOLCHAIN_FILE:PATH=${CMAKE_TOOLCHAIN_FILE}"
-                "-DANDROID_NATIVE_API_LEVEL:STRING=${ANDROID_NATIVE_API_LEVEL}"
-                "-DANDROID_ABI:STRING=${ANDROID_ABI}"
-                "-DANDROID_NDK:STRING=${ANDROID_NDK}"
-                "-DANDROID_STL:STRING=${ANDROID_STL}"
-        BUILD_BYPRODUCTS
-                "${CMAKE_CURRENT_BINARY_DIR}/oboe-prefix/src/oboe-build/liboboe.a"
-        INSTALL_COMMAND "")
+        rayne_fetch_content(oboe
+                GIT_REPOSITORY https://github.com/google/oboe.git
+                GIT_TAG refs/tags/1.4.2
+                GIT_SHALLOW ON
+                GIT_PROGRESS ON)
+        FetchContent_GetProperties(oboe SOURCE_DIR OBOE_SOURCE_DIR)
 else()
-        ExternalProject_Add(rtaudio
-        GIT_REPOSITORY https://github.com/thestk/rtaudio.git
-        GIT_TAG refs/tags/5.1.0
-        GIT_SHALLOW ON
-        GIT_PROGRESS ON
-        UPDATE_COMMAND ""
-        CMAKE_CACHE_ARGS
-                "-DBUILD_SHARED_LIBS:BOOL=False"
-                "-DCMAKE_SYSTEM_VERSION:STRING=${CMAKE_SYSTEM_VERSION}"
-        BUILD_BYPRODUCTS
-                "${CMAKE_CURRENT_BINARY_DIR}/rtaudio-prefix/src/rtaudio-build/Debug/librtaudio.a"
-                "${CMAKE_CURRENT_BINARY_DIR}/rtaudio-prefix/src/rtaudio-build/Release/librtaudio.a"
-        INSTALL_COMMAND "")
+        set(BUILD_SHARED_LIBS OFF)
+        set(RTAUDIO_BUILD_SHARED_LIBS OFF)
+        set(RTAUDIO_BUILD_STATIC_LIBS ON)
+        rayne_fetch_content(rtaudio
+                GIT_REPOSITORY https://github.com/thestk/rtaudio.git
+                GIT_TAG refs/tags/5.1.0
+                GIT_SHALLOW ON
+                GIT_PROGRESS ON)
+        FetchContent_GetProperties(rtaudio SOURCE_DIR RTAUDIO_SOURCE_DIR)
 endif()
 
 set(VERSION_MAJOR 0)
@@ -71,13 +57,13 @@ if(APPLE)
         find_library(COREAUDIO_LIB CoreAudio)
         find_library(COREFOUNDATION_LIB CoreFoundation)
         set(OCULUS_AUDIO_LIBRARIES ${COREAUDIO_LIB} ${COREFOUNDATION_LIB} ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Lib/macub/OVRAudio.framework/Versions/A/OVRAudio)
-        set(VENDOR_INCLUDES "${CMAKE_CURRENT_BINARY_DIR}/rtaudio-prefix/src/rtaudio" "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Include")
+        set(VENDOR_INCLUDES "${RTAUDIO_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Include")
 elseif(WIN32)
         set(OCULUS_AUDIO_LIBRARIES winmm ole32 ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Lib/x64/ovraudio64.lib)
-        set(VENDOR_INCLUDES "${CMAKE_CURRENT_BINARY_DIR}/rtaudio-prefix/src/rtaudio" "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Include")
+        set(VENDOR_INCLUDES "${RTAUDIO_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Include")
 elseif(ANDROID)
         set(OCULUS_AUDIO_LIBRARIES ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Lib/Android/arm64-v8a/libovraudiostatic64.a)
-        set(VENDOR_INCLUDES "${CMAKE_CURRENT_BINARY_DIR}/oboe-prefix/src/oboe/include" "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Include")
+        set(VENDOR_INCLUDES "${OBOE_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Include")
 endif()
 
 rayne_add_library(RayneOculusAudio "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne PRIVATE_HEADERS "${PRIVATE_HEADERS}")
@@ -88,24 +74,14 @@ target_link_libraries(RayneOculusAudio PRIVATE ${OCULUS_AUDIO_LIBRARIES})
 target_compile_definitions(RayneOculusAudio PRIVATE "${DEFINES}")
 
 if(ANDROID)
-        add_dependencies(RayneOculusAudio oboe)
-        target_link_libraries(RayneOculusAudio PRIVATE
-                "${CMAKE_CURRENT_BINARY_DIR}/oboe-prefix/src/oboe-build/liboboe.a")
+        target_link_libraries(RayneOculusAudio PRIVATE oboe)
 else()
-        add_dependencies(RayneOculusAudio rtaudio)
-        target_link_libraries(RayneOculusAudio PRIVATE
-                debug "${CMAKE_CURRENT_BINARY_DIR}/rtaudio-prefix/src/rtaudio-build/Debug/librtaudio.a"
-                optimized "${CMAKE_CURRENT_BINARY_DIR}/rtaudio-prefix/src/rtaudio-build/Release/librtaudio.a")
+        target_link_libraries(RayneOculusAudio PRIVATE rtaudio)
 endif()
 
 if(APPLE)
         rayne_add_runtime_dependency(RayneOculusAudio "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Lib/macub/OVRAudio.framework")
 endif()
 if(ANDROID)
-        list(GET ANDROID_ASSETS_DIRECTORIES 0 android-assets-dir)
-        string(LENGTH ${android-assets-dir} length)
-        MATH(EXPR length "${length}-2")
-        string(SUBSTRING ${android-assets-dir} 1 ${length} android-assets-dir)
-
-        add_custom_command(TARGET RayneOpenAL PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Lib/Android/arm64-v8a/libovraudio64.so ${android-assets-dir}/../libs/arm64-v8a/libovraudio64.so)
+        rayne_add_runtime_dependency(RayneOculusAudio "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Lib/Android/arm64-v8a/libovraudio64.so")
 endif()
