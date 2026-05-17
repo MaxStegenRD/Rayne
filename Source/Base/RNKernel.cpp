@@ -254,22 +254,32 @@ namespace RN
 		delete _application;
 		_application = nullptr;
 
-		Screen::TeardownScreens();
-		WorkQueue::TearDownQueues();
+		delete _sceneManager;
+		_sceneManager = nullptr;
+		pool.Drain();
 
-#if RN_PLATFORM_LINUX
-		if(_connection) xcb_disconnect(_connection);
-#endif
+		Screen::TeardownScreens();
+		_assetManager->ReleaseKeepAliveAssets();
+		Initializer::RunDestructors();
+		pool.Drain();
 
 		if(_renderer)
 		{
 			_renderer->Deactivate();
 			_renderer = nullptr;
 		}
+		pool.Drain();
+
+		delete _assetManager;
+		_assetManager = nullptr;
+		pool.Drain();
+
+		WorkQueue::TearDownQueues();
+#if RN_PLATFORM_LINUX
+		if(_connection) xcb_disconnect(_connection);
+#endif
 
 		delete _fileManager;
-		delete _assetManager;
-		delete _sceneManager;
 		delete _inputManager;
 		delete _moduleManager;
 		delete _notificationManager;
@@ -280,6 +290,7 @@ namespace RN
 		delete _logger;
 
 		__ExtensionPointBase::TeardownExtensionPoints();
+		pool.Drain();
 
 		delete this;
 		__sharedInstance = nullptr;
