@@ -13,6 +13,7 @@
 #include "RNVulkanShaderLibrary.h"
 #include "RNVulkanFramebuffer.h"
 #include "RNVulkanSwapChain.h"
+#include "RNVulkanTexture.h"
 #include "RNVulkanTextureInfo.h"
 #include "RNVulkanDynamicGPUBuffer.h"
 #include "RNVulkanStaticGPUBuffer.h"
