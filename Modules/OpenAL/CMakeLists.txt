@@ -35,6 +35,10 @@ if(APPLE)
         find_library(AVFOUNDATION_LIBRARY AVFoundation)
         list(APPEND PRIVATE_LIBRARIES ${AVFOUNDATION_LIBRARY})
 endif()
+if(IOS OR VISIONOS)
+        find_library(AUDIOTOOLBOX_LIB AudioToolbox)
+        list(APPEND PRIVATE_LIBRARIES ${AUDIOTOOLBOX_LIB})
+endif()
 
 set(VENDOR_INCLUDES
         "${CMAKE_CURRENT_BINARY_DIR}/openal-prefix/src/openal/include")
@@ -129,8 +133,3 @@ set_target_properties(OpenALLib PROPERTIES ${OPENAL_IMPORTED_PROPERTIES})
 
 add_dependencies(OpenALLib openal)
 rayne_add_runtime_dependency(RayneOpenAL OpenALLib ${OPENAL_RUNTIME_DEPENDENCY_OPTIONS})
-
-if(IOS OR VISIONOS)
-        find_library(AUDIOTOOLBOX_LIB AudioToolbox)
-        target_link_libraries(RayneOpenAL PRIVATE ${AUDIOTOOLBOX_LIB})
-endif()
