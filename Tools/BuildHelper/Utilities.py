@@ -3,6 +3,63 @@ import sys
 import subprocess
 import shutil
 
+def _parseVersionString(version):
+	components = version.split(".")
+	if len(components) < 1:
+		return None
+
+	parsedComponents = list()
+	for component in components:
+		if not component.isdigit():
+			return None
+		parsedComponents.append(int(component))
+
+	return tuple(parsedComponents)
+
+
+def _getAndroidSDKCandidates():
+	candidates = list()
+	for environmentVariable in ["ANDROID_HOME", "ANDROID_SDK_ROOT"]:
+		if environmentVariable in os.environ:
+			candidates.append(os.environ[environmentVariable])
+
+	candidates.append(os.path.expanduser("~/Library/Android/sdk"))
+	candidates.append(os.path.expanduser("~/Android/Sdk"))
+
+	if "LOCALAPPDATA" in os.environ:
+		candidates.append(os.path.join(os.environ["LOCALAPPDATA"], "Android", "Sdk"))
+
+	return candidates
+
+
+def getHighestAndroidCmakeVersion():
+	highestVersion = None
+	highestVersionString = None
+
+	for sdkPath in _getAndroidSDKCandidates():
+		cmakePath = os.path.join(sdkPath, "cmake")
+		if not os.path.isdir(cmakePath):
+			continue
+
+		for candidate in os.listdir(cmakePath):
+			version = _parseVersionString(candidate)
+			if not version:
+				continue
+
+			cmakeBinaryPath = os.path.join(cmakePath, candidate, "bin", "cmake")
+			if sys.platform == "win32":
+				cmakeBinaryPath += ".exe"
+
+			if not os.path.isfile(cmakeBinaryPath):
+				continue
+
+			if not highestVersion or version > highestVersion:
+				highestVersion = version
+				highestVersionString = candidate
+
+	return highestVersionString
+
+
 def setGradleProperty(file, key, value):
 	oldData = None
 	with open(file, "r") as f:
@@ -116,6 +173,9 @@ def copyAndroidBuildSystem(fromdir, projectRoot, buildConfig, platform, isDemo):
 	for target in cmakeTargetsList:
 		newCmakeTargetList.append(("\""+target+"\"").encode('utf-8'))
 	cmakeTargets = b", ".join(newCmakeTargetList)
+	cmakeVersion = getHighestAndroidCmakeVersion()
+	if not cmakeVersion:
+		raise RuntimeError("No Android SDK CMake installation found. Install CMake through the Android SDK manager or set ANDROID_HOME/ANDROID_SDK_ROOT.")
 	androidPermissions = getSettingFromConfig("android", platform, "permissions", buildConfig)
 	featuresString = b""
 	permissionsString = b""
@@ -203,6 +263,7 @@ def copyAndroidBuildSystem(fromdir, projectRoot, buildConfig, platform, isDemo):
 				fileContent = fileContent.replace(b"__RN_APPLICATION_PROPERTIES__", applicationPropertiesString)
 				fileContent = fileContent.replace(b"__RN_ANDROID_SDK_VERSION_MIN__", androidSDKVersionMin)
 				fileContent = fileContent.replace(b"__RN_ANDROID_SDK_VERSION_TARGET__", androidSDKVersionTarget)
+				fileContent = fileContent.replace(b"__RN_CMAKE_VERSION__", cmakeVersion.encode('utf-8'))
 
 				with open(writeFilePath, 'wb') as writeFile:
 					writeFile.write(fileContent)
@@ -224,5 +285,3 @@ def copyAndroidBuildSystem(fromdir, projectRoot, buildConfig, platform, isDemo):
 			fileContent = fileContent.replace(b"__RN_BUNDLE_ID__", bundleID)
 			with open(os.path.join(customActivityPath, os.path.basename(customAndroidActivity)), 'wb') as writeFile:
 				writeFile.write(fileContent)
-
-
