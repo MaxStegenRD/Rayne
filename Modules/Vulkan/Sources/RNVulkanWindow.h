@@ -15,7 +15,6 @@
 namespace RN
 {
 	class VulkanRenderer;
-	class VulkanFramebuffer;
 	class VulkanSwapChain;
 
 	class VulkanWindow : public Window

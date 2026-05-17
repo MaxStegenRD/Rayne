@@ -26,7 +26,7 @@ namespace RN
 		[_internals->window setBackgroundColor:[NSColor blackColor]];
 		[_internals->window setIgnoresMouseEvents:NO];
 
-		_swapChain = new MetalSwapChain(size, renderer->_internals->device, screen, descriptor);
+		_swapChain = new MetalSwapChain(size, renderer, renderer->_internals->device, screen, descriptor);
 
 		[_internals->window setContentView:_swapChain->_metalView];
 		
@@ -52,7 +52,7 @@ namespace RN
 		_internals->metalLayerContainer = new RNMetalLayerContainer(metalLayer);
 
 		// Create the swap chain
-		_swapChain = new MetalSwapChain(_internals->metalLayerContainer->GetSize(), _internals->metalLayerContainer, descriptor);
+		_swapChain = new MetalSwapChain(_internals->metalLayerContainer->GetSize(), renderer, _internals->metalLayerContainer, descriptor);
 #endif
 	}
 

@@ -252,6 +252,11 @@ namespace RN
 		return _sampleCount;
 	}
 
+	MetalSwapChain *MetalFramebuffer::GetSwapChain() const
+	{
+		return _swapChain;
+	}
+
 	MTLRenderPassDescriptor *MetalFramebuffer::GetRenderPassDescriptor(const RenderPass::DrawSnapshot &drawSnapshot, MetalFramebuffer *resolveFramebuffer, uint8 multiviewLayer, uint8 multiviewCount) const
 	{
 		//TODO: Currently the next camera into the same framebuffer will clear the whole framebuffer...

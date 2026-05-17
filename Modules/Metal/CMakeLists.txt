@@ -54,6 +54,7 @@ set(HEADERS
         Sources/RNMetalDevice.h
         Sources/RNMetalRenderer.h
         Sources/RNMetalRendererDescriptor.h
+        Sources/RNMetalSwapChain.h
         Sources/RNMetalWindow.h)
 
 set(PRIVATE_HEADERS
@@ -66,8 +67,7 @@ set(PRIVATE_HEADERS
         Sources/RNMetalStateCoordinator.h
         Sources/RNMetalTexture.h
         Sources/RNMetalTextureInfo.h
-        Sources/RNMetalUniformBuffer.h
-        Sources/RNMetalSwapChain.h)
+        Sources/RNMetalUniformBuffer.h)
 
 set(DEFINES
         "RN_BUILD_METAL")

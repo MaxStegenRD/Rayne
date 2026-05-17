@@ -91,6 +91,7 @@ set(HEADERS
         Sources/RNVulkanInstance.h
         Sources/RNVulkanRenderer.h
         Sources/RNVulkanRendererDescriptor.h
+        Sources/RNVulkanSwapChain.h
         Sources/RNVulkanWindow.h)
 
 set(PRIVATE_HEADERS
@@ -101,7 +102,6 @@ set(PRIVATE_HEADERS
         Sources/RNVulkanShader.h
         Sources/RNVulkanShaderLibrary.h
         Sources/RNVulkanStateCoordinator.h
-        Sources/RNVulkanSwapChain.h
         Sources/RNVulkanTexture.h
         Sources/RNVulkanTextureInfo.h
         Sources/RNVulkanDynamicGPUBuffer.h

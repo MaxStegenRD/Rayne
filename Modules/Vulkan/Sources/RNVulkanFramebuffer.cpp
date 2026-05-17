@@ -9,6 +9,8 @@
 #include "RNVulkanFramebuffer.h"
 #include "RNVulkanDevice.h"
 #include "RNVulkanRenderer.h"
+#include "RNVulkanSwapChain.h"
+#include "RNVulkanTexture.h"
 #include "RNVulkanTextureInfo.h"
 #include "RNVulkanInternals.h"
 
@@ -350,6 +352,11 @@ namespace RN
 		return _sampleCount;
 	}
 
+	VulkanSwapChain *VulkanFramebuffer::GetSwapChain() const
+	{
+		return _swapChain;
+	}
+
 	const std::vector<VkTilePropertiesQCOM> &VulkanFramebuffer::GetCurrentVariantTileProperties() const
 	{
 		static const std::vector<VkTilePropertiesQCOM> emptyTileProperties;
@@ -407,7 +414,7 @@ namespace RN
 			}
 			counter += 1;
 		}
-        _currentVariantIndex = _framebufferVariants.size();
+		_currentVariantIndex = _framebufferVariants.size();
 
 		VulkanFramebufferVariant newVariant;
 		newVariant.resolveFramebuffer = resolveFramebuffer;
@@ -679,7 +686,7 @@ namespace RN
 				}
 			}
 
-            _renderer->EndResourcesCommandBuffer();
+			_renderer->EndResourcesCommandBuffer();
 		}
 
 		if(!_depthStencilTarget && depthStencilFormat != Texture::Format::Invalid)

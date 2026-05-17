@@ -10,6 +10,7 @@
 #include "RNVulkanRenderer.h"
 #include "RNVulkanFramebuffer.h"
 #include "RNVulkanInternals.h"
+#include "RNVulkanTexture.h"
 
 #if RN_PLATFORM_ANDROID
 	#include <android/native_window.h>
@@ -211,7 +212,7 @@ VulkanSwapChain::VulkanSwapChain(const Vector2& size, VulkanRenderer* renderer, 
 		VkAndroidSurfaceCreateInfoKHR createInfo = {VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR};
 		createInfo.window = _window;
 		VkResult result = vk::CreateAndroidSurfaceKHR(instance->GetInstance(), &createInfo, nullptr, &_surface);
-        RNVulkanValidate(result);
+		RNVulkanValidate(result);
 #endif
 
 		VkBool32 surfaceSupported = VK_FALSE;
@@ -266,7 +267,9 @@ VulkanSwapChain::VulkanSwapChain(const Vector2& size, VulkanRenderer* renderer, 
 	{
 		if(_framebuffer)
 		{
-			_framebuffer->WillUpdateSwapChain();
+			VulkanFramebuffer *framebuffer = _framebuffer->Downcast<VulkanFramebuffer>();
+			RN_ASSERT(framebuffer, "Expected a Vulkan framebuffer for this Vulkan swap chain");
+			framebuffer->WillUpdateSwapChain();
 		}
 
 		VulkanDevice *device = _renderer->GetVulkanDevice();
@@ -373,11 +376,13 @@ VulkanSwapChain::VulkanSwapChain(const Vector2& size, VulkanRenderer* renderer, 
 
 		if(!_framebuffer)
 		{
-			_framebuffer = new VulkanFramebuffer(_size, 1, this, _renderer, _descriptor.colorFormat, _descriptor.depthStencilFormat, Texture::Format::Invalid);
+			_framebuffer = CreateSwapChainFramebuffer(1);
 		}
 		else
 		{
-			_framebuffer->DidUpdateSwapChain(_size, 1, _descriptor.colorFormat, _descriptor.depthStencilFormat, Texture::Format::Invalid);
+			VulkanFramebuffer *framebuffer = _framebuffer->Downcast<VulkanFramebuffer>();
+			RN_ASSERT(framebuffer, "Expected a Vulkan framebuffer for this Vulkan swap chain");
+			framebuffer->DidUpdateSwapChain(_size, 1, _descriptor.colorFormat, _descriptor.depthStencilFormat, Texture::Format::Invalid);
 		}
 	};
 
@@ -394,6 +399,11 @@ VulkanSwapChain::VulkanSwapChain(const Vector2& size, VulkanRenderer* renderer, 
 			_presentSemaphores.push_back(presentSemaphore);
 			_renderSemaphores.push_back(renderSemaphore);
 		}
+	}
+
+	Framebuffer *VulkanSwapChain::CreateSwapChainFramebuffer(uint8 layerCount, Texture::Format fragmentDensityFormat)
+	{
+		return new VulkanFramebuffer(_size, layerCount, this, _renderer, _descriptor.colorFormat, _descriptor.depthStencilFormat, fragmentDensityFormat);
 	}
 
 	void VulkanSwapChain::ResizeSwapchain(const Vector2& size)
@@ -475,14 +485,14 @@ VulkanSwapChain::VulkanSwapChain(const Vector2& size, VulkanRenderer* renderer, 
 		_semaphoreIndex += 1;
 		_semaphoreIndex %= _descriptor.bufferCount;
 		VkResult result = vk::AcquireNextImageKHR(_device, _swapchain, UINT64_MAX, _presentSemaphores[_semaphoreIndex], VK_NULL_HANDLE, &_frameIndex);
-        if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
-        {
-            CreateSwapChain();
-        }
-        else
-        {
-            RNVulkanValidate(result);
-        }
+		if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+		{
+			CreateSwapChain();
+		}
+		else
+		{
+			RNVulkanValidate(result);
+		}
 
 		//Update the swap chain and frame buffer size if the window size changed
 /*		if(_newSize.GetLength() > 0.001f)

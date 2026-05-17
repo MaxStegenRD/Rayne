@@ -14,7 +14,6 @@
 namespace RN
 {
 	class VulkanRenderer;
-	class VulkanFramebuffer;
 	class VulkanCommandBuffer;
 	class RenderFramePresentationState;
 
@@ -42,7 +41,7 @@ namespace RN
 		VkSemaphore GetCurrentRenderSemaphore() const { return _renderSemaphores[_semaphoreIndex]; }
 
 		size_t GetFrameIndex() const { return _frameIndex;  }
-		VulkanFramebuffer *GetFramebuffer() const { return _framebuffer; }
+		Framebuffer *GetFramebuffer() const { return _framebuffer; }
 
 		uint8 GetBufferCount() const { return _descriptor.bufferCount; }
 		virtual bool HasDepthBuffer() const { return false; }
@@ -55,17 +54,18 @@ namespace RN
 	protected:
 		VKAPI VulkanSwapChain();
 		VKAPI void CreateSemaphores();
+		VKAPI Framebuffer *CreateSwapChainFramebuffer(uint8 layerCount, Texture::Format fragmentDensityFormat = Texture::Format::Invalid);
 
 		VulkanRenderer *_renderer;
 		VkDevice _device;
-		VulkanFramebuffer *_framebuffer;
+		Framebuffer *_framebuffer;
 		Vector2 _size;
 		uint32 _frameIndex;
 		uint32 _semaphoreIndex;
 		Window::SwapChainDescriptor _descriptor;
 
 		std::vector<VkSemaphore> _presentSemaphores;
-        std::vector<VkSemaphore> _renderSemaphores;
+		std::vector<VkSemaphore> _renderSemaphores;
 		std::function<void()> _releaseCallback;
 
 		Vector2 _newSize;

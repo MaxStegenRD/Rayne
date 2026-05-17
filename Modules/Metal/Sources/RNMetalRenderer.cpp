@@ -19,6 +19,7 @@
 #include "RNMetalDevice.h"
 #include "RNMetalRendererDescriptor.h"
 #include "RNMetalFramebuffer.h"
+#include "RNMetalSwapChain.h"
 #include "../../../Source/Rendering/RNShader.h"
 
 namespace RN

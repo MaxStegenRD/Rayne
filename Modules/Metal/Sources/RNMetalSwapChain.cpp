@@ -8,6 +8,8 @@
 
 #include "RNMetalSwapChain.h"
 #include "RNMetalInternals.h"
+#include "RNMetalFramebuffer.h"
+#include "RNMetalRenderer.h"
 #include "RNMetalTextureInfo.h"
 
 namespace RN
@@ -15,23 +17,25 @@ namespace RN
 	RNDefineMeta(MetalSwapChain, Object)
 
 #if RN_PLATFORM_MAC_OS
-	MetalSwapChain::MetalSwapChain(const Vector2 size, id<MTLDevice> device, Screen *screen, const Window::SwapChainDescriptor &descriptor) : _frameIndex(0), _frameDivider(1), _drawable(nullptr)
+	MetalSwapChain::MetalSwapChain(const Vector2 size, MetalRenderer *renderer, id<MTLDevice> device, Screen *screen, const Window::SwapChainDescriptor &descriptor) : _renderer(renderer), _framebuffer(nullptr), _frameIndex(0), _frameDivider(1), _drawable(nullptr)
 	{
 		_metalView = [[RNMetalView alloc] initWithFrame:NSMakeRect(0, 0, size.x, size.y) device:device screen:screen andFormat:MetalTextureInfo::GetPixelFormat(descriptor.colorFormat)];
 		CGSize realSize = [_metalView getSize];
 		_size = Vector2(realSize.width, realSize.height);
+		_descriptor = descriptor;
 
-		_framebuffer = new MetalFramebuffer(_size, this, descriptor.colorFormat, descriptor.depthStencilFormat);
+		_framebuffer = CreateSwapChainFramebuffer();
 	}
 #endif
 
 #if RN_PLATFORM_IOS
-	MetalSwapChain::MetalSwapChain(const Vector2 size, RNMetalLayerContainer *metalLayerContainer, const Window::SwapChainDescriptor &descriptor) : _frameIndex(0), _frameDivider(1), _drawable(nullptr)
+	MetalSwapChain::MetalSwapChain(const Vector2 size, MetalRenderer *renderer, RNMetalLayerContainer *metalLayerContainer, const Window::SwapChainDescriptor &descriptor) : _renderer(renderer), _framebuffer(nullptr), _frameIndex(0), _frameDivider(1), _drawable(nullptr)
 	{
 		_metalLayerContainer = metalLayerContainer;
 		_size = size;
+		_descriptor = descriptor;
 
-		_framebuffer = new MetalFramebuffer(_size, this, descriptor.colorFormat, descriptor.depthStencilFormat);
+		_framebuffer = CreateSwapChainFramebuffer();
 	}
 #endif
 
@@ -84,6 +88,11 @@ namespace RN
 	void MetalSwapChain::PostPresent(id<MTLCommandBuffer> commandBuffer)
 	{
 		
+	}
+
+	Framebuffer *MetalSwapChain::CreateSwapChainFramebuffer()
+	{
+		return new MetalFramebuffer(_size, this, _descriptor.colorFormat, _descriptor.depthStencilFormat);
 	}
 
 	id MetalSwapChain::GetMetalColorTexture() const

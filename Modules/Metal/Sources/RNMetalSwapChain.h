@@ -19,7 +19,7 @@ class RNMetalLayerContainer;
 #endif
 namespace RN
 {
-	class MetalFramebuffer;
+	class MetalRenderer;
 	class RenderFramePresentationState;
 	class MetalSwapChain : public Object
 	{
@@ -42,16 +42,24 @@ namespace RN
 		MTLAPI virtual id GetMetalColorTexture() const;
 		MTLAPI virtual id GetMetalDepthTexture() const;
 		
-		MetalFramebuffer *GetFramebuffer() const { return _framebuffer; }
+		Framebuffer *GetFramebuffer() const { return _framebuffer; }
 		
 		const Window::SwapChainDescriptor &GetSwapChainDescriptor() const { return _descriptor; }
 
 		uint8 GetBufferCount() const { return 4; } //TODO: Return something better!?
 		
 	protected:
-		MTLAPI MetalSwapChain(){}
+		MTLAPI MetalSwapChain() :
+			_renderer(nullptr),
+			_framebuffer(nullptr),
+			_frameIndex(0),
+			_frameDivider(1),
+			_drawable(nullptr)
+		{}
+		MTLAPI Framebuffer *CreateSwapChainFramebuffer();
 		
-		MetalFramebuffer *_framebuffer;
+		MetalRenderer *_renderer;
+		Framebuffer *_framebuffer;
 		size_t _frameIndex;
 		Window::SwapChainDescriptor _descriptor;
 		
@@ -61,11 +69,11 @@ namespace RN
 
 	private:
 #if RN_PLATFORM_MAC_OS
-		MetalSwapChain(const Vector2 size, id<MTLDevice> device, Screen *screen, const Window::SwapChainDescriptor &descriptor);
+		MetalSwapChain(const Vector2 size, MetalRenderer *renderer, id<MTLDevice> device, Screen *screen, const Window::SwapChainDescriptor &descriptor);
 		RNMetalView *_metalView;
 #endif
 #if RN_PLATFORM_IOS
-		MetalSwapChain(const Vector2 size, RNMetalLayerContainer *metalLayerContainer, const Window::SwapChainDescriptor &descriptor);
+		MetalSwapChain(const Vector2 size, MetalRenderer *renderer, RNMetalLayerContainer *metalLayerContainer, const Window::SwapChainDescriptor &descriptor);
 		RNMetalLayerContainer *_metalLayerContainer;
 #endif
 

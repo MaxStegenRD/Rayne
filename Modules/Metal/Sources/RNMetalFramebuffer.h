@@ -10,7 +10,6 @@
 #define __RAYNE_METALFRAMEBUFFER_H_
 
 #include "RNMetal.h"
-#include "RNMetalSwapChain.h"
 
 namespace RN
 {
@@ -41,7 +40,7 @@ namespace RN
 		
 		MTLAPI uint8 GetSampleCount() const final;
 
-		MetalSwapChain *GetSwapChain() const { return _swapChain; }
+		MTLAPI MetalSwapChain *GetSwapChain() const;
 
 		MTLRenderPassDescriptor *GetRenderPassDescriptor(const RenderPass::DrawSnapshot &drawSnapshot, MetalFramebuffer *resolveFramebuffer, uint8 multiviewLayer, uint8 multiviewCount) const;
 		MTLAPI MTLPixelFormat GetMetalColorFormat(uint8 texture) const;

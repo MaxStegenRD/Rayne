@@ -10,12 +10,12 @@
 #define __RAYNE_VULKANFRAMEBUFFER_H_
 
 #include "RNVulkan.h"
-#include "RNVulkanTexture.h"
-#include "RNVulkanSwapChain.h"
 
 namespace RN
 {
 	class RenderFrame;
+	class VulkanRenderer;
+	class VulkanSwapChain;
 	struct VulkanRenderPass;
 	class VulkanFramebuffer : public Framebuffer
 	{
@@ -64,7 +64,7 @@ namespace RN
 
 		VKAPI const std::vector<VkTilePropertiesQCOM> &GetCurrentVariantTileProperties() const;
 
-		VulkanSwapChain *GetSwapChain() const { return _swapChain; }
+		VKAPI VulkanSwapChain *GetSwapChain() const;
 
 		VKAPI void WillUpdateSwapChain();
 		VKAPI void DidUpdateSwapChain(Vector2 size, uint8 layerCount, Texture::Format colorFormat, Texture::Format depthStencilFormat, Texture::Format fragmentDensityFormat);

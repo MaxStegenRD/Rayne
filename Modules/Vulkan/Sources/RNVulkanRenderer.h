@@ -88,7 +88,7 @@ namespace RN
 
 		VKAPI VulkanCommandBuffer *GetCommandBuffer();
 		VKAPI VulkanCommandBuffer *StartResourcesCommandBuffer();
-        VKAPI void EndResourcesCommandBuffer();
+		VKAPI void EndResourcesCommandBuffer();
 		VKAPI void SubmitCommandBuffer(VulkanCommandBuffer *commandBuffer);
 
 		VKAPI void AddFrameFinishedCallback(std::function<void()> callback, size_t frameOffset = 0);
