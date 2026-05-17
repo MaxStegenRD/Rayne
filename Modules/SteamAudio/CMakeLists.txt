@@ -81,9 +81,9 @@ target_link_libraries(RayneSteamAudio PRIVATE
         optimized "${CMAKE_CURRENT_BINARY_DIR}/libsoundio-prefix/src/libsoundio-build/Release/libsoundio.a")
 
 if(APPLE)
-        add_custom_command(TARGET RayneSteamAudio PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/steamaudio/lib/OSX/libphonon.dylib" "$<TARGET_FILE_DIR:RayneSteamAudio>/libphonon.dylib")
+        rayne_add_runtime_dependency(RayneSteamAudio "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/steamaudio/lib/OSX/libphonon.dylib")
 elseif(WIN32)
-        add_custom_command(TARGET RayneSteamAudio PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/steamaudio/bin/Windows/x64/phonon.dll" "$<TARGET_FILE_DIR:RayneSteamAudio>/phonon.dll")
+        rayne_add_runtime_dependency(RayneSteamAudio "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/steamaudio/bin/Windows/x64/phonon.dll")
 elseif(ANDROID)
-        add_custom_command(TARGET RayneSteamAudio PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/steamaudio/lib/Android/libphonon.so" "$<TARGET_FILE_DIR:RayneSteamAudio>/libphonon.so")
+        rayne_add_runtime_dependency(RayneSteamAudio "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/steamaudio/lib/Android/libphonon.so")
 endif()

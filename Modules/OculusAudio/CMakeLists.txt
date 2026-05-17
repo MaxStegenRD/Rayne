@@ -99,7 +99,7 @@ else()
 endif()
 
 if(APPLE)
-        add_custom_command(TARGET RayneOculusAudio PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Lib/macub/OVRAudio.framework" "$<TARGET_FILE_DIR:RayneOculusAudio>/OVRAudio.framework")
+        rayne_add_runtime_dependency(RayneOculusAudio "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/OculusAudio/Lib/macub/OVRAudio.framework")
 endif()
 if(ANDROID)
         list(GET ANDROID_ASSETS_DIRECTORIES 0 android-assets-dir)

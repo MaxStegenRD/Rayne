@@ -218,6 +218,78 @@ function(rayne_add_public_header_directory _TARGET)
 endfunction()
 
 
+function(rayne_add_runtime_dependency _TARGET _DEPENDENCY)
+    cmake_parse_arguments(RAYNE_RUNTIME_DEPENDENCY "" "OUTPUT_NAME" "" ${ARGN})
+    if(RAYNE_RUNTIME_DEPENDENCY_UNPARSED_ARGUMENTS)
+        message(FATAL_ERROR "Unknown rayne_add_runtime_dependency arguments: ${RAYNE_RUNTIME_DEPENDENCY_UNPARSED_ARGUMENTS}")
+    endif()
+
+    if("${_TARGET}" STREQUAL "Rayne")
+        set(RAYNE_RUNTIME_INSTALL_DIRECTORY "lib")
+    else()
+        set(RAYNE_RUNTIME_INSTALL_DIRECTORY "lib/Rayne/${_TARGET}")
+    endif()
+
+    if(TARGET "${_DEPENDENCY}")
+        target_link_libraries("${_TARGET}" PRIVATE "${_DEPENDENCY}")
+
+        get_target_property(RAYNE_RUNTIME_DEPENDENCY_TYPE "${_DEPENDENCY}" TYPE)
+        if(RAYNE_RUNTIME_DEPENDENCY_TYPE STREQUAL "STATIC_LIBRARY" OR RAYNE_RUNTIME_DEPENDENCY_TYPE STREQUAL "INTERFACE_LIBRARY" OR RAYNE_RUNTIME_DEPENDENCY_TYPE STREQUAL "OBJECT_LIBRARY")
+            return()
+        endif()
+
+        if(RAYNE_RUNTIME_DEPENDENCY_OUTPUT_NAME)
+            set(RAYNE_RUNTIME_OUTPUT_FILE "$<TARGET_FILE_DIR:${_TARGET}>/${RAYNE_RUNTIME_DEPENDENCY_OUTPUT_NAME}")
+            add_custom_command(TARGET "${_TARGET}" POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:${_DEPENDENCY}>" "${RAYNE_RUNTIME_OUTPUT_FILE}")
+            install(FILES "$<TARGET_FILE:${_DEPENDENCY}>"
+                DESTINATION "${RAYNE_RUNTIME_INSTALL_DIRECTORY}"
+                RENAME "${RAYNE_RUNTIME_DEPENDENCY_OUTPUT_NAME}")
+        else()
+            set(RAYNE_RUNTIME_OUTPUT_FILE "$<TARGET_FILE_DIR:${_TARGET}>/$<TARGET_FILE_NAME:${_DEPENDENCY}>")
+            add_custom_command(TARGET "${_TARGET}" POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:${_DEPENDENCY}>" "${RAYNE_RUNTIME_OUTPUT_FILE}")
+            install(FILES "$<TARGET_FILE:${_DEPENDENCY}>"
+                DESTINATION "${RAYNE_RUNTIME_INSTALL_DIRECTORY}")
+        endif()
+
+        set_property(TARGET "${_TARGET}" APPEND PROPERTY RAYNE_RUNTIME_DEPENDENCY_FILES "${RAYNE_RUNTIME_OUTPUT_FILE}")
+    elseif(IS_ABSOLUTE "${_DEPENDENCY}")
+        if(RAYNE_RUNTIME_DEPENDENCY_OUTPUT_NAME)
+            set(RAYNE_RUNTIME_OUTPUT_NAME "${RAYNE_RUNTIME_DEPENDENCY_OUTPUT_NAME}")
+        else()
+            get_filename_component(RAYNE_RUNTIME_OUTPUT_NAME "${_DEPENDENCY}" NAME)
+        endif()
+
+        if(IS_DIRECTORY "${_DEPENDENCY}")
+            set(RAYNE_RUNTIME_OUTPUT_DIRECTORY "$<TARGET_FILE_DIR:${_TARGET}>/${RAYNE_RUNTIME_OUTPUT_NAME}")
+            add_custom_command(TARGET "${_TARGET}" POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_directory "${_DEPENDENCY}" "${RAYNE_RUNTIME_OUTPUT_DIRECTORY}")
+            install(DIRECTORY "${_DEPENDENCY}/"
+                DESTINATION "${RAYNE_RUNTIME_INSTALL_DIRECTORY}/${RAYNE_RUNTIME_OUTPUT_NAME}")
+            set_property(TARGET "${_TARGET}" APPEND PROPERTY RAYNE_RUNTIME_DEPENDENCY_DIRECTORIES "${RAYNE_RUNTIME_OUTPUT_DIRECTORY}")
+        else()
+            set(RAYNE_RUNTIME_OUTPUT_FILE "$<TARGET_FILE_DIR:${_TARGET}>/${RAYNE_RUNTIME_OUTPUT_NAME}")
+            add_custom_command(TARGET "${_TARGET}" POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_DEPENDENCY}" "${RAYNE_RUNTIME_OUTPUT_FILE}")
+
+            if(RAYNE_RUNTIME_DEPENDENCY_OUTPUT_NAME)
+                install(FILES "${_DEPENDENCY}"
+                    DESTINATION "${RAYNE_RUNTIME_INSTALL_DIRECTORY}"
+                    RENAME "${RAYNE_RUNTIME_DEPENDENCY_OUTPUT_NAME}")
+            else()
+                install(FILES "${_DEPENDENCY}"
+                    DESTINATION "${RAYNE_RUNTIME_INSTALL_DIRECTORY}")
+            endif()
+
+            set_property(TARGET "${_TARGET}" APPEND PROPERTY RAYNE_RUNTIME_DEPENDENCY_FILES "${RAYNE_RUNTIME_OUTPUT_FILE}")
+        endif()
+    else()
+        message(FATAL_ERROR "Runtime dependency must be a target or absolute path: ${_DEPENDENCY}")
+    endif()
+endfunction()
+
+
 macro(rayne_set_module_output_directory _TARGET)
 
     if(WIN32)

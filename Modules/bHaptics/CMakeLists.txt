@@ -45,14 +45,10 @@ target_compile_definitions(RayneBHaptics PRIVATE "${DEFINES}")
 target_compile_options(RayneBHaptics PRIVATE ${COMPILE_OPTIONS})
 
 if(WIN32)
-        add_library(BHapticsLib STATIC IMPORTED)
+        add_library(BHapticsLib SHARED IMPORTED)
 
-        set(BHAPTICS_DYNAMIC_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/BhapticsCPP/Win64/bhaptics_library.dll)
-        set_property(TARGET BHapticsLib PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/BhapticsCPP/Win64/bhaptics_library.lib) #${BHAPTICS_DYNAMIC_LIBRARY})
+        set_property(TARGET BHapticsLib PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/BhapticsCPP/Win64/bhaptics_library.dll)
         set_property(TARGET BHapticsLib PROPERTY IMPORTED_IMPLIB ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/BhapticsCPP/Win64/bhaptics_library.lib)
 
-        add_dependencies(BHapticsLib bhaptics)
-        target_link_libraries(RayneBHaptics PRIVATE BHapticsLib)
-
-        add_custom_command(TARGET RayneBHaptics POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy "${BHAPTICS_DYNAMIC_LIBRARY}" "$<TARGET_FILE_DIR:RayneBHaptics>")
+        rayne_add_runtime_dependency(RayneBHaptics BHapticsLib)
 endif()
