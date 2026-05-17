@@ -361,19 +361,21 @@ namespace RN
 		SafeRelease(_fallbackGlobalBuffer);
 		SafeRelease(_defaultShaderLibrary);
 
-		while(!_internals->frameResources.empty())
-		{
-			std::vector<VulkanFrameResource> frameResources;
-			frameResources.swap(_internals->frameResources);
-
-			for(VulkanFrameResource &frameResource : frameResources)
+		auto drainFrameResources = [&]() {
+			while(!_internals->frameResources.empty())
 			{
-				if(frameResource.finishedCallback)
+				std::vector<VulkanFrameResource> frameResources;
+				frameResources.swap(_internals->frameResources);
+
+				for(VulkanFrameResource &frameResource : frameResources)
 				{
-					frameResource.finishedCallback();
+					if(frameResource.finishedCallback)
+					{
+						frameResource.finishedCallback();
+					}
 				}
 			}
-		}
+		};
 
 #if defined(RN_PROFILE_TRACY)
 		if(_internals->tracyVulkanCtx)
@@ -388,7 +390,16 @@ namespace RN
 
 		SafeRelease(_mipMapTextures);
 
+		// Pending drawable callbacks release dynamic buffer references, so run them
+		// before destroying the pool they point into.
+		drainFrameResources();
+
 		delete _dynamicBufferPool;
+		_dynamicBufferPool = nullptr;
+
+		// Pool destruction queues buffer frees; finish those before VMA allocator
+		// teardown.
+		drainFrameResources();
 
 		vmaDestroyAllocator(_internals->memoryAllocator);
 	}
