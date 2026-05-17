@@ -1005,7 +1005,7 @@ namespace RN
 		if(delimiter != kRNNotFound)
 			return GetSubstring(Range(delimiter + 1, end - (delimiter + 1)));
 
-		return Copy();
+		return Copy()->Autorelease();
 	}
 
 	String *String::StringByDeletingPathExtension() const
