@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.28)
 cmake_policy(SET CMP0097 NEW)
 project(RaynePhysX)
 

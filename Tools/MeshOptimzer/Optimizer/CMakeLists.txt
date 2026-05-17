@@ -1,6 +1,6 @@
 project(Optimizer)
 
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.28)
 set(CMAKE_CXX_STANDARD 11)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/Vendor/meshoptimizer)

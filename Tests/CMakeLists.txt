@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.28)
 project(Rayne-Tests)
 
 option(RN_BUILD_TESTS "Enable building the sample projects" OFF)
