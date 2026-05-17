@@ -276,8 +276,18 @@ function(rayne_add_runtime_dependency _TARGET _DEPENDENCY)
                 DESTINATION "${RAYNE_RUNTIME_INSTALL_DIRECTORY}"
                 RENAME "${RAYNE_RUNTIME_DEPENDENCY_OUTPUT_NAME}")
         else()
-            set(RAYNE_RUNTIME_OUTPUT_FILE "$<TARGET_FILE_DIR:${_TARGET}>/$<TARGET_FILE_NAME:${_DEPENDENCY}>")
-            set(RAYNE_RUNTIME_OUTPUT_NAME "$<TARGET_FILE_NAME:${_DEPENDENCY}>")
+            if(RAYNE_RUNTIME_DEPENDENCY_IMPORTED)
+                get_target_property(RAYNE_RUNTIME_DEPENDENCY_LOCATION "${_DEPENDENCY}" IMPORTED_LOCATION)
+                if(NOT RAYNE_RUNTIME_DEPENDENCY_LOCATION)
+                    message(FATAL_ERROR "Imported runtime dependency target has no IMPORTED_LOCATION: ${_DEPENDENCY}")
+                endif()
+
+                get_filename_component(RAYNE_RUNTIME_OUTPUT_NAME "${RAYNE_RUNTIME_DEPENDENCY_LOCATION}" NAME)
+            else()
+                set(RAYNE_RUNTIME_OUTPUT_NAME "$<TARGET_FILE_NAME:${_DEPENDENCY}>")
+            endif()
+
+            set(RAYNE_RUNTIME_OUTPUT_FILE "$<TARGET_FILE_DIR:${_TARGET}>/${RAYNE_RUNTIME_OUTPUT_NAME}")
             add_custom_command(TARGET "${_TARGET}" POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:${_DEPENDENCY}>" "${RAYNE_RUNTIME_OUTPUT_FILE}")
             install(FILES "$<TARGET_FILE:${_DEPENDENCY}>"
