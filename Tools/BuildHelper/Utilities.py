@@ -111,11 +111,6 @@ def copyAndroidBuildSystem(fromdir, projectRoot, buildConfig, platform, isDemo):
 		else:
 			projectName = projectDemoName.encode('utf-8')
 
-	cmakeTargets = ", ".join(getSettingFromConfig("android", platform, "cmake-targets", buildConfig)).encode('utf-8')
-	#cmakeVersion = subprocess.check_output(['cmake', '--version'])
-	#cmakeVersion = cmakeVersion.splitlines()[0]
-	#cmakeVersion = cmakeVersion.split(b" ")[2]
-	cmakeVersion = b"3.22.1" #This one can be installed with android sdk manager!
 	cmakeTargetsList = getSettingFromConfig("android", platform, "cmake-targets", buildConfig)
 	newCmakeTargetList = list()
 	for target in cmakeTargetsList:
@@ -201,7 +196,6 @@ def copyAndroidBuildSystem(fromdir, projectRoot, buildConfig, platform, isDemo):
 				fileContent = fileContent.replace(b"__RN_PROJECT_NAME__", projectName)
 				fileContent = fileContent.replace(b"__RN_ANDROID_ACTIVITY__", androidActivity.encode('utf-8'))
 				fileContent = fileContent.replace(b"__RN_LIBRARY_NAME__", libraryName)
-				fileContent = fileContent.replace(b"__RN_CMAKE_VERSION__", cmakeVersion)
 				fileContent = fileContent.replace(b"__RN_CMAKE_TARGETS__", cmakeTargets)
 				fileContent = fileContent.replace(b"__RN_PERMISSIONS__", permissionsString)
 				fileContent = fileContent.replace(b"__RN_METADATA__", metadataString)
@@ -230,6 +224,5 @@ def copyAndroidBuildSystem(fromdir, projectRoot, buildConfig, platform, isDemo):
 			fileContent = fileContent.replace(b"__RN_BUNDLE_ID__", bundleID)
 			with open(os.path.join(customActivityPath, os.path.basename(customAndroidActivity)), 'wb') as writeFile:
 				writeFile.write(fileContent)
-
 
 
