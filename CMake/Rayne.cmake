@@ -24,8 +24,6 @@ macro(rayne_link_with _TARGET)
     endif()
 
     if(ANDROID)
-        target_include_directories(${_TARGET} SYSTEM PRIVATE ${DIR_OF_RAYNE_CMAKE}/../Vendor/android_native_app_glue)
-
         set(_ANDROID_APP_GLUE_TARGET ${_TARGET}-android-app-glue)
         add_library(${_ANDROID_APP_GLUE_TARGET} OBJECT ${DIR_OF_RAYNE_CMAKE}/../Vendor/android_native_app_glue/android_native_app_glue.c)
         set_target_properties(${_ANDROID_APP_GLUE_TARGET} PROPERTIES POSITION_INDEPENDENT_CODE ON)

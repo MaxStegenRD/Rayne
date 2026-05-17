@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.23)
-project(RayneAll)
+project(RayneAll VERSION 2.0.0)
 
 # General settings, independent of target
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake/Modules;${CMAKE_MODULE_PATH}")
@@ -122,5 +122,29 @@ add_subdirectory("Vendor")
 add_subdirectory("Source")
 add_subdirectory("Modules")
 add_subdirectory("Tests")
+
+include(CMakePackageConfigHelpers)
+
+set(RAYNE_CMAKE_INSTALL_DIR "lib/cmake/Rayne")
+
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/CMake/RayneConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/RayneConfig.cmake"
+    INSTALL_DESTINATION "${RAYNE_CMAKE_INSTALL_DIR}")
+
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/RayneConfigVersion.cmake"
+    VERSION "${PROJECT_VERSION}"
+    COMPATIBILITY SameMajorVersion)
+
+install(EXPORT RayneTargets
+    NAMESPACE Rayne::
+    FILE RayneTargets.cmake
+    DESTINATION "${RAYNE_CMAKE_INSTALL_DIR}")
+
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/RayneConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/RayneConfigVersion.cmake"
+    DESTINATION "${RAYNE_CMAKE_INSTALL_DIR}")
 
 add_custom_target(Rayne-Install make install COMMENT "Installing Rayne and modules...")

@@ -429,13 +429,7 @@ if(UNIX AND (NOT APPLE) AND (NOT ANDROID))
 endif()
 
 if(ANDROID)
-    #set(RAYNE_PLATFORM_SOURCES ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c)
-    #set(RAYNE_HEADERS ${RAYNE_HEADERS} ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.h)
-    #list(APPEND VENDOR_INCLUDES ${ANDROID_NDK}/sources/android/native_app_glue)
-    list(APPEND VENDOR_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/../Vendor/android_native_app_glue)
-
-    list(APPEND PUBLIC_LIBRARIES android)
-    list(APPEND PRIVATE_LIBRARIES log)
+    list(APPEND PRIVATE_LIBRARIES android log)
 endif()
 
 list(APPEND PRIVATE_LIBRARIES jansson zlibstatic png_static zip)
@@ -450,7 +444,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/RayneConfig.h.in ${RAYNE_GENERATED_IN
 set(RAYNE_PUBLIC_HEADER_INSTALL_DIRECTORY include/Rayne)
 rayne_add_library(Rayne "${TARGET_SOURCES}" "${TARGET_HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES ${PUBLIC_LIBRARIES} PRIVATE_LIBRARIES ${PRIVATE_LIBRARIES})
 
-target_sources(Rayne PUBLIC
+target_sources(Rayne PRIVATE
     FILE_SET generated_headers
     TYPE HEADERS
     BASE_DIRS "${RAYNE_GENERATED_INCLUDE_DIRECTORY}"
@@ -460,6 +454,13 @@ target_include_directories(Rayne PUBLIC
     $<INSTALL_INTERFACE:include/Rayne>)
 
 target_include_directories(Rayne SYSTEM PRIVATE ${VENDOR_INCLUDES})
+if(ANDROID)
+    target_include_directories(Rayne SYSTEM PUBLIC
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../Vendor/android_native_app_glue>"
+        "$<INSTALL_INTERFACE:include/Rayne/ThirdParty/android_native_app_glue>")
+    rayne_install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../Vendor/android_native_app_glue/android_native_app_glue.h"
+        DESTINATION "include/Rayne/ThirdParty/android_native_app_glue")
+endif()
 target_compile_definitions(Rayne PRIVATE "${COMPILE_DEFINITIONS}")
 target_compile_definitions(Rayne PUBLIC $<$<CONFIG:RelWithDebInfo>:RN_BUILD_PROFILING=1>)
 target_compile_options(Rayne PRIVATE ${COMPILE_OPTIONS})
@@ -470,5 +471,4 @@ if(RAYNE_PROFILER STREQUAL "TRACY")
     target_compile_definitions(Rayne PUBLIC TRACY_ENABLE RN_PROFILE_TRACY)
 endif()
 
-#rayne_install(Rayne Rayne ${_TARGETS} LIBRARY DESTINATION lib ARCHIVE DESTINATION lib)
 rayne_install(FILES ${RAYNE_GENERATED_INCLUDE_DIRECTORY}/RayneConfig.h DESTINATION include/Rayne)

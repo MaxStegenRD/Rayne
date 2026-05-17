@@ -106,7 +106,7 @@ add_dependencies(RayneOpenXR OpenXRSDK)
 target_link_libraries(RayneOpenXR PRIVATE OpenXRLoader)
 
 if(ANDROID)
-	target_link_libraries(RayneOpenXR PRIVATE log)
+	target_link_libraries(RayneOpenXR PRIVATE android log)
 endif()
 
 if(NOT APPLE AND ${RN_BUILD_VULKAN_MODULE})

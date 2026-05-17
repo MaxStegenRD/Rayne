@@ -112,16 +112,18 @@ set(RESOURCES
 
 set(PRIVATE_DEFINES RN_BUILD_VULKAN)
 set(PUBLIC_DEFINES)
+set(PRIVATE_LIBRARIES)
 
 if(WIN32)
     list(APPEND PUBLIC_DEFINES VK_USE_PLATFORM_WIN32_KHR)
 elseif(ANDROID)
     list(APPEND PUBLIC_DEFINES VK_USE_PLATFORM_ANDROID_KHR)
+    list(APPEND PRIVATE_LIBRARIES android)
 elseif(UNIX AND NOT APPLE)
     list(APPEND PUBLIC_DEFINES VK_USE_PLATFORM_XCB_KHR)
 endif()
 
-rayne_add_library(RayneVulkan "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne PRIVATE_HEADERS "${PRIVATE_HEADERS}")
+rayne_add_library(RayneVulkan "${SOURCES}" "${HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES Rayne PRIVATE_LIBRARIES ${PRIVATE_LIBRARIES} PRIVATE_HEADERS "${PRIVATE_HEADERS}")
 rayne_set_module_output_directory(RayneVulkan)
 rayne_set_module_resources(RayneVulkan ${RESOURCES})
 
@@ -132,11 +134,15 @@ add_dependencies(RayneVulkan VulkanMemoryAllocator)
 target_include_directories(RayneVulkan SYSTEM PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/spirvcross-prefix/src/spirvcross
     ${RAYNE_VULKAN_VMA_INCLUDE_DIRECTORY})
+set(RAYNE_VULKAN_HEADERS_INSTALL_DIRECTORY "include/Rayne/ThirdParty/Vulkan-Headers")
 target_include_directories(RayneVulkan SYSTEM PUBLIC
-    ${vulkanheaders_SOURCE_DIR}/include
-    ${vulkanheaders_SOURCE_DIR}/include/vulkan)
+    "$<BUILD_INTERFACE:${vulkanheaders_SOURCE_DIR}/include>"
+    "$<BUILD_INTERFACE:${vulkanheaders_SOURCE_DIR}/include/vulkan>"
+    "$<INSTALL_INTERFACE:${RAYNE_VULKAN_HEADERS_INSTALL_DIRECTORY}>"
+    "$<INSTALL_INTERFACE:${RAYNE_VULKAN_HEADERS_INSTALL_DIRECTORY}/vulkan>")
 target_compile_definitions(RayneVulkan
     PRIVATE "${PRIVATE_DEFINES}"
     PUBLIC "${PUBLIC_DEFINES}")
 
+rayne_install(DIRECTORY "${vulkanheaders_SOURCE_DIR}/include/" DESTINATION "${RAYNE_VULKAN_HEADERS_INSTALL_DIRECTORY}")
 rayne_install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../../Build/RayneVulkan/. DESTINATION lib/Rayne/RayneVulkan)

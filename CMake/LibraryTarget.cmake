@@ -93,10 +93,6 @@ macro(__rayne_create_target _NAME _TYPE _SOURCES _HEADERS _PRIVATE_HEADERS _PUBL
         target_compile_options(${TARGET_NAME} PRIVATE -m64)
     endif()
 
-    if(ANDROID)
-        target_include_directories("${TARGET_NAME}" SYSTEM PRIVATE ${ANDROID_NDK}/sources/android/native_app_glue)
-    endif()
-
     if(NOT ("${_HEADERS}" STREQUAL ""))
         set(PUBLIC_HEADER_INSTALL_ROOT "include/Rayne/${TARGET_NAME}")
         if(DEFINED RAYNE_PUBLIC_HEADER_INSTALL_DIRECTORY)
@@ -128,18 +124,31 @@ macro(__rayne_create_target _NAME _TYPE _SOURCES _HEADERS _PRIVATE_HEADERS _PUBL
             target_include_directories("${TARGET_NAME}" PUBLIC "$<INSTALL_INTERFACE:${PUBLIC_HEADER_INSTALL_DIRECTORY}>")
         endforeach()
 
-        foreach(HEADER ${_HEADERS})
-            get_filename_component(HEADER_DIRECTORY "${HEADER}" DIRECTORY)
-            if("${HEADER_DIRECTORY}" STREQUAL "")
-                install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/${HEADER}" DESTINATION "${PUBLIC_HEADER_INSTALL_ROOT}")
-            else()
-                install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/${HEADER}" DESTINATION "${PUBLIC_HEADER_INSTALL_ROOT}/${HEADER_DIRECTORY}")
-            endif()
-        endforeach()
     endif()
 
     __rayne_link_target_libraries("${TARGET_NAME}" "${_TYPE}" PUBLIC "${_PUBLIC_LIBRARIES}")
     __rayne_link_target_libraries("${TARGET_NAME}" "${_TYPE}" PRIVATE "${_PRIVATE_LIBRARIES}")
+
+    if("${TARGET_NAME}" STREQUAL "Rayne")
+        set(RAYNE_TARGET_INSTALL_DIRECTORY "lib")
+    else()
+        set(RAYNE_TARGET_INSTALL_DIRECTORY "lib/Rayne/${TARGET_NAME}")
+    endif()
+
+    set(RAYNE_TARGET_INSTALL_ARGS
+        EXPORT RayneTargets
+        RUNTIME DESTINATION "${RAYNE_TARGET_INSTALL_DIRECTORY}"
+        LIBRARY DESTINATION "${RAYNE_TARGET_INSTALL_DIRECTORY}"
+        ARCHIVE DESTINATION "${RAYNE_TARGET_INSTALL_DIRECTORY}"
+        FRAMEWORK DESTINATION "${RAYNE_TARGET_INSTALL_DIRECTORY}"
+        BUNDLE DESTINATION "${RAYNE_TARGET_INSTALL_DIRECTORY}")
+
+    if(NOT ("${_HEADERS}" STREQUAL ""))
+        list(APPEND RAYNE_TARGET_INSTALL_ARGS
+            FILE_SET public_headers DESTINATION "${PUBLIC_HEADER_INSTALL_ROOT}")
+    endif()
+
+    install(TARGETS "${TARGET_NAME}" ${RAYNE_TARGET_INSTALL_ARGS})
 
 endmacro()
 
