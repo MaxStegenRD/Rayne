@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.23)
 project(RayneAll VERSION 2.0.0)
 
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set(CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/Install" CACHE PATH "Rayne install prefix" FORCE)
+endif()
+
 # General settings, independent of target
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake/Modules;${CMAKE_MODULE_PATH}")
 
