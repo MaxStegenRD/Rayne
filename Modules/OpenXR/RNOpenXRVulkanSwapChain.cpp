@@ -43,7 +43,10 @@ namespace RN
 		foveationSwapChainCreateInfo.flags = XR_SWAPCHAIN_CREATE_FOVEATION_FRAGMENT_DENSITY_MAP_BIT_FB;
 
 		VulkanRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<VulkanRenderer>();
+		RN_ASSERT(renderer, "OpenXR Vulkan swapchain requires an active Vulkan renderer");
 		VulkanDevice *vulkanDevice = renderer->GetVulkanDevice();
+		_renderer = renderer;
+		_device = vulkanDevice->GetDevice();
 		if(supportFoveation && !vulkanDevice->GetSupportsFragmentDensityMaps())
 		{
 			supportFoveation = false;
