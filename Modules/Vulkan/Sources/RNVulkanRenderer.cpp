@@ -349,10 +349,15 @@ namespace RN
 	VulkanRenderer::~VulkanRenderer()
 	{
 		StopRenderThread();
+
+		SafeRelease(_mainWindow);
 		FlushAllDeletedDrawables();
+
+		delete _defaultPostProcessingDrawable;
 
 		SafeRelease(_fallbackGlobalTexture);
 		SafeRelease(_fallbackGlobalBuffer);
+		SafeRelease(_defaultShaderLibrary);
 
 		while(!_internals->frameResources.empty())
 		{
@@ -379,7 +384,7 @@ namespace RN
 
 		_internals->stateCoordinator.DestroyPipelineCache(GetVulkanDevice(), GetAllocatorCallback());
 
-		_mipMapTextures->Release();
+		SafeRelease(_mipMapTextures);
 
 		delete _dynamicBufferPool;
 
@@ -565,7 +570,11 @@ namespace RN
 
 	void VulkanRenderer::SetMainWindow(Window *window)
 	{
-		_mainWindow = window;
+		if(_mainWindow == window)
+			return;
+
+		SafeRelease(_mainWindow);
+		_mainWindow = SafeRetain(window);
 	}
 
 	Window *VulkanRenderer::GetMainWindow()

@@ -126,6 +126,8 @@ namespace RN
 		RN_ASSERT(_activeRenderer == this, "Deactivate() must be called on the active renderer");
 
 		Renderer *renderer = _activeRenderer;
+		// Base renderer state can retain backend resources; release it while the concrete renderer is still active.
+		renderer->ReleaseRendererReferences();
 		renderer->Release();
 		if(_activeRenderer == renderer)
 			_activeRenderer = nullptr;
@@ -497,6 +499,30 @@ namespace RN
 
 		for(Drawable *drawable : drawables)
 			delete drawable;
+	}
+
+	void Renderer::ReleaseRendererReferences()
+	{
+		FlushAllDeletedDrawables();
+		DrainDrawableSnapshots(static_cast<uint64>(-1));
+
+		{
+			LockGuard<Lockable> lock(_rendererAttachmentsLock);
+			_rendererAttachments.clear();
+		}
+
+		_cameraPassAttachmentSnapshotStack.clear();
+
+		{
+			LockGuard<Lockable> lock(_defaultShaderCacheLock);
+			for(size_t typeIndex = 0; typeIndex < Shader::Type::COUNT; typeIndex++)
+			{
+				for(size_t hintIndex = 0; hintIndex < Shader::UsageHint::COUNT; hintIndex++)
+				{
+					SafeRelease(_defaultShaderCache[typeIndex][hintIndex]);
+				}
+			}
+		}
 	}
 
 	void Renderer::PrintFrameStatistics(const RenderFrame &frame, float interval)

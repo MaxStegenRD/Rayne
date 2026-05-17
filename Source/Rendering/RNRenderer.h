@@ -145,6 +145,7 @@ namespace RN
 		void UnregisterDrawableFromSnapshotDrain(Drawable *drawable);
 		void DrainDrawableSnapshots(uint64 completedFrameID);
 		void FlushDeletedDrawables();
+		void ReleaseRendererReferences();
 		void RegisterDefaultShaderSources();
 #if RN_BUILD_DEBUG
 		void TrackShaderSourceName(size_t nameHash, const String *name) const;
