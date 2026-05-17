@@ -109,6 +109,11 @@ namespace RN
 		_supportsHandTracking = false;
 
 		_internals->session = XR_NULL_HANDLE;
+		_internals->trackingSpace = XR_NULL_HANDLE;
+		_internals->handLeftAimPoseSpace = XR_NULL_HANDLE;
+		_internals->handLeftGripPoseSpace = XR_NULL_HANDLE;
+		_internals->handRightAimPoseSpace = XR_NULL_HANDLE;
+		_internals->handRightGripPoseSpace = XR_NULL_HANDLE;
 		_internals->passthroughSessionFB = XR_NULL_HANDLE;
 		_internals->handTracker[0] = XR_NULL_HANDLE;
 		_internals->handTracker[1] = XR_NULL_HANDLE;
@@ -640,6 +645,20 @@ namespace RN
 
 		if(_internals->session != XR_NULL_HANDLE)
 		{
+			auto destroySpace = [](XrSpace &space) {
+				if(space != XR_NULL_HANDLE)
+				{
+					xrDestroySpace(space);
+					space = XR_NULL_HANDLE;
+				}
+			};
+
+			destroySpace(_internals->handLeftAimPoseSpace);
+			destroySpace(_internals->handLeftGripPoseSpace);
+			destroySpace(_internals->handRightAimPoseSpace);
+			destroySpace(_internals->handRightGripPoseSpace);
+			destroySpace(_internals->trackingSpace);
+
 			XrResult result = xrDestroySession(_internals->session);
 			if(XR_FAILED(result)) RNWarning("Failed destroying OpenXR session with result: " << result);
 			_internals->session = XR_NULL_HANDLE;
