@@ -37,6 +37,15 @@
 	_kernel = kernel;
 }
 
+- (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender
+{
+	if(!_kernel)
+		return NSTerminateNow;
+
+	_kernel->Exit();
+	return NSTerminateCancel;
+}
+
 - (void)sendEvent:(NSEvent *)event
 {
 	if([event type] == NSEventTypeKeyUp && ([event modifierFlags] & NSEventModifierFlagCommand))
