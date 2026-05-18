@@ -44,10 +44,14 @@ namespace RN
 
 	PhysXStaticBody::~PhysXStaticBody()
 	{
-		PhysXWorld::GetSharedInstance()->Lock();
-		physx::PxScene *scene = PhysXWorld::GetSharedInstance()->GetPhysXScene();
-		scene->removeActor(*_actor);
-		PhysXWorld::GetSharedInstance()->Unlock();
+		PhysXWorld *world = PhysXWorld::GetSharedInstance();
+		if(world)
+		{
+			world->Lock();
+			physx::PxScene *scene = world->GetPhysXScene();
+			scene->removeActor(*_actor);
+			world->Unlock();
+		}
 
 		_actor->release();
 		_shape->Release();
@@ -114,19 +118,20 @@ namespace RN
 	void PhysXStaticBody::DidUpdate(SceneNode::ChangeSet changeSet)
 	{
 		PhysXCollisionObject::DidUpdate(changeSet);
+		PhysXWorld *world = PhysXWorld::GetSharedInstance();
 
-		if(changeSet & SceneNode::ChangeSet::Position)
+		if(world && (changeSet & SceneNode::ChangeSet::Position))
 		{
-			PhysXWorld::GetSharedInstance()->EnqueuePoseChange(this);
+			world->EnqueuePoseChange(this);
 		}
 
 		if(changeSet & SceneNode::ChangeSet::Attachments)
 		{
-			if(!_owner && GetParent())
+			if(world && !_owner && GetParent())
 			{
-				PhysXWorld::GetSharedInstance()->Lock();
+				world->Lock();
 				ApplyPose();
-				PhysXWorld::GetSharedInstance()->Unlock();
+				world->Unlock();
 			}
 
 			_owner = GetParent();
