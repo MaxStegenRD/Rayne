@@ -78,12 +78,26 @@ set(ALSOFT_INSTALL_UTILS OFF)
 set(ALSOFT_EMBED_HRTF_DATA ON)
 set(ALSOFT_CPUEXT_NEON OFF)
 
+if(MSVC)
+        set(OPENAL_DEBUG_OPTIMIZATION_FLAGS /O2 /Ob2 /RTC-)
+else()
+        set(OPENAL_DEBUG_OPTIMIZATION_FLAGS -O2)
+endif()
+
 rayne_fetch_content(openal
         GIT_REPOSITORY https://github.com/kcat/openal-soft.git
         GIT_TAG ${OPENAL_VERSION_TAG}
         GIT_SHALLOW ON
         GIT_PROGRESS ON)
 FetchContent_GetProperties(openal SOURCE_DIR OPENAL_SOURCE_DIR BINARY_DIR OPENAL_BINARY_DIR)
+
+foreach(OPENAL_TARGET OpenAL common soft_oal)
+        if(TARGET ${OPENAL_TARGET})
+                foreach(OPENAL_DEBUG_OPTIMIZATION_FLAG IN LISTS OPENAL_DEBUG_OPTIMIZATION_FLAGS)
+                        target_compile_options(${OPENAL_TARGET} PRIVATE $<$<CONFIG:Debug>:${OPENAL_DEBUG_OPTIMIZATION_FLAG}>)
+                endforeach()
+        endif()
+endforeach()
 
 list(APPEND VENDOR_INCLUDES
         "${OPENAL_SOURCE_DIR}/include"
