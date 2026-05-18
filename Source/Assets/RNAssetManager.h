@@ -50,6 +50,7 @@ namespace RN
 		~AssetManager();
 
 		void ReleaseKeepAliveAssets();
+		void CancelPendingLoads();
 		void UpdateMagicSize();
 
 		AssetLoader *PickAssetLoader(MetaClass *base, File *file, const String *name, bool requiresBackgroundSupport);
@@ -67,6 +68,7 @@ namespace RN
 		RNAPI AssetLoadFuture __GetFutureAssetWithName(MetaClass *base, const String *name, const Dictionary *settings, WorkQueue *queue);
 
 		Lockable _lock;
+		bool _isShuttingDown;
 		Array *_loaders;
 		size_t _maxMagicSize;
 

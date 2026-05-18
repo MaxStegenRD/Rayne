@@ -22,6 +22,7 @@ namespace RN
 	static RecursiveLockable __sharedInstanceLock;
 
 	AssetManager::AssetManager() :
+		_isShuttingDown(false),
 		_loaders(new Array()),
 		_resources(new Dictionary()),
 		_requests(new Dictionary()),
@@ -45,6 +46,7 @@ namespace RN
 	}
 	AssetManager::~AssetManager()
 	{
+		CancelPendingLoads();
 		ReleaseKeepAliveAssets();
 
 		SafeRelease(_loaders);
@@ -81,6 +83,41 @@ namespace RN
 			asset->_keepAlive = false;
 			asset->Release();
 		}
+	}
+
+	void AssetManager::CancelPendingLoads()
+	{
+		Array *pendingRequests = new Array();
+		WorkQueue *defaultQueue = nullptr;
+
+		{
+			LockGuard<Lockable> lock(_lock);
+			_isShuttingDown = true;
+
+			if(_requests)
+			{
+				_requests->Enumerate<Array, String>([&](Array *requests, const String *name, bool &stop) {
+					size_t count = requests->GetCount();
+					for(size_t i = 0; i < count; i++)
+					{
+						PendingAsset *wrapper = requests->GetObjectAtIndex<PendingAsset>(i);
+						pendingRequests->AddObject(wrapper);
+					}
+				});
+
+				_requests->RemoveAllObjects();
+			}
+
+			defaultQueue = _defaultQueue;
+			_defaultQueue = nullptr;
+		}
+
+		pendingRequests->Enumerate<PendingAsset>([](PendingAsset *wrapper, size_t index, bool &stop) {
+			wrapper->SetAsset(nullptr);
+		});
+		pendingRequests->Release();
+
+		SafeRelease(defaultQueue);
 	}
 
 	AssetManager *AssetManager::GetSharedInstance()
@@ -256,6 +293,13 @@ namespace RN
 		String *name = tname->GetNormalizedPath()->Retain();
 		UniqueLock<Lockable> lock(_lock);
 
+		if(_isShuttingDown)
+		{
+			lock.Unlock();
+			name->Autorelease();
+			throw InconsistencyException(RNSTR("Can't load resource " << name << " while the AssetManager is shutting down"));
+		}
+
 		{
 			Asset *asset = __GetAssetMatching(base, name);
 			if(asset)
@@ -320,6 +364,8 @@ namespace RN
 
 			wrapper = new PendingAsset(base, name);
 			requests->AddObject(wrapper);
+			// Keep the pending wrapper alive while the lock is released for the synchronous load.
+			wrapper->Retain();
 			wrapper->Release();
 		}
 
@@ -340,7 +386,7 @@ namespace RN
 
 		lock.Lock();
 
-		wrapper->Retain();
+		bool shouldPublishAsset = !_isShuttingDown;
 
 		{
 			Array *requests = _requests->GetObjectForKey<Array>(name);
@@ -369,14 +415,21 @@ namespace RN
 		// Send the result out
 		result->Retain();
 
-		PrepareAsset(result, name, base, settings);
+		if(shouldPublishAsset)
+			PrepareAsset(result, name, base, settings);
 		lock.Unlock();
 
-		name->Release();
-
-		wrapper->SetAsset(result);
+		wrapper->SetAsset(shouldPublishAsset ? result : nullptr);
 		wrapper->Release();
 
+		if(!shouldPublishAsset)
+		{
+			result->Release();
+			name->Autorelease();
+			throw InconsistencyException(RNSTR("Finished loading resource " << name << " while the AssetManager is shutting down"));
+		}
+
+		name->Release();
 		return result->Autorelease();
 	}
 
@@ -384,6 +437,18 @@ namespace RN
 	{
 		String *name = tname->GetNormalizedPath()->Retain();
 		UniqueLock<Lockable> lock(_lock);
+
+		if(_isShuttingDown)
+		{
+			lock.Unlock();
+			name->Release();
+
+			std::promise<StrongRef<Asset>> promise;
+			AssetLoadFuture future = promise.get_future().share();
+			promise.set_value(StrongRef<Asset>());
+
+			return future;
+		}
 
 		Asset *asset = __GetAssetMatching(base, name);
 		if(asset)
@@ -461,6 +526,7 @@ namespace RN
 		if(options.queue == nullptr)
 			options.queue = WorkQueue::GetGlobalQueue(WorkQueue::Priority::Default);
 
+		wrapper->Retain();
 		loader->__LoadInBackground(fileOrName, options, wrapper);
 		settings->Release();
 		wrapper->Release();
@@ -473,16 +539,17 @@ namespace RN
 	{
 		PendingAsset *wrapper = reinterpret_cast<PendingAsset *>(token);
 		String *name = wrapper->GetName();
-
-		wrapper->Retain();
+		bool shouldPublishAsset;
 
 		{
 			LockGuard<Lockable> lock(_lock);
 
-			if(asset)
+			shouldPublishAsset = !_isShuttingDown;
+
+			if(shouldPublishAsset && asset)
 				PrepareAsset(asset, name, wrapper->GetMeta(), nullptr);
 
-			Array *requests = _requests->GetObjectForKey<Array>(name);
+			Array *requests = _requests ? _requests->GetObjectForKey<Array>(name) : nullptr;
 
 			if(requests)
 			{
@@ -493,8 +560,7 @@ namespace RN
 			}
 		}
 
-		wrapper->SetAsset(asset);
-
+		wrapper->SetAsset(shouldPublishAsset ? asset : nullptr);
 		wrapper->Release();
 	}
 

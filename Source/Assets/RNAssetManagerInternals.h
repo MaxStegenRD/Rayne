@@ -42,8 +42,10 @@ namespace RN
 		AssetLoadFuture GetFuture() const { return _future; }
 
 	private:
+		Lockable _lock;
 		std::promise<StrongRef<Asset>> _promise;
 		AssetLoadFuture _future;
+		bool _isFinished;
 		MetaClass *_meta;
 		StrongRef<String> _name;
 

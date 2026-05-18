@@ -270,11 +270,13 @@ namespace RN
 		}
 		pool.Drain();
 
+		_assetManager->CancelPendingLoads();
+		WorkQueue::TearDownQueues();
+		pool.Drain();
+
 		delete _assetManager;
 		_assetManager = nullptr;
 		pool.Drain();
-
-		WorkQueue::TearDownQueues();
 #if RN_PLATFORM_LINUX
 		if(_connection) xcb_disconnect(_connection);
 #endif

@@ -20,6 +20,7 @@ namespace RN
 	{}
 
 	PendingAsset::PendingAsset(MetaClass *meta, String *name) :
+		_isFinished(false),
 		_meta(meta),
 		_name(name)
 	{
@@ -28,6 +29,11 @@ namespace RN
 
 	void PendingAsset::SetAsset(Asset *asset)
 	{
+		LockGuard<Lockable> lock(_lock);
+		if(_isFinished)
+			return;
+
+		_isFinished = true;
 		_promise.set_value(StrongRef<Asset>(asset));
 	}
 } // namespace RN
