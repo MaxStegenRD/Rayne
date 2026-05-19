@@ -50,6 +50,10 @@ namespace RN
 
 	private:
 		void CreatePostprocessingPipeline();
+		void RebuildHiddenAreaMeshes();
+		void RemoveHiddenAreaEntity(size_t eye);
+		uint16 GetHiddenAreaRenderGroup(uint8 eye) const { return (1 << (14 + eye)); }
+		uint16 GetHiddenAreaRenderGroupMask() const { return GetHiddenAreaRenderGroup(0) | GetHiddenAreaRenderGroup(1); }
 
 		VRWindow *_window;
 		Window *_debugWindow;

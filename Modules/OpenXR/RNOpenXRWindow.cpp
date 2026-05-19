@@ -149,6 +149,8 @@ namespace RN
 		_internals->UpdateSwapchainFB = nullptr;
 		_internals->GetSwapchainStateFB = nullptr;
 
+		_internals->GetVisibilityMaskKHR = nullptr;
+		_internals->GetRecommendedLayerResolutionMETA = nullptr;
 		_internals->SetTilePropertiesHintMETA = nullptr;
 		_internals->CreatePassthroughFB = nullptr;
 		_internals->DestroyPassthroughFB = nullptr;
@@ -234,7 +236,7 @@ namespace RN
 				extensions.push_back(extension.extensionName);
 				_supportsPerformanceLevels = true;
 			}
-			else if(std::strcmp(extension.extensionName, XR_KHR_VISIBILITY_MASK_EXTENSION_NAME) == 0)
+			else if(Settings::GetSharedInstance()->GetBoolForKey(RNCSTR("RNOpenXRUseVisibilityMask"), true) && std::strcmp(extension.extensionName, XR_KHR_VISIBILITY_MASK_EXTENSION_NAME) == 0)
 			{
 				extensions.push_back(extension.extensionName);
 				_supportsVisibilityMask = true;
@@ -516,6 +518,8 @@ namespace RN
 			//XR_KHR_VISIBILITY_MASK_EXTENSION_NAME
 			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrGetVisibilityMaskKHR", (PFN_xrVoidFunction *)(&_internals->GetVisibilityMaskKHR))))
 			{
+				_internals->GetVisibilityMaskKHR = nullptr;
+				_supportsVisibilityMask = false;
 			}
 		}
 
@@ -2209,6 +2213,17 @@ namespace RN
 						NotificationManager::GetSharedInstance()->PostNotification(kRNVRDidRecenter, nullptr);
 						break;
 					}
+					case XR_TYPE_EVENT_DATA_VISIBILITY_MASK_CHANGED_KHR:
+					{
+						const XrEventDataVisibilityMaskChangedKHR &visibilityMaskChangedEvent =
+						*reinterpret_cast<XrEventDataVisibilityMaskChangedKHR *>(&event);
+
+						if(visibilityMaskChangedEvent.session == _internals->session && visibilityMaskChangedEvent.viewConfigurationType == XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO)
+						{
+							NotificationManager::GetSharedInstance()->PostNotification(kRNVRVisibilityMaskChanged, this);
+						}
+						break;
+					}
 				}
 			}
 			else
@@ -2909,6 +2924,8 @@ namespace RN
 
 	Mesh *OpenXRWindow::GetHiddenAreaMesh(uint8 eye) const
 	{
+		if(eye >= 2) return nullptr;
+
 		if(!_supportsVisibilityMask || !_internals->GetVisibilityMaskKHR) return nullptr;
 		if(!_internals->session) return nullptr;
 
@@ -2920,15 +2937,35 @@ namespace RN
 		visibilityMask.vertices = nullptr;
 		visibilityMask.indices = nullptr;
 
-		_internals->GetVisibilityMaskKHR(_internals->session, XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, eye, XR_VISIBILITY_MASK_TYPE_HIDDEN_TRIANGLE_MESH_KHR, &visibilityMask);
-		if(visibilityMask.vertexCountOutput == 0) return nullptr;
+		XrResult result = _internals->GetVisibilityMaskKHR(_internals->session, XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, eye, XR_VISIBILITY_MASK_TYPE_HIDDEN_TRIANGLE_MESH_KHR, &visibilityMask);
+		if(XR_FAILED(result))
+		{
+			RNDebug("Failed querying OpenXR hidden area mesh size for eye " << static_cast<uint32>(eye) << " with result: " << result);
+			return nullptr;
+		}
+
+		if(visibilityMask.vertexCountOutput == 0 || visibilityMask.indexCountOutput == 0) return nullptr;
 
 		visibilityMask.vertexCapacityInput = visibilityMask.vertexCountOutput;
 		visibilityMask.indexCapacityInput = visibilityMask.indexCountOutput;
 		visibilityMask.vertices = new XrVector2f[visibilityMask.vertexCapacityInput];
 		visibilityMask.indices = new uint32_t[visibilityMask.indexCapacityInput];
 
-		_internals->GetVisibilityMaskKHR(_internals->session, XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, eye, XR_VISIBILITY_MASK_TYPE_HIDDEN_TRIANGLE_MESH_KHR, &visibilityMask);
+		result = _internals->GetVisibilityMaskKHR(_internals->session, XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, eye, XR_VISIBILITY_MASK_TYPE_HIDDEN_TRIANGLE_MESH_KHR, &visibilityMask);
+		if(XR_FAILED(result))
+		{
+			RNDebug("Failed querying OpenXR hidden area mesh for eye " << static_cast<uint32>(eye) << " with result: " << result);
+			delete[] visibilityMask.vertices;
+			delete[] visibilityMask.indices;
+			return nullptr;
+		}
+		if(visibilityMask.vertexCountOutput > visibilityMask.vertexCapacityInput || visibilityMask.indexCountOutput > visibilityMask.indexCapacityInput)
+		{
+			RNDebug("OpenXR hidden area mesh grew while querying eye " << static_cast<uint32>(eye));
+			delete[] visibilityMask.vertices;
+			delete[] visibilityMask.indices;
+			return nullptr;
+		}
 
 		Mesh *mesh = new Mesh({Mesh::VertexAttribute(Mesh::VertexAttribute::Feature::Indices, PrimitiveType::Uint32), Mesh::VertexAttribute(Mesh::VertexAttribute::Feature::Vertices, PrimitiveType::Vector2)}, visibilityMask.vertexCountOutput, visibilityMask.indexCountOutput);
 

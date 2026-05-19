@@ -14,6 +14,7 @@
 #include "RNVRTrackingState.h"
 
 #define kRNVRDidRecenter RNCSTR("kRNVRDidRecenter")
+#define kRNVRVisibilityMaskChanged RNCSTR("kRNVRVisibilityMaskChanged")
 
 namespace RN
 {

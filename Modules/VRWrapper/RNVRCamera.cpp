@@ -16,13 +16,13 @@ namespace RN
 		_window(window ? window->Retain() : nullptr),
 		_debugWindow(debugWindow ? debugWindow->Retain() : nullptr),
 		_head(new Camera()),
+		_eye {nullptr, nullptr},
+		_hiddenAreaEntity {nullptr, nullptr},
 		_previewRenderPass(previewRenderPass ? previewRenderPass->Retain() : nullptr),
 		_msaaSampleCount(msaaSampleCount),
-		_eye {nullptr, nullptr},
+		_supportInputAttachments(supportInputAttachments),
 		_didUpdateVRWindow(false),
-		_followsTracking(true),
-		_hiddenAreaEntity {nullptr, nullptr},
-		_supportInputAttachments(supportInputAttachments)
+		_followsTracking(true)
 	{
 		SetUpdatePriority(SceneNode::UpdatePriority::UpdateEarly);
 		AddChild(_head);
@@ -32,10 +32,15 @@ namespace RN
 	VRCamera::~VRCamera()
 	{
 		NotificationManager::GetSharedInstance()->RemoveSubscriber(kRNWindowDidChangeSize, this);
+		NotificationManager::GetSharedInstance()->RemoveSubscriber(kRNVRVisibilityMaskChanged, this);
 
 		SafeRelease(_previewRenderPass);
 		SafeRelease(_window);
 		SafeRelease(_debugWindow);
+		for(size_t i = 0; i < 2; i++)
+		{
+			RemoveHiddenAreaEntity(i);
+		}
 		SafeRelease(_head);
 		SafeRelease(_eye[0]);
 		SafeRelease(_eye[1]);
@@ -55,47 +60,34 @@ namespace RN
 
 		//_head->AddFlags(Camera::Flags::UseSimpleCulling);
 		_head->GetRenderPass()->SetShaderHint(Shader::UsageHint::Multiview);
+		_head->SetRenderGroup(0x1 | GetHiddenAreaRenderGroupMask());
 		_head->SetFOV(110.0f);
 
-		for(int i = 0; i < _window->GetEyeCount(); i++)
+		for(size_t i = 0; i < _window->GetEyeCount() && i < 2; i++)
 		{
 			_eye[i] = new Camera();
-			//_eye[i]->SetRenderGroup(0x1 | (1 << (1 + i))); //This won't work with multiview! (and is only needed for the hidden area mask)
+			_eye[i]->SetRenderGroup(0x1 | GetHiddenAreaRenderGroup(i));
 			_head->AddChild(_eye[i]);
 			_head->AddMultiviewCamera(_eye[i]);
 			_hiddenAreaEntity[i] = nullptr;
-
-#if !RN_PLATFORM_WINDOWS
-			if(_window)
-			{
-				Mesh *hiddenAreaMesh = _window->GetHiddenAreaMesh(i);
-				if(hiddenAreaMesh)
-				{
-					ShaderLibrary *shaderLibrary = RN::Renderer::GetActiveRenderer()->GetDefaultShaderLibrary();
-					Material *hiddenAreaMaterial = Material::WithShaders(shaderLibrary->GetShaderWithName(RNCSTR("pp_mask_vertex"), Shader::Options::WithMesh(hiddenAreaMesh)), shaderLibrary->GetShaderWithName(RNCSTR("pp_mask_fragment")));
-					hiddenAreaMaterial->SetCullMode(CullMode::None);
-					hiddenAreaMaterial->SetColorWriteMask(false, false, false, false);
-
-					Model *hiddenAreaModel = new Model(hiddenAreaMesh, hiddenAreaMaterial);
-					_hiddenAreaEntity[i] = new Entity(hiddenAreaModel->Autorelease());
-					_hiddenAreaEntity[i]->SetUpdatePriority(RN::SceneNode::UpdatePriority::UpdateEarly);
-					_hiddenAreaEntity[i]->SetRenderGroup((1 << (1 + i)));
-
-					_eye[i]->AddChild(_hiddenAreaEntity[i]);
-				}
-			}
-#endif
 		}
 
 		if(_eye[0]) _eye[0]->SetPosition(Vector3(-0.032f, 0.0f, 0.0f));
 		if(_eye[1]) _eye[1]->SetPosition(Vector3(0.032f, 0.0f, 0.0f));
 
+		RebuildHiddenAreaMeshes();
 		CreatePostprocessingPipeline();
 
 		NotificationManager::GetSharedInstance()->AddSubscriber(kRNWindowDidChangeSize, [this](Notification *notification) {
-			if(notification->GetName()->IsEqual(kRNWindowDidChangeSize) && notification->GetInfo<RN::VRWindow>() == _window)
+			if(notification->GetInfo<VRWindow>() == _window)
 			{
 				CreatePostprocessingPipeline();
+			} }, this);
+
+		NotificationManager::GetSharedInstance()->AddSubscriber(kRNVRVisibilityMaskChanged, [this](Notification *notification) {
+			if(notification->GetInfo<VRWindow>() == _window)
+			{
+				RebuildHiddenAreaMeshes();
 			} }, this);
 	}
 
@@ -212,6 +204,53 @@ namespace RN
 		}
 	}
 
+	void VRCamera::RemoveHiddenAreaEntity(size_t eye)
+	{
+		if(_hiddenAreaEntity[eye])
+		{
+			_hiddenAreaEntity[eye]->RemoveFromParent();
+			SafeRelease(_hiddenAreaEntity[eye]);
+			_hiddenAreaEntity[eye] = nullptr;
+		}
+	}
+
+	void VRCamera::RebuildHiddenAreaMeshes()
+	{
+#if !RN_PLATFORM_WINDOWS
+		if(!_window || !Renderer::GetActiveRenderer()) return;
+
+		ShaderLibrary *shaderLibrary = Renderer::GetActiveRenderer()->GetDefaultShaderLibrary();
+		for(size_t i = 0; i < _window->GetEyeCount() && i < 2; i++)
+		{
+			RemoveHiddenAreaEntity(i);
+
+			Mesh *hiddenAreaMesh = _window->GetHiddenAreaMesh(i);
+			if(!hiddenAreaMesh || !_eye[i]) continue;
+
+			Shader::Options *shaderOptions = Shader::Options::WithMesh(hiddenAreaMesh);
+			Shader::Options *multiviewShaderOptions = shaderOptions->Copy()->Autorelease();
+			multiviewShaderOptions->EnableMultiview();
+
+			Material *hiddenAreaMaterial = Material::WithShaders(shaderLibrary->GetShaderWithName(RNCSTR("pp_mask_vertex"), shaderOptions), shaderLibrary->GetShaderWithName(RNCSTR("pp_mask_fragment")));
+			hiddenAreaMaterial->SetVertexShader(shaderLibrary->GetShaderWithName(RNCSTR("pp_mask_vertex"), multiviewShaderOptions), Shader::UsageHint::Multiview);
+			hiddenAreaMaterial->SetFragmentShader(shaderLibrary->GetShaderWithName(RNCSTR("pp_mask_fragment")), Shader::UsageHint::Multiview);
+			hiddenAreaMaterial->SetCustomShaderUniform(RNCSTR("maskEyeIndex"), Number::WithUint32(static_cast<uint32>(i)));
+			hiddenAreaMaterial->SetCullMode(CullMode::None);
+			hiddenAreaMaterial->SetDepthMode(DepthMode::Always);
+			hiddenAreaMaterial->SetDepthWriteEnabled(true);
+			hiddenAreaMaterial->SetColorWriteMask(false, false, false, false);
+
+			Model *hiddenAreaModel = new Model(hiddenAreaMesh, hiddenAreaMaterial);
+			_hiddenAreaEntity[i] = new Entity(hiddenAreaModel->Autorelease());
+			_hiddenAreaEntity[i]->SetRenderPriority(SceneNode::RenderEarly);
+			_hiddenAreaEntity[i]->AddFlags(SceneNode::Flags::NoCulling);
+			_hiddenAreaEntity[i]->SetRenderGroup(GetHiddenAreaRenderGroup(i));
+
+			_eye[i]->AddChild(_hiddenAreaEntity[i]);
+		}
+#endif
+	}
+
 	void VRCamera::UpdateVRWindow(float delta)
 	{
 		if(_didUpdateVRWindow || !_window || !_eye[0]) return;
@@ -226,9 +265,10 @@ namespace RN
 		if(!_window) return;
 
 		UpdateVRWindow(delta);
+
 		const VRHMDTrackingState &hmdState = GetHMDTrackingState();
 
-		for(size_t i = 0; i < _window->GetEyeCount(); i++)
+		for(size_t i = 0; i < _window->GetEyeCount() && i < 2; i++)
 		{
 			_eye[i]->SetPosition(hmdState.eyeOffset[i]);
 			_eye[i]->SetProjectionMatrix(hmdState.eyeProjection[i]);
