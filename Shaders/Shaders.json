@@ -200,7 +200,14 @@
 		[
 			{
 				"name": "pp_mask_vertex",
-				"type": "vertex"
+				"type": "vertex",
+				"signature":
+				{
+					"options":
+					[
+						"RN_USE_MULTIVIEW"
+					]
+				}
 			},
 			{
 				"name": "pp_mask_fragment",

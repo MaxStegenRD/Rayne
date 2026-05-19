@@ -6,9 +6,22 @@
 //  Unauthorized use is punishable by torture, mutilation, and vivisection.
 //
 
+#include "rayne.hlsl"
+
+#if RN_USE_MULTIVIEW
+cbuffer vertexUniforms
+{
+	uint maskEyeIndex;
+};
+#endif
+
 struct InputVertex
 {
 	float3 position : POSITION;
+
+#if RN_USE_MULTIVIEW
+	uint viewIndex : SV_VIEWID;
+#endif
 };
 
 struct FragmentVertex
@@ -19,7 +32,16 @@ struct FragmentVertex
 FragmentVertex pp_mask_vertex(InputVertex vert)
 {
 	FragmentVertex result;
-	result.position = float4(vert.position.xy * 2.0 - 1.0, 0.0, 1.0);
+
+#if RN_USE_MULTIVIEW
+	if(vert.viewIndex != maskEyeIndex)
+	{
+		result.position = float4(-2.0, -2.0, 1.0, 1.0);
+		return result;
+	}
+#endif
+
+	result.position = float4(vert.position.xy * 2.0 - 1.0, 1.0, 1.0);
 
 	return result;
 }

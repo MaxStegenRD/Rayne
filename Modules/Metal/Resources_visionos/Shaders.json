@@ -199,6 +199,11 @@
         "shaders": [
             {
                 "name": "pp_mask_vertex",
+                "signature": {
+                    "options": [
+                        "RN_USE_MULTIVIEW"
+                    ]
+                },
                 "type": "vertex"
             }
         ]
