@@ -299,7 +299,7 @@ namespace RN
 				extensions.push_back(extension.extensionName);
 				numberOfSupportedFoveationExtensions += 1;
 			}
-			else if(std::strcmp(extension.extensionName, XR_META_VULKAN_SWAPCHAIN_CREATE_INFO_EXTENSION_NAME) == 0)
+			else if(GetUsesSubsampledLayout() && std::strcmp(extension.extensionName, XR_META_VULKAN_SWAPCHAIN_CREATE_INFO_EXTENSION_NAME) == 0)
 			{
 				extensions.push_back(extension.extensionName);
 				_supportsVulkanSwapchainCreateInfoMETA = true;
@@ -3009,6 +3009,11 @@ namespace RN
 	Object *OpenXRWindow::GetVulkanGraphicsProvider() const
 	{
 		return _vulkanGraphicsProvider;
+	}
+
+	bool OpenXRWindow::GetUsesSubsampledLayout() const
+	{
+		return Settings::GetSharedInstance()->GetBoolForKey(RNCSTR("RNOpenXRUseSubsampledLayout"), true);
 	}
 
 	const Window::SwapChainDescriptor &OpenXRWindow::GetSwapChainDescriptor() const

@@ -47,6 +47,7 @@ namespace RN
 		OXRAPI void SetPerformanceLevel(uint8 cpuLevel, uint8 gpuLevel) final;
 		OXRAPI void SetLocalDimming(bool enabled) final;
 		OXRAPI void SetDynamicResolutionEnabled(bool enabled) final;
+		OXRAPI bool GetUsesSubsampledLayout() const final;
 
 		OXRAPI Vector2 GetSize() const final;
 		OXRAPI Framebuffer *GetFramebuffer() const final;

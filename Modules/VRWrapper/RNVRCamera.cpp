@@ -118,6 +118,7 @@ namespace RN
 
 			layerCount = _window->GetSwapChainDescriptor().layerCount;
 		}
+		bool useSubsampledLayout = _window->GetUsesSubsampledLayout();
 
 		PostProcessingStage *sideBySideDebugPass = nullptr;
 		if(_debugWindow)
@@ -144,13 +145,13 @@ namespace RN
 
 		if(_msaaSampleCount > 1)
 		{
-			Texture::Descriptor msaaColorTextureDescriptor = Texture::Descriptor::With2DRenderTargetFormatAndMSAA(colorFormat, windowSize.x, windowSize.y, _msaaSampleCount, 0, true);
+			Texture::Descriptor msaaColorTextureDescriptor = Texture::Descriptor::With2DRenderTargetFormatAndMSAA(colorFormat, windowSize.x, windowSize.y, _msaaSampleCount, 0, useSubsampledLayout);
 			if(_supportInputAttachments) msaaColorTextureDescriptor.usageHint |= Texture::UsageHint::InputAttachment;
 			msaaColorTextureDescriptor.depth = layerCount;
 			msaaColorTextureDescriptor.type = layerCount > 1 ? Texture::Type::Type2DArray : Texture::Type::Type2D;
 			Texture *msaaTexture = Texture::WithDescriptor(msaaColorTextureDescriptor);
 
-			Texture::Descriptor msaaDepthTextureDescriptor = Texture::Descriptor::With2DRenderTargetFormatAndMSAA(depthFormat, windowSize.x, windowSize.y, _msaaSampleCount, 0, true);
+			Texture::Descriptor msaaDepthTextureDescriptor = Texture::Descriptor::With2DRenderTargetFormatAndMSAA(depthFormat, windowSize.x, windowSize.y, _msaaSampleCount, 0, useSubsampledLayout);
 			if(_supportInputAttachments) msaaDepthTextureDescriptor.usageHint |= Texture::UsageHint::InputAttachment;
 			msaaDepthTextureDescriptor.depth = layerCount;
 			msaaDepthTextureDescriptor.type = layerCount > 1 ? Texture::Type::Type2DArray : Texture::Type::Type2D;
@@ -164,7 +165,7 @@ namespace RN
 		//TODO: Depth buffer handling for Android with 2 resolve buffers
 		if(_msaaSampleCount <= 1 && (!_window || _window->GetSwapChainDescriptor().depthStencilFormat == Texture::Format::Invalid || _debugWindow))
 		{
-			Texture::Descriptor depthTextureDescriptor = Texture::Descriptor::With2DRenderTargetFormat(depthFormat, windowSize.x, windowSize.y, true);
+			Texture::Descriptor depthTextureDescriptor = Texture::Descriptor::With2DRenderTargetFormat(depthFormat, windowSize.x, windowSize.y, useSubsampledLayout);
 			if(_supportInputAttachments) depthTextureDescriptor.usageHint |= Texture::UsageHint::InputAttachment;
 			depthTextureDescriptor.depth = layerCount;
 			depthTextureDescriptor.type = layerCount > 1 ? Texture::Type::Type2DArray : Texture::Type::Type2D;
