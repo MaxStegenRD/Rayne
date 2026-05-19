@@ -310,7 +310,7 @@ namespace RN
 			_supportsFragmentDensityMaps2 = true;
 		}
 
-		if(Settings::GetSharedInstance()->GetBoolForKey(RNCSTR("RNVulkanUseTileProperties"), true) && AddDeviceExtensionIfAvailable(deviceExtensions, rawDeviceExtensions, VK_QCOM_TILE_PROPERTIES_EXTENSION_NAME))
+		if(AddDeviceExtensionIfAvailable(deviceExtensions, rawDeviceExtensions, VK_QCOM_TILE_PROPERTIES_EXTENSION_NAME))
 		{
 			_supportsTileProperties = true;
 		}
