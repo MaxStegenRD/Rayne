@@ -211,9 +211,7 @@ namespace RN
 			throw ShaderCompilationException([[error localizedDescription] UTF8String]);
 		
 		id<MTLFunction> function = [metalLibrary newFunctionWithName:[NSString stringWithUTF8String:_entryPoint->GetUTF8String()]];
-		
-		//TODO: release once shader is not needed anymore
-		//[metalLibrary release];
+		[metalLibrary release];
 		
 		if(!function)
 			return nullptr;
