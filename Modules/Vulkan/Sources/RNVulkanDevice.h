@@ -15,6 +15,7 @@
 
 namespace RN
 {
+	class VulkanGraphicsProvider;
 	class VulkanDevice : public RenderingDevice
 	{
 	public:
@@ -22,7 +23,7 @@ namespace RN
 
 		~VulkanDevice();
 
-		VKAPI bool CreateDevice(const std::vector<const char *> &extensions);
+		VKAPI bool CreateDevice(const std::vector<const char *> &extensions, VulkanGraphicsProvider *graphicsProvider = nullptr);
 		bool IsValidDevice() const { return (_workQueue != kRNNotFound); }
 
 		VKAPI void GetQueueProperties(std::vector<VkQueueFamilyProperties> &queues);

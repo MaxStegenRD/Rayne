@@ -9,6 +9,7 @@
 #include "RNVulkanInstance.h"
 #include "RNVulkanDevice.h"
 #include "RNVulkanDebug.h"
+#include "RNVulkanGraphicsProvider.h"
 
 #if RN_PLATFORM_POSIX
 #include <dlfcn.h>
@@ -69,7 +70,7 @@ namespace RN
 		SafeRelease(_devices);
 	}
 
-	bool VulkanInstance::LoadVulkan()
+	bool VulkanInstance::LoadVulkan(VulkanGraphicsProvider *graphicsProvider)
 	{
 		if(_instance)
 			return true;
@@ -165,7 +166,7 @@ namespace RN
 		instanceInfo.enabledLayerCount = static_cast<uint32_t>(layers.size());
 		instanceInfo.ppEnabledLayerNames = layers.data();
 
-		VkResult result = vk::CreateInstance(&instanceInfo, _allocationCallbacks, &_instance);
+		VkResult result = graphicsProvider? graphicsProvider->CreateVulkanInstance(procAddr, &instanceInfo, _allocationCallbacks, &_instance) : vk::CreateInstance(&instanceInfo, _allocationCallbacks, &_instance);
 		if(result != VK_SUCCESS)
 		{
 			RNDumpVulkanResult(result);

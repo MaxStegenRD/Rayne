@@ -8,6 +8,7 @@
 
 #include "RNVulkanRendererDescriptor.h"
 #include "RNVulkanDispatchTable.h"
+#include "RNVulkanGraphicsProvider.h"
 #include "RNVulkanRenderer.h"
 #include "RNVulkanDevice.h"
 
@@ -26,14 +27,23 @@ namespace RN
 	}
 
 	VulkanRendererDescriptor::VulkanRendererDescriptor() :
-		RN::RendererDescriptor(RNCSTR("net.uberpixel.rendering.vulkan"), RNCSTR("Vulkan"))
+		RN::RendererDescriptor(RNCSTR("net.uberpixel.rendering.vulkan"), RNCSTR("Vulkan")),
+		_instance(nullptr),
+		_graphicsProvider(nullptr)
 	{}
+
+	VulkanRendererDescriptor::~VulkanRendererDescriptor()
+	{
+		SafeRelease(_graphicsProvider);
+	}
 
 	Renderer *VulkanRendererDescriptor::CreateRenderer(RenderingDevice *tdevice)
 	{
 		VulkanDevice *device = static_cast<VulkanDevice *>(tdevice);
-		if(device->CreateDevice(_instance->GetDeviceExtensions()))
+		if(device->CreateDevice(_instance->GetDeviceExtensions(), _graphicsProvider))
 		{
+			SafeRelease(_graphicsProvider);
+
 			vk::init_dispatch_table_bottom(_instance->GetInstance(), device->GetDevice());
 
 			VulkanRenderer *renderer = new VulkanRenderer(this, device);
@@ -47,16 +57,21 @@ namespace RN
 	{
 		Array *instanceExtensions = nullptr;
 		Array *deviceExtensions = nullptr;
+		VulkanGraphicsProvider *graphicsProvider = nullptr;
 		if(settings)
 		{
 			instanceExtensions = settings->GetObjectForKey<Array>(RNCSTR("instanceextensions"));
 			deviceExtensions = settings->GetObjectForKey<Array>(RNCSTR("deviceextensions"));
+			graphicsProvider = settings->GetObjectForKey<VulkanGraphicsProvider>(RNCSTR("vulkangraphicsprovider"));
 		}
+		_graphicsProvider = graphicsProvider;
+		SafeRetain(_graphicsProvider);
 		
 		_instance = new VulkanInstance(instanceExtensions, deviceExtensions);
 
-		if(!_instance->LoadVulkan())
+		if(!_instance->LoadVulkan(_graphicsProvider))
 		{
+			SafeRelease(_graphicsProvider);
 			delete _instance;
 			_instance = nullptr;
 		}

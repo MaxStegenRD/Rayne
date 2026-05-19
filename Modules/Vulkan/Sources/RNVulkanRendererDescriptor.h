@@ -14,10 +14,13 @@
 
 namespace RN
 {
+	class VulkanGraphicsProvider;
 	class VulkanRendererDescriptor : public RendererDescriptor
 	{
 	public:
 		VKAPI static void InitialWakeUp(MetaClass *meta);
+
+		VKAPI ~VulkanRendererDescriptor() override;
 
 		VKAPI Renderer *CreateRenderer(RenderingDevice *device) override;
 		VKAPI bool CanCreateRenderer() const override;
@@ -31,6 +34,7 @@ namespace RN
 		VulkanRendererDescriptor();
 
 		VulkanInstance *_instance;
+		VulkanGraphicsProvider *_graphicsProvider;
 
 		RNDeclareMetaAPI(VulkanRendererDescriptor, VKAPI)
 	};

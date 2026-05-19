@@ -8,6 +8,7 @@
 
 #include "RNVulkanDevice.h"
 #include "RNVulkanDebug.h"
+#include "RNVulkanGraphicsProvider.h"
 
 namespace RN
 {
@@ -226,7 +227,7 @@ namespace RN
 		return kRNNotFound;
 	}
 
-	bool VulkanDevice::CreateDevice(const std::vector<const char *> &extensions)
+	bool VulkanDevice::CreateDevice(const std::vector<const char *> &extensions, VulkanGraphicsProvider *graphicsProvider)
 	{
 		std::vector<const char *> deviceExtensions(extensions);
 		if(_deviceExtensions)
@@ -411,7 +412,7 @@ namespace RN
 		deviceInfo.pQueueCreateInfos = &queueInfo;
 		deviceInfo.pNext = &features;
 
-		VkResult result = vk::CreateDevice(_physicalDevice, &deviceInfo, nullptr, &_device);
+		VkResult result = graphicsProvider? graphicsProvider->CreateVulkanDevice(vk::GetInstanceProcAddr, _physicalDevice, &deviceInfo, nullptr, &_device) : vk::CreateDevice(_physicalDevice, &deviceInfo, nullptr, &_device);
 		RNVulkanValidate(result);
 
 /*		VkPhysicalDeviceProperties properties;

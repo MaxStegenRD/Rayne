@@ -14,13 +14,14 @@
 
 namespace RN
 {
+	class VulkanGraphicsProvider;
 	class VulkanInstance
 	{
 	public:
 		VKAPI VulkanInstance(Array *instanceExtensions, Array *deviceExtensions);
 		VKAPI ~VulkanInstance();
 
-		VKAPI bool LoadVulkan();
+		VKAPI bool LoadVulkan(VulkanGraphicsProvider *graphicsProvider = nullptr);
 
 		Array *GetDevices() const { return _devices; }
 

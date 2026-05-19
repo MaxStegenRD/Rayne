@@ -59,6 +59,7 @@ set(SOURCES
         Sources/RNVulkanDevice.cpp
         Sources/RNVulkanDispatchTable.cpp
         Sources/RNVulkanFramebuffer.cpp
+        Sources/RNVulkanGraphicsProvider.cpp
         Sources/RNVulkanInstance.cpp
         Sources/RNVulkanRenderer.cpp
         Sources/RNVulkanRendererDescriptor.cpp
@@ -83,6 +84,7 @@ set(HEADERS
         Sources/RNVulkan.h
         Sources/RNVulkanDevice.h
         Sources/RNVulkanDispatchTable.h
+        Sources/RNVulkanGraphicsProvider.h
         Sources/RNVulkanInstance.h
         Sources/RNVulkanRenderer.h
         Sources/RNVulkanRendererDescriptor.h
