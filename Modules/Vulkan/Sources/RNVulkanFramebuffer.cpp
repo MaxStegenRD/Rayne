@@ -519,11 +519,32 @@ namespace RN
 
 		if(_renderer->GetVulkanDevice()->GetSupportsTileProperties())
 		{
-			uint32 subpassCount = 1;
-			vk::GetFramebufferTilePropertiesQCOM(device, newVariant.framebuffer, &subpassCount, nullptr);
-			newVariant.tileProperties.resize(subpassCount, {.sType = VK_STRUCTURE_TYPE_TILE_PROPERTIES_QCOM});
-			vk::GetFramebufferTilePropertiesQCOM(device, newVariant.framebuffer, &subpassCount, newVariant.tileProperties.data());
-			//RNInfo("Tile properties: " << newVariant.tileProperties.front().tileSize.height << ", " << newVariant.tileProperties.front().tileSize.height);
+			uint32 tilePropertiesCount = 0;
+			VkResult result = vk::GetFramebufferTilePropertiesQCOM(device, newVariant.framebuffer, &tilePropertiesCount, nullptr);
+			if(result == VK_SUCCESS && tilePropertiesCount > 0)
+			{
+				newVariant.tileProperties.resize(tilePropertiesCount);
+				for(VkTilePropertiesQCOM &tileProperty : newVariant.tileProperties)
+				{
+					tileProperty = {};
+					tileProperty.sType = VK_STRUCTURE_TYPE_TILE_PROPERTIES_QCOM;
+				}
+
+				result = vk::GetFramebufferTilePropertiesQCOM(device, newVariant.framebuffer, &tilePropertiesCount, newVariant.tileProperties.data());
+				if(result == VK_SUCCESS)
+				{
+					newVariant.tileProperties.resize(tilePropertiesCount);
+				}
+				else
+				{
+					newVariant.tileProperties.clear();
+					RNInfo("Failed querying framebuffer tile properties: " << result);
+				}
+			}
+			else if(result != VK_SUCCESS)
+			{
+				RNInfo("Failed querying framebuffer tile properties count: " << result);
+			}
 		}
 
 		_framebufferVariants.push_back(newVariant);
