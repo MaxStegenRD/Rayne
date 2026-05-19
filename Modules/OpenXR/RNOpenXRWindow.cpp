@@ -254,7 +254,7 @@ namespace RN
 				extensions.push_back(extension.extensionName);
 				_supportsDynamicResolution = true;
 			}
-			else if(std::strcmp(extension.extensionName, XR_META_TILE_PROPERTIES_HINT_EXTENSION_NAME) == 0)
+			else if(Settings::GetSharedInstance()->GetBoolForKey(RNCSTR("RNVulkanUseTileProperties"), true) && std::strcmp(extension.extensionName, XR_META_TILE_PROPERTIES_HINT_EXTENSION_NAME) == 0)
 			{
 				extensions.push_back(extension.extensionName);
 				_supportsTilePropertiesHint = true;
