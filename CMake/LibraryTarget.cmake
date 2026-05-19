@@ -142,11 +142,16 @@ macro(__rayne_create_target _NAME _TYPE _SOURCES _HEADERS _PRIVATE_HEADERS _PUBL
         list(REMOVE_DUPLICATES PUBLIC_HEADER_BUILD_DIRECTORIES)
         list(REMOVE_DUPLICATES PUBLIC_HEADER_INSTALL_DIRECTORIES)
 
-        target_sources("${TARGET_NAME}" PUBLIC
-            FILE_SET public_headers
-            TYPE HEADERS
-            BASE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}"
-            FILES ${_HEADERS})
+        if(IOS OR VISIONOS)
+            target_sources("${TARGET_NAME}" PRIVATE ${_HEADERS})
+            set_target_properties("${TARGET_NAME}" PROPERTIES PUBLIC_HEADER "${_HEADERS}")
+        else()
+            target_sources("${TARGET_NAME}" PUBLIC
+                FILE_SET public_headers
+                TYPE HEADERS
+                BASE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}"
+                FILES ${_HEADERS})
+        endif()
 
         foreach(PUBLIC_HEADER_BUILD_DIRECTORY ${PUBLIC_HEADER_BUILD_DIRECTORIES})
             target_include_directories("${TARGET_NAME}" PUBLIC "$<BUILD_INTERFACE:${PUBLIC_HEADER_BUILD_DIRECTORY}>")
@@ -168,7 +173,7 @@ macro(__rayne_create_target _NAME _TYPE _SOURCES _HEADERS _PRIVATE_HEADERS _PUBL
         FRAMEWORK DESTINATION "${RAYNE_TARGET_INSTALL_DIRECTORY}"
         BUNDLE DESTINATION "${RAYNE_TARGET_INSTALL_DIRECTORY}")
 
-    if(NOT ("${_HEADERS}" STREQUAL ""))
+    if((NOT ("${_HEADERS}" STREQUAL "")) AND (NOT IOS) AND (NOT VISIONOS))
         list(APPEND RAYNE_TARGET_INSTALL_ARGS
             FILE_SET public_headers DESTINATION "${PUBLIC_HEADER_INSTALL_ROOT}")
     endif()

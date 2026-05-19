@@ -444,11 +444,19 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/RayneConfig.h.in ${RAYNE_GENERATED_IN
 set(RAYNE_PUBLIC_HEADER_INSTALL_DIRECTORY include/Rayne)
 rayne_add_library(Rayne "${TARGET_SOURCES}" "${TARGET_HEADERS}" "${VERSION_STRING}" "${VERSION_ABI}" PUBLIC_LIBRARIES ${PUBLIC_LIBRARIES} PRIVATE_LIBRARIES ${PRIVATE_LIBRARIES})
 
-target_sources(Rayne PUBLIC
-    FILE_SET public_headers
-    TYPE HEADERS
-    BASE_DIRS "${RAYNE_GENERATED_INCLUDE_DIRECTORY}"
-    FILES "${RAYNE_GENERATED_INCLUDE_DIRECTORY}/RayneConfig.h")
+if(IOS OR VISIONOS)
+    target_sources(Rayne PRIVATE "${RAYNE_GENERATED_INCLUDE_DIRECTORY}/RayneConfig.h")
+    set_property(TARGET Rayne APPEND PROPERTY PUBLIC_HEADER "${RAYNE_GENERATED_INCLUDE_DIRECTORY}/RayneConfig.h")
+    target_include_directories(Rayne PUBLIC
+        "$<BUILD_INTERFACE:${RAYNE_GENERATED_INCLUDE_DIRECTORY}>"
+        "$<INSTALL_INTERFACE:include/Rayne>")
+else()
+    target_sources(Rayne PUBLIC
+        FILE_SET public_headers
+        TYPE HEADERS
+        BASE_DIRS "${RAYNE_GENERATED_INCLUDE_DIRECTORY}"
+        FILES "${RAYNE_GENERATED_INCLUDE_DIRECTORY}/RayneConfig.h")
+endif()
 
 target_include_directories(Rayne SYSTEM PRIVATE ${VENDOR_INCLUDES})
 if(ANDROID)
