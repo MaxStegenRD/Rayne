@@ -82,10 +82,10 @@ namespace RN
 		XrSpace handRightGripPoseSpace;
 
 #if XR_USE_GRAPHICS_API_VULKAN
-		PFN_xrGetVulkanInstanceExtensionsKHR GetVulkanInstanceExtensionsKHR;
-		PFN_xrGetVulkanDeviceExtensionsKHR GetVulkanDeviceExtensionsKHR;
-		PFN_xrGetVulkanGraphicsDeviceKHR GetVulkanGraphicsDeviceKHR;
-		PFN_xrGetVulkanGraphicsRequirementsKHR GetVulkanGraphicsRequirementsKHR;
+		PFN_xrGetVulkanGraphicsDevice2KHR GetVulkanGraphicsDevice2KHR;
+		PFN_xrGetVulkanGraphicsRequirements2KHR GetVulkanGraphicsRequirements2KHR;
+		PFN_xrCreateVulkanInstanceKHR CreateVulkanInstanceKHR;
+		PFN_xrCreateVulkanDeviceKHR CreateVulkanDeviceKHR;
 #endif
 
 #if XR_USE_GRAPHICS_API_METAL

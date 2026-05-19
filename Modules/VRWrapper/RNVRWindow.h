@@ -110,8 +110,7 @@ namespace RN
 
 		RNVRAPI virtual uint64 GetWindowHandle() const override;
 
-		RNVRAPI virtual Array *GetRequiredVulkanInstanceExtensions() const { return nullptr; };
-		RNVRAPI virtual Array *GetRequiredVulkanDeviceExtensions(RN::RendererDescriptor *descriptor, RenderingDevice *device) const { return nullptr; };
+		RNVRAPI virtual Object *GetVulkanGraphicsProvider() const { return nullptr; };
 
 		RNDeclareMetaAPI(VRWindow, RNVRAPI)
 	};

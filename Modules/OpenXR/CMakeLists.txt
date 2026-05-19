@@ -52,8 +52,8 @@ elseif(UNIX AND NOT APPLE)
 endif()
 
 if(NOT APPLE AND ${RN_BUILD_VULKAN_MODULE})
-	set(SOURCES ${SOURCES} RNOpenXRVulkanSwapChain.cpp)
-	list(APPEND PRIVATE_HEADERS RNOpenXRVulkanSwapChain.h)
+	set(SOURCES ${SOURCES} RNOpenXRVulkanGraphicsProvider.cpp RNOpenXRVulkanSwapChain.cpp)
+	list(APPEND PRIVATE_HEADERS RNOpenXRVulkanGraphicsProvider.h RNOpenXRVulkanSwapChain.h)
 endif()
 
 if(APPLE AND ${RN_BUILD_METAL_MODULE})

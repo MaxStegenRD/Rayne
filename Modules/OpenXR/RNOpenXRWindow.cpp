@@ -10,6 +10,10 @@
 #include "RNOpenXRFramePresentationState.h"
 #include "RNOpenXRInternals.h"
 
+#if XR_USE_GRAPHICS_API_VULKAN
+	#include "RNOpenXRVulkanGraphicsProvider.h"
+#endif
+
 /*
 
 #include <android/log.h>
@@ -90,7 +94,7 @@ namespace RN
 	}
 
 	OpenXRWindow::OpenXRWindow() :
-		_internals(new OpenXRWindowInternals()), _runtimeName(nullptr), _layersUnderlay(new Array()), _layersOverlay(new Array()), _mainLayer(nullptr), _pendingPresentationState(nullptr), _pendingPresentationFrameID(0), _pendingPresentationStateWasTaken(false), _actualFrameIndex(0), _currentHapticsIndex {0, 0}, _hapticsStopped {true, true}, _preferredFrameRate(0.0f), _minCPULevel(XR_PERF_SETTINGS_LEVEL_SUSTAINED_HIGH_EXT), _minGPULevel(XR_PERF_SETTINGS_LEVEL_SUSTAINED_HIGH_EXT), _fixedFoveatedRenderingLevel(2), _fixedFoveatedRenderingDynamic(false), _isLocalDimmingEnabled(false), _isDynamicResolutionEnabled(true), _isSessionRunning(false), _hasSynchronization(false), _hasVisibility(false), _hasInputFocus(false), _isHandTrackingEnabled(false)
+		_internals(new OpenXRWindowInternals()), _vulkanGraphicsProvider(nullptr), _runtimeName(nullptr), _layersUnderlay(new Array()), _layersOverlay(new Array()), _mainLayer(nullptr), _pendingPresentationState(nullptr), _pendingPresentationFrameID(0), _pendingPresentationStateWasTaken(false), _actualFrameIndex(0), _currentHapticsIndex {0, 0}, _hapticsStopped {true, true}, _preferredFrameRate(0.0f), _minCPULevel(XR_PERF_SETTINGS_LEVEL_SUSTAINED_HIGH_EXT), _minGPULevel(XR_PERF_SETTINGS_LEVEL_SUSTAINED_HIGH_EXT), _fixedFoveatedRenderingLevel(2), _fixedFoveatedRenderingDynamic(false), _isLocalDimmingEnabled(false), _isDynamicResolutionEnabled(true), _isSessionRunning(false), _hasSynchronization(false), _hasVisibility(false), _hasInputFocus(false), _isHandTrackingEnabled(false)
 	{
 		_supportsVulkan = false;
 		_supportsMetal = false;
@@ -123,10 +127,10 @@ namespace RN
 		_internals->views = nullptr;
 
 #if XR_USE_GRAPHICS_API_VULKAN
-		_internals->GetVulkanInstanceExtensionsKHR = nullptr;
-		_internals->GetVulkanDeviceExtensionsKHR = nullptr;
-		_internals->GetVulkanGraphicsDeviceKHR = nullptr;
-		_internals->GetVulkanGraphicsRequirementsKHR = nullptr;
+		_internals->GetVulkanGraphicsDevice2KHR = nullptr;
+		_internals->GetVulkanGraphicsRequirements2KHR = nullptr;
+		_internals->CreateVulkanInstanceKHR = nullptr;
+		_internals->CreateVulkanDeviceKHR = nullptr;
 #endif
 
 #if XR_USE_GRAPHICS_API_METAL
@@ -202,11 +206,6 @@ namespace RN
 		_mainThreadID = gettid();
 #endif
 
-#ifdef XR_USE_GRAPHICS_API_VULKAN
-		extensions.push_back(XR_KHR_VULKAN_ENABLE_EXTENSION_NAME);
-		_supportsVulkan = true; //TODO: Only set to true if actually available!?
-#endif
-
 #ifdef XR_USE_GRAPHICS_API_METAL
 		extensions.push_back(XR_KHR_METAL_ENABLE_EXTENSION_NAME);
 		_supportsMetal = true;
@@ -267,6 +266,13 @@ namespace RN
 				_supportsAndroidThreadType = true;
 			}
 #endif
+#if XR_USE_GRAPHICS_API_VULKAN
+			else if(std::strcmp(extension.extensionName, XR_KHR_VULKAN_ENABLE2_EXTENSION_NAME) == 0)
+			{
+				extensions.push_back(extension.extensionName);
+				_supportsVulkan = true;
+			}
+#endif
 			else if(std::strcmp(extension.extensionName, XR_BD_CONTROLLER_INTERACTION_EXTENSION_NAME) == 0)
 			{
 				extensions.push_back(extension.extensionName);
@@ -313,6 +319,14 @@ namespace RN
 
 			RNDebug("  Name: " << extension.extensionName << ", Spec Version: " << extension.extensionVersion);
 		}
+
+#if XR_USE_GRAPHICS_API_VULKAN
+		if(!_supportsVulkan)
+		{
+			RNError("OpenXR runtime does not support " << XR_KHR_VULKAN_ENABLE2_EXTENSION_NAME);
+			RN_ASSERT(false, "OpenXR runtime does not support XR_KHR_vulkan_enable2");
+		}
+#endif
 
 		if(numberOfSupportedFoveationExtensions == 4)
 		{
@@ -419,23 +433,27 @@ namespace RN
 #if XR_USE_GRAPHICS_API_VULKAN
 		if(_supportsVulkan)
 		{
-			//vulkan_enable2
-			//TODO: (there is also a vulkan_enable2 extension, not supported by quest)
-			if(!XR_SUCCEEDED(xrGetInstanceProcAddr(_internals->instance, "xrGetVulkanInstanceExtensionsKHR", (PFN_xrVoidFunction *)(&_internals->GetVulkanInstanceExtensionsKHR))))
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrGetVulkanGraphicsDevice2KHR", (PFN_xrVoidFunction *)(&_internals->GetVulkanGraphicsDevice2KHR))))
 			{
+				RN_ASSERT(false, "Failed fetching xrGetVulkanGraphicsDevice2KHR");
 			}
 
-			if(!XR_SUCCEEDED(xrGetInstanceProcAddr(_internals->instance, "xrGetVulkanDeviceExtensionsKHR", (PFN_xrVoidFunction *)(&_internals->GetVulkanDeviceExtensionsKHR))))
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrGetVulkanGraphicsRequirements2KHR", (PFN_xrVoidFunction *)(&_internals->GetVulkanGraphicsRequirements2KHR))))
 			{
+				RN_ASSERT(false, "Failed fetching xrGetVulkanGraphicsRequirements2KHR");
 			}
 
-			if(!XR_SUCCEEDED(xrGetInstanceProcAddr(_internals->instance, "xrGetVulkanGraphicsDeviceKHR", (PFN_xrVoidFunction *)(&_internals->GetVulkanGraphicsDeviceKHR))))
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrCreateVulkanInstanceKHR", (PFN_xrVoidFunction *)(&_internals->CreateVulkanInstanceKHR))))
 			{
+				RN_ASSERT(false, "Failed fetching xrCreateVulkanInstanceKHR");
 			}
 
-			if(!XR_SUCCEEDED(xrGetInstanceProcAddr(_internals->instance, "xrGetVulkanGraphicsRequirementsKHR", (PFN_xrVoidFunction *)(&_internals->GetVulkanGraphicsRequirementsKHR))))
+			if(XR_FAILED(xrGetInstanceProcAddr(_internals->instance, "xrCreateVulkanDeviceKHR", (PFN_xrVoidFunction *)(&_internals->CreateVulkanDeviceKHR))))
 			{
+				RN_ASSERT(false, "Failed fetching xrCreateVulkanDeviceKHR");
 			}
+
+			_vulkanGraphicsProvider = new OpenXRVulkanGraphicsProvider(_internals->instance, _internals->systemID, _internals->CreateVulkanInstanceKHR, _internals->CreateVulkanDeviceKHR);
 		}
 #endif
 
@@ -561,6 +579,7 @@ namespace RN
 		SafeRelease(_layersUnderlay);
 		SafeRelease(_layersOverlay);
 		SafeRelease(_runtimeName);
+		SafeRelease(_vulkanGraphicsProvider);
 		XrResult result = xrDestroyInstance(_internals->instance);
 		if(XR_FAILED(result)) RNWarning("Failed destroying OpenXR instance with result: " << result);
 		delete _internals;
@@ -1677,7 +1696,7 @@ namespace RN
 		sessionCreateInfo.systemId = _internals->systemID;
 
 #ifdef XR_USE_GRAPHICS_API_VULKAN
-		XrGraphicsBindingVulkanKHR vulkanGraphicsBinding;
+		XrGraphicsBindingVulkan2KHR vulkanGraphicsBinding;
 		vulkanGraphicsBinding.type = XR_TYPE_GRAPHICS_BINDING_VULKAN_KHR;
 		vulkanGraphicsBinding.next = nullptr;
 
@@ -1685,10 +1704,10 @@ namespace RN
 		{
 			VulkanRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<VulkanRenderer>();
 
-			XrGraphicsRequirementsVulkanKHR graphicsRequirements;
+			XrGraphicsRequirementsVulkan2KHR graphicsRequirements;
 			graphicsRequirements.type = XR_TYPE_GRAPHICS_REQUIREMENTS_VULKAN_KHR;
 			graphicsRequirements.next = nullptr;
-			if(!XR_SUCCEEDED(_internals->GetVulkanGraphicsRequirementsKHR(_internals->instance, _internals->systemID, &graphicsRequirements)))
+			if(!XR_SUCCEEDED(_internals->GetVulkanGraphicsRequirements2KHR(_internals->instance, _internals->systemID, &graphicsRequirements)))
 			{
 				RN_ASSERT(false, "Failed fetching vulkan graphics requirements");
 			}
@@ -1697,7 +1716,12 @@ namespace RN
 			RNDebug("Maximum tested vulkan version: " << XR_VERSION_MAJOR(graphicsRequirements.maxApiVersionSupported) << "." << XR_VERSION_MINOR(graphicsRequirements.maxApiVersionSupported));
 
 			VkPhysicalDevice physicalDevice;
-			if(!XR_SUCCEEDED(_internals->GetVulkanGraphicsDeviceKHR(_internals->instance, _internals->systemID, renderer->GetVulkanInstance()->GetInstance(), &physicalDevice)))
+			XrVulkanGraphicsDeviceGetInfoKHR graphicsDeviceGetInfo;
+			graphicsDeviceGetInfo.type = XR_TYPE_VULKAN_GRAPHICS_DEVICE_GET_INFO_KHR;
+			graphicsDeviceGetInfo.next = nullptr;
+			graphicsDeviceGetInfo.systemId = _internals->systemID;
+			graphicsDeviceGetInfo.vulkanInstance = renderer->GetVulkanInstance()->GetInstance();
+			if(!XR_SUCCEEDED(_internals->GetVulkanGraphicsDevice2KHR(_internals->instance, &graphicsDeviceGetInfo, &physicalDevice)))
 			{
 				RN_ASSERT(false, "Failed fetching vulkan graphics device");
 			}
@@ -2922,13 +2946,18 @@ namespace RN
 	RenderingDevice *OpenXRWindow::GetOutputDevice(RendererDescriptor *descriptor) const
 	{
 #ifdef XR_USE_GRAPHICS_API_VULKAN
-		if(descriptor->GetAPI()->IsEqual(RNCSTR("Vulkan")) && _internals->GetVulkanGraphicsDeviceKHR)
+		if(descriptor->GetAPI()->IsEqual(RNCSTR("Vulkan")) && _internals->GetVulkanGraphicsDevice2KHR)
 		{
 			VulkanRendererDescriptor *vulkanDescriptor = descriptor->Downcast<VulkanRendererDescriptor>();
 			if(!vulkanDescriptor || !vulkanDescriptor->GetInstance()) return nullptr;
 
 			VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-			if(!XR_SUCCEEDED(_internals->GetVulkanGraphicsDeviceKHR(_internals->instance, _internals->systemID, vulkanDescriptor->GetInstance()->GetInstance(), &physicalDevice)))
+			XrVulkanGraphicsDeviceGetInfoKHR graphicsDeviceGetInfo;
+			graphicsDeviceGetInfo.type = XR_TYPE_VULKAN_GRAPHICS_DEVICE_GET_INFO_KHR;
+			graphicsDeviceGetInfo.next = nullptr;
+			graphicsDeviceGetInfo.systemId = _internals->systemID;
+			graphicsDeviceGetInfo.vulkanInstance = vulkanDescriptor->GetInstance()->GetInstance();
+			if(!XR_SUCCEEDED(_internals->GetVulkanGraphicsDevice2KHR(_internals->instance, &graphicsDeviceGetInfo, &physicalDevice)))
 			{
 				return nullptr;
 			}
@@ -2977,57 +3006,14 @@ namespace RN
 		return nullptr;
 	}
 
+	Object *OpenXRWindow::GetVulkanGraphicsProvider() const
+	{
+		return _vulkanGraphicsProvider;
+	}
+
 	const Window::SwapChainDescriptor &OpenXRWindow::GetSwapChainDescriptor() const
 	{
 		return _mainLayer->_swapChain->GetSwapChainDescriptor();
-	}
-
-	Array *OpenXRWindow::GetRequiredVulkanInstanceExtensions() const
-	{
-#if XR_USE_GRAPHICS_API_VULKAN
-		char names[4096];
-		uint32_t size = sizeof(names);
-		if(_internals->GetVulkanInstanceExtensionsKHR(_internals->instance, _internals->systemID, size, &size, names) != XR_SUCCESS)
-		{
-			return nullptr;
-		}
-
-		String *extensionString = RNSTR(names);
-		RNDebug("Needs vulkan instance extensions: " << extensionString);
-
-		RN::Array *result = extensionString->GetComponentsSeparatedByString(RNCSTR(" "));
-		return result;
-#else
-		return nullptr;
-#endif
-	}
-
-	Array *OpenXRWindow::GetRequiredVulkanDeviceExtensions(RN::RendererDescriptor *descriptor, RenderingDevice *device) const
-	{
-#if XR_USE_GRAPHICS_API_VULKAN
-		char names[4096];
-		uint32_t size = sizeof(names);
-		if(_internals->GetVulkanDeviceExtensionsKHR(_internals->instance, _internals->systemID, size, &size, names) != XR_SUCCESS)
-		{
-			return nullptr;
-		}
-
-		String *extensionString = RNSTR(names);
-		RNDebug("Needs vulkan device extensions: " << extensionString);
-		RN::Array *result = extensionString->GetComponentsSeparatedByString(RNCSTR(" "));
-		int removeIndex = -1;
-		result->Enumerate<String>([&](String *extension, size_t index, bool &stop) {
-			if(extension->IsEqual(RNCSTR(VK_EXT_DEBUG_MARKER_EXTENSION_NAME)))
-			{
-				removeIndex = index;
-				stop = true;
-			}
-		});
-		if(removeIndex != -1) result->RemoveObjectAtIndex(removeIndex);
-		return result;
-#else
-		return nullptr;
-#endif
 	}
 
 	VRWindow::DeviceType OpenXRWindow::GetDeviceType() const

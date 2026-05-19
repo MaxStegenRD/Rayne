@@ -66,6 +66,7 @@ namespace RN
 		OXRAPI const String *GetPreferredAudioInputDeviceID() const;
 
 		OXRAPI RenderingDevice *GetOutputDevice(RendererDescriptor *descriptor) const final;
+		OXRAPI Object *GetVulkanGraphicsProvider() const final;
 		OXRAPI const Window::SwapChainDescriptor &GetSwapChainDescriptor() const final;
 
 		OXRAPI void BeginFrame(float delta) final;
@@ -77,9 +78,6 @@ namespace RN
 		OXRAPI VRWindow::Origin GetOrigin() const final { return VRWindow::Origin::Floor; }
 
 		OXRAPI Mesh *GetHiddenAreaMesh(RN::numeric::uint8 eye) const override;
-
-		OXRAPI Array *GetRequiredVulkanInstanceExtensions() const final;
-		OXRAPI Array *GetRequiredVulkanDeviceExtensions(RN::RendererDescriptor *descriptor, RenderingDevice *device) const final;
 
 	private:
 		void InitializeInput();
@@ -104,6 +102,7 @@ namespace RN
 
 		int _mainThreadID;
 		OpenXRWindowInternals *_internals;
+		Object *_vulkanGraphicsProvider;
 		DeviceType _deviceType;
 		String *_runtimeName;
 

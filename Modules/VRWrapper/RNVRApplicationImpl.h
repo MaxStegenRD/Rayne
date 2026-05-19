@@ -39,12 +39,12 @@ namespace RN
 	{
 		if(!_vrWindow) return RN::Application::GetPreferredRenderer();
 
-		RN::Array *instanceExtensions = _vrWindow->GetRequiredVulkanInstanceExtensions();
+		RN::Object *vulkanGraphicsProvider = _vrWindow->GetVulkanGraphicsProvider();
 		RN::Dictionary *parameters = nullptr;
-		if(instanceExtensions)
+		if(vulkanGraphicsProvider)
 		{
 			parameters = new RN::Dictionary();
-			parameters->SetObjectForKey(instanceExtensions, RNCSTR("instanceextensions"));
+			parameters->SetObjectForKey(vulkanGraphicsProvider, RNCSTR("vulkangraphicsprovider"));
 		}
 
 #if RN_PLATFORM_ANDROID
@@ -75,9 +75,6 @@ namespace RN
 
 		if(!preferred)
 			preferred = RN::Application::GetPreferredRenderingDevice(descriptor, devices);
-
-		RN::Array *deviceExtensions = _vrWindow->GetRequiredVulkanDeviceExtensions(descriptor, preferred);
-		preferred->SetExtensions(deviceExtensions);
 
 		return preferred;
 	}
