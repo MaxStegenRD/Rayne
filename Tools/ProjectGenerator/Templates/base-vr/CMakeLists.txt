@@ -51,17 +51,6 @@ if(WIN32)
 	set(CMAKE_SYSTEM_VERSION "10.0.10240.0")
 endif()
 
-set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-if(APPLE)
-	if(IOS OR VISIONOS)
-		set(CMAKE_INSTALL_RPATH @executable_path;@executable_path/Frameworks)
-	else()
-		set(CMAKE_INSTALL_RPATH @executable_path;@executable_path/../Resources/Modules/RayneJolt;@executable_path/../Resources/Modules/RayneMetal;@executable_path/../Resources/Modules/RayneOpenXR;@executable_path/../Resources/Modules/RayneVR)
-	endif()
-elseif(UNIX)
-	set(CMAKE_INSTALL_RPATH \$ORIGIN;\$ORIGIN/Resources/Modules/RayneJolt;\$ORIGIN/Resources/Modules/RayneVulkan;\$ORIGIN/Resources/Modules/RayneOpenXR;\$ORIGIN/Resources/Modules/RayneVR)
-endif()
-
 set(SOURCES
 	Sources/main.cpp
 	Sources/__TMP__Application.cpp
