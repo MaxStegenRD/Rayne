@@ -337,16 +337,41 @@ namespace RN
 
 	void JoltDynamicBody::SetKinematicTarget(const Vector3 &position, const Quaternion &rotation, float delta)
 	{
+		if(!_actor || !position.IsValid() || !rotation.IsValid())
+			return;
+
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
-		Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
-		Quaternion targetRotation = rotation * _rotationOffset;
-		JPH::RVec3 targetPosition(position.x - positionOffset.x, position.y - positionOffset.y, position.z - positionOffset.z);
-		JPH::Quat targetJoltRotation(targetRotation.x, targetRotation.y, targetRotation.z, targetRotation.w);
 
-		if(delta <= k::EpsilonFloat)
-		{
+		Quaternion worldRotation = GetWorldRotation();
+		if(!worldRotation.IsValid())
+			return;
+
+		Vector3 positionOffset = worldRotation.GetRotatedVector(_positionOffset);
+		Vector3 targetPositionVector = position - positionOffset;
+		if(!targetPositionVector.IsValid())
+			return;
+
+		Quaternion targetRotation = rotation * _rotationOffset;
+		if(!targetRotation.IsValid())
+			return;
+
+		targetRotation.Normalize();
+
+		JPH::RVec3 targetPosition(targetPositionVector.x, targetPositionVector.y, targetPositionVector.z);
+		JPH::Quat targetJoltRotation(targetRotation.x, targetRotation.y, targetRotation.z, targetRotation.w);
+		targetJoltRotation = targetJoltRotation.Normalized();
+		if(targetJoltRotation.IsNaN() || !targetJoltRotation.IsNormalized())
+			return;
+
+		auto setTargetPoseDirectly = [&]() {
 			bodyInterface.SetPositionAndRotation(*_actor, targetPosition, targetJoltRotation, JPH::EActivation::DontActivate);
+			bodyInterface.SetLinearAndAngularVelocity(*_actor, JPH::Vec3::sZero(), JPH::Vec3::sZero());
+		};
+
+		if(!std::isfinite(delta) || delta <= k::EpsilonFloat)
+		{
+			setTargetPoseDirectly();
 			return;
 		}
 
