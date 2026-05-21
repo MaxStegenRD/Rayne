@@ -196,7 +196,7 @@ namespace RN
 		RN_ASSERT(b1 && b2, "Invalid bodies for constraint creation");
 
 		JPH::SixDOFConstraintSettings settings;
-		settings.mSpace = JPH::EConstraintSpace::LocalToBodyCOM;
+		settings.mSpace = JPH::EConstraintSpace::WorldSpace;
 		settings.mPosition1 = JPH::RVec3(localAnchor1.x, localAnchor1.y, localAnchor1.z);
 		settings.mAxisX1 = ToJoltVec3(localRot1.GetRotatedVector(Vector3(1.0f, 0.0f, 0.0f)));
 		settings.mAxisY1 = ToJoltVec3(localRot1.GetRotatedVector(Vector3(0.0f, 1.0f, 0.0f)));
