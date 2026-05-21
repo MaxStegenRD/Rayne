@@ -192,7 +192,7 @@ namespace RN
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 
-		return bodyInterface.IsActive(*_actor);
+		return !bodyInterface.IsActive(*_actor);
 	}
 
 	void JoltDynamicBody::LockMovement(RN::uint32 lockFlags)
