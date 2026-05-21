@@ -14,6 +14,7 @@
 #include <Jolt/Physics/Constraints/FixedConstraint.h>
 #include <Jolt/Physics/Constraints/DistanceConstraint.h>
 #include <Jolt/Physics/Constraints/SixDOFConstraint.h>
+#include <Jolt/Physics/Constraints/TwoBodyConstraint.h>
 #include <Jolt/Physics/Constraints/MotorSettings.h>
 #include <Jolt/Physics/Constraints/SpringSettings.h>
 
@@ -25,7 +26,12 @@ namespace RN
 	RNDefineMeta(JoltDistanceConstraint, JoltConstraint)
 	RNDefineMeta(JoltSixDOFConstraint, JoltConstraint)
 
-	JoltConstraint::JoltConstraint() : _constraint(nullptr)
+	JoltConstraint::JoltConstraint() :
+		_constraint(nullptr),
+		_bodyPairCollisionBody1(JPH::BodyID::cInvalidBodyID),
+		_bodyPairCollisionBody2(JPH::BodyID::cInvalidBodyID),
+		_bodyPairCollisionDisabled(false),
+		_collisionsEnabled(false)
 	{
 	}
 
@@ -38,6 +44,11 @@ namespace RN
 
 	JoltConstraint::~JoltConstraint()
 	{
+		if(_bodyPairCollisionDisabled)
+		{
+			SetStoredBodyPairCollisionEnabled(true);
+		}
+
 		if(_constraint)
 		{
 			//Remove from physics system which will also release the constraint
@@ -52,6 +63,8 @@ namespace RN
 	void JoltConstraint::SetConstraint(JPH::Constraint *constraint)
 	{
 		if(_constraint == constraint) return;
+		ResetStoredBodyPairCollisionState();
+
 		if(_constraint)
 		{
 			JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
@@ -64,11 +77,69 @@ namespace RN
 			JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 			physics->AddConstraint(_constraint);
 		}
+
+		if(_constraint && _constraint->GetType() == JPH::EConstraintType::TwoBodyConstraint)
+		{
+			JPH::TwoBodyConstraint *twoBodyConstraint = static_cast<JPH::TwoBodyConstraint *>(_constraint);
+			JPH::BodyID bodyID1 = twoBodyConstraint->GetBody1()->GetID();
+			JPH::BodyID bodyID2 = twoBodyConstraint->GetBody2()->GetID();
+			_bodyPairCollisionBody1 = bodyID1.GetIndexAndSequenceNumber();
+			_bodyPairCollisionBody2 = bodyID2.GetIndexAndSequenceNumber();
+			UpdateBodyPairCollisionState();
+		}
 	}
 
 	void JoltConstraint::SetEnabled(bool enabled)
 	{
 		if(_constraint) _constraint->SetEnabled(enabled);
+	}
+
+	void JoltConstraint::SetCollisionsEnabled(bool enabled)
+	{
+		if(_collisionsEnabled == enabled) return;
+
+		_collisionsEnabled = enabled;
+		UpdateBodyPairCollisionState();
+	}
+
+	void JoltConstraint::ResetStoredBodyPairCollisionState()
+	{
+		if(_bodyPairCollisionDisabled)
+		{
+			SetStoredBodyPairCollisionEnabled(true);
+			_bodyPairCollisionDisabled = false;
+		}
+
+		_bodyPairCollisionBody1 = JPH::BodyID::cInvalidBodyID;
+		_bodyPairCollisionBody2 = JPH::BodyID::cInvalidBodyID;
+	}
+
+	void JoltConstraint::UpdateBodyPairCollisionState()
+	{
+		if(!HasStoredBodyPair()) return;
+
+		bool shouldDisable = !_collisionsEnabled;
+		if(_bodyPairCollisionDisabled == shouldDisable) return;
+
+		SetStoredBodyPairCollisionEnabled(!shouldDisable);
+		_bodyPairCollisionDisabled = shouldDisable;
+	}
+
+	void JoltConstraint::SetStoredBodyPairCollisionEnabled(bool enabled)
+	{
+		if(!HasStoredBodyPair()) return;
+
+		if(JoltWorld *world = JoltWorld::GetSharedInstance())
+		{
+			world->SetBodyPairCollisionEnabled(JPH::BodyID(_bodyPairCollisionBody1), JPH::BodyID(_bodyPairCollisionBody2), enabled);
+		}
+	}
+
+	bool JoltConstraint::HasStoredBodyPair() const
+	{
+		return _bodyPairCollisionBody1 != JPH::BodyID::cInvalidBodyID &&
+			_bodyPairCollisionBody2 != JPH::BodyID::cInvalidBodyID &&
+			_bodyPairCollisionBody1 != _bodyPairCollisionBody2;
 	}
 
 	static JPH::Quat ToJoltQuat(const Quaternion &q)

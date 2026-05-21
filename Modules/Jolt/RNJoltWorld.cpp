@@ -180,6 +180,17 @@ namespace RN
 		return _internals->objectLayerMapper.GetObjectLayer(collisionGroup, collisionMask, broadPhaseLayer);
 	}
 
+	void JoltWorld::SetBodyPairCollisionEnabled(const JPH::BodyID &body1, const JPH::BodyID &body2, bool enabled)
+	{
+		if(body1.IsInvalid() || body2.IsInvalid() || body1 == body2) return;
+
+		_internals->contactListener.SetBodyPairCollisionEnabled(body1, body2, enabled);
+
+		JPH::BodyInterface &bodyInterface = _physicsSystem->GetBodyInterface();
+		bodyInterface.InvalidateContactCache(body1);
+		bodyInterface.InvalidateContactCache(body2);
+	}
+
 
 	JoltContactInfo JoltWorld::CastRay(const Vector3 &from, const Vector3 &to, uint32 filterGroup, uint32 filterMask)
 	{

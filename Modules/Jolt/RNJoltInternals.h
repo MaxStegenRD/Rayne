@@ -146,11 +146,45 @@ namespace RN
 	class JoltContactListener : public JPH::ContactListener
 	{
 	public:
+		void SetBodyPairCollisionEnabled(const JPH::BodyID &body1, const JPH::BodyID &body2, bool enabled)
+		{
+			uint64 key = GetBodyPairKey(body1, body2);
+			if(key == 0) return;
+
+			for(IgnoredBodyPair &pair : _ignoredBodyPairs)
+			{
+				if(pair.key == key)
+				{
+					if(!enabled)
+					{
+						pair.count += 1;
+						return;
+					}
+
+					pair.count -= 1;
+					if(pair.count == 0)
+					{
+						pair = _ignoredBodyPairs.back();
+						_ignoredBodyPairs.pop_back();
+					}
+					return;
+				}
+			}
+
+			if(!enabled)
+			{
+				_ignoredBodyPairs.push_back({key, 1});
+			}
+		}
+
 		// See: ContactListener
 		virtual JPH::ValidateResult OnContactValidate(const JPH::Body &inBody1, const JPH::Body &inBody2, JPH::RVec3Arg inBaseOffset, const JPH::CollideShapeResult &inCollisionResult) override
 		{
 			AutoreleasePool pool;
 //			RNDebug("Contact validate callback");
+
+			if(ShouldIgnoreBodyPair(inBody1.GetID(), inBody2.GetID()))
+				return JPH::ValidateResult::RejectAllContactsForThisBodyPair;
 
 			// Allows you to ignore a contact before it is created (using layers to not make objects collide is cheaper!)
 			return JPH::ValidateResult::AcceptAllContactsForThisBodyPair;
@@ -205,6 +239,45 @@ namespace RN
 			AutoreleasePool pool;
 //			RNDebug("A contact was removed");
 		}
+
+	private:
+		struct IgnoredBodyPair
+		{
+			uint64 key;
+			uint32 count;
+		};
+
+		uint64 GetBodyPairKey(const JPH::BodyID &body1, const JPH::BodyID &body2) const
+		{
+			if(body1.IsInvalid() || body2.IsInvalid()) return 0;
+
+			uint32 id1 = body1.GetIndexAndSequenceNumber();
+			uint32 id2 = body2.GetIndexAndSequenceNumber();
+			if(id1 == id2) return 0;
+			if(id1 > id2)
+			{
+				uint32 temp = id1;
+				id1 = id2;
+				id2 = temp;
+			}
+
+			return (static_cast<uint64>(id1) << 32U) | static_cast<uint64>(id2);
+		}
+
+		bool ShouldIgnoreBodyPair(const JPH::BodyID &body1, const JPH::BodyID &body2) const
+		{
+			uint64 key = GetBodyPairKey(body1, body2);
+			if(key == 0) return false;
+
+			for(const IgnoredBodyPair &pair : _ignoredBodyPairs)
+			{
+				if(pair.key == key) return true;
+			}
+
+			return false;
+		}
+
+		std::vector<IgnoredBodyPair> _ignoredBodyPairs;
 	};
 
 	// An example activation listener

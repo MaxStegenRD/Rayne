@@ -22,6 +22,7 @@ namespace JPH
 {
 	class PhysicsSystem;
 	class Body;
+	class BodyID;
 } // namespace JPH
 
 namespace RN
@@ -31,6 +32,7 @@ namespace RN
 	class JoltWorld : public SceneAttachment
 	{
 	public:
+		friend class JoltConstraint;
 		friend class JoltKinematicController;
 
 		JTAPI JoltWorld(const Vector3 &gravity = Vector3(0.0f, -9.81f, 0.0f), uint32 maxBodies = 65536, uint32 maxBodyPairs = 65536, uint32 maxContactConstraints = 10240);
@@ -65,6 +67,8 @@ namespace RN
 		static JoltWorld *GetSharedInstance() { return _sharedInstance; }
 
 	private:
+		JTAPI void SetBodyPairCollisionEnabled(const JPH::BodyID &body1, const JPH::BodyID &body2, bool enabled);
+
 		static JoltWorld *_sharedInstance;
 
 		JPH::PhysicsSystem *_physicsSystem;

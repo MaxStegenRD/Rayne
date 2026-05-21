@@ -24,6 +24,8 @@ namespace RN
 	public:
 		JTAPI JPH::Constraint *GetJoltConstraint() const { return _constraint; }
 		JTAPI void SetEnabled(bool enabled);
+		JTAPI void SetCollisionsEnabled(bool enabled);
+		JTAPI bool GetCollisionsEnabled() const { return _collisionsEnabled; }
 		JTAPI void SetSolverIterationCount(uint32 positionIterations, uint32 velocityIterations); //0 resets to the default
 
 	protected:
@@ -31,8 +33,16 @@ namespace RN
 		~JoltConstraint() override;
 
 		void SetConstraint(JPH::Constraint *constraint);
+		void ResetStoredBodyPairCollisionState();
+		void UpdateBodyPairCollisionState();
+		void SetStoredBodyPairCollisionEnabled(bool enabled);
+		bool HasStoredBodyPair() const;
 
 		JPH::Constraint *_constraint;
+		uint32 _bodyPairCollisionBody1;
+		uint32 _bodyPairCollisionBody2;
+		bool _bodyPairCollisionDisabled;
+		bool _collisionsEnabled;
 
 		RNDeclareMetaAPI(JoltConstraint, JTAPI)
 	};
