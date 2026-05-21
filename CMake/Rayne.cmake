@@ -162,8 +162,7 @@ macro(rayne_use_modules _TARGET _MODULES)
 
                     if(IS_DIRECTORY "${_MODULE_RESOURCE_SOURCE}")
                         list(APPEND _MODULE_RESOURCE_COPY_COMMANDS
-                            COMMAND ${CMAKE_COMMAND} -E rm -rf "${_MODULE_RESOURCE_DESTINATION}"
-                            COMMAND ${CMAKE_COMMAND} -E copy_directory "${_MODULE_RESOURCE_SOURCE}" "${_MODULE_RESOURCE_DESTINATION}")
+                            COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${_MODULE_RESOURCE_SOURCE}" "${_MODULE_RESOURCE_DESTINATION}")
                     elseif(EXISTS "${_MODULE_RESOURCE_SOURCE}")
                         list(APPEND _MODULE_RESOURCE_COPY_COMMANDS
                             COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_MODULE_RESOURCE_SOURCE}" "${_MODULE_RESOURCE_DESTINATION}")
@@ -181,6 +180,10 @@ macro(rayne_use_modules _TARGET _MODULES)
             endif()
 
             if(TARGET "${_MODULE_RESOURCE_COPY_TARGET}")
+                if(TARGET "${_TARGET}-Resources")
+                    add_dependencies(${_MODULE_RESOURCE_COPY_TARGET} "${_TARGET}-Resources")
+                endif()
+
                 add_dependencies(${_TARGET} ${_MODULE_RESOURCE_COPY_TARGET})
             endif()
         endif()
@@ -212,7 +215,6 @@ macro(rayne_copy_resources _TARGET _RESOURCES _ADDITIONAL_PACK_PARAMS)
         if(ANDROID)
             set(_RESOURCE_DESTINATION "${android-assets-dir}/${_RESOURCE}")
             set(_RESOURCE_PLATFORM android)
-            set(_REMOVE_RESOURCE_DESTINATION TRUE)
         elseif(APPLE)
             if(IOS OR VISIONOS)
                 string(FIND ${CMAKE_OSX_SYSROOT} "XROS" IS_VISIONOS)
@@ -234,16 +236,12 @@ macro(rayne_copy_resources _TARGET _RESOURCES _ADDITIONAL_PACK_PARAMS)
                 set(_RESOURCE_DESTINATION "$<TARGET_BUNDLE_CONTENT_DIR:${_TARGET}>/Resources/${_RESOURCE}")
                 set(_RESOURCE_PLATFORM macos)
             endif()
-
-            set(_REMOVE_RESOURCE_DESTINATION FALSE)
         elseif(WIN32)
             set(_RESOURCE_DESTINATION "$<TARGET_FILE_DIR:${_TARGET}>/${_RESOURCE}")
             set(_RESOURCE_PLATFORM windows)
-            set(_REMOVE_RESOURCE_DESTINATION FALSE)
         else()
             set(_RESOURCE_DESTINATION "$<TARGET_FILE_DIR:${_TARGET}>/${_RESOURCE}")
             set(_RESOURCE_PLATFORM linux)
-            set(_REMOVE_RESOURCE_DESTINATION FALSE)
         endif()
 
         get_filename_component(_RESOURCE_DESTINATION_DIRECTORY "${_RESOURCE_DESTINATION}" DIRECTORY)
@@ -251,11 +249,6 @@ macro(rayne_copy_resources _TARGET _RESOURCES _ADDITIONAL_PACK_PARAMS)
             COMMAND ${CMAKE_COMMAND} -E make_directory "${_RESOURCE_DESTINATION_DIRECTORY}")
 
         if(IS_DIRECTORY "${_RESOURCE_SOURCE}")
-            if(_REMOVE_RESOURCE_DESTINATION)
-                list(APPEND _RESOURCE_COPY_COMMANDS
-                    COMMAND ${CMAKE_COMMAND} -E rm -rf "${_RESOURCE_DESTINATION}")
-            endif()
-
             list(APPEND _RESOURCE_COPY_COMMANDS
                 COMMAND ${Python_EXECUTABLE} "${DIR_OF_RAYNE_CMAKE}/../Tools/ResourcePacker/pack.py" "${_RESOURCE_SOURCE}" "${_RESOURCE_DESTINATION}" "${_RESOURCE_PLATFORM}" ${_ADDITIONAL_PACK_PARAMS})
         elseif(EXISTS "${_RESOURCE_SOURCE}")
