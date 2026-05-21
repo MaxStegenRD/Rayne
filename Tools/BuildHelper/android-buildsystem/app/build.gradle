@@ -114,6 +114,16 @@ android {
     }
 }
 
+androidComponents {
+    onVariants(selector().withBuildType("debug")) { variant ->
+        variant.packaging.jniLibs.keepDebugSymbols.add("**/*.so")
+    }
+
+    onVariants(selector().withBuildType("profile")) { variant ->
+        variant.packaging.jniLibs.keepDebugSymbols.add("**/*.so")
+    }
+}
+
 afterEvaluate {
     android.applicationVariants.all { variant ->
         def variantTaskName = variant.name.capitalize()
