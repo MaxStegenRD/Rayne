@@ -228,6 +228,20 @@ namespace RN
 		mp->SetMassProperties(allowed, massProps);
 	}
 
+	void JoltDynamicBody::SetSolverIterationCount(uint32 positionIterations, uint32 velocityIterations)
+	{
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		const JPH::BodyLockInterface &lockInterface = physics->GetBodyLockInterface();
+		JPH::BodyLockWrite lock(lockInterface, *_actor);
+		if(!lock.Succeeded()) return;
+
+		JPH::MotionProperties *mp = lock.GetBody().GetMotionProperties();
+		if(!mp) return;
+
+		if(velocityIterations > 0) mp->SetNumVelocityStepsOverride(velocityIterations);
+		if(positionIterations > 0) mp->SetNumPositionStepsOverride(positionIterations);
+	}
+
 	void JoltDynamicBody::SetEnableCCD(bool enable)
 	{
 		//_actor->setRigidBodyFlag(Jolt::PxRigidBodyFlag::eENABLE_CCD, enable);
