@@ -17,7 +17,7 @@ namespace RN
 	RNDefineMeta(JoltKinematicController, JoltCollisionObject)
 
 	JoltKinematicController::JoltKinematicController(float radius, float height, JoltMaterial *material, float stepOffset) :
-		_fallSpeed(0.0f), _objectBelow(nullptr), _isFalling(false)
+		_material(SafeRetain(material)), _fallSpeed(0.0f), _radius(radius), _height(height), _objectBelow(nullptr), _isFalling(false)
 	{
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 
@@ -40,13 +40,14 @@ namespace RN
 	JoltKinematicController::~JoltKinematicController()
 	{
 		SafeRelease(_shape);
+		SafeRelease(_material);
 		delete _controller;
 		//if(_callback) delete _callback;
 	}
 
 	void JoltKinematicController::Move(const Vector3 &direction, float delta)
 	{
-		if(delta < k::EpsilonFloat || direction.GetLength() < k::EpsilonFloat)
+		if(delta <= k::EpsilonFloat || direction.GetLength() < k::EpsilonFloat)
 		{
 			return;
 		}
@@ -55,7 +56,7 @@ namespace RN
 
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 
-		_controller->SetLinearVelocity(JPH::Vec3Arg(direction.x, direction.y, direction.z));
+		_controller->SetLinearVelocity(JPH::Vec3Arg(direction.x / delta, direction.y / delta, direction.z / delta));
 		_controller->Update(delta, physics->GetGravity(), physics->GetDefaultBroadPhaseLayerFilter(objectLayer), physics->GetDefaultLayerFilter(objectLayer), {}, {}, *JoltWorld::GetSharedInstance()->_internals->tempAllocator);
 
 		UpdatePosition();
@@ -282,39 +283,20 @@ namespace RN
 
 	bool JoltKinematicController::Resize(float height, bool checkIfBlocked)
 	{
-		/*bool isBlocked = false;
-		float oldHeight = _controller->getHeight();
-		if(checkIfBlocked && height > oldHeight)
-		{
-			float radius = _controller->getRadius();
-			float dh = std::max(height - oldHeight - 2.0f * radius, 0.0f);
-			Jolt::PxCapsuleGeometry geom(radius, dh * 0.5f);
-			float temporaryShapeHeight = dh + radius * 2.0f;
-			float offset = height - temporaryShapeHeight * 0.5f;
+		float heightDifference = height - _height;
+		if(((heightDifference < 0.0f) ? -heightDifference : heightDifference) < k::EpsilonFloat) return true;
 
-			Jolt::PxExtendedVec3 position = _controller->getPosition();
-			Jolt::PxVec3 pos((float)position.x, (float)position.y + offset, (float)position.z);
-			Jolt::PxQuat orientation(k::Pi_2, Jolt::PxVec3(0.0f, 0.0f, 1.0f));
+		uint16 objectLayer = JoltWorld::GetSharedInstance()->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1);
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 
-			Jolt::PxFilterData filterData;
-			filterData.word0 = _collisionFilterGroup;
-			filterData.word1 = _collisionFilterMask;
-			filterData.word2 = _collisionFilterID;
-			filterData.word3 = _collisionFilterIgnoreID;
-			Jolt::PxOverlapBuffer hit;
-			JoltQueryFilterCallback filterCallback;
-			JoltWorld *JoltWorld = JoltWorld::GetSharedInstance();
-			if(JoltWorld->GetJoltScene()->overlap(geom, Jolt::PxTransform(pos, orientation), hit, Jolt::PxQueryFilterData(filterData, Jolt::PxQueryFlag::eANY_HIT|Jolt::PxQueryFlag::eSTATIC|Jolt::PxQueryFlag::eDYNAMIC|Jolt::PxQueryFlag::ePREFILTER), &filterCallback)) isBlocked = true;
-		}
-		
-		if(!isBlocked)
-		{
-			_controller->resize(height);
-		}
-		
-		return !isBlocked;*/
+		JoltShape *newShape = JoltCapsuleShape::WithRadius(_radius, height, _material);
+		bool didSetShape = _controller->SetShape(newShape->GetJoltShape(), checkIfBlocked ? 0.01f : 1000000.0f, physics->GetDefaultBroadPhaseLayerFilter(objectLayer), physics->GetDefaultLayerFilter(objectLayer), {}, {}, *JoltWorld::GetSharedInstance()->_internals->tempAllocator);
+		if(!didSetShape) return false;
 
-		return false;
+		SafeRelease(_shape);
+		_shape = newShape->Retain();
+		_height = height;
+		return true;
 	}
 
 	void JoltKinematicController::SetCollisionFilter(uint32 group, uint32 mask)
@@ -326,10 +308,7 @@ namespace RN
 
 	Vector3 JoltKinematicController::GetFeetOffset() const
 	{
-		/*		Jolt::PxVec3 footPosition = Jolt::toVec3(_controller->getFootPosition());
-		Jolt::PxVec3 position = Jolt::toVec3(_controller->getPosition());
-		Jolt::PxVec3 offset = footPosition - position;*/
-		return Vector3(); //Vector3(offset.x, offset.y, offset.z);
+		return Vector3(0.0f, -(_height * 0.5f + _radius), 0.0f);
 	}
 
 	void JoltKinematicController::Jump(float force)

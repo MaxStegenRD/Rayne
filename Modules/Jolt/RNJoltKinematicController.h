@@ -60,7 +60,7 @@ namespace RN
 	protected:
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
 
-		//JoltMaterial *_material;
+		JoltMaterial *_material;
 
 		JoltShape *_shape;
 		JPH::CharacterVirtual *_controller;
@@ -68,6 +68,8 @@ namespace RN
 		PIMPL<JoltCharacterInternals> _internals;
 
 		float _fallSpeed;
+		float _radius;
+		float _height;
 		SceneNode *_objectBelow;
 		bool _isFalling;
 
