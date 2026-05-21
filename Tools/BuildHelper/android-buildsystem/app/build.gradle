@@ -117,6 +117,9 @@ android {
 afterEvaluate {
     android.applicationVariants.all { variant ->
         def variantTaskName = variant.name.capitalize()
+        tasks.named("externalNativeBuild${variantTaskName}") {
+            outputs.upToDateWhen { false }
+        }
         tasks.named("merge${variantTaskName}Assets") {
             dependsOn "externalNativeBuild${variantTaskName}"
         }
