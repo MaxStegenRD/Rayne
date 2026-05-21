@@ -114,10 +114,32 @@ namespace RN
 			BUTTON_COUNT
 		};
 
+		static Quaternion GetLocalHandleRotationForType(Type type)
+		{
+			switch(type)
+			{
+				case Type::OculusTouchController:
+				case Type::PicoNeo3Controller:
+					return Quaternion::WithEulerAngle(Vector3(0.0f, -45.0f, 0.0f));
+
+				default:
+					return Quaternion::WithEulerAngle(Vector3(0.0f, -45.0f, 0.0f));
+			}
+		}
+
 		VRControllerTrackingState() :
-			type(Type::None), hasHaptics(true), hapticsSampleLength(0.0), hapticsMaxSamples(0), active(false), tracking(false), controllerID(-1), indexTrigger(0.0f), handTrigger(0.0f), button {false, false, false, false, false, false} {}
+			type(Type::None), localHandleRotation(GetLocalHandleRotationForType(Type::None)), hasHaptics(true), hapticsSampleLength(0.0), hapticsMaxSamples(0), active(false), tracking(false), controllerID(-1), indexTrigger(0.0f), handTrigger(0.0f), button {false, false, false, false, false, false} {}
+
+		void SetType(Type newType)
+		{
+			if(type == newType) return;
+
+			type = newType;
+			localHandleRotation = GetLocalHandleRotationForType(type);
+		}
 
 		Type type;
+		Quaternion localHandleRotation;
 		bool hasHaptics;
 		double hapticsSampleLength;
 		uint32 hapticsMaxSamples;

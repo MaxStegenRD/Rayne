@@ -2336,18 +2336,18 @@ namespace RN
 		XrInteractionProfileState rightHandInteractionProfileState {XR_TYPE_INTERACTION_PROFILE_STATE};
 		xrGetCurrentInteractionProfile(_internals->session, rightHandUserPath, &rightHandInteractionProfileState);
 
-		_controllerTrackingState[0].type = GetControllerTypeForInteractionProfile(_internals->instance, leftHandInteractionProfileState.interactionProfile);
-		_controllerTrackingState[1].type = GetControllerTypeForInteractionProfile(_internals->instance, rightHandInteractionProfileState.interactionProfile);
+		_controllerTrackingState[0].SetType(GetControllerTypeForInteractionProfile(_internals->instance, leftHandInteractionProfileState.interactionProfile));
+		_controllerTrackingState[1].SetType(GetControllerTypeForInteractionProfile(_internals->instance, rightHandInteractionProfileState.interactionProfile));
 #else
 		if(_supportsControllerInteractionPICO && _deviceType == PicoVR)
 		{
-			_controllerTrackingState[0].type = VRControllerTrackingState::Type::PicoNeo3Controller;
-			_controllerTrackingState[1].type = VRControllerTrackingState::Type::PicoNeo3Controller;
+			_controllerTrackingState[0].SetType(VRControllerTrackingState::Type::PicoNeo3Controller);
+			_controllerTrackingState[1].SetType(VRControllerTrackingState::Type::PicoNeo3Controller);
 		}
 		else
 		{
-			_controllerTrackingState[0].type = VRControllerTrackingState::Type::OculusTouchController;
-			_controllerTrackingState[1].type = VRControllerTrackingState::Type::OculusTouchController;
+			_controllerTrackingState[0].SetType(VRControllerTrackingState::Type::OculusTouchController);
+			_controllerTrackingState[1].SetType(VRControllerTrackingState::Type::OculusTouchController);
 		}
 #endif
 
