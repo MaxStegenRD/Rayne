@@ -71,6 +71,16 @@ namespace RN
 		if(_constraint) _constraint->SetEnabled(enabled);
 	}
 
+	static JPH::Quat ToJoltQuat(const Quaternion &q)
+	{
+		return JPH::Quat(q.x, q.y, q.z, q.w);
+	}
+
+	static JPH::Vec3 ToJoltVec3(const Vector3 &v)
+	{
+		return JPH::Vec3(v.x, v.y, v.z);
+	}
+
 	JoltPointConstraint::JoltPointConstraint(JoltDynamicBody *body1, const Vector3 &localAnchor1, JoltDynamicBody *body2, const Vector3 &localAnchor2)
 	{
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
@@ -123,10 +133,10 @@ namespace RN
 		settings.mAutoDetectPoint = false;
 		settings.mPoint1 = JPH::Vec3(localAnchor1.x, localAnchor1.y, localAnchor1.z);
 		settings.mPoint2 = JPH::Vec3(localAnchor2.x, localAnchor2.y, localAnchor2.z);
-		settings.mAxisX1 = JPH::Vec3(1.0f, 0.0f, 0.0f);
-		settings.mAxisY1 = JPH::Vec3(0.0f, 1.0f, 0.0f);
-		settings.mAxisX2 = JPH::Vec3(1.0f, 0.0f, 0.0f);
-		settings.mAxisY2 = JPH::Vec3(0.0f, 1.0f, 0.0f);
+		settings.mAxisX1 = ToJoltVec3(localRot1.GetRotatedVector(Vector3(1.0f, 0.0f, 0.0f)));
+		settings.mAxisY1 = ToJoltVec3(localRot1.GetRotatedVector(Vector3(0.0f, 1.0f, 0.0f)));
+		settings.mAxisX2 = ToJoltVec3(localRot2.GetRotatedVector(Vector3(1.0f, 0.0f, 0.0f)));
+		settings.mAxisY2 = ToJoltVec3(localRot2.GetRotatedVector(Vector3(0.0f, 1.0f, 0.0f)));
 		SetConstraint(settings.Create(*b1, *b2));
 	}
 
@@ -166,15 +176,6 @@ namespace RN
 	{
 		JoltDistanceConstraint *constraint = new JoltDistanceConstraint(body1, localAnchor1, body2, localAnchor2, minDistance, maxDistance);
 		return constraint->Autorelease();
-	}
-
-	static JPH::Quat ToJoltQuat(const Quaternion &q)
-	{
-		return JPH::Quat(q.x, q.y, q.z, q.w);
-	}
-	static JPH::Vec3 ToJoltVec3(const Vector3 &v)
-	{
-		return JPH::Vec3(v.x, v.y, v.z);
 	}
 
 	JoltSixDOFConstraint::JoltSixDOFConstraint(JoltDynamicBody *body1, const Vector3 &localAnchor1, const Quaternion &localRot1, JoltDynamicBody *body2, const Vector3 &localAnchor2, const Quaternion &localRot2)
