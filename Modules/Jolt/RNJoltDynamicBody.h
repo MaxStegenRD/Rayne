@@ -91,6 +91,7 @@ namespace RN
 	private:
 		JoltShape *_shape;
 		JPH::BodyID *_actor;
+		float _mass;
 		bool _isKinematic;
 
 		RNDeclareMetaAPI(JoltDynamicBody, JTAPI)

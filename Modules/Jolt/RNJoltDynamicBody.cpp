@@ -18,7 +18,7 @@ namespace RN
 
 	JoltDynamicBody::JoltDynamicBody(JoltShape *shape, float mass) :
 		_shape(shape->Retain()),
-		_actor(nullptr), _isKinematic(false)
+		_actor(nullptr), _mass(mass), _isKinematic(false)
 	{
 		JoltWorld *world = JoltWorld::GetSharedInstance();
 		JPH::PhysicsSystem *physics = world->GetJoltInstance();
@@ -71,6 +71,8 @@ namespace RN
 
 	void JoltDynamicBody::SetMass(float mass)
 	{
+		_mass = mass;
+
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 		const JPH::BodyLockInterface &lockInterface = physics->GetBodyLockInterface();
 		JPH::BodyLockWrite lock(lockInterface, *_actor);
@@ -92,9 +94,7 @@ namespace RN
 
 	float JoltDynamicBody::GetMass() const
 	{
-		//TODO: Probably need to store the mass separately?
-
-		return 1.0f; //_actor->getMass();
+		return _mass;
 	}
 
 	void JoltDynamicBody::SetLinearVelocity(const Vector3 &velocity)
@@ -327,7 +327,16 @@ namespace RN
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 		Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
 		Quaternion targetRotation = rotation * _rotationOffset;
-		bodyInterface.MoveKinematic(*_actor, JPH::RVec3Arg(position.x - positionOffset.x, position.y - positionOffset.y, position.z - positionOffset.z), JPH::QuatArg(targetRotation.x, targetRotation.y, targetRotation.z, targetRotation.w), delta);
+		JPH::RVec3 targetPosition(position.x - positionOffset.x, position.y - positionOffset.y, position.z - positionOffset.z);
+		JPH::Quat targetJoltRotation(targetRotation.x, targetRotation.y, targetRotation.z, targetRotation.w);
+
+		if(delta <= k::EpsilonFloat)
+		{
+			bodyInterface.SetPositionAndRotation(*_actor, targetPosition, targetJoltRotation, JPH::EActivation::DontActivate);
+			return;
+		}
+
+		bodyInterface.MoveKinematic(*_actor, targetPosition, targetJoltRotation, delta);
 	}
 
 	/*	void JoltDynamicBody::AccelerateToTarget(const Vector3 &position, const Quaternion &rotation, float delta)
