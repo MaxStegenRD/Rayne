@@ -19,6 +19,7 @@
 #include "RNUIServer.h"
 
 #include "RNUIButton.h"
+#include "RNUIDebugTextBackend.h"
 #include "RNUIGridView.h"
 #include "RNUIImageView.h"
 #include "RNUILabel.h"

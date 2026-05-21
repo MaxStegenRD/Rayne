@@ -14,6 +14,7 @@ set(SOURCES
         RNUIView.cpp
         RNUIAttributedString.cpp
         RNUILabel.cpp
+        RNUIDebugTextBackend.cpp
         RNUIWindow.cpp
         RNUIServer.cpp
         RNUIInit.cpp
@@ -34,6 +35,7 @@ set(HEADERS
         RNUIView.h
         RNUIAttributedString.h
         RNUILabel.h
+        RNUIDebugTextBackend.h
         RNUIWindow.h
         RNUIServer.h
         RNUIConfig.h
