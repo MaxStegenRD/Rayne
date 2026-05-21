@@ -120,6 +120,9 @@ afterEvaluate {
         tasks.named("externalNativeBuild${variantTaskName}") {
             outputs.upToDateWhen { false }
         }
+        tasks.named("merge${variantTaskName}JniLibFolders") {
+            dependsOn "externalNativeBuild${variantTaskName}"
+        }
         tasks.named("merge${variantTaskName}Assets") {
             dependsOn "externalNativeBuild${variantTaskName}"
         }
