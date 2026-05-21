@@ -50,6 +50,7 @@ set(RAYNE_SOURCES
     Debug/RNLogFormatter.cpp
     Debug/RNLogger.cpp
     Debug/RNLoggingEngine.cpp
+    Debug/RNDebugRenderer.cpp
     Input/Devices/RNPS4Controller.cpp
     Input/RNHIDDevice.cpp
     Input/RNInputControl.cpp
@@ -169,6 +170,7 @@ set(RAYNE_HEADERS
     Debug/RNLogFormatter.h
     Debug/RNLogger.h
     Debug/RNLoggingEngine.h
+    Debug/RNDebugRenderer.h
     Debug/RNProfiler.h
     Input/Devices/RNPS4Controller.h
     Input/RNHID.h
