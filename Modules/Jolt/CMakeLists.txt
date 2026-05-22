@@ -124,6 +124,7 @@ set(SOURCES
         RNJoltCollisionObject.cpp
         RNJoltShape.cpp
         RNJoltConstraint.cpp
+        RNJoltRigidBodyController.cpp
         RNJoltKinematicController.cpp)
 
 set(HEADERS
@@ -134,6 +135,7 @@ set(HEADERS
         RNJoltCollisionObject.h
         RNJoltShape.h
         RNJoltConstraint.h
+        RNJoltRigidBodyController.h
         RNJoltKinematicController.h)
 
 set(PRIVATE_HEADERS
