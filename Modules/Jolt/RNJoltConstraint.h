@@ -26,6 +26,8 @@ namespace RN
 		JTAPI void SetEnabled(bool enabled);
 		JTAPI void SetCollisionsEnabled(bool enabled);
 		JTAPI bool GetCollisionsEnabled() const { return _collisionsEnabled; }
+		JTAPI void SetConnectedBodyCollisionFilteringEnabled(bool enabled);
+		JTAPI bool GetConnectedBodyCollisionFilteringEnabled() const { return _connectedBodyCollisionFilteringEnabled; }
 		JTAPI void SetSolverIterationCount(uint32 positionIterations, uint32 velocityIterations); //0 resets to the default
 
 	protected:
@@ -43,7 +45,9 @@ namespace RN
 		uint32 _bodyPairCollisionBody1;
 		uint32 _bodyPairCollisionBody2;
 		bool _bodyPairCollisionDisabled;
+		bool _bodyPairConnectedBodyCollisionFilteringEnabled;
 		bool _collisionsEnabled;
+		bool _connectedBodyCollisionFilteringEnabled;
 
 		RNDeclareMetaAPI(JoltConstraint, JTAPI)
 	};

@@ -31,7 +31,9 @@ namespace RN
 		_bodyPairCollisionBody1(JPH::BodyID::cInvalidBodyID),
 		_bodyPairCollisionBody2(JPH::BodyID::cInvalidBodyID),
 		_bodyPairCollisionDisabled(false),
-		_collisionsEnabled(false)
+		_bodyPairConnectedBodyCollisionFilteringEnabled(false),
+		_collisionsEnabled(false),
+		_connectedBodyCollisionFilteringEnabled(false)
 	{
 	}
 
@@ -44,10 +46,7 @@ namespace RN
 
 	JoltConstraint::~JoltConstraint()
 	{
-		if(_bodyPairCollisionDisabled)
-		{
-			SetStoredBodyPairCollisionEnabled(true);
-		}
+		ResetStoredBodyPairCollisionState();
 
 		if(_constraint)
 		{
@@ -113,8 +112,25 @@ namespace RN
 		UpdateBodyPairCollisionState();
 	}
 
+	void JoltConstraint::SetConnectedBodyCollisionFilteringEnabled(bool enabled)
+	{
+		if(_connectedBodyCollisionFilteringEnabled == enabled) return;
+
+		_connectedBodyCollisionFilteringEnabled = enabled;
+		UpdateBodyPairCollisionState();
+	}
+
 	void JoltConstraint::ResetStoredBodyPairCollisionState()
 	{
+		if(_bodyPairConnectedBodyCollisionFilteringEnabled)
+		{
+			if(JoltWorld *world = JoltWorld::GetSharedInstance())
+			{
+				world->SetConnectedBodyCollisionFilteringEnabled(JPH::BodyID(_bodyPairCollisionBody1), JPH::BodyID(_bodyPairCollisionBody2), false);
+			}
+			_bodyPairConnectedBodyCollisionFilteringEnabled = false;
+		}
+
 		if(_bodyPairCollisionDisabled)
 		{
 			SetStoredBodyPairCollisionEnabled(true);
@@ -130,10 +146,20 @@ namespace RN
 		if(!HasStoredBodyPair()) return;
 
 		bool shouldDisable = !_collisionsEnabled;
-		if(_bodyPairCollisionDisabled == shouldDisable) return;
+		if(_bodyPairCollisionDisabled != shouldDisable)
+		{
+			SetStoredBodyPairCollisionEnabled(!shouldDisable);
+			_bodyPairCollisionDisabled = shouldDisable;
+		}
 
-		SetStoredBodyPairCollisionEnabled(!shouldDisable);
-		_bodyPairCollisionDisabled = shouldDisable;
+		bool shouldUseConnectedBodyCollisionFiltering = shouldDisable && _connectedBodyCollisionFilteringEnabled;
+		if(_bodyPairConnectedBodyCollisionFilteringEnabled == shouldUseConnectedBodyCollisionFiltering) return;
+
+		if(JoltWorld *world = JoltWorld::GetSharedInstance())
+		{
+			world->SetConnectedBodyCollisionFilteringEnabled(JPH::BodyID(_bodyPairCollisionBody1), JPH::BodyID(_bodyPairCollisionBody2), shouldUseConnectedBodyCollisionFiltering);
+		}
+		_bodyPairConnectedBodyCollisionFilteringEnabled = shouldUseConnectedBodyCollisionFiltering;
 	}
 
 	void JoltConstraint::SetStoredBodyPairCollisionEnabled(bool enabled)

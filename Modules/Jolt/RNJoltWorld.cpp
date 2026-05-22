@@ -191,6 +191,21 @@ namespace RN
 		bodyInterface.InvalidateContactCache(body2);
 	}
 
+	void JoltWorld::SetConnectedBodyCollisionFilteringEnabled(const JPH::BodyID &body1, const JPH::BodyID &body2, bool enabled)
+	{
+		if(body1.IsInvalid() || body2.IsInvalid() || body1 == body2) return;
+
+		std::vector<JPH::BodyID> affectedBodies;
+		_internals->contactListener.SetConnectedBodyCollisionFilteringEnabled(body1, body2, enabled, affectedBodies);
+
+		JPH::BodyInterface &bodyInterface = _physicsSystem->GetBodyInterface();
+		for(const JPH::BodyID &bodyID : affectedBodies)
+		{
+			if(bodyID.IsInvalid()) continue;
+			bodyInterface.InvalidateContactCache(bodyID);
+		}
+	}
+
 
 	JoltContactInfo JoltWorld::CastRay(const Vector3 &from, const Vector3 &to, uint32 filterGroup, uint32 filterMask)
 	{

@@ -68,6 +68,7 @@ namespace RN
 
 	private:
 		JTAPI void SetBodyPairCollisionEnabled(const JPH::BodyID &body1, const JPH::BodyID &body2, bool enabled);
+		JTAPI void SetConnectedBodyCollisionFilteringEnabled(const JPH::BodyID &body1, const JPH::BodyID &body2, bool enabled);
 
 		static JoltWorld *_sharedInstance;
 

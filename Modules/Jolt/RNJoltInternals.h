@@ -148,33 +148,28 @@ namespace RN
 	public:
 		void SetBodyPairCollisionEnabled(const JPH::BodyID &body1, const JPH::BodyID &body2, bool enabled)
 		{
-			uint64 key = GetBodyPairKey(body1, body2);
-			if(key == 0) return;
+			uint32 bodyID1;
+			uint32 bodyID2;
+			if(!GetBodyPair(body1, body2, bodyID1, bodyID2)) return;
 
-			for(IgnoredBodyPair &pair : _ignoredBodyPairs)
-			{
-				if(pair.key == key)
-				{
-					if(!enabled)
-					{
-						pair.count += 1;
-						return;
-					}
+			SetBodyPairTracked(_ignoredBodyPairs, bodyID1, bodyID2, !enabled);
+		}
 
-					pair.count -= 1;
-					if(pair.count == 0)
-					{
-						pair = _ignoredBodyPairs.back();
-						_ignoredBodyPairs.pop_back();
-					}
-					return;
-				}
-			}
+		void SetConnectedBodyCollisionFilteringEnabled(const JPH::BodyID &body1, const JPH::BodyID &body2, bool enabled, std::vector<JPH::BodyID> &affectedBodies)
+		{
+			uint32 bodyID1;
+			uint32 bodyID2;
+			if(!GetBodyPair(body1, body2, bodyID1, bodyID2)) return;
 
-			if(!enabled)
-			{
-				_ignoredBodyPairs.push_back({key, 1});
-			}
+			CollectConnectedFilteredBodies(bodyID1, affectedBodies);
+			CollectConnectedFilteredBodies(bodyID2, affectedBodies);
+
+			SetBodyPairTracked(_connectedFilteredBodyPairs, bodyID1, bodyID2, enabled);
+
+			CollectConnectedFilteredBodies(bodyID1, affectedBodies);
+			CollectConnectedFilteredBodies(bodyID2, affectedBodies);
+			affectedBodies.push_back(body1);
+			affectedBodies.push_back(body2);
 		}
 
 		// See: ContactListener
@@ -245,19 +240,48 @@ namespace RN
 		}
 
 	private:
-		struct IgnoredBodyPair
+		struct CountedBodyPair
 		{
-			uint64 key;
+			uint32 body1;
+			uint32 body2;
 			uint32 count;
 		};
 
-		uint64 GetBodyPairKey(const JPH::BodyID &body1, const JPH::BodyID &body2) const
+		void SetBodyPairTracked(std::vector<CountedBodyPair> &bodyPairs, uint32 bodyID1, uint32 bodyID2, bool tracked)
 		{
-			if(body1.IsInvalid() || body2.IsInvalid()) return 0;
+			for(CountedBodyPair &pair : bodyPairs)
+			{
+				if(pair.body1 == bodyID1 && pair.body2 == bodyID2)
+				{
+					if(tracked)
+					{
+						pair.count += 1;
+						return;
+					}
 
-			uint32 id1 = body1.GetIndexAndSequenceNumber();
-			uint32 id2 = body2.GetIndexAndSequenceNumber();
-			if(id1 == id2) return 0;
+					if(pair.count > 0) pair.count -= 1;
+					if(pair.count == 0)
+					{
+						pair = bodyPairs.back();
+						bodyPairs.pop_back();
+					}
+					return;
+				}
+			}
+
+			if(tracked)
+			{
+				bodyPairs.push_back({bodyID1, bodyID2, 1});
+			}
+		}
+
+		bool GetBodyPair(const JPH::BodyID &body1, const JPH::BodyID &body2, uint32 &id1, uint32 &id2) const
+		{
+			if(body1.IsInvalid() || body2.IsInvalid()) return false;
+
+			id1 = body1.GetIndexAndSequenceNumber();
+			id2 = body2.GetIndexAndSequenceNumber();
+			if(id1 == id2) return false;
 			if(id1 > id2)
 			{
 				uint32 temp = id1;
@@ -265,17 +289,85 @@ namespace RN
 				id2 = temp;
 			}
 
-			return (static_cast<uint64>(id1) << 32U) | static_cast<uint64>(id2);
+			return true;
+		}
+
+		void CollectConnectedFilteredBodies(uint32 bodyID, std::vector<JPH::BodyID> &bodies) const
+		{
+			std::vector<uint32> bodyIDs;
+			CollectConnectedFilteredBodyIDs(bodyID, bodyIDs);
+			for(uint32 connectedBodyID : bodyIDs)
+			{
+				bodies.push_back(JPH::BodyID(connectedBodyID));
+			}
+		}
+
+		void CollectConnectedFilteredBodyIDs(uint32 bodyID, std::vector<uint32> &bodyIDs) const
+		{
+			for(uint32 currentBodyID : bodyIDs)
+			{
+				if(currentBodyID == bodyID) return;
+			}
+
+			bodyIDs.push_back(bodyID);
+			if(_connectedFilteredBodyPairs.empty()) return;
+
+			for(size_t i = 0; i < bodyIDs.size(); i += 1)
+			{
+				uint32 currentBodyID = bodyIDs[i];
+				for(const CountedBodyPair &pair : _connectedFilteredBodyPairs)
+				{
+					uint32 connectedBodyID = 0;
+					if(pair.body1 == currentBodyID)
+					{
+						connectedBodyID = pair.body2;
+					}
+					else if(pair.body2 == currentBodyID)
+					{
+						connectedBodyID = pair.body1;
+					}
+					else
+					{
+						continue;
+					}
+
+					bool hasBodyID = false;
+					for(uint32 collectedBodyID : bodyIDs)
+					{
+						if(collectedBodyID == connectedBodyID)
+						{
+							hasBodyID = true;
+							break;
+						}
+					}
+					if(!hasBodyID)
+					{
+						bodyIDs.push_back(connectedBodyID);
+					}
+				}
+			}
 		}
 
 		bool ShouldIgnoreBodyPair(const JPH::BodyID &body1, const JPH::BodyID &body2) const
 		{
-			uint64 key = GetBodyPairKey(body1, body2);
-			if(key == 0) return false;
+			if(_ignoredBodyPairs.empty() && _connectedFilteredBodyPairs.empty()) return false;
 
-			for(const IgnoredBodyPair &pair : _ignoredBodyPairs)
+			uint32 bodyID1;
+			uint32 bodyID2;
+			if(!GetBodyPair(body1, body2, bodyID1, bodyID2)) return false;
+
+			for(const CountedBodyPair &pair : _ignoredBodyPairs)
 			{
-				if(pair.key == key) return true;
+				if(pair.body1 == bodyID1 && pair.body2 == bodyID2) return true;
+			}
+
+			if(_connectedFilteredBodyPairs.empty()) return false;
+
+			std::vector<uint32> connectedBodyIDs;
+			CollectConnectedFilteredBodyIDs(bodyID1, connectedBodyIDs);
+			for(uint32 connectedBodyID : connectedBodyIDs)
+			{
+				if(connectedBodyID == bodyID2) return true;
 			}
 
 			return false;
@@ -297,7 +389,8 @@ namespace RN
 			}
 		}
 
-		std::vector<IgnoredBodyPair> _ignoredBodyPairs;
+		std::vector<CountedBodyPair> _ignoredBodyPairs;
+		std::vector<CountedBodyPair> _connectedFilteredBodyPairs;
 	};
 
 	// An example activation listener
