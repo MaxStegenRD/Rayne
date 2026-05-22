@@ -16,8 +16,8 @@ namespace RN
 {
 	RNDefineMeta(JoltRigidBodyController, JoltCollisionObject)
 
-	JoltRigidBodyController::JoltRigidBodyController(float radius, float height, float groundTolerance, float mass) :
-		_radius(radius), _height(height), _groundTolerance(groundTolerance), _objectBelow(nullptr), _groundVelocity(), _isFalling(false)
+	JoltRigidBodyController::JoltRigidBodyController(float radius, float height, float groundTolerance, float mass, float stepOffset) :
+		_radius(radius), _height(height), _groundTolerance(groundTolerance), _stepOffset(stepOffset), _objectBelow(nullptr), _groundVelocity(), _groundNormal(), _isFalling(false)
 	{
 		JoltWorld *world = JoltWorld::GetSharedInstance();
 		JPH::PhysicsSystem *physics = world->GetJoltInstance();
@@ -52,7 +52,9 @@ namespace RN
 			return;
 		}
 
-		_controller->SetLinearVelocity(JPH::Vec3Arg(velocity.x, velocity.y, velocity.z));
+		Vector3 adjustedVelocity = GetGroundAdjustedVelocity(velocity);
+		ApplyStepOffset(adjustedVelocity, delta);
+		_controller->SetLinearVelocity(JPH::Vec3Arg(adjustedVelocity.x, adjustedVelocity.y, adjustedVelocity.z));
 		_controller->Activate();
 	}
 
@@ -84,6 +86,172 @@ namespace RN
 		return Vector3(0.0f, -(_height * 0.5f + _radius), 0.0f);
 	}
 
+	Vector3 JoltRigidBodyController::GetGroundAdjustedVelocity(const Vector3 &velocity) const
+	{
+		if(_controller->GetGroundState() != JPH::Character::EGroundState::OnGround)
+		{
+			return velocity;
+		}
+
+		Vector3 relativeVelocity = velocity - _groundVelocity;
+		Vector3 horizontalVelocity(relativeVelocity.x, 0.0f, relativeVelocity.z);
+		float horizontalSpeed = horizontalVelocity.GetLength();
+
+		if(horizontalSpeed <= k::EpsilonFloat)
+		{
+			return velocity;
+		}
+
+		Vector3 groundNormal = _groundNormal;
+		if(groundNormal.GetSquaredLength() <= k::EpsilonFloat || groundNormal.y <= k::EpsilonFloat)
+		{
+			return velocity;
+		}
+
+		groundNormal.Normalize();
+		Vector3 slopeVelocity = horizontalVelocity - groundNormal * horizontalVelocity.GetDotProduct(groundNormal);
+		if(slopeVelocity.GetSquaredLength() <= k::EpsilonFloat)
+		{
+			return velocity;
+		}
+
+		slopeVelocity.Normalize(horizontalSpeed);
+		if(relativeVelocity.y > 0.0f)
+		{
+			slopeVelocity.y += relativeVelocity.y;
+		}
+
+		return _groundVelocity + slopeVelocity;
+	}
+
+	void JoltRigidBodyController::ApplyStepOffset(const Vector3 &velocity, float delta)
+	{
+		if(_stepOffset <= k::EpsilonFloat || !_controller->IsSupported())
+		{
+			return;
+		}
+
+		Vector3 relativeVelocity = velocity - _groundVelocity;
+		Vector3 horizontalVelocity(relativeVelocity.x, 0.0f, relativeVelocity.z);
+		if(horizontalVelocity.GetSquaredLength() <= k::EpsilonFloat)
+		{
+			return;
+		}
+
+		RN::Vector3 movementDirection = horizontalVelocity;
+		movementDirection.Normalize();
+
+		JPH::RVec3 position = _controller->GetPosition();
+		JPH::Quat rotation = _controller->GetRotation();
+		Vector3 currentPosition(position.GetX(), position.GetY(), position.GetZ());
+		Quaternion currentRotation(rotation.GetX(), rotation.GetY(), rotation.GetZ(), rotation.GetW());
+		Vector3 horizontalMovement = horizontalVelocity * delta;
+		float horizontalDistance = horizontalMovement.GetLength();
+		if(horizontalDistance <= k::EpsilonFloat)
+		{
+			return;
+		}
+
+		Vector3 stepProbeMovement = relativeVelocity * delta;
+		if(horizontalDistance < 0.02f)
+		{
+			stepProbeMovement *= 0.02f / horizontalDistance;
+		}
+
+		if(!HasBlockingCollisionAt(currentPosition + stepProbeMovement, currentRotation, movementDirection))
+		{
+			return;
+		}
+
+		constexpr int StepSearchCount = 8;
+		constexpr int StepRefinementCount = 5;
+		constexpr float StepClearance = 0.005f;
+
+		float blockedHeight = 0.0f;
+		float clearHeight = -1.0f;
+		for(int i = 1; i <= StepSearchCount; i++)
+		{
+			float candidateHeight = _stepOffset * (static_cast<float>(i) / static_cast<float>(StepSearchCount));
+			Vector3 candidateStep(0.0f, candidateHeight, 0.0f);
+			if(!HasPenetrationAt(currentPosition + candidateStep, currentRotation, movementDirection) && !HasPenetrationAt(currentPosition + candidateStep + stepProbeMovement, currentRotation, movementDirection))
+			{
+				clearHeight = candidateHeight;
+				break;
+			}
+
+			blockedHeight = candidateHeight;
+		}
+
+		if(clearHeight < 0.0f)
+		{
+			return;
+		}
+
+		for(int i = 0; i < StepRefinementCount; i++)
+		{
+			float candidateHeight = (blockedHeight + clearHeight) * 0.5f;
+			Vector3 candidateStep(0.0f, candidateHeight, 0.0f);
+			if(!HasPenetrationAt(currentPosition + candidateStep, currentRotation, movementDirection) && !HasPenetrationAt(currentPosition + candidateStep + stepProbeMovement, currentRotation, movementDirection))
+			{
+				clearHeight = candidateHeight;
+			}
+			else
+			{
+				blockedHeight = candidateHeight;
+			}
+		}
+
+		float stepHeight = clearHeight + StepClearance;
+		if(stepHeight > _stepOffset) stepHeight = _stepOffset;
+
+		Vector3 steppedPosition = currentPosition + Vector3(0.0f, stepHeight, 0.0f);
+		_controller->SetPosition(JPH::RVec3Arg(steppedPosition.x, steppedPosition.y, steppedPosition.z), JPH::EActivation::Activate);
+	}
+
+	bool JoltRigidBodyController::HasBlockingCollisionAt(const Vector3 &position, const Quaternion &rotation, const Vector3 &movementDirection) const
+	{
+		JPH::RVec3 joltPosition(position.x, position.y, position.z);
+		JPH::Quat joltRotation(rotation.x, rotation.y, rotation.z, rotation.w);
+		JPH::Vec3 joltMovementDirection(movementDirection.x, movementDirection.y, movementDirection.z);
+		JPH::AllHitCollisionCollector<JPH::CollideShapeCollector> hits;
+		_controller->CheckCollision(joltPosition, joltRotation, joltMovementDirection, 0.0f, _shape->GetJoltShape(), joltPosition, hits);
+
+		for(const JPH::CollideShapeResult &hit : hits.mHits)
+		{
+			if(hit.mPenetrationDepth <= k::EpsilonFloat)
+			{
+				continue;
+			}
+
+			JPH::Vec3 normal = -hit.mPenetrationAxis.NormalizedOr(JPH::Vec3::sZero());
+			if(normal.GetY() < 0.5f)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	bool JoltRigidBodyController::HasPenetrationAt(const Vector3 &position, const Quaternion &rotation, const Vector3 &movementDirection) const
+	{
+		JPH::RVec3 joltPosition(position.x, position.y, position.z);
+		JPH::Quat joltRotation(rotation.x, rotation.y, rotation.z, rotation.w);
+		JPH::Vec3 joltMovementDirection(movementDirection.x, movementDirection.y, movementDirection.z);
+		JPH::AllHitCollisionCollector<JPH::CollideShapeCollector> hits;
+		_controller->CheckCollision(joltPosition, joltRotation, joltMovementDirection, 0.0f, _shape->GetJoltShape(), joltPosition, hits);
+
+		for(const JPH::CollideShapeResult &hit : hits.mHits)
+		{
+			if(hit.mPenetrationDepth > k::EpsilonFloat)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	void JoltRigidBodyController::UpdateControllerTransform()
 	{
 		Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
@@ -99,6 +267,7 @@ namespace RN
 		{
 			_objectBelow = nullptr;
 			_groundVelocity = Vector3();
+			_groundNormal = Vector3();
 			_isFalling = true;
 			return;
 		}
@@ -109,6 +278,8 @@ namespace RN
 
 		JPH::Vec3 groundVelocity = _controller->GetGroundVelocity();
 		_groundVelocity = Vector3(groundVelocity.GetX(), groundVelocity.GetY(), groundVelocity.GetZ());
+		JPH::Vec3 groundNormal = _controller->GetGroundNormal();
+		_groundNormal = Vector3(groundNormal.GetX(), groundNormal.GetY(), groundNormal.GetZ());
 		_isFalling = false;
 	}
 
