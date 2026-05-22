@@ -29,8 +29,9 @@ namespace RN
 
 		JTAPI void UpdatePosition() override;
 
-		JTAPI void Move(const Vector3 &direction, float delta);
-		JTAPI void Gravity(float gforce, float delta);
+		// Gravity is only a solver hint for contacts, floor sticking and stairs.
+		// The caller must include gravity integration in the velocity vector.
+		JTAPI void Move(const Vector3 &velocity, const Vector3 &gravity, float delta);
 		JTAPI std::vector<JoltContactInfo> SweepTestAll(const Vector3 &direction, const Vector3 &offset = Vector3()) const;
 		JTAPI JoltContactInfo SweepTest(const Vector3 &direction, const Vector3 &offset = Vector3()) const;
 		JTAPI JoltContactInfo OverlapTest() const;
@@ -46,17 +47,6 @@ namespace RN
 		SceneNode *GetObjectBelow() const { return _objectBelow; }
 		bool GetIsFalling() const { return _isFalling; }
 
-		JTAPI void Jump(float force);
-
-		/*	JTAPI void SetFallSpeed(float speed);
-		JTAPI void SetJumpSpeed(float speed);
-		JTAPI void SetMaxJumpHeight(float maxHeight);
-		JTAPI void SetMaxSlope(float maxSlope);
-		JTAPI void SetGravity(float gravity);*/
-
-		/*		JTAPI bool IsOnGround();
-		JTAPI void Jump();*/
-
 	protected:
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
 
@@ -65,11 +55,13 @@ namespace RN
 
 		PIMPL<JoltCharacterInternals> _internals;
 
-		float _fallSpeed;
 		float _radius;
 		float _height;
+		float _stepOffset;
 		SceneNode *_objectBelow;
 		bool _isFalling;
+
+		void UpdateGroundState();
 
 		RNDeclareMetaAPI(JoltKinematicController, JTAPI)
 	};

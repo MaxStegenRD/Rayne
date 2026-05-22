@@ -17,21 +17,21 @@ namespace RN
 	RNDefineMeta(JoltKinematicController, JoltCollisionObject)
 
 	JoltKinematicController::JoltKinematicController(float radius, float height, float stepOffset) :
-		_fallSpeed(0.0f), _radius(radius), _height(height), _objectBelow(nullptr), _isFalling(false)
+		_radius(radius), _height(height), _stepOffset(stepOffset), _objectBelow(nullptr), _isFalling(false)
 	{
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 
 		_shape = JoltCapsuleShape::WithRadius(radius, height)->Retain();
 
 		JPH::CharacterVirtualSettings settings;
-		settings.mMaxSlopeAngle = 70.0f;
+		settings.mMaxSlopeAngle = JPH::DegreesToRadians(70.0f);
 		settings.mMaxStrength = 10.0f;
 		settings.mShape = _shape->GetJoltShape();
-		//settings->mBackFaceMode = sBackFaceMode;
-		//settings->mCharacterPadding = sCharacterPadding;
-		//settings->mPenetrationRecoverySpeed = sPenetrationRecoverySpeed;
-		//settings->mPredictiveContactDistance = sPredictiveContactDistance;
-		//settings.mSupportingVolume = JPH::Plane(JPH::Vec3::sAxisY(), -radius); // Accept contacts that touch the lower sphere of the capsule
+		settings.mSupportingVolume = JPH::Plane(JPH::Vec3::sAxisY(), -radius);
+		//settings.mBackFaceMode = sBackFaceMode;
+		//settings.mCharacterPadding = sCharacterPadding;
+		//settings.mPenetrationRecoverySpeed = sPenetrationRecoverySpeed;
+		//settings.mPredictiveContactDistance = sPredictiveContactDistance;
 		_controller = new JPH::CharacterVirtual(&settings, JPH::RVec3::sZero(), JPH::Quat::sIdentity(), physics);
 		_internals->contactListener.controller = this;
 		_controller->SetListener(&_internals->contactListener);
@@ -44,46 +44,34 @@ namespace RN
 		//if(_callback) delete _callback;
 	}
 
-	void JoltKinematicController::Move(const Vector3 &direction, float delta)
+	void JoltKinematicController::Move(const Vector3 &velocity, const Vector3 &gravity, float delta)
 	{
-		if(delta <= k::EpsilonFloat || direction.GetLength() < k::EpsilonFloat)
+		if(delta <= k::EpsilonFloat)
 		{
+			UpdateGroundState();
 			return;
 		}
 
-		uint16 objectLayer = JoltWorld::GetSharedInstance()->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1);
+		JoltWorld *world = JoltWorld::GetSharedInstance();
+		uint16 objectLayer = world->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1);
+		JPH::PhysicsSystem *physics = world->GetJoltInstance();
+		JPH::Vec3 joltGravity(gravity.x, gravity.y, gravity.z);
 
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-
-		_controller->SetLinearVelocity(JPH::Vec3Arg(direction.x / delta, direction.y / delta, direction.z / delta));
-		_controller->Update(delta, physics->GetGravity(), physics->GetDefaultBroadPhaseLayerFilter(objectLayer), physics->GetDefaultLayerFilter(objectLayer), {}, {}, *JoltWorld::GetSharedInstance()->_internals->tempAllocator);
-
-		UpdatePosition();
-	}
-
-	void JoltKinematicController::Gravity(float gforce, float delta)
-	{
-		JoltContactInfo contact = SweepTest(RN::Vector3(0.0f, -10000.0f, 0.0f));
-		float groundDistance = _controller->GetPosition().GetY() - contact.position.y + GetFeetOffset().y;
-		float fallDistance = 0.0f;
-		_fallSpeed += gforce * delta;
-		if((groundDistance + _fallSpeed * delta) < k::EpsilonFloat || (!_isFalling && groundDistance + gforce * 2.0f * delta < 0.0f))
+		_controller->SetLinearVelocity(JPH::Vec3Arg(velocity.x, velocity.y, velocity.z));
+		if(_stepOffset > k::EpsilonFloat)
 		{
-			_fallSpeed = 0.0f;
-			_isFalling = false;
-			fallDistance = -groundDistance;
+			JPH::CharacterVirtual::ExtendedUpdateSettings updateSettings;
+			updateSettings.mWalkStairsStepUp = JPH::Vec3(0.0f, _stepOffset, 0.0f);
+			updateSettings.mStickToFloorStepDown = JPH::Vec3(0.0f, -_stepOffset, 0.0f);
+			_controller->ExtendedUpdate(delta, joltGravity, updateSettings, physics->GetDefaultBroadPhaseLayerFilter(objectLayer), physics->GetDefaultLayerFilter(objectLayer), {}, {}, *world->_internals->tempAllocator);
 		}
 		else
 		{
-			fallDistance = _fallSpeed * delta;
-			_isFalling = true;
+			_controller->Update(delta, joltGravity, physics->GetDefaultBroadPhaseLayerFilter(objectLayer), physics->GetDefaultLayerFilter(objectLayer), {}, {}, *world->_internals->tempAllocator);
 		}
 
-		_objectBelow = contact.node;
-		if(std::abs(fallDistance) > k::EpsilonFloat)
-		{
-			Move(RN::Vector3(0.0f, fallDistance, 0.0f), delta);
-		}
+		UpdatePosition();
+		UpdateGroundState();
 	}
 
 	std::vector<JoltContactInfo> JoltKinematicController::SweepTestAll(const Vector3 &direction, const Vector3 &offset) const
@@ -310,10 +298,19 @@ namespace RN
 		return Vector3(0.0f, -(_height * 0.5f + _radius), 0.0f);
 	}
 
-	void JoltKinematicController::Jump(float force)
+	void JoltKinematicController::UpdateGroundState()
 	{
-		_fallSpeed = force;
-		_isFalling = true;
+		if(!_controller->IsSupported())
+		{
+			_objectBelow = nullptr;
+			_isFalling = true;
+			return;
+		}
+
+		JoltCollisionObject *collisionObject = reinterpret_cast<JoltCollisionObject *>(_controller->GetGroundUserData());
+		_objectBelow = collisionObject ? collisionObject->GetParent() : nullptr;
+		if(_objectBelow) _objectBelow->Retain()->Autorelease();
+		_isFalling = false;
 	}
 
 	void JoltKinematicController::DidUpdate(SceneNode::ChangeSet changeSet)
