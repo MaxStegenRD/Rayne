@@ -377,15 +377,88 @@ namespace RN
 	void JoltSixDOFConstraint::SetTranslationLimits(const Vector3 &limitMin, const Vector3 &limitMax)
 	{
 		if(!_constraint) return;
-		JPH::SixDOFConstraint *six = static_cast<JPH::SixDOFConstraint *>(_constraint);
-		six->SetTranslationLimits(JPH::Vec3(limitMin.x, limitMin.y, limitMin.z), JPH::Vec3(limitMax.x, limitMax.y, limitMax.z));
+		RebuildWithLimits(&limitMin, &limitMax, nullptr, nullptr);
 	}
 
 	void JoltSixDOFConstraint::SetRotationLimits(const Vector3 &limitMin, const Vector3 &limitMax)
 	{
 		if(!_constraint) return;
+		RebuildWithLimits(nullptr, nullptr, &limitMin, &limitMax);
+	}
+
+	void JoltSixDOFConstraint::RebuildWithLimits(const Vector3 *translationLimitMin, const Vector3 *translationLimitMax, const Vector3 *rotationLimitMin, const Vector3 *rotationLimitMax)
+	{
+		if(!_constraint) return;
+
+		auto configureAxis = [](JPH::SixDOFConstraintSettings *settings, JPH::SixDOFConstraintSettings::EAxis axis, float limitMin, float limitMax) {
+			if(limitMin <= -1000000.0f && limitMax >= 1000000.0f)
+			{
+				settings->MakeFreeAxis(axis);
+				return;
+			}
+
+			if(limitMin >= limitMax || limitMin > 0.0f || limitMax < 0.0f)
+			{
+				settings->MakeFixedAxis(axis);
+				return;
+			}
+
+			settings->SetLimitedAxis(axis, limitMin, limitMax);
+		};
+
 		JPH::SixDOFConstraint *six = static_cast<JPH::SixDOFConstraint *>(_constraint);
-		six->SetRotationLimits(JPH::Vec3(limitMin.x, limitMin.y, limitMin.z), JPH::Vec3(limitMax.x, limitMax.y, limitMax.z));
+		JPH::Body *body1 = six->GetBody1();
+		JPH::Body *body2 = six->GetBody2();
+
+		JPH::EMotorState motorState[6];
+		for(int i = 0; i < 6; i++)
+		{
+			motorState[i] = six->GetMotorState(static_cast<JPH::SixDOFConstraint::EAxis>(i));
+		}
+
+		JPH::Vec3 targetVelocity = six->GetTargetVelocityCS();
+		JPH::Vec3 targetAngularVelocity = six->GetTargetAngularVelocityCS();
+		JPH::Vec3 targetPosition = six->GetTargetPositionCS();
+		JPH::Quat targetOrientation = six->GetTargetOrientationCS();
+		JPH::SpringSettings limitsSpringSettings[3] = {
+			six->GetLimitsSpringSettings(JPH::SixDOFConstraint::EAxis::TranslationX),
+			six->GetLimitsSpringSettings(JPH::SixDOFConstraint::EAxis::TranslationY),
+			six->GetLimitsSpringSettings(JPH::SixDOFConstraint::EAxis::TranslationZ)
+		};
+
+		JPH::Ref<JPH::ConstraintSettings> constraintSettings = six->GetConstraintSettings();
+		JPH::SixDOFConstraintSettings *settings = static_cast<JPH::SixDOFConstraintSettings *>(constraintSettings.GetPtr());
+		for(int i = 0; i < 3; i++)
+		{
+			settings->mLimitsSpringSettings[i] = limitsSpringSettings[i];
+		}
+
+		if(translationLimitMin && translationLimitMax)
+		{
+			configureAxis(settings, JPH::SixDOFConstraintSettings::TranslationX, translationLimitMin->x, translationLimitMax->x);
+			configureAxis(settings, JPH::SixDOFConstraintSettings::TranslationY, translationLimitMin->y, translationLimitMax->y);
+			configureAxis(settings, JPH::SixDOFConstraintSettings::TranslationZ, translationLimitMin->z, translationLimitMax->z);
+		}
+
+		if(rotationLimitMin && rotationLimitMax)
+		{
+			configureAxis(settings, JPH::SixDOFConstraintSettings::RotationX, rotationLimitMin->x, rotationLimitMax->x);
+			configureAxis(settings, JPH::SixDOFConstraintSettings::RotationY, rotationLimitMin->y, rotationLimitMax->y);
+			configureAxis(settings, JPH::SixDOFConstraintSettings::RotationZ, rotationLimitMin->z, rotationLimitMax->z);
+		}
+
+		SetConstraint(settings->Create(*body1, *body2));
+
+		six = static_cast<JPH::SixDOFConstraint *>(_constraint);
+		for(int i = 0; i < 6; i++)
+		{
+			six->SetMotorState(static_cast<JPH::SixDOFConstraint::EAxis>(i), motorState[i]);
+		}
+
+		six->SetTargetVelocityCS(targetVelocity);
+		six->SetTargetAngularVelocityCS(targetAngularVelocity);
+		six->SetTargetPositionCS(targetPosition);
+		six->SetTargetOrientationCS(targetOrientation);
 	}
 
 	void JoltSixDOFConstraint::SetTranslationSpringParams(float frequency, float damping)

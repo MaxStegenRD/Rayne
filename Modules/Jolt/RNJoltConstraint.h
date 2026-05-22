@@ -107,6 +107,9 @@ namespace RN
 		JTAPI void SetTranslationSpringParamsAxis(Axis axis, float frequency, float damping); // axis must be TranslationX/Y/Z
 		JTAPI void SetMaxFriction(Axis axis, float maxFriction);
 
+	private:
+		void RebuildWithLimits(const Vector3 *translationLimitMin, const Vector3 *translationLimitMax, const Vector3 *rotationLimitMin, const Vector3 *rotationLimitMax);
+
 		RNDeclareMetaAPI(JoltSixDOFConstraint, JTAPI)
 	};
 } // namespace RN
