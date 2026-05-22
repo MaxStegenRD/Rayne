@@ -24,7 +24,7 @@ namespace RN
 	class JoltKinematicController : public JoltCollisionObject
 	{
 	public:
-		JTAPI JoltKinematicController(float radius, float height, JoltMaterial *material, float stepOffset = 0.5f);
+		JTAPI JoltKinematicController(float radius, float height, float stepOffset = 0.5f);
 		JTAPI ~JoltKinematicController() override;
 
 		JTAPI void UpdatePosition() override;
@@ -59,8 +59,6 @@ namespace RN
 
 	protected:
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
-
-		JoltMaterial *_material;
 
 		JoltShape *_shape;
 		JPH::CharacterVirtual *_controller;

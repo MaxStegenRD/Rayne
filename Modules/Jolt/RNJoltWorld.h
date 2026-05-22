@@ -14,7 +14,6 @@
 #include "RNJoltConstraint.h"
 #include "RNJoltDynamicBody.h"
 #include "RNJoltKinematicController.h"
-#include "RNJoltMaterial.h"
 #include "RNJoltShape.h"
 #include "RNJoltStaticBody.h"
 

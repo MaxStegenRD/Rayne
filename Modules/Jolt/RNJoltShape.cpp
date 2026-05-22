@@ -30,17 +30,16 @@ namespace RN
 	RNDefineMeta(JoltCompoundShape, JoltShape)
 
 	JoltShape::JoltShape() :
-		_shape(nullptr), _material(nullptr)
+		_shape(nullptr)
 	{}
 
 	JoltShape::JoltShape(JPH::Shape *shape) :
-		_shape(shape), _material(nullptr)
+		_shape(shape)
 	{}
 
 	JoltShape::~JoltShape()
 	{
 		if(_shape) _shape->Release();
-		SafeRelease(_material);
 	}
 
 	void JoltShape::SetPose(RN::Vector3 positionOffset, RN::Quaternion rotationOffset)
@@ -49,49 +48,46 @@ namespace RN
 	}
 
 
-	JoltSphereShape::JoltSphereShape(float radius, JoltMaterial *material)
+	JoltSphereShape::JoltSphereShape(float radius)
 	{
-		_material = SafeRetain(material);
-		_shape = new JPH::SphereShape(radius, material ? material->GetJoltMaterial() : nullptr);
+		_shape = new JPH::SphereShape(radius);
 		_shape->AddRef();
 	}
 
-	JoltSphereShape *JoltSphereShape::WithRadius(float radius, JoltMaterial *material)
+	JoltSphereShape *JoltSphereShape::WithRadius(float radius)
 	{
-		JoltSphereShape *shape = new JoltSphereShape(radius, material);
+		JoltSphereShape *shape = new JoltSphereShape(radius);
 		return shape->Autorelease();
 	}
 
 
-	JoltBoxShape::JoltBoxShape(const Vector3 &halfExtents, JoltMaterial *material, float convexRadius)
+	JoltBoxShape::JoltBoxShape(const Vector3 &halfExtents, float convexRadius)
 	{
-		_material = SafeRetain(material);
-		_shape = new JPH::BoxShape(JPH::Vec3Arg(halfExtents.x, halfExtents.y, halfExtents.z), convexRadius, material ? material->GetJoltMaterial() : nullptr);
+		_shape = new JPH::BoxShape(JPH::Vec3Arg(halfExtents.x, halfExtents.y, halfExtents.z), convexRadius);
 		_shape->AddRef();
 	}
 
-	JoltBoxShape *JoltBoxShape::WithHalfExtents(const Vector3 &halfExtents, JoltMaterial *material, float convexRadius)
+	JoltBoxShape *JoltBoxShape::WithHalfExtents(const Vector3 &halfExtents, float convexRadius)
 	{
-		JoltBoxShape *shape = new JoltBoxShape(halfExtents, material, convexRadius);
+		JoltBoxShape *shape = new JoltBoxShape(halfExtents, convexRadius);
 		return shape->Autorelease();
 	}
 
 
-	JoltCapsuleShape::JoltCapsuleShape(float radius, float height, JoltMaterial *material)
+	JoltCapsuleShape::JoltCapsuleShape(float radius, float height)
 	{
-		_material = SafeRetain(material);
-		_shape = new JPH::CapsuleShape(height * 0.5f, radius, material ? material->GetJoltMaterial() : nullptr);
+		_shape = new JPH::CapsuleShape(height * 0.5f, radius);
 		_shape->AddRef();
 	}
 
-	JoltCapsuleShape *JoltCapsuleShape::WithRadius(float radius, float height, JoltMaterial *material)
+	JoltCapsuleShape *JoltCapsuleShape::WithRadius(float radius, float height)
 	{
-		JoltCapsuleShape *shape = new JoltCapsuleShape(radius, height, material);
+		JoltCapsuleShape *shape = new JoltCapsuleShape(radius, height);
 		return shape->Autorelease();
 	}
 
 
-	JoltTriangleMeshShape::JoltTriangleMeshShape(Mesh *mesh, JoltMaterial *material, Vector3 scale, bool wantsDoubleSided)
+	JoltTriangleMeshShape::JoltTriangleMeshShape(Mesh *mesh, Vector3 scale, bool wantsDoubleSided)
 	{
 		JPH::TriangleList triangles;
 
@@ -152,13 +148,9 @@ namespace RN
 		
 		//RN_DEBUG_ASSERT(badTriangleCount < triangleCount / 10, "More than 10% invalid triangles!");
 
-		JPH::PhysicsMaterialList materials;
-		if(material) materials.push_back(material->GetJoltMaterial());
-
-		JPH::MeshShapeSettings settings(triangles, materials);
+		JPH::MeshShapeSettings settings(triangles);
 		JPH::Shape::ShapeResult result = settings.Create();
 
-		_material = SafeRetain(material);
 		if(result.IsValid())
 		{
 			_shape = result.Get();
@@ -166,13 +158,13 @@ namespace RN
 		}
 	}
 
-	JoltTriangleMeshShape *JoltTriangleMeshShape::WithMesh(Mesh *mesh, JoltMaterial *material, Vector3 scale, bool wantsDoubleSided)
+	JoltTriangleMeshShape *JoltTriangleMeshShape::WithMesh(Mesh *mesh, Vector3 scale, bool wantsDoubleSided)
 	{
-		JoltTriangleMeshShape *shape = new JoltTriangleMeshShape(mesh, material, scale, wantsDoubleSided);
+		JoltTriangleMeshShape *shape = new JoltTriangleMeshShape(mesh, scale, wantsDoubleSided);
 		return shape->Autorelease();
 	}
 
-	JoltConvexHullShape::JoltConvexHullShape(Mesh *mesh, JoltMaterial *material, Vector3 scale, float convexRadius)
+	JoltConvexHullShape::JoltConvexHullShape(Mesh *mesh, Vector3 scale, float convexRadius)
 	{
 		JPH::Array<JPH::Vec3> vertices;
 
@@ -190,10 +182,9 @@ namespace RN
 			vertices.push_back(JPH::Vec3(position.x * scale.x, position.y * scale.y, position.z * scale.z));
 		}
 
-		JPH::ConvexHullShapeSettings settings(vertices, convexRadius, material ? material->GetJoltMaterial() : nullptr);
+		JPH::ConvexHullShapeSettings settings(vertices, convexRadius);
 		JPH::Shape::ShapeResult result = settings.Create();
 
-		_material = SafeRetain(material);
 		RN_DEBUG_ASSERT(result.IsValid(), "Invalid shape!");
 		if(result.IsValid())
 		{
@@ -202,9 +193,9 @@ namespace RN
 		}
 	}
 
-	JoltConvexHullShape *JoltConvexHullShape::WithMesh(Mesh *mesh, JoltMaterial *material, Vector3 scale, float convexRadius)
+	JoltConvexHullShape *JoltConvexHullShape::WithMesh(Mesh *mesh, Vector3 scale, float convexRadius)
 	{
-		JoltConvexHullShape *shape = new JoltConvexHullShape(mesh, material, scale, convexRadius);
+		JoltConvexHullShape *shape = new JoltConvexHullShape(mesh, scale, convexRadius);
 		return shape->Autorelease();
 	}
 
@@ -215,7 +206,7 @@ namespace RN
 		_shape->AddRef();
 	}
 
-	JoltCompoundShape::JoltCompoundShape(Model *model, JoltMaterial *material, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided)
+	JoltCompoundShape::JoltCompoundShape(Model *model, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided)
 	{
 		_shape = new JPH::MutableCompoundShape();
 		_shape->AddRef();
@@ -225,17 +216,17 @@ namespace RN
 		for(size_t i = 0; i < meshes; i++)
 		{
 			Mesh *mesh = lodStage->GetMeshAtIndex(i);
-			AddChild(mesh, material, Vector3(), Quaternion(), scale, useTriangleMesh, wantsDoubleSided);
+			AddChild(mesh, Vector3(), Quaternion(), scale, useTriangleMesh, wantsDoubleSided);
 		}
 	}
 
-	JoltCompoundShape::JoltCompoundShape(const Array *meshes, JoltMaterial *material, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided)
+	JoltCompoundShape::JoltCompoundShape(const Array *meshes, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided)
 	{
 		_shape = new JPH::MutableCompoundShape();
 		_shape->AddRef();
 
 		meshes->Enumerate<Mesh>([&](Mesh *mesh, size_t index, bool &stop) {
-			AddChild(mesh, material, Vector3(), Quaternion(), scale, useTriangleMesh, wantsDoubleSided);
+			AddChild(mesh, Vector3(), Quaternion(), scale, useTriangleMesh, wantsDoubleSided);
 		});
 	}
 
@@ -247,16 +238,16 @@ namespace RN
 		}
 	}
 
-	void JoltCompoundShape::AddChild(Mesh *mesh, JoltMaterial *material, const RN::Vector3 &position, const RN::Quaternion &rotation, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided)
+	void JoltCompoundShape::AddChild(Mesh *mesh, const RN::Vector3 &position, const RN::Quaternion &rotation, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided)
 	{
 		JoltShape *shape = nullptr;
 		if(useTriangleMesh)
 		{
-			shape = JoltTriangleMeshShape::WithMesh(mesh, material, scale, wantsDoubleSided);
+			shape = JoltTriangleMeshShape::WithMesh(mesh, scale, wantsDoubleSided);
 		}
 		else
 		{
-			shape = JoltConvexHullShape::WithMesh(mesh, material, scale);
+			shape = JoltConvexHullShape::WithMesh(mesh, scale);
 		}
 
 		_shapes.push_back(shape->Retain());
@@ -272,9 +263,9 @@ namespace RN
 		compoundShape->AddShape(JPH::Vec3Arg(position.x, position.y, position.z), JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), shape->GetJoltShape());
 	}
 
-	JoltCompoundShape *JoltCompoundShape::WithModel(Model *model, JoltMaterial *material, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided)
+	JoltCompoundShape *JoltCompoundShape::WithModel(Model *model, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided)
 	{
-		JoltCompoundShape *shape = new JoltCompoundShape(model, material, scale, useTriangleMesh, wantsDoubleSided);
+		JoltCompoundShape *shape = new JoltCompoundShape(model, scale, useTriangleMesh, wantsDoubleSided);
 		return shape->Autorelease();
 	}
 } // namespace RN

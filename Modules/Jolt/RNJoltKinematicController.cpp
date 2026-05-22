@@ -16,12 +16,12 @@ namespace RN
 {
 	RNDefineMeta(JoltKinematicController, JoltCollisionObject)
 
-	JoltKinematicController::JoltKinematicController(float radius, float height, JoltMaterial *material, float stepOffset) :
-		_material(SafeRetain(material)), _fallSpeed(0.0f), _radius(radius), _height(height), _objectBelow(nullptr), _isFalling(false)
+	JoltKinematicController::JoltKinematicController(float radius, float height, float stepOffset) :
+		_fallSpeed(0.0f), _radius(radius), _height(height), _objectBelow(nullptr), _isFalling(false)
 	{
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 
-		_shape = JoltCapsuleShape::WithRadius(radius, height, material)->Retain();
+		_shape = JoltCapsuleShape::WithRadius(radius, height)->Retain();
 
 		JPH::CharacterVirtualSettings settings;
 		settings.mMaxSlopeAngle = 70.0f;
@@ -40,7 +40,6 @@ namespace RN
 	JoltKinematicController::~JoltKinematicController()
 	{
 		SafeRelease(_shape);
-		SafeRelease(_material);
 		delete _controller;
 		//if(_callback) delete _callback;
 	}
@@ -289,7 +288,7 @@ namespace RN
 		uint16 objectLayer = JoltWorld::GetSharedInstance()->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1);
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 
-		JoltShape *newShape = JoltCapsuleShape::WithRadius(_radius, height, _material);
+		JoltShape *newShape = JoltCapsuleShape::WithRadius(_radius, height);
 		bool didSetShape = _controller->SetShape(newShape->GetJoltShape(), checkIfBlocked ? 0.01f : 1000000.0f, physics->GetDefaultBroadPhaseLayerFilter(objectLayer), physics->GetDefaultLayerFilter(objectLayer), {}, {}, *JoltWorld::GetSharedInstance()->_internals->tempAllocator);
 		if(!didSetShape) return false;
 

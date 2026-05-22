@@ -122,7 +122,6 @@ set(SOURCES
         RNJoltStaticBody.cpp
         RNJoltInternals.cpp
         RNJoltCollisionObject.cpp
-        RNJoltMaterial.cpp
         RNJoltShape.cpp
         RNJoltConstraint.cpp
         RNJoltKinematicController.cpp)
@@ -133,7 +132,6 @@ set(HEADERS
         RNJoltDynamicBody.h
         RNJoltStaticBody.h
         RNJoltCollisionObject.h
-        RNJoltMaterial.h
         RNJoltShape.h
         RNJoltConstraint.h
         RNJoltKinematicController.h)

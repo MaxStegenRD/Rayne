@@ -10,7 +10,6 @@
 #define __RAYNE_JOLTSHAPE_H_
 
 #include "RNJolt.h"
-#include "RNJoltMaterial.h"
 
 namespace JPH
 {
@@ -36,7 +35,6 @@ namespace RN
 		~JoltShape() override;
 
 		JPH::Shape *_shape;
-		JoltMaterial *_material;
 
 		RNDeclareMetaAPI(JoltShape, JTAPI)
 	};
@@ -44,9 +42,9 @@ namespace RN
 	class JoltSphereShape : public JoltShape
 	{
 	public:
-		JTAPI JoltSphereShape(float radius, JoltMaterial *material);
+		JTAPI JoltSphereShape(float radius);
 
-		JTAPI static JoltSphereShape *WithRadius(float radius, JoltMaterial *material);
+		JTAPI static JoltSphereShape *WithRadius(float radius);
 
 		RNDeclareMetaAPI(JoltSphereShape, JTAPI)
 	};
@@ -54,9 +52,9 @@ namespace RN
 	class JoltBoxShape : public JoltShape
 	{
 	public:
-		JTAPI JoltBoxShape(const Vector3 &halfExtents, JoltMaterial *material, float convexRadius = 0.05f);
+		JTAPI JoltBoxShape(const Vector3 &halfExtents, float convexRadius = 0.05f);
 
-		JTAPI static JoltBoxShape *WithHalfExtents(const Vector3 &halfExtents, JoltMaterial *material, float convexRadius = 0.05f);
+		JTAPI static JoltBoxShape *WithHalfExtents(const Vector3 &halfExtents, float convexRadius = 0.05f);
 
 		RNDeclareMetaAPI(JoltBoxShape, JTAPI)
 	};
@@ -64,9 +62,9 @@ namespace RN
 	class JoltCapsuleShape : public JoltShape
 	{
 	public:
-		JTAPI JoltCapsuleShape(float radius, float height, JoltMaterial *material);
+		JTAPI JoltCapsuleShape(float radius, float height);
 
-		JTAPI static JoltCapsuleShape *WithRadius(float radius, float height, JoltMaterial *material);
+		JTAPI static JoltCapsuleShape *WithRadius(float radius, float height);
 
 		RNDeclareMetaAPI(JoltCapsuleShape, JTAPI)
 	};
@@ -74,9 +72,9 @@ namespace RN
 	class JoltTriangleMeshShape : public JoltShape
 	{
 	public:
-		JTAPI JoltTriangleMeshShape(Mesh *mesh, JoltMaterial *material, Vector3 scale = Vector3(1.0f, 1.0f, 1.0f), bool wantsDoubleSided = false);
+		JTAPI JoltTriangleMeshShape(Mesh *mesh, Vector3 scale = Vector3(1.0f, 1.0f, 1.0f), bool wantsDoubleSided = false);
 
-		JTAPI static JoltTriangleMeshShape *WithMesh(Mesh *mesh, JoltMaterial *material, Vector3 scale = Vector3(1.0f, 1.0f, 1.0f), bool wantsDoubleSided = false);
+		JTAPI static JoltTriangleMeshShape *WithMesh(Mesh *mesh, Vector3 scale = Vector3(1.0f, 1.0f, 1.0f), bool wantsDoubleSided = false);
 
 	private:
 		RNDeclareMetaAPI(JoltTriangleMeshShape, JTAPI)
@@ -85,9 +83,9 @@ namespace RN
 	class JoltConvexHullShape : public JoltShape
 	{
 	public:
-		JTAPI JoltConvexHullShape(Mesh *mesh, JoltMaterial *material, Vector3 scale = Vector3(1.0f, 1.0f, 1.0f), float convexRadius = 0.05f);
+		JTAPI JoltConvexHullShape(Mesh *mesh, Vector3 scale = Vector3(1.0f, 1.0f, 1.0f), float convexRadius = 0.05f);
 
-		JTAPI static JoltConvexHullShape *WithMesh(Mesh *mesh, JoltMaterial *material, Vector3 scale = Vector3(1.0f, 1.0f, 1.0f), float convexRadius = 0.05f);
+		JTAPI static JoltConvexHullShape *WithMesh(Mesh *mesh, Vector3 scale = Vector3(1.0f, 1.0f, 1.0f), float convexRadius = 0.05f);
 
 	private:
 		RNDeclareMetaAPI(JoltConvexHullShape, JTAPI)
@@ -99,17 +97,17 @@ namespace RN
 		//friend JoltDynamicBody;
 		//friend JoltStaticBody;
 		JTAPI JoltCompoundShape();
-		JTAPI JoltCompoundShape(Model *model, JoltMaterial *material, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided = false);
-		JTAPI JoltCompoundShape(const Array *meshes, JoltMaterial *material, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided = false);
+		JTAPI JoltCompoundShape(Model *model, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided = false);
+		JTAPI JoltCompoundShape(const Array *meshes, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided = false);
 		JTAPI ~JoltCompoundShape();
 
-		JTAPI void AddChild(Mesh *mesh, JoltMaterial *material, const RN::Vector3 &position, const RN::Quaternion &rotation, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided = false);
+		JTAPI void AddChild(Mesh *mesh, const RN::Vector3 &position, const RN::Quaternion &rotation, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided = false);
 		JTAPI void AddChild(JoltShape *shape, const RN::Vector3 &position, const RN::Quaternion &rotation);
 
 		JoltShape *GetShape(size_t index) const { return _shapes[index]; }
 		size_t GetNumberOfShapes() const { return _shapes.size(); }
 
-		JTAPI static JoltCompoundShape *WithModel(Model *model, JoltMaterial *material, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided = false);
+		JTAPI static JoltCompoundShape *WithModel(Model *model, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided = false);
 
 	private:
 		std::vector<JoltShape *> _shapes;
