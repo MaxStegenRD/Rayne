@@ -173,9 +173,10 @@ namespace __TMP__
 		RN::Entity *levelEntity = new RN::Entity(levelModel);
 		AddLevelNode(levelEntity->Autorelease());
 
-		RN::JoltMaterial *levelPhysicsMaterial = new RN::JoltMaterial();
-		RN::JoltCompoundShape *levelShape = RN::JoltCompoundShape::WithModel(levelModel, levelPhysicsMaterial->Autorelease(), RN::Vector3(1.0f, 1.0f, 1.0f), true);
+		RN::JoltCompoundShape *levelShape = RN::JoltCompoundShape::WithModel(levelModel, RN::Vector3(1.0f, 1.0f, 1.0f), true);
 		RN::JoltStaticBody *levelBody = RN::JoltStaticBody::WithShape(levelShape);
+		levelBody->SetFriction(0.5f);
+		levelBody->SetRestitution(0.1f);
 		levelBody->SetCollisionFilter(Types::CollisionLevel, Types::CollisionAll);
 		levelEntity->AddAttachment(levelBody);
 		
