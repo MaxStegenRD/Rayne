@@ -244,7 +244,9 @@ namespace RN
 
 	void JoltDynamicBody::SetEnableCCD(bool enable)
 	{
-		//_actor->setRigidBodyFlag(Jolt::PxRigidBodyFlag::eENABLE_CCD, enable);
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		bodyInterface.SetMotionQuality(*_actor, enable ? JPH::EMotionQuality::LinearCast : JPH::EMotionQuality::Discrete);
 	}
 
 	void JoltDynamicBody::SetEnableGravity(bool enable)
