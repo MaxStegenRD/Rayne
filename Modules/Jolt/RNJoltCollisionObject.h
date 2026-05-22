@@ -47,6 +47,9 @@ namespace RN
 		JTAPI virtual void SetCollisionFilter(uint32 group, uint32 mask);
 		JTAPI void SetContactCallback(std::function<void(JoltCollisionObject *, const JoltContactInfo &, ContactState)> &&callback);
 		JTAPI std::function<void(JoltCollisionObject *, const JoltContactInfo &, ContactState)> GetContactCallback() const { return _contactCallback; }
+		JTAPI void SetContactResponseMassScale(uint32 collisionMask, float inverseMassScale, float inverseInertiaScale);
+		JTAPI float GetContactResponseInverseMassScaleFor(const JoltCollisionObject *collisionObject) const;
+		JTAPI float GetContactResponseInverseInertiaScaleFor(const JoltCollisionObject *collisionObject) const;
 		JTAPI virtual void SetPositionOffset(RN::Vector3 offset);
 		JTAPI virtual void SetRotationOffset(RN::Quaternion offset);
 		JTAPI void NotifyContact(const JoltContactInfo &info, ContactState state);
@@ -64,6 +67,9 @@ namespace RN
 
 		uint32 _collisionFilterGroup;
 		uint32 _collisionFilterMask;
+		uint32 _contactResponseMassScaleMask;
+		float _contactResponseInverseMassScale;
+		float _contactResponseInverseInertiaScale;
 
 		SceneNode *_owner;
 

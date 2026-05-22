@@ -18,6 +18,9 @@ namespace RN
 	JoltCollisionObject::JoltCollisionObject() :
 		_collisionFilterGroup(1),
 		_collisionFilterMask(0xffffffff),
+		_contactResponseMassScaleMask(0),
+		_contactResponseInverseMassScale(1.0f),
+		_contactResponseInverseInertiaScale(1.0f),
 		_owner(nullptr)
 	{}
 
@@ -35,6 +38,33 @@ namespace RN
 	void JoltCollisionObject::SetContactCallback(std::function<void(JoltCollisionObject *, const JoltContactInfo &, ContactState)> &&callback)
 	{
 		_contactCallback = std::move(callback);
+	}
+
+	void JoltCollisionObject::SetContactResponseMassScale(uint32 collisionMask, float inverseMassScale, float inverseInertiaScale)
+	{
+		_contactResponseMassScaleMask = collisionMask;
+		_contactResponseInverseMassScale = inverseMassScale;
+		_contactResponseInverseInertiaScale = inverseInertiaScale;
+	}
+
+	float JoltCollisionObject::GetContactResponseInverseMassScaleFor(const JoltCollisionObject *collisionObject) const
+	{
+		if(!collisionObject || !(_contactResponseMassScaleMask & collisionObject->GetCollisionFilterGroup()))
+		{
+			return 1.0f;
+		}
+
+		return _contactResponseInverseMassScale;
+	}
+
+	float JoltCollisionObject::GetContactResponseInverseInertiaScaleFor(const JoltCollisionObject *collisionObject) const
+	{
+		if(!collisionObject || !(_contactResponseMassScaleMask & collisionObject->GetCollisionFilterGroup()))
+		{
+			return 1.0f;
+		}
+
+		return _contactResponseInverseInertiaScale;
 	}
 
 	void JoltCollisionObject::NotifyContact(const JoltContactInfo &info, ContactState state)

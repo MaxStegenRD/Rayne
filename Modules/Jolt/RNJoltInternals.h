@@ -196,6 +196,8 @@ namespace RN
 			// Forward to RN callback if present
 			JoltCollisionObject *co1 = reinterpret_cast<JoltCollisionObject *>(inBody1.GetUserData());
 			JoltCollisionObject *co2 = reinterpret_cast<JoltCollisionObject *>(inBody2.GetUserData());
+			ApplyContactResponseMassScale(co1, co2, ioSettings, true);
+			ApplyContactResponseMassScale(co2, co1, ioSettings, false);
 			JoltContactInfo info1{};
 			JoltContactInfo info2{};
 			info1.node = co2 ? co2->GetParent() : nullptr;
@@ -218,6 +220,8 @@ namespace RN
 			// Forward to RN callback if present
 			JoltCollisionObject *co1 = reinterpret_cast<JoltCollisionObject *>(inBody1.GetUserData());
 			JoltCollisionObject *co2 = reinterpret_cast<JoltCollisionObject *>(inBody2.GetUserData());
+			ApplyContactResponseMassScale(co1, co2, ioSettings, true);
+			ApplyContactResponseMassScale(co2, co1, ioSettings, false);
 			JoltContactInfo info1{};
 			JoltContactInfo info2{};
 			info1.node = co2 ? co2->GetParent() : nullptr;
@@ -275,6 +279,22 @@ namespace RN
 			}
 
 			return false;
+		}
+
+		void ApplyContactResponseMassScale(const JoltCollisionObject *collisionObject, const JoltCollisionObject *otherCollisionObject, JPH::ContactSettings &settings, bool isFirstBody) const
+		{
+			if(!collisionObject || !otherCollisionObject) return;
+
+			if(isFirstBody)
+			{
+				settings.mInvMassScale1 *= collisionObject->GetContactResponseInverseMassScaleFor(otherCollisionObject);
+				settings.mInvInertiaScale1 *= collisionObject->GetContactResponseInverseInertiaScaleFor(otherCollisionObject);
+			}
+			else
+			{
+				settings.mInvMassScale2 *= collisionObject->GetContactResponseInverseMassScaleFor(otherCollisionObject);
+				settings.mInvInertiaScale2 *= collisionObject->GetContactResponseInverseInertiaScaleFor(otherCollisionObject);
+			}
 		}
 
 		std::vector<IgnoredBodyPair> _ignoredBodyPairs;
