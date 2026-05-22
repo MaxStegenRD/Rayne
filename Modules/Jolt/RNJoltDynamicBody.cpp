@@ -102,6 +102,7 @@ namespace RN
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 
+		if(velocity.GetSquaredLength() > k::EpsilonFloat) bodyInterface.ActivateBody(*_actor);
 		bodyInterface.SetLinearVelocity(*_actor, JPH::Vec3Arg(velocity.x, velocity.y, velocity.z));
 	}
 	void JoltDynamicBody::SetAngularVelocity(const Vector3 &velocity)
@@ -109,6 +110,7 @@ namespace RN
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 
+		if(velocity.GetSquaredLength() > k::EpsilonFloat) bodyInterface.ActivateBody(*_actor);
 		bodyInterface.SetAngularVelocity(*_actor, JPH::Vec3Arg(velocity.x, velocity.y, velocity.z));
 	}
 
@@ -275,6 +277,7 @@ namespace RN
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 
+		if(force.GetSquaredLength() > k::EpsilonFloat) bodyInterface.ActivateBody(*_actor);
 		bodyInterface.AddForce(*_actor, JPH::Vec3Arg(force.x, force.y, force.z));
 	}
 
@@ -283,6 +286,7 @@ namespace RN
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 
+		if(force.GetSquaredLength() > k::EpsilonFloat) bodyInterface.ActivateBody(*_actor);
 		bodyInterface.AddForce(*_actor, JPH::Vec3Arg(force.x, force.y, force.z), JPH::Vec3Arg(origin.x, origin.y, origin.z));
 	}
 
@@ -299,6 +303,7 @@ namespace RN
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 
+		if(torque.GetSquaredLength() > k::EpsilonFloat) bodyInterface.ActivateBody(*_actor);
 		bodyInterface.AddTorque(*_actor, JPH::Vec3Arg(torque.x, torque.y, torque.z));
 	}
 	void JoltDynamicBody::AddTorqueImpulse(const Vector3 &torque)
@@ -306,6 +311,7 @@ namespace RN
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 
+		if(torque.GetSquaredLength() > k::EpsilonFloat) bodyInterface.ActivateBody(*_actor);
 		bodyInterface.AddAngularImpulse(*_actor, JPH::Vec3Arg(torque.x, torque.y, torque.z));
 	}
 	void JoltDynamicBody::AddImpulse(const Vector3 &impulse)
@@ -313,6 +319,7 @@ namespace RN
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 
+		if(impulse.GetSquaredLength() > k::EpsilonFloat) bodyInterface.ActivateBody(*_actor);
 		bodyInterface.AddImpulse(*_actor, JPH::Vec3Arg(impulse.x, impulse.y, impulse.z));
 	}
 	void JoltDynamicBody::AddImpulse(const Vector3 &impulse, const Vector3 &origin)
@@ -320,6 +327,7 @@ namespace RN
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 
+		if(impulse.GetSquaredLength() > k::EpsilonFloat) bodyInterface.ActivateBody(*_actor);
 		bodyInterface.AddImpulse(*_actor, JPH::Vec3Arg(impulse.x, impulse.y, impulse.z), JPH::Vec3Arg(origin.x, origin.y, origin.z));
 	}
 

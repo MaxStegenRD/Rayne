@@ -33,6 +33,7 @@ namespace RN
 		~JoltConstraint() override;
 
 		void SetConstraint(JPH::Constraint *constraint);
+		void ActivateConstrainedBodies();
 		void ResetStoredBodyPairCollisionState();
 		void UpdateBodyPairCollisionState();
 		void SetStoredBodyPairCollisionEnabled(bool enabled);

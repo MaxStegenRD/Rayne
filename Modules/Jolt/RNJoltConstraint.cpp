@@ -89,6 +89,17 @@ namespace RN
 		}
 	}
 
+	void JoltConstraint::ActivateConstrainedBodies()
+	{
+		if(!_constraint || _constraint->GetType() != JPH::EConstraintType::TwoBodyConstraint) return;
+
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		JPH::TwoBodyConstraint *twoBodyConstraint = static_cast<JPH::TwoBodyConstraint *>(_constraint);
+		bodyInterface.ActivateBody(twoBodyConstraint->GetBody1()->GetID());
+		bodyInterface.ActivateBody(twoBodyConstraint->GetBody2()->GetID());
+	}
+
 	void JoltConstraint::SetEnabled(bool enabled)
 	{
 		if(_constraint) _constraint->SetEnabled(enabled);
@@ -313,38 +324,56 @@ namespace RN
 		JPH::SixDOFConstraint *six = static_cast<JPH::SixDOFConstraint *>(_constraint);
 		JPH::EMotorState s = JPH::EMotorState::Off;
 		if(state == 1) s = JPH::EMotorState::Velocity; else if(state == 2) s = JPH::EMotorState::Position;
+		bool shouldActivate = six->GetMotorState(static_cast<JPH::SixDOFConstraint::EAxis>(static_cast<int>(axis))) != s;
 		six->SetMotorState(static_cast<JPH::SixDOFConstraintSettings::EAxis>(static_cast<int>(axis)), s);
+		if(shouldActivate && s != JPH::EMotorState::Off) ActivateConstrainedBodies();
 	}
 
 	void JoltSixDOFConstraint::SetTargetPositionCS(const Vector3 &p_cs)
 	{
 		if(!_constraint) return;
 		JPH::SixDOFConstraint *six = static_cast<JPH::SixDOFConstraint *>(_constraint);
+		JPH::Vec3 currentTarget = six->GetTargetPositionCS();
+		bool shouldActivate = Vector3(currentTarget.GetX(), currentTarget.GetY(), currentTarget.GetZ()) != p_cs;
 		six->SetTargetPositionCS(ToJoltVec3(p_cs));
+		if(shouldActivate) ActivateConstrainedBodies();
 	}
 	void JoltSixDOFConstraint::SetTargetVelocityCS(const Vector3 &v_cs)
 	{
 		if(!_constraint) return;
 		JPH::SixDOFConstraint *six = static_cast<JPH::SixDOFConstraint *>(_constraint);
+		JPH::Vec3 currentTarget = six->GetTargetVelocityCS();
+		bool shouldActivate = Vector3(currentTarget.GetX(), currentTarget.GetY(), currentTarget.GetZ()) != v_cs || v_cs.GetSquaredLength() > k::EpsilonFloat;
 		six->SetTargetVelocityCS(ToJoltVec3(v_cs));
+		if(shouldActivate) ActivateConstrainedBodies();
 	}
 	void JoltSixDOFConstraint::SetTargetAngularVelocityCS(const Vector3 &w_cs)
 	{
 		if(!_constraint) return;
 		JPH::SixDOFConstraint *six = static_cast<JPH::SixDOFConstraint *>(_constraint);
+		JPH::Vec3 currentTarget = six->GetTargetAngularVelocityCS();
+		bool shouldActivate = Vector3(currentTarget.GetX(), currentTarget.GetY(), currentTarget.GetZ()) != w_cs || w_cs.GetSquaredLength() > k::EpsilonFloat;
 		six->SetTargetAngularVelocityCS(ToJoltVec3(w_cs));
+		if(shouldActivate) ActivateConstrainedBodies();
 	}
 	void JoltSixDOFConstraint::SetTargetOrientationCS(const Quaternion &q_cs)
 	{
 		if(!_constraint) return;
 		JPH::SixDOFConstraint *six = static_cast<JPH::SixDOFConstraint *>(_constraint);
+		JPH::Quat currentTarget = six->GetTargetOrientationCS();
+		bool shouldActivate = Quaternion(currentTarget.GetX(), currentTarget.GetY(), currentTarget.GetZ(), currentTarget.GetW()) != q_cs;
 		six->SetTargetOrientationCS(ToJoltQuat(q_cs));
+		if(shouldActivate) ActivateConstrainedBodies();
 	}
 	void JoltSixDOFConstraint::SetTargetOrientationBS(const Quaternion &q_bs)
 	{
 		if(!_constraint) return;
 		JPH::SixDOFConstraint *six = static_cast<JPH::SixDOFConstraint *>(_constraint);
+		JPH::Quat previousTarget = six->GetTargetOrientationCS();
 		six->SetTargetOrientationBS(ToJoltQuat(q_bs));
+		JPH::Quat currentTarget = six->GetTargetOrientationCS();
+		bool shouldActivate = Quaternion(previousTarget.GetX(), previousTarget.GetY(), previousTarget.GetZ(), previousTarget.GetW()) != Quaternion(currentTarget.GetX(), currentTarget.GetY(), currentTarget.GetZ(), currentTarget.GetW());
+		if(shouldActivate) ActivateConstrainedBodies();
 	}
 
 	void JoltSixDOFConstraint::SetLinearMotorParams(float frequency, float damping, float maxForce)
