@@ -10,14 +10,23 @@
 #include "RNJoltInternals.h"
 #include "RNJoltWorld.h"
 
+#include <Jolt/Physics/Body/Body.h>
+#include <Jolt/Physics/Body/BodyID.h>
+#include <Jolt/Physics/Body/BodyLock.h>
 #include <Jolt/Physics/Character/Character.h>
 
 namespace RN
 {
 	RNDefineMeta(JoltRigidBodyController, JoltCollisionObject)
 
+	constexpr uint32 InvalidSupportBodyID = 0xffffffff;
+	constexpr float SupportCorrectionDetachDistance = 1.0f;
+	constexpr float SupportAnchorAcceptErrorDistance = 0.1f;
+	constexpr float SupportRelativeMovementMinSpeed = 0.2f;
+	constexpr uint8 SupportUnsupportedFrameLimit = 3;
+
 	JoltRigidBodyController::JoltRigidBodyController(float radius, float height, float groundTolerance, float mass, float stepOffset) :
-		_radius(radius), _height(height), _groundTolerance(groundTolerance), _stepOffset(stepOffset), _objectBelow(nullptr), _groundVelocity(), _groundAngularVelocity(), _groundNormal(), _isFalling(false)
+		_radius(radius), _height(height), _groundTolerance(groundTolerance), _stepOffset(stepOffset), _objectBelow(nullptr), _groundVelocity(), _groundAngularVelocity(), _groundNormal(), _isFalling(false), _supportAnchorValid(false), _supportRelativeMovementRequested(false), _supportUnsupportedFrameCount(0), _supportBodyID(InvalidSupportBodyID), _supportLocalPosition()
 	{
 		JoltWorld *world = JoltWorld::GetSharedInstance();
 		JPH::PhysicsSystem *physics = world->GetJoltInstance();
@@ -48,8 +57,22 @@ namespace RN
 	{
 		if(delta <= k::EpsilonFloat)
 		{
+			ApplySupportCorrection();
 			UpdateGroundState();
 			return;
+		}
+
+		_supportRelativeMovementRequested = false;
+		if(velocity.y > _groundVelocity.y + k::EpsilonFloat)
+		{
+			ClearSupportAnchor();
+		}
+		else
+		{
+			Vector3 supportRelativeVelocity = velocity - _groundVelocity;
+			supportRelativeVelocity.y = 0.0f;
+			_supportRelativeMovementRequested = supportRelativeVelocity.GetSquaredLength() > SupportRelativeMovementMinSpeed * SupportRelativeMovementMinSpeed;
+			ApplySupportCorrection();
 		}
 
 		Vector3 adjustedVelocity = GetGroundAdjustedVelocity(velocity);
@@ -252,6 +275,142 @@ namespace RN
 		return false;
 	}
 
+	bool JoltRigidBodyController::GetSupportBodyTransform(uint32 bodyID, Vector3 &position, Quaternion &rotation) const
+	{
+		JPH::BodyID joltBodyID(bodyID);
+		if(joltBodyID.IsInvalid())
+		{
+			return false;
+		}
+
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyLockRead lock(physics->GetBodyLockInterface(), joltBodyID);
+		if(!lock.Succeeded())
+		{
+			return false;
+		}
+
+		const JPH::Body &body = lock.GetBody();
+		JPH::RVec3 joltPosition = body.GetPosition();
+		JPH::Quat joltRotation = body.GetRotation();
+		position = Vector3(joltPosition.GetX(), joltPosition.GetY(), joltPosition.GetZ());
+		rotation = Quaternion(joltRotation.GetX(), joltRotation.GetY(), joltRotation.GetZ(), joltRotation.GetW());
+		if(!position.IsValid() || !rotation.IsValid())
+		{
+			return false;
+		}
+
+		rotation.Normalize();
+		return true;
+	}
+
+	bool JoltRigidBodyController::GetSupportLocalPosition(uint32 bodyID, Vector3 &localPosition) const
+	{
+		Vector3 supportPosition;
+		Quaternion supportRotation;
+		if(!GetSupportBodyTransform(bodyID, supportPosition, supportRotation))
+		{
+			return false;
+		}
+
+		JPH::RVec3 position = _controller->GetPosition();
+		Vector3 controllerPosition(position.GetX(), position.GetY(), position.GetZ());
+		localPosition = supportRotation.GetConjugated().GetRotatedVector(controllerPosition - supportPosition);
+		return localPosition.IsValid();
+	}
+
+	void JoltRigidBodyController::CaptureSupportAnchor(uint32 bodyID)
+	{
+		Vector3 supportLocalPosition;
+		if(!GetSupportLocalPosition(bodyID, supportLocalPosition))
+		{
+			ClearSupportAnchor();
+			return;
+		}
+
+		_supportAnchorValid = true;
+		_supportBodyID = bodyID;
+		_supportLocalPosition = supportLocalPosition;
+	}
+
+	void JoltRigidBodyController::ClearSupportAnchor()
+	{
+		_supportAnchorValid = false;
+		_supportRelativeMovementRequested = false;
+		_supportUnsupportedFrameCount = 0;
+		_supportBodyID = InvalidSupportBodyID;
+		_supportLocalPosition = Vector3();
+	}
+
+	void JoltRigidBodyController::ApplySupportCorrection()
+	{
+		if(!_supportAnchorValid)
+		{
+			return;
+		}
+
+		Vector3 supportPosition;
+		Quaternion supportRotation;
+		if(!GetSupportBodyTransform(_supportBodyID, supportPosition, supportRotation))
+		{
+			ClearSupportAnchor();
+			return;
+		}
+
+		JPH::RVec3 position;
+		JPH::Quat rotation;
+		_controller->GetPositionAndRotation(position, rotation);
+
+		Vector3 anchoredPosition = supportPosition + supportRotation.GetRotatedVector(_supportLocalPosition);
+		Vector3 supportCorrection = anchoredPosition - Vector3(position.GetX(), position.GetY(), position.GetZ());
+		if(!supportCorrection.IsValid() || supportCorrection.GetSquaredLength() <= k::EpsilonFloat)
+		{
+			return;
+		}
+		if(supportCorrection.GetSquaredLength() > SupportCorrectionDetachDistance * SupportCorrectionDetachDistance)
+		{
+			ClearSupportAnchor();
+			return;
+		}
+
+		position += JPH::RVec3(supportCorrection.x, supportCorrection.y, supportCorrection.z);
+		_controller->SetPosition(position, JPH::EActivation::Activate);
+
+		if(_owner)
+		{
+			Quaternion rotationResult = Quaternion(rotation.GetX(), rotation.GetY(), rotation.GetZ(), rotation.GetW()) * _rotationOffset.GetConjugated();
+			Vector3 positionOffset = rotationResult.GetRotatedVector(_positionOffset);
+			SetWorldPosition(Vector3(position.GetX(), position.GetY(), position.GetZ()) + positionOffset);
+			SetWorldRotation(rotationResult);
+		}
+	}
+
+	void JoltRigidBodyController::UpdateSupportAnchor()
+	{
+		uint32 groundBodyID = _controller->GetGroundBodyID().GetIndexAndSequenceNumber();
+		if(!_supportAnchorValid || _supportBodyID != groundBodyID)
+		{
+			CaptureSupportAnchor(groundBodyID);
+			_supportRelativeMovementRequested = false;
+			return;
+		}
+
+		Vector3 actualLocalPosition;
+		if(!GetSupportLocalPosition(groundBodyID, actualLocalPosition))
+		{
+			ClearSupportAnchor();
+			return;
+		}
+
+		Vector3 anchorError = actualLocalPosition - _supportLocalPosition;
+		if(_supportRelativeMovementRequested || anchorError.GetSquaredLength() > SupportAnchorAcceptErrorDistance * SupportAnchorAcceptErrorDistance)
+		{
+			_supportLocalPosition = actualLocalPosition;
+		}
+
+		_supportRelativeMovementRequested = false;
+	}
+
 	void JoltRigidBodyController::UpdateControllerTransform()
 	{
 		Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
@@ -270,6 +429,14 @@ namespace RN
 			_groundAngularVelocity = Vector3();
 			_groundNormal = Vector3();
 			_isFalling = true;
+			if(_supportAnchorValid)
+			{
+				_supportUnsupportedFrameCount += 1;
+				if(_supportUnsupportedFrameCount > SupportUnsupportedFrameLimit)
+				{
+					ClearSupportAnchor();
+				}
+			}
 			return;
 		}
 
@@ -285,6 +452,8 @@ namespace RN
 		JPH::Vec3 groundNormal = _controller->GetGroundNormal();
 		_groundNormal = Vector3(groundNormal.GetX(), groundNormal.GetY(), groundNormal.GetZ());
 		_isFalling = false;
+		_supportUnsupportedFrameCount = 0;
+		UpdateSupportAnchor();
 	}
 
 	void JoltRigidBodyController::DidUpdate(SceneNode::ChangeSet changeSet)

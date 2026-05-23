@@ -42,6 +42,7 @@ namespace RN
 		JoltShape *GetShape() const { return _shape; }
 		SceneNode *GetObjectBelow() const { return _objectBelow; }
 		bool GetIsFalling() const { return _isFalling; }
+		uint32 GetContactResponseSupportBodyID() const override { return _supportAnchorValid ? _supportBodyID : 0xffffffff; }
 
 	protected:
 		void DidUpdate(SceneNode::ChangeSet changeSet) override;
@@ -58,11 +59,22 @@ namespace RN
 		Vector3 _groundAngularVelocity;
 		Vector3 _groundNormal;
 		bool _isFalling;
+		bool _supportAnchorValid;
+		bool _supportRelativeMovementRequested;
+		uint8 _supportUnsupportedFrameCount;
+		uint32 _supportBodyID;
+		Vector3 _supportLocalPosition;
 
 		Vector3 GetGroundAdjustedVelocity(const Vector3 &velocity) const;
 		void ApplyStepOffset(const Vector3 &velocity, float delta);
 		bool HasBlockingCollisionAt(const Vector3 &position, const Quaternion &rotation, const Vector3 &movementDirection) const;
 		bool HasPenetrationAt(const Vector3 &position, const Quaternion &rotation, const Vector3 &movementDirection) const;
+		bool GetSupportBodyTransform(uint32 bodyID, Vector3 &position, Quaternion &rotation) const;
+		bool GetSupportLocalPosition(uint32 bodyID, Vector3 &localPosition) const;
+		void CaptureSupportAnchor(uint32 bodyID);
+		void ClearSupportAnchor();
+		void ApplySupportCorrection();
+		void UpdateSupportAnchor();
 		void UpdateControllerTransform();
 		void UpdateGroundState();
 

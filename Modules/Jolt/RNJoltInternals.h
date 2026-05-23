@@ -191,8 +191,8 @@ namespace RN
 			// Forward to RN callback if present
 			JoltCollisionObject *co1 = reinterpret_cast<JoltCollisionObject *>(inBody1.GetUserData());
 			JoltCollisionObject *co2 = reinterpret_cast<JoltCollisionObject *>(inBody2.GetUserData());
-			ApplyContactResponseMassScale(co1, co2, ioSettings, true);
-			ApplyContactResponseMassScale(co2, co1, ioSettings, false);
+			ApplyContactResponseMassScale(co1, co2, inBody1.GetID(), ioSettings, true);
+			ApplyContactResponseMassScale(co2, co1, inBody2.GetID(), ioSettings, false);
 			JoltContactInfo info1{};
 			JoltContactInfo info2{};
 			info1.node = co2 ? co2->GetParent() : nullptr;
@@ -215,8 +215,8 @@ namespace RN
 			// Forward to RN callback if present
 			JoltCollisionObject *co1 = reinterpret_cast<JoltCollisionObject *>(inBody1.GetUserData());
 			JoltCollisionObject *co2 = reinterpret_cast<JoltCollisionObject *>(inBody2.GetUserData());
-			ApplyContactResponseMassScale(co1, co2, ioSettings, true);
-			ApplyContactResponseMassScale(co2, co1, ioSettings, false);
+			ApplyContactResponseMassScale(co1, co2, inBody1.GetID(), ioSettings, true);
+			ApplyContactResponseMassScale(co2, co1, inBody2.GetID(), ioSettings, false);
 			JoltContactInfo info1{};
 			JoltContactInfo info2{};
 			info1.node = co2 ? co2->GetParent() : nullptr;
@@ -373,19 +373,43 @@ namespace RN
 			return false;
 		}
 
-		void ApplyContactResponseMassScale(const JoltCollisionObject *collisionObject, const JoltCollisionObject *otherCollisionObject, JPH::ContactSettings &settings, bool isFirstBody) const
+		bool HasConnectedFilteredBody(uint32 bodyID, uint32 connectedBodyID) const
+		{
+			if(bodyID == connectedBodyID) return true;
+			if(_connectedFilteredBodyPairs.empty()) return false;
+
+			std::vector<uint32> connectedBodyIDs;
+			CollectConnectedFilteredBodyIDs(bodyID, connectedBodyIDs);
+			for(uint32 currentConnectedBodyID : connectedBodyIDs)
+			{
+				if(currentConnectedBodyID == connectedBodyID) return true;
+			}
+
+			return false;
+		}
+
+		void ApplyContactResponseMassScale(const JoltCollisionObject *collisionObject, const JoltCollisionObject *otherCollisionObject, const JPH::BodyID &bodyID, JPH::ContactSettings &settings, bool isFirstBody) const
 		{
 			if(!collisionObject || !otherCollisionObject) return;
 
+			float inverseMassScale = collisionObject->GetContactResponseInverseMassScaleFor(otherCollisionObject);
+			float inverseInertiaScale = collisionObject->GetContactResponseInverseInertiaScaleFor(otherCollisionObject);
+			uint32 supportBodyID = otherCollisionObject->GetContactResponseSupportBodyID();
+			if(supportBodyID != 0xffffffff && !bodyID.IsInvalid() && HasConnectedFilteredBody(bodyID.GetIndexAndSequenceNumber(), supportBodyID))
+			{
+				inverseMassScale = 0.0f;
+				inverseInertiaScale = 0.0f;
+			}
+
 			if(isFirstBody)
 			{
-				settings.mInvMassScale1 *= collisionObject->GetContactResponseInverseMassScaleFor(otherCollisionObject);
-				settings.mInvInertiaScale1 *= collisionObject->GetContactResponseInverseInertiaScaleFor(otherCollisionObject);
+				settings.mInvMassScale1 *= inverseMassScale;
+				settings.mInvInertiaScale1 *= inverseInertiaScale;
 			}
 			else
 			{
-				settings.mInvMassScale2 *= collisionObject->GetContactResponseInverseMassScaleFor(otherCollisionObject);
-				settings.mInvInertiaScale2 *= collisionObject->GetContactResponseInverseInertiaScaleFor(otherCollisionObject);
+				settings.mInvMassScale2 *= inverseMassScale;
+				settings.mInvInertiaScale2 *= inverseInertiaScale;
 			}
 		}
 

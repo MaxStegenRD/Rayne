@@ -50,6 +50,7 @@ namespace RN
 		JTAPI void SetContactResponseMassScale(uint32 collisionMask, float inverseMassScale, float inverseInertiaScale);
 		JTAPI float GetContactResponseInverseMassScaleFor(const JoltCollisionObject *collisionObject) const;
 		JTAPI float GetContactResponseInverseInertiaScaleFor(const JoltCollisionObject *collisionObject) const;
+		JTAPI virtual uint32 GetContactResponseSupportBodyID() const { return 0xffffffff; }
 		JTAPI virtual void SetPositionOffset(RN::Vector3 offset);
 		JTAPI virtual void SetRotationOffset(RN::Quaternion offset);
 		JTAPI void NotifyContact(const JoltContactInfo &info, ContactState state);
