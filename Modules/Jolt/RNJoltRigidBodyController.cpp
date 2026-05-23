@@ -17,7 +17,7 @@ namespace RN
 	RNDefineMeta(JoltRigidBodyController, JoltCollisionObject)
 
 	JoltRigidBodyController::JoltRigidBodyController(float radius, float height, float groundTolerance, float mass, float stepOffset) :
-		_radius(radius), _height(height), _groundTolerance(groundTolerance), _stepOffset(stepOffset), _objectBelow(nullptr), _groundVelocity(), _groundNormal(), _isFalling(false)
+		_radius(radius), _height(height), _groundTolerance(groundTolerance), _stepOffset(stepOffset), _objectBelow(nullptr), _groundVelocity(), _groundAngularVelocity(), _groundNormal(), _isFalling(false)
 	{
 		JoltWorld *world = JoltWorld::GetSharedInstance();
 		JPH::PhysicsSystem *physics = world->GetJoltInstance();
@@ -267,6 +267,7 @@ namespace RN
 		{
 			_objectBelow = nullptr;
 			_groundVelocity = Vector3();
+			_groundAngularVelocity = Vector3();
 			_groundNormal = Vector3();
 			_isFalling = true;
 			return;
@@ -278,6 +279,9 @@ namespace RN
 
 		JPH::Vec3 groundVelocity = _controller->GetGroundVelocity();
 		_groundVelocity = Vector3(groundVelocity.GetX(), groundVelocity.GetY(), groundVelocity.GetZ());
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::Vec3 groundAngularVelocity = physics->GetBodyInterface().GetAngularVelocity(_controller->GetGroundBodyID());
+		_groundAngularVelocity = Vector3(groundAngularVelocity.GetX(), groundAngularVelocity.GetY(), groundAngularVelocity.GetZ());
 		JPH::Vec3 groundNormal = _controller->GetGroundNormal();
 		_groundNormal = Vector3(groundNormal.GetX(), groundNormal.GetY(), groundNormal.GetZ());
 		_isFalling = false;

@@ -36,6 +36,7 @@ namespace RN
 		JTAPI Vector3 GetFeetOffset() const;
 		JTAPI float GetStepOffset() const { return _stepOffset; }
 		JTAPI Vector3 GetGroundVelocity() const { return _groundVelocity; }
+		JTAPI Vector3 GetGroundAngularVelocity() const { return _groundAngularVelocity; }
 		JTAPI Vector3 GetGroundNormal() const { return _groundNormal; }
 
 		JoltShape *GetShape() const { return _shape; }
@@ -54,6 +55,7 @@ namespace RN
 		float _stepOffset;
 		SceneNode *_objectBelow;
 		Vector3 _groundVelocity;
+		Vector3 _groundAngularVelocity;
 		Vector3 _groundNormal;
 		bool _isFalling;
 
