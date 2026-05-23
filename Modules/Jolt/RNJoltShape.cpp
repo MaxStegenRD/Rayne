@@ -13,6 +13,7 @@
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
 #include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
+#include <Jolt/Physics/Collision/Shape/CylinderShape.h>
 #include <Jolt/Physics/Collision/Shape/MeshShape.h>
 #include <Jolt/Physics/Collision/Shape/MutableCompoundShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
@@ -25,6 +26,7 @@ namespace RN
 	RNDefineMeta(JoltSphereShape, JoltShape)
 	RNDefineMeta(JoltBoxShape, JoltShape)
 	RNDefineMeta(JoltCapsuleShape, JoltShape)
+	RNDefineMeta(JoltCylinderShape, JoltShape)
 	RNDefineMeta(JoltTriangleMeshShape, JoltShape)
 	RNDefineMeta(JoltConvexHullShape, JoltShape)
 	RNDefineMeta(JoltCompoundShape, JoltShape)
@@ -83,6 +85,19 @@ namespace RN
 	JoltCapsuleShape *JoltCapsuleShape::WithRadius(float radius, float height)
 	{
 		JoltCapsuleShape *shape = new JoltCapsuleShape(radius, height);
+		return shape->Autorelease();
+	}
+
+
+	JoltCylinderShape::JoltCylinderShape(float radius, float height, float convexRadius)
+	{
+		_shape = new JPH::CylinderShape(height * 0.5f, radius, convexRadius);
+		_shape->AddRef();
+	}
+
+	JoltCylinderShape *JoltCylinderShape::WithRadius(float radius, float height, float convexRadius)
+	{
+		JoltCylinderShape *shape = new JoltCylinderShape(radius, height, convexRadius);
 		return shape->Autorelease();
 	}
 

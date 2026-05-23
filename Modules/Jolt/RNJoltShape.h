@@ -69,6 +69,16 @@ namespace RN
 		RNDeclareMetaAPI(JoltCapsuleShape, JTAPI)
 	};
 
+	class JoltCylinderShape : public JoltShape
+	{
+	public:
+		JTAPI JoltCylinderShape(float radius, float height, float convexRadius = 0.05f);
+
+		JTAPI static JoltCylinderShape *WithRadius(float radius, float height, float convexRadius = 0.05f);
+
+		RNDeclareMetaAPI(JoltCylinderShape, JTAPI)
+	};
+
 	class JoltTriangleMeshShape : public JoltShape
 	{
 	public:
