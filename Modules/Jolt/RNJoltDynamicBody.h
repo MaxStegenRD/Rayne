@@ -82,6 +82,7 @@ namespace RN
 		/*JTAPI bool SweepTest(std::vector<JoltContactInfo> &contactInfo, const Vector3 &direction, const Vector3 &offsetPosition = Vector3(), const Quaternion &offsetRotation = Quaternion(), float inflation = 0.0f) const;
 		JTAPI Quaternion RotationSweepTest(std::vector<JoltContactInfo> &contactInfo, const Quaternion &targetRoation, float stepSize, float sweepSize, const Vector3 &offsetPosition = Vector3(), const Quaternion &offsetRotation = Quaternion()) const;*/
 
+		JTAPI uint32 GetJoltBodyID() const;
 		JTAPI JPH::BodyID *GetJoltActor() const { return _actor; }
 		JTAPI JoltShape *GetShape() const { return _shape; }
 

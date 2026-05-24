@@ -10,6 +10,7 @@
 #include "RNJoltInternals.h"
 #include "RNJoltWorld.h"
 #include <Jolt/Physics/Body/AllowedDOFs.h>
+#include <Jolt/Physics/Body/BodyID.h>
 #include <Jolt/Physics/Body/MotionProperties.h>
 
 namespace RN
@@ -96,6 +97,11 @@ namespace RN
 	float JoltDynamicBody::GetMass() const
 	{
 		return _mass;
+	}
+
+	uint32 JoltDynamicBody::GetJoltBodyID() const
+	{
+		return _actor ? _actor->GetIndexAndSequenceNumber() : JPH::BodyID::cInvalidBodyID;
 	}
 
 	void JoltDynamicBody::SetLinearVelocity(const Vector3 &velocity)
