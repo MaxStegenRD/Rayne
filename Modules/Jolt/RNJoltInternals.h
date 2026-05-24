@@ -179,7 +179,7 @@ namespace RN
 //			RNDebug("Contact validate callback");
 
 			if(ShouldIgnoreBodyPair(inBody1.GetID(), inBody2.GetID()))
-				return JPH::ValidateResult::RejectAllContactsForThisBodyPair;
+				return JPH::ValidateResult::RejectContact;
 
 			// Allows you to ignore a contact before it is created (using layers to not make objects collide is cheaper!)
 			return JPH::ValidateResult::AcceptAllContactsForThisBodyPair;
