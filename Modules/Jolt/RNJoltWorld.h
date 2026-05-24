@@ -34,6 +34,7 @@ namespace RN
 	public:
 		friend class JoltConstraint;
 		friend class JoltKinematicController;
+		friend class JoltRigidBodyController;
 
 		JTAPI JoltWorld(const Vector3 &gravity = Vector3(0.0f, -9.81f, 0.0f), uint32 maxBodies = 65536, uint32 maxBodyPairs = 65536, uint32 maxContactConstraints = 10240);
 		JTAPI ~JoltWorld();
