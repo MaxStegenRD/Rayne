@@ -94,6 +94,16 @@ namespace RN
 		_physicsSystem->SetPhysicsSettings(settings);
 	}
 
+	void JoltWorld::SetContactCorrection(float baumgarte, float maxPenetrationDistance)
+	{
+		JPH::PhysicsSettings settings = _physicsSystem->GetPhysicsSettings();
+		if(baumgarte < 0.0f) baumgarte = 0.0f;
+		if(maxPenetrationDistance < 0.0f) maxPenetrationDistance = 0.0f;
+		settings.mBaumgarte = baumgarte;
+		settings.mMaxPenetrationDistance = maxPenetrationDistance;
+		_physicsSystem->SetPhysicsSettings(settings);
+	}
+
 	void JoltWorld::SetPaused(bool paused)
 	{
 		_paused = paused;
