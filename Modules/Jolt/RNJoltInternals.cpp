@@ -18,26 +18,26 @@ namespace RN
 		/* Do nothing, the linear and angular velocity are already filled in */
 	}
 
-	bool JoltCharacterContactListener::OnContactValidate(const JPH::CharacterVirtual *inCharacter, const JPH::BodyID &inBodyID2, const JPH::SubShapeID &inSubShapeID2)
+	bool JoltCharacterContactListener::OnContactValidate(const JPH::CharacterVirtual *inCharacter, const JPH::CharacterContact &inContact)
 	{
 		return true;
 	}
 
-	void JoltCharacterContactListener::OnContactAdded(const JPH::CharacterVirtual *inCharacter, const JPH::BodyID &inBodyID2, const JPH::SubShapeID &inSubShapeID2, JPH::RVec3Arg inContactPosition, JPH::Vec3Arg inContactNormal, JPH::CharacterContactSettings &ioSettings)
+	void JoltCharacterContactListener::OnContactAdded(const JPH::CharacterVirtual *inCharacter, const JPH::CharacterContact &inContact, JPH::CharacterContactSettings &ioSettings)
 	{
 		/* Default do nothing */
 		JoltContactInfo info;
 
-		info.collisionObject = reinterpret_cast<JoltCollisionObject *>(JoltWorld::GetSharedInstance()->GetJoltInstance()->GetBodyInterface().GetUserData(inBodyID2));
+		info.collisionObject = reinterpret_cast<JoltCollisionObject *>(JoltWorld::GetSharedInstance()->GetJoltInstance()->GetBodyInterface().GetUserData(inContact.mBodyB));
 		if(info.collisionObject) info.node = info.collisionObject->GetParent();
 		if(info.node) info.node->Retain()->Autorelease();
 
-		info.position.x = inContactPosition.GetX();
-		info.position.y = inContactPosition.GetY();
-		info.position.z = inContactPosition.GetZ();
-		info.normal.x = -inContactNormal.GetX();
-		info.normal.y = -inContactNormal.GetY();
-		info.normal.z = -inContactNormal.GetZ();
+		info.position.x = inContact.mPosition.GetX();
+		info.position.y = inContact.mPosition.GetY();
+		info.position.z = inContact.mPosition.GetZ();
+		info.normal.x = -inContact.mContactNormal.GetX();
+		info.normal.y = -inContact.mContactNormal.GetY();
+		info.normal.z = -inContact.mContactNormal.GetZ();
 		info.distance = 0.0f;
 		if(controller->_contactCallback) controller->_contactCallback(info.collisionObject, info, JoltCollisionObject::ContactState::Begin);
 	}

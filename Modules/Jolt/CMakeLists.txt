@@ -35,7 +35,7 @@ set(OBJECT_LAYER_BITS 16)
 
 rayne_fetch_content(JoltPhysics
         GIT_REPOSITORY "https://github.com/jrouwe/JoltPhysics.git"
-        GIT_TAG "v5.4.0"
+        GIT_TAG "9bc7080346639d8511cba090dd10aeb5154e18cf"
         SOURCE_SUBDIR "Build")
 
 if (MSVC)

@@ -442,16 +442,13 @@ namespace RN
 		void OnAdjustBodyVelocity(const JPH::CharacterVirtual *inCharacter, const JPH::Body &inBody2, JPH::Vec3 &ioLinearVelocity, JPH::Vec3 &ioAngularVelocity) override;
 
 		/// Checks if a character can collide with specified body. Return true if the contact is valid.
-		bool OnContactValidate(const JPH::CharacterVirtual *inCharacter, const JPH::BodyID &inBodyID2, const JPH::SubShapeID &inSubShapeID2) override;
+		bool OnContactValidate(const JPH::CharacterVirtual *inCharacter, const JPH::CharacterContact &inContact) override;
 
 		/// Called whenever the character collides with a body. Returns true if the contact can push the character.
 		/// @param inCharacter Character that is being solved
-		/// @param inBodyID2 Body ID of body that is being hit
-		/// @param inSubShapeID2 Sub shape ID of shape that is being hit
-		/// @param inContactPosition World space contact position
-		/// @param inContactNormal World space contact normal
+		/// @param inContact Contact that is being hit
 		/// @param ioSettings Settings returned by the contact callback to indicate how the character should behave
-		void OnContactAdded(const JPH::CharacterVirtual *inCharacter, const JPH::BodyID &inBodyID2, const JPH::SubShapeID &inSubShapeID2, JPH::RVec3Arg inContactPosition, JPH::Vec3Arg inContactNormal, JPH::CharacterContactSettings &ioSettings) override;
+		void OnContactAdded(const JPH::CharacterVirtual *inCharacter, const JPH::CharacterContact &inContact, JPH::CharacterContactSettings &ioSettings) override;
 
 		/// Called whenever a contact is being used by the solver. Allows the listener to override the resulting character velocity (e.g. by preventing sliding along certain surfaces).
 		/// @param inCharacter Character that is being solved
