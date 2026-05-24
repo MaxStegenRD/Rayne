@@ -123,6 +123,7 @@ set(SOURCES
         RNJoltInternals.cpp
         RNJoltCollisionObject.cpp
         RNJoltShape.cpp
+        RNJoltWheelCylinderShape.cpp
         RNJoltConstraint.cpp
         RNJoltRigidBodyController.cpp
         RNJoltKinematicController.cpp)
@@ -139,7 +140,8 @@ set(HEADERS
         RNJoltKinematicController.h)
 
 set(PRIVATE_HEADERS
-        RNJoltInternals.h)
+        RNJoltInternals.h
+        RNJoltWheelCylinderShape.h)
 
 set(DEFINES RN_BUILD_JOLT)
 

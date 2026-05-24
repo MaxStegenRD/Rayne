@@ -8,6 +8,7 @@
 
 #include "RNJoltShape.h"
 #include "RNJoltInternals.h"
+#include "RNJoltWheelCylinderShape.h"
 #include "RNJoltWorld.h"
 
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
@@ -27,6 +28,7 @@ namespace RN
 	RNDefineMeta(JoltBoxShape, JoltShape)
 	RNDefineMeta(JoltCapsuleShape, JoltShape)
 	RNDefineMeta(JoltCylinderShape, JoltShape)
+	RNDefineMeta(JoltWheelCylinderShape, JoltShape)
 	RNDefineMeta(JoltTriangleMeshShape, JoltShape)
 	RNDefineMeta(JoltConvexHullShape, JoltShape)
 	RNDefineMeta(JoltCompoundShape, JoltShape)
@@ -98,6 +100,18 @@ namespace RN
 	JoltCylinderShape *JoltCylinderShape::WithRadius(float radius, float height, float convexRadius)
 	{
 		JoltCylinderShape *shape = new JoltCylinderShape(radius, height, convexRadius);
+		return shape->Autorelease();
+	}
+
+	JoltWheelCylinderShape::JoltWheelCylinderShape(float radius, float height, float convexRadius)
+	{
+		_shape = new JPH::RNWheelCylinderShape(height * 0.5f, radius, convexRadius);
+		_shape->AddRef();
+	}
+
+	JoltWheelCylinderShape *JoltWheelCylinderShape::WithRadius(float radius, float height, float convexRadius)
+	{
+		JoltWheelCylinderShape *shape = new JoltWheelCylinderShape(radius, height, convexRadius);
 		return shape->Autorelease();
 	}
 

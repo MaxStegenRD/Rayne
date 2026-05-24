@@ -8,6 +8,7 @@
 
 #include "RNJoltWorld.h"
 #include "RNJoltInternals.h"
+#include "RNJoltWheelCylinderShape.h"
 
 namespace RN
 {
@@ -29,6 +30,7 @@ namespace RN
 
 		// Register all Jolt physics types
 		JPH::RegisterTypes();
+		JPH::RNWheelCylinderShape::sRegister();
 
 		_internals->tempAllocator = new JPH::TempAllocatorImpl(10 * 1024 * 1024); //Preallocate 10mb for temp allocations during physics update
 
