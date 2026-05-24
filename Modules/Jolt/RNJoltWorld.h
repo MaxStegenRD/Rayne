@@ -44,6 +44,8 @@ namespace RN
 		JTAPI void Update(float delta) final;
 		JTAPI void WillUpdate(float delta) final;
 		JTAPI void SetSubsteps(uint8 substeps);
+		JTAPI void SetSolverIterationCount(uint32 positionIterations, uint32 velocityIterations);
+		JTAPI void SetPenetrationSlop(float penetrationSlop);
 		JTAPI void SetPaused(bool paused);
 
 		JTAPI JoltContactInfo CastRay(const Vector3 &from, const Vector3 &to, uint32 filterGroup = 0xffffffff, uint32 filterMask = 0xffffffff);

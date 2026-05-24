@@ -78,6 +78,22 @@ namespace RN
 		_substeps = substeps;
 	}
 
+	void JoltWorld::SetSolverIterationCount(uint32 positionIterations, uint32 velocityIterations)
+	{
+		JPH::PhysicsSettings settings = _physicsSystem->GetPhysicsSettings();
+		if(positionIterations > 0) settings.mNumPositionSteps = positionIterations;
+		if(velocityIterations > 0) settings.mNumVelocitySteps = velocityIterations;
+		_physicsSystem->SetPhysicsSettings(settings);
+	}
+
+	void JoltWorld::SetPenetrationSlop(float penetrationSlop)
+	{
+		JPH::PhysicsSettings settings = _physicsSystem->GetPhysicsSettings();
+		if(penetrationSlop < 0.0f) penetrationSlop = 0.0f;
+		settings.mPenetrationSlop = penetrationSlop;
+		_physicsSystem->SetPhysicsSettings(settings);
+	}
+
 	void JoltWorld::SetPaused(bool paused)
 	{
 		_paused = paused;

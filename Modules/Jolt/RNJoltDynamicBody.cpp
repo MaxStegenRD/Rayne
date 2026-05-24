@@ -28,6 +28,7 @@ namespace RN
 		settings.mMassPropertiesOverride.mMass = mass;
 		settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
 		settings.mMotionQuality = JPH::EMotionQuality::LinearCast;
+		settings.mEnhancedInternalEdgeRemoval = true;
 		settings.mUserData = reinterpret_cast<uint64>(this);
 		JPH::BodyID bodyID = bodyInterface.CreateAndAddBody(settings, JPH::EActivation::DontActivate);
 
