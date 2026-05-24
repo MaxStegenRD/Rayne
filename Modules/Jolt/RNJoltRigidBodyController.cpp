@@ -22,7 +22,6 @@ namespace RN
 	constexpr uint32 InvalidSupportBodyID = 0xffffffff;
 	constexpr float SupportCorrectionDetachDistance = 1.0f;
 	constexpr float SupportAnchorAcceptErrorDistance = 0.1f;
-	constexpr float SupportRelativeMovementMinSpeed = 0.2f;
 	constexpr uint8 SupportUnsupportedFrameLimit = 3;
 
 	JoltRigidBodyController::JoltRigidBodyController(float radius, float height, float groundTolerance, float mass, float stepOffset) :
@@ -71,7 +70,7 @@ namespace RN
 		{
 			Vector3 supportRelativeVelocity = velocity - _groundVelocity;
 			supportRelativeVelocity.y = 0.0f;
-			_supportRelativeMovementRequested = supportRelativeVelocity.GetSquaredLength() > SupportRelativeMovementMinSpeed * SupportRelativeMovementMinSpeed;
+			_supportRelativeMovementRequested = supportRelativeVelocity.GetSquaredLength() > 0.0f;
 			ApplySupportCorrection();
 		}
 
