@@ -9,6 +9,7 @@
 #ifndef __RAYNE_JOLTWHEELCYLINDERSHAPE_H_
 #define __RAYNE_JOLTWHEELCYLINDERSHAPE_H_
 
+#include <Jolt/Jolt.h>
 #include <Jolt/Physics/Collision/Shape/ConvexShape.h>
 #include <Jolt/Physics/PhysicsSettings.h>
 
@@ -42,6 +43,8 @@ public:
 	void CollideSoftBodyVertices(Mat44Arg centerOfMassTransform, Vec3Arg scale, const CollideSoftBodyVertexIterator &vertices, uint numVertices, int collidingShapeIndex) const override;
 
 	void SaveBinaryState(StreamOut &stream) const override;
+	Stats GetStats() const override { return Stats(sizeof(*this), 0); }
+	float GetVolume() const override { return 2.0f * JPH_PI * _halfHeight * Square(_radius); }
 	bool IsValidScale(Vec3Arg scale) const override;
 	Vec3 MakeScaleValid(Vec3Arg scale) const override;
 

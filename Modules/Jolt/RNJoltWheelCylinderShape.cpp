@@ -9,12 +9,12 @@
 #include "RNJoltWheelCylinderShape.h"
 
 #include <Jolt/Physics/Collision/Shape/ScaleHelpers.h>
+#include <Jolt/Physics/Collision/CastResult.h>
 #include <Jolt/Physics/Collision/RayCast.h>
 #include <Jolt/Physics/Collision/CollidePointResult.h>
 #include <Jolt/Physics/Collision/TransformedShape.h>
 #include <Jolt/Physics/Collision/CollideSoftBodyVertexIterator.h>
 #include <Jolt/Geometry/RayCylinder.h>
-#include <Jolt/Math/Trigonometry.h>
 #include <Jolt/Core/StreamIn.h>
 #include <Jolt/Core/StreamOut.h>
 #ifdef JPH_DEBUG_RENDERER
@@ -34,6 +34,8 @@ static const Vec3 cWheelCylinderTopFace[] =
 	Vec3(-1.0f,			1.0f,	0.0f),
 	Vec3(-0.707106769f,	1.0f,	0.707106769f)
 };
+
+static constexpr float cWheelCylinderSidePatchWidth = 0.001f;
 
 class RNWheelCylinderShape::WheelCylinder final : public Support
 {
@@ -128,28 +130,21 @@ void RNWheelCylinderShape::GetSupportingFace(const SubShapeID &subShapeID, Vec3A
 	if(xzSq > ySq)
 	{
 		float invXZLength = 1.0f / Sqrt(xzSq);
-		Vec3 radial = Vec3(-x * invXZLength, 0.0f, -z * invXZLength);
-		Vec3 tangent = Vec3(-radial.GetZ(), 0.0f, radial.GetX());
-		float scaledConvexRadius = ScaleHelpers::ScaleConvexRadius(_convexRadius, scale);
-		float patchHalfChord = min(0.25f * scaledConvexRadius, 0.25f * scaledRadius);
-		if(patchHalfChord <= 0.0f)
-		{
-			Vec3 edge = radial * scaledRadius;
-			outVertices.push_back(centerOfMassTransform * Vec3(edge.GetX(), scaledHalfHeight, edge.GetZ()));
-			outVertices.push_back(centerOfMassTransform * Vec3(edge.GetX(), -scaledHalfHeight, edge.GetZ()));
-			return;
-		}
+		Vec3 radial(-x * invXZLength, 0.0f, -z * invXZLength);
+		Vec3 tangent(-radial.GetZ(), 0.0f, radial.GetX());
 
-		float patchHalfAngle = ASin(patchHalfChord / max(scaledRadius, 1.0e-6f));
-		float sinAngle = Sin(patchHalfAngle);
-		float cosAngle = Cos(patchHalfAngle);
-		Vec3 edge1 = (radial * cosAngle + tangent * sinAngle) * scaledRadius;
-		Vec3 edge2 = (radial * cosAngle - tangent * sinAngle) * scaledRadius;
+		float patchHalfWidth = min(0.5f * cWheelCylinderSidePatchWidth, scaledRadius);
+		float patchCenterRadiusSq = Square(scaledRadius) - Square(patchHalfWidth);
+		float patchCenterRadius = patchCenterRadiusSq > 0.0f ? Sqrt(patchCenterRadiusSq) : 0.0f;
+		Vec3 patchCenter = radial * patchCenterRadius;
+		Vec3 patchOffset = tangent * patchHalfWidth;
+		Vec3 patchVertex0 = patchCenter - patchOffset;
+		Vec3 patchVertex1 = patchCenter + patchOffset;
 
-		outVertices.push_back(centerOfMassTransform * Vec3(edge1.GetX(), scaledHalfHeight, edge1.GetZ()));
-		outVertices.push_back(centerOfMassTransform * Vec3(edge1.GetX(), -scaledHalfHeight, edge1.GetZ()));
-		outVertices.push_back(centerOfMassTransform * Vec3(edge2.GetX(), -scaledHalfHeight, edge2.GetZ()));
-		outVertices.push_back(centerOfMassTransform * Vec3(edge2.GetX(), scaledHalfHeight, edge2.GetZ()));
+		outVertices.push_back(centerOfMassTransform * Vec3(patchVertex0.GetX(), scaledHalfHeight, patchVertex0.GetZ()));
+		outVertices.push_back(centerOfMassTransform * Vec3(patchVertex1.GetX(), scaledHalfHeight, patchVertex1.GetZ()));
+		outVertices.push_back(centerOfMassTransform * Vec3(patchVertex1.GetX(), -scaledHalfHeight, patchVertex1.GetZ()));
+		outVertices.push_back(centerOfMassTransform * Vec3(patchVertex0.GetX(), -scaledHalfHeight, patchVertex0.GetZ()));
 	}
 	else
 	{

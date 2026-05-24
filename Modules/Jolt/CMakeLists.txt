@@ -128,6 +128,12 @@ set(SOURCES
         RNJoltRigidBodyController.cpp
         RNJoltKinematicController.cpp)
 
+if (MSVC)
+    set_source_files_properties(RNJoltWheelCylinderShape.cpp PROPERTIES COMPILE_OPTIONS "/GR-")
+else()
+    set_source_files_properties(RNJoltWheelCylinderShape.cpp PROPERTIES COMPILE_OPTIONS "-fno-rtti")
+endif()
+
 set(HEADERS
         RNJolt.h
         RNJoltWorld.h
