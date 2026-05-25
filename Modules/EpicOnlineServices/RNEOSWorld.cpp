@@ -73,10 +73,14 @@ namespace RN
 #endif
 
 		EOS_EResult result = EOS_Initialize(&SDKOptions);
-		if(result != EOS_EResult::EOS_Success)
+		if(result != EOS_EResult::EOS_Success && result != EOS_EResult::EOS_AlreadyConfigured)
 		{
-			RNDebug("Failed initializing EOS.");
+			RNDebug("Failed initializing EOS: " << EOS_EResult_ToString(result));
 			return;
+		}
+		if(result == EOS_EResult::EOS_AlreadyConfigured)
+		{
+			RNDebug("EOS was already initialized.");
 		}
 
 		EOS_Logging_SetCallback(LoggingCallback);
