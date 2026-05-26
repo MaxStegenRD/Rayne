@@ -616,7 +616,10 @@ namespace RN
 	void OSXMouseDevice::HandleEvent(CGEventTapProxy proxy, CGEventType type, CGEventRef cgEvent, void *context)
 	{
 		if(type == kCGEventTapDisabledByTimeout || type == kCGEventTapDisabledByUserInput)
+		{
+			CGEventTapEnable(_eventTap, true);
 			return;
+		}
 
 		@autoreleasepool
 		{
