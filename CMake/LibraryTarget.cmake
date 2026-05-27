@@ -1,3 +1,5 @@
+option(FETCHCONTENT_UPDATES_DISCONNECTED "Prevent FetchContent updates from contacting remote servers when sources already exist" ON)
+
 include(FetchContent)
 
 if((CMAKE_SYSTEM_NAME STREQUAL "visionOS"))

@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.28)
 project(RayneAll VERSION 2.0.0)
 
+option(FETCHCONTENT_UPDATES_DISCONNECTED "Prevent FetchContent updates from contacting remote servers when sources already exist" ON)
+
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/Install" CACHE PATH "Rayne install prefix" FORCE)
 endif()

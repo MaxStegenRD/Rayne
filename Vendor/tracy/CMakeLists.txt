@@ -1,3 +1,5 @@
+option(FETCHCONTENT_UPDATES_DISCONNECTED "Prevent FetchContent updates from contacting remote servers when sources already exist" ON)
+
 include(FetchContent)
 
 set(OLD_BUILD_SHARED_LIBS "${BUILD_SHARED_LIBS}")
