@@ -67,6 +67,7 @@ namespace RN
 		JTAPI void AddTorqueImpulse(const Vector3 &torque);
 		JTAPI void AddImpulse(const Vector3 &impulse);
 		JTAPI void AddImpulse(const Vector3 &impulse, const Vector3 &origin);
+		JTAPI bool ApplyBuoyancyImpulse(const Vector3 &surfacePosition, const Vector3 &surfaceNormal, float buoyancy, float linearDrag, float angularDrag, const Vector3 &fluidVelocity, const Vector3 &gravity, float delta);
 
 		JTAPI float GetMass() const;
 

@@ -10,6 +10,7 @@
 #include "RNJoltInternals.h"
 #include "RNJoltWorld.h"
 #include <Jolt/Physics/Body/AllowedDOFs.h>
+#include <Jolt/Physics/Body/Body.h>
 #include <Jolt/Physics/Body/BodyID.h>
 #include <Jolt/Physics/Body/MotionProperties.h>
 
@@ -336,6 +337,32 @@ namespace RN
 
 		if(impulse.GetSquaredLength() > k::EpsilonFloat) bodyInterface.ActivateBody(*_actor);
 		bodyInterface.AddImpulse(*_actor, JPH::Vec3Arg(impulse.x, impulse.y, impulse.z), JPH::Vec3Arg(origin.x, origin.y, origin.z));
+	}
+
+	bool JoltDynamicBody::ApplyBuoyancyImpulse(const Vector3 &surfacePosition, const Vector3 &surfaceNormal, float buoyancy, float linearDrag, float angularDrag, const Vector3 &fluidVelocity, const Vector3 &gravity, float delta)
+	{
+		if(!_actor || delta <= k::EpsilonFloat || surfaceNormal.GetSquaredLength() <= k::EpsilonFloat) return false;
+
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		bodyInterface.ActivateBody(*_actor);
+
+		const JPH::BodyLockInterface &lockInterface = physics->GetBodyLockInterface();
+		JPH::BodyLockWrite lock(lockInterface, *_actor);
+		if(!lock.Succeeded()) return false;
+
+		JPH::Body &body = lock.GetBody();
+		if(!body.IsActive()) return false;
+
+		Vector3 normalizedSurfaceNormal = surfaceNormal.GetNormalized();
+		return body.ApplyBuoyancyImpulse(JPH::RVec3Arg(surfacePosition.x, surfacePosition.y, surfacePosition.z),
+			JPH::Vec3Arg(normalizedSurfaceNormal.x, normalizedSurfaceNormal.y, normalizedSurfaceNormal.z),
+			buoyancy,
+			linearDrag,
+			angularDrag,
+			JPH::Vec3Arg(fluidVelocity.x, fluidVelocity.y, fluidVelocity.z),
+			JPH::Vec3Arg(gravity.x, gravity.y, gravity.z),
+			delta);
 	}
 
 	void JoltDynamicBody::SetEnableKinematic(bool enable)
