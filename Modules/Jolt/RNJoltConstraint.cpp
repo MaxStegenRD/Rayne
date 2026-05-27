@@ -428,6 +428,19 @@ namespace RN
 			m.SetTorqueLimit(maxTorque);
 		}
 	}
+	void JoltSixDOFConstraint::SetAngularMotorStiffnessParams(float stiffness, float damping, float maxTorque)
+	{
+		if(!_constraint) return;
+		JPH::SixDOFConstraint *six = static_cast<JPH::SixDOFConstraint *>(_constraint);
+		for(int a = 3; a < 6; ++a)
+		{
+			JPH::MotorSettings &m = six->GetMotorSettings(static_cast<JPH::SixDOFConstraint::EAxis>(a));
+			m.mSpringSettings.mMode = JPH::ESpringMode::StiffnessAndDamping;
+			m.mSpringSettings.mStiffness = stiffness;
+			m.mSpringSettings.mDamping = damping;
+			m.SetTorqueLimit(maxTorque);
+		}
+	}
 
 	void JoltSixDOFConstraint::SetTranslationLimits(const Vector3 &limitMin, const Vector3 &limitMax)
 	{

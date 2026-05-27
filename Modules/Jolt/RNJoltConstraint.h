@@ -104,6 +104,7 @@ namespace RN
 
 		JTAPI void SetLinearMotorParams(float frequency, float damping, float maxForce);
 		JTAPI void SetAngularMotorParams(float frequency, float damping, float maxTorque);
+		JTAPI void SetAngularMotorStiffnessParams(float stiffness, float damping, float maxTorque);
 
 		// Limits and springs/friction wrappers
 		JTAPI void SetTranslationLimits(const Vector3 &limitMin, const Vector3 &limitMax);
