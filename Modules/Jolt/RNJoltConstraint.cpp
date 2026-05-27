@@ -349,7 +349,9 @@ namespace RN
 		if(!_constraint) return;
 		JPH::SixDOFConstraint *six = static_cast<JPH::SixDOFConstraint *>(_constraint);
 		JPH::EMotorState s = JPH::EMotorState::Off;
-		if(state == 1) s = JPH::EMotorState::Velocity; else if(state == 2) s = JPH::EMotorState::Position;
+		if(state == 1) s = JPH::EMotorState::Velocity;
+		else if(state == 2) s = JPH::EMotorState::Position;
+		else if(state == 3) s = JPH::EMotorState::PositionAndVelocity;
 		bool shouldActivate = six->GetMotorState(static_cast<JPH::SixDOFConstraint::EAxis>(static_cast<int>(axis))) != s;
 		six->SetMotorState(static_cast<JPH::SixDOFConstraintSettings::EAxis>(static_cast<int>(axis)), s);
 		if(shouldActivate && s != JPH::EMotorState::Off) ActivateConstrainedBodies();

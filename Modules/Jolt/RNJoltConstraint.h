@@ -95,7 +95,7 @@ namespace RN
 		JTAPI JoltSixDOFConstraint(JoltDynamicBody *body1, const Vector3 &worldPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const Vector3 &worldPosition2, const Quaternion &worldRotation2);
 		JTAPI static JoltSixDOFConstraint *WithBodiesAndWorldFrames(JoltDynamicBody *body1, const Vector3 &worldPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const Vector3 &worldPosition2, const Quaternion &worldRotation2);
 
-		JTAPI void SetMotorState(Axis axis, int state); // 0=Off,1=Velocity,2=Position
+		JTAPI void SetMotorState(Axis axis, int state); // 0=Off,1=Velocity,2=Position,3=PositionAndVelocity
 		JTAPI void SetTargetPositionCS(const Vector3 &p_cs);
 		JTAPI void SetTargetVelocityCS(const Vector3 &v_cs);
 		JTAPI void SetTargetAngularVelocityCS(const Vector3 &w_cs);
