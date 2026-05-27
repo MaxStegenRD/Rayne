@@ -18,11 +18,13 @@ namespace RN
 
 	struct JoltContactInfo
 	{
-		SceneNode *node;
-		JoltCollisionObject *collisionObject;
+		SceneNode *node = nullptr;
+		JoltCollisionObject *collisionObject = nullptr;
 		Vector3 position;
 		Vector3 normal;
-		float distance;
+		Vector3 linearVelocity;
+		Vector3 otherLinearVelocity;
+		float distance = 0.0f;
 	};
 
 	class JoltCollisionObject : public SceneNodeAttachment
