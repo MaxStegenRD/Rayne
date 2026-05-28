@@ -46,11 +46,18 @@ namespace RN
 		if(_shape) _shape->Release();
 	}
 
+	Vector3 JoltShape::GetCenterOfMass() const
+	{
+		if(!_shape) return Vector3();
+
+		JPH::Vec3 center = _shape->GetCenterOfMass();
+		return Vector3(center.GetX(), center.GetY(), center.GetZ());
+	}
+
 	void JoltShape::SetPose(RN::Vector3 positionOffset, RN::Quaternion rotationOffset)
 	{
 		//_shape->setLocalPose(Jolt::PxTransform(Jolt::PxVec3(positionOffset.x, positionOffset.y, positionOffset.z), Jolt::PxQuat(rotationOffset.x, rotationOffset.y, rotationOffset.z, rotationOffset.w)));
 	}
-
 
 	JoltSphereShape::JoltSphereShape(float radius)
 	{
@@ -261,13 +268,24 @@ namespace RN
 
 	JoltCompoundShape::~JoltCompoundShape()
 	{
-		for(auto shape : _shapes)
+		for(JoltShape *shape : _shapes)
 		{
-			shape->Release();
+			if(shape) shape->Release();
 		}
 	}
 
+	void JoltCompoundShape::UpdateCenterOfMass()
+	{
+		JPH::MutableCompoundShape *compoundShape = static_cast<JPH::MutableCompoundShape *>(_shape);
+		compoundShape->AdjustCenterOfMass();
+	}
+
 	void JoltCompoundShape::AddChild(Mesh *mesh, const RN::Vector3 &position, const RN::Quaternion &rotation, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided)
+	{
+		AddChild(mesh, position, rotation, scale, useTriangleMesh, wantsDoubleSided, 0);
+	}
+
+	void JoltCompoundShape::AddChild(Mesh *mesh, const RN::Vector3 &position, const RN::Quaternion &rotation, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided, uint32 userData)
 	{
 		JoltShape *shape = nullptr;
 		if(useTriangleMesh)
@@ -280,16 +298,22 @@ namespace RN
 		}
 
 		_shapes.push_back(shape->Retain());
-
 		JPH::MutableCompoundShape *compoundShape = static_cast<JPH::MutableCompoundShape *>(_shape);
-		compoundShape->AddShape(JPH::Vec3Arg(position.x, position.y, position.z), JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), shape->GetJoltShape());
+		compoundShape->AddShape(JPH::Vec3Arg(position.x, position.y, position.z), JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), shape->GetJoltShape(), userData);
+		UpdateCenterOfMass();
 	}
 
 	void JoltCompoundShape::AddChild(JoltShape *shape, const RN::Vector3 &position, const RN::Quaternion &rotation)
 	{
+		AddChild(shape, position, rotation, 0);
+	}
+
+	void JoltCompoundShape::AddChild(JoltShape *shape, const RN::Vector3 &position, const RN::Quaternion &rotation, uint32 userData)
+	{
 		_shapes.push_back(shape->Retain());
 		JPH::MutableCompoundShape *compoundShape = static_cast<JPH::MutableCompoundShape *>(_shape);
-		compoundShape->AddShape(JPH::Vec3Arg(position.x, position.y, position.z), JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), shape->GetJoltShape());
+		compoundShape->AddShape(JPH::Vec3Arg(position.x, position.y, position.z), JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), shape->GetJoltShape(), userData);
+		UpdateCenterOfMass();
 	}
 
 	JoltCompoundShape *JoltCompoundShape::WithModel(Model *model, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided)

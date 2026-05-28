@@ -28,6 +28,7 @@ namespace RN
 		JoltShape(JPH::Shape *shape);
 
 		JTAPI JPH::Shape *GetJoltShape() const { return _shape; }
+		JTAPI Vector3 GetCenterOfMass() const;
 		JTAPI void SetPose(RN::Vector3 positionOffset, RN::Quaternion rotationOffset);
 
 	protected:
@@ -122,7 +123,9 @@ namespace RN
 		JTAPI ~JoltCompoundShape();
 
 		JTAPI void AddChild(Mesh *mesh, const RN::Vector3 &position, const RN::Quaternion &rotation, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided = false);
+		JTAPI void AddChild(Mesh *mesh, const RN::Vector3 &position, const RN::Quaternion &rotation, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided, uint32 userData);
 		JTAPI void AddChild(JoltShape *shape, const RN::Vector3 &position, const RN::Quaternion &rotation);
+		JTAPI void AddChild(JoltShape *shape, const RN::Vector3 &position, const RN::Quaternion &rotation, uint32 userData);
 
 		JoltShape *GetShape(size_t index) const { return _shapes[index]; }
 		size_t GetNumberOfShapes() const { return _shapes.size(); }
@@ -130,6 +133,8 @@ namespace RN
 		JTAPI static JoltCompoundShape *WithModel(Model *model, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided = false);
 
 	private:
+		void UpdateCenterOfMass();
+
 		std::vector<JoltShape *> _shapes;
 
 		RNDeclareMetaAPI(JoltCompoundShape, JTAPI)
