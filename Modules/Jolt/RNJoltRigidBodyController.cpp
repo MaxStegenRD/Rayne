@@ -7,6 +7,7 @@
 //
 
 #include "RNJoltRigidBodyController.h"
+#include "RNJoltExternalSupportAnchorConstraint.h"
 #include "RNJoltInternals.h"
 #include "RNJoltWorld.h"
 
@@ -16,17 +17,12 @@
 #include <Jolt/Physics/Body/BodyLock.h>
 #include <Jolt/Physics/Character/Character.h>
 #include <Jolt/Physics/Constraints/Constraint.h>
-#include <Jolt/Physics/Constraints/SixDOFConstraint.h>
-#include <Jolt/Physics/Constraints/MotorSettings.h>
-#include <Jolt/Physics/Constraints/SpringSettings.h>
 
 namespace RN
 {
 	RNDefineMeta(JoltRigidBodyController, JoltCollisionObject)
 
 	constexpr uint32 InvalidSupportBodyID = 0xffffffff;
-	constexpr float ExternalSupportAnchorLinearFrequency = 30.0f;
-	constexpr float ExternalSupportAnchorLinearDamping = 6.0f;
 
 	JoltRigidBodyController::JoltRigidBodyController(float radius, float height, float groundTolerance, float mass, float stepOffset) :
 		_radius(radius), _height(height), _groundTolerance(groundTolerance), _stepOffset(stepOffset), _objectBelow(nullptr), _groundVelocity(), _groundAngularVelocity(), _groundNormal(), _isFalling(false), _externalSupportAnchorValid(false), _externalSupportCollisionFilteringEnabled(false), _externalSupportBodyID(InvalidSupportBodyID), _externalSupportLocalPosition(), _externalSupportAnchorMaxForce(0.0f), _externalSupportConstraint(nullptr)
@@ -66,6 +62,30 @@ namespace RN
 		}
 
 		Vector3 adjustedVelocity = GetGroundAdjustedVelocity(velocity);
+		if(_externalSupportAnchorValid)
+		{
+			Vector3 supportAnchorPosition;
+			Vector3 supportAnchorVelocity;
+			if(GetExternalSupportAnchorState(supportAnchorPosition, supportAnchorVelocity))
+			{
+				adjustedVelocity += supportAnchorVelocity;
+
+				Vector3 anchorDelta = supportAnchorPosition - GetWorldPosition();
+				float anchorDistance = anchorDelta.GetLength();
+				if(anchorDistance > k::EpsilonFloat)
+				{
+					anchorDelta.Normalize();
+					JPH::Vec3 currentVelocity = _controller->GetLinearVelocity();
+					Vector3 currentRelativeVelocity(currentVelocity.GetX() - supportAnchorVelocity.x, currentVelocity.GetY() - supportAnchorVelocity.y, currentVelocity.GetZ() - supportAnchorVelocity.z);
+					float correctingSpeed = currentRelativeVelocity.GetDotProduct(anchorDelta);
+					if(correctingSpeed > 0.0f)
+					{
+						adjustedVelocity += anchorDelta * correctingSpeed;
+					}
+				}
+			}
+		}
+
 		ApplyStepOffset(adjustedVelocity, delta);
 		_controller->SetLinearVelocity(JPH::Vec3Arg(adjustedVelocity.x, adjustedVelocity.y, adjustedVelocity.z));
 		_controller->Activate();
@@ -147,37 +167,12 @@ namespace RN
 			return;
 		}
 
-		JPH::SixDOFConstraintSettings settings;
-		settings.mSpace = JPH::EConstraintSpace::WorldSpace;
-		settings.mPosition1 = JPH::RVec3(supportAnchorPosition.x, supportAnchorPosition.y, supportAnchorPosition.z);
-		settings.mAxisX1 = JPH::Vec3::sAxisX();
-		settings.mAxisY1 = JPH::Vec3::sAxisY();
-		settings.mPosition2 = JPH::RVec3(controllerAnchorPosition.x, controllerAnchorPosition.y, controllerAnchorPosition.z);
-		settings.mAxisX2 = JPH::Vec3::sAxisX();
-		settings.mAxisY2 = JPH::Vec3::sAxisY();
-		settings.MakeFreeAxis(JPH::SixDOFConstraintSettings::TranslationX);
-		settings.MakeFreeAxis(JPH::SixDOFConstraintSettings::TranslationY);
-		settings.MakeFreeAxis(JPH::SixDOFConstraintSettings::TranslationZ);
-		settings.MakeFreeAxis(JPH::SixDOFConstraintSettings::RotationX);
-		settings.MakeFreeAxis(JPH::SixDOFConstraintSettings::RotationY);
-		settings.MakeFreeAxis(JPH::SixDOFConstraintSettings::RotationZ);
-
-		JPH::SixDOFConstraint *constraint = static_cast<JPH::SixDOFConstraint *>(settings.Create(*supportBody, *controllerBody));
+		JPH::Constraint *constraint = CreateJoltExternalSupportAnchorConstraint(*supportBody, *controllerBody, JPH::RVec3(supportAnchorPosition.x, supportAnchorPosition.y, supportAnchorPosition.z), JPH::RVec3(controllerAnchorPosition.x, controllerAnchorPosition.y, controllerAnchorPosition.z), maxForce);
 		if(!constraint)
 		{
 			return;
 		}
 
-		for(int axis = 0; axis < 3; axis += 1)
-		{
-			JPH::MotorSettings &motorSettings = constraint->GetMotorSettings(static_cast<JPH::SixDOFConstraint::EAxis>(axis));
-			motorSettings.mSpringSettings.mMode = JPH::ESpringMode::FrequencyAndDamping;
-			motorSettings.mSpringSettings.mFrequency = ExternalSupportAnchorLinearFrequency;
-			motorSettings.mSpringSettings.mDamping = ExternalSupportAnchorLinearDamping;
-			motorSettings.SetForceLimit(maxForce);
-			constraint->SetMotorState(static_cast<JPH::SixDOFConstraintSettings::EAxis>(axis), JPH::EMotorState::Position);
-		}
-		constraint->SetTargetPositionCS(JPH::Vec3::sZero());
 		constraint->SetNumVelocityStepsOverride(10);
 		constraint->SetNumPositionStepsOverride(10);
 		physics->AddConstraint(constraint);
@@ -411,6 +406,49 @@ namespace RN
 
 		rotation.Normalize();
 		return true;
+	}
+
+	bool JoltRigidBodyController::GetExternalSupportAnchorState(Vector3 &position, Vector3 &velocity) const
+	{
+		if(!_externalSupportAnchorValid || _externalSupportBodyID == InvalidSupportBodyID)
+		{
+			return false;
+		}
+
+		JPH::BodyID joltBodyID(_externalSupportBodyID);
+		if(joltBodyID.IsInvalid())
+		{
+			return false;
+		}
+
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyLockRead lock(physics->GetBodyLockInterface(), joltBodyID);
+		if(!lock.Succeeded())
+		{
+			return false;
+		}
+
+		const JPH::Body &body = lock.GetBody();
+		JPH::RVec3 joltPosition = body.GetPosition();
+		JPH::Quat joltRotation = body.GetRotation();
+		Vector3 supportPosition(joltPosition.GetX(), joltPosition.GetY(), joltPosition.GetZ());
+		Quaternion supportRotation(joltRotation.GetX(), joltRotation.GetY(), joltRotation.GetZ(), joltRotation.GetW());
+		if(!supportPosition.IsValid() || !supportRotation.IsValid())
+		{
+			return false;
+		}
+
+		supportRotation.Normalize();
+		Vector3 anchorPosition = supportPosition + supportRotation.GetRotatedVector(_externalSupportLocalPosition);
+		if(!anchorPosition.IsValid())
+		{
+			return false;
+		}
+
+		JPH::Vec3 joltVelocity = body.GetPointVelocity(JPH::RVec3Arg(anchorPosition.x, anchorPosition.y, anchorPosition.z));
+		position = anchorPosition;
+		velocity = Vector3(joltVelocity.GetX(), joltVelocity.GetY(), joltVelocity.GetZ());
+		return velocity.IsValid();
 	}
 
 	void JoltRigidBodyController::UpdateControllerTransform()

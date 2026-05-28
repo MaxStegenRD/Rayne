@@ -125,13 +125,14 @@ set(SOURCES
         RNJoltShape.cpp
         RNJoltWheelCylinderShape.cpp
         RNJoltConstraint.cpp
+        RNJoltExternalSupportAnchorConstraint.cpp
         RNJoltRigidBodyController.cpp
         RNJoltKinematicController.cpp)
 
 if (MSVC)
-    set_source_files_properties(RNJoltWheelCylinderShape.cpp PROPERTIES COMPILE_OPTIONS "/GR-")
+    set_source_files_properties(RNJoltWheelCylinderShape.cpp RNJoltExternalSupportAnchorConstraint.cpp PROPERTIES COMPILE_OPTIONS "/GR-")
 else()
-    set_source_files_properties(RNJoltWheelCylinderShape.cpp PROPERTIES COMPILE_OPTIONS "-fno-rtti")
+    set_source_files_properties(RNJoltWheelCylinderShape.cpp RNJoltExternalSupportAnchorConstraint.cpp PROPERTIES COMPILE_OPTIONS "-fno-rtti")
 endif()
 
 set(HEADERS
@@ -147,6 +148,7 @@ set(HEADERS
 
 set(PRIVATE_HEADERS
         RNJoltInternals.h
+        RNJoltExternalSupportAnchorConstraint.h
         RNJoltWheelCylinderShape.h)
 
 set(DEFINES RN_BUILD_JOLT)
