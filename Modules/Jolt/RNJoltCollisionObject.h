@@ -25,6 +25,9 @@ namespace RN
 		Vector3 linearVelocity;
 		Vector3 otherLinearVelocity;
 		float distance = 0.0f;
+		uint64 subShapeUserData = 0;
+		uint32 compoundChildIndex = 0xffffffffU;
+		uint32 compoundChildUserData = 0;
 	};
 
 	class JoltCollisionObject : public SceneNodeAttachment

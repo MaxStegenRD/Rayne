@@ -28,7 +28,15 @@ namespace RN
 		/* Default do nothing */
 		JoltContactInfo info;
 
-		info.collisionObject = reinterpret_cast<JoltCollisionObject *>(JoltWorld::GetSharedInstance()->GetJoltInstance()->GetBodyInterface().GetUserData(inContact.mBodyB));
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		info.collisionObject = reinterpret_cast<JoltCollisionObject *>(physics->GetBodyInterface().GetUserData(inContact.mBodyB));
+		{
+			JPH::BodyLockRead lock(physics->GetBodyLockInterface(), inContact.mBodyB);
+			if(lock.Succeeded())
+			{
+				JoltContactInfoShapeData::FillForBody(info, lock.GetBody(), inContact.mSubShapeIDB);
+			}
+		}
 		if(info.collisionObject) info.node = info.collisionObject->GetParent();
 		if(info.node) info.node->Retain()->Autorelease();
 

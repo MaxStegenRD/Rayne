@@ -110,6 +110,7 @@ namespace RN
 					const JPH::Body &body = lock.GetBody();
 					normal = body.GetWorldSpaceSurfaceNormal(result.mSubShapeID2, position);
 					hit.collisionObject = reinterpret_cast<JoltCollisionObject *>(body.GetUserData());
+					JoltContactInfoShapeData::FillForBody(hit, body, result.mSubShapeID2);
 				}
 				else
 				{
@@ -175,6 +176,7 @@ namespace RN
 				const JPH::Body &body = lock.GetBody();
 				normal = body.GetWorldSpaceSurfaceNormal(result.mHit.mSubShapeID2, position);
 				hit.collisionObject = reinterpret_cast<JoltCollisionObject *>(body.GetUserData());
+				JoltContactInfoShapeData::FillForBody(hit, body, result.mHit.mSubShapeID2);
 			}
 			else
 			{
@@ -227,7 +229,14 @@ namespace RN
 		contact.node = nullptr;
 		contact.collisionObject = nullptr;
 
-		contact.collisionObject = reinterpret_cast<JoltCollisionObject *>(physics->GetBodyInterface().GetUserData(results.mHit.mBodyID2));
+		{
+			JPH::BodyLockRead lock(physics->GetBodyLockInterface(), results.mHit.mBodyID2);
+			if(!lock.Succeeded()) return contact;
+
+			const JPH::Body &body = lock.GetBody();
+			contact.collisionObject = reinterpret_cast<JoltCollisionObject *>(body.GetUserData());
+			JoltContactInfoShapeData::FillForBody(contact, body, results.mHit.mSubShapeID2);
+		}
 		if(contact.collisionObject) contact.node = contact.collisionObject->GetParent();
 		if(contact.node) contact.node->Retain()->Autorelease();
 
@@ -258,7 +267,14 @@ namespace RN
 			hit.node = nullptr;
 			hit.collisionObject = nullptr;
 
-			hit.collisionObject = reinterpret_cast<JoltCollisionObject *>(physics->GetBodyInterface().GetUserData(result.mBodyID2));
+			{
+				JPH::BodyLockRead lock(physics->GetBodyLockInterface(), result.mBodyID2);
+				if(!lock.Succeeded()) continue;
+
+				const JPH::Body &body = lock.GetBody();
+				hit.collisionObject = reinterpret_cast<JoltCollisionObject *>(body.GetUserData());
+				JoltContactInfoShapeData::FillForBody(hit, body, result.mSubShapeID2);
+			}
 			if(hit.collisionObject) hit.node = hit.collisionObject->GetParent();
 			if(hit.node) hit.node->Retain()->Autorelease();
 

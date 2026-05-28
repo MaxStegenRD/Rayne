@@ -268,6 +268,7 @@ namespace RN
 				const JPH::Body &body = lock.GetBody();
 				normal = body.GetWorldSpaceSurfaceNormal(result.mSubShapeID2, position);
 				hit.collisionObject = reinterpret_cast<JoltCollisionObject *>(body.GetUserData());
+				JoltContactInfoShapeData::FillForBody(hit, body, result.mSubShapeID2);
 			}
 			else
 			{
@@ -327,6 +328,7 @@ namespace RN
 				const JPH::Body &body = lock.GetBody();
 				normal = body.GetWorldSpaceSurfaceNormal(result.mHit.mSubShapeID2, position);
 				hit.collisionObject = reinterpret_cast<JoltCollisionObject *>(body.GetUserData());
+				JoltContactInfoShapeData::FillForBody(hit, body, result.mHit.mSubShapeID2);
 			}
 			else
 			{
@@ -369,7 +371,14 @@ namespace RN
 			hit.node = nullptr;
 			hit.collisionObject = nullptr;
 
-			hit.collisionObject = reinterpret_cast<JoltCollisionObject *>(_physicsSystem->GetBodyInterface().GetUserData(result.mBodyID2));
+			{
+				JPH::BodyLockRead lock(_physicsSystem->GetBodyLockInterface(), result.mBodyID2);
+				if(!lock.Succeeded()) continue;
+
+				const JPH::Body &body = lock.GetBody();
+				hit.collisionObject = reinterpret_cast<JoltCollisionObject *>(body.GetUserData());
+				JoltContactInfoShapeData::FillForBody(hit, body, result.mSubShapeID2);
+			}
 			if(hit.collisionObject) hit.node = hit.collisionObject->GetParent();
 			if(hit.node) hit.node->Retain()->Autorelease();
 

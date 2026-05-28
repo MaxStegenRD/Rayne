@@ -24,6 +24,8 @@
 #include <Jolt/Physics/Collision/CollideShape.h>
 #include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <Jolt/Physics/Collision/RayCast.h>
+#include <Jolt/Physics/Collision/Shape/CompoundShape.h>
+#include <Jolt/Physics/Collision/Shape/DecoratedShape.h>
 #include <Jolt/Physics/Collision/ShapeCast.h>
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/PhysicsSystem.h>
@@ -31,6 +33,41 @@
 
 namespace RN
 {
+	class JoltContactInfoShapeData
+	{
+	public:
+		static void FillForBody(JoltContactInfo &info, const JPH::Body &body, const JPH::SubShapeID &subShapeID)
+		{
+			const JPH::Shape *bodyShape = body.GetShape();
+			const JPH::Shape *shape = GetUndecoratedShape(bodyShape);
+			if(!bodyShape || !shape) return;
+
+			info.subShapeUserData = bodyShape->GetSubShapeUserData(subShapeID);
+			if(shape->GetType() != JPH::EShapeType::Compound) return;
+
+			const JPH::CompoundShape *compoundShape = static_cast<const JPH::CompoundShape *>(shape);
+			if(!compoundShape->IsSubShapeIDValid(subShapeID)) return;
+
+			JPH::SubShapeID remainder;
+			uint32 compoundChildIndex = compoundShape->GetSubShapeIndexFromID(subShapeID, remainder);
+			if(compoundChildIndex >= compoundShape->GetNumSubShapes()) return;
+
+			info.compoundChildIndex = compoundChildIndex;
+			info.compoundChildUserData = compoundShape->GetCompoundUserData(compoundChildIndex);
+		}
+
+	private:
+		static const JPH::Shape *GetUndecoratedShape(const JPH::Shape *shape)
+		{
+			while(shape && shape->GetType() == JPH::EShapeType::Decorated)
+			{
+				shape = static_cast<const JPH::DecoratedShape *>(shape)->GetInnerShape();
+			}
+
+			return shape;
+		}
+	};
+
 	class JoltObjectLayerMapper : public JPH::ObjectLayerPairFilter, public JPH::BroadPhaseLayerInterface, public JPH::ObjectVsBroadPhaseLayerFilter
 	{
 	public:
@@ -213,6 +250,8 @@ namespace RN
 			info2.distance = 0.0f;
 			info2.position = Vector3();
 			info2.normal = Vector3();
+			JoltContactInfoShapeData::FillForBody(info1, inBody2, inManifold.mSubShapeID2);
+			JoltContactInfoShapeData::FillForBody(info2, inBody1, inManifold.mSubShapeID1);
 			if(co1) co1->NotifyContact(info1, JoltCollisionObject::ContactState::Begin);
 			if(co2) co2->NotifyContact(info2, JoltCollisionObject::ContactState::Begin);
 		}
@@ -245,6 +284,8 @@ namespace RN
 			info2.distance = 0.0f;
 			info2.position = Vector3();
 			info2.normal = Vector3();
+			JoltContactInfoShapeData::FillForBody(info1, inBody2, inManifold.mSubShapeID2);
+			JoltContactInfoShapeData::FillForBody(info2, inBody1, inManifold.mSubShapeID1);
 			if(co1) co1->NotifyContact(info1, JoltCollisionObject::ContactState::Continue);
 			if(co2) co2->NotifyContact(info2, JoltCollisionObject::ContactState::Continue);
 		}
