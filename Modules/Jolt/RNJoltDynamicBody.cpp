@@ -532,16 +532,17 @@ namespace RN
 		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
 		if(!bodyInterface) return;
 
-		Quaternion worldRotation = GetWorldRotation();
-		if(!worldRotation.IsValid())
+		Quaternion targetWorldRotation = rotation;
+		if(!targetWorldRotation.IsValid())
 			return;
+		targetWorldRotation.Normalize();
 
-		Vector3 positionOffset = worldRotation.GetRotatedVector(_positionOffset);
+		Vector3 positionOffset = targetWorldRotation.GetRotatedVector(_positionOffset);
 		Vector3 targetPositionVector = position - positionOffset;
 		if(!targetPositionVector.IsValid())
 			return;
 
-		Quaternion targetRotation = rotation * _rotationOffset;
+		Quaternion targetRotation = targetWorldRotation * _rotationOffset;
 		if(!targetRotation.IsValid())
 			return;
 
