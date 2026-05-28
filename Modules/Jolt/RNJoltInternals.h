@@ -524,6 +524,12 @@ namespace RN
 
 	struct JoltInternals
 	{
+		struct PendingBodyRemoval
+		{
+			JPH::BodyID bodyID;
+			uint8 delay = 0;
+		};
+
 		JPH::TempAllocatorImpl *tempAllocator;
 		JPH::JobSystemThreadPool *jobSystem;
 
@@ -532,6 +538,7 @@ namespace RN
 		JoltContactListener contactListener;
 
 		std::vector<JPH::BodyID> bodiesToAddLoadingLevel;
+		std::vector<PendingBodyRemoval> pendingBodyRemovals;
 	};
 
 	struct JoltCharacterInternals

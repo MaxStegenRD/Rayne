@@ -151,6 +151,8 @@ namespace RN
 				if(collisionObject) collisionObject->UpdatePosition();
 			}
 		}
+
+		ProcessQueuedBodyRemovals();
 	}
 
 	void JoltWorld::EnumerateActiveCollisionObjects(const std::function<void(JoltCollisionObject *)> &callback)
@@ -206,6 +208,59 @@ namespace RN
 	uint16 JoltWorld::GetObjectLayer(uint32 collisionGroup, uint32 collisionMask, uint8 broadPhaseLayer)
 	{
 		return _internals->objectLayerMapper.GetObjectLayer(collisionGroup, collisionMask, broadPhaseLayer);
+	}
+
+	void JoltWorld::QueueBodyRemoval(const JPH::BodyID &bodyID)
+	{
+		if(bodyID.IsInvalid()) return;
+
+		for(JoltInternals::PendingBodyRemoval &removal : _internals->pendingBodyRemovals)
+		{
+			if(removal.bodyID == bodyID) return;
+		}
+
+		JoltInternals::PendingBodyRemoval removal;
+		removal.bodyID = bodyID;
+		removal.delay = 1;
+		_internals->pendingBodyRemovals.push_back(removal);
+	}
+
+	void JoltWorld::CancelQueuedBodyRemoval(const JPH::BodyID &bodyID)
+	{
+		for(auto iterator = _internals->pendingBodyRemovals.begin(); iterator != _internals->pendingBodyRemovals.end();)
+		{
+			if(iterator->bodyID == bodyID)
+			{
+				iterator = _internals->pendingBodyRemovals.erase(iterator);
+			}
+			else
+			{
+				++iterator;
+			}
+		}
+	}
+
+	void JoltWorld::ProcessQueuedBodyRemovals()
+	{
+		if(_internals->pendingBodyRemovals.empty()) return;
+
+		JPH::BodyInterface &bodyInterface = _physicsSystem->GetBodyInterface();
+		for(auto iterator = _internals->pendingBodyRemovals.begin(); iterator != _internals->pendingBodyRemovals.end();)
+		{
+			if(iterator->delay > 0)
+			{
+				iterator->delay -= 1;
+				++iterator;
+				continue;
+			}
+
+			if(bodyInterface.IsAdded(iterator->bodyID))
+			{
+				bodyInterface.DeactivateBody(iterator->bodyID);
+				bodyInterface.RemoveBody(iterator->bodyID);
+			}
+			iterator = _internals->pendingBodyRemovals.erase(iterator);
+		}
 	}
 
 	void JoltWorld::SetBodyPairCollisionEnabled(const JPH::BodyID &body1, const JPH::BodyID &body2, bool enabled)

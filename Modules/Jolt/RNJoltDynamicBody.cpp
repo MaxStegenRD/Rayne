@@ -20,7 +20,7 @@ namespace RN
 
 	JoltDynamicBody::JoltDynamicBody(JoltShape *shape, float mass) :
 		_shape(shape->Retain()),
-		_actor(nullptr), _mass(mass), _isKinematic(false)
+		_actor(nullptr), _mass(mass), _isKinematic(false), _isGravityEnabled(true), _isInSimulation(false)
 	{
 		JoltWorld *world = JoltWorld::GetSharedInstance();
 		JPH::PhysicsSystem *physics = world->GetJoltInstance();
@@ -38,6 +38,7 @@ namespace RN
 		{
 			_actor = new JPH::BodyID();
 			*_actor = bodyID;
+			_isInSimulation = true;
 		}
 	}
 
@@ -46,8 +47,16 @@ namespace RN
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 
-		bodyInterface.RemoveBody(*_actor);
-		bodyInterface.DestroyBody(*_actor);
+		if(_actor)
+		{
+			JoltWorld::GetSharedInstance()->CancelQueuedBodyRemoval(*_actor);
+			if(bodyInterface.IsAdded(*_actor))
+			{
+				bodyInterface.DeactivateBody(*_actor);
+				bodyInterface.RemoveBody(*_actor);
+			}
+			bodyInterface.DestroyBody(*_actor);
+		}
 
 		if(_actor) delete _actor;
 		_shape->Release();
@@ -56,7 +65,9 @@ namespace RN
 	void JoltDynamicBody::SetCollisionFilter(uint32 group, uint32 mask)
 	{
 		JoltCollisionObject::SetCollisionFilter(group, mask);
-		JoltWorld::GetSharedInstance()->GetJoltInstance()->GetBodyInterface().SetObjectLayer(*_actor, JoltWorld::GetSharedInstance()->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1));
+		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
+		if(!bodyInterface) return;
+		bodyInterface->SetObjectLayer(*_actor, JoltWorld::GetSharedInstance()->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1));
 
 		/*Jolt::PxFilterData filterData;
 		filterData.word0 = _collisionFilterGroup;
@@ -70,6 +81,20 @@ namespace RN
 	{
 		JoltDynamicBody *body = new JoltDynamicBody(shape, mass);
 		return body->Autorelease();
+	}
+
+	JPH::BodyInterface *JoltDynamicBody::GetBodyInterfaceIfAdded()
+	{
+		if(!_actor || !_isInSimulation) return nullptr;
+
+		JPH::BodyInterface &bodyInterface = JoltWorld::GetSharedInstance()->GetJoltInstance()->GetBodyInterface();
+		if(!bodyInterface.IsAdded(*_actor))
+		{
+			_isInSimulation = false;
+			return nullptr;
+		}
+
+		return &bodyInterface;
 	}
 
 	void JoltDynamicBody::SetShape(JoltShape *shape, float mass)
@@ -91,9 +116,10 @@ namespace RN
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 		bool wasInSimulation = bodyInterface.IsAdded(*_actor);
+		bool shouldActivate = wasInSimulation && _isInSimulation;
 		if(wasInSimulation)
 		{
-			bodyInterface.SetShape(*_actor, _shape->GetJoltShape(), true, JPH::EActivation::Activate);
+			bodyInterface.SetShape(*_actor, _shape->GetJoltShape(), true, shouldActivate ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
 		}
 		else
 		{
@@ -165,19 +191,19 @@ namespace RN
 
 	void JoltDynamicBody::SetLinearVelocity(const Vector3 &velocity)
 	{
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
+		if(!bodyInterface) return;
 
-		if(velocity.GetSquaredLength() > k::EpsilonFloat) bodyInterface.ActivateBody(*_actor);
-		bodyInterface.SetLinearVelocity(*_actor, JPH::Vec3Arg(velocity.x, velocity.y, velocity.z));
+		if(velocity.GetSquaredLength() > k::EpsilonFloat) bodyInterface->ActivateBody(*_actor);
+		bodyInterface->SetLinearVelocity(*_actor, JPH::Vec3Arg(velocity.x, velocity.y, velocity.z));
 	}
 	void JoltDynamicBody::SetAngularVelocity(const Vector3 &velocity)
 	{
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
+		if(!bodyInterface) return;
 
-		if(velocity.GetSquaredLength() > k::EpsilonFloat) bodyInterface.ActivateBody(*_actor);
-		bodyInterface.SetAngularVelocity(*_actor, JPH::Vec3Arg(velocity.x, velocity.y, velocity.z));
+		if(velocity.GetSquaredLength() > k::EpsilonFloat) bodyInterface->ActivateBody(*_actor);
+		bodyInterface->SetAngularVelocity(*_actor, JPH::Vec3Arg(velocity.x, velocity.y, velocity.z));
 	}
 
 	void JoltDynamicBody::SetDamping(float linear, float angular)
@@ -229,13 +255,13 @@ namespace RN
 
 	void JoltDynamicBody::SetEnableSleeping(bool sleeping)
 	{
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
+		if(!bodyInterface) return;
 
 		if(!sleeping)
-			bodyInterface.ActivateBody(*_actor);
+			bodyInterface->ActivateBody(*_actor);
 		else
-			bodyInterface.DeactivateBody(*_actor);
+			bodyInterface->DeactivateBody(*_actor);
 	}
 
 	void JoltDynamicBody::SetAllowSleeping(bool allow)
@@ -251,12 +277,15 @@ namespace RN
 		}
 		if(!allow)
 		{
-			physics->GetBodyInterface().ActivateBody(*_actor);
+			JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
+			if(bodyInterface) bodyInterface->ActivateBody(*_actor);
 		}
 	}
 
 	bool JoltDynamicBody::GetIsSleeping() const
 	{
+		if(!_isInSimulation) return true;
+
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 
@@ -319,9 +348,10 @@ namespace RN
 
 	void JoltDynamicBody::SetEnableGravity(bool enable)
 	{
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
-		bodyInterface.SetGravityFactor(*_actor, enable ? 1.0f : 0.0f);
+		_isGravityEnabled = enable;
+		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
+		if(!bodyInterface) return;
+		bodyInterface->SetGravityFactor(*_actor, enable ? 1.0f : 0.0f);
 	}
 
 	void JoltDynamicBody::SetFriction(float friction)
@@ -340,20 +370,20 @@ namespace RN
 
 	void JoltDynamicBody::AddForce(const Vector3 &force)
 	{
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
+		if(!bodyInterface) return;
 
-		if(force.GetSquaredLength() > k::EpsilonFloat) bodyInterface.ActivateBody(*_actor);
-		bodyInterface.AddForce(*_actor, JPH::Vec3Arg(force.x, force.y, force.z));
+		if(force.GetSquaredLength() > k::EpsilonFloat) bodyInterface->ActivateBody(*_actor);
+		bodyInterface->AddForce(*_actor, JPH::Vec3Arg(force.x, force.y, force.z));
 	}
 
 	void JoltDynamicBody::AddForce(const Vector3 &force, const Vector3 &origin)
 	{
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
+		if(!bodyInterface) return;
 
-		if(force.GetSquaredLength() > k::EpsilonFloat) bodyInterface.ActivateBody(*_actor);
-		bodyInterface.AddForce(*_actor, JPH::Vec3Arg(force.x, force.y, force.z), JPH::Vec3Arg(origin.x, origin.y, origin.z));
+		if(force.GetSquaredLength() > k::EpsilonFloat) bodyInterface->ActivateBody(*_actor);
+		bodyInterface->AddForce(*_actor, JPH::Vec3Arg(force.x, force.y, force.z), JPH::Vec3Arg(origin.x, origin.y, origin.z));
 	}
 
 	/*	void JoltDynamicBody::ClearForces()
@@ -366,45 +396,46 @@ namespace RN
 
 	void JoltDynamicBody::AddTorque(const Vector3 &torque)
 	{
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
+		if(!bodyInterface) return;
 
-		if(torque.GetSquaredLength() > k::EpsilonFloat) bodyInterface.ActivateBody(*_actor);
-		bodyInterface.AddTorque(*_actor, JPH::Vec3Arg(torque.x, torque.y, torque.z));
+		if(torque.GetSquaredLength() > k::EpsilonFloat) bodyInterface->ActivateBody(*_actor);
+		bodyInterface->AddTorque(*_actor, JPH::Vec3Arg(torque.x, torque.y, torque.z));
 	}
 	void JoltDynamicBody::AddTorqueImpulse(const Vector3 &torque)
 	{
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
+		if(!bodyInterface) return;
 
-		if(torque.GetSquaredLength() > k::EpsilonFloat) bodyInterface.ActivateBody(*_actor);
-		bodyInterface.AddAngularImpulse(*_actor, JPH::Vec3Arg(torque.x, torque.y, torque.z));
+		if(torque.GetSquaredLength() > k::EpsilonFloat) bodyInterface->ActivateBody(*_actor);
+		bodyInterface->AddAngularImpulse(*_actor, JPH::Vec3Arg(torque.x, torque.y, torque.z));
 	}
 	void JoltDynamicBody::AddImpulse(const Vector3 &impulse)
 	{
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
+		if(!bodyInterface) return;
 
-		if(impulse.GetSquaredLength() > k::EpsilonFloat) bodyInterface.ActivateBody(*_actor);
-		bodyInterface.AddImpulse(*_actor, JPH::Vec3Arg(impulse.x, impulse.y, impulse.z));
+		if(impulse.GetSquaredLength() > k::EpsilonFloat) bodyInterface->ActivateBody(*_actor);
+		bodyInterface->AddImpulse(*_actor, JPH::Vec3Arg(impulse.x, impulse.y, impulse.z));
 	}
 	void JoltDynamicBody::AddImpulse(const Vector3 &impulse, const Vector3 &origin)
 	{
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
+		if(!bodyInterface) return;
 
-		if(impulse.GetSquaredLength() > k::EpsilonFloat) bodyInterface.ActivateBody(*_actor);
-		bodyInterface.AddImpulse(*_actor, JPH::Vec3Arg(impulse.x, impulse.y, impulse.z), JPH::Vec3Arg(origin.x, origin.y, origin.z));
+		if(impulse.GetSquaredLength() > k::EpsilonFloat) bodyInterface->ActivateBody(*_actor);
+		bodyInterface->AddImpulse(*_actor, JPH::Vec3Arg(impulse.x, impulse.y, impulse.z), JPH::Vec3Arg(origin.x, origin.y, origin.z));
 	}
 
 	bool JoltDynamicBody::ApplyBuoyancyImpulse(const Vector3 &surfacePosition, const Vector3 &surfaceNormal, float buoyancy, float linearDrag, float angularDrag, const Vector3 &fluidVelocity, const Vector3 &gravity, float delta)
 	{
-		if(!_actor || delta <= k::EpsilonFloat || surfaceNormal.GetSquaredLength() <= k::EpsilonFloat) return false;
+		if(delta <= k::EpsilonFloat || surfaceNormal.GetSquaredLength() <= k::EpsilonFloat) return false;
+
+		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
+		if(!bodyInterface) return false;
+		bodyInterface->ActivateBody(*_actor);
 
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
-		bodyInterface.ActivateBody(*_actor);
-
 		const JPH::BodyLockInterface &lockInterface = physics->GetBodyLockInterface();
 		JPH::BodyLockWrite lock(lockInterface, *_actor);
 		if(!lock.Succeeded()) return false;
@@ -425,11 +456,67 @@ namespace RN
 
 	void JoltDynamicBody::SetEnableKinematic(bool enable)
 	{
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
-		JPH::EMotionType motionType = enable ? JPH::EMotionType::Kinematic : JPH::EMotionType::Dynamic;
-		bodyInterface.SetMotionType(*_actor, motionType, JPH::EActivation::DontActivate);
 		_isKinematic = enable;
+		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
+		if(!bodyInterface) return;
+		JPH::EMotionType motionType = enable ? JPH::EMotionType::Kinematic : JPH::EMotionType::Dynamic;
+		bodyInterface->SetMotionType(*_actor, motionType, JPH::EActivation::DontActivate);
+	}
+
+	void JoltDynamicBody::SetEnableSimulation(bool enable)
+	{
+		if(!_actor) return;
+
+		JoltWorld *world = JoltWorld::GetSharedInstance();
+		JPH::PhysicsSystem *physics = world->GetJoltInstance();
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		bool isInSimulation = bodyInterface.IsAdded(*_actor);
+		_isInSimulation = isInSimulation;
+		if(isInSimulation == enable)
+		{
+			if(enable)
+			{
+				world->CancelQueuedBodyRemoval(*_actor);
+				bodyInterface.SetObjectLayer(*_actor, world->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1));
+				bodyInterface.SetGravityFactor(*_actor, _isGravityEnabled ? 1.0f : 0.0f);
+				bodyInterface.SetMotionType(*_actor, _isKinematic ? JPH::EMotionType::Kinematic : JPH::EMotionType::Dynamic, JPH::EActivation::DontActivate);
+			}
+			return;
+		}
+
+		if(enable)
+		{
+			world->CancelQueuedBodyRemoval(*_actor);
+
+			RN::Quaternion worldRotation = GetWorldRotation();
+			RN::Vector3 worldPosition = GetWorldPosition();
+			if(worldPosition.IsValid() && worldRotation.IsValid())
+			{
+				worldRotation.Normalize();
+				RN::Vector3 positionOffset = worldRotation.GetRotatedVector(_positionOffset);
+				RN::Vector3 position = worldPosition - positionOffset;
+				RN::Quaternion rotation = worldRotation * _rotationOffset;
+				rotation.Normalize();
+				bodyInterface.SetPositionAndRotation(*_actor, JPH::RVec3Arg(position.x, position.y, position.z), JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), JPH::EActivation::DontActivate);
+			}
+			bodyInterface.AddBody(*_actor, JPH::EActivation::Activate);
+			_isInSimulation = true;
+			bodyInterface.SetObjectLayer(*_actor, world->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1));
+			bodyInterface.SetGravityFactor(*_actor, _isGravityEnabled ? 1.0f : 0.0f);
+			bodyInterface.SetMotionType(*_actor, _isKinematic ? JPH::EMotionType::Kinematic : JPH::EMotionType::Dynamic, JPH::EActivation::DontActivate);
+			return;
+		}
+
+		if(isInSimulation)
+		{
+			bodyInterface.SetLinearAndAngularVelocity(*_actor, JPH::Vec3::sZero(), JPH::Vec3::sZero());
+			bodyInterface.SetGravityFactor(*_actor, 0.0f);
+			bodyInterface.SetObjectLayer(*_actor, world->GetObjectLayer(_collisionFilterGroup, 0, 1));
+			bodyInterface.SetMotionType(*_actor, JPH::EMotionType::Kinematic, JPH::EActivation::DontActivate);
+			bodyInterface.DeactivateBody(*_actor);
+			world->QueueBodyRemoval(*_actor);
+		}
+		_isInSimulation = false;
 	}
 
 	bool JoltDynamicBody::GetIsKinematic() const
@@ -439,11 +526,11 @@ namespace RN
 
 	void JoltDynamicBody::SetKinematicTarget(const Vector3 &position, const Quaternion &rotation, float delta)
 	{
-		if(!_actor || !position.IsValid() || !rotation.IsValid())
+		if(!position.IsValid() || !rotation.IsValid())
 			return;
 
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
+		if(!bodyInterface) return;
 
 		Quaternion worldRotation = GetWorldRotation();
 		if(!worldRotation.IsValid())
@@ -467,8 +554,8 @@ namespace RN
 			return;
 
 		auto setTargetPoseDirectly = [&]() {
-			bodyInterface.SetPositionAndRotation(*_actor, targetPosition, targetJoltRotation, JPH::EActivation::DontActivate);
-			bodyInterface.SetLinearAndAngularVelocity(*_actor, JPH::Vec3::sZero(), JPH::Vec3::sZero());
+			bodyInterface->SetPositionAndRotation(*_actor, targetPosition, targetJoltRotation, JPH::EActivation::DontActivate);
+			bodyInterface->SetLinearAndAngularVelocity(*_actor, JPH::Vec3::sZero(), JPH::Vec3::sZero());
 		};
 
 		if(!std::isfinite(delta) || delta <= k::EpsilonFloat)
@@ -477,7 +564,7 @@ namespace RN
 			return;
 		}
 
-		bodyInterface.MoveKinematic(*_actor, targetPosition, targetJoltRotation, delta);
+		bodyInterface->MoveKinematic(*_actor, targetPosition, targetJoltRotation, delta);
 	}
 
 	/*	void JoltDynamicBody::AccelerateToTarget(const Vector3 &position, const Quaternion &rotation, float delta)
@@ -647,33 +734,28 @@ namespace RN
 	void JoltDynamicBody::DidUpdate(SceneNode::ChangeSet changeSet)
 	{
 		JoltCollisionObject::DidUpdate(changeSet);
+		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
+		if(!bodyInterface)
+		{
+			if(changeSet & SceneNode::ChangeSet::Attachments)
+			{
+				_owner = GetParent();
+			}
+			return;
+		}
 
-		if(changeSet & SceneNode::ChangeSet::Position)
+		bool shouldUpdatePose = (changeSet & SceneNode::ChangeSet::Position) || ((changeSet & SceneNode::ChangeSet::Attachments) && !_owner && GetParent());
+		if(shouldUpdatePose)
 		{
 			RN::Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
 			Vector3 position = GetWorldPosition() - positionOffset;
 			Quaternion rotation = GetWorldRotation() * _rotationOffset;
 
-			JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-			JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
-
-			bodyInterface.SetPositionAndRotation(*_actor, JPH::RVec3Arg(position.x, position.y, position.z), JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), JPH::EActivation::DontActivate);
+			bodyInterface->SetPositionAndRotation(*_actor, JPH::RVec3Arg(position.x, position.y, position.z), JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), JPH::EActivation::DontActivate);
 		}
 
 		if(changeSet & SceneNode::ChangeSet::Attachments)
 		{
-			if(!_owner && GetParent())
-			{
-				RN::Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
-				Vector3 position = GetWorldPosition() - positionOffset;
-				Quaternion rotation = GetWorldRotation() * _rotationOffset;
-
-				JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-				JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
-
-				bodyInterface.SetPositionAndRotation(*_actor, JPH::RVec3Arg(position.x, position.y, position.z), JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), JPH::EActivation::DontActivate);
-			}
-
 			_owner = GetParent();
 		}
 	}
@@ -689,17 +771,15 @@ namespace RN
 
 	void JoltDynamicBody::UpdatePosition()
 	{
-		if(!_owner)
+		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
+		if(!_owner || !bodyInterface)
 		{
 			return;
 		}
 
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
-
 		JPH::RVec3 position;
 		JPH::Quat rotation;
-		bodyInterface.GetPositionAndRotation(*_actor, position, rotation);
+		bodyInterface->GetPositionAndRotation(*_actor, position, rotation);
 
 		RN::Quaternion rotationResult = Quaternion(rotation.GetX(), rotation.GetY(), rotation.GetZ(), rotation.GetW()) * _rotationOffset.GetConjugated();
 		RN::Vector3 positionOffset = rotationResult.GetRotatedVector(_positionOffset);

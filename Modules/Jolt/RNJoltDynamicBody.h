@@ -13,6 +13,7 @@
 
 namespace JPH
 {
+	class BodyInterface;
 	class BodyID;
 }
 
@@ -52,6 +53,7 @@ namespace RN
 		JTAPI void SetEnableCCD(bool enable);
 		JTAPI void SetEnableGravity(bool enable);
 		JTAPI void SetEnableKinematic(bool enable);
+		JTAPI void SetEnableSimulation(bool enable);
 		JTAPI void LockMovement(uint32 lockFlags);
 		JTAPI void SetSolverIterationCount(uint32 positionIterations, uint32 velocityIterations);
 
@@ -81,7 +83,7 @@ namespace RN
 		JTAPI bool GetIsSleeping() const;
 
 		JTAPI bool GetIsKinematic() const;
-
+		JTAPI bool GetIsSimulationEnabled() const { return _isInSimulation; }
 		/*JTAPI bool SweepTest(std::vector<JoltContactInfo> &contactInfo, const Vector3 &direction, const Vector3 &offsetPosition = Vector3(), const Quaternion &offsetRotation = Quaternion(), float inflation = 0.0f) const;
 		JTAPI Quaternion RotationSweepTest(std::vector<JoltContactInfo> &contactInfo, const Quaternion &targetRoation, float stepSize, float sweepSize, const Vector3 &offsetPosition = Vector3(), const Quaternion &offsetRotation = Quaternion()) const;*/
 
@@ -94,10 +96,14 @@ namespace RN
 		//		void UpdateFromMaterial(BulletMaterial *material) override;
 
 	private:
+		JPH::BodyInterface *GetBodyInterfaceIfAdded();
+
 		JoltShape *_shape;
 		JPH::BodyID *_actor;
 		float _mass;
 		bool _isKinematic;
+		bool _isGravityEnabled;
+		bool _isInSimulation;
 
 		RNDeclareMetaAPI(JoltDynamicBody, JTAPI)
 	};

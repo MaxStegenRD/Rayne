@@ -95,8 +95,10 @@ namespace RN
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 		JPH::TwoBodyConstraint *twoBodyConstraint = static_cast<JPH::TwoBodyConstraint *>(_constraint);
-		bodyInterface.ActivateBody(twoBodyConstraint->GetBody1()->GetID());
-		bodyInterface.ActivateBody(twoBodyConstraint->GetBody2()->GetID());
+		JPH::BodyID bodyID1 = twoBodyConstraint->GetBody1()->GetID();
+		JPH::BodyID bodyID2 = twoBodyConstraint->GetBody2()->GetID();
+		if(bodyInterface.IsAdded(bodyID1)) bodyInterface.ActivateBody(bodyID1);
+		if(bodyInterface.IsAdded(bodyID2)) bodyInterface.ActivateBody(bodyID2);
 	}
 
 	void JoltConstraint::SetEnabled(bool enabled)
