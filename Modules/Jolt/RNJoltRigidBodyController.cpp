@@ -23,6 +23,9 @@ namespace RN
 	RNDefineMeta(JoltRigidBodyController, JoltCollisionObject)
 
 	constexpr uint32 InvalidSupportBodyID = 0xffffffff;
+	constexpr float ExternalSupportAnchorCorrectionSlop = 0.05f;
+	constexpr float ExternalSupportAnchorCorrectionFrequency = 8.0f;
+	constexpr float ExternalSupportAnchorMaxCorrectionSpeed = 20.0f;
 
 	JoltRigidBodyController::JoltRigidBodyController(float radius, float height, float groundTolerance, float mass, float stepOffset) :
 		_radius(radius), _height(height), _groundTolerance(groundTolerance), _stepOffset(stepOffset), _objectBelow(nullptr), _groundVelocity(), _groundAngularVelocity(), _groundNormal(), _isFalling(false), _externalSupportAnchorValid(false), _externalSupportCollisionFilteringEnabled(false), _externalSupportBodyID(InvalidSupportBodyID), _externalSupportLocalPosition(), _externalSupportAnchorMaxForce(0.0f), _externalSupportConstraint(nullptr)
@@ -75,11 +78,15 @@ namespace RN
 				if(anchorDistance > k::EpsilonFloat)
 				{
 					anchorDelta.Normalize();
-					JPH::Vec3 currentVelocity = _controller->GetLinearVelocity();
-					Vector3 currentRelativeVelocity(currentVelocity.GetX() - supportAnchorVelocity.x, currentVelocity.GetY() - supportAnchorVelocity.y, currentVelocity.GetZ() - supportAnchorVelocity.z);
-					float correctingSpeed = currentRelativeVelocity.GetDotProduct(anchorDelta);
-					if(correctingSpeed > 0.0f)
+					float correctionDistance = anchorDistance - ExternalSupportAnchorCorrectionSlop;
+					if(correctionDistance > 0.0f)
 					{
+						float correctingSpeed = correctionDistance * ExternalSupportAnchorCorrectionFrequency;
+						if(correctingSpeed > ExternalSupportAnchorMaxCorrectionSpeed)
+						{
+							correctingSpeed = ExternalSupportAnchorMaxCorrectionSpeed;
+						}
+
 						adjustedVelocity += anchorDelta * correctingSpeed;
 					}
 				}
