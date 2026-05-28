@@ -41,6 +41,8 @@ namespace RN
 
 		JTAPI void SetCollisionFilter(uint32 group, uint32 mask) override;
 
+		JTAPI void SetShape(JoltShape *shape, float mass);
+		JTAPI void SetShape(JoltShape *shape, float mass, const Vector3 &positionOffset);
 		JTAPI void SetMass(float mass);
 		JTAPI void SetLinearVelocity(const Vector3 &velocity);
 		JTAPI void SetAngularVelocity(const Vector3 &velocity);

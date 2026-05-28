@@ -72,6 +72,64 @@ namespace RN
 		return body->Autorelease();
 	}
 
+	void JoltDynamicBody::SetShape(JoltShape *shape, float mass)
+	{
+		SetShape(shape, mass, _positionOffset);
+	}
+
+	void JoltDynamicBody::SetShape(JoltShape *shape, float mass, const Vector3 &positionOffset)
+	{
+		if(!shape || !_actor) return;
+
+		Vector3 worldPosition = GetWorldPosition();
+		Quaternion worldRotation = GetWorldRotation();
+
+		JoltShape *previousShape = _shape;
+		_shape = shape->Retain();
+		_positionOffset = positionOffset;
+
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		bool wasInSimulation = bodyInterface.IsAdded(*_actor);
+		if(wasInSimulation)
+		{
+			bodyInterface.SetShape(*_actor, _shape->GetJoltShape(), true, JPH::EActivation::Activate);
+		}
+		else
+		{
+			const JPH::BodyLockInterface &lockInterface = physics->GetBodyLockInterface();
+			JPH::BodyLockWrite lock(lockInterface, *_actor);
+			if(lock.Succeeded())
+			{
+				lock.GetBody().SetShapeInternal(_shape->GetJoltShape(), true);
+			}
+		}
+
+		if(previousShape) previousShape->Release();
+		SetMass(mass);
+
+		if(worldPosition.IsValid() && worldRotation.IsValid() && positionOffset.IsValid())
+		{
+			worldRotation.Normalize();
+			Quaternion bodyRotation = worldRotation * _rotationOffset;
+			bodyRotation.Normalize();
+			Vector3 bodyPosition = worldPosition - worldRotation.GetRotatedVector(_positionOffset);
+			if(wasInSimulation)
+			{
+				bodyInterface.SetPositionAndRotation(*_actor, JPH::RVec3Arg(bodyPosition.x, bodyPosition.y, bodyPosition.z), JPH::QuatArg(bodyRotation.x, bodyRotation.y, bodyRotation.z, bodyRotation.w), JPH::EActivation::DontActivate);
+			}
+			else
+			{
+				const JPH::BodyLockInterface &lockInterface = physics->GetBodyLockInterface();
+				JPH::BodyLockWrite transformLock(lockInterface, *_actor);
+				if(transformLock.Succeeded())
+				{
+					transformLock.GetBody().SetPositionAndRotationInternal(JPH::RVec3Arg(bodyPosition.x, bodyPosition.y, bodyPosition.z), JPH::QuatArg(bodyRotation.x, bodyRotation.y, bodyRotation.z, bodyRotation.w));
+				}
+			}
+		}
+	}
+
 	void JoltDynamicBody::SetMass(float mass)
 	{
 		_mass = mass;
