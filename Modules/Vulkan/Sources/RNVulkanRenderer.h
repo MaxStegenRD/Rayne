@@ -30,7 +30,6 @@ namespace RN
 	class VulkanDynamicBufferReference;
 	class VulkanStaticGPUBuffer;
 	class VulkanDynamicGPUBuffer;
-	class VulkanTransientDescriptorSet;
 	struct RenderPassResources;
 
 	class VulkanRenderer : public Renderer
@@ -41,7 +40,6 @@ namespace RN
 		friend VulkanStaticGPUBuffer;
 		friend VulkanDynamicGPUBuffer;
 		friend VulkanTexture;
-		friend VulkanTransientDescriptorSet;
 
 		VKAPI VulkanRenderer(VulkanRendererDescriptor *descriptor, VulkanDevice *device);
 		VKAPI ~VulkanRenderer();
@@ -110,7 +108,11 @@ namespace RN
 		void RenderFrameSubmission(const VulkanFrameSubmission &submission);
 		void WarmupDrawableOnRenderThread(const VulkanFrameSubmission &submission, const Mesh::DrawSnapshot &meshSnapshot, const Material::DrawSnapshot &materialSnapshot, uint64 materialSnapshotVersion);
 		void SubmitCamera(VulkanFrameSubmission &submission, Camera *camera, Function &&function);
+		size_t SubmitRootRenderPass(VulkanFrameSubmission &submission, Camera *camera, RenderPass *renderPass, const std::vector<Camera *> &multiviewSnapshotCameras);
+		void SubmitRootFramePass(VulkanFrameSubmission &submission, Camera *camera, FramePass *framePass, const std::vector<Camera *> &multiviewSnapshotCameras);
+		void SubmitFramePass(VulkanFrameSubmission &submission, FramePass *framePass, VulkanRenderPass &previousRenderPass);
 		void SubmitRenderPass(VulkanFrameSubmission &submission, RenderPass *renderPass, VulkanRenderPass &previousRenderPass);
+		void SubmitComputePass(VulkanFrameSubmission &submission, ComputePass *computePass, VulkanRenderPass *previousRenderPass);
 		void SubmitDrawable(VulkanFrameSubmission &submission, Drawable *drawable, const SceneNode *node);
 		bool PrepareRenderFrame(VulkanFrameSubmission &submission);
 		void UpdateDescriptorSets(VulkanFrameSubmission &submission);
@@ -122,6 +124,7 @@ namespace RN
 		VulkanFrameSubmission &GetActiveFrameSubmission();
 
 		void RenderAPIRenderPass(VulkanCommandBuffer *commandBuffer, const VulkanRenderPass &renderPass);
+		void RenderComputePass(VulkanCommandBuffer *commandBuffer, const VulkanFrameSubmission &submission, const VulkanRenderPass &computePass);
 
 		void SetupRendertargets(VkCommandBuffer commandBuffer, const VulkanFrameSubmission &submission, const VulkanRenderPass &renderPass);
 		VkRenderPass GetVulkanRenderPass(const RenderFrame &renderFrame, const VulkanRenderPass *renderPass);

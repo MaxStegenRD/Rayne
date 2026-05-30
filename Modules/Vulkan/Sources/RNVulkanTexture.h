@@ -25,6 +25,7 @@ namespace RN
 		{
 			Undefined,
 			ShaderRead,
+			ShaderWrite,
 			RenderTarget,
 			TransferSource,
 			TransferDestination,
@@ -72,6 +73,7 @@ namespace RN
 			CopySource,
 			CopyDestination,
 			ShaderSource,
+			ShaderDestination,
 			RenderTarget,
 			ExternalSource
 		};

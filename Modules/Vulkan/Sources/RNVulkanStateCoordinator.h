@@ -29,6 +29,7 @@ namespace RN
 		Shader::ArgumentBuffer *instanceAttributesArgumentBuffer;
 		std::vector<VulkanDynamicBufferReference *> vertexConstantBuffers;
 		std::vector<VulkanDynamicBufferReference *> fragmentConstantBuffers;
+		std::vector<VulkanDynamicBufferReference *> computeConstantBuffers;
 
 		VkDescriptorSet descriptorSet;
 
@@ -80,6 +81,7 @@ namespace RN
 
 		Shader *vertexShader;
 		Shader *fragmentShader;
+		Shader *computeShader;
 
 		CullMode cullMode;
 		bool usePolygonOffset;
@@ -105,6 +107,15 @@ namespace RN
 
         uint8 vertexAttributeBufferCount; //This should maybe go into the descriptor and be checked cause pipelines could differ with this now!?
 
+		VkPipeline state;
+	};
+
+	struct VulkanComputePipelineState
+	{
+		~VulkanComputePipelineState();
+
+		Shader *computeShader;
+		const VulkanRootSignature *rootSignature;
 		VkPipeline state;
 	};
 
@@ -174,6 +185,7 @@ namespace RN
 
 		const VulkanRootSignature *GetRootSignature(const VulkanPipelineStateDescriptor &pipelineDescriptor);
 		const VulkanPipelineState *GetRenderPipelineState(Shader *vertexShader, Shader *fragmentShader, const Mesh::DrawSnapshot &mesh, const Material::PipelineProperties &mergedMaterialProperties, const RenderFrame &renderFrame, const VulkanRenderPass *rootVulkanPass, uint32 subpassIndex, uint8 multiviewCount);
+		const VulkanComputePipelineState *GetComputePipelineState(Shader *computeShader);
 		VulkanUniformState *GetUniformStateForPipelineState(const VulkanPipelineState *pipelineState);
 		VulkanRenderPassState *GetRenderPassState(const RenderFrame &renderFrame, const VulkanRenderPass *rootVulkanPass, uint8 multiviewCount);
 
@@ -190,6 +202,7 @@ namespace RN
 
 		std::vector<VulkanRenderPassState*> _renderPassStates;
 		std::vector<VulkanPipelineStateCollection *> _renderingStates;
+		std::vector<VulkanComputePipelineState *> _computeStates;
 		std::vector<VulkanRootSignature *> _rootSignatures;
 
 		VkPipelineCache _pipelineCache;

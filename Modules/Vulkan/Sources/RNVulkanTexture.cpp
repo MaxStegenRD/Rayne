@@ -344,6 +344,8 @@ namespace RN
 				return VK_IMAGE_LAYOUT_UNDEFINED;
 			case LayoutUsage::ShaderRead:
 				return VulkanTextureInfo::GetReadOnlyLayout(_descriptor.format);
+			case LayoutUsage::ShaderWrite:
+				return VK_IMAGE_LAYOUT_GENERAL;
 			case LayoutUsage::RenderTarget:
 				return VulkanTextureInfo::GetRenderTargetLayout(_descriptor.format);
 			case LayoutUsage::TransferSource:
@@ -366,6 +368,8 @@ namespace RN
 				return BarrierIntent::ExternalSource;
 			case LayoutUsage::ShaderRead:
 				return BarrierIntent::ShaderSource;
+			case LayoutUsage::ShaderWrite:
+				return BarrierIntent::ShaderDestination;
 			case LayoutUsage::RenderTarget:
 				return BarrierIntent::RenderTarget;
 			case LayoutUsage::TransferSource:
@@ -729,8 +733,14 @@ namespace RN
 		if(intent == BarrierIntent::ShaderSource)
 		{
 			srcStageFlags = VK_PIPELINE_STAGE_TRANSFER_BIT;
-			// Textures may be read in multiple shader stages; include both common graphics stages
-			destStageFlags = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			// Textures may be read in multiple shader stages; include graphics and compute.
+			destStageFlags = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+		}
+
+		if(intent == BarrierIntent::ShaderDestination)
+		{
+			srcStageFlags = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			destStageFlags = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 		}
 
 		if(intent == BarrierIntent::CopySource)
@@ -777,8 +787,12 @@ namespace RN
 		}
 		else if(fromLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
 		{
-			// Cover common shader stages that read
-			srcStageFlags = static_cast<VkPipelineStageFlags>(srcStageFlags | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT);
+			// Cover common shader stages that read.
+			srcStageFlags = static_cast<VkPipelineStageFlags>(srcStageFlags | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+		}
+		else if(fromLayout == VK_IMAGE_LAYOUT_GENERAL)
+		{
+			srcStageFlags = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 		}
 		else if(fromLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL || fromLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
 		{
@@ -796,6 +810,8 @@ namespace RN
 		// Make sure any shader reads from the image have been finished
 		if(fromLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
 			imageMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		if(fromLayout == VK_IMAGE_LAYOUT_GENERAL)
+			imageMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
 
 		if(fromLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
 			imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -839,6 +855,10 @@ namespace RN
 		if(toLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
 		{
 			imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		}
+		if(toLayout == VK_IMAGE_LAYOUT_GENERAL)
+		{
+			imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
 		}
 
 		if(fromLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)

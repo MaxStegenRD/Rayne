@@ -79,6 +79,10 @@ namespace RN
 		{
 			buffer->Release();
 		}
+		for(VulkanDynamicBufferReference *buffer : computeConstantBuffers)
+		{
+			buffer->Release();
+		}
 
 		SafeRelease(instanceAttributesBuffer);
 		SafeRelease(instanceAttributesArgumentBuffer);
@@ -98,6 +102,11 @@ namespace RN
 		//state->Release();
 	}
 
+	VulkanComputePipelineState::~VulkanComputePipelineState()
+	{
+		//state->Release();
+	}
+
 	VulkanStateCoordinator::VulkanStateCoordinator() :
 		_lastDepthStencilState(nullptr), _pipelineCache(VK_NULL_HANDLE), _pipelineCacheNeedsSaving(false)
 	{
@@ -109,6 +118,8 @@ namespace RN
 		//TODO: Clean up correctly...
 		for(VulkanPipelineStateCollection *collection : _renderingStates)
 			delete collection;
+		for(VulkanComputePipelineState *state : _computeStates)
+			delete state;
 	}
 
 	void VulkanStateCoordinator::LoadPipelineCache(uint64 buildNumber, VulkanDevice *device, VkAllocationCallbacks *allocatorCallbacks)
@@ -246,9 +257,11 @@ namespace RN
 
 		VulkanShader *vertexShader = static_cast<VulkanShader *>(descriptor.vertexShader);
 		VulkanShader *fragmentShader = static_cast<VulkanShader *>(descriptor.fragmentShader);
+		VulkanShader *computeShader = static_cast<VulkanShader *>(descriptor.computeShader);
 
 		const Shader::Signature *vertexShaderSignature = vertexShader? vertexShader->GetSignature() : nullptr;
 		const Shader::Signature *fragmentShaderSignature = fragmentShader? fragmentShader->GetSignature() : nullptr;
+		const Shader::Signature *computeShaderSignature = computeShader? computeShader->GetSignature() : nullptr;
 
 		uint8 textureCount = 0;
 		uint8 constantBufferCount = 0;
@@ -271,9 +284,9 @@ namespace RN
 				bindingType.push_back(3);
 			});
 
-			vertexShaderSignature->GetTextures()->Enumerate<Shader::Argument>([&](Shader::Argument *argument, size_t index, bool &stop){
+			vertexShaderSignature->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop){
 				bindingIndex.push_back(argument->GetIndex());
-				bindingType.push_back(4);
+				bindingType.push_back(argument->GetType() == Shader::ArgumentTexture::Type::Storage ? 15 : 4);
 			});
 
 			textureCount += vertexShaderSignature->GetTextures()->GetCount();
@@ -299,9 +312,9 @@ namespace RN
 				bindingType.push_back(8);
 			});
 
-			fragmentShaderSignature->GetTextures()->Enumerate<Shader::Argument>([&](Shader::Argument *argument, size_t index, bool &stop){
+			fragmentShaderSignature->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop){
 				bindingIndex.push_back(argument->GetIndex());
-				bindingType.push_back(9);
+				bindingType.push_back(argument->GetType() == Shader::ArgumentTexture::Type::Storage ? 16 : 9);
 			});
 
 			textureCount += fragmentShaderSignature->GetTextures()->GetCount();
@@ -309,6 +322,28 @@ namespace RN
 			subpassInputCount += fragmentShaderSignature->GetSubpassInputs()->GetCount();
 
 			samplerArray->AddObjectsFromArray(fragmentShaderSignature->GetSamplers());
+		}
+		if(computeShaderSignature)
+		{
+			computeShaderSignature->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *argument, size_t index, bool &stop){
+				bindingIndex.push_back(argument->GetIndex());
+				bindingType.push_back(argument->GetType() == Shader::ArgumentBuffer::Type::UniformBuffer? 10 : 11);
+			});
+
+			computeShaderSignature->GetSamplers()->Enumerate<Shader::Argument>([&](Shader::Argument *argument, size_t index, bool &stop){
+				bindingIndex.push_back(argument->GetIndex());
+				bindingType.push_back(12);
+			});
+
+			computeShaderSignature->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop){
+				bindingIndex.push_back(argument->GetIndex());
+				bindingType.push_back(argument->GetType() == Shader::ArgumentTexture::Type::Storage ? 14 : 13);
+			});
+
+			textureCount += computeShaderSignature->GetTextures()->GetCount();
+			constantBufferCount += computeShaderSignature->GetBuffers()->GetCount();
+
+			samplerArray->AddObjectsFromArray(computeShaderSignature->GetSamplers());
 		}
 
 		for(VulkanRootSignature *signature : _rootSignatures)
@@ -387,7 +422,7 @@ namespace RN
 			//Vertex shader textures
 			signature->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *texture, size_t index, bool &stop){
 				VkDescriptorSetLayoutBinding setImageLayoutBinding = {};
-				setImageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+				setImageLayoutBinding.descriptorType = texture->GetType() == Shader::ArgumentTexture::Type::Storage ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 				setImageLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 				setImageLayoutBinding.binding = texture->GetIndex();
 				setImageLayoutBinding.descriptorCount = 1;
@@ -422,7 +457,7 @@ namespace RN
 			//Fragment shader textures
 			signature->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *texture, size_t index, bool &stop){
 				VkDescriptorSetLayoutBinding setImageLayoutBinding = {};
-				setImageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+				setImageLayoutBinding.descriptorType = texture->GetType() == Shader::ArgumentTexture::Type::Storage ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 				setImageLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 				setImageLayoutBinding.binding = texture->GetIndex();
 				setImageLayoutBinding.descriptorCount = 1;
@@ -438,6 +473,31 @@ namespace RN
 				setInputAttachmentLayoutBinding.descriptorCount = 1;
 				addSetLayoutBinding(setInputAttachmentLayoutBinding);
 			});
+		}
+
+		if(computeShader)
+		{
+			const Shader::Signature *signature = computeShader->GetSignature();
+
+			signature->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *buffer, size_t index, bool &stop){
+				VkDescriptorSetLayoutBinding setUniformLayoutBinding = {};
+				setUniformLayoutBinding.descriptorType = (buffer->GetType() == Shader::ArgumentBuffer::Type::UniformBuffer)? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+				setUniformLayoutBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+				setUniformLayoutBinding.binding = buffer->GetIndex();
+				setUniformLayoutBinding.descriptorCount = 1;
+				addSetLayoutBinding(setUniformLayoutBinding);
+			});
+
+			signature->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *texture, size_t index, bool &stop){
+				VkDescriptorSetLayoutBinding setImageLayoutBinding = {};
+				setImageLayoutBinding.descriptorType = texture->GetType() == Shader::ArgumentTexture::Type::Storage ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+				setImageLayoutBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+				setImageLayoutBinding.binding = texture->GetIndex();
+				setImageLayoutBinding.descriptorCount = 1;
+				addSetLayoutBinding(setImageLayoutBinding);
+			});
+
+			RN_ASSERT(signature->GetSubpassInputs()->GetCount() == 0, "Compute shaders cannot use subpass inputs");
 		}
 
 		// Create samplers
@@ -586,6 +646,7 @@ namespace RN
 		pipelineDescriptor.renderPass = GetRenderPassState(renderFrame, rootVulkanPass, multiviewCount)->renderPass;
 		pipelineDescriptor.vertexShader = vertexShader;
 		pipelineDescriptor.fragmentShader = fragmentShader;
+		pipelineDescriptor.computeShader = nullptr;
 		pipelineDescriptor.depthWriteEnabled = mergedMaterialProperties.depthWriteEnabled;
 		pipelineDescriptor.colorWriteMask = mergedMaterialProperties.colorWriteMask;
 		pipelineDescriptor.depthMode = mergedMaterialProperties.depthMode;
@@ -630,6 +691,45 @@ namespace RN
 		_renderingStates.push_back(collection);
 
 		return GetRenderPipelineStateInCollection(collection, mesh, pipelineDescriptor);
+	}
+
+	const VulkanComputePipelineState *VulkanStateCoordinator::GetComputePipelineState(Shader *computeShader)
+	{
+		RN_ASSERT(computeShader && computeShader->GetType() == Shader::Type::Compute, "Compute pipeline state requires a compute shader");
+
+		for(const VulkanComputePipelineState *state : _computeStates)
+		{
+			if(state->computeShader == computeShader)
+				return state;
+		}
+
+		VulkanRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<VulkanRenderer>();
+		VulkanDevice *device = renderer->GetVulkanDevice();
+
+		VulkanPipelineStateDescriptor descriptor = {};
+		descriptor.computeShader = computeShader;
+		const VulkanRootSignature *rootSignature = GetRootSignature(descriptor);
+
+		VulkanShader *vulkanShader = computeShader->Downcast<VulkanShader>();
+		VkComputePipelineCreateInfo pipelineCreateInfo = {};
+		pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+		pipelineCreateInfo.pNext = NULL;
+		pipelineCreateInfo.flags = 0;
+		pipelineCreateInfo.stage = vulkanShader->_shaderStage;
+		pipelineCreateInfo.layout = rootSignature->pipelineLayout;
+		pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
+		pipelineCreateInfo.basePipelineIndex = -1;
+
+		VkPipeline pipeline;
+		RNVulkanValidate(vk::CreateComputePipelines(device->GetDevice(), _pipelineCache, 1, &pipelineCreateInfo, renderer->GetAllocatorCallback(), &pipeline));
+		_pipelineCacheNeedsSaving = true;
+
+		VulkanComputePipelineState *state = new VulkanComputePipelineState();
+		state->computeShader = computeShader;
+		state->rootSignature = rootSignature;
+		state->state = pipeline;
+		_computeStates.push_back(state);
+		return state;
 	}
 
 	const VulkanPipelineState *VulkanStateCoordinator::GetRenderPipelineStateInCollection(VulkanPipelineStateCollection *collection, const Mesh::DrawSnapshot &mesh, const VulkanPipelineStateDescriptor &descriptor)

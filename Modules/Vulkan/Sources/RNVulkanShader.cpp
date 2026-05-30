@@ -248,6 +248,17 @@ namespace RN
 			texturesArray->AddObject(argumentTexture->Autorelease());
 		}
 
+		for(auto &resource : resources.storage_images)
+		{
+			String *name = RNSTR(resource.name);
+			uint8 materialTextureIndex = 0;
+			ArgumentTexture::Source textureSource = ArgumentTexture::GetSourceForName(name, materialTextureIndex);
+
+			uint32 binding = reflector.get_decoration(resource.id, spv::DecorationBinding);
+			ArgumentTexture *argumentTexture = new ArgumentTexture(name, binding, materialTextureIndex, textureSource, ArgumentTexture::Type::Storage);
+			texturesArray->AddObject(argumentTexture->Autorelease());
+		}
+
 		for(auto &resource : resources.separate_samplers)
 		{
 			String *name = RNSTR(resource.name);

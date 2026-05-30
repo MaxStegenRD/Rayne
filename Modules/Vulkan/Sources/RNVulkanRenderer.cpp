@@ -861,7 +861,7 @@ namespace RN
 		_currentCommandBuffer->Begin();
 		ResetDrawBindStateCache();
 
-		if(submission.swapChains.size() > 0)
+		if(submission.swapChains.size() > 0 || submission.renderPasses.size() > 0)
 		{
 			VkCommandBuffer commandBuffer = _currentCommandBuffer->GetCommandBuffer();
 			RN_PROFILE_VULKAN_SCOPE_CMD(_internals->tracyVulkanCtx, commandBuffer);
@@ -873,6 +873,12 @@ namespace RN
 
 			for(const VulkanRenderPass &renderPass : submission.renderPasses)
 			{
+				if(renderPass.type == VulkanRenderPass::Type::Compute)
+				{
+					RenderComputePass(_currentCommandBuffer, submission, renderPass);
+					continue;
+				}
+
 				if(!renderPass.UsesDrawItems())
 				{
 					RenderAPIRenderPass(_currentCommandBuffer, renderPass);
@@ -880,6 +886,11 @@ namespace RN
 				}
 
 				//Set textures layout for reading for render targets that are used in this frame
+				for(VulkanTexture *vulkanTexture : renderPass.shaderWriteTexturesUsedAsSampledImages)
+				{
+					vulkanTexture->TransitionToUsage(commandBuffer, VulkanTexture::LayoutUsage::ShaderRead);
+				}
+
 				for(VulkanTexture *vulkanTexture : renderPass.renderTargetsUsedInShader)
 				{
 					vulkanTexture->TransitionToUsage(commandBuffer, VulkanTexture::LayoutUsage::ShaderRead);
@@ -1155,8 +1166,6 @@ namespace RN
 	void VulkanRenderer::SubmitCamera(VulkanFrameSubmission &frameSubmission, Camera *camera, Function &&function)
 	{
 		RN_PROFILE_SCOPE();
-		VulkanRenderPass renderPass;
-		renderPass.previousStoredFramebuffer = nullptr;
 		std::vector<Camera *> multiviewSnapshotCameras;
 
 		const Array *multiviewCameras = camera->GetMultiviewCameras();
@@ -1228,57 +1237,11 @@ namespace RN
 			}
 		}
 
-		RenderPass *cameraRenderPass = _currentMultiviewFallbackRenderPass? _currentMultiviewFallbackRenderPass : camera->GetRenderPass();
-		cameraRenderPass->UpdateSubpassChain();
-		const Array *nextFramePasses = cameraRenderPass->GetNextFramePasses();
-		const size_t frameStatisticsIndex = frameSubmission.renderFrame.AddCameraStatistics();
-
-		RenderPassResources *renderPassResources = cameraRenderPass->GetRenderResources(this);
-		const RenderPass::DrawSnapshot &rootDrawSnapshot = renderPassResources->GetDrawSnapshot();
-
-		renderPass.multiviewLayer = _currentMultiviewLayer;
-
-		renderPass.type = VulkanRenderPass::Type::Default;
-		renderPass.renderPass = cameraRenderPass;
-		renderPass.frameStatisticsIndex = frameStatisticsIndex;
-
-		renderPass.resolveFramebuffer = nullptr;
-
-		renderPass.shaderHint = rootDrawSnapshot.GetShaderHint();
-		renderPass.multiviewCount = (_currentMultiviewCount > 0) ? _currentMultiviewCount : static_cast<uint8>(multiviewSnapshotCameras.size());
-		renderPass.renderFramePassIndex = frameSubmission.renderFrame.AddPass(rootDrawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetIdentity(), renderPassResources->GetOverrideMaterialSnapshotVersion());
-
-		Matrix clipSpaceCorrectionMatrix;
-		clipSpaceCorrectionMatrix.m[5] = -1.0f;
-		RenderFrame::CameraSnapshot cameraSnapshot = RenderFrame::CameraSnapshot::WithCamera(camera, rootDrawSnapshot.GetFrame(), clipSpaceCorrectionMatrix);
-		RenderFrame::Pass &framePass = frameSubmission.renderFrame.GetPass(renderPass.renderFramePassIndex);
-		framePass.SetCameraSnapshot(cameraSnapshot);
-		for(Camera *multiviewCamera : multiviewSnapshotCameras)
-		{
-			framePass.AddMultiviewCameraSnapshot(RenderFrame::CameraSnapshot::WithCamera(multiviewCamera, rootDrawSnapshot.GetFrame(), clipSpaceCorrectionMatrix));
-		}
-
-		Framebuffer *framebuffer = rootDrawSnapshot.GetFramebuffer();
-		if(!framebuffer) return;
-
-		renderPass.framebuffer = framebuffer->Downcast<VulkanFramebuffer>();
-		frameSubmission.AddSwapChain(renderPass.framebuffer->GetSwapChain());
-
 		size_t previousRenderPassIndex = frameSubmission.renderPasses.size();
 		frameSubmission.activeRenderPassIndex = previousRenderPassIndex;
-		renderPass.subpasses.reserve(cameraRenderPass->GetSubpassCount());
-		frameSubmission.renderPasses.push_back(renderPass);
 
-		nextFramePasses->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop) {
-			RenderPass *nextRenderPass = nextPass->Downcast<RenderPass>();
-			RN_ASSERT(nextRenderPass, "Vulkan renderer only supports RenderPass frame pass nodes");
-			if(!nextRenderPass)
-			{
-				stop = true;
-				return;
-			}
-			SubmitRenderPass(frameSubmission, nextRenderPass, frameSubmission.renderPasses[previousRenderPassIndex]);
-		});
+		FramePass *cameraFramePass = _currentMultiviewFallbackRenderPass ? static_cast<FramePass *>(_currentMultiviewFallbackRenderPass) : camera->GetRootFramePass();
+		SubmitRootFramePass(frameSubmission, camera, cameraFramePass, multiviewSnapshotCameras);
 
 		frameSubmission.activeRenderPassIndex = previousRenderPassIndex;
 
@@ -1342,6 +1305,118 @@ namespace RN
 				addCameraPassAttachmentSnapshots(subpass);
 			}
 		}
+	}
+
+	size_t VulkanRenderer::SubmitRootRenderPass(VulkanFrameSubmission &frameSubmission, Camera *camera, RenderPass *cameraRenderPass, const std::vector<Camera *> &multiviewSnapshotCameras)
+	{
+		RN_PROFILE_SCOPE();
+
+		cameraRenderPass->UpdateSubpassChain();
+		const size_t frameStatisticsIndex = frameSubmission.renderFrame.AddCameraStatistics();
+
+		RenderPassResources *renderPassResources = cameraRenderPass->GetRenderResources(this);
+		const RenderPass::DrawSnapshot &rootDrawSnapshot = renderPassResources->GetDrawSnapshot();
+		Framebuffer *framebuffer = rootDrawSnapshot.GetFramebuffer();
+		if(!framebuffer) return RenderFrame::InvalidPassIndex;
+
+		VulkanRenderPass renderPass;
+		renderPass.previousStoredFramebuffer = nullptr;
+		renderPass.multiviewLayer = _currentMultiviewLayer;
+		renderPass.type = VulkanRenderPass::Type::Default;
+		renderPass.renderPass = cameraRenderPass;
+		renderPass.frameStatisticsIndex = frameStatisticsIndex;
+		renderPass.resolveFramebuffer = nullptr;
+		renderPass.shaderHint = rootDrawSnapshot.GetShaderHint();
+		renderPass.multiviewCount = (_currentMultiviewCount > 0) ? _currentMultiviewCount : static_cast<uint8>(multiviewSnapshotCameras.size());
+		renderPass.renderFramePassIndex = frameSubmission.renderFrame.AddPass(rootDrawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetIdentity(), renderPassResources->GetOverrideMaterialSnapshotVersion());
+
+		Matrix clipSpaceCorrectionMatrix;
+		clipSpaceCorrectionMatrix.m[5] = -1.0f;
+		RenderFrame::CameraSnapshot cameraSnapshot = RenderFrame::CameraSnapshot::WithCamera(camera, rootDrawSnapshot.GetFrame(), clipSpaceCorrectionMatrix);
+		RenderFrame::Pass &framePass = frameSubmission.renderFrame.GetPass(renderPass.renderFramePassIndex);
+		framePass.SetCameraSnapshot(cameraSnapshot);
+		for(Camera *multiviewCamera : multiviewSnapshotCameras)
+		{
+			framePass.AddMultiviewCameraSnapshot(RenderFrame::CameraSnapshot::WithCamera(multiviewCamera, rootDrawSnapshot.GetFrame(), clipSpaceCorrectionMatrix));
+		}
+
+		renderPass.framebuffer = framebuffer->Downcast<VulkanFramebuffer>();
+		frameSubmission.AddSwapChain(renderPass.framebuffer->GetSwapChain());
+
+		const size_t renderPassIndex = frameSubmission.renderPasses.size();
+		frameSubmission.activeRenderPassIndex = renderPassIndex;
+		renderPass.subpasses.reserve(cameraRenderPass->GetSubpassCount());
+		frameSubmission.renderPasses.push_back(renderPass);
+		return renderPassIndex;
+	}
+
+	void VulkanRenderer::SubmitRootFramePass(VulkanFrameSubmission &frameSubmission, Camera *camera, FramePass *framePass, const std::vector<Camera *> &multiviewSnapshotCameras)
+	{
+		RN_PROFILE_SCOPE();
+
+		RenderPass *renderPass = framePass->Downcast<RenderPass>();
+		if(renderPass)
+		{
+			const size_t rootRenderPassIndex = SubmitRootRenderPass(frameSubmission, camera, renderPass, multiviewSnapshotCameras);
+			if(rootRenderPassIndex == RenderFrame::InvalidPassIndex) return;
+
+			renderPass->GetNextFramePasses()->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop) {
+				SubmitFramePass(frameSubmission, nextPass, frameSubmission.renderPasses[rootRenderPassIndex]);
+			});
+			return;
+		}
+
+		ComputePass *computePass = framePass->Downcast<ComputePass>();
+		if(computePass)
+		{
+			SubmitComputePass(frameSubmission, computePass, nullptr);
+			computePass->GetNextFramePasses()->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop) {
+				SubmitRootFramePass(frameSubmission, camera, nextPass, multiviewSnapshotCameras);
+			});
+			return;
+		}
+
+		RN_ASSERT(false, "Vulkan renderer only supports RenderPass and ComputePass frame pass nodes");
+	}
+
+	void VulkanRenderer::SubmitFramePass(VulkanFrameSubmission &frameSubmission, FramePass *framePass, VulkanRenderPass &previousRenderPass)
+	{
+		RN_PROFILE_SCOPE();
+
+		RenderPass *renderPass = framePass->Downcast<RenderPass>();
+		if(renderPass)
+		{
+			SubmitRenderPass(frameSubmission, renderPass, previousRenderPass);
+			return;
+		}
+
+		ComputePass *computePass = framePass->Downcast<ComputePass>();
+		if(computePass)
+		{
+			SubmitComputePass(frameSubmission, computePass, &previousRenderPass);
+			computePass->GetNextFramePasses()->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop) {
+				SubmitFramePass(frameSubmission, nextPass, previousRenderPass);
+			});
+			return;
+		}
+
+		RN_ASSERT(false, "Vulkan renderer only supports RenderPass and ComputePass frame pass nodes");
+	}
+
+	void VulkanRenderer::SubmitComputePass(VulkanFrameSubmission &frameSubmission, ComputePass *computePass, VulkanRenderPass *previousRenderPass)
+	{
+		RN_PROFILE_SCOPE();
+
+		VulkanRenderPass vulkanComputePass;
+		vulkanComputePass.type = VulkanRenderPass::Type::Compute;
+		vulkanComputePass.renderPass = nullptr;
+		vulkanComputePass.computePass = computePass;
+		vulkanComputePass.previousStoredFramebuffer = previousRenderPass ? (previousRenderPass->resolveFramebuffer ? previousRenderPass->resolveFramebuffer : previousRenderPass->framebuffer) : nullptr;
+		vulkanComputePass.framebuffer = nullptr;
+		vulkanComputePass.resolveFramebuffer = nullptr;
+		computePass->GetDispatchSnapshot(vulkanComputePass.computeDispatch);
+
+		frameSubmission.renderPasses.push_back(vulkanComputePass);
 	}
 
 	void VulkanRenderer::SubmitRenderPass(VulkanFrameSubmission &frameSubmission, RenderPass *renderPass, VulkanRenderPass &previousRenderPass)
@@ -1459,14 +1534,7 @@ namespace RN
 		}
 
 		nextFramePasses->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop) {
-			RenderPass *nextRenderPass = nextPass->Downcast<RenderPass>();
-			RN_ASSERT(nextRenderPass, "Vulkan renderer only supports RenderPass frame pass nodes");
-			if(!nextRenderPass)
-			{
-				stop = true;
-				return;
-			}
-			SubmitRenderPass(frameSubmission, nextRenderPass, frameSubmission.renderPasses[frameSubmission.activeRenderPassIndex]);
+			SubmitFramePass(frameSubmission, nextPass, frameSubmission.renderPasses[frameSubmission.activeRenderPassIndex]);
 		});
 	}
 
@@ -2443,6 +2511,30 @@ namespace RN
 
 		for(VulkanRenderPass &renderPass : submission.renderPasses)
 		{
+			if(renderPass.type == VulkanRenderPass::Type::Compute)
+			{
+				Shader *computeShader = renderPass.computeDispatch.GetShader();
+				RN_ASSERT(computeShader && computeShader->GetType() == Shader::Type::Compute, "Vulkan compute pass requires a compute shader");
+				renderPass.computePipelineState = _internals->stateCoordinator.GetComputePipelineState(computeShader);
+				renderPass.computeDescriptorSet = _internals->descriptorPool.Allocate(this, renderPass.computePipelineState->rootSignature->descriptorSetLayout);
+				if(computeShader && computeShader->GetSignature())
+				{
+					computeShader->GetSignature()->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *buffer, size_t index, bool &stop) {
+						if(buffer->GetSource() != Shader::ArgumentBuffer::Source::Draw)
+							return;
+						if(buffer->GetType() != Shader::ArgumentBuffer::Type::UniformBuffer)
+							return;
+
+						size_t totalSize = buffer->GetTotalUniformSize();
+						if(totalSize > 0)
+						{
+							renderPass.computeUniformState.computeConstantBuffers.push_back(GetConstantBufferReference(totalSize, buffer->GetIndex())->Retain());
+						}
+					});
+				}
+				continue;
+			}
+
 			if(renderPass.UsesDrawItems() && renderPass.subpasses.size() > 0)
 			{
 				renderPass.preparedRenderPassIndex = RenderFrame::InvalidPassIndex;
@@ -2491,11 +2583,6 @@ namespace RN
 
 					RN_ASSERT(pipelineState && uniformState, "Failed to create pipeline or uniform state for drawable!");
 					drawable->UpdateRenderingState(renderResources, pipelineState, uniformState, pipelineKey);
-
-					if(renderResources.descriptorSet)
-					{
-						renderResources.descriptorSet->SetLayout(pipelineState->rootSignature->descriptorSetLayout);
-					}
 				}
 
 				//Vertex and fragment shaders need to explicitly be marked to support instancing in the shader library json
@@ -2556,12 +2643,7 @@ namespace RN
 					statistics.numberOfDrawCalls += 1;
 
 					//This stuff should only be needed per draw call and not for any additional instances... hopefully
-					if(!renderResources.descriptorSet)
-					{
-						renderResources.descriptorSet = new VulkanTransientDescriptorSet();
-						renderResources.descriptorSet->SetLayout(renderResources.pipelineState->rootSignature->descriptorSetLayout);
-					}
-					renderResources.descriptorSet->Allocate(this);
+					renderResources.descriptorSet = _internals->descriptorPool.Allocate(this, renderResources.pipelineState->rootSignature->descriptorSetLayout);
 				}
 
 				appendPreparedDrawItem(preparedPass, drawItem, renderResources, statistics);
@@ -2738,9 +2820,24 @@ namespace RN
 			}
 		};
 
+		auto accumulateComputeDescriptorCounts = [&](const VulkanRenderPass &computePass) {
+			Shader *computeShader = computePass.computeDispatch.GetShader();
+			if(!computeShader || !computeShader->GetSignature())
+				return;
+
+			totalConstantBufferCount += computeShader->GetSignature()->GetBuffers()->GetCount();
+			totalTextureCount += computeShader->GetSignature()->GetTextures()->GetCount();
+		};
+
 		for(const VulkanRenderPass &renderPass : submission.renderPasses)
 		{
 			RN_PROFILE_SCOPE();
+			if(renderPass.type == VulkanRenderPass::Type::Compute)
+			{
+				accumulateComputeDescriptorCounts(renderPass);
+				continue;
+			}
+
 			if(!renderPass.UsesDrawItems())
 			{
 				continue;
@@ -2796,6 +2893,99 @@ namespace RN
 		auto addGlobalBufferDescriptors = [&](VkDescriptorSet descriptorSet, Shader *shader) {
 			enumerateGlobalBufferDescriptors(shader, [&](Shader::ArgumentBuffer *argument, GPUBuffer *globalBuffer) {
 				addBufferDescriptor(descriptorSet, argument, globalBuffer, 0, globalBuffer->GetLength());
+			});
+		};
+
+		auto addComputeDescriptors = [&](VulkanRenderPass &computePass) {
+			Shader *computeShader = computePass.computeDispatch.GetShader();
+			if(!computeShader || !computeShader->GetSignature())
+				return;
+
+			VkDescriptorSet descriptorSet = computePass.computeDescriptorSet;
+			size_t dynamicUniformIndex = 0;
+
+			computeShader->GetSignature()->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *argument, size_t index, bool &stop) {
+				if(argument->GetSource() == Shader::ArgumentBuffer::Source::Draw && argument->GetType() == Shader::ArgumentBuffer::Type::UniformBuffer && argument->GetTotalUniformSize() > 0)
+				{
+					RN_DEBUG_ASSERT(dynamicUniformIndex < computePass.computeUniformState.computeConstantBuffers.size(), "Missing compute uniform buffer");
+					if(dynamicUniformIndex < computePass.computeUniformState.computeConstantBuffers.size())
+					{
+						VulkanDynamicBufferReference *constantBuffer = computePass.computeUniformState.computeConstantBuffers[dynamicUniformIndex++];
+						_dynamicBufferPool->UpdateDynamicBufferReference(constantBuffer, true);
+						uint8 *buffer = reinterpret_cast<uint8 *>(constantBuffer->dynamicBuffer->GetBuffer()) + constantBuffer->offset;
+						std::memset(buffer, 0, constantBuffer->size);
+
+						argument->GetUniformDescriptors()->Enumerate<Shader::UniformDescriptor>([&](Shader::UniformDescriptor *descriptor, size_t index, bool &stop) {
+							const std::vector<uint8> *uniform = computePass.computeDispatch.GetUniform(descriptor->GetNameHash());
+							if(uniform)
+							{
+								size_t copySize = std::min(uniform->size(), descriptor->GetSize());
+								std::memcpy(buffer + descriptor->GetOffset(), uniform->data(), copySize);
+							}
+							else if(descriptor->GetIdentifier() == Shader::UniformDescriptor::Identifier::Time)
+							{
+								float time = static_cast<float>(Kernel::GetSharedInstance()->GetTotalTime());
+								std::memcpy(buffer + descriptor->GetOffset(), &time, std::min(descriptor->GetSize(), sizeof(time)));
+							}
+						});
+
+						GPUBuffer *gpuBuffer = constantBuffer->dynamicBuffer->GetActiveGPUBuffer();
+						addBufferDescriptor(descriptorSet, argument, gpuBuffer, constantBuffer->offset, constantBuffer->size);
+					}
+					return;
+				}
+
+				GPUBuffer *buffer = nullptr;
+				if(argument->GetSource() == Shader::ArgumentBuffer::Source::Frame)
+				{
+					buffer = computePass.computeDispatch.GetResourceBuffer(argument->GetNameHash());
+					if(!buffer)
+						buffer = submission.renderFrame.GetGlobalBuffer(argument->GetNameHash());
+				}
+				else
+				{
+					buffer = computePass.computeDispatch.GetResourceBuffer(argument->GetNameHash());
+				}
+
+				buffer = resolveVulkanBuffer(argument, buffer, "Missing compute resource buffer", "Compute resource buffer must be a Vulkan buffer");
+				addBufferDescriptor(descriptorSet, argument, buffer, 0, buffer->GetLength());
+			});
+
+			computeShader->GetSignature()->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop) {
+				Texture *texture = nullptr;
+				if(argument->GetSource() == Shader::ArgumentTexture::Source::Frame)
+				{
+					texture = computePass.computeDispatch.GetResourceTexture(argument->GetNameHash());
+					if(!texture)
+						texture = submission.renderFrame.GetGlobalTexture(argument->GetNameHash());
+				}
+				else
+				{
+					texture = computePass.computeDispatch.GetResourceTexture(argument->GetNameHash());
+				}
+
+				VulkanTexture *vulkanTexture = texture ? texture->Downcast<VulkanTexture>() : nullptr;
+				RN_DEBUG_ASSERT(vulkanTexture, "Missing compute resource texture '%s' at texture binding %u", argument->GetName()->GetUTF8String(), argument->GetIndex());
+				if(!vulkanTexture)
+				{
+					vulkanTexture = _fallbackGlobalTexture->Downcast<VulkanTexture>();
+				}
+
+				VkDescriptorImageInfo imageBufferDescriptorInfo = {};
+				imageBufferDescriptorInfo.imageView = vulkanTexture->_imageView;
+				imageBufferDescriptorInfo.imageLayout = argument->GetType() == Shader::ArgumentTexture::Type::Storage ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				imageBufferDescriptorInfoArray.push_back(imageBufferDescriptorInfo);
+
+				VkWriteDescriptorSet writeImageDescriptorSet = {};
+				writeImageDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				writeImageDescriptorSet.pNext = NULL;
+				writeImageDescriptorSet.dstSet = descriptorSet;
+				writeImageDescriptorSet.descriptorType = argument->GetType() == Shader::ArgumentTexture::Type::Storage ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+				writeImageDescriptorSet.dstBinding = argument->GetIndex();
+				writeImageDescriptorSet.pImageInfo = &imageBufferDescriptorInfoArray[imageBufferDescriptorInfoArray.size() - 1];
+				writeImageDescriptorSet.descriptorCount = 1;
+
+				writeDescriptorSets.push_back(writeImageDescriptorSet);
 			});
 		};
 
@@ -2870,7 +3060,7 @@ namespace RN
 
 					const VulkanPipelineState *pipelineState = renderResource.pipelineState;
 
-					VkDescriptorSet descriptorSet = renderResource.descriptorSet->GetActiveDescriptorSet();
+					VkDescriptorSet descriptorSet = renderResource.descriptorSet;
 
 					VulkanUniformState *uniformState = renderResource.uniformState;
 					if(uniformState->instanceAttributesBuffer)
@@ -2958,6 +3148,8 @@ namespace RN
 						return nullptr;
 					};
 					auto usesSameTextureDescriptor = [](Shader::ArgumentTexture *first, Shader::ArgumentTexture *second) {
+						if(first->GetType() != second->GetType())
+							return false;
 						if(first->GetSource() != second->GetSource())
 							return false;
 
@@ -3043,6 +3235,21 @@ namespace RN
 
 						const Shader::Signature *signature = shader->GetSignature();
 						const Array *textures = renderResource.mergedMaterialSnapshot.GetTextures();
+						auto trackShaderTextureUsage = [&](Shader::ArgumentTexture *argument, Texture *texture, VulkanTexture *vulkanTexture) {
+							if(!texture || !vulkanTexture) return;
+
+							const Texture::UsageHint usageHint = vulkanTexture->GetDescriptor().usageHint;
+							if(usageHint & Texture::UsageHint::RenderTarget)
+							{
+								rootRenderPass.renderTargetsUsedInShader.push_back(vulkanTexture);
+								return;
+							}
+
+							if(argument->GetType() == Shader::ArgumentTexture::Type::Sampled && (usageHint & Texture::UsageHint::ShaderWrite))
+							{
+								rootRenderPass.shaderWriteTexturesUsedAsSampledImages.push_back(vulkanTexture);
+							}
+						};
 						signature->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop) {
 							Shader::ArgumentTexture *writtenArgument = getWrittenTextureArgument(argument->GetIndex());
 							if(writtenArgument)
@@ -3065,11 +3272,7 @@ namespace RN
 									}
 
 									imageView = vulkanTexture->_imageView;
-
-									if(globalTexture && (vulkanTexture->GetDescriptor().usageHint & Texture::UsageHint::RenderTarget))
-									{
-										rootRenderPass.renderTargetsUsedInShader.push_back(vulkanTexture);
-									}
+									trackShaderTextureUsage(argument, globalTexture, vulkanTexture);
 									break;
 								}
 
@@ -3084,11 +3287,7 @@ namespace RN
 									}
 
 									imageView = vulkanTexture->_imageView;
-
-									if(passTexture && (vulkanTexture->GetDescriptor().usageHint & Texture::UsageHint::RenderTarget))
-									{
-										rootRenderPass.renderTargetsUsedInShader.push_back(vulkanTexture);
-									}
+									trackShaderTextureUsage(argument, passTexture, vulkanTexture);
 									break;
 								}
 
@@ -3132,12 +3331,7 @@ namespace RN
 									}
 
 									imageView = vulkanTexture->_imageView;
-
-									if(vulkanTexture->GetDescriptor().usageHint & Texture::UsageHint::RenderTarget)
-									{
-										//Add render targets to list of textures that needs to be transitioned for this render pass
-										rootRenderPass.renderTargetsUsedInShader.push_back(vulkanTexture);
-									}
+									trackShaderTextureUsage(argument, vulkanTexture, vulkanTexture);
 									break;
 								}
 
@@ -3150,14 +3344,14 @@ namespace RN
 
 							VkDescriptorImageInfo imageBufferDescriptorInfo = {};
 							imageBufferDescriptorInfo.imageView = imageView;
-							imageBufferDescriptorInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+							imageBufferDescriptorInfo.imageLayout = argument->GetType() == Shader::ArgumentTexture::Type::Storage ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 							imageBufferDescriptorInfoArray.push_back(imageBufferDescriptorInfo);
 
 							VkWriteDescriptorSet writeImageDescriptorSet = {};
 							writeImageDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 							writeImageDescriptorSet.pNext = NULL;
 							writeImageDescriptorSet.dstSet = descriptorSet;
-							writeImageDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+							writeImageDescriptorSet.descriptorType = argument->GetType() == Shader::ArgumentTexture::Type::Storage ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 							writeImageDescriptorSet.dstBinding = argument->GetIndex();
 							writeImageDescriptorSet.pImageInfo = &imageBufferDescriptorInfoArray[imageBufferDescriptorInfoArray.size() - 1];
 							writeImageDescriptorSet.descriptorCount = 1;
@@ -3178,6 +3372,13 @@ namespace RN
 		{
 			RN_PROFILE_SCOPE();
 			renderPass.renderTargetsUsedInShader.clear();
+			renderPass.shaderWriteTexturesUsedAsSampledImages.clear();
+
+			if(renderPass.type == VulkanRenderPass::Type::Compute)
+			{
+				addComputeDescriptors(renderPass);
+				continue;
+			}
 
 			if(!renderPass.UsesDrawItems())
 			{
@@ -3215,7 +3416,7 @@ namespace RN
 		const Mesh::DrawSnapshot &mesh = drawItem.GetMesh();
 		const Mesh::BufferSnapshot &meshBuffers = drawItem.GetMeshBuffers();
 
-		VkDescriptorSet descriptorSet = renderResource.descriptorSet->GetActiveDescriptorSet();
+		VkDescriptorSet descriptorSet = renderResource.descriptorSet;
 		if(_internals->drawBindStateCache.pipelineLayout != rootSignature->pipelineLayout || _internals->drawBindStateCache.descriptorSet != descriptorSet)
 		{
 			vk::CmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rootSignature->pipelineLayout, 0, 1, &descriptorSet, 0, NULL);
@@ -3286,6 +3487,57 @@ namespace RN
 		{
 			vk::CmdDraw(commandBuffer, mesh.GetVerticesCount(), instanceCount, 0, 0);
 		}
+	}
+
+	void VulkanRenderer::RenderComputePass(VulkanCommandBuffer *commandList, const VulkanFrameSubmission &submission, const VulkanRenderPass &computePass)
+	{
+		RN_PROFILE_VULKAN_SCOPE_CMD_N(_internals->tracyVulkanCtx, commandList->GetCommandBuffer(), "Compute");
+
+		RN_DEBUG_ASSERT(computePass.computePipelineState, "Missing compute pipeline state");
+		if(!computePass.computePipelineState) return;
+
+		VkCommandBuffer commandBuffer = commandList->GetCommandBuffer();
+		const VulkanComputePipelineState *pipelineState = computePass.computePipelineState;
+		const VulkanRootSignature *rootSignature = pipelineState->rootSignature;
+		const VkDescriptorSet descriptorSet = computePass.computeDescriptorSet;
+
+		Shader *computeShader = computePass.computeDispatch.GetShader();
+		if(computeShader && computeShader->GetSignature())
+		{
+			computeShader->GetSignature()->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop) {
+				Texture *texture = nullptr;
+				if(argument->GetSource() == Shader::ArgumentTexture::Source::Frame)
+				{
+					texture = computePass.computeDispatch.GetResourceTexture(argument->GetNameHash());
+					if(!texture)
+						texture = submission.renderFrame.GetGlobalTexture(argument->GetNameHash());
+				}
+				else
+				{
+					texture = computePass.computeDispatch.GetResourceTexture(argument->GetNameHash());
+				}
+
+				VulkanTexture *vulkanTexture = texture ? texture->Downcast<VulkanTexture>() : nullptr;
+				if(vulkanTexture)
+				{
+					vulkanTexture->TransitionToUsage(commandBuffer, argument->GetType() == Shader::ArgumentTexture::Type::Storage ? VulkanTexture::LayoutUsage::ShaderWrite : VulkanTexture::LayoutUsage::ShaderRead);
+				}
+			});
+		}
+
+		vk::CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineState->state);
+		vk::CmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, rootSignature->pipelineLayout, 0, 1, &descriptorSet, 0, NULL);
+
+		const ComputePass::DispatchSize &groupCount = computePass.computeDispatch.GetGroupCount();
+		vk::CmdDispatch(commandBuffer, groupCount.x, groupCount.y, groupCount.z);
+
+		VkMemoryBarrier memoryBarrier = {};
+		memoryBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+		memoryBarrier.pNext = NULL;
+		memoryBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+		memoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_UNIFORM_READ_BIT | VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_INDEX_READ_BIT;
+
+		vk::CmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
 	}
 
 	void VulkanRenderer::RenderAPIRenderPass(VulkanCommandBuffer *commandList, const VulkanRenderPass &renderPass)

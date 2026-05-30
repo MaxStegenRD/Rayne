@@ -18,6 +18,7 @@ namespace RN
 	bool FrameSubmissionPassUsesFramePass(const VulkanRenderPass &vulkanRenderPass, FramePass *framePass)
 	{
 		if(vulkanRenderPass.renderPass == framePass) return true;
+		if(vulkanRenderPass.computePass == framePass) return true;
 
 		for(const VulkanRenderPass &subpass : vulkanRenderPass.subpasses)
 		{
@@ -31,6 +32,7 @@ namespace RN
 	void FrameSubmissionAddFramePassDependencies(Pruner &pruner, size_t consumerIndex, VulkanRenderPass &vulkanRenderPass)
 	{
 		pruner.AddExplicitFramePassDependencies(consumerIndex, vulkanRenderPass.renderPass);
+		pruner.AddExplicitFramePassDependencies(consumerIndex, vulkanRenderPass.computePass);
 
 		for(VulkanRenderPass &subpass : vulkanRenderPass.subpasses)
 		{

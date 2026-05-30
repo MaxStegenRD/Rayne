@@ -41,13 +41,16 @@ namespace RN
 				VkDescriptorPoolSize textureBufferPoolSize = {};
 				textureBufferPoolSize.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 				textureBufferPoolSize.descriptorCount = 10000;
+				VkDescriptorPoolSize storageImagePoolSize = {};
+				storageImagePoolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+				storageImagePoolSize.descriptorCount = 5000;
 				VkDescriptorPoolSize inputAttachmentPoolSize = {};
 				inputAttachmentPoolSize.type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
 				inputAttachmentPoolSize.descriptorCount = 5000;
 				VkDescriptorPoolSize samplerBufferPoolSize = {};
 				samplerBufferPoolSize.type = VK_DESCRIPTOR_TYPE_SAMPLER;
 				samplerBufferPoolSize.descriptorCount = 10000;
-				_poolSizes = { uniformBufferPoolSize, storageBufferPoolSize, samplerBufferPoolSize, textureBufferPoolSize, inputAttachmentPoolSize };
+				_poolSizes = { uniformBufferPoolSize, storageBufferPoolSize, samplerBufferPoolSize, textureBufferPoolSize, storageImagePoolSize, inputAttachmentPoolSize };
 				_maxSets = 50000;
 				_framePools.clear();
 				EnsureFramePool(_renderer, 0);
@@ -135,7 +138,7 @@ namespace RN
 		{
 			const VulkanPipelineState *pipelineState = nullptr; //No need for cleanup here as it's shared, but maybe add reference counting to clear later.
 			VulkanUniformState *uniformState = nullptr;
-			VulkanTransientDescriptorSet *descriptorSet = nullptr;
+			VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
 			Drawable::PipelineKey pipelineKey;
 			Drawable::MergedMaterialSnapshot mergedMaterialSnapshot;
 		};
@@ -145,14 +148,9 @@ namespace RN
 			VulkanRenderer *renderer = Renderer::GetActiveRenderer()->Downcast<VulkanRenderer>();
 			for(RenderResources &resources : _renderResources)
 			{
-				VulkanTransientDescriptorSet *descriptorSet = resources.descriptorSet;
 				VulkanUniformState *uniformState = resources.uniformState;
 
-				renderer->AddFrameFinishedCallback([descriptorSet, uniformState](){
-					if(descriptorSet)
-					{
-						delete descriptorSet;
-					}
+				renderer->AddFrameFinishedCallback([uniformState](){
 					if(uniformState)
 					{
 						delete uniformState;
@@ -202,13 +200,19 @@ namespace RN
 			Default,
 			ResolveMSAA,
 			Blit,
-			Convert
+			Convert,
+			Compute
 		};
 
 		bool UsesDrawItems() const { return type == Type::Default || type == Type::Convert; }
 
 		Type type;
 		RenderPass *renderPass;
+		ComputePass *computePass = nullptr;
+		ComputePass::DispatchSnapshot computeDispatch;
+		const VulkanComputePipelineState *computePipelineState = nullptr;
+		VkDescriptorSet computeDescriptorSet = VK_NULL_HANDLE;
+		VulkanUniformState computeUniformState;
 		size_t renderFramePassIndex = RenderFrame::InvalidPassIndex;
 		size_t preparedRenderPassIndex = RenderFrame::InvalidPassIndex;
 		size_t frameStatisticsIndex = static_cast<size_t>(-1);
@@ -225,6 +229,7 @@ namespace RN
 		uint8 multiviewCount = 0; // Explicit inherited view span; 1 also represents layered single-view fallback.
 
 		std::vector<VulkanTexture *> renderTargetsUsedInShader;
+		std::vector<VulkanTexture *> shaderWriteTexturesUsedAsSampledImages;
 	};
 
 	struct VulkanPreparedDrawItem
@@ -336,38 +341,6 @@ namespace RN
 		// Tracy Vulkan GPU context
 		RN_PROFILE_VULKAN_CONTEXT_TYPE tracyVulkanCtx;
 		VulkanCommandBuffer *tracyCommandBuffer;
-	};
-
-	class VulkanTransientDescriptorSet
-	{
-		public:
-			VulkanTransientDescriptorSet() : _layout(VK_NULL_HANDLE), _activeDescriptorSet(VK_NULL_HANDLE)
-			{
-
-			}
-
-			~VulkanTransientDescriptorSet()
-			{
-			}
-
-			void SetLayout(VkDescriptorSetLayout layout)
-			{
-				_layout = layout;
-			}
-
-			void Allocate(VulkanRenderer *renderer)
-			{
-				_activeDescriptorSet = renderer->_internals->descriptorPool.Allocate(renderer, _layout);
-			}
-
-			VkDescriptorSet GetActiveDescriptorSet()
-			{
-				return _activeDescriptorSet;
-			}
-
-		private:
-			VkDescriptorSetLayout _layout;
-			VkDescriptorSet _activeDescriptorSet;
 	};
 
 	//Based on https://zeux.io/2019/07/17/serializing-pipeline-cache/

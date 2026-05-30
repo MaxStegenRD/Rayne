@@ -619,6 +619,7 @@ namespace RN
 			}
 		}
 
+		RN_ASSERT(_currentMultiviewFallbackRenderPass || camera->GetRootFramePass() == camera->GetRenderPass(), "Metal renderer does not support non-render camera frame pass roots yet");
 		RenderPass *cameraRenderPass = _currentMultiviewFallbackRenderPass? _currentMultiviewFallbackRenderPass : camera->GetRenderPass();
 
 		// Ensure subpass clearing plan is computed for root containers
