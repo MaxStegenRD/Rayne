@@ -2953,15 +2953,25 @@ namespace RN
 
 			computeShader->GetSignature()->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop) {
 				Texture *texture = nullptr;
-				if(argument->GetSource() == Shader::ArgumentTexture::Source::Frame)
+				switch(argument->GetSource())
 				{
-					texture = computePass.computeDispatch.GetResourceTexture(argument->GetNameHash());
-					if(!texture)
-						texture = submission.renderFrame.GetGlobalTexture(argument->GetNameHash());
-				}
-				else
-				{
-					texture = computePass.computeDispatch.GetResourceTexture(argument->GetNameHash());
+					case Shader::ArgumentTexture::Source::Frame:
+						texture = computePass.computeDispatch.GetResourceTexture(argument->GetNameHash());
+						if(!texture)
+							texture = submission.renderFrame.GetGlobalTexture(argument->GetNameHash());
+						break;
+
+					case Shader::ArgumentTexture::Source::Framebuffer:
+						if(computePass.previousStoredFramebuffer)
+							texture = computePass.previousStoredFramebuffer->GetColorTexture(0);
+						RN_DEBUG_ASSERT(texture, "Missing previous framebuffer texture for compute texture '%s' at texture binding %u", argument->GetName()->GetUTF8String(), argument->GetIndex());
+						break;
+
+					case Shader::ArgumentTexture::Source::Material:
+					case Shader::ArgumentTexture::Source::Pass:
+					case Shader::ArgumentTexture::Source::SubpassInput:
+						texture = computePass.computeDispatch.GetResourceTexture(argument->GetNameHash());
+						break;
 				}
 
 				VulkanTexture *vulkanTexture = texture ? texture->Downcast<VulkanTexture>() : nullptr;
@@ -3506,15 +3516,24 @@ namespace RN
 		{
 			computeShader->GetSignature()->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop) {
 				Texture *texture = nullptr;
-				if(argument->GetSource() == Shader::ArgumentTexture::Source::Frame)
+				switch(argument->GetSource())
 				{
-					texture = computePass.computeDispatch.GetResourceTexture(argument->GetNameHash());
-					if(!texture)
-						texture = submission.renderFrame.GetGlobalTexture(argument->GetNameHash());
-				}
-				else
-				{
-					texture = computePass.computeDispatch.GetResourceTexture(argument->GetNameHash());
+					case Shader::ArgumentTexture::Source::Frame:
+						texture = computePass.computeDispatch.GetResourceTexture(argument->GetNameHash());
+						if(!texture)
+							texture = submission.renderFrame.GetGlobalTexture(argument->GetNameHash());
+						break;
+
+					case Shader::ArgumentTexture::Source::Framebuffer:
+						if(computePass.previousStoredFramebuffer)
+							texture = computePass.previousStoredFramebuffer->GetColorTexture(0);
+						break;
+
+					case Shader::ArgumentTexture::Source::Material:
+					case Shader::ArgumentTexture::Source::Pass:
+					case Shader::ArgumentTexture::Source::SubpassInput:
+						texture = computePass.computeDispatch.GetResourceTexture(argument->GetNameHash());
+						break;
 				}
 
 				VulkanTexture *vulkanTexture = texture ? texture->Downcast<VulkanTexture>() : nullptr;
