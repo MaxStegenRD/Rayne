@@ -344,6 +344,23 @@ namespace RN
 		signature->constantBufferCount = constantBufferCount;
 
 		std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings;
+		auto addSetLayoutBinding = [&](const VkDescriptorSetLayoutBinding &layoutBinding) {
+			for(VkDescriptorSetLayoutBinding &existingLayoutBinding : setLayoutBindings)
+			{
+				if(existingLayoutBinding.binding != layoutBinding.binding)
+					continue;
+
+				RN_ASSERT(existingLayoutBinding.descriptorType == layoutBinding.descriptorType, "Descriptor binding %u is used with incompatible descriptor types", layoutBinding.binding);
+				RN_ASSERT(existingLayoutBinding.descriptorCount == layoutBinding.descriptorCount, "Descriptor binding %u is used with incompatible descriptor counts", layoutBinding.binding);
+
+				existingLayoutBinding.stageFlags |= layoutBinding.stageFlags;
+				if(!existingLayoutBinding.pImmutableSamplers)
+					existingLayoutBinding.pImmutableSamplers = layoutBinding.pImmutableSamplers;
+				return;
+			}
+
+			setLayoutBindings.push_back(layoutBinding);
+		};
 
 		//Vertex buffer!?
 		/*VkDescriptorSetLayoutBinding setUniformLayoutBinding = {};
@@ -364,7 +381,7 @@ namespace RN
 				setUniformLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 				setUniformLayoutBinding.binding = buffer->GetIndex();
 				setUniformLayoutBinding.descriptorCount = 1;
-				setLayoutBindings.push_back(setUniformLayoutBinding);
+				addSetLayoutBinding(setUniformLayoutBinding);
 			});
 
 			//Vertex shader textures
@@ -374,7 +391,7 @@ namespace RN
 				setImageLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 				setImageLayoutBinding.binding = texture->GetIndex();
 				setImageLayoutBinding.descriptorCount = 1;
-				setLayoutBindings.push_back(setImageLayoutBinding);
+				addSetLayoutBinding(setImageLayoutBinding);
 			});
 
 			//Vertex shader subpass inputs
@@ -384,7 +401,7 @@ namespace RN
 				setInputAttachmentLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 				setInputAttachmentLayoutBinding.binding = texture->GetIndex();
 				setInputAttachmentLayoutBinding.descriptorCount = 1;
-				setLayoutBindings.push_back(setInputAttachmentLayoutBinding);
+				addSetLayoutBinding(setInputAttachmentLayoutBinding);
 			});
 		}
 
@@ -399,7 +416,7 @@ namespace RN
 				setUniformLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 				setUniformLayoutBinding.binding = buffer->GetIndex();
 				setUniformLayoutBinding.descriptorCount = 1;
-				setLayoutBindings.push_back(setUniformLayoutBinding);
+				addSetLayoutBinding(setUniformLayoutBinding);
 			});
 
 			//Fragment shader textures
@@ -409,7 +426,7 @@ namespace RN
 				setImageLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 				setImageLayoutBinding.binding = texture->GetIndex();
 				setImageLayoutBinding.descriptorCount = 1;
-				setLayoutBindings.push_back(setImageLayoutBinding);
+				addSetLayoutBinding(setImageLayoutBinding);
 			});
 
 			//Fragment shader subpass inputs
@@ -419,16 +436,27 @@ namespace RN
 				setInputAttachmentLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 				setInputAttachmentLayoutBinding.binding = texture->GetIndex();
 				setInputAttachmentLayoutBinding.descriptorCount = 1;
-				setLayoutBindings.push_back(setInputAttachmentLayoutBinding);
+				addSetLayoutBinding(setInputAttachmentLayoutBinding);
 			});
 		}
 
 		// Create samplers
 		std::vector<VkSampler> samplers;
+		std::vector<Shader::ArgumentSampler *> processedSamplers;
 		samplers.reserve(signature->samplers->GetCount());
+		processedSamplers.reserve(signature->samplers->GetCount());
 		if(signature->samplers->GetCount() > 0)
 		{
 			signature->samplers->Enumerate<Shader::ArgumentSampler>([&](Shader::ArgumentSampler *sampler, size_t index, bool &stop) {
+				for(Shader::ArgumentSampler *processedSampler : processedSamplers)
+				{
+					if(processedSampler->GetIndex() == sampler->GetIndex())
+					{
+						RN_ASSERT(*processedSampler == *sampler, "Sampler binding %u is used with incompatible sampler states", sampler->GetIndex());
+						return;
+					}
+				}
+				processedSamplers.push_back(sampler);
 
 				VkFilter filter = VK_FILTER_LINEAR;
 				switch(sampler->GetFilter())
@@ -522,7 +550,7 @@ namespace RN
 				staticSamplerBinding.descriptorCount = 1;
 				staticSamplerBinding.pImmutableSamplers = &samplers[samplers.size()-1];
 
-				setLayoutBindings.push_back(staticSamplerBinding);
+				addSetLayoutBinding(staticSamplerBinding);
 			});
 		}
 

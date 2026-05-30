@@ -2933,12 +2933,44 @@ namespace RN
 					addGlobalBufferDescriptors(descriptorSet, pipelineState->descriptor.vertexShader);
 					addGlobalBufferDescriptors(descriptorSet, pipelineState->descriptor.fragmentShader);
 
-					//TODO: Support vertex shader textures
-					Shader *fragmentShader = pipelineState->descriptor.fragmentShader;
-					if(fragmentShader)
-					{
-						const Shader::Signature *signature = fragmentShader->GetSignature();
+					std::vector<Shader::ArgumentTexture *> writtenTextureArguments;
+					auto getWrittenTextureArgument = [&](uint32 binding) -> Shader::ArgumentTexture * {
+						for(Shader::ArgumentTexture *writtenArgument : writtenTextureArguments)
+						{
+							if(writtenArgument->GetIndex() == binding)
+								return writtenArgument;
+						}
 
+						return nullptr;
+					};
+					auto usesSameTextureDescriptor = [](Shader::ArgumentTexture *first, Shader::ArgumentTexture *second) {
+						if(first->GetSource() != second->GetSource())
+							return false;
+
+						switch(first->GetSource())
+						{
+							case Shader::ArgumentTexture::Source::Material:
+								return first->GetMaterialTextureIndex() == second->GetMaterialTextureIndex();
+
+							case Shader::ArgumentTexture::Source::Pass:
+							case Shader::ArgumentTexture::Source::Frame:
+								return first->GetNameHash() == second->GetNameHash();
+
+							case Shader::ArgumentTexture::Source::Framebuffer:
+								return true;
+
+							case Shader::ArgumentTexture::Source::SubpassInput:
+								return first->GetMaterialTextureIndex() == second->GetMaterialTextureIndex();
+						}
+
+						return false;
+					};
+
+					auto addFragmentSubpassInputDescriptors = [&](Shader *fragmentShader) {
+						if(!fragmentShader || !fragmentShader->GetSignature())
+							return;
+
+						const Shader::Signature *signature = fragmentShader->GetSignature();
 						signature->GetSubpassInputs()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop) {
 							uint8 materialTextureIndex = argument->GetMaterialTextureIndex();
 							bool isDepthInput = materialTextureIndex >= 128;
@@ -2989,9 +3021,22 @@ namespace RN
 
 							writeDescriptorSets.push_back(writeImageDescriptorSet);
 						});
+					};
 
+					auto addShaderTextureDescriptors = [&](Shader *shader) {
+						if(!shader || !shader->GetSignature())
+							return;
+
+						const Shader::Signature *signature = shader->GetSignature();
 						const Array *textures = renderResource.mergedMaterialSnapshot.GetTextures();
 						signature->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop) {
+							Shader::ArgumentTexture *writtenArgument = getWrittenTextureArgument(argument->GetIndex());
+							if(writtenArgument)
+							{
+								RN_ASSERT(usesSameTextureDescriptor(writtenArgument, argument), "Sampled texture binding %u is used for incompatible texture arguments '%s' and '%s'", argument->GetIndex(), writtenArgument->GetName()->GetUTF8String(), argument->GetName()->GetUTF8String());
+								return;
+							}
+
 							VkImageView imageView = VK_NULL_HANDLE;
 							switch(argument->GetSource())
 							{
@@ -3104,8 +3149,13 @@ namespace RN
 							writeImageDescriptorSet.descriptorCount = 1;
 
 							writeDescriptorSets.push_back(writeImageDescriptorSet);
+							writtenTextureArguments.push_back(argument);
 						});
-					}
+					};
+
+					addFragmentSubpassInputDescriptors(pipelineState->descriptor.fragmentShader);
+					addShaderTextureDescriptors(pipelineState->descriptor.vertexShader);
+					addShaderTextureDescriptors(pipelineState->descriptor.fragmentShader);
 				}
 			}
 		};

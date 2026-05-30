@@ -1770,29 +1770,29 @@ namespace RN
 		}
 
 		// Set textures
-		//TODO: Support vertex shader textures
 		const Array *textures = renderResources.mergedMaterialSnapshot.GetTextures();
-		metalFragmentShader->GetSignature()->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop){
+		auto bindTexture = [&](Shader::ArgumentTexture *argument, id<MTLTexture> texture, bool vertexStage) {
+			if(vertexStage) [encoder setVertexTexture:texture atIndex:argument->GetIndex()];
+			else [encoder setFragmentTexture:texture atIndex:argument->GetIndex()];
+		};
+
+		auto getTextureForArgument = [&](Shader::ArgumentTexture *argument, bool vertexStage) -> id<MTLTexture> {
 			switch(argument->GetSource())
 			{
 				case Shader::ArgumentTexture::Source::Frame:
 				{
 					Texture *globalTexture = renderFrame.GetGlobalTexture(argument->GetNameHash());
 					MetalTexture *metalTexture = globalTexture ? globalTexture->Downcast<MetalTexture>() : nullptr;
-					RN_DEBUG_ASSERT(metalTexture, "Missing frame global texture '%s' at fragment texture index %u", argument->GetName()->GetUTF8String(), argument->GetIndex());
-					if(metalTexture) [encoder setFragmentTexture:(id<MTLTexture>)metalTexture->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
-					else [encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
-					break;
+					RN_DEBUG_ASSERT(metalTexture, "Missing frame global texture '%s' at %s texture index %u", argument->GetName()->GetUTF8String(), vertexStage ? "vertex" : "fragment", argument->GetIndex());
+					return metalTexture ? (id<MTLTexture>)metalTexture->__GetUnderlyingTexture() : nil;
 				}
 
 				case Shader::ArgumentTexture::Source::Pass:
 				{
 					Texture *passTexture = framePass.GetPassResourceTexture(argument->GetNameHash());
 					MetalTexture *metalTexture = passTexture ? passTexture->Downcast<MetalTexture>() : nullptr;
-					RN_DEBUG_ASSERT(metalTexture, "Missing pass resource texture '%s' at fragment texture index %u", argument->GetName()->GetUTF8String(), argument->GetIndex());
-					if(metalTexture) [encoder setFragmentTexture:(id<MTLTexture>)metalTexture->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
-					else [encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
-					break;
+					RN_DEBUG_ASSERT(metalTexture, "Missing pass resource texture '%s' at %s texture index %u", argument->GetName()->GetUTF8String(), vertexStage ? "vertex" : "fragment", argument->GetIndex());
+					return metalTexture ? (id<MTLTexture>)metalTexture->__GetUnderlyingTexture() : nil;
 				}
 
 				case Shader::ArgumentTexture::Source::Framebuffer:
@@ -1802,20 +1802,12 @@ namespace RN
 					{
 						MetalSwapChain *swapChain = previousFramebuffer->GetSwapChain();
 						if(swapChain)
-						{
-							[encoder setFragmentTexture:swapChain->GetMetalColorTexture() atIndex:argument->GetIndex()];
-						}
-						else
-						{
-							MetalTexture *colorBuffer = previousFramebuffer->GetColorTexture()->Downcast<MetalTexture>();
-							[encoder setFragmentTexture:(id<MTLTexture>)colorBuffer->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
-						}
+							return swapChain->GetMetalColorTexture();
+
+						MetalTexture *colorBuffer = previousFramebuffer->GetColorTexture()->Downcast<MetalTexture>();
+						return (id<MTLTexture>)colorBuffer->__GetUnderlyingTexture();
 					}
-					else
-					{
-						[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
-					}
-					break;
+					return nil;
 				}
 
 				case Shader::ArgumentTexture::Source::Material:
@@ -1825,90 +1817,100 @@ namespace RN
 					{
 						Object *textureObject = textures->GetObjectAtIndex(materialTextureIndex);
 
-						id<MTLTexture> texture = nullptr;
 						if(textureObject->IsKindOfClass(MetalTexture::GetMetaClass()))
-						{
-							texture = (id<MTLTexture>)static_cast<MetalTexture*>(textureObject)->__GetUnderlyingTexture();
-						}
-						else
-						{
-							MetalFramebuffer *framebuffer = static_cast<MetalFramebuffer*>(textureObject);
-							if(framebuffer->GetSwapChain()) texture = framebuffer->GetSwapChain()->GetMetalColorTexture();
-							else texture = (id<MTLTexture>)framebuffer->GetColorTexture()->Downcast<MetalTexture>()->__GetUnderlyingTexture();
-						}
+							return (id<MTLTexture>)static_cast<MetalTexture*>(textureObject)->__GetUnderlyingTexture();
 
-						[encoder setFragmentTexture:texture atIndex:argument->GetIndex()];
+						MetalFramebuffer *framebuffer = static_cast<MetalFramebuffer*>(textureObject);
+						if(framebuffer->GetSwapChain())
+							return framebuffer->GetSwapChain()->GetMetalColorTexture();
+
+						return (id<MTLTexture>)framebuffer->GetColorTexture()->Downcast<MetalTexture>()->__GetUnderlyingTexture();
 					}
-					else
-					{
-						[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
-					}
-					break;
+					return nil;
 				}
 
 				case Shader::ArgumentTexture::Source::SubpassInput:
-				{
 					RN_DEBUG_ASSERT(false, "Subpass input texture argument '%s' must be bound through subpass inputs", argument->GetName()->GetUTF8String());
-					[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
-					break;
-				}
-			}
-		});
-
-		metalFragmentShader->GetSignature()->GetSubpassInputs()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop){
-			uint8 materialTextureIndex = argument->GetMaterialTextureIndex();
-			bool isDepthInput = materialTextureIndex >= 128;
-			materialTextureIndex = isDepthInput ? materialTextureIndex - 128 : materialTextureIndex;
-
-			if(!renderPass.framebuffer)
-			{
-				[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
-				return;
+					return nil;
 			}
 
-			const RenderPass::DrawSnapshot &drawSnapshot = framePass.GetDrawSnapshot();
-			if(!isDepthInput && drawSnapshot.IsSubpass())
-			{
-				//Skip unused color attachments in the assignment to match vulkan subpass behavior
-				uint8 targetIndex = materialTextureIndex;
-				for(uint8 i = 0; i < renderPass.framebuffer->GetColorTargetCount(); i++)
+			return nil;
+		};
+
+		auto bindShaderTextures = [&](MetalShader *shader, bool vertexStage) {
+			if(!shader || !shader->GetSignature()) return;
+
+			shader->GetSignature()->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop){
+				bindTexture(argument, getTextureForArgument(argument, vertexStage), vertexStage);
+			});
+		};
+
+		bindShaderTextures(metalVertexShader, true);
+		bindShaderTextures(metalFragmentShader, false);
+
+		if(metalFragmentShader && metalFragmentShader->GetSignature())
+		{
+			metalFragmentShader->GetSignature()->GetSubpassInputs()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop){
+				uint8 materialTextureIndex = argument->GetMaterialTextureIndex();
+				bool isDepthInput = materialTextureIndex >= 128;
+				materialTextureIndex = isDepthInput ? materialTextureIndex - 128 : materialTextureIndex;
+
+				if(!renderPass.framebuffer)
 				{
-					if(drawSnapshot.GetSubpass().GetColorAttachment(i).GetReads())
+					[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
+					return;
+				}
+
+				const RenderPass::DrawSnapshot &drawSnapshot = framePass.GetDrawSnapshot();
+				if(!isDepthInput && drawSnapshot.IsSubpass())
+				{
+					//Skip unused color attachments in the assignment to match vulkan subpass behavior
+					uint8 targetIndex = materialTextureIndex;
+					for(uint8 i = 0; i < renderPass.framebuffer->GetColorTargetCount(); i++)
 					{
-						if(targetIndex == 0)
+						if(drawSnapshot.GetSubpass().GetColorAttachment(i).GetReads())
 						{
-							materialTextureIndex = i;
-							break;
+							if(targetIndex == 0)
+							{
+								materialTextureIndex = i;
+								break;
+							}
+							targetIndex -= 1;
 						}
-						targetIndex -= 1;
 					}
 				}
-			}
 
-			Texture *texture = isDepthInput ? renderPass.framebuffer->GetDepthStencilTexture() : renderPass.framebuffer->GetColorTexture(materialTextureIndex);
-			MetalTexture *framebufferTexture = texture ? texture->Downcast<MetalTexture>() : nullptr;
+				Texture *texture = isDepthInput ? renderPass.framebuffer->GetDepthStencilTexture() : renderPass.framebuffer->GetColorTexture(materialTextureIndex);
+				MetalTexture *framebufferTexture = texture ? texture->Downcast<MetalTexture>() : nullptr;
 
-			if(!framebufferTexture)
-			{
-				[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
-				return;
-			}
+				if(!framebufferTexture)
+				{
+					[encoder setFragmentTexture:nil atIndex:argument->GetIndex()];
+					return;
+				}
 
-			[encoder setFragmentTexture:(id<MTLTexture>)framebufferTexture->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
-		});
+				[encoder setFragmentTexture:(id<MTLTexture>)framebufferTexture->__GetUnderlyingTexture() atIndex:argument->GetIndex()];
+			});
+		}
 
 		//Set samplers
-		size_t count = 0;
-		for(void *sampler : metalVertexShader->_samplers)
+		if(metalVertexShader)
 		{
-			id<MTLSamplerState> samplerState = static_cast<id<MTLSamplerState>>(sampler);
-			[encoder setVertexSamplerState:samplerState atIndex:metalFragmentShader->_samplerToIndexMapping[count++]];
+			size_t count = 0;
+			for(void *sampler : metalVertexShader->_samplers)
+			{
+				id<MTLSamplerState> samplerState = static_cast<id<MTLSamplerState>>(sampler);
+				[encoder setVertexSamplerState:samplerState atIndex:metalVertexShader->_samplerToIndexMapping[count++]];
+			}
 		}
-		count = 0;
-		for(void *sampler : metalFragmentShader->_samplers)
+		if(metalFragmentShader)
 		{
-			id<MTLSamplerState> samplerState = static_cast<id<MTLSamplerState>>(sampler);
-			[encoder setFragmentSamplerState:samplerState atIndex:metalFragmentShader->_samplerToIndexMapping[count++]];
+			size_t count = 0;
+			for(void *sampler : metalFragmentShader->_samplers)
+			{
+				id<MTLSamplerState> samplerState = static_cast<id<MTLSamplerState>>(sampler);
+				[encoder setFragmentSamplerState:samplerState atIndex:metalFragmentShader->_samplerToIndexMapping[count++]];
+			}
 		}
 
 		// Mesh
