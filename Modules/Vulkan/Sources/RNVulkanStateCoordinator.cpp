@@ -253,7 +253,7 @@ namespace RN
 		Array *samplerArray = new Array();
 		samplerArray->Autorelease();
 		std::vector<uint16> bindingIndex;
-		std::vector<uint8> bindingType;
+		std::vector<VulkanRootSignatureBindingType> bindingType;
 
 		VulkanShader *vertexShader = static_cast<VulkanShader *>(descriptor.vertexShader);
 		VulkanShader *fragmentShader = static_cast<VulkanShader *>(descriptor.fragmentShader);
@@ -271,22 +271,22 @@ namespace RN
 		{
 			vertexShaderSignature->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *argument, size_t index, bool &stop){
 				bindingIndex.push_back(argument->GetIndex());
-				bindingType.push_back(argument->GetType() == Shader::ArgumentBuffer::Type::UniformBuffer? 0 : 1);
+				bindingType.push_back(argument->GetType() == Shader::ArgumentBuffer::Type::UniformBuffer ? VulkanRootSignatureBindingType::VertexUniformBuffer : VulkanRootSignatureBindingType::VertexStorageBuffer);
 			});
 
 			vertexShaderSignature->GetSubpassInputs()->Enumerate<Shader::Argument>([&](Shader::Argument *argument, size_t index, bool &stop){
 				bindingIndex.push_back(argument->GetIndex());
-				bindingType.push_back(2);
+				bindingType.push_back(VulkanRootSignatureBindingType::VertexSubpassInput);
 			});
 
 			vertexShaderSignature->GetSamplers()->Enumerate<Shader::Argument>([&](Shader::Argument *argument, size_t index, bool &stop){
 				bindingIndex.push_back(argument->GetIndex());
-				bindingType.push_back(3);
+				bindingType.push_back(VulkanRootSignatureBindingType::VertexSampler);
 			});
 
 			vertexShaderSignature->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop){
 				bindingIndex.push_back(argument->GetIndex());
-				bindingType.push_back(argument->GetType() == Shader::ArgumentTexture::Type::Storage ? 15 : 4);
+				bindingType.push_back(argument->GetType() == Shader::ArgumentTexture::Type::Storage ? VulkanRootSignatureBindingType::VertexStorageImage : VulkanRootSignatureBindingType::VertexSampledImage);
 			});
 
 			textureCount += vertexShaderSignature->GetTextures()->GetCount();
@@ -299,22 +299,22 @@ namespace RN
 		{
 			fragmentShaderSignature->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *argument, size_t index, bool &stop){
 				bindingIndex.push_back(argument->GetIndex());
-				bindingType.push_back(argument->GetType() == Shader::ArgumentBuffer::Type::UniformBuffer? 5 : 6);
+				bindingType.push_back(argument->GetType() == Shader::ArgumentBuffer::Type::UniformBuffer ? VulkanRootSignatureBindingType::FragmentUniformBuffer : VulkanRootSignatureBindingType::FragmentStorageBuffer);
 			});
 
 			fragmentShaderSignature->GetSubpassInputs()->Enumerate<Shader::Argument>([&](Shader::Argument *argument, size_t index, bool &stop){
 				bindingIndex.push_back(argument->GetIndex());
-				bindingType.push_back(7);
+				bindingType.push_back(VulkanRootSignatureBindingType::FragmentSubpassInput);
 			});
 
 			fragmentShaderSignature->GetSamplers()->Enumerate<Shader::Argument>([&](Shader::Argument *argument, size_t index, bool &stop){
 				bindingIndex.push_back(argument->GetIndex());
-				bindingType.push_back(8);
+				bindingType.push_back(VulkanRootSignatureBindingType::FragmentSampler);
 			});
 
 			fragmentShaderSignature->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop){
 				bindingIndex.push_back(argument->GetIndex());
-				bindingType.push_back(argument->GetType() == Shader::ArgumentTexture::Type::Storage ? 16 : 9);
+				bindingType.push_back(argument->GetType() == Shader::ArgumentTexture::Type::Storage ? VulkanRootSignatureBindingType::FragmentStorageImage : VulkanRootSignatureBindingType::FragmentSampledImage);
 			});
 
 			textureCount += fragmentShaderSignature->GetTextures()->GetCount();
@@ -327,17 +327,17 @@ namespace RN
 		{
 			computeShaderSignature->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *argument, size_t index, bool &stop){
 				bindingIndex.push_back(argument->GetIndex());
-				bindingType.push_back(argument->GetType() == Shader::ArgumentBuffer::Type::UniformBuffer? 10 : 11);
+				bindingType.push_back(argument->GetType() == Shader::ArgumentBuffer::Type::UniformBuffer ? VulkanRootSignatureBindingType::ComputeUniformBuffer : VulkanRootSignatureBindingType::ComputeStorageBuffer);
 			});
 
 			computeShaderSignature->GetSamplers()->Enumerate<Shader::Argument>([&](Shader::Argument *argument, size_t index, bool &stop){
 				bindingIndex.push_back(argument->GetIndex());
-				bindingType.push_back(12);
+				bindingType.push_back(VulkanRootSignatureBindingType::ComputeSampler);
 			});
 
 			computeShaderSignature->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop){
 				bindingIndex.push_back(argument->GetIndex());
-				bindingType.push_back(argument->GetType() == Shader::ArgumentTexture::Type::Storage ? 14 : 13);
+				bindingType.push_back(argument->GetType() == Shader::ArgumentTexture::Type::Storage ? VulkanRootSignatureBindingType::ComputeStorageImage : VulkanRootSignatureBindingType::ComputeSampledImage);
 			});
 
 			textureCount += computeShaderSignature->GetTextures()->GetCount();

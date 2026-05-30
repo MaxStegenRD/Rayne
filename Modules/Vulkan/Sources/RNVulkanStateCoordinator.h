@@ -50,12 +50,34 @@ namespace RN
 		bool depthWriteEnabled;
 	};
 
+	// Used only as part of the VulkanRootSignature cache key; descriptor layouts are built from the shader signatures.
+	enum class VulkanRootSignatureBindingType : uint8
+	{
+		VertexUniformBuffer,
+		VertexStorageBuffer,
+		VertexSubpassInput,
+		VertexSampler,
+		VertexSampledImage,
+		FragmentUniformBuffer,
+		FragmentStorageBuffer,
+		FragmentSubpassInput,
+		FragmentSampler,
+		FragmentSampledImage,
+		ComputeUniformBuffer,
+		ComputeStorageBuffer,
+		ComputeSampler,
+		ComputeSampledImage,
+		ComputeStorageImage,
+		VertexStorageImage,
+		FragmentStorageImage
+	};
+
 	struct VulkanRootSignature
 	{
 		~VulkanRootSignature();
 
 		std::vector<uint16> bindingIndex;
-		std::vector<uint8> bindingType;
+		std::vector<VulkanRootSignatureBindingType> bindingType;
 		Array *samplers;
 
 		uint8 textureCount;
