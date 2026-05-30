@@ -85,6 +85,7 @@
 #include "Rendering/RNMesh.h"
 #include "Rendering/RNModel.h"
 #include "Rendering/RNDrawable.h"
+#include "Rendering/RNFramePass.h"
 #include "Rendering/RNPostProcessing.h"
 #include "Rendering/RNRenderFrame.h"
 #include "Rendering/RNRenderPass.h"

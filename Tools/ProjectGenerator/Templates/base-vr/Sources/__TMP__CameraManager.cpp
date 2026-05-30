@@ -379,7 +379,7 @@ namespace __TMP__
 				_previewCamera->GetRenderPass()->SetFramebuffer(msaaFramebuffer);
 				RN::PostProcessingAPIStage *resolvePass = new RN::PostProcessingAPIStage(RN::PostProcessingAPIStage::Type::ResolveMSAA);
 				resolvePass->SetFramebuffer(_previewWindow->GetFramebuffer());
-				_previewCamera->GetRenderPass()->AddRenderPass(resolvePass->Autorelease());
+				_previewCamera->GetRenderPass()->AddFramePass(resolvePass->Autorelease());
 			}
 			else
 			{

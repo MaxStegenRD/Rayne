@@ -623,7 +623,7 @@ namespace RN
 
 		// Ensure subpass clearing plan is computed for root containers
 		cameraRenderPass->UpdateSubpassChain();
-		const Array *nextRenderPasses = cameraRenderPass->GetNextRenderPasses();
+		const Array *nextFramePasses = cameraRenderPass->GetNextFramePasses();
 		const size_t frameStatisticsIndex = frameSubmission.renderFrame.AddCameraStatistics();
 
 		RenderPassResources *renderPassResources = cameraRenderPass->GetRenderResources(this);
@@ -654,8 +654,15 @@ namespace RN
 		frameSubmission.activeRenderPassIndex = previousRenderPassIndex;
 		frameSubmission.renderPasses.push_back(renderPass);
 
-		nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
-			SubmitRenderPass(frameSubmission, nextPass, frameSubmission.renderPasses[previousRenderPassIndex]);
+		nextFramePasses->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop) {
+			RenderPass *nextRenderPass = nextPass->Downcast<RenderPass>();
+			RN_ASSERT(nextRenderPass, "Metal renderer only supports RenderPass frame pass nodes");
+			if(!nextRenderPass)
+			{
+				stop = true;
+				return;
+			}
+			SubmitRenderPass(frameSubmission, nextRenderPass, frameSubmission.renderPasses[previousRenderPassIndex]);
 		});
 
 		const size_t submittedRenderPassEndIndex = frameSubmission.renderPasses.size();
@@ -788,9 +795,16 @@ namespace RN
 			frameSubmission.renderPasses[frameSubmission.activeRenderPassIndex].resolveRenderAreaSize = metalRenderPass.renderAreaSize;
 		}
 
-		const Array *nextRenderPasses = renderPass->GetNextRenderPasses();
-		nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop){
-			SubmitRenderPass(frameSubmission, nextPass, frameSubmission.renderPasses[frameSubmission.activeRenderPassIndex]);
+		const Array *nextFramePasses = renderPass->GetNextFramePasses();
+		nextFramePasses->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop){
+			RenderPass *nextRenderPass = nextPass->Downcast<RenderPass>();
+			RN_ASSERT(nextRenderPass, "Metal renderer only supports RenderPass frame pass nodes");
+			if(!nextRenderPass)
+			{
+				stop = true;
+				return;
+			}
+			SubmitRenderPass(frameSubmission, nextRenderPass, frameSubmission.renderPasses[frameSubmission.activeRenderPassIndex]);
 		});
 	}
 

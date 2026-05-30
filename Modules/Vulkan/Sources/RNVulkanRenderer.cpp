@@ -1230,7 +1230,7 @@ namespace RN
 
 		RenderPass *cameraRenderPass = _currentMultiviewFallbackRenderPass? _currentMultiviewFallbackRenderPass : camera->GetRenderPass();
 		cameraRenderPass->UpdateSubpassChain();
-		const Array *nextRenderPasses = cameraRenderPass->GetNextRenderPasses();
+		const Array *nextFramePasses = cameraRenderPass->GetNextFramePasses();
 		const size_t frameStatisticsIndex = frameSubmission.renderFrame.AddCameraStatistics();
 
 		RenderPassResources *renderPassResources = cameraRenderPass->GetRenderResources(this);
@@ -1269,8 +1269,15 @@ namespace RN
 		renderPass.subpasses.reserve(cameraRenderPass->GetSubpassCount());
 		frameSubmission.renderPasses.push_back(renderPass);
 
-		nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
-			SubmitRenderPass(frameSubmission, nextPass, frameSubmission.renderPasses[previousRenderPassIndex]);
+		nextFramePasses->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop) {
+			RenderPass *nextRenderPass = nextPass->Downcast<RenderPass>();
+			RN_ASSERT(nextRenderPass, "Vulkan renderer only supports RenderPass frame pass nodes");
+			if(!nextRenderPass)
+			{
+				stop = true;
+				return;
+			}
+			SubmitRenderPass(frameSubmission, nextRenderPass, frameSubmission.renderPasses[previousRenderPassIndex]);
 		});
 
 		frameSubmission.activeRenderPassIndex = previousRenderPassIndex;
@@ -1342,7 +1349,7 @@ namespace RN
 		RN_PROFILE_SCOPE();
 
 		renderPass->UpdateSubpassChain();
-		const Array *nextRenderPasses = renderPass->GetNextRenderPasses();
+		const Array *nextFramePasses = renderPass->GetNextFramePasses();
 
 		PostProcessingAPIStage *apiStage = renderPass->Downcast<PostProcessingAPIStage>();
 		bool isPostProcessingStage = renderPass->IsKindOfClass(PostProcessingStage::GetMetaClass());
@@ -1451,8 +1458,15 @@ namespace RN
 			frameSubmission.renderPasses[frameSubmission.activeRenderPassIndex].resolveFramebuffer = vulkanRenderPass.framebuffer;
 		}
 
-		nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
-			SubmitRenderPass(frameSubmission, nextPass, frameSubmission.renderPasses[frameSubmission.activeRenderPassIndex]);
+		nextFramePasses->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop) {
+			RenderPass *nextRenderPass = nextPass->Downcast<RenderPass>();
+			RN_ASSERT(nextRenderPass, "Vulkan renderer only supports RenderPass frame pass nodes");
+			if(!nextRenderPass)
+			{
+				stop = true;
+				return;
+			}
+			SubmitRenderPass(frameSubmission, nextRenderPass, frameSubmission.renderPasses[frameSubmission.activeRenderPassIndex]);
 		});
 	}
 

@@ -13,6 +13,7 @@
 #include "../Base/RNBase.h"
 #include "../Math/RNRect.h"
 #include "../Objects/RNArray.h"
+#include "RNFramePass.h"
 #include "RNFramebuffer.h"
 #include "RNMaterial.h"
 
@@ -21,7 +22,7 @@ namespace RN
 	class Renderer;
 	struct RenderPassResources;
 
-	class RenderPass : public Object
+	class RenderPass : public FramePass
 	{
 	public:
 		RN_OPTIONS(Flags, uint32,
@@ -219,20 +220,19 @@ namespace RN
 		bool GetIsRoot() const { return _isRoot; }
 		size_t GetSubpassCount() const { return _subpassCount; }
 
-		RNAPI void AddRenderPass(RenderPass *renderPass);
-		RNAPI void RemoveRenderPass(RenderPass *renderPass);
-		RNAPI void RemoveAllRenderPasses();
-		const Array *GetNextRenderPasses() const { return _nextRenderPasses; }
-		RNAPI void AddRenderPassDependency(RenderPass *renderPass);
-		RNAPI void RemoveRenderPassDependency(RenderPass *renderPass);
-		RNAPI void RemoveAllRenderPassDependencies();
-		const std::vector<WeakRef<RenderPass>> &GetRenderPassDependencies() const { return _renderPassDependencies; }
 		RNAPI void UpdateSubpassChain();
+
+	protected:
+		RNAPI void WillAddFramePass(FramePass *framePass) const override;
+		RNAPI void DidAddFramePass(FramePass *framePass) override;
+		RNAPI void DidRemoveFramePass(FramePass *framePass) override;
+		RNAPI void DidRemoveAllFramePasses() override;
 
 	private:
 		friend struct RenderPassResources;
 
 		void MarkDrawSnapshotDirty();
+		void UpdateRootFlag();
 		void UpdateDrawSnapshotFrame(DrawSnapshot &snapshot) const;
 	
 		Flags _flags;
@@ -268,8 +268,6 @@ namespace RN
 		size_t _subpassIndex;
 		size_t _subpassCount;
 
-		Array *_nextRenderPasses;
-		std::vector<WeakRef<RenderPass>> _renderPassDependencies;
 		RenderPassResources *_renderResources;
 		uint64 _drawSnapshotVersion;
 

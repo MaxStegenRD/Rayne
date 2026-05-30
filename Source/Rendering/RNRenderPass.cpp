@@ -12,10 +12,10 @@
 
 namespace RN
 {
-	RNDefineMeta(RenderPass, Object)
+	RNDefineMeta(RenderPass, FramePass)
 
     RenderPass::RenderPass(bool isSubpass) :
-        _flags(Flags::Defaults), _framebuffer(nullptr), _clearDepth(0.0f), _clearStencil(0), _nextRenderPasses(new Array()), _isSubpass(isSubpass), _isRoot(false), _renderGroupMask(0xffff), _subpassWritesDepthStencil(false), _subpassReadDepthStencilAttachment(false), _shaderHint(Shader::UsageHint::Default), _viewMode(ViewMode::Auto), _overrideMaterial(nullptr), _subpassNeedToStoreDepthStencil(false), _subpassNeedToPreserveDepthStencil(false), _subpassLastDepthStencilWrite(false), _subpassFirstDepthStencilWrite(false), _depthFirstUseIsRead(false), _depthLastUseIsRead(false), _subpassIndex(0), _subpassCount(0), _renderResources(nullptr), _drawSnapshotVersion(1)
+        _flags(Flags::Defaults), _framebuffer(nullptr), _clearDepth(0.0f), _clearStencil(0), _isSubpass(isSubpass), _isRoot(false), _renderGroupMask(0xffff), _subpassWritesDepthStencil(false), _subpassReadDepthStencilAttachment(false), _shaderHint(Shader::UsageHint::Default), _viewMode(ViewMode::Auto), _overrideMaterial(nullptr), _subpassNeedToStoreDepthStencil(false), _subpassNeedToPreserveDepthStencil(false), _subpassLastDepthStencilWrite(false), _subpassFirstDepthStencilWrite(false), _depthFirstUseIsRead(false), _depthLastUseIsRead(false), _subpassIndex(0), _subpassCount(0), _renderResources(nullptr), _drawSnapshotVersion(1)
 	{
 	}
 
@@ -25,15 +25,15 @@ namespace RN
 			_renderResources->Delete();
 		SafeRelease(_framebuffer);
 		SafeRelease(_overrideMaterial);
-		SafeRelease(_nextRenderPasses);
 	}
 
 	void RenderPass::MarkDrawSnapshotDirty()
 	{
 		_drawSnapshotVersion += 1;
-		_nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
-			if(nextPass->GetIsSubpass())
-				nextPass->MarkDrawSnapshotDirty();
+		GetNextFramePasses()->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop) {
+			RenderPass *renderPass = nextPass->Downcast<RenderPass>();
+			if(renderPass && renderPass->GetIsSubpass())
+				renderPass->MarkDrawSnapshotDirty();
 		});
 	}
 
@@ -221,11 +221,11 @@ namespace RN
 	{
 		Rect frame = GetFrame();
 
-		_nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t, bool &stop) {
+		GetNextFramePasses()->Enumerate<FramePass>([&](FramePass *nextPass, size_t, bool &stop) {
 			PostProcessingAPIStage *apiStage = nextPass->Downcast<PostProcessingAPIStage>();
 			if(apiStage && apiStage->GetType() == PostProcessingAPIStage::Type::ResolveMSAA)
 			{
-				Rect resolveFrame = nextPass->GetFrame();
+				Rect resolveFrame = apiStage->GetFrame();
 				if(resolveFrame.width >= 0.5f && resolveFrame.height >= 0.5f)
 					frame = resolveFrame;
 				stop = true;
@@ -277,71 +277,50 @@ namespace RN
 		MarkDrawSnapshotDirty();
 	}
 	
-    
-
-	void RenderPass::AddRenderPass(RenderPass *renderPass)
+	void RenderPass::WillAddFramePass(FramePass *framePass) const
 	{
-		RN_ASSERT((!_isRoot && !_isSubpass && !renderPass->_isSubpass) || _nextRenderPasses->GetCount() == 0, "Subpasses must be a flat hierarchy");
-		
-		_nextRenderPasses->AddObject(renderPass);
+		RenderPass *renderPass = framePass->Downcast<RenderPass>();
+		if(renderPass)
+		{
+			RN_ASSERT((!_isRoot && !_isSubpass && !renderPass->_isSubpass) || GetNextFramePasses()->GetCount() == 0, "Subpasses must be a flat hierarchy");
+		}
+	}
 
-		_isRoot = false;
-		if(renderPass->GetIsSubpass() && !_isSubpass)
+	void RenderPass::DidAddFramePass(FramePass *framePass)
+	{
+		RenderPass *renderPass = framePass->Downcast<RenderPass>();
+		if(renderPass && renderPass->GetIsSubpass() && !_isSubpass)
 		{
 			_isRoot = true;
 		}
+
 		MarkDrawSnapshotDirty();
 	}
 
-	void RenderPass::RemoveRenderPass(RenderPass *renderPass)
+	void RenderPass::DidRemoveFramePass(FramePass *)
 	{
-		_nextRenderPasses->RemoveObject(renderPass);
+		UpdateRootFlag();
+		MarkDrawSnapshotDirty();
+	}
 
+	void RenderPass::DidRemoveAllFramePasses()
+	{
 		_isRoot = false;
-		_nextRenderPasses->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
-			if(nextPass->GetIsSubpass() && !_isSubpass)
+		MarkDrawSnapshotDirty();
+	}
+
+	void RenderPass::UpdateRootFlag()
+	{
+		_isRoot = false;
+
+		GetNextFramePasses()->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop) {
+			RenderPass *renderPass = nextPass->Downcast<RenderPass>();
+			if(renderPass && renderPass->GetIsSubpass() && !_isSubpass)
 			{
 				_isRoot = true;
 				stop = true;
 			}
 		});
-		MarkDrawSnapshotDirty();
-	}
-
-	void RenderPass::RemoveAllRenderPasses()
-	{
-		_nextRenderPasses->RemoveAllObjects();
-		_isRoot = false;
-		MarkDrawSnapshotDirty();
-	}
-
-	void RenderPass::AddRenderPassDependency(RenderPass *renderPass)
-	{
-		RN_ASSERT(renderPass, "Cannot add an empty render pass dependency");
-		RN_ASSERT(renderPass != this, "Cannot add a render pass dependency on itself");
-
-		for(const WeakRef<RenderPass> &dependency : _renderPassDependencies)
-		{
-			if(dependency.Load() == renderPass) return;
-		}
-
-		_renderPassDependencies.push_back(renderPass);
-	}
-
-	void RenderPass::RemoveRenderPassDependency(RenderPass *renderPass)
-	{
-		for(auto iterator = _renderPassDependencies.begin(); iterator != _renderPassDependencies.end();)
-		{
-			if(iterator->Load() == renderPass)
-				iterator = _renderPassDependencies.erase(iterator);
-			else
-				iterator++;
-		}
-	}
-
-	void RenderPass::RemoveAllRenderPassDependencies()
-	{
-		_renderPassDependencies.clear();
 	}
 
 	void RenderPass::UpdateSubpassChain()
@@ -352,11 +331,12 @@ namespace RN
         // Collect complete subpass chain (in order)
         std::vector<RenderPass*> subpasses;
         std::function<void(RenderPass*)> collect = [&](RenderPass *node){
-            node->GetNextRenderPasses()->Enumerate<RenderPass>([&](RenderPass *nextPass, size_t index, bool &stop) {
-                if(nextPass->GetIsSubpass())
+            node->GetNextFramePasses()->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop) {
+				RenderPass *nextRenderPass = nextPass->Downcast<RenderPass>();
+                if(nextRenderPass && nextRenderPass->GetIsSubpass())
                 {
-                    subpasses.push_back(nextPass);
-                    collect(nextPass);
+                    subpasses.push_back(nextRenderPass);
+                    collect(nextRenderPass);
                 }
             });
         };

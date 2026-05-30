@@ -14,15 +14,15 @@
 namespace RN
 {
 	template<class RenderPassType>
-	bool FrameSubmissionPassUsesRenderPass(const RenderPassType &frameSubmissionRenderPass, RenderPass *renderPass)
+	bool FrameSubmissionPassUsesFramePass(const RenderPassType &frameSubmissionRenderPass, FramePass *framePass)
 	{
-		return frameSubmissionRenderPass.renderPass == renderPass;
+		return frameSubmissionRenderPass.renderPass == framePass;
 	}
 
 	template<class Pruner, class RenderPassType>
-	void FrameSubmissionAddRenderPassDependencies(Pruner &pruner, size_t consumerIndex, RenderPassType &frameSubmissionRenderPass)
+	void FrameSubmissionAddFramePassDependencies(Pruner &pruner, size_t consumerIndex, RenderPassType &frameSubmissionRenderPass)
 	{
-		pruner.AddExplicitRenderPassDependencies(consumerIndex, frameSubmissionRenderPass.renderPass);
+		pruner.AddExplicitFramePassDependencies(consumerIndex, frameSubmissionRenderPass.renderPass);
 	}
 
 	template<class Submission>
@@ -51,13 +51,13 @@ namespace RN
 			ErasePrunedPasses();
 		}
 
-		void AddExplicitRenderPassDependencies(size_t consumerIndex, RenderPass *renderPass)
+		void AddExplicitFramePassDependencies(size_t consumerIndex, FramePass *framePass)
 		{
-			if(!renderPass) return;
+			if(!framePass) return;
 
-			for(const WeakRef<RenderPass> &dependency : renderPass->GetRenderPassDependencies())
+			for(const WeakRef<FramePass> &dependency : framePass->GetFramePassDependencies())
 			{
-				AddDependency(consumerIndex, FindRenderPassIndex(dependency.Load()));
+				AddDependency(consumerIndex, FindFramePassIndex(dependency.Load()));
 			}
 		}
 
@@ -146,13 +146,13 @@ namespace RN
 			return FramebufferTargetsSkippedSwapChain(renderPass.framebuffer) || FramebufferTargetsSkippedSwapChain(renderPass.resolveFramebuffer);
 		}
 
-		size_t FindRenderPassIndex(RenderPass *renderPass) const
+		size_t FindFramePassIndex(FramePass *framePass) const
 		{
-			if(!renderPass) return InvalidIndex;
+			if(!framePass) return InvalidIndex;
 
 			for(size_t i = 0; i < _submission.renderPasses.size(); i++)
 			{
-				if(FrameSubmissionPassUsesRenderPass(_submission.renderPasses[i], renderPass))
+				if(FrameSubmissionPassUsesFramePass(_submission.renderPasses[i], framePass))
 					return i;
 			}
 
@@ -204,7 +204,7 @@ namespace RN
 					AddDependency(i, FindFramebufferProducer(renderPass.previousStoredFramebuffer));
 
 				AddRenderFramePassSnapshotDependencies(i, renderPass.renderFramePassIndex);
-				FrameSubmissionAddRenderPassDependencies(*this, i, renderPass);
+				FrameSubmissionAddFramePassDependencies(*this, i, renderPass);
 			}
 		}
 

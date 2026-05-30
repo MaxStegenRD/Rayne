@@ -97,7 +97,7 @@ namespace RN
 		RN_ASSERT(resolvedFramebuffer, "The VRWindow has no framebuffer!");
 
 		RenderPass *headRenderPass = _head->GetRenderPass();
-		headRenderPass->RemoveAllRenderPasses();
+		headRenderPass->RemoveAllFramePasses();
 
 		Vector2 windowSize;
 		Texture::Format colorFormat = Texture::Format::RGBA_8_SRGB;
@@ -175,7 +175,7 @@ namespace RN
 			resolvePass->SetFramebuffer(resolvedFramebuffer);
 
 			headRenderPass->SetFramebuffer(msaaFramebuffer->Autorelease());
-			headRenderPass->AddRenderPass(resolvePass->Autorelease());
+			headRenderPass->AddFramePass(resolvePass->Autorelease());
 		}
 		else
 		{
@@ -186,11 +186,11 @@ namespace RN
 		{
 			if(resolvePass)
 			{
-				resolvePass->AddRenderPass(sideBySideDebugPass);
+				resolvePass->AddFramePass(sideBySideDebugPass);
 			}
 			else
 			{
-				headRenderPass->AddRenderPass(sideBySideDebugPass);
+				headRenderPass->AddFramePass(sideBySideDebugPass);
 			}
 		}
 
@@ -198,11 +198,11 @@ namespace RN
 		{
 			if(resolvePass)
 			{
-				resolvePass->AddRenderPass(_previewRenderPass);
+				resolvePass->AddFramePass(_previewRenderPass);
 			}
 			else
 			{
-				headRenderPass->AddRenderPass(_previewRenderPass);
+				headRenderPass->AddFramePass(_previewRenderPass);
 			}
 		}
 	}

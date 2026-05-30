@@ -15,27 +15,27 @@ namespace RN
 {
 	RNDefineMeta(VulkanCommandBuffer, Object)
 
-	bool FrameSubmissionPassUsesRenderPass(const VulkanRenderPass &vulkanRenderPass, RenderPass *renderPass)
+	bool FrameSubmissionPassUsesFramePass(const VulkanRenderPass &vulkanRenderPass, FramePass *framePass)
 	{
-		if(vulkanRenderPass.renderPass == renderPass) return true;
+		if(vulkanRenderPass.renderPass == framePass) return true;
 
 		for(const VulkanRenderPass &subpass : vulkanRenderPass.subpasses)
 		{
-			if(subpass.renderPass == renderPass) return true;
+			if(subpass.renderPass == framePass) return true;
 		}
 
 		return false;
 	}
 
 	template<class Pruner>
-	void FrameSubmissionAddRenderPassDependencies(Pruner &pruner, size_t consumerIndex, VulkanRenderPass &vulkanRenderPass)
+	void FrameSubmissionAddFramePassDependencies(Pruner &pruner, size_t consumerIndex, VulkanRenderPass &vulkanRenderPass)
 	{
-		pruner.AddExplicitRenderPassDependencies(consumerIndex, vulkanRenderPass.renderPass);
+		pruner.AddExplicitFramePassDependencies(consumerIndex, vulkanRenderPass.renderPass);
 
 		for(VulkanRenderPass &subpass : vulkanRenderPass.subpasses)
 		{
 			pruner.AddRenderFramePassSnapshotDependencies(consumerIndex, subpass.renderFramePassIndex);
-			pruner.AddExplicitRenderPassDependencies(consumerIndex, subpass.renderPass);
+			pruner.AddExplicitFramePassDependencies(consumerIndex, subpass.renderPass);
 		}
 	}
 
