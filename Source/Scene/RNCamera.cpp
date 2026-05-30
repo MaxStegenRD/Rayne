@@ -27,6 +27,7 @@ namespace RN
 		{
 			_renderPass = renderPass->Retain();
 		}
+		_rootFramePass = nullptr;
 
 		Initialize();
 	}
@@ -38,6 +39,7 @@ namespace RN
 		//TODO: This implementaiton is probably not what a user would expect when creating a camera with a size tbh... It just renders it to the screens top left corner with the given size. Instead it should probably create a render target of that size and render into it instead.
 		_renderPass = new RenderPass();
 		_renderPass->SetFrame(RN::Rect(0, 0, size.x, size.y));
+		_rootFramePass = nullptr;
 
 		Initialize();
 	}
@@ -45,6 +47,7 @@ namespace RN
 	Camera::~Camera()
 	{
 		SafeRelease(_renderPass);
+		SafeRelease(_rootFramePass);
 
 		SafeRelease(_multiviewCameras);
 		SafeRelease(_renderNodes);
@@ -98,10 +101,33 @@ namespace RN
 	// Setter
 	void Camera::SetRenderPass(RenderPass *renderPass)
 	{
+		RN_ASSERT(renderPass, "Camera render pass mustn't be NULL");
 		RN_ASSERT(!renderPass->GetIsSubpass(), "Subpass render passes have to be inside a root renderpass that is not a sub pass");
-		
+
 		SafeRelease(_renderPass);
 		_renderPass = renderPass->Retain();
+
+		if(_rootFramePass == _renderPass)
+		{
+			SafeRelease(_rootFramePass);
+			_rootFramePass = nullptr;
+		}
+	}
+
+	void Camera::SetRootFramePass(FramePass *framePass)
+	{
+		if(!framePass || framePass == _renderPass)
+		{
+			SafeRelease(_rootFramePass);
+			_rootFramePass = nullptr;
+			return;
+		}
+
+		RenderPass *renderPass = framePass->Downcast<RenderPass>();
+		RN_ASSERT(!renderPass || !renderPass->GetIsSubpass(), "Subpass render passes have to be inside a root renderpass that is not a sub pass");
+
+		SafeRelease(_rootFramePass);
+		_rootFramePass = framePass->Retain();
 	}
 
 	void Camera::SetFlags(Flags flags)

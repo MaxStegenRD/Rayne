@@ -81,6 +81,7 @@ set(RAYNE_SOURCES
     Objects/RNSet.cpp
     Objects/RNCountedSet.cpp
     Objects/RNWeakStorage.cpp
+    Rendering/RNComputePass.cpp
     Rendering/RNDrawable.cpp
     Rendering/RNFramePass.cpp
     Rendering/RNFramebuffer.cpp
@@ -216,6 +217,7 @@ set(RAYNE_HEADERS
     Objects/RNString.h
     Objects/RNValue.h
     Objects/RNWeakStorage.h
+    Rendering/RNComputePass.h
     Rendering/RNDrawable.h
     Rendering/RNRenderThreadQueue.h
     Rendering/RNFramePass.h

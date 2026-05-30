@@ -58,6 +58,7 @@ namespace RN
 		RNAPI void DidUpdate(ChangeSet changeSet) override;
 
 		RNAPI void SetRenderPass(RenderPass *renderPass);
+		RNAPI void SetRootFramePass(FramePass *framePass); // Passing nullptr clears the override and uses GetRenderPass() as the root.
 		RNAPI void SetFlags(Flags flags);
 		RNAPI void SetLODCamera(Camera *camera);
 		RNAPI void SetPriority(int32 priority);
@@ -95,6 +96,7 @@ namespace RN
 		RNAPI float GetFrustumRadius();
 
 		RenderPass *GetRenderPass() const { return _renderPass; }
+		FramePass *GetRootFramePass() const { return _rootFramePass ? _rootFramePass : _renderPass; }
 		Flags GetFlags() const { return _flags; }
 		Camera *GetLODCamera() const { return _lodCamera ? _lodCamera : const_cast<Camera *>(this); }
 		LightManager *GetLightManager() const { return _lightManager; }
@@ -188,6 +190,7 @@ namespace RN
 		float _orthoBottom;
 
 		RenderPass *_renderPass;
+		FramePass *_rootFramePass;
 		Camera *_lodCamera;
 
 		Array *_multiviewCameras;

@@ -675,13 +675,13 @@ namespace RN
 		return new ArgumentSampler(name, index);
 	}
 
-	Shader::ArgumentTexture::ArgumentTexture(String *name, uint32 index, uint8 materialTextureIndex, Source source) :
-		Argument(name, index), _materialTextureIndex(materialTextureIndex), _source(source)
+	Shader::ArgumentTexture::ArgumentTexture(String *name, uint32 index, uint8 materialTextureIndex, Source source, Type type) :
+		Argument(name, index), _materialTextureIndex(materialTextureIndex), _source(source), _type(type)
 	{
 	}
 
 	Shader::ArgumentTexture::ArgumentTexture(const ArgumentTexture *other) :
-		Argument(other), _materialTextureIndex(other->_materialTextureIndex), _source(other->_source)
+		Argument(other), _materialTextureIndex(other->_materialTextureIndex), _source(other->_source), _type(other->_type)
 	{}
 
 	Shader::ArgumentTexture::~ArgumentTexture()

@@ -283,6 +283,12 @@ namespace RN
 		class ArgumentTexture : public Argument
 		{
 		public:
+			enum class Type
+			{
+				Sampled,
+				Storage
+			};
+
 			enum class Source
 			{
 				Material,
@@ -291,7 +297,7 @@ namespace RN
 				Framebuffer,
 				SubpassInput
 			};
-			RNAPI ArgumentTexture(String *name, uint32 index, uint8 materialTextureIndex, Source source);
+			RNAPI ArgumentTexture(String *name, uint32 index, uint8 materialTextureIndex, Source source, Type type = Type::Sampled);
 			RNAPI ArgumentTexture(const ArgumentTexture *other);
 			RNAPI ~ArgumentTexture();
 
@@ -299,10 +305,12 @@ namespace RN
 
 			uint8 GetMaterialTextureIndex() const { return _materialTextureIndex; }
 			Source GetSource() const { return _source; }
+			Type GetType() const { return _type; }
 
 		private:
 			uint8 _materialTextureIndex;
 			Source _source;
+			Type _type;
 
 			__RNDeclareMetaInternal(ArgumentTexture)
 		};
