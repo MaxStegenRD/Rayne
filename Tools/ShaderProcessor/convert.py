@@ -6,6 +6,7 @@ import subprocess
 import platform
 import pathlib
 import concurrent.futures
+import re
 
 
 def running_under_xcode():
@@ -67,6 +68,27 @@ def removePermutations(directory, pattern):
     pathlist = pathlib.Path(directory).glob(pattern)
     for path in pathlist:
         path.unlink()
+
+def get_shader_type_short(shaderTypeName):
+    if shaderTypeName == 'vertex':
+        return 'vs'
+    elif shaderTypeName == 'fragment':
+        return 'ps'
+    elif shaderTypeName == 'compute':
+        return 'cs'
+
+    return None
+
+def get_compute_threads_per_group(source_file, entry_name):
+    with open(source_file, 'r') as file:
+        source = file.read()
+
+    pattern = re.compile(r'\[\s*numthreads\s*\(\s*([0-9]+)\s*,\s*([0-9]+)\s*,\s*([0-9]+)\s*\)\s*\][^{;]*\b' + re.escape(entry_name) + r'\s*\(', re.MULTILINE | re.DOTALL)
+    match = pattern.search(source)
+    if not match:
+        return None
+
+    return [int(match.group(1)), int(match.group(2)), int(match.group(3))]
 
 def main():
     if len(sys.argv) < 4:
@@ -148,16 +170,27 @@ def main():
         filePath, fileName = os.path.split(filePath)
         sourceFile = os.path.join(jsonDirectory, sourceFile)
 
+        shaderTypeCounts = dict()
+        for shader in shaders:
+            if not 'type' in shader:
+                continue
+
+            shaderType = get_shader_type_short(shader['type'])
+            if shaderType:
+                shaderTypeCounts[shaderType] = shaderTypeCounts.get(shaderType, 0) + 1
+
         for shader in shaders:
             if not 'name' in shader or not 'type' in shader:
                 continue
 
-            if shader['type'] == 'vertex':
-                shaderType = 'vs'
-            elif shader['type'] == 'fragment':
-                shaderType = 'ps'
-            elif shader['type'] == 'compute':
-                shaderType = 'cs'
+            shaderType = get_shader_type_short(shader['type'])
+            if not shaderType:
+                continue
+
+            entryName = shader['name']
+            outputFileName = fileName + '.' + shaderType
+            if shaderTypeCounts[shaderType] > 1:
+                outputFileName = fileName + '.' + entryName + '.' + shaderType
 
             shaderSignature = None
             shaderOptionsList = None
@@ -179,14 +212,19 @@ def main():
                         if "dependencies" in shaderOptionsDict:
                             shaderOptionsDependenciesList = shaderOptionsDict["dependencies"]
 
-            entryName = shader['name']
-
             destinationShaderList = list()
             destinationShader = dict()
             destinationShader['type'] = shader['type']
             destinationShader['name'] = entryName
             if 'has_instancing' in shader:
                 destinationShader["has_instancing"] = shader['has_instancing']
+            if shader['type'] == 'compute':
+                if 'threads_per_group' in shader:
+                    destinationShader['threads_per_group'] = shader['threads_per_group']
+                else:
+                    threadsPerGroup = get_compute_threads_per_group(sourceFile, entryName)
+                    if threadsPerGroup:
+                        destinationShader['threads_per_group'] = threadsPerGroup
             if shaderSignature:
                 destinationShader['signature'] = shaderSignature;
             destinationShaderList.append(destinationShader)
@@ -248,7 +286,7 @@ def main():
                 permutations.append(permutation)
 
             skipShaderCompiling = False
-            if not getNeedsUpdate(sys.argv[0], sys.argv[1], sourceFile, outDirName, fileName + "." + shaderType + ".*.*"):
+            if not getNeedsUpdate(sys.argv[0], sys.argv[1], sourceFile, outDirName, outputFileName + ".*.*"):
                 print("Shaders for file " + sourceFile + " are already up to date. Skipping.")
                 skipShaderCompiling = True
 
@@ -256,7 +294,7 @@ def main():
                 outFileFormat = outFormat
                 if outFormat == 'spirv':
                     compilerOutFormat = 'spirv'
-                    destinationShaderFile['file~vulkan'] = resourceRelativePath + '/' + fileName + '.' + shaderType + '.' + outFormat
+                    destinationShaderFile['file~vulkan'] = resourceRelativePath + '/' + outputFileName + '.' + outFormat
                 elif outFormat == 'metal_macos' or outFormat == 'metal_ios' or outFormat == 'metal_ios_sim' or outFormat == 'metal_visionos' or outFormat == 'metal_visionos_sim':
                     outFileFormat = 'metal'
                     if outFormat == 'metal_macos':
@@ -265,20 +303,20 @@ def main():
                         compilerOutFormat = 'msl_ios' #Should also work for the simulator and visionos
 
                     if platform.system() == 'Darwin':
-                        destinationShaderFile['file~metal'] = resourceRelativePath + '/' + fileName + '.' + shaderType + '.metallib'
+                        destinationShaderFile['file~metal'] = resourceRelativePath + '/' + outputFileName + '.metallib'
                     else:
-                        destinationShaderFile['file~metal'] = resourceRelativePath + '/' + fileName + '.' + shaderType + '.metal'
+                        destinationShaderFile['file~metal'] = resourceRelativePath + '/' + outputFileName + '.metal'
 
                 if not skipShaderCompiling:
                     if outFormat == 'metal_macos' or outFormat == 'metal_ios' or outFormat == 'metal_ios_sim' or outFormat == 'metal_visionos' or outFormat == 'metal_visionos_sim':
-                        removePermutations(outDirName, fileName + "." + shaderType + ".*.metal")
-                        removePermutations(outDirName, fileName + "." + shaderType + ".*.metallib")
+                        removePermutations(outDirName, outputFileName + ".*.metal")
+                        removePermutations(outDirName, outputFileName + ".*.metallib")
                     else:
-                        removePermutations(outDirName, fileName + "." + shaderType + ".*."+outFormat)
+                        removePermutations(outDirName, outputFileName + ".*."+outFormat)
 
                 for permutationDict in permutations:
                     permutation = permutationDict["parameters"]
-                    permutationOutFile = os.path.join(outDirName, fileName + '.' + shaderType + '.' + str(permutationDict["identifier"]) + '.' + outFileFormat)
+                    permutationOutFile = os.path.join(outDirName, outputFileName + '.' + str(permutationDict["identifier"]) + '.' + outFileFormat)
 
                     parameterList = [shaderConductorCmdPath, '-I', sourceFile, '-O', permutationOutFile, '--minorshadermodel', '2', '-E', entryName, '-S', shaderType, '-T', compilerOutFormat]
 
@@ -306,7 +344,7 @@ def main():
 
                         if outFormat in metal_sdk_map and platform.system() == 'Darwin':
                             bitcodeOutFile = permutationOutFile + '.air'
-                            libOutFile = os.path.join(outDirName, fileName + '.' + shaderType + '.' + str(permutationDict["identifier"]) + '.metallib')
+                            libOutFile = os.path.join(outDirName, outputFileName + '.' + str(permutationDict["identifier"]) + '.metallib')
                             sdk = metal_sdk_map[outFormat]
                             metal_commands = build_metal_commands(sdk, permutationOutFile, bitcodeOutFile, libOutFile, enableDebugSymbols)
                             job_commands.extend(metal_commands)
