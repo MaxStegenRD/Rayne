@@ -1,6 +1,19 @@
 import os
 import sys
 import datetime
+import re
+
+def sanitize_bundle_id(bundle_id):
+	components = []
+	for component in bundle_id.split("."):
+		component = re.sub("[^A-Za-z0-9_]", "", component)
+		if len(component) == 0:
+			continue
+		if not re.match("[A-Za-z_]", component[0]):
+			component = "_" + component
+		components.append(component)
+
+	return ".".join(components)
 
 def main():
 	templateName = input("Template name? ")
@@ -10,7 +23,7 @@ def main():
 	prefixString = input("Project prefix? ")
 	prefix = prefixString.encode()
 	companyName = input("Company name? ").encode()
-	bundleID = input("Bundle ID? ").encode()
+	bundleID = sanitize_bundle_id(input("Bundle ID? ")).encode()
 	year = str(datetime.datetime.now().year).encode()
 
 	fromdir = os.path.join(os.path.dirname(sys.argv[0]), "Templates")
