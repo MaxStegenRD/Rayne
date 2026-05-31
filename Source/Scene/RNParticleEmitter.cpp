@@ -552,27 +552,24 @@ namespace RN
 		if(!GetIsLocal())
 		{
 			const Quaternion rotation = GetWorldRotation();
+			const Vector3 position = GetWorldPosition();
+			const bool ignoreScale = GetIgnoreScale();
+			const Vector3 scale = ignoreScale ? Vector3(1.0f) : GetWorldScale();
+			const float sizeScale = std::max(std::max(scale.x, scale.y), scale.z);
 			for(size_t i = prevNumParticles; i < newNumParticles; i++)
 			{
 				_genericParticles[i].acceleration = rotation.GetRotatedVector(_genericParticles[i].acceleration);
 				_genericParticles[i].velocity = rotation.GetRotatedVector(_genericParticles[i].velocity);
-			}
-			
-			if(!GetIgnoreScale())
-			{
-				const Vector3 scale = GetWorldScale();
-				const float sizeScale = std::max(std::max(scale.x, scale.y), scale.z);
-				
-				for(size_t i = prevNumParticles; i < newNumParticles; i++)
+
+				if(!ignoreScale)
 				{
 					_genericParticles[i].acceleration *= scale;
 					_genericParticles[i].velocity *= scale;
 					_genericParticles[i].startSize *= sizeScale;
 					_genericParticles[i].endSize *= sizeScale;
-					
-					particles[i].position *= scale;
-					particles[i].position += GetWorldPosition();
 				}
+
+				particles[i].position = position + scale * rotation.GetRotatedVector(particles[i].position);
 			}
 		}
 	}
