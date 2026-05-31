@@ -721,7 +721,10 @@ namespace RN
 		pipelineCreateInfo.basePipelineIndex = -1;
 
 		VkPipeline pipeline;
-		RNVulkanValidate(vk::CreateComputePipelines(device->GetDevice(), _pipelineCache, 1, &pipelineCreateInfo, renderer->GetAllocatorCallback(), &pipeline));
+		VkResult result = vk::CreateComputePipelines(device->GetDevice(), _pipelineCache, 1, &pipelineCreateInfo, renderer->GetAllocatorCallback(), &pipeline);
+		if(result != VK_SUCCESS)
+			RNErrorf("Vulkan compute pipeline create failed for shader '%s' with result %i", computeShader->GetName()->GetUTF8String(), result);
+		RNVulkanValidate(result);
 		_pipelineCacheNeedsSaving = true;
 
 		VulkanComputePipelineState *state = new VulkanComputePipelineState();
@@ -982,7 +985,10 @@ namespace RN
 		pipelineCreateInfo.pStages = shaderStages.data();
 
 		VkPipeline pipeline;
-		RNVulkanValidate(vk::CreateGraphicsPipelines(device->GetDevice(), _pipelineCache, 1, &pipelineCreateInfo, renderer->GetAllocatorCallback(), &pipeline));
+		VkResult result = vk::CreateGraphicsPipelines(device->GetDevice(), _pipelineCache, 1, &pipelineCreateInfo, renderer->GetAllocatorCallback(), &pipeline);
+		if(result != VK_SUCCESS)
+			RNErrorf("Vulkan graphics pipeline create failed for vertex shader '%s', fragment shader '%s', subpass %u, samples %u, color attachments %u with result %i", vertexShaderRayne->GetName()->GetUTF8String(), fragmentShaderRayne->GetName()->GetUTF8String(), descriptor.subpassIndex, descriptor.sampleCount, descriptor.colorAttachmentCount, result);
+		RNVulkanValidate(result);
 		_pipelineCacheNeedsSaving = true;
 
 		// Create the rendering state
