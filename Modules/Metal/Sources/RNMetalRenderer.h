@@ -91,11 +91,16 @@ namespace RN
 		bool ConsumeRenderThreadWork();
 		void RenderFrameSubmission(const MetalFrameSubmission &submission);
 		void SubmitCamera(MetalFrameSubmission &submission, Camera *camera, Function &&function);
+		size_t SubmitRootRenderPass(MetalFrameSubmission &submission, Camera *camera, RenderPass *renderPass);
+		void SubmitRootFramePass(MetalFrameSubmission &submission, Camera *camera, FramePass *framePass);
+		void SubmitFramePass(MetalFrameSubmission &submission, FramePass *framePass, MetalRenderPass &previousRenderPass);
 		void SubmitRenderPass(MetalFrameSubmission &submission, RenderPass *renderPass, MetalRenderPass &previousRenderPass);
+		void SubmitComputePass(MetalFrameSubmission &submission, ComputePass *computePass, MetalRenderPass *previousRenderPass);
 		void SubmitDrawable(MetalFrameSubmission &submission, Drawable *drawable, const SceneNode *node);
 		void PrepareRenderFrame(MetalFrameSubmission &submission);
 		void RenderDrawable(const MetalPreparedDrawItem &drawItem, uint32 instanceCount, const MetalRenderPass &renderPass, const RenderFrame &renderFrame, const RenderFrame::Pass &framePass);
 		void RenderAPIRenderPass(const MetalFrameSubmission &submission, const MetalRenderPass &renderPass);
+		void RenderComputePass(const MetalFrameSubmission &submission, const MetalRenderPass &computePass);
 		void FillUniformBuffer(Shader::ArgumentBuffer *argument, MetalUniformBufferReference *uniformBufferReference, const RenderFrame::DrawItem &drawItem, const Material::Properties &materialProperties, const RenderFrame::Pass &framePass);
 		bool ShouldInheritViews(RenderPass::ViewMode viewMode, bool isSubpass, bool hasInheritedViewState, bool destinationSupportsViewState) const;
 		bool SupportsViewState(const MetalFramebuffer *framebuffer, uint8 multiviewLayer, uint8 multiviewCount) const;

@@ -67,6 +67,18 @@ namespace RN
 
 		std::vector<MetalRenderingState *> states;
 	};
+
+	struct MetalComputeState
+	{
+		~MetalComputeState()
+		{
+			[state release];
+			SafeRelease(computeShader);
+		}
+
+		id<MTLComputePipelineState> state;
+		Shader *computeShader;
+	};
 	
 	
 	struct MetalDepthStencilState
@@ -110,6 +122,7 @@ namespace RN
 		MTLAPI id<MTLSamplerState> GetSamplerStateForSampler(const Shader::ArgumentSampler *samplerDescriptor);
 
 		MTLAPI const MetalRenderingState *GetRenderPipelineState(Shader *vertexShader, Shader *fragmentShader, const Mesh::DrawSnapshot &mesh, Framebuffer *framebuffer, const Material::PipelineProperties &materialProperties, const RenderPass::DrawSnapshot &drawSnapshot);
+		MTLAPI const MetalComputeState *GetComputePipelineState(Shader *computeShader);
 
 	private:
 		MTLVertexDescriptor *CreateVertexDescriptor(const Mesh::DrawSnapshot &mesh, MetalShader *shader);
@@ -124,6 +137,7 @@ namespace RN
 		const MetalDepthStencilState *_lastDepthStencilState;
 
 		std::vector<MetalRenderingStateCollection *> _renderingStates;
+		std::vector<MetalComputeState *> _computeStates;
 	};
 }
 

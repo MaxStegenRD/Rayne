@@ -120,6 +120,18 @@ RN::Vector2 RNMetalLayerContainer::GetSize()
 
 namespace RN
 {
+	bool FrameSubmissionPassUsesFramePass(const MetalRenderPass &metalRenderPass, FramePass *framePass)
+	{
+		return metalRenderPass.renderPass == framePass || metalRenderPass.computePass == framePass;
+	}
+
+	template<class Pruner>
+	void FrameSubmissionAddFramePassDependencies(Pruner &pruner, size_t consumerIndex, MetalRenderPass &metalRenderPass)
+	{
+		pruner.AddExplicitFramePassDependencies(consumerIndex, metalRenderPass.renderPass);
+		pruner.AddExplicitFramePassDependencies(consumerIndex, metalRenderPass.computePass);
+	}
+
 	void MetalFrameSubmission::AddSwapChain(MetalSwapChain *swapChain)
 	{
 		if(!swapChain) return;

@@ -142,6 +142,7 @@ namespace RN
 					uint8 materialTextureIndex = 0;
 					bool isSubpassInput = false;
 					ArgumentTexture::Source textureSource = ArgumentTexture::Source::SubpassInput;
+					ArgumentTexture::Type textureType = ([argument access] == MTLArgumentAccessReadOnly) ? ArgumentTexture::Type::Sampled : ArgumentTexture::Type::Storage;
 					
 					// Metal reports subpass inputs in the same texture argument list.
 					if(name->HasPrefix(RNCSTR("colorInput")))
@@ -161,7 +162,7 @@ namespace RN
 						textureSource = ArgumentTexture::GetSourceForName(name, materialTextureIndex);
 					}
 					
-					ArgumentTexture *argumentTexture = new ArgumentTexture(name, static_cast<uint32>([argument index]), materialTextureIndex, textureSource);
+					ArgumentTexture *argumentTexture = new ArgumentTexture(name, static_cast<uint32>([argument index]), materialTextureIndex, textureSource, textureType);
 					
 					if(isSubpassInput) subpassInputsArray->AddObject(argumentTexture->Autorelease());
 					else texturesArray->AddObject(argumentTexture->Autorelease());

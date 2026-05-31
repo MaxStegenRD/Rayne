@@ -65,6 +65,9 @@ namespace RN
 		for(MetalRenderingStateCollection *collection : _renderingStates)
 			delete collection;
 
+		for(MetalComputeState *state : _computeStates)
+			delete state;
+
 		for(MetalDepthStencilState *state : _depthStencilStates)
 			delete state;
 
@@ -234,6 +237,45 @@ namespace RN
 		_renderingStates.push_back(collection);
 
 		return GetRenderPipelineStateInCollection(collection, mesh, framebuffer, materialProperties, drawSnapshot);
+	}
+
+	const MetalComputeState *MetalStateCoordinator::GetComputePipelineState(Shader *computeShader)
+	{
+		RN_ASSERT(computeShader && computeShader->GetType() == Shader::Type::Compute, "Compute pipeline state requires a compute shader");
+
+		for(const MetalComputeState *state : _computeStates)
+		{
+			if(state->computeShader == computeShader)
+				return state;
+		}
+
+		MetalShader *metalShader = computeShader->Downcast<MetalShader>();
+		id<MTLFunction> function = static_cast<id<MTLFunction>>(metalShader->_shader);
+
+		NSError *error = nil;
+		id<MTLComputePipelineState> pipelineState = nil;
+		if(metalShader->GetSignature())
+		{
+			pipelineState = [_device newComputePipelineStateWithFunction:function error:&error];
+		}
+		else
+		{
+			MTLComputePipelineReflection *reflection = nil;
+			pipelineState = [_device newComputePipelineStateWithFunction:function options:MTLPipelineOptionBufferTypeInfo reflection:&reflection error:&error];
+			if(pipelineState && reflection)
+			{
+				metalShader->SetReflectedArguments([reflection arguments]);
+			}
+		}
+
+		RN_ASSERT(!error, "Compute pipeline state creation failed for shader '%s' with error: %s", computeShader->GetName()->GetUTF8String(), error.localizedDescription.UTF8String);
+		RN_ASSERT(pipelineState, "Compute pipeline state creation failed for shader '%s'", computeShader->GetName()->GetUTF8String());
+
+		MetalComputeState *state = new MetalComputeState();
+		state->state = pipelineState;
+		state->computeShader = computeShader->Retain();
+		_computeStates.push_back(state);
+		return state;
 	}
 
 	const MetalRenderingState *MetalStateCoordinator::GetRenderPipelineStateInCollection(MetalRenderingStateCollection *collection, const Mesh::DrawSnapshot &mesh, Framebuffer *framebuffer, const Material::PipelineProperties &materialProperties, const RenderPass::DrawSnapshot &drawSnapshot)

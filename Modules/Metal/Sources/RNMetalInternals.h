@@ -160,13 +160,15 @@ namespace RN
 			Default,
 			ResolveMSAA,
 			Blit,
-			Convert
+			Convert,
+			Compute
 		};
 
 		bool UsesDrawItems() const { return type == Type::Default || type == Type::Convert; }
 
 		Type type = Type::Default;
 		RenderPass *renderPass = nullptr;
+		ComputePass *computePass = nullptr;
 		size_t renderFramePassIndex = RenderFrame::InvalidPassIndex;
 		size_t preparedRenderPassIndex = RenderFrame::InvalidPassIndex;
 		size_t frameStatisticsIndex = static_cast<size_t>(-1);
@@ -178,6 +180,10 @@ namespace RN
 		Shader::UsageHint shaderHint = Shader::UsageHint::Default;
 		MetalFramebuffer *resolveFramebuffer = nullptr;
 		Vector2 resolveRenderAreaSize;
+
+		ComputePass::DispatchSnapshot computeDispatch;
+		const MetalComputeState *computePipelineState = nullptr;
+		std::vector<StrongRef<MetalUniformBufferReference>> computeUniformBuffers;
 
 		uint8 multiviewLayer = 0;
 		uint8 multiviewCount = 0; // Explicit inherited view span; 1 also represents layered single-view fallback.

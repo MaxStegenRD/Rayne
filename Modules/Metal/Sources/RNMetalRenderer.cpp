@@ -384,6 +384,12 @@ namespace RN
 
 		for(const MetalRenderPass &renderPass : submission.renderPasses)
 		{
+			if(renderPass.type == MetalRenderPass::Type::Compute)
+			{
+				RenderComputePass(submission, renderPass);
+				continue;
+			}
+
 			if(renderPass.framebuffer->GetSwapChain() && !renderPass.framebuffer->GetSwapChain()->GetMetalColorTexture())
 			{
 				continue;
@@ -619,52 +625,11 @@ namespace RN
 			}
 		}
 
-		RN_ASSERT(_currentMultiviewFallbackRenderPass || camera->GetRootFramePass() == camera->GetRenderPass(), "Metal renderer does not support non-render camera frame pass roots yet");
-		RenderPass *cameraRenderPass = _currentMultiviewFallbackRenderPass? _currentMultiviewFallbackRenderPass : camera->GetRenderPass();
-
-		// Ensure subpass clearing plan is computed for root containers
-		cameraRenderPass->UpdateSubpassChain();
-		const Array *nextFramePasses = cameraRenderPass->GetNextFramePasses();
-		const size_t frameStatisticsIndex = frameSubmission.renderFrame.AddCameraStatistics();
-
-		RenderPassResources *renderPassResources = cameraRenderPass->GetRenderResources(this);
-		const RenderPass::DrawSnapshot &drawSnapshot = renderPassResources->GetDrawSnapshot();
-
-		// Set up
-		MetalRenderPass renderPass;
-		renderPass.renderPass = cameraRenderPass;
-		renderPass.frameStatisticsIndex = frameStatisticsIndex;
-
-		renderPass.multiviewLayer = _currentMultiviewLayer;
-		renderPass.multiviewCount = (_currentMultiviewFallbackRenderPass || _currentMultiviewLayer > 0) ? 1 : 0;
-
-		renderPass.renderAreaSize = drawSnapshot.GetFrame().GetSize();
-
-		renderPass.shaderHint = GetMetalShaderHint(drawSnapshot.GetShaderHint());
-		renderPass.renderFramePassIndex = frameSubmission.renderFrame.AddPass(drawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetIdentity(), renderPassResources->GetOverrideMaterialSnapshotVersion());
-
-		RenderFrame::CameraSnapshot cameraSnapshot = RenderFrame::CameraSnapshot::WithCamera(camera, drawSnapshot.GetFrame());
-		RenderFrame::Pass &framePass = frameSubmission.renderFrame.GetPass(renderPass.renderFramePassIndex);
-		framePass.SetCameraSnapshot(cameraSnapshot);
-
-		Framebuffer *framebuffer = drawSnapshot.GetFramebuffer();
-		renderPass.framebuffer = framebuffer->Downcast<MetalFramebuffer>();
-		frameSubmission.AddSwapChain(renderPass.framebuffer->GetSwapChain());
-
 		size_t previousRenderPassIndex = frameSubmission.renderPasses.size();
 		frameSubmission.activeRenderPassIndex = previousRenderPassIndex;
-		frameSubmission.renderPasses.push_back(renderPass);
 
-		nextFramePasses->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop) {
-			RenderPass *nextRenderPass = nextPass->Downcast<RenderPass>();
-			RN_ASSERT(nextRenderPass, "Metal renderer only supports RenderPass frame pass nodes");
-			if(!nextRenderPass)
-			{
-				stop = true;
-				return;
-			}
-			SubmitRenderPass(frameSubmission, nextRenderPass, frameSubmission.renderPasses[previousRenderPassIndex]);
-		});
+		FramePass *cameraFramePass = _currentMultiviewFallbackRenderPass ? static_cast<FramePass *>(_currentMultiviewFallbackRenderPass) : camera->GetRootFramePass();
+		SubmitRootFramePass(frameSubmission, camera, cameraFramePass);
 
 		const size_t submittedRenderPassEndIndex = frameSubmission.renderPasses.size();
 
@@ -684,6 +649,106 @@ namespace RN
 
 			AddCameraPassAttachmentSnapshots(submittedRenderPass.renderFramePassIndex);
 		}
+	}
+
+	size_t MetalRenderer::SubmitRootRenderPass(MetalFrameSubmission &frameSubmission, Camera *camera, RenderPass *cameraRenderPass)
+	{
+		RN_PROFILE_SCOPE();
+
+		cameraRenderPass->UpdateSubpassChain();
+		const size_t frameStatisticsIndex = frameSubmission.renderFrame.AddCameraStatistics();
+
+		RenderPassResources *renderPassResources = cameraRenderPass->GetRenderResources(this);
+		const RenderPass::DrawSnapshot &drawSnapshot = renderPassResources->GetDrawSnapshot();
+		Framebuffer *framebuffer = drawSnapshot.GetFramebuffer();
+		if(!framebuffer) return RenderFrame::InvalidPassIndex;
+
+		MetalRenderPass renderPass;
+		renderPass.renderPass = cameraRenderPass;
+		renderPass.frameStatisticsIndex = frameStatisticsIndex;
+		renderPass.multiviewLayer = _currentMultiviewLayer;
+		renderPass.multiviewCount = (_currentMultiviewFallbackRenderPass || _currentMultiviewLayer > 0) ? 1 : 0;
+		renderPass.renderAreaSize = drawSnapshot.GetFrame().GetSize();
+		renderPass.shaderHint = GetMetalShaderHint(drawSnapshot.GetShaderHint());
+		renderPass.renderFramePassIndex = frameSubmission.renderFrame.AddPass(drawSnapshot, renderPassResources->GetOverrideMaterialSnapshot(), renderPassResources->GetIdentity(), renderPassResources->GetOverrideMaterialSnapshotVersion());
+
+		RenderFrame::CameraSnapshot cameraSnapshot = RenderFrame::CameraSnapshot::WithCamera(camera, drawSnapshot.GetFrame());
+		RenderFrame::Pass &framePass = frameSubmission.renderFrame.GetPass(renderPass.renderFramePassIndex);
+		framePass.SetCameraSnapshot(cameraSnapshot);
+
+		renderPass.framebuffer = framebuffer->Downcast<MetalFramebuffer>();
+		frameSubmission.AddSwapChain(renderPass.framebuffer->GetSwapChain());
+
+		const size_t renderPassIndex = frameSubmission.renderPasses.size();
+		frameSubmission.activeRenderPassIndex = renderPassIndex;
+		frameSubmission.renderPasses.push_back(renderPass);
+		return renderPassIndex;
+	}
+
+	void MetalRenderer::SubmitRootFramePass(MetalFrameSubmission &frameSubmission, Camera *camera, FramePass *framePass)
+	{
+		RN_PROFILE_SCOPE();
+
+		RenderPass *renderPass = framePass->Downcast<RenderPass>();
+		if(renderPass)
+		{
+			const size_t rootRenderPassIndex = SubmitRootRenderPass(frameSubmission, camera, renderPass);
+			if(rootRenderPassIndex == RenderFrame::InvalidPassIndex) return;
+
+			renderPass->GetNextFramePasses()->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop) {
+				SubmitFramePass(frameSubmission, nextPass, frameSubmission.renderPasses[rootRenderPassIndex]);
+			});
+			return;
+		}
+
+		ComputePass *computePass = framePass->Downcast<ComputePass>();
+		if(computePass)
+		{
+			SubmitComputePass(frameSubmission, computePass, nullptr);
+			computePass->GetNextFramePasses()->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop) {
+				SubmitRootFramePass(frameSubmission, camera, nextPass);
+			});
+			return;
+		}
+
+		RN_ASSERT(false, "Metal renderer only supports RenderPass and ComputePass frame pass nodes");
+	}
+
+	void MetalRenderer::SubmitFramePass(MetalFrameSubmission &frameSubmission, FramePass *framePass, MetalRenderPass &previousRenderPass)
+	{
+		RN_PROFILE_SCOPE();
+
+		RenderPass *renderPass = framePass->Downcast<RenderPass>();
+		if(renderPass)
+		{
+			SubmitRenderPass(frameSubmission, renderPass, previousRenderPass);
+			return;
+		}
+
+		ComputePass *computePass = framePass->Downcast<ComputePass>();
+		if(computePass)
+		{
+			SubmitComputePass(frameSubmission, computePass, &previousRenderPass);
+			computePass->GetNextFramePasses()->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop) {
+				SubmitFramePass(frameSubmission, nextPass, previousRenderPass);
+			});
+			return;
+		}
+
+		RN_ASSERT(false, "Metal renderer only supports RenderPass and ComputePass frame pass nodes");
+	}
+
+	void MetalRenderer::SubmitComputePass(MetalFrameSubmission &frameSubmission, ComputePass *computePass, MetalRenderPass *previousRenderPass)
+	{
+		RN_PROFILE_SCOPE();
+
+		MetalRenderPass metalComputePass;
+		metalComputePass.type = MetalRenderPass::Type::Compute;
+		metalComputePass.computePass = computePass;
+		metalComputePass.previousStoredFramebuffer = previousRenderPass ? (previousRenderPass->resolveFramebuffer ? previousRenderPass->resolveFramebuffer : previousRenderPass->framebuffer) : nullptr;
+		computePass->GetDispatchSnapshot(metalComputePass.computeDispatch);
+
+		frameSubmission.renderPasses.push_back(metalComputePass);
 	}
 
 	void MetalRenderer::SubmitRenderPass(MetalFrameSubmission &frameSubmission, RenderPass *renderPass, MetalRenderPass &previousRenderPass)
@@ -801,14 +866,7 @@ namespace RN
 
 		const Array *nextFramePasses = renderPass->GetNextFramePasses();
 		nextFramePasses->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop){
-			RenderPass *nextRenderPass = nextPass->Downcast<RenderPass>();
-			RN_ASSERT(nextRenderPass, "Metal renderer only supports RenderPass frame pass nodes");
-			if(!nextRenderPass)
-			{
-				stop = true;
-				return;
-			}
-			SubmitRenderPass(frameSubmission, nextRenderPass, frameSubmission.renderPasses[frameSubmission.activeRenderPassIndex]);
+			SubmitFramePass(frameSubmission, nextPass, frameSubmission.renderPasses[frameSubmission.activeRenderPassIndex]);
 		});
 	}
 
@@ -1572,6 +1630,36 @@ namespace RN
 
 		for(MetalRenderPass &renderPass : submission.renderPasses)
 		{
+			if(renderPass.type == MetalRenderPass::Type::Compute)
+			{
+				Shader *computeShader = renderPass.computeDispatch.GetShader();
+				RN_ASSERT(computeShader && computeShader->GetType() == Shader::Type::Compute, "Metal compute pass requires a compute shader");
+				if(!computeShader || computeShader->GetType() != Shader::Type::Compute) continue;
+
+				{
+					LockGuard<Lockable> lock(_lock);
+					renderPass.computePipelineState = _internals->stateCoordinator.GetComputePipelineState(computeShader);
+				}
+
+				const Shader::Signature *signature = computeShader->GetSignature();
+				if(signature)
+				{
+					signature->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *buffer, size_t index, bool &stop) {
+						if(buffer->GetSource() != Shader::ArgumentBuffer::Source::Draw)
+							return;
+						if(buffer->GetType() != Shader::ArgumentBuffer::Type::UniformBuffer)
+							return;
+
+						size_t totalSize = buffer->GetTotalUniformSize();
+						if(totalSize > 0)
+						{
+							renderPass.computeUniformBuffers.emplace_back(GetUniformBufferReference(totalSize, buffer->GetIndex()));
+						}
+					});
+				}
+				continue;
+			}
+
 			ensureRenderPassResources(renderPass);
 		}
 
@@ -1993,5 +2081,136 @@ namespace RN
 				[encoder drawPrimitives:primitiveType vertexStart:0 vertexCount:mesh.GetVerticesCount() instanceCount:instanceCount];
 			}
 		}
+	}
+
+	void MetalRenderer::RenderComputePass(const MetalFrameSubmission &submission, const MetalRenderPass &computePass)
+	{
+		RN_PROFILE_SCOPE();
+
+		RN_DEBUG_ASSERT(computePass.computePipelineState, "Missing compute pipeline state");
+		if(!computePass.computePipelineState) return;
+
+		Shader *computeShader = computePass.computeDispatch.GetShader();
+		RN_DEBUG_ASSERT(computeShader && computeShader->GetType() == Shader::Type::Compute, "Metal compute pass requires a compute shader");
+		if(!computeShader || computeShader->GetType() != Shader::Type::Compute) return;
+
+		MetalShader *metalShader = computeShader->Downcast<MetalShader>();
+		const Shader::Signature *signature = computeShader->GetSignature();
+
+		id<MTLComputeCommandEncoder> encoder = [_internals->commandBuffer computeCommandEncoder];
+		[encoder setComputePipelineState:computePass.computePipelineState->state];
+
+		auto getTextureForArgument = [&](Shader::ArgumentTexture *argument) -> id<MTLTexture> {
+			Texture *texture = nullptr;
+
+			switch(argument->GetSource())
+			{
+				case Shader::ArgumentTexture::Source::Frame:
+					texture = computePass.computeDispatch.GetResourceTexture(argument->GetNameHash());
+					if(!texture)
+						texture = submission.renderFrame.GetGlobalTexture(argument->GetNameHash());
+					break;
+
+				case Shader::ArgumentTexture::Source::Framebuffer:
+					if(computePass.previousStoredFramebuffer)
+					{
+						MetalSwapChain *swapChain = computePass.previousStoredFramebuffer->GetSwapChain();
+						if(swapChain)
+							return swapChain->GetMetalColorTexture();
+
+						texture = computePass.previousStoredFramebuffer->GetColorTexture(0);
+					}
+					RN_DEBUG_ASSERT(texture, "Missing previous framebuffer texture for compute texture '%s' at texture index %u", argument->GetName()->GetUTF8String(), argument->GetIndex());
+					break;
+
+				case Shader::ArgumentTexture::Source::Material:
+				case Shader::ArgumentTexture::Source::Pass:
+				case Shader::ArgumentTexture::Source::SubpassInput:
+					texture = computePass.computeDispatch.GetResourceTexture(argument->GetNameHash());
+					break;
+			}
+
+			MetalTexture *metalTexture = texture ? texture->Downcast<MetalTexture>() : nullptr;
+			RN_DEBUG_ASSERT(metalTexture, "Missing compute resource texture '%s' at texture index %u", argument->GetName()->GetUTF8String(), argument->GetIndex());
+			return metalTexture ? (id<MTLTexture>)metalTexture->__GetUnderlyingTexture() : nil;
+		};
+
+		if(signature)
+		{
+			size_t dynamicUniformIndex = 0;
+			signature->GetBuffers()->Enumerate<Shader::ArgumentBuffer>([&](Shader::ArgumentBuffer *argument, size_t index, bool &stop) {
+				if(argument->GetSource() == Shader::ArgumentBuffer::Source::Draw && argument->GetType() == Shader::ArgumentBuffer::Type::UniformBuffer && argument->GetTotalUniformSize() > 0)
+				{
+					RN_DEBUG_ASSERT(dynamicUniformIndex < computePass.computeUniformBuffers.size(), "Missing compute uniform buffer");
+					if(dynamicUniformIndex < computePass.computeUniformBuffers.size())
+					{
+						MetalUniformBufferReference *uniformBufferReference = computePass.computeUniformBuffers[dynamicUniformIndex++].Get();
+						UpdateUniformBufferReference(uniformBufferReference, true);
+
+						GPUBuffer *gpuBuffer = uniformBufferReference->uniformBuffer->GetActiveBuffer();
+						uint8 *buffer = reinterpret_cast<uint8 *>(gpuBuffer->GetBuffer()) + uniformBufferReference->offset;
+						std::memset(buffer, 0, uniformBufferReference->size);
+
+						argument->GetUniformDescriptors()->Enumerate<Shader::UniformDescriptor>([&](Shader::UniformDescriptor *descriptor, size_t index, bool &stop) {
+							const std::vector<uint8> *uniform = computePass.computeDispatch.GetUniform(descriptor->GetNameHash());
+							if(uniform)
+							{
+								size_t copySize = std::min(uniform->size(), descriptor->GetSize());
+								std::memcpy(buffer + descriptor->GetOffset(), uniform->data(), copySize);
+							}
+							else if(descriptor->GetIdentifier() == Shader::UniformDescriptor::Identifier::Time)
+							{
+								float time = static_cast<float>(Kernel::GetSharedInstance()->GetTotalTime());
+								std::memcpy(buffer + descriptor->GetOffset(), &time, std::min(descriptor->GetSize(), sizeof(time)));
+							}
+						});
+
+						MetalGPUBuffer *metalBuffer = static_cast<MetalGPUBuffer *>(gpuBuffer);
+						[encoder setBuffer:(id<MTLBuffer>)metalBuffer->_buffer offset:uniformBufferReference->offset atIndex:argument->GetIndex()];
+					}
+					return;
+				}
+
+				GPUBuffer *buffer = nullptr;
+				if(argument->GetSource() == Shader::ArgumentBuffer::Source::Frame)
+				{
+					buffer = computePass.computeDispatch.GetResourceBuffer(argument->GetNameHash());
+					if(!buffer)
+						buffer = submission.renderFrame.GetGlobalBuffer(argument->GetNameHash());
+				}
+				else
+				{
+					buffer = computePass.computeDispatch.GetResourceBuffer(argument->GetNameHash());
+				}
+
+				MetalGPUBuffer *metalBuffer = buffer ? static_cast<MetalGPUBuffer *>(buffer->GetActiveBuffer()) : nullptr;
+				RN_DEBUG_ASSERT(metalBuffer, "Missing compute resource buffer '%s' at buffer index %u", argument->GetName()->GetUTF8String(), argument->GetIndex());
+				[encoder setBuffer:(metalBuffer ? (id<MTLBuffer>)metalBuffer->_buffer : nil) offset:0 atIndex:argument->GetIndex()];
+			});
+
+			signature->GetTextures()->Enumerate<Shader::ArgumentTexture>([&](Shader::ArgumentTexture *argument, size_t index, bool &stop) {
+				[encoder setTexture:getTextureForArgument(argument) atIndex:argument->GetIndex()];
+			});
+		}
+
+		if(metalShader)
+		{
+			size_t count = 0;
+			for(void *sampler : metalShader->_samplers)
+			{
+				id<MTLSamplerState> samplerState = static_cast<id<MTLSamplerState>>(sampler);
+				[encoder setSamplerState:samplerState atIndex:metalShader->_samplerToIndexMapping[count++]];
+			}
+		}
+
+		const ComputePass::DispatchSize &groupCount = computePass.computeDispatch.GetGroupCount();
+		const Shader::ComputeThreadsPerGroup &threadsPerGroup = computeShader->GetComputeThreadsPerGroup();
+		NSUInteger totalThreadsPerGroup = threadsPerGroup.x * threadsPerGroup.y * threadsPerGroup.z;
+		RN_DEBUG_ASSERT(totalThreadsPerGroup <= [computePass.computePipelineState->state maxTotalThreadsPerThreadgroup], "Compute pass thread group size exceeds Metal pipeline limit");
+
+		MTLSize threadgroupCount = MTLSizeMake(groupCount.x, groupCount.y, groupCount.z);
+		MTLSize threadsPerThreadgroup = MTLSizeMake(threadsPerGroup.x, threadsPerGroup.y, threadsPerGroup.z);
+		[encoder dispatchThreadgroups:threadgroupCount threadsPerThreadgroup:threadsPerThreadgroup];
+		[encoder endEncoding];
 	}
 }
