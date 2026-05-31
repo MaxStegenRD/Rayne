@@ -26,6 +26,9 @@ namespace RN
 {
 	RNDefineMeta(MetalRenderer, Renderer)
 
+	static_assert(sizeof(DrawIndirectArguments) == sizeof(MTLDrawPrimitivesIndirectArguments), "DrawIndirectArguments must match MTLDrawPrimitivesIndirectArguments");
+	static_assert(sizeof(DrawIndexedIndirectArguments) == sizeof(MTLDrawIndexedPrimitivesIndirectArguments), "DrawIndexedIndirectArguments must match MTLDrawIndexedPrimitivesIndirectArguments");
+
 	bool MetalRenderer::ShouldInheritViews(RenderPass::ViewMode viewMode, bool isSubpass, bool hasInheritedViewState, bool destinationSupportsViewState) const
 	{
 		if(isSubpass)
@@ -2022,6 +2025,29 @@ namespace RN
 		// Mesh
 		const Mesh::DrawSnapshot &mesh = drawItem.GetMesh();
 		const Mesh::BufferSnapshot &meshBuffers = drawItem.GetMeshBuffers();
+		const Drawable::IndirectDrawSnapshot &indirectDrawSnapshot = drawItem.GetIndirectDrawSnapshot();
+		const bool hasIndirectDraw = indirectDrawSnapshot.IsValid();
+		const bool usesIndexedDraw = hasIndirectDraw ? indirectDrawSnapshot.GetType() == Drawable::IndirectDrawType::DrawIndexed : mesh.GetIndicesCount() > 0;
+		MetalGPUBuffer *indirectBuffer = nullptr;
+		size_t indirectCommandStride = 0;
+		if(hasIndirectDraw)
+		{
+			RN_ASSERT(indirectDrawSnapshot.GetType() != Drawable::IndirectDrawType::DrawIndexed || mesh.GetIndicesCount() > 0, "Indexed indirect draw requires an indexed mesh");
+			RN_ASSERT(indirectDrawSnapshot.GetType() != Drawable::IndirectDrawType::Draw || mesh.GetIndicesCount() == 0, "Non-indexed indirect draw requires a non-indexed mesh");
+
+			const size_t indirectCommandSize = usesIndexedDraw ? sizeof(DrawIndexedIndirectArguments) : sizeof(DrawIndirectArguments);
+			indirectCommandStride = indirectDrawSnapshot.GetStride() > 0 ? indirectDrawSnapshot.GetStride() : indirectCommandSize;
+			const size_t indirectCommandRange = indirectCommandStride * (indirectDrawSnapshot.GetDrawCount() - 1) + indirectCommandSize;
+			RN_DEBUG_ASSERT(indirectDrawSnapshot.GetArgumentBufferOffset() % 4 == 0, "Indirect draw argument buffer offset must be 4-byte aligned");
+			RN_DEBUG_ASSERT(indirectCommandStride % 4 == 0, "Indirect draw command stride must be 4-byte aligned");
+			RN_DEBUG_ASSERT(indirectCommandStride >= indirectCommandSize, "Indirect draw command stride must fit the command type");
+			RN_DEBUG_ASSERT(indirectDrawSnapshot.GetArgumentBufferOffset() + indirectCommandRange <= indirectDrawSnapshot.GetArgumentBuffer()->GetLength(), "Indirect draw argument buffer range is out of bounds");
+
+			GPUBuffer *activeBuffer = indirectDrawSnapshot.GetArgumentBuffer()->GetActiveBuffer();
+			indirectBuffer = activeBuffer ? activeBuffer->Downcast<MetalGPUBuffer>() : nullptr;
+			RN_DEBUG_ASSERT(indirectBuffer, "Indirect draw argument buffer must be a Metal buffer");
+		}
+
 		MetalGPUBuffer *buffer = static_cast<MetalGPUBuffer *>(meshBuffers.GetVertexBuffer());
 
 		if(_internals->currentRenderState->vertexPositionBufferShaderResourceIndex <= 30)
@@ -2056,12 +2082,23 @@ namespace RN
 				break;
 		}
 
-		if(mesh.GetIndicesCount() > 0)
+		if(usesIndexedDraw)
 		{
 			MetalGPUBuffer *indexBuffer = static_cast<MetalGPUBuffer *>(meshBuffers.GetIndicesBuffer());
 			MTLIndexType indexType = mesh.GetIndexType() == PrimitiveType::Uint16? MTLIndexTypeUInt16 : MTLIndexTypeUInt32;
 
-			if(instanceCount == 1)
+			if(hasIndirectDraw)
+			{
+				if(indirectBuffer)
+				{
+					for(uint32 drawIndex = 0; drawIndex < indirectDrawSnapshot.GetDrawCount(); drawIndex++)
+					{
+						NSUInteger indirectCommandOffset = static_cast<NSUInteger>(indirectDrawSnapshot.GetArgumentBufferOffset() + indirectCommandStride * drawIndex);
+						[encoder drawIndexedPrimitives:primitiveType indexType:indexType indexBuffer:(id <MTLBuffer>)indexBuffer->_buffer indexBufferOffset:0 indirectBuffer:(id <MTLBuffer>)indirectBuffer->_buffer indirectBufferOffset:indirectCommandOffset];
+					}
+				}
+			}
+			else if(instanceCount == 1)
 			{
 				[encoder drawIndexedPrimitives:primitiveType indexCount:mesh.GetIndicesCount() indexType:indexType indexBuffer:(id <MTLBuffer>)indexBuffer->_buffer indexBufferOffset:0];
 			}
@@ -2072,7 +2109,18 @@ namespace RN
 		}
 		else
 		{
-			if(instanceCount == 1)
+			if(hasIndirectDraw)
+			{
+				if(indirectBuffer)
+				{
+					for(uint32 drawIndex = 0; drawIndex < indirectDrawSnapshot.GetDrawCount(); drawIndex++)
+					{
+						NSUInteger indirectCommandOffset = static_cast<NSUInteger>(indirectDrawSnapshot.GetArgumentBufferOffset() + indirectCommandStride * drawIndex);
+						[encoder drawPrimitives:primitiveType indirectBuffer:(id <MTLBuffer>)indirectBuffer->_buffer indirectBufferOffset:indirectCommandOffset];
+					}
+				}
+			}
+			else if(instanceCount == 1)
 			{
 				[encoder drawPrimitives:primitiveType vertexStart:0 vertexCount:mesh.GetVerticesCount()];
 			}
