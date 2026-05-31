@@ -41,7 +41,8 @@ namespace RN
 		_shaderHint = hint;
 		_vertexShader = material.GetSelectedVertexShader(hint, overrideMaterialSnapshot);
 		_fragmentShader = material.GetSelectedFragmentShader(hint, overrideMaterialSnapshot);
-		_textures = material.GetTextures();
+		const Array *overrideTextures = overrideMaterialSnapshot ? overrideMaterialSnapshot->GetTextures() : nullptr;
+		_textures = (overrideTextures && overrideTextures->GetCount() > 0) ? overrideTextures : material.GetTextures();
 		material.GetMergedProperties(overrideMaterialSnapshot, _properties);
 		material.GetMergedPipelineProperties(overrideMaterialSnapshot, _pipelineProperties);
 		_isValid = true;
