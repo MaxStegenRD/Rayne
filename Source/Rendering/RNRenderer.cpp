@@ -114,6 +114,624 @@ namespace RN
 		return Matrix();
 	}
 
+	bool Renderer::FillCommonUniform(Shader::UniformDescriptor *descriptor, uint8 *buffer, const RenderFrame::CameraSnapshot *cameraSnapshot, const std::vector<RenderFrame::CameraSnapshot> *multiviewCameraSnapshots) const
+	{
+		switch(descriptor->GetIdentifier())
+		{
+			case Shader::UniformDescriptor::Identifier::Time:
+			{
+				float time = static_cast<float>(Kernel::GetSharedInstance()->GetTotalTime());
+				std::memcpy(buffer + descriptor->GetOffset(), &time, std::min(descriptor->GetSize(), sizeof(time)));
+				return true;
+			}
+
+			default:
+				break;
+		}
+
+		const bool hasCameraSnapshot = cameraSnapshot && cameraSnapshot->GetSourceCameraUID() != RenderFrame::CameraSnapshot::InvalidSourceCameraUID;
+		const bool hasMultiviewSnapshots = multiviewCameraSnapshots && !multiviewCameraSnapshots->empty();
+		if(!hasCameraSnapshot && !hasMultiviewSnapshots)
+			return false;
+
+		switch(descriptor->GetIdentifier())
+		{
+			case Shader::UniformDescriptor::Identifier::ViewMatrix:
+				if(!hasCameraSnapshot) return false;
+				std::memcpy(buffer + descriptor->GetOffset(), cameraSnapshot->GetViewMatrix().m, descriptor->GetSize());
+				return true;
+
+			case Shader::UniformDescriptor::Identifier::ViewMatrixMultiview:
+			{
+				if(!hasMultiviewSnapshots) return true;
+				size_t viewCount = std::min(multiviewCameraSnapshots->size(), descriptor->GetElementCount());
+				for(size_t i = 0; i < viewCount; i += 1)
+				{
+					std::memcpy(buffer + descriptor->GetOffset() + 64 * i, (*multiviewCameraSnapshots)[i].GetViewMatrix().m, 64);
+				}
+				return true;
+			}
+
+			case Shader::UniformDescriptor::Identifier::ViewProjectionMatrix:
+				if(!hasCameraSnapshot) return false;
+				std::memcpy(buffer + descriptor->GetOffset(), cameraSnapshot->GetProjectionViewMatrix().m, descriptor->GetSize());
+				return true;
+
+			case Shader::UniformDescriptor::Identifier::ViewProjectionMatrixMultiview:
+			{
+				if(!hasMultiviewSnapshots) return true;
+				size_t viewCount = std::min(multiviewCameraSnapshots->size(), descriptor->GetElementCount());
+				for(size_t i = 0; i < viewCount; i += 1)
+				{
+					std::memcpy(buffer + descriptor->GetOffset() + 64 * i, (*multiviewCameraSnapshots)[i].GetProjectionViewMatrix().m, 64);
+				}
+				return true;
+			}
+
+			case Shader::UniformDescriptor::Identifier::ProjectionMatrix:
+				if(!hasCameraSnapshot) return false;
+				std::memcpy(buffer + descriptor->GetOffset(), cameraSnapshot->GetProjectionMatrix().m, descriptor->GetSize());
+				return true;
+
+			case Shader::UniformDescriptor::Identifier::ProjectionMatrixMultiview:
+			{
+				if(!hasMultiviewSnapshots) return true;
+				size_t viewCount = std::min(multiviewCameraSnapshots->size(), descriptor->GetElementCount());
+				for(size_t i = 0; i < viewCount; i += 1)
+				{
+					std::memcpy(buffer + descriptor->GetOffset() + 64 * i, (*multiviewCameraSnapshots)[i].GetProjectionMatrix().m, 64);
+				}
+				return true;
+			}
+
+			case Shader::UniformDescriptor::Identifier::InverseViewMatrix:
+				if(!hasCameraSnapshot) return false;
+				std::memcpy(buffer + descriptor->GetOffset(), cameraSnapshot->GetInverseViewMatrix().m, descriptor->GetSize());
+				return true;
+
+			case Shader::UniformDescriptor::Identifier::InverseViewMatrixMultiview:
+			{
+				if(!hasMultiviewSnapshots) return true;
+				size_t viewCount = std::min(multiviewCameraSnapshots->size(), descriptor->GetElementCount());
+				for(size_t i = 0; i < viewCount; i += 1)
+				{
+					std::memcpy(buffer + descriptor->GetOffset() + 64 * i, (*multiviewCameraSnapshots)[i].GetInverseViewMatrix().m, 64);
+				}
+				return true;
+			}
+
+			case Shader::UniformDescriptor::Identifier::InverseViewProjectionMatrix:
+				if(!hasCameraSnapshot) return false;
+				std::memcpy(buffer + descriptor->GetOffset(), cameraSnapshot->GetInverseProjectionViewMatrix().m, descriptor->GetSize());
+				return true;
+
+			case Shader::UniformDescriptor::Identifier::InverseViewProjectionMatrixMultiview:
+			{
+				if(!hasMultiviewSnapshots) return true;
+				size_t viewCount = std::min(multiviewCameraSnapshots->size(), descriptor->GetElementCount());
+				for(size_t i = 0; i < viewCount; i += 1)
+				{
+					std::memcpy(buffer + descriptor->GetOffset() + 64 * i, (*multiviewCameraSnapshots)[i].GetInverseProjectionViewMatrix().m, 64);
+				}
+				return true;
+			}
+
+			case Shader::UniformDescriptor::Identifier::InverseProjectionMatrix:
+				if(!hasCameraSnapshot) return false;
+				std::memcpy(buffer + descriptor->GetOffset(), cameraSnapshot->GetInverseProjectionMatrix().m, descriptor->GetSize());
+				return true;
+
+			case Shader::UniformDescriptor::Identifier::InverseProjectionMatrixMultiview:
+			{
+				if(!hasMultiviewSnapshots) return true;
+				size_t viewCount = std::min(multiviewCameraSnapshots->size(), descriptor->GetElementCount());
+				for(size_t i = 0; i < viewCount; i += 1)
+				{
+					std::memcpy(buffer + descriptor->GetOffset() + 64 * i, (*multiviewCameraSnapshots)[i].GetInverseProjectionMatrix().m, 64);
+				}
+				return true;
+			}
+
+			case Shader::UniformDescriptor::Identifier::CameraPosition:
+			{
+				if(!hasCameraSnapshot) return false;
+				Vector4 cameraPosition(cameraSnapshot->GetViewPosition(), 0.0f);
+				std::memcpy(buffer + descriptor->GetOffset(), &cameraPosition.x, descriptor->GetSize());
+				return true;
+			}
+
+			case Shader::UniformDescriptor::Identifier::CameraPositionMultiview:
+			{
+				if(!hasMultiviewSnapshots) return true;
+				size_t viewCount = std::min(multiviewCameraSnapshots->size(), descriptor->GetElementCount());
+				for(size_t i = 0; i < viewCount; i += 1)
+				{
+					Vector4 cameraPosition((*multiviewCameraSnapshots)[i].GetViewPosition(), 0.0f);
+					std::memcpy(buffer + descriptor->GetOffset() + 16 * i, &cameraPosition.x, 16);
+				}
+				return true;
+			}
+
+			case Shader::UniformDescriptor::Identifier::CameraFrustumPlanes:
+				if(!hasCameraSnapshot) return false;
+				std::memcpy(buffer + descriptor->GetOffset(), cameraSnapshot->GetFrustumPlanes(), std::min(descriptor->GetSize(), sizeof(Vector4) * RenderFrame::CameraSnapshot::FrustumPlaneCount));
+				return true;
+
+			case Shader::UniformDescriptor::Identifier::CameraFrustumPlanesMultiview:
+			{
+				if(!hasMultiviewSnapshots) return true;
+				size_t viewCount = std::min(multiviewCameraSnapshots->size(), descriptor->GetElementCount() / RenderFrame::CameraSnapshot::FrustumPlaneCount);
+				for(size_t i = 0; i < viewCount; i += 1)
+				{
+					std::memcpy(buffer + descriptor->GetOffset() + sizeof(Vector4) * RenderFrame::CameraSnapshot::FrustumPlaneCount * i, (*multiviewCameraSnapshots)[i].GetFrustumPlanes(), sizeof(Vector4) * RenderFrame::CameraSnapshot::FrustumPlaneCount);
+				}
+				return true;
+			}
+
+			case Shader::UniformDescriptor::Identifier::CameraClipDistance:
+				if(!hasCameraSnapshot) return false;
+				std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot->GetClipDistance().x, descriptor->GetSize());
+				return true;
+
+			case Shader::UniformDescriptor::Identifier::CameraFogDistance:
+				if(!hasCameraSnapshot) return false;
+				std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot->GetFogDistance().x, descriptor->GetSize());
+				return true;
+
+			case Shader::UniformDescriptor::Identifier::CameraTag:
+				if(!hasCameraSnapshot) return false;
+				std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot->GetTag(), descriptor->GetSize());
+				return true;
+
+			case Shader::UniformDescriptor::Identifier::CameraViewport:
+				if(!hasCameraSnapshot) return false;
+				std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot->GetFrame().x, descriptor->GetSize());
+				return true;
+
+			case Shader::UniformDescriptor::Identifier::CameraAmbientColor:
+				if(!hasCameraSnapshot) return false;
+				std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot->GetAmbientColor().r, descriptor->GetSize());
+				return true;
+
+			case Shader::UniformDescriptor::Identifier::CameraCustomData:
+				if(!hasCameraSnapshot) return false;
+				std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot->GetCustomData().x, descriptor->GetSize());
+				return true;
+
+			case Shader::UniformDescriptor::Identifier::CameraFogColor0:
+				if(!hasCameraSnapshot) return false;
+				std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot->GetFogColor0().r, descriptor->GetSize());
+				return true;
+
+			case Shader::UniformDescriptor::Identifier::CameraFogColor1:
+				if(!hasCameraSnapshot) return false;
+				std::memcpy(buffer + descriptor->GetOffset(), &cameraSnapshot->GetFogColor1().r, descriptor->GetSize());
+				return true;
+
+			default:
+				return false;
+		}
+	}
+
+	void Renderer::FillDrawUniformBuffer(Shader::ArgumentBuffer *argumentBuffer, uint8 *buffer, const RenderFrame::DrawItem &drawItem, const Material::Properties &materialProperties, const RenderFrame::Pass &framePass) const
+	{
+		const RenderFrame::CameraSnapshot &cameraSnapshot = framePass.GetCameraSnapshot();
+		const std::vector<RenderFrame::CameraSnapshot> &multiviewCameraSnapshots = framePass.GetMultiviewCameraSnapshots();
+		const Matrix &modelMatrix = drawItem.GetModelMatrix();
+		const Matrix &inverseModelMatrix = drawItem.GetInverseModelMatrix();
+
+		const Array *uniformDescriptors = argumentBuffer->GetUniformDescriptors();
+		size_t count = uniformDescriptors->GetCount();
+		for(size_t index = 0; index < count; index += 1)
+		{
+			Shader::UniformDescriptor *descriptor = static_cast<Shader::UniformDescriptor *>(uniformDescriptors->GetObjectAtIndex(index));
+			if(descriptor->GetSource() == Shader::UniformDescriptor::Source::Pass)
+			{
+				framePass.CopyPassUniform(descriptor->GetNameHash(), buffer + descriptor->GetOffset(), descriptor->GetSize());
+				continue;
+			}
+			if(FillCommonUniform(descriptor, buffer, &cameraSnapshot, &multiviewCameraSnapshots))
+				continue;
+
+			switch(descriptor->GetIdentifier())
+			{
+				case Shader::UniformDescriptor::Identifier::ModelMatrix:
+				{
+					std::memcpy(buffer + descriptor->GetOffset(), modelMatrix.m, descriptor->GetSize());
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::InverseModelMatrix:
+				{
+					std::memcpy(buffer + descriptor->GetOffset(), inverseModelMatrix.m, descriptor->GetSize());
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::NormalMatrix:
+				{
+					Matrix normalMatrix = inverseModelMatrix.GetTransposed();
+					std::memcpy(buffer + descriptor->GetOffset(), &normalMatrix.m[0], 12);
+					std::memcpy(buffer + descriptor->GetOffset() + 16, &normalMatrix.m[4], 12);
+					std::memcpy(buffer + descriptor->GetOffset() + 32, &normalMatrix.m[8], 12);
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::SceneNodeUID:
+				{
+					uint32 sceneNodeUID = drawItem.GetSourceNodeUID() == RenderFrame::InvalidSourceNodeUID ? 0 : static_cast<uint32>(drawItem.GetSourceNodeUID());
+					std::memset(buffer + descriptor->GetOffset(), 0, descriptor->GetSize());
+					std::memcpy(buffer + descriptor->GetOffset(), &sceneNodeUID, std::min(descriptor->GetSize(), sizeof(sceneNodeUID)));
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::ModelViewMatrix:
+				{
+					Matrix result = cameraSnapshot.GetViewMatrix() * modelMatrix;
+					std::memcpy(buffer + descriptor->GetOffset(), result.m, descriptor->GetSize());
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::ModelViewMatrixMultiview:
+				{
+					if(multiviewCameraSnapshots.size() > 0)
+					{
+						size_t viewCount = std::min(multiviewCameraSnapshots.size(), descriptor->GetElementCount());
+						for(size_t i = 0; i < viewCount; i += 1)
+						{
+							Matrix result = multiviewCameraSnapshots[i].GetViewMatrix() * modelMatrix;
+							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, result.m, 64);
+						}
+					}
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::ModelViewProjectionMatrix:
+				{
+					Matrix result = cameraSnapshot.GetProjectionViewMatrix() * modelMatrix;
+					std::memcpy(buffer + descriptor->GetOffset(), result.m, descriptor->GetSize());
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::ModelViewProjectionMatrixMultiview:
+				{
+					if(multiviewCameraSnapshots.size() > 0)
+					{
+						size_t viewCount = std::min(multiviewCameraSnapshots.size(), descriptor->GetElementCount());
+						for(size_t i = 0; i < viewCount; i += 1)
+						{
+							Matrix result = multiviewCameraSnapshots[i].GetProjectionViewMatrix() * modelMatrix;
+							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, result.m, 64);
+						}
+					}
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::InverseModelViewMatrix:
+				{
+					Matrix result = cameraSnapshot.GetInverseViewMatrix() * inverseModelMatrix;
+					std::memcpy(buffer + descriptor->GetOffset(), result.m, descriptor->GetSize());
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::InverseModelViewMatrixMultiview:
+				{
+					if(multiviewCameraSnapshots.size() > 0)
+					{
+						size_t viewCount = std::min(multiviewCameraSnapshots.size(), descriptor->GetElementCount());
+						for(size_t i = 0; i < viewCount; i += 1)
+						{
+							Matrix result = multiviewCameraSnapshots[i].GetInverseViewMatrix() * inverseModelMatrix;
+							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, result.m, 64);
+						}
+					}
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::InverseModelViewProjectionMatrix:
+				{
+					Matrix result = cameraSnapshot.GetInverseProjectionViewMatrix() * inverseModelMatrix;
+					std::memcpy(buffer + descriptor->GetOffset(), result.m, descriptor->GetSize());
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::InverseModelViewProjectionMatrixMultiview:
+				{
+					if(multiviewCameraSnapshots.size() > 0)
+					{
+						size_t viewCount = std::min(multiviewCameraSnapshots.size(), descriptor->GetElementCount());
+						for(size_t i = 0; i < viewCount; i += 1)
+						{
+							Matrix result = multiviewCameraSnapshots[i].GetInverseProjectionViewMatrix() * inverseModelMatrix;
+							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, result.m, 64);
+						}
+					}
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::AmbientColor:
+				{
+					std::memcpy(buffer + descriptor->GetOffset(), &materialProperties.ambientColor.r, descriptor->GetSize());
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::DiffuseColor:
+				{
+					std::memcpy(buffer + descriptor->GetOffset(), &materialProperties.diffuseColor.r, descriptor->GetSize());
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::SpecularColor:
+				{
+					std::memcpy(buffer + descriptor->GetOffset(), &materialProperties.specularColor.r, descriptor->GetSize());
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::EmissiveColor:
+				{
+					std::memcpy(buffer + descriptor->GetOffset(), &materialProperties.emissiveColor.r, descriptor->GetSize());
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::CustomMatrix1:
+				{
+					std::memcpy(buffer + descriptor->GetOffset(), materialProperties.customMatrix1.m, descriptor->GetSize());
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::CustomMatrix2:
+				{
+					std::memcpy(buffer + descriptor->GetOffset(), materialProperties.customMatrix2.m, descriptor->GetSize());
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::UIClippingRect:
+				{
+					std::memcpy(buffer + descriptor->GetOffset(), &materialProperties.uiClippingRect.x, descriptor->GetSize());
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::UIOffset:
+				{
+					std::memcpy(buffer + descriptor->GetOffset(), &materialProperties.uiOffset.x, descriptor->GetSize());
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::UIOutlineColor:
+				{
+					std::memcpy(buffer + descriptor->GetOffset(), &materialProperties.uiOutlineColor.r, descriptor->GetSize());
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::TextureTileFactor:
+				{
+					std::memcpy(buffer + descriptor->GetOffset(), &materialProperties.textureTileFactor.x, descriptor->GetSize());
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::AlphaToCoverageClamp:
+				{
+					std::memcpy(buffer + descriptor->GetOffset(), &materialProperties.alphaToCoverageClamp.x, descriptor->GetSize());
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::DirectionalLightsCount:
+				{
+					uint32 lightCount = std::min(framePass.GetDirectionalLights().size(), descriptor->GetElementCount());
+					std::memcpy(buffer + descriptor->GetOffset(), &lightCount, descriptor->GetSize());
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::DirectionalLights:
+				{
+					size_t lightCount = std::min(framePass.GetDirectionalLights().size(), descriptor->GetElementCount());
+					if(lightCount > 0)
+					{
+						std::memcpy(buffer + descriptor->GetOffset(), &framePass.GetDirectionalLights()[0], (16 + 16) * lightCount);
+					}
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::PointLights:
+				{
+					size_t lightCount = std::min(framePass.GetPointLights().size(), descriptor->GetElementCount());
+					if(lightCount > 0)
+					{
+						std::memcpy(buffer + descriptor->GetOffset(), &framePass.GetPointLights()[0], (12 + 4 + 16) * lightCount);
+					}
+					if(lightCount < descriptor->GetElementCount())
+					{
+						std::memset(buffer + descriptor->GetOffset() + (12 + 4 + 16) * lightCount, 0, (12 + 4 + 16) * (descriptor->GetElementCount() - lightCount));
+					}
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::SpotLights:
+				{
+					size_t lightCount = std::min(framePass.GetSpotLights().size(), descriptor->GetElementCount());
+					if(lightCount > 0)
+					{
+						std::memcpy(buffer + descriptor->GetOffset(), &framePass.GetSpotLights()[0], (12 + 4 + 12 + 4 + 16) * lightCount);
+					}
+					if(lightCount < descriptor->GetElementCount())
+					{
+						std::memset(buffer + descriptor->GetOffset() + (12 + 4 + 12 + 4 + 16) * lightCount, 0, (12 + 4 + 12 + 4 + 16) * (descriptor->GetElementCount() - lightCount));
+					}
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::BoneMatrices:
+				{
+					const std::vector<Matrix> &boneMatrices = drawItem.GetSkeleton().GetMatrices();
+					if(boneMatrices.size() > 0)
+					{
+						size_t matrixCount = std::min(boneMatrices.size(), descriptor->GetElementCount());
+						if(matrixCount > 0)
+						{
+							std::memcpy(buffer + descriptor->GetOffset(), &boneMatrices[0].m[0], 64 * matrixCount);
+						}
+					}
+					break;
+				}
+
+				case Shader::UniformDescriptor::Identifier::Custom:
+				{
+					Object *object = materialProperties.GetCustomShaderUniform(descriptor->GetNameHash());
+					if(object)
+					{
+						if(object->IsKindOfClass(Value::GetMetaClass()))
+						{
+							Value *value = object->Downcast<Value>();
+							switch(value->GetValueType())
+							{
+								case TypeTranslator<Vector2>::value:
+								{
+									if(descriptor->GetSize() == sizeof(Vector2))
+									{
+										Vector2 vector = value->GetValue<Vector2>();
+										std::memcpy(buffer + descriptor->GetOffset(), &vector.x, descriptor->GetSize());
+									}
+									break;
+								}
+								case TypeTranslator<Vector3>::value:
+								{
+									if(descriptor->GetSize() == sizeof(Vector3))
+									{
+										Vector3 vector = value->GetValue<Vector3>();
+										std::memcpy(buffer + descriptor->GetOffset(), &vector.x, descriptor->GetSize());
+									}
+									break;
+								}
+								case TypeTranslator<Vector4>::value:
+								{
+									if(descriptor->GetSize() == sizeof(Vector4))
+									{
+										Vector4 vector = value->GetValue<Vector4>();
+										std::memcpy(buffer + descriptor->GetOffset(), &vector.x, descriptor->GetSize());
+									}
+									break;
+								}
+								case TypeTranslator<Matrix>::value:
+								{
+									if(descriptor->GetSize() == sizeof(Matrix))
+									{
+										Matrix matrix = value->GetValue<Matrix>();
+										std::memcpy(buffer + descriptor->GetOffset(), &matrix.m[0], descriptor->GetSize());
+									}
+									break;
+								}
+								case TypeTranslator<Quaternion>::value:
+								{
+									if(descriptor->GetSize() == sizeof(Quaternion))
+									{
+										Quaternion quaternion = value->GetValue<Quaternion>();
+										std::memcpy(buffer + descriptor->GetOffset(), &quaternion.x, descriptor->GetSize());
+									}
+									break;
+								}
+								case TypeTranslator<Color>::value:
+								{
+									if(descriptor->GetSize() == sizeof(Color))
+									{
+										Color color = value->GetValue<Color>();
+										std::memcpy(buffer + descriptor->GetOffset(), &color.r, descriptor->GetSize());
+									}
+									break;
+								}
+								default:
+									break;
+							}
+						}
+						else
+						{
+							Number *number = object->Downcast<Number>();
+							switch(number->GetType())
+							{
+								case Number::Type::Int8:
+								{
+									if(descriptor->GetSize() == sizeof(int8))
+									{
+										int8 value = number->GetInt8Value();
+										std::memcpy(buffer + descriptor->GetOffset(), &value, descriptor->GetSize());
+									}
+									break;
+								}
+								case Number::Type::Int16:
+								{
+									if(descriptor->GetSize() == sizeof(int8))
+									{
+										int16 value = number->GetInt16Value();
+										std::memcpy(buffer + descriptor->GetOffset(), &value, descriptor->GetSize());
+									}
+									break;
+								}
+								case Number::Type::Int32:
+								{
+									if(descriptor->GetSize() == sizeof(int32))
+									{
+										int32 value = number->GetInt32Value();
+										std::memcpy(buffer + descriptor->GetOffset(), &value, descriptor->GetSize());
+									}
+									break;
+								}
+								case Number::Type::Uint8:
+								{
+									if(descriptor->GetSize() == sizeof(uint8))
+									{
+										uint8 value = number->GetUint8Value();
+										std::memcpy(buffer + descriptor->GetOffset(), &value, descriptor->GetSize());
+									}
+									break;
+								}
+								case Number::Type::Uint16:
+								{
+									if(descriptor->GetSize() == sizeof(uint16))
+									{
+										uint16 value = number->GetUint16Value();
+										std::memcpy(buffer + descriptor->GetOffset(), &value, descriptor->GetSize());
+									}
+									break;
+								}
+								case Number::Type::Uint32:
+								{
+									if(descriptor->GetSize() == sizeof(uint32))
+									{
+										uint32 value = number->GetUint32Value();
+										std::memcpy(buffer + descriptor->GetOffset(), &value, descriptor->GetSize());
+									}
+									break;
+								}
+								case Number::Type::Float32:
+								{
+									if(descriptor->GetSize() == sizeof(float))
+									{
+										float value = number->GetFloatValue();
+										std::memcpy(buffer + descriptor->GetOffset(), &value, descriptor->GetSize());
+									}
+									break;
+								}
+								case Number::Type::Boolean:
+								{
+									if(descriptor->GetSize() == sizeof(bool))
+									{
+										bool value = number->GetBoolValue();
+										std::memcpy(buffer + descriptor->GetOffset(), &value, descriptor->GetSize());
+									}
+									break;
+								}
+								default:
+									break;
+							}
+						}
+					}
+					break;
+				}
+
+				default:
+					break;
+			}
+		}
+	}
+
 	void Renderer::Activate()
 	{
 		RN_ASSERT(!_activeRenderer, "Rayne only supports one active renderer at a time");

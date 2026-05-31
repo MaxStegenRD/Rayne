@@ -24,6 +24,7 @@
 #include "RNGPUBuffer.h"
 #include "RNMaterial.h"
 #include "RNMesh.h"
+#include "RNRenderFrame.h"
 #include "RNRenderingConfig.h"
 #include "RNRendererTypes.h"
 #include "RNShaderLibrary.h"
@@ -133,6 +134,8 @@ namespace RN
 		RNAPI void QueueDrawableDeletion(Drawable *drawable);
 		RNAPI void FlushAllDeletedDrawables();
 		RNAPI void PrintFrameStatistics(const RenderFrame &frame, float interval = RN_RENDERING_FRAME_STATISTICS_INTERVAL);
+		RNAPI bool FillCommonUniform(Shader::UniformDescriptor *descriptor, uint8 *buffer, const RenderFrame::CameraSnapshot *cameraSnapshot, const std::vector<RenderFrame::CameraSnapshot> *multiviewCameraSnapshots = nullptr) const;
+		RNAPI void FillDrawUniformBuffer(Shader::ArgumentBuffer *argumentBuffer, uint8 *buffer, const RenderFrame::DrawItem &drawItem, const Material::Properties &materialProperties, const RenderFrame::Pass &framePass) const;
 		RNAPI virtual String *GetBackendFrameStatistics() const;
 
 	private:
