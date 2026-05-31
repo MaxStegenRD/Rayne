@@ -40,6 +40,9 @@ namespace RN
 			case UsageOptions::Index:
 				bufferInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 				break;
+			case UsageOptions::Indirect:
+				bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+				break;
 		}
 
 		RNVulkanValidate(vmaCreateBuffer(renderer->_internals->memoryAllocator, &bufferInfo, &allocCreateInfo, &_buffer, &_allocation, nullptr));

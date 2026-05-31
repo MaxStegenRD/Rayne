@@ -72,6 +72,7 @@ namespace RN
 		_supportsTileProperties(false),
 		_supportsSamplerAnisotropy(false),
 		_supportsFullscreenExclusive(false),
+		_supportsMultiDrawIndirect(false),
 		_maxSamplerAnisotropy(1.0f),
 		_supportsExternalTextureImport(false),
 		_supportsExternalTextureSynchronization(false),
@@ -342,6 +343,7 @@ namespace RN
 		vk::GetPhysicalDeviceFeatures2(_physicalDevice, &features);
 
 		_supportsSamplerAnisotropy = (features.features.samplerAnisotropy == VK_TRUE);
+		_supportsMultiDrawIndirect = (features.features.multiDrawIndirect == VK_TRUE);
 
 		if(_maxMultiviewViewCount <= 1 || (multiviewFeatures.multiview != VK_TRUE))
 		{

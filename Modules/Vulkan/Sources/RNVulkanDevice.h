@@ -49,6 +49,7 @@ namespace RN
 		float GetMaxSamplerAnisotropy() const { return _maxSamplerAnisotropy; }
 		bool GetSupportsFullscreenExclusive() const { return _supportsFullscreenExclusive; }
 		bool GetSupportsTileProperties() const { return _supportsTileProperties; }
+		bool GetSupportsMultiDrawIndirect() const { return _supportsMultiDrawIndirect; }
 		bool GetSupportsExternalTextureImport() const { return _supportsExternalTextureImport; }
 		bool GetSupportsExternalTextureSynchronization() const { return _supportsExternalTextureSynchronization; }
 
@@ -75,6 +76,7 @@ namespace RN
 		uint32 _maxFragmentDensitySubsampledSamplers;
 		bool _supportsSamplerAnisotropy;
 		bool _supportsFullscreenExclusive;
+		bool _supportsMultiDrawIndirect;
 		float _maxSamplerAnisotropy;
 		bool _supportsTileProperties;
 		bool _supportsExternalTextureImport;
