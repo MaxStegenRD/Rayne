@@ -100,6 +100,8 @@ namespace RN
 
 				CameraPosition,
 				CameraPositionMultiview,
+				CameraFrustumPlanes,
+				CameraFrustumPlanesMultiview,
 				CameraClipDistance,
 				CameraFogDistance,
 				CameraTag,

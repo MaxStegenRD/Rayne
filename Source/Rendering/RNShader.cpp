@@ -298,6 +298,16 @@ namespace RN
 			_identifier = CameraPosition;
 			_type = PrimitiveType::Vector4;
 		}
+		else if(name->IsEqual(RNCSTR("cameraFrustumPlanes_multiview")))
+		{
+			_identifier = CameraFrustumPlanesMultiview;
+			_type = PrimitiveType::Vector4;
+		}
+		else if(name->IsEqual(RNCSTR("cameraFrustumPlanes")))
+		{
+			_identifier = CameraFrustumPlanes;
+			_type = PrimitiveType::Vector4;
+		}
 		else if(name->IsEqual(RNCSTR("cameraClipDistance")))
 		{
 			_identifier = CameraClipDistance;
