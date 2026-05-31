@@ -97,6 +97,32 @@ namespace RN
 			Material::PipelineProperties _pipelineProperties;
 		};
 
+		enum class IndirectDrawType
+		{
+			Draw,
+			DrawIndexed
+		};
+
+		class IndirectDrawSnapshot
+		{
+		public:
+			GPUBuffer *GetArgumentBuffer() const { return _argumentBuffer.Get(); }
+			size_t GetArgumentBufferOffset() const { return _argumentBufferOffset; }
+			uint32 GetDrawCount() const { return _drawCount; }
+			size_t GetStride() const { return _stride; }
+			IndirectDrawType GetType() const { return _type; }
+			bool IsValid() const { return _argumentBuffer.Get() != nullptr; }
+
+		private:
+			friend struct Drawable;
+
+			StrongRef<GPUBuffer> _argumentBuffer;
+			size_t _argumentBufferOffset = 0;
+			uint32 _drawCount = 1;
+			size_t _stride = 0;
+			IndirectDrawType _type = IndirectDrawType::Draw;
+		};
+
 		class DrawSnapshotBundle
 		{
 		public:
@@ -120,8 +146,11 @@ namespace RN
 		};
 
 		RNAPI void SetSources(Mesh *mesh, Material *material, Skeleton *skeleton);
+		RNAPI void SetIndirectDrawBuffer(GPUBuffer *argumentBuffer, IndirectDrawType type, size_t argumentBufferOffset = 0, uint32 drawCount = 1, size_t stride = 0);
+		RNAPI void ClearIndirectDrawBuffer();
 		RNAPI void GetMeshBufferSnapshot(Mesh::BufferSnapshot &snapshot) const;
 		RNAPI DrawSnapshotBundle GetDrawSnapshotBundleForFrame(uint64 frameID);
+		const IndirectDrawSnapshot &GetIndirectDrawSnapshot() const { return _indirectDrawSnapshot; }
 
 	private:
 		static constexpr uint8 MeshSnapshotDirty = 1 << 0;
@@ -149,6 +178,7 @@ namespace RN
 		StrongRef<Mesh> _sourceMesh;
 		StrongRef<Material> _sourceMaterial;
 		StrongRef<Skeleton> _sourceSkeleton;
+		IndirectDrawSnapshot _indirectDrawSnapshot;
 
 		uint64 _meshPipelineVersion = 0;
 		uint64 _materialDrawSnapshotVersion = 0;

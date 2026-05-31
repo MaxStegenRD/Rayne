@@ -15,6 +15,23 @@
 
 namespace RN
 {
+	struct DrawIndirectArguments
+	{
+		uint32 vertexCount;
+		uint32 instanceCount;
+		uint32 firstVertex;
+		uint32 firstInstance;
+	};
+
+	struct DrawIndexedIndirectArguments
+	{
+		uint32 indexCount;
+		uint32 instanceCount;
+		uint32 firstIndex;
+		int32 vertexOffset;
+		uint32 firstInstance;
+	};
+
 	class GPUBuffer : public GPUResource
 	{
 	public:

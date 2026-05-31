@@ -89,6 +89,22 @@ namespace RN
 		}
 	}
 
+	void Drawable::SetIndirectDrawBuffer(GPUBuffer *argumentBuffer, IndirectDrawType type, size_t argumentBufferOffset, uint32 drawCount, size_t stride)
+	{
+		RN_ASSERT(!argumentBuffer || drawCount > 0, "Indirect draw count must be greater than zero");
+
+		_indirectDrawSnapshot._argumentBuffer = argumentBuffer;
+		_indirectDrawSnapshot._argumentBufferOffset = argumentBufferOffset;
+		_indirectDrawSnapshot._drawCount = drawCount;
+		_indirectDrawSnapshot._stride = stride;
+		_indirectDrawSnapshot._type = type;
+	}
+
+	void Drawable::ClearIndirectDrawBuffer()
+	{
+		SetIndirectDrawBuffer(nullptr, IndirectDrawType::Draw, 0, 1, 0);
+	}
+
 	void Drawable::UpdateTransform(const SceneNode *node)
 	{
 		if(_transformNode != node)

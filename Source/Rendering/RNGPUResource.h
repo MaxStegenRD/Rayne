@@ -22,7 +22,8 @@ namespace RN
 		{
 			Uniform,
 			Vertex,
-			Index
+			Index,
+			Indirect
 		};
 
 		enum class AccessOptions

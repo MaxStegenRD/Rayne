@@ -203,6 +203,7 @@ namespace RN
 				_sourceNodeUID(sourceNodeUID)
 			{
 				sourceDrawable->GetMeshBufferSnapshot(_meshBuffers);
+				_indirectDrawSnapshot = sourceDrawable->GetIndirectDrawSnapshot();
 			}
 
 			Drawable *GetSourceDrawableForPreparation() const { return _sourceDrawable; }
@@ -214,12 +215,15 @@ namespace RN
 			const Matrix &GetInverseModelMatrix() const { return _inverseModelMatrix; }
 			uint64 GetSourceNodeUID() const { return _sourceNodeUID; }
 			uint64 GetMaterialSnapshotVersion() const { return _drawSnapshot.GetMaterialSnapshotVersion(); }
-			bool CanInstanceWith(const DrawItem &other) const { return GetMesh().CanInstanceWith(other.GetMesh()) && _meshBuffers.CanInstanceWith(other._meshBuffers); }
+			const Drawable::IndirectDrawSnapshot &GetIndirectDrawSnapshot() const { return _indirectDrawSnapshot; }
+			bool HasIndirectDraw() const { return _indirectDrawSnapshot.IsValid(); }
+			bool CanInstanceWith(const DrawItem &other) const { return !HasIndirectDraw() && !other.HasIndirectDraw() && GetMesh().CanInstanceWith(other.GetMesh()) && _meshBuffers.CanInstanceWith(other._meshBuffers); }
 
 		private:
 			Drawable *_sourceDrawable;
 			Drawable::DrawSnapshotBundle _drawSnapshot;
 			Mesh::BufferSnapshot _meshBuffers;
+			Drawable::IndirectDrawSnapshot _indirectDrawSnapshot;
 			Matrix _modelMatrix;
 			Matrix _inverseModelMatrix;
 			uint64 _sourceNodeUID;
