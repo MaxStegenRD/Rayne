@@ -1364,7 +1364,7 @@ namespace RN
 			if(rootRenderPassIndex == RenderFrame::InvalidPassIndex) return;
 
 			renderPass->GetNextFramePasses()->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop) {
-				SubmitFramePass(frameSubmission, nextPass, frameSubmission.renderPasses[rootRenderPassIndex]);
+				SubmitFramePass(frameSubmission, camera, nextPass, frameSubmission.renderPasses[rootRenderPassIndex], &multiviewSnapshotCameras);
 			});
 			return;
 		}
@@ -1372,7 +1372,7 @@ namespace RN
 		ComputePass *computePass = framePass->Downcast<ComputePass>();
 		if(computePass)
 		{
-			SubmitComputePass(frameSubmission, computePass, nullptr);
+			SubmitComputePass(frameSubmission, computePass, nullptr, camera, &multiviewSnapshotCameras);
 			computePass->GetNextFramePasses()->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop) {
 				SubmitRootFramePass(frameSubmission, camera, nextPass, multiviewSnapshotCameras);
 			});
@@ -1382,23 +1382,23 @@ namespace RN
 		RN_ASSERT(false, "Vulkan renderer only supports RenderPass and ComputePass frame pass nodes");
 	}
 
-	void VulkanRenderer::SubmitFramePass(VulkanFrameSubmission &frameSubmission, FramePass *framePass, VulkanRenderPass &previousRenderPass)
+	void VulkanRenderer::SubmitFramePass(VulkanFrameSubmission &frameSubmission, Camera *camera, FramePass *framePass, VulkanRenderPass &previousRenderPass, const std::vector<Camera *> *multiviewSnapshotCameras)
 	{
 		RN_PROFILE_SCOPE();
 
 		RenderPass *renderPass = framePass->Downcast<RenderPass>();
 		if(renderPass)
 		{
-			SubmitRenderPass(frameSubmission, renderPass, previousRenderPass);
+			SubmitRenderPass(frameSubmission, camera, renderPass, previousRenderPass, multiviewSnapshotCameras);
 			return;
 		}
 
 		ComputePass *computePass = framePass->Downcast<ComputePass>();
 		if(computePass)
 		{
-			SubmitComputePass(frameSubmission, computePass, &previousRenderPass);
+			SubmitComputePass(frameSubmission, computePass, &previousRenderPass, camera, multiviewSnapshotCameras);
 			computePass->GetNextFramePasses()->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop) {
-				SubmitFramePass(frameSubmission, nextPass, previousRenderPass);
+				SubmitFramePass(frameSubmission, camera, nextPass, previousRenderPass, multiviewSnapshotCameras);
 			});
 			return;
 		}
@@ -1406,7 +1406,7 @@ namespace RN
 		RN_ASSERT(false, "Vulkan renderer only supports RenderPass and ComputePass frame pass nodes");
 	}
 
-	void VulkanRenderer::SubmitComputePass(VulkanFrameSubmission &frameSubmission, ComputePass *computePass, VulkanRenderPass *previousRenderPass)
+	void VulkanRenderer::SubmitComputePass(VulkanFrameSubmission &frameSubmission, ComputePass *computePass, VulkanRenderPass *previousRenderPass, Camera *camera, const std::vector<Camera *> *multiviewSnapshotCameras)
 	{
 		RN_PROFILE_SCOPE();
 
@@ -1418,11 +1418,32 @@ namespace RN
 		vulkanComputePass.framebuffer = nullptr;
 		vulkanComputePass.resolveFramebuffer = nullptr;
 		computePass->GetDispatchSnapshot(vulkanComputePass.computeDispatch);
+		if(previousRenderPass && previousRenderPass->renderFramePassIndex != RenderFrame::InvalidPassIndex)
+		{
+			const RenderFrame::Pass &previousFramePass = frameSubmission.renderFrame.GetPass(previousRenderPass->renderFramePassIndex);
+			vulkanComputePass.computeCameraSnapshot = previousFramePass.GetCameraSnapshot();
+			vulkanComputePass.computeMultiviewCameraSnapshots = previousFramePass.GetMultiviewCameraSnapshots();
+		}
+		else if(camera)
+		{
+			RenderPassResources *renderPassResources = camera->GetRenderPass()->GetRenderResources(this);
+			const RenderPass::DrawSnapshot &drawSnapshot = renderPassResources->GetDrawSnapshot();
+			Matrix clipSpaceCorrectionMatrix;
+			clipSpaceCorrectionMatrix.m[5] = -1.0f;
+			vulkanComputePass.computeCameraSnapshot = RenderFrame::CameraSnapshot::WithCamera(camera, drawSnapshot.GetFrame(), clipSpaceCorrectionMatrix);
+			if(multiviewSnapshotCameras)
+			{
+				for(Camera *multiviewCamera : *multiviewSnapshotCameras)
+				{
+					vulkanComputePass.computeMultiviewCameraSnapshots.push_back(RenderFrame::CameraSnapshot::WithCamera(multiviewCamera, drawSnapshot.GetFrame(), clipSpaceCorrectionMatrix));
+				}
+			}
+		}
 
 		frameSubmission.renderPasses.push_back(vulkanComputePass);
 	}
 
-	void VulkanRenderer::SubmitRenderPass(VulkanFrameSubmission &frameSubmission, RenderPass *renderPass, VulkanRenderPass &previousRenderPass)
+	void VulkanRenderer::SubmitRenderPass(VulkanFrameSubmission &frameSubmission, Camera *camera, RenderPass *renderPass, VulkanRenderPass &previousRenderPass, const std::vector<Camera *> *multiviewSnapshotCameras)
 	{
 		RN_PROFILE_SCOPE();
 
@@ -1540,7 +1561,7 @@ namespace RN
 		}
 
 		nextFramePasses->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop) {
-			SubmitFramePass(frameSubmission, nextPass, frameSubmission.renderPasses[frameSubmission.activeRenderPassIndex]);
+			SubmitFramePass(frameSubmission, camera, nextPass, frameSubmission.renderPasses[frameSubmission.activeRenderPassIndex], multiviewSnapshotCameras);
 		});
 	}
 

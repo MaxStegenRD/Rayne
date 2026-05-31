@@ -210,6 +210,8 @@ namespace RN
 		RenderPass *renderPass;
 		ComputePass *computePass = nullptr;
 		ComputePass::DispatchSnapshot computeDispatch;
+		RenderFrame::CameraSnapshot computeCameraSnapshot;
+		std::vector<RenderFrame::CameraSnapshot> computeMultiviewCameraSnapshots;
 		const VulkanComputePipelineState *computePipelineState = nullptr;
 		VkDescriptorSet computeDescriptorSet = VK_NULL_HANDLE;
 		VulkanUniformState computeUniformState;

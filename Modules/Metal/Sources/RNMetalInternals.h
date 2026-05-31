@@ -182,6 +182,8 @@ namespace RN
 		Vector2 resolveRenderAreaSize;
 
 		ComputePass::DispatchSnapshot computeDispatch;
+		RenderFrame::CameraSnapshot computeCameraSnapshot;
+		std::vector<RenderFrame::CameraSnapshot> computeMultiviewCameraSnapshots;
 		const MetalComputeState *computePipelineState = nullptr;
 		std::vector<StrongRef<MetalUniformBufferReference>> computeUniformBuffers;
 

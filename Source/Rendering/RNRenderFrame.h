@@ -49,13 +49,14 @@ namespace RN
 		{
 		public:
 			static constexpr uint64 InvalidSourceCameraUID = static_cast<uint64>(-1);
+			static constexpr size_t FrustumPlaneCount = 6;
 
 			CameraSnapshot() :
 				_sourceCameraUID(InvalidSourceCameraUID),
 				_tag(0)
 			{}
 
-			CameraSnapshot(const Vector3 &viewPosition, uint64 sourceCameraUID, const Matrix &viewMatrix, const Matrix &inverseViewMatrix, const Matrix &projectionMatrix, const Matrix &inverseProjectionMatrix, const Matrix &projectionViewMatrix, const Matrix &inverseProjectionViewMatrix, const Color &ambientColor, const Vector4 &customData, const Color &fogColor0, const Color &fogColor1, const Vector2 &clipDistance, const Vector2 &fogDistance, int32 tag, const Rect &frame) :
+			CameraSnapshot(const Vector3 &viewPosition, uint64 sourceCameraUID, const Matrix &viewMatrix, const Matrix &inverseViewMatrix, const Matrix &projectionMatrix, const Matrix &inverseProjectionMatrix, const Matrix &projectionViewMatrix, const Matrix &inverseProjectionViewMatrix, const Vector4 *frustumPlanes, const Color &ambientColor, const Vector4 &customData, const Color &fogColor0, const Color &fogColor1, const Vector2 &clipDistance, const Vector2 &fogDistance, int32 tag, const Rect &frame) :
 				_viewPosition(viewPosition),
 				_sourceCameraUID(sourceCameraUID),
 				_viewMatrix(viewMatrix),
@@ -72,7 +73,12 @@ namespace RN
 				_fogDistance(fogDistance),
 				_tag(tag),
 				_frame(frame)
-			{}
+			{
+				for(size_t i = 0; i < FrustumPlaneCount; i += 1)
+				{
+					_frustumPlanes[i] = frustumPlanes ? frustumPlanes[i] : Vector4();
+				}
+			}
 
 			static CameraSnapshot WithCamera(const Camera *camera, const Rect &frame)
 			{
@@ -92,6 +98,7 @@ namespace RN
 			const Matrix &GetInverseProjectionMatrix() const { return _inverseProjectionMatrix; }
 			const Matrix &GetProjectionViewMatrix() const { return _projectionViewMatrix; }
 			const Matrix &GetInverseProjectionViewMatrix() const { return _inverseProjectionViewMatrix; }
+			const Vector4 *GetFrustumPlanes() const { return _frustumPlanes; }
 			const Color &GetAmbientColor() const { return _ambientColor; }
 			const Vector4 &GetCustomData() const { return _customData; }
 			const Color &GetFogColor0() const { return _fogColor0; }
@@ -107,7 +114,9 @@ namespace RN
 				Matrix viewMatrix = camera->GetViewMatrix();
 				Matrix inverseViewMatrix = camera->GetInverseViewMatrix();
 				Matrix inverseProjectionMatrix = camera->GetInverseProjectionMatrix();
-				return CameraSnapshot(camera->GetWorldPosition(), camera->GetUID(), viewMatrix, inverseViewMatrix, projectionMatrix, inverseProjectionMatrix, projectionMatrix * viewMatrix, inverseViewMatrix * inverseProjectionMatrix, camera->GetAmbientColor(), camera->GetCustomData(), camera->GetFogColor0(), camera->GetFogColor1(), Vector2(camera->GetClipNear(), camera->GetClipFar()), Vector2(camera->GetFogNear(), camera->GetFogFar()), camera->GetTag(), frame);
+				Vector4 frustumPlanes[FrustumPlaneCount];
+				camera->GetFrustumPlanes(frustumPlanes);
+				return CameraSnapshot(camera->GetWorldPosition(), camera->GetUID(), viewMatrix, inverseViewMatrix, projectionMatrix, inverseProjectionMatrix, projectionMatrix * viewMatrix, inverseViewMatrix * inverseProjectionMatrix, frustumPlanes, camera->GetAmbientColor(), camera->GetCustomData(), camera->GetFogColor0(), camera->GetFogColor1(), Vector2(camera->GetClipNear(), camera->GetClipFar()), Vector2(camera->GetFogNear(), camera->GetFogFar()), camera->GetTag(), frame);
 			}
 
 			Vector3 _viewPosition;
@@ -118,6 +127,7 @@ namespace RN
 			Matrix _inverseProjectionMatrix;
 			Matrix _projectionViewMatrix;
 			Matrix _inverseProjectionViewMatrix;
+			Vector4 _frustumPlanes[FrustumPlaneCount];
 			Color _ambientColor;
 			Vector4 _customData;
 			Color _fogColor0;

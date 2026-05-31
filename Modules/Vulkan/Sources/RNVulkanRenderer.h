@@ -110,9 +110,9 @@ namespace RN
 		void SubmitCamera(VulkanFrameSubmission &submission, Camera *camera, Function &&function);
 		size_t SubmitRootRenderPass(VulkanFrameSubmission &submission, Camera *camera, RenderPass *renderPass, const std::vector<Camera *> &multiviewSnapshotCameras);
 		void SubmitRootFramePass(VulkanFrameSubmission &submission, Camera *camera, FramePass *framePass, const std::vector<Camera *> &multiviewSnapshotCameras);
-		void SubmitFramePass(VulkanFrameSubmission &submission, FramePass *framePass, VulkanRenderPass &previousRenderPass);
-		void SubmitRenderPass(VulkanFrameSubmission &submission, RenderPass *renderPass, VulkanRenderPass &previousRenderPass);
-		void SubmitComputePass(VulkanFrameSubmission &submission, ComputePass *computePass, VulkanRenderPass *previousRenderPass);
+		void SubmitFramePass(VulkanFrameSubmission &submission, Camera *camera, FramePass *framePass, VulkanRenderPass &previousRenderPass, const std::vector<Camera *> *multiviewSnapshotCameras);
+		void SubmitRenderPass(VulkanFrameSubmission &submission, Camera *camera, RenderPass *renderPass, VulkanRenderPass &previousRenderPass, const std::vector<Camera *> *multiviewSnapshotCameras);
+		void SubmitComputePass(VulkanFrameSubmission &submission, ComputePass *computePass, VulkanRenderPass *previousRenderPass, Camera *camera, const std::vector<Camera *> *multiviewSnapshotCameras);
 		void SubmitDrawable(VulkanFrameSubmission &submission, Drawable *drawable, const SceneNode *node);
 		bool PrepareRenderFrame(VulkanFrameSubmission &submission);
 		void UpdateDescriptorSets(VulkanFrameSubmission &submission);

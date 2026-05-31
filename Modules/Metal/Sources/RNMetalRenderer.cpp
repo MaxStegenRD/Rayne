@@ -699,7 +699,7 @@ namespace RN
 			if(rootRenderPassIndex == RenderFrame::InvalidPassIndex) return;
 
 			renderPass->GetNextFramePasses()->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop) {
-				SubmitFramePass(frameSubmission, nextPass, frameSubmission.renderPasses[rootRenderPassIndex]);
+				SubmitFramePass(frameSubmission, camera, nextPass, frameSubmission.renderPasses[rootRenderPassIndex]);
 			});
 			return;
 		}
@@ -707,7 +707,7 @@ namespace RN
 		ComputePass *computePass = framePass->Downcast<ComputePass>();
 		if(computePass)
 		{
-			SubmitComputePass(frameSubmission, computePass, nullptr);
+			SubmitComputePass(frameSubmission, computePass, nullptr, camera);
 			computePass->GetNextFramePasses()->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop) {
 				SubmitRootFramePass(frameSubmission, camera, nextPass);
 			});
@@ -717,23 +717,23 @@ namespace RN
 		RN_ASSERT(false, "Metal renderer only supports RenderPass and ComputePass frame pass nodes");
 	}
 
-	void MetalRenderer::SubmitFramePass(MetalFrameSubmission &frameSubmission, FramePass *framePass, MetalRenderPass &previousRenderPass)
+	void MetalRenderer::SubmitFramePass(MetalFrameSubmission &frameSubmission, Camera *camera, FramePass *framePass, MetalRenderPass &previousRenderPass)
 	{
 		RN_PROFILE_SCOPE();
 
 		RenderPass *renderPass = framePass->Downcast<RenderPass>();
 		if(renderPass)
 		{
-			SubmitRenderPass(frameSubmission, renderPass, previousRenderPass);
+			SubmitRenderPass(frameSubmission, camera, renderPass, previousRenderPass);
 			return;
 		}
 
 		ComputePass *computePass = framePass->Downcast<ComputePass>();
 		if(computePass)
 		{
-			SubmitComputePass(frameSubmission, computePass, &previousRenderPass);
+			SubmitComputePass(frameSubmission, computePass, &previousRenderPass, camera);
 			computePass->GetNextFramePasses()->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop) {
-				SubmitFramePass(frameSubmission, nextPass, previousRenderPass);
+				SubmitFramePass(frameSubmission, camera, nextPass, previousRenderPass);
 			});
 			return;
 		}
@@ -741,7 +741,7 @@ namespace RN
 		RN_ASSERT(false, "Metal renderer only supports RenderPass and ComputePass frame pass nodes");
 	}
 
-	void MetalRenderer::SubmitComputePass(MetalFrameSubmission &frameSubmission, ComputePass *computePass, MetalRenderPass *previousRenderPass)
+	void MetalRenderer::SubmitComputePass(MetalFrameSubmission &frameSubmission, ComputePass *computePass, MetalRenderPass *previousRenderPass, Camera *camera)
 	{
 		RN_PROFILE_SCOPE();
 
@@ -750,11 +750,23 @@ namespace RN
 		metalComputePass.computePass = computePass;
 		metalComputePass.previousStoredFramebuffer = previousRenderPass ? (previousRenderPass->resolveFramebuffer ? previousRenderPass->resolveFramebuffer : previousRenderPass->framebuffer) : nullptr;
 		computePass->GetDispatchSnapshot(metalComputePass.computeDispatch);
+		if(previousRenderPass && previousRenderPass->renderFramePassIndex != RenderFrame::InvalidPassIndex)
+		{
+			const RenderFrame::Pass &previousFramePass = frameSubmission.renderFrame.GetPass(previousRenderPass->renderFramePassIndex);
+			metalComputePass.computeCameraSnapshot = previousFramePass.GetCameraSnapshot();
+			metalComputePass.computeMultiviewCameraSnapshots = previousFramePass.GetMultiviewCameraSnapshots();
+		}
+		else if(camera)
+		{
+			RenderPassResources *renderPassResources = camera->GetRenderPass()->GetRenderResources(this);
+			const RenderPass::DrawSnapshot &drawSnapshot = renderPassResources->GetDrawSnapshot();
+			metalComputePass.computeCameraSnapshot = RenderFrame::CameraSnapshot::WithCamera(camera, drawSnapshot.GetFrame());
+		}
 
 		frameSubmission.renderPasses.push_back(metalComputePass);
 	}
 
-	void MetalRenderer::SubmitRenderPass(MetalFrameSubmission &frameSubmission, RenderPass *renderPass, MetalRenderPass &previousRenderPass)
+	void MetalRenderer::SubmitRenderPass(MetalFrameSubmission &frameSubmission, Camera *camera, RenderPass *renderPass, MetalRenderPass &previousRenderPass)
 	{
 		RN_PROFILE_SCOPE();
 
@@ -869,7 +881,7 @@ namespace RN
 
 		const Array *nextFramePasses = renderPass->GetNextFramePasses();
 		nextFramePasses->Enumerate<FramePass>([&](FramePass *nextPass, size_t index, bool &stop){
-			SubmitFramePass(frameSubmission, nextPass, frameSubmission.renderPasses[frameSubmission.activeRenderPassIndex]);
+			SubmitFramePass(frameSubmission, camera, nextPass, frameSubmission.renderPasses[frameSubmission.activeRenderPassIndex]);
 		});
 	}
 
