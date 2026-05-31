@@ -354,11 +354,11 @@ namespace RN
 		if(!_dirtyFrustum) return;
 		_dirtyFrustum = false;
 
-		if(_flags & Flags::UseSimpleCulling)
+		bool useSimpleCulling = _flags & Flags::UseSimpleCulling;
+		if(useSimpleCulling)
 		{
 			_frustumCenter = Vector3(0.0f, 0.0f, _clipFar * 0.5f) + GetWorldPosition();
 			_frustumRadius = _clipFar * 1.5;
-			return;
 		}
 
 		//far plane is at z=0, near plane z=1 for reverse-z!
@@ -374,31 +374,34 @@ namespace RN
 		const Vector3 &position = GetWorldPosition();
 		Vector3 direction = GetWorldRotation().GetRotatedVector(Vector3(0.0, 0.0, -1.0));
 
-		// Tighter sphere via farthest corner pair among 8 corners
-		Vector3 corners[8] = { pos1, pos2, pos3, pos4, pos5, pos6, pos7, pos8 };
-		float maxDist2 = 0.0f;
-		Vector3 bestA = corners[0], bestB = corners[0];
-		for(int i = 0; i < 8; ++i)
+		if(!useSimpleCulling)
 		{
-			for(int j = i + 1; j < 8; ++j)
+			// Tighter sphere via farthest corner pair among 8 corners
+			Vector3 corners[8] = { pos1, pos2, pos3, pos4, pos5, pos6, pos7, pos8 };
+			float maxDist2 = 0.0f;
+			Vector3 bestA = corners[0], bestB = corners[0];
+			for(int i = 0; i < 8; ++i)
 			{
-				float d2 = corners[i].GetSquaredDistance(corners[j]);
-				if(d2 > maxDist2)
+				for(int j = i + 1; j < 8; ++j)
 				{
-					maxDist2 = d2;
-					bestA = corners[i];
-					bestB = corners[j];
+					float d2 = corners[i].GetSquaredDistance(corners[j]);
+					if(d2 > maxDist2)
+					{
+						maxDist2 = d2;
+						bestA = corners[i];
+						bestB = corners[j];
+					}
 				}
 			}
+			_frustumCenter = (bestA + bestB) * 0.5f;
+			float radius = 0.0f;
+			for(int i = 0; i < 8; ++i)
+			{
+				float d = _frustumCenter.GetDistance(corners[i]);
+				if(d > radius) radius = d;
+			}
+			_frustumRadius = radius;
 		}
-		_frustumCenter = (bestA + bestB) * 0.5f;
-		float radius = 0.0f;
-		for(int i = 0; i < 8; ++i)
-		{
-			float d = _frustumCenter.GetDistance(corners[i]);
-			if(d > radius) radius = d;
-		}
-		_frustumRadius = radius;
 
 		frustums._frustumLeft = Plane::WithTriangle(pos1, pos2, pos3, -1.0f, _frustumPlaneOffsets[2]);
 		frustums._frustumRight = Plane::WithTriangle(pos4, pos5, pos6, 1.0f, -_frustumPlaneOffsets[3]);
@@ -462,6 +465,19 @@ namespace RN
 	{
 		UpdateFrustum();
 		return _frustumRadius;
+	}
+
+	void Camera::GetFrustumPlanes(Vector4 *planes) const
+	{
+		if(!planes) return;
+
+		const_cast<Camera *>(this)->UpdateFrustum();
+		planes[0] = frustums._frustumLeft.GetPlaneVector();
+		planes[1] = frustums._frustumRight.GetPlaneVector();
+		planes[2] = frustums._frustumTop.GetPlaneVector();
+		planes[3] = frustums._frustumBottom.GetPlaneVector();
+		planes[4] = frustums._frustumNear.GetPlaneVector();
+		planes[5] = frustums._frustumFar.GetPlaneVector();
 	}
 
 	bool Camera::InFrustum(const Vector3 &position, float radius)

@@ -94,6 +94,7 @@ namespace RN
 
 		RNAPI const Vector3 &GetFrustumCenter();
 		RNAPI float GetFrustumRadius();
+		RNAPI void GetFrustumPlanes(Vector4 *planes) const;
 
 		RenderPass *GetRenderPass() const { return _renderPass; }
 		FramePass *GetRootFramePass() const { return _rootFramePass ? _rootFramePass : _renderPass; }
