@@ -399,7 +399,24 @@ namespace RN
 		state->vertexShader = collection->vertexShader;
 		state->fragmentShader = collection->fragmentShader;
 		state->vertexPositionBufferShaderResourceIndex = mesh.GetVertexPositionsSeparatedSize() > 0? 29 : 255; //Hardcoded to match value CreateVertexDescriptor
-		state->vertexBufferShaderResourceIndex = 30; //Hardcoded to match value CreateVertexDescriptor
+		bool needsVertexBuffer = mesh.GetVertexPositionsSeparatedSize() == 0;
+		if(!needsVertexBuffer)
+		{
+			const std::vector<Mesh::VertexAttribute> &attributes = mesh.GetVertexAttributes();
+			for(const Mesh::VertexAttribute &attribute : attributes)
+			{
+				if(attribute.GetFeature() == Mesh::VertexAttribute::Feature::Indices) continue;
+				if(attribute.GetFeature() == Mesh::VertexAttribute::Feature::Vertices) continue;
+
+				uint32 attributeIndex = static_cast<MetalShader *>(collection->vertexShader)->_hasInputVertexAttribute[static_cast<int>(attribute.GetFeature())];
+				if(attributeIndex != -1)
+				{
+					needsVertexBuffer = true;
+					break;
+				}
+			}
+		}
+		state->vertexBufferShaderResourceIndex = needsVertexBuffer? 30 : 255; //Hardcoded to match value CreateVertexDescriptor
 		state->wantsAlphaToCoverage = materialProperties.useAlphaToCoverage;
 		state->colorWriteMask = materialProperties.colorWriteMask;
 		state->blendOperationRGB = materialProperties.blendOperationRGB;
