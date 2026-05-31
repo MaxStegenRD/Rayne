@@ -15,12 +15,32 @@ namespace RN
 {
 	RNDefineMeta(MetalSpecificShaderLibrary, Object)
 
-	MetalSpecificShaderLibrary::MetalSpecificShaderLibrary(id<MTLDevice> device, const String *fileName, const String *entryPoint, Shader::Type type, bool hasInstancing, Dictionary *signatureDescription) :
+	RN_INLINE Shader::ComputeThreadsPerGroup MetalShaderLibraryGetComputeThreadsPerGroup(Array *array)
+	{
+		Shader::ComputeThreadsPerGroup result;
+		if(!array || array->GetCount() < 3)
+			return result;
+
+		auto readComponent = [](Number *number, uint32 fallback) {
+			if(!number) return fallback;
+
+			uint32 value = number->GetUint32Value();
+			return value > 0 ? value : fallback;
+		};
+
+		result.x = readComponent(array->GetObjectAtIndex<Number>(0), result.x);
+		result.y = readComponent(array->GetObjectAtIndex<Number>(1), result.y);
+		result.z = readComponent(array->GetObjectAtIndex<Number>(2), result.z);
+		return result;
+	}
+
+	MetalSpecificShaderLibrary::MetalSpecificShaderLibrary(const String *fileName, const String *entryPoint, Shader::Type type, bool hasInstancing, const Shader::ComputeThreadsPerGroup &computeThreadsPerGroup, Dictionary *signatureDescription) :
 	_shaders(new Dictionary()),
 	_entryPoint(entryPoint->Retain()),
 	_fileName(fileName->Retain()),
 	_type(type),
 	_hasInstancing(hasInstancing),
+	_computeThreadsPerGroup(computeThreadsPerGroup),
 	_signatureDescription(signatureDescription)
 	{
 		if(_signatureDescription) _signatureDescription->Retain();
@@ -238,7 +258,7 @@ namespace RN
 		}*/
 		
 		const Array *samplers = GetSamplerSignature(newOptions);
-		shader = new MetalShader(library, _type, _hasInstancing, samplers, newOptions, function, coordinator);
+		shader = new MetalShader(library, _type, _hasInstancing, samplers, newOptions, _computeThreadsPerGroup, function, coordinator);
 		_shaders->SetObjectForKey(shader, newOptions);
 		return shader->Autorelease();
 	}
@@ -266,6 +286,7 @@ namespace RN
 				String *entryPointName = shaderDictionary->GetObjectForKey<String>(RNCSTR("name"));
 				String *shaderType = shaderDictionary->GetObjectForKey<String>(RNCSTR("type"));
 				Number *hasInstancingNumber = shaderDictionary->GetObjectForKey<Number>(RNCSTR("has_instancing"));
+				Array *threadsPerGroup = shaderDictionary->GetObjectForKey<Array>(RNCSTR("threads_per_group"));
 				Dictionary *signature = shaderDictionary->GetObjectForKey<Dictionary>(RNCSTR("signature"));
 				
 				Shader::Type type = Shader::Type::Vertex;
@@ -292,7 +313,7 @@ namespace RN
 					hasInstancing = hasInstancingNumber->GetBoolValue();
 				}
 				
-				MetalSpecificShaderLibrary *specificLibrary = new MetalSpecificShaderLibrary(_device, fileString, entryPointName, type, hasInstancing, signature);
+				MetalSpecificShaderLibrary *specificLibrary = new MetalSpecificShaderLibrary(fileString, entryPointName, type, hasInstancing, MetalShaderLibraryGetComputeThreadsPerGroup(threadsPerGroup), signature);
 				_specificShaderLibraries->SetObjectForKey(specificLibrary, entryPointName);
 			});
 		});

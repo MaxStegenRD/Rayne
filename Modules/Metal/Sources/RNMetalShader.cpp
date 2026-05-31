@@ -14,7 +14,7 @@ namespace RN
 {
 	RNDefineMeta(MetalShader, Shader)
 
-	MetalShader::MetalShader(ShaderLibrary *library, Type type, bool hasInstancing, const Array *samplers, const Shader::Options *options, void *shader, MetalStateCoordinator *coordinator) :
+	MetalShader::MetalShader(ShaderLibrary *library, Type type, bool hasInstancing, const Array *samplers, const Shader::Options *options, const ComputeThreadsPerGroup &computeThreadsPerGroup, void *shader, MetalStateCoordinator *coordinator) :
 		Shader(library, type, hasInstancing, options),
 		_shader(shader),
 		_coordinator(coordinator)
@@ -22,6 +22,11 @@ namespace RN
 		// We don't need to retain the shader because it was created
 		// with [newFunctionWithName:] which returns an explicitly
 		// owned object
+
+		if(type == Shader::Type::Compute)
+		{
+			SetComputeThreadsPerGroup(computeThreadsPerGroup.x, computeThreadsPerGroup.y, computeThreadsPerGroup.z);
+		}
 		
 		_rnSamplers = samplers->Retain();
 		

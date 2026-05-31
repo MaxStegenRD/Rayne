@@ -26,7 +26,7 @@ namespace RN
 		MTLAPI const String *GetName() const override;
 
 	private:
-		MetalShader(ShaderLibrary *library, Type type, bool hasInstancing, const Array *samplers, const Shader::Options *options, void *shader, MetalStateCoordinator *coordinator);
+		MetalShader(ShaderLibrary *library, Type type, bool hasInstancing, const Array *samplers, const Shader::Options *options, const ComputeThreadsPerGroup &computeThreadsPerGroup, void *shader, MetalStateCoordinator *coordinator);
 		void SetReflectedArguments(NSArray *arguments);
 		
 		Array *GetBufferStructElements(MTLStructType *structType, size_t &numberOfElements);
