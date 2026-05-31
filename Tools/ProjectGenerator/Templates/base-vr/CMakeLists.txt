@@ -71,7 +71,8 @@ if(IOS OR VISIONOS)
 	set(SOURCES_SWIFT Sources/main-apple.swift)
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(ANDROID)
     add_library(__TMP_APPLICATION_TARGET__ SHARED "${SOURCES}" "${HEADERS}")
