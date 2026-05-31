@@ -310,12 +310,17 @@ namespace RN
 
 		JPH::SixDOFConstraintSettings settings;
 		settings.mSpace = JPH::EConstraintSpace::WorldSpace;
+		Quaternion normalizedWorldRotation1 = worldRotation1;
+		Quaternion normalizedWorldRotation2 = worldRotation2;
+		normalizedWorldRotation1.Normalize();
+		normalizedWorldRotation2.Normalize();
+
 		settings.mPosition1 = JPH::RVec3(worldPosition1.x, worldPosition1.y, worldPosition1.z);
-		settings.mAxisX1 = ToJoltVec3(worldRotation1.GetRotatedVector(Vector3(1.0f, 0.0f, 0.0f)));
-		settings.mAxisY1 = ToJoltVec3(worldRotation1.GetRotatedVector(Vector3(0.0f, 1.0f, 0.0f)));
+		settings.mAxisX1 = ToJoltVec3(normalizedWorldRotation1.GetRotatedVector(Vector3(1.0f, 0.0f, 0.0f)));
+		settings.mAxisY1 = ToJoltVec3(normalizedWorldRotation1.GetRotatedVector(Vector3(0.0f, 1.0f, 0.0f)));
 		settings.mPosition2 = JPH::RVec3(worldPosition2.x, worldPosition2.y, worldPosition2.z);
-		settings.mAxisX2 = ToJoltVec3(worldRotation2.GetRotatedVector(Vector3(1.0f, 0.0f, 0.0f)));
-		settings.mAxisY2 = ToJoltVec3(worldRotation2.GetRotatedVector(Vector3(0.0f, 1.0f, 0.0f)));
+		settings.mAxisX2 = ToJoltVec3(normalizedWorldRotation2.GetRotatedVector(Vector3(1.0f, 0.0f, 0.0f)));
+		settings.mAxisY2 = ToJoltVec3(normalizedWorldRotation2.GetRotatedVector(Vector3(0.0f, 1.0f, 0.0f)));
 
 		// Allow all DOFs; motors will drive to targets each tick
 		settings.MakeFreeAxis(JPH::SixDOFConstraintSettings::TranslationX);
