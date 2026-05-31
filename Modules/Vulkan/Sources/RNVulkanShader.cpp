@@ -64,6 +64,14 @@ namespace RN
 		spirv_cross::Compiler reflector(static_cast<uint32_t*>(shaderData->GetBytes()), shaderData->GetLength() / 4);
 		spirv_cross::ShaderResources resources = reflector.get_shader_resources();
 
+		if(stage == VK_SHADER_STAGE_COMPUTE_BIT)
+		{
+			uint32 threadsPerGroupX = reflector.get_execution_mode_argument(spv::ExecutionModeLocalSize, 0);
+			uint32 threadsPerGroupY = reflector.get_execution_mode_argument(spv::ExecutionModeLocalSize, 1);
+			uint32 threadsPerGroupZ = reflector.get_execution_mode_argument(spv::ExecutionModeLocalSize, 2);
+			SetComputeThreadsPerGroup(threadsPerGroupX > 0 ? threadsPerGroupX : 1, threadsPerGroupY > 0 ? threadsPerGroupY : 1, threadsPerGroupZ > 0 ? threadsPerGroupZ : 1);
+		}
+
 		uint8 textureCount = 0;
 		Array *reflectionSamplers = new Array();
 		Array *specificReflectionSamplers = new Array();

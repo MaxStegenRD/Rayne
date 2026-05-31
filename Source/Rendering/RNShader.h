@@ -331,8 +331,15 @@ namespace RN
 			Array *_samplers;
 			Array *_textures;
 			Array *_subpassInputs;
-			
+
 			__RNDeclareMetaInternal(Signature)
+		};
+
+		struct ComputeThreadsPerGroup
+		{
+			uint32 x = 1;
+			uint32 y = 1;
+			uint32 z = 1;
 		};
 
 		RN_OPTIONS(Type, uint32,
@@ -364,6 +371,7 @@ namespace RN
 
 		RNAPI bool GetHasInstancing() const { return _hasInstancing; }
 		size_t GetMaxInstanceCount() const { return _maxInstanceCount; }
+		const ComputeThreadsPerGroup &GetComputeThreadsPerGroup() const { return _computeThreadsPerGroup; }
 
 	protected:
 		RNAPI Shader(ShaderLibrary *library, Type type, bool hasInstancing, const Shader::Options *options, const Signature *signature);
@@ -371,6 +379,7 @@ namespace RN
 		RNAPI virtual ~Shader();
 
 		RNAPI void SetSignature(const Signature *signature);
+		RNAPI void SetComputeThreadsPerGroup(uint32 x, uint32 y, uint32 z);
 
 	private:
 		const Shader::Options *_options;
@@ -379,6 +388,7 @@ namespace RN
 		bool _hasInstancing;
 		const Signature *_signature;
 		size_t _maxInstanceCount;
+		ComputeThreadsPerGroup _computeThreadsPerGroup;
 
 		__RNDeclareMetaInternal(Shader)
 	};

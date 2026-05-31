@@ -771,6 +771,15 @@ namespace RN
 		}
 	}
 
+	void Shader::SetComputeThreadsPerGroup(uint32 x, uint32 y, uint32 z)
+	{
+		RN_ASSERT(x > 0 && y > 0 && z > 0, "Compute shader thread group size must be greater than zero");
+
+		_computeThreadsPerGroup.x = x;
+		_computeThreadsPerGroup.y = y;
+		_computeThreadsPerGroup.z = z;
+	}
+
 	const Shader::Signature *Shader::GetSignature() const
 	{
 		//TODO: maybe retain and autorelease!?
