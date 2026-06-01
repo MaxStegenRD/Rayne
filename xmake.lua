@@ -3,6 +3,11 @@ set_project("Rayne")
 set_languages("cxx20")
 add_rules("mode.debug", "mode.release")
 
+if not is_plat("windows", "mingw") then
+	add_cflags("-fvisibility=hidden")
+	add_cxxflags("-fvisibility-ms-compat", "-fvisibility-inlines-hidden")
+end
+
 option("rayne_build_jolt")
 	set_default(true)
 option_end()

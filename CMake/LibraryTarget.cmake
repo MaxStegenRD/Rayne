@@ -106,6 +106,14 @@ macro(__rayne_create_target _NAME _TYPE _SOURCES _HEADERS _PRIVATE_HEADERS _PUBL
     endif()
 
     add_library("${TARGET_NAME}" ${_TYPE})
+    set_target_properties("${TARGET_NAME}" PROPERTIES
+        C_VISIBILITY_PRESET hidden
+        VISIBILITY_INLINES_HIDDEN YES)
+    if(("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang|GNU") OR ("${CMAKE_OBJCXX_COMPILER_ID}" MATCHES "Clang|GNU"))
+        target_compile_options("${TARGET_NAME}" PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:-fvisibility-ms-compat>
+            $<$<COMPILE_LANGUAGE:OBJCXX>:-fvisibility-ms-compat>)
+    endif()
     target_sources("${TARGET_NAME}" PRIVATE ${_SOURCES})
     if(NOT ("${_PRIVATE_HEADERS}" STREQUAL ""))
         target_sources("${TARGET_NAME}" PRIVATE ${_PRIVATE_HEADERS})

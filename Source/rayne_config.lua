@@ -92,8 +92,8 @@ local function set_exports_for_platform()
 		val_export = "__declspec(dllexport)"
 		val_import = "__declspec(dllimport)"
 	else
-		val_export = ""
-		val_import = ""
+		val_export = "__attribute__((visibility(\"default\")))"
+		val_import = "__attribute__((visibility(\"default\")))"
 	end
 	set_configvar("RAYNE_RNAPI_EXPORT", val_export, {quote = false})
 	set_configvar("RAYNE_RNAPI_IMPORT", val_import, {quote = false})
@@ -127,5 +127,4 @@ function rayne_apply_config()
 	set_configvar("RAYNE_HAS_VTUNE", 0)
 	set_configvar("RAYNE_ENABLE_VTUNE", 0)
 end
-
 
