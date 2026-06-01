@@ -35,8 +35,8 @@ namespace RN
 			ANativeActivity *activity = GetActivity();
 			return activity? activity->clazz : nullptr;
 		}
-		bool PerformWithCurrentThreadJNIContext(const std::function<void(JNIEnv *, jobject)> &callback) const;
-		void SetWindowFlags(uint32 addFlags, uint32 removeFlags) const;
+		RNAPI bool PerformWithCurrentThreadJNIContext(const std::function<void(JNIEnv *, jobject)> &callback) const;
+		RNAPI void SetWindowFlags(uint32 addFlags, uint32 removeFlags) const;
 		const char *GetInternalDataPath() const
 		{
 			ANativeActivity *activity = GetActivity();
@@ -47,13 +47,13 @@ namespace RN
 			ANativeActivity *activity = GetActivity();
 			return activity? activity->externalDataPath : nullptr;
 		}
-		std::string GetPackageCodePath() const;
+		RNAPI std::string GetPackageCodePath() const;
 		ANativeWindow *GetWindow() const { return _window.load(std::memory_order_acquire); }
 		int32 GetActivityState() const { return _activityState.load(std::memory_order_acquire); }
 		bool GetDestroyRequested() const { return _destroyRequested.load(std::memory_order_acquire); }
-		bool RequestPermission(const char *permission, int32 requestCode) const;
-		int32 CheckSelfPermission(const char *permission) const;
-		void HandleTransientCommand(int32 cmd);
+		RNAPI bool RequestPermission(const char *permission, int32 requestCode) const;
+		RNAPI int32 CheckSelfPermission(const char *permission) const;
+		RNAPI void HandleTransientCommand(int32 cmd);
 
 	private:
 		friend class Kernel;
