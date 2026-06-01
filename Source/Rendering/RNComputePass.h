@@ -32,9 +32,9 @@ namespace RN
 		public:
 			Shader *GetShader() const { return _shader.Get(); }
 			const DispatchSize &GetGroupCount() const { return _groupCount; }
-			GPUBuffer *GetResourceBuffer(size_t nameHash) const;
-			Texture *GetResourceTexture(size_t nameHash) const;
-			const std::vector<uint8> *GetUniform(size_t nameHash) const;
+			RNAPI GPUBuffer *GetResourceBuffer(size_t nameHash) const;
+			RNAPI Texture *GetResourceTexture(size_t nameHash) const;
+			RNAPI const std::vector<uint8> *GetUniform(size_t nameHash) const;
 
 		private:
 			friend class ComputePass;
