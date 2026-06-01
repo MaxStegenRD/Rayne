@@ -193,6 +193,77 @@ namespace RN
 		SetSignature(signature->Autorelease());
 	}
 
+	String *MetalShader::GetBufferStructMemberName(MTLStructMember *member) const
+	{
+		String *name = RNSTR([[member name] UTF8String]);
+		if(name->HasSuffix(RNCSTR("[0]")))
+		{
+			return name->GetSubstring(Range(0, name->GetLength() - 3));
+		}
+
+		return name;
+	}
+
+	PrimitiveType MetalShader::GetPrimitiveTypeForMetalDataType(MTLDataType type) const
+	{
+		switch(type)
+		{
+			case MTLDataTypeHalf:
+				return PrimitiveType::Half;
+
+			case MTLDataTypeHalf2:
+				return PrimitiveType::HalfVector2;
+
+			case MTLDataTypeHalf3:
+				return PrimitiveType::HalfVector3;
+
+			case MTLDataTypeHalf4:
+				return PrimitiveType::HalfVector4;
+
+			case MTLDataTypeFloat:
+				return PrimitiveType::Float;
+
+			case MTLDataTypeFloat2:
+				return PrimitiveType::Vector2;
+
+			case MTLDataTypeFloat3:
+				return PrimitiveType::Vector3;
+
+			case MTLDataTypeFloat4:
+				return PrimitiveType::Vector4;
+
+			case MTLDataTypeFloat2x2:
+				return PrimitiveType::Matrix2x2;
+
+			case MTLDataTypeFloat3x3:
+				return PrimitiveType::Matrix3x3;
+
+			case MTLDataTypeFloat4x4:
+				return PrimitiveType::Matrix4x4;
+
+			case MTLDataTypeInt:
+				return PrimitiveType::Int32;
+
+			case MTLDataTypeUInt:
+				return PrimitiveType::Uint32;
+
+			case MTLDataTypeShort:
+				return PrimitiveType::Int16;
+
+			case MTLDataTypeUShort:
+				return PrimitiveType::Uint16;
+
+			case MTLDataTypeChar:
+				return PrimitiveType::Int8;
+
+			case MTLDataTypeUChar:
+				return PrimitiveType::Uint8;
+
+			default:
+				return PrimitiveType::Invalid;
+		}
+	}
+
 	Array *MetalShader::GetBufferStructElements(MTLStructType *structType, size_t &numberOfElements)
 	{
 		Array *uniformDescriptors = new Array();
@@ -200,22 +271,30 @@ namespace RN
 		
 		numberOfElements = 0;
 		
-		for(MTLStructMember *member in [structType members])
+		NSArray<MTLStructMember *> *members = [structType members];
+		for(MTLStructMember *member in members)
 		{
-			String *name = RNSTR([[member name] UTF8String]);
+			String *name = GetBufferStructMemberName(member);
 			uint32 offset = [member offset];
 			MTLDataType type = [member dataType];
 			
 			uint32 arrayElementCount = 1;
-			PrimitiveType uniformType = PrimitiveType::Invalid;
 			
 			//RNDebug("	buffer member: " << name << " type: " << type);
-			//If this is an array of structs with unknown name, assume that it is per instance data
-			if(type == MTLDataTypeArray && !UniformDescriptor::IsKnownStructName(name))
+			if(type == MTLDataTypeArray)
 			{
 				MTLArrayType *arrayType = [member arrayType];
 				arrayElementCount = arrayType.arrayLength;
-				if(arrayType.elementType == MTLDataTypeStruct)
+				MTLDataType elementType = arrayType.elementType;
+
+				// ShaderConductor wraps raw buffers as a single primitive _m0 array. Keep those as storage buffers.
+				if(members.count == 1 && name->IsEqual(RNCSTR("_m0")) && elementType != MTLDataTypeStruct)
+				{
+					continue;
+				}
+
+				// If the whole buffer is an array of structs with unknown name, assume that it is per instance data.
+				if(members.count == 1 && elementType == MTLDataTypeStruct && !UniformDescriptor::IsKnownStructName(name))
 				{
 					MTLStructType *otherStructType = [arrayType elementStructType];
 					if(otherStructType)
@@ -225,84 +304,11 @@ namespace RN
 						return GetBufferStructElements(otherStructType, temp);
 					}
 				}
-			}
-			else if(type == MTLDataTypeArray)
-			{
-				MTLArrayType *arrayType = [member arrayType];
-				arrayElementCount = arrayType.arrayLength;
-			}
-			else
-			{
-				if(type == MTLDataTypeHalf)
-				{
-					uniformType = PrimitiveType::Half;
-				}
-				else if(type == MTLDataTypeHalf2)
-				{
-					uniformType = PrimitiveType::HalfVector2;
-				}
-				else if(type == MTLDataTypeHalf3)
-				{
-					uniformType = PrimitiveType::HalfVector3;
-				}
-				else if(type == MTLDataTypeHalf4)
-				{
-					uniformType = PrimitiveType::HalfVector4;
-				}
-				else if(type == MTLDataTypeFloat)
-				{
-					uniformType = PrimitiveType::Float;
-				}
-				else if(type == MTLDataTypeFloat2)
-				{
-					uniformType = PrimitiveType::Vector2;
-				}
-				else if(type == MTLDataTypeFloat3)
-				{
-					uniformType = PrimitiveType::Vector3;
-				}
-				else if(type == MTLDataTypeFloat4)
-				{
-					uniformType = PrimitiveType::Vector4;
-				}
-				else if(type == MTLDataTypeFloat2x2)
-				{
-					uniformType = PrimitiveType::Matrix2x2;
-				}
-				else if(type == MTLDataTypeFloat3x3)
-				{
-					uniformType = PrimitiveType::Matrix3x3;
-				}
-				else if(type == MTLDataTypeFloat4x4)
-				{
-					uniformType = PrimitiveType::Matrix4x4;
-				}
-				else if(type == MTLDataTypeInt)
-				{
-					uniformType = PrimitiveType::Int32;
-				}
-				else if(type == MTLDataTypeUInt)
-				{
-					uniformType = PrimitiveType::Uint32;
-				}
-				else if(type == MTLDataTypeShort)
-				{
-					uniformType = PrimitiveType::Int16;
-				}
-				else if(type == MTLDataTypeUShort)
-				{
-					uniformType = PrimitiveType::Uint16;
-				}
-				else if(type == MTLDataTypeChar)
-				{
-					uniformType = PrimitiveType::Int8;
-				}
-				else if(type == MTLDataTypeUChar)
-				{
-					uniformType = PrimitiveType::Uint8;
-				}
+
+				type = elementType;
 			}
 
+			PrimitiveType uniformType = GetPrimitiveTypeForMetalDataType(type);
 			Shader::UniformDescriptor *descriptor = new Shader::UniformDescriptor(name, uniformType, offset, arrayElementCount);
 			uniformDescriptors->AddObject(descriptor->Autorelease());
 		}

@@ -29,6 +29,8 @@ namespace RN
 		MetalShader(ShaderLibrary *library, Type type, bool hasInstancing, const Array *samplers, const Shader::Options *options, const ComputeThreadsPerGroup &computeThreadsPerGroup, void *shader, MetalStateCoordinator *coordinator);
 		void SetReflectedArguments(NSArray *arguments);
 		
+		String *GetBufferStructMemberName(MTLStructMember *member) const;
+		PrimitiveType GetPrimitiveTypeForMetalDataType(MTLDataType type) const;
 		Array *GetBufferStructElements(MTLStructType *structType, size_t &numberOfElements);
 
 		void *_shader;
