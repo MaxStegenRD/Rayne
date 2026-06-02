@@ -34,12 +34,19 @@ namespace RN
 			uint32 z = 0;
 		};
 
+		struct DispatchRegion
+		{
+			DispatchSize groupCount;
+			DispatchOffset groupOffset;
+		};
+
 		class DispatchSnapshot
 		{
 		public:
 			Shader *GetShader() const { return _shader.Get(); }
-			const DispatchSize &GetGroupCount() const { return _groupCount; }
-			const DispatchOffset &GetGroupOffset() const { return _groupOffset; }
+			RNAPI const DispatchSize &GetGroupCount() const;
+			RNAPI const DispatchOffset &GetGroupOffset() const;
+			const std::vector<DispatchRegion> &GetDispatchRegions() const { return _dispatchRegions; }
 			RNAPI GPUBuffer *GetResourceBuffer(size_t nameHash) const;
 			RNAPI Texture *GetResourceTexture(size_t nameHash) const;
 			RNAPI const std::vector<uint8> *GetUniform(size_t nameHash) const;
@@ -50,8 +57,7 @@ namespace RN
 			void Reset();
 
 			StrongRef<Shader> _shader;
-			DispatchSize _groupCount;
-			DispatchOffset _groupOffset;
+			std::vector<DispatchRegion> _dispatchRegions;
 			std::unordered_map<size_t, StrongRef<GPUBuffer>> _resourceBuffers;
 			std::unordered_map<size_t, StrongRef<Texture>> _resourceTextures;
 			std::unordered_map<size_t, std::vector<uint8>> _uniforms;
@@ -63,19 +69,24 @@ namespace RN
 		RNAPI void SetShader(Shader *shader);
 		RNAPI void SetGroupCount(uint32 x, uint32 y = 1, uint32 z = 1);
 		RNAPI void SetGroupOffset(uint32 x, uint32 y = 0, uint32 z = 0);
+		RNAPI void AddDispatchRegion(uint32 groupCountX, uint32 groupCountY = 1, uint32 groupCountZ = 1, uint32 groupOffsetX = 0, uint32 groupOffsetY = 0, uint32 groupOffsetZ = 0);
+		RNAPI void ClearDispatchRegions();
 		RNAPI void SetResourceBuffer(const String *name, GPUBuffer *buffer);
 		RNAPI void SetResourceTexture(const String *name, Texture *texture);
 		RNAPI void SetUniform(const String *name, const void *data, size_t size);
 
 		Shader *GetShader() const { return _shader; }
-		const DispatchSize &GetGroupCount() const { return _groupCount; }
-		const DispatchOffset &GetGroupOffset() const { return _groupOffset; }
+		RNAPI const DispatchSize &GetGroupCount() const;
+		RNAPI const DispatchOffset &GetGroupOffset() const;
+		const std::vector<DispatchRegion> &GetDispatchRegions() const { return _dispatchRegions; }
 		RNAPI void GetDispatchSnapshot(DispatchSnapshot &snapshot) const;
 
 	private:
+		DispatchRegion &GetPrimaryDispatchRegion();
+		bool HasOnlyDefaultDispatchRegion() const;
+
 		Shader *_shader;
-		DispatchSize _groupCount;
-		DispatchOffset _groupOffset;
+		std::vector<DispatchRegion> _dispatchRegions;
 		std::unordered_map<size_t, StrongRef<GPUBuffer>> _resourceBuffers;
 		std::unordered_map<size_t, StrongRef<Texture>> _resourceTextures;
 		std::unordered_map<size_t, std::vector<uint8>> _uniforms;

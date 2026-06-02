@@ -1812,34 +1812,39 @@ namespace RN
 			}
 		}
 
-		const ComputePass::DispatchSize &groupCount = computePass.computeDispatch.GetGroupCount();
-		const ComputePass::DispatchOffset &groupOffset = computePass.computeDispatch.GetGroupOffset();
 		const Shader::ComputeThreadsPerGroup &threadsPerGroup = computeShader->GetComputeThreadsPerGroup();
-		if(metalShader && metalShader->_computeDispatchOffsetsBufferIndex <= 30)
-		{
-			uint32 dispatchOffsets[8] = {
-				groupOffset.x * threadsPerGroup.x,
-				groupOffset.y * threadsPerGroup.y,
-				groupOffset.z * threadsPerGroup.z,
-				0,
-				groupOffset.x,
-				groupOffset.y,
-				groupOffset.z,
-				0
-			};
-			[encoder setBytes:dispatchOffsets length:sizeof(dispatchOffsets) atIndex:metalShader->_computeDispatchOffsetsBufferIndex];
-		}
-		else
-		{
-			RN_ASSERT(groupOffset.x == 0 && groupOffset.y == 0 && groupOffset.z == 0, "Metal compute dispatch base offsets require repacked compute shaders");
-		}
-
 		NSUInteger totalThreadsPerGroup = threadsPerGroup.x * threadsPerGroup.y * threadsPerGroup.z;
 		RN_DEBUG_ASSERT(totalThreadsPerGroup <= [computePass.computePipelineState->state maxTotalThreadsPerThreadgroup], "Compute pass thread group size exceeds Metal pipeline limit");
 
-		MTLSize threadgroupCount = MTLSizeMake(groupCount.x, groupCount.y, groupCount.z);
 		MTLSize threadsPerThreadgroup = MTLSizeMake(threadsPerGroup.x, threadsPerGroup.y, threadsPerGroup.z);
-		[encoder dispatchThreadgroups:threadgroupCount threadsPerThreadgroup:threadsPerThreadgroup];
+		const std::vector<ComputePass::DispatchRegion> &dispatchRegions = computePass.computeDispatch.GetDispatchRegions();
+		for(const ComputePass::DispatchRegion &dispatchRegion : dispatchRegions)
+		{
+			const ComputePass::DispatchSize &groupCount = dispatchRegion.groupCount;
+			const ComputePass::DispatchOffset &groupOffset = dispatchRegion.groupOffset;
+
+			if(metalShader && metalShader->_computeDispatchOffsetsBufferIndex <= 30)
+			{
+				uint32 dispatchOffsets[8] = {
+					groupOffset.x * threadsPerGroup.x,
+					groupOffset.y * threadsPerGroup.y,
+					groupOffset.z * threadsPerGroup.z,
+					0,
+					groupOffset.x,
+					groupOffset.y,
+					groupOffset.z,
+					0
+				};
+				[encoder setBytes:dispatchOffsets length:sizeof(dispatchOffsets) atIndex:metalShader->_computeDispatchOffsetsBufferIndex];
+			}
+			else
+			{
+				RN_ASSERT(groupOffset.x == 0 && groupOffset.y == 0 && groupOffset.z == 0, "Metal compute dispatch base offsets require repacked compute shaders");
+			}
+
+			MTLSize threadgroupCount = MTLSizeMake(groupCount.x, groupCount.y, groupCount.z);
+			[encoder dispatchThreadgroups:threadgroupCount threadsPerThreadgroup:threadsPerThreadgroup];
+		}
 		[encoder endEncoding];
 	}
 }

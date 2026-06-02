@@ -3046,16 +3046,24 @@ namespace RN
 		vk::CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineState->state);
 		vk::CmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, rootSignature->pipelineLayout, 0, 1, &descriptorSet, 0, NULL);
 
-		const ComputePass::DispatchSize &groupCount = computePass.computeDispatch.GetGroupCount();
-		const ComputePass::DispatchOffset &groupOffset = computePass.computeDispatch.GetGroupOffset();
-		if(groupOffset.x > 0 || groupOffset.y > 0 || groupOffset.z > 0)
+		bool dispatched = false;
+		const std::vector<ComputePass::DispatchRegion> &dispatchRegions = computePass.computeDispatch.GetDispatchRegions();
+		for(const ComputePass::DispatchRegion &dispatchRegion : dispatchRegions)
 		{
-			vk::CmdDispatchBase(commandBuffer, groupOffset.x, groupOffset.y, groupOffset.z, groupCount.x, groupCount.y, groupCount.z);
+			const ComputePass::DispatchSize &groupCount = dispatchRegion.groupCount;
+			const ComputePass::DispatchOffset &groupOffset = dispatchRegion.groupOffset;
+			if(groupOffset.x > 0 || groupOffset.y > 0 || groupOffset.z > 0)
+			{
+				vk::CmdDispatchBase(commandBuffer, groupOffset.x, groupOffset.y, groupOffset.z, groupCount.x, groupCount.y, groupCount.z);
+			}
+			else
+			{
+				vk::CmdDispatch(commandBuffer, groupCount.x, groupCount.y, groupCount.z);
+			}
+
+			dispatched = true;
 		}
-		else
-		{
-			vk::CmdDispatch(commandBuffer, groupCount.x, groupCount.y, groupCount.z);
-		}
+		if(!dispatched) return;
 
 		VkMemoryBarrier memoryBarrier = {};
 		memoryBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
