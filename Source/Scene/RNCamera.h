@@ -137,7 +137,7 @@ namespace RN
 		void UpdateFrustum();
 
 		Vector3 __ToWorld(const Vector3 &dir);
-		Matrix MakeShadowSplit(Camera *camera, Light *light, float cameraDistanceToCenter, float near, float far);
+		Matrix MakeShadowSplit(Camera *camera, const Quaternion &shadowRotation, float cameraDistanceToCenter, float near, float far);
 		void Initialize();
 
 		Flags _flags;

@@ -142,6 +142,19 @@ namespace RN
 		return SceneNode::GetForward();
 	}
 
+	Quaternion Light::GetShadowSplitRotation(const ShadowSplit &split) const
+	{
+		Quaternion rotation = GetWorldRotation();
+		if(split.rotationQuantizationDegrees <= 0.0f)
+			return rotation;
+
+		Vector3 euler = rotation.GetEulerAngle();
+		euler.x = roundf(euler.x / split.rotationQuantizationDegrees) * split.rotationQuantizationDegrees;
+		euler.y = roundf(euler.y / split.rotationQuantizationDegrees) * split.rotationQuantizationDegrees;
+		euler.z = roundf(euler.z / split.rotationQuantizationDegrees) * split.rotationQuantizationDegrees;
+		return Quaternion(euler);
+	}
+
 	void Light::UpdateCachedForward()
 	{
 		if(_lightType != Type::SpotLight) return; //Only cache it for spot lights!
@@ -574,17 +587,18 @@ namespace RN
 						far = _shadowParameter.splits[i].maxDistance;
 					}
 
+					const Quaternion shadowRotation = GetShadowSplitRotation(_shadowParameter.splits[i]);
 					Camera *tempcam = _shadowDepthCameras.GetObjectAtIndex<Camera>(i);
-					tempcam->SetWorldRotation(GetWorldRotation());
+					tempcam->SetWorldRotation(shadowRotation);
 
-					_shadowCameraMatrices[i] = tempcam->MakeShadowSplit(_shadowTarget, this, _shadowParameter.directionalShadowDistance, near, far);
+					_shadowCameraMatrices[i] = tempcam->MakeShadowSplit(_shadowTarget, shadowRotation, _shadowParameter.directionalShadowDistance, near, far);
 
 					near = far;
 
 					if(_multiviewShadowParentCamera && i == _shadowParameter.splits.size() - 1)
 					{
-						_multiviewShadowParentCamera->SetWorldRotation(GetWorldRotation());
-						_multiviewShadowParentCamera->MakeShadowSplit(_shadowTarget, this, _shadowParameter.directionalShadowDistance, _shadowTarget->GetClipNear(), far);
+						_multiviewShadowParentCamera->SetWorldRotation(shadowRotation);
+						_multiviewShadowParentCamera->MakeShadowSplit(_shadowTarget, shadowRotation, _shadowParameter.directionalShadowDistance, _shadowTarget->GetClipNear(), far);
 					}
 				}
 			}

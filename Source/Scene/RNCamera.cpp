@@ -239,7 +239,7 @@ namespace RN
 		}
 	}
 
-	Matrix Camera::MakeShadowSplit(Camera *camera, Light *light, float cameraDistanceToCenter, float near, float far)
+	Matrix Camera::MakeShadowSplit(Camera *camera, const Quaternion &shadowRotation, float cameraDistanceToCenter, float near, float far)
 	{
 		Rect frame = _renderPass->GetFrame();
 
@@ -256,10 +256,10 @@ namespace RN
 		Vector3 pixelsize = Vector3(Vector2(dist * 2.0f), 1.0f) / Vector3(frame.width, frame.height, 1.0f);
 
 		//Place the light camera above the splits center
-		Vector3 pos = center - light->GetForward() * cameraDistanceToCenter;
+		Vector3 pos = center - shadowRotation.GetRotatedVector(Vector3(0.0f, 0.0f, -1.0f)) * cameraDistanceToCenter;
 
 		//Transform the position to light space
-		Matrix rot = light->GetWorldRotation().GetRotationMatrix();
+		Matrix rot = shadowRotation.GetRotationMatrix();
 		pos = rot.GetInverse() * pos;
 
 		//Snap to the pixel grid

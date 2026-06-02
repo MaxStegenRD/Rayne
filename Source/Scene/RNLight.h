@@ -17,10 +17,11 @@ namespace RN
 {
 	struct ShadowSplit
 	{
-		ShadowSplit(size_t updateInterval = 1, size_t updateOffset = 0, float biasFactor = 2.0f, float biasUnit = 512.0f, float distance = 0.0f) :
+		ShadowSplit(size_t updateInterval = 1, size_t updateOffset = 0, float biasFactor = 2.0f, float biasUnit = 512.0f, float distance = 0.0f, float rotationQuantizationDegrees = 0.0f) :
 			biasFactor(biasFactor),
 			biasUnits(biasUnit),
 			maxDistance(distance),
+			rotationQuantizationDegrees(rotationQuantizationDegrees),
 			updateInterval(updateInterval),
 			updateOffset(updateOffset)
 		{}
@@ -28,6 +29,7 @@ namespace RN
 		float biasFactor;
 		float biasUnits;
 		float maxDistance;
+		float rotationQuantizationDegrees;
 		size_t updateInterval;
 		size_t updateOffset;
 	};
@@ -134,6 +136,7 @@ namespace RN
 		void UpdateCachedForward();
 		void UpdateCachedAngleData();
 		void UpdateBoundsForType();
+		Quaternion GetShadowSplitRotation(const ShadowSplit &split) const;
 		void RemoveShadowCameras();
 		void SetRangeInternal(float range);
 
