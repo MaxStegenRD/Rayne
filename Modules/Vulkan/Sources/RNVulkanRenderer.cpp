@@ -3047,7 +3047,15 @@ namespace RN
 		vk::CmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, rootSignature->pipelineLayout, 0, 1, &descriptorSet, 0, NULL);
 
 		const ComputePass::DispatchSize &groupCount = computePass.computeDispatch.GetGroupCount();
-		vk::CmdDispatch(commandBuffer, groupCount.x, groupCount.y, groupCount.z);
+		const ComputePass::DispatchOffset &groupOffset = computePass.computeDispatch.GetGroupOffset();
+		if(groupOffset.x > 0 || groupOffset.y > 0 || groupOffset.z > 0)
+		{
+			vk::CmdDispatchBase(commandBuffer, groupOffset.x, groupOffset.y, groupOffset.z, groupCount.x, groupCount.y, groupCount.z);
+		}
+		else
+		{
+			vk::CmdDispatch(commandBuffer, groupCount.x, groupCount.y, groupCount.z);
+		}
 
 		VkMemoryBarrier memoryBarrier = {};
 		memoryBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
