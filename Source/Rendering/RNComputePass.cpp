@@ -34,6 +34,7 @@ namespace RN
 	{
 		_shader = nullptr;
 		_groupCount = DispatchSize();
+		_groupOffset = DispatchOffset();
 		_resourceBuffers.clear();
 		_resourceTextures.clear();
 		_uniforms.clear();
@@ -67,6 +68,15 @@ namespace RN
 		_groupCount.x = x;
 		_groupCount.y = y;
 		_groupCount.z = z;
+	}
+
+	void ComputePass::SetGroupOffset(uint32 x, uint32 y, uint32 z)
+	{
+		if(_groupOffset.x == x && _groupOffset.y == y && _groupOffset.z == z) return;
+
+		_groupOffset.x = x;
+		_groupOffset.y = y;
+		_groupOffset.z = z;
 	}
 
 	void ComputePass::SetResourceBuffer(const String *name, GPUBuffer *buffer)
@@ -108,6 +118,7 @@ namespace RN
 		snapshot.Reset();
 		snapshot._shader = _shader;
 		snapshot._groupCount = _groupCount;
+		snapshot._groupOffset = _groupOffset;
 		snapshot._resourceBuffers = _resourceBuffers;
 		snapshot._resourceTextures = _resourceTextures;
 		snapshot._uniforms = _uniforms;
