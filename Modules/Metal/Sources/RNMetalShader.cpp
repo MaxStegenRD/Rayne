@@ -17,7 +17,8 @@ namespace RN
 	MetalShader::MetalShader(ShaderLibrary *library, Type type, bool hasInstancing, const Array *samplers, const Shader::Options *options, const ComputeThreadsPerGroup &computeThreadsPerGroup, void *shader, MetalStateCoordinator *coordinator) :
 		Shader(library, type, hasInstancing, options),
 		_shader(shader),
-		_coordinator(coordinator)
+		_coordinator(coordinator),
+		_computeDispatchOffsetsBufferIndex(static_cast<uint32>(-1))
 	{
 		// We don't need to retain the shader because it was created
 		// with [newFunctionWithName:] which returns an explicitly
@@ -115,6 +116,12 @@ namespace RN
 				{
 					//RNDebug("buffer: " << [[argument name] UTF8String]);
 					String *argumentName = RNSTR([[argument name] UTF8String]);
+					if(argumentName->IsEqual(RNCSTR("rn_DispatchOffsets")))
+					{
+						_computeDispatchOffsetsBufferIndex = static_cast<uint32>([argument index]);
+						break;
+					}
+
 					MTLStructType *structType = [argument bufferStructType];
 					size_t numberOfElements = 0;
 					Array *uniformDescriptors = GetBufferStructElements(structType, numberOfElements);

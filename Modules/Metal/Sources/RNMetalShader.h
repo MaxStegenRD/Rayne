@@ -38,6 +38,7 @@ namespace RN
 		std::vector<uint16> _samplerToIndexMapping;
 		const Array *_rnSamplers; //TODO: Fix naming...
 		MetalStateCoordinator *_coordinator;
+		uint32 _computeDispatchOffsetsBufferIndex;
 		
 		uint32 _hasInputVertexAttribute[static_cast<uint32>(Mesh::VertexAttribute::Feature::Custom) + 1];
 

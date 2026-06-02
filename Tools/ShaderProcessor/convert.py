@@ -8,6 +8,8 @@ import pathlib
 import concurrent.futures
 import re
 
+METAL_FORMATS = ('metal_macos', 'metal_ios', 'metal_ios_sim', 'metal_visionos', 'metal_visionos_sim')
+
 
 def running_under_xcode():
     xcode_env_keys = (
@@ -29,12 +31,16 @@ def build_metal_commands(sdk, permutation_out_file, bitcode_out_file, lib_out_fi
     commands.append(['xcrun', '-sdk', sdk, 'metallib', bitcode_out_file, '-o', lib_out_file])
     return commands
 
-def execute_command_sequence(commands, cleanup_paths, expected_outputs):
-    for command in commands:
+def execute_command_sequence(commands, cleanup_paths, expected_outputs, metal_dispatch_base_patch_file):
+    for index, command in enumerate(commands):
         print(command)
         result = subprocess.run(command)
         if result.returncode != 0:
             raise RuntimeError(f"Command failed with exit code {result.returncode}: {command}")
+
+        if index == 0 and metal_dispatch_base_patch_file:
+            print('Patch Metal compute dispatch base offsets')
+            patch_metal_compute_dispatch_base(metal_dispatch_base_patch_file)
 
     for output in expected_outputs:
         if not os.path.isfile(output):
@@ -68,6 +74,50 @@ def removePermutations(directory, pattern):
     pathlist = pathlib.Path(directory).glob(pattern)
     for path in pathlist:
         path.unlink()
+
+def patch_metal_compute_dispatch_base(permutation_out_file):
+    dispatch_offsets_argument_name = 'rn_DispatchOffsets'
+    max_buffer_index = 30
+    buffer_index_pattern = re.compile(r'\[\[\s*buffer\s*\(\s*([0-9]+)\s*\)\s*\]\]')
+    kernel_pattern = re.compile(r'(kernel\s+void\s+\w+\s*\()(?P<arguments>.*?)(\)\s*\{)', re.MULTILINE | re.DOTALL)
+
+    with open(permutation_out_file, 'r') as file:
+        source = file.read()
+
+    if dispatch_offsets_argument_name in source:
+        return
+
+    existing_buffer_indices = [int(index) for index in buffer_index_pattern.findall(source)]
+    dispatch_offsets_buffer_index = (max(existing_buffer_indices) + 1) if existing_buffer_indices else 0
+    if dispatch_offsets_buffer_index > max_buffer_index:
+        raise RuntimeError(f"Metal compute shader '{permutation_out_file}' has no free buffer slot for dispatch base offsets")
+
+    def get_builtin_argument_name(arguments, builtin_name):
+        match = re.search(r'\b(\w+)\s*\[\[\s*' + re.escape(builtin_name) + r'\s*\]\]', arguments)
+        return match.group(1) if match else None
+
+    def patch_kernel(match):
+        arguments = match.group('arguments')
+        thread_position_name = get_builtin_argument_name(arguments, 'thread_position_in_grid')
+        threadgroup_position_name = get_builtin_argument_name(arguments, 'threadgroup_position_in_grid')
+        if not thread_position_name and not threadgroup_position_name:
+            return match.group(0)
+
+        patched_arguments = arguments.rstrip() + f', constant uint4* {dispatch_offsets_argument_name} [[buffer({dispatch_offsets_buffer_index})]]'
+        offset_lines = []
+        if thread_position_name:
+            offset_lines.append(f'    {thread_position_name} += {dispatch_offsets_argument_name}[0].xyz;')
+        if threadgroup_position_name:
+            offset_lines.append(f'    {threadgroup_position_name} += {dispatch_offsets_argument_name}[1].xyz;')
+
+        return match.group(1) + patched_arguments + match.group(3) + '\n' + '\n'.join(offset_lines)
+
+    patched_source = kernel_pattern.sub(patch_kernel, source)
+    if patched_source == source:
+        return
+
+    with open(permutation_out_file, 'w') as file:
+        file.write(patched_source)
 
 def get_shader_type_short(shaderTypeName):
     if shaderTypeName == 'vertex':
@@ -295,7 +345,7 @@ def main():
                 if outFormat == 'spirv':
                     compilerOutFormat = 'spirv'
                     destinationShaderFile['file~vulkan'] = resourceRelativePath + '/' + outputFileName + '.' + outFormat
-                elif outFormat == 'metal_macos' or outFormat == 'metal_ios' or outFormat == 'metal_ios_sim' or outFormat == 'metal_visionos' or outFormat == 'metal_visionos_sim':
+                elif outFormat in METAL_FORMATS:
                     outFileFormat = 'metal'
                     if outFormat == 'metal_macos':
                         compilerOutFormat = 'msl_macos'
@@ -308,7 +358,7 @@ def main():
                         destinationShaderFile['file~metal'] = resourceRelativePath + '/' + outputFileName + '.metal'
 
                 if not skipShaderCompiling:
-                    if outFormat == 'metal_macos' or outFormat == 'metal_ios' or outFormat == 'metal_ios_sim' or outFormat == 'metal_visionos' or outFormat == 'metal_visionos_sim':
+                    if outFormat in METAL_FORMATS:
                         removePermutations(outDirName, outputFileName + ".*.metal")
                         removePermutations(outDirName, outputFileName + ".*.metallib")
                     else:
@@ -326,7 +376,7 @@ def main():
                             parameterList.append("true")
 
                         parameterList.append("-DRN_RENDERER_VULKAN=1")
-                    elif outFormat == 'metal_macos' or outFormat == 'metal_ios' or outFormat == 'metal_ios_sim' or outFormat == 'metal_visionos' or outFormat == 'metal_visionos_sim':
+                    elif outFormat in METAL_FORMATS:
                         if "has_16bit" in shader and shader["has_16bit"] == True:
                             parameterList.append("--16bittypes")
                             parameterList.append("true")
@@ -341,17 +391,22 @@ def main():
                         job_commands = [parameterList]
                         job_cleanup = list()
                         expected_output = permutationOutFile
+                        metalDispatchBasePatchFile = None
 
                         if outFormat in metal_sdk_map and platform.system() == 'Darwin':
                             bitcodeOutFile = permutationOutFile + '.air'
                             libOutFile = os.path.join(outDirName, outputFileName + '.' + str(permutationDict["identifier"]) + '.metallib')
                             sdk = metal_sdk_map[outFormat]
+                            if shaderType == 'cs':
+                                metalDispatchBasePatchFile = permutationOutFile
                             metal_commands = build_metal_commands(sdk, permutationOutFile, bitcodeOutFile, libOutFile, enableDebugSymbols)
                             job_commands.extend(metal_commands)
                             job_cleanup.extend([permutationOutFile, bitcodeOutFile])
                             expected_output = libOutFile
+                        elif outFormat in METAL_FORMATS and shaderType == 'cs':
+                            metalDispatchBasePatchFile = permutationOutFile
 
-                        command_jobs.append((job_commands, job_cleanup, [expected_output]))
+                        command_jobs.append((job_commands, job_cleanup, [expected_output], metalDispatchBasePatchFile))
 
             destinationJson.append(destinationShaderFile)
 
@@ -366,7 +421,7 @@ def main():
         cpu_workers = min(cpu_workers, 1)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=cpu_workers) as executor:
-        futures = [executor.submit(execute_command_sequence, commands, cleanup_paths, outputs) for commands, cleanup_paths, outputs in command_jobs]
+        futures = [executor.submit(execute_command_sequence, commands, cleanup_paths, outputs, metalDispatchBasePatchFile) for commands, cleanup_paths, outputs, metalDispatchBasePatchFile in command_jobs]
         for future in concurrent.futures.as_completed(futures):
             future.result()
 
