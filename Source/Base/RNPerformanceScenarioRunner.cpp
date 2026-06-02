@@ -556,6 +556,11 @@ namespace RN
 		return iterator->second(context);
 	}
 
+	bool PerformanceCommandContext::EvaluateCondition(const String *name) const
+	{
+		return _runner->EvaluateCondition(name, *this);
+	}
+
 	void PerformanceScenarioRunner::Update(float delta)
 	{
 		if(!_scenario || _state == State::Disabled || _state == State::Completed || _state == State::Failed)

@@ -319,10 +319,7 @@ namespace RN
 			return _runner->GetTarget<T>(name);
 		}
 
-		RNAPI bool EvaluateCondition(const String *name) const
-		{
-			return _runner->EvaluateCondition(name, *this);
-		}
+		RNAPI bool EvaluateCondition(const String *name) const;
 
 	private:
 		friend class PerformanceScenarioRunner;
