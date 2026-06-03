@@ -253,6 +253,17 @@ namespace RN
 		return Vector3(velocity.GetX(), velocity.GetY(), velocity.GetZ());
 	}
 
+	Vector3 JoltDynamicBody::GetPointVelocity(const Vector3 &worldPosition) const
+	{
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyLockRead lock(physics->GetBodyLockInterface(), *_actor);
+		if(!lock.Succeeded()) return Vector3();
+
+		const JPH::Body &body = lock.GetBody();
+		JPH::Vec3 velocity = body.GetPointVelocity(JPH::RVec3Arg(worldPosition.x, worldPosition.y, worldPosition.z));
+		return Vector3(velocity.GetX(), velocity.GetY(), velocity.GetZ());
+	}
+
 	void JoltDynamicBody::SetEnableSleeping(bool sleeping)
 	{
 		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();

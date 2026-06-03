@@ -77,6 +77,7 @@ namespace RN
 
 		JTAPI Vector3 GetLinearVelocity() const;
 		JTAPI Vector3 GetAngularVelocity() const;
+		JTAPI Vector3 GetPointVelocity(const Vector3 &worldPosition) const;
 
 		JTAPI void SetEnableSleeping(bool enable);
 		JTAPI void SetAllowSleeping(bool allow);
