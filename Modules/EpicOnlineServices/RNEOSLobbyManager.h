@@ -41,6 +41,7 @@ typedef struct _tagEOS_Lobby_LobbyMemberStatusReceivedCallbackInfo EOS_Lobby_Lob
 typedef struct _tagEOS_RTCAudio_AudioBeforeSendCallbackInfo EOS_RTCAudio_AudioBeforeSendCallbackInfo;
 typedef struct _tagEOS_RTCAudio_AudioBeforeRenderCallbackInfo EOS_RTCAudio_AudioBeforeRenderCallbackInfo;
 typedef struct _tagEOS_RTCAudio_UpdateSendingCallbackInfo EOS_RTCAudio_UpdateSendingCallbackInfo;
+typedef struct _tagEOS_RTCAudio_OnSetInputDeviceSettingsCallbackInfo EOS_RTCAudio_OnSetInputDeviceSettingsCallbackInfo;
 
 typedef uint64_t EOS_NotificationId;
 
@@ -228,6 +229,7 @@ namespace RN
 		static void LobbyAudioOnBeforeSendCallback(const EOS_RTCAudio_AudioBeforeSendCallbackInfo *Data);
 		static void LobbyAudioOnBeforeRenderCallback(const EOS_RTCAudio_AudioBeforeRenderCallbackInfo *Data);
 		static void LobbyAudioOnUpdateSendingCallback(const EOS_RTCAudio_UpdateSendingCallbackInfo *Data);
+		static void LobbyAudioOnSetInputDeviceSettingsCallback(const EOS_RTCAudio_OnSetInputDeviceSettingsCallbackInfo *Data);
 
 		EOS_HLobby _lobbyInterfaceHandle;
 		EOS_HRTC _rtcInterfaceHandle;
