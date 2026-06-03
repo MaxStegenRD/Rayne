@@ -407,7 +407,7 @@ namespace RN
 		{
 			_deviceType = DeviceType::OculusQuestPro;
 		}
-		else if(std::strcmp(_internals->systemProperties.systemName, "Meta Quest 3") == 0)
+		else if(std::strcmp(_internals->systemProperties.systemName, "Meta Quest 3") == 0 || std::strcmp(_internals->systemProperties.systemName, "Meta Quest 3S") == 0)
 		{
 			_deviceType = DeviceType::OculusQuest3;
 		}
