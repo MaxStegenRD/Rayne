@@ -42,6 +42,9 @@ namespace RN
 
 		JTAPI void SetGravity(const Vector3 &gravity);
 		JTAPI Vector3 GetGravity();
+		JTAPI void SetDefaultDynamicBodyDamping(float linear, float angular);
+		JTAPI float GetDefaultDynamicBodyLinearDamping() const { return _defaultDynamicBodyLinearDamping; }
+		JTAPI float GetDefaultDynamicBodyAngularDamping() const { return _defaultDynamicBodyAngularDamping; }
 
 		JTAPI void Update(float delta) final;
 		JTAPI void WillUpdate(float delta) final;
@@ -81,6 +84,8 @@ namespace RN
 		static JoltWorld *_sharedInstance;
 
 		JPH::PhysicsSystem *_physicsSystem;
+		float _defaultDynamicBodyLinearDamping;
+		float _defaultDynamicBodyAngularDamping;
 
 		PIMPL<JoltInternals> _internals;
 

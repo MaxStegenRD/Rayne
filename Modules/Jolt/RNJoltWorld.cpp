@@ -17,7 +17,7 @@ namespace RN
 	JoltWorld *JoltWorld::_sharedInstance = nullptr;
 
 	JoltWorld::JoltWorld(const Vector3 &gravity, uint32 maxBodies, uint32 maxBodyPairs, uint32 maxContactConstraints) :
-		_substeps(1), _paused(false), _isSimulating(false), _isLoadingLevel(false)
+		_defaultDynamicBodyLinearDamping(0.05f), _defaultDynamicBodyAngularDamping(0.05f), _substeps(1), _paused(false), _isSimulating(false), _isLoadingLevel(false)
 	{
 		RN_ASSERT(!_sharedInstance, "There can only be one Jolt instance at a time!");
 		_sharedInstance = this;
@@ -73,6 +73,14 @@ namespace RN
 	{
 		JPH::Vec3 gravity = _physicsSystem->GetGravity();
 		return Vector3(gravity.GetX(), gravity.GetY(), gravity.GetZ());
+	}
+
+	void JoltWorld::SetDefaultDynamicBodyDamping(float linear, float angular)
+	{
+		if(linear < 0.0f) linear = 0.0f;
+		if(angular < 0.0f) angular = 0.0f;
+		_defaultDynamicBodyLinearDamping = linear;
+		_defaultDynamicBodyAngularDamping = angular;
 	}
 
 	void JoltWorld::SetSubsteps(uint8 substeps)

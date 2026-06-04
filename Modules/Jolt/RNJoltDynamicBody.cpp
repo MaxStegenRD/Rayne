@@ -27,6 +27,8 @@ namespace RN
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 
 		JPH::BodyCreationSettings settings(shape->GetJoltShape(), JPH::RVec3Arg(0.0f, 0.0f, 0.0f), JPH::QuatArg(0.0f, 0.0f, 0.0f, 1.0f), JPH::EMotionType::Dynamic, world->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1));
+		settings.mLinearDamping = world->GetDefaultDynamicBodyLinearDamping();
+		settings.mAngularDamping = world->GetDefaultDynamicBodyAngularDamping();
 		settings.mMassPropertiesOverride.mMass = mass;
 		settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
 		settings.mMotionQuality = JPH::EMotionQuality::LinearCast;
