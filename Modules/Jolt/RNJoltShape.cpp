@@ -13,6 +13,7 @@
 
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
+#include <Jolt/Physics/Collision/Shape/ConvexShape.h>
 #include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
 #include <Jolt/Physics/Collision/Shape/CylinderShape.h>
 #include <Jolt/Physics/Collision/Shape/MeshShape.h>
@@ -52,6 +53,17 @@ namespace RN
 
 		JPH::Vec3 center = _shape->GetCenterOfMass();
 		return Vector3(center.GetX(), center.GetY(), center.GetZ());
+	}
+
+	void JoltShape::SetMass(float mass)
+	{
+		if(!_shape || mass <= k::EpsilonFloat || _shape->GetType() != JPH::EShapeType::Convex) return;
+
+		JPH::MassProperties properties = _shape->GetMassProperties();
+		if(properties.mMass <= k::EpsilonFloat) return;
+
+		JPH::ConvexShape *convexShape = static_cast<JPH::ConvexShape *>(_shape);
+		convexShape->SetDensity(convexShape->GetDensity() * mass / properties.mMass);
 	}
 
 	void JoltShape::SetPose(RN::Vector3 positionOffset, RN::Quaternion rotationOffset)
@@ -121,7 +133,6 @@ namespace RN
 		JoltWheelCylinderShape *shape = new JoltWheelCylinderShape(radius, height, convexRadius);
 		return shape->Autorelease();
 	}
-
 
 	JoltTriangleMeshShape::JoltTriangleMeshShape(Mesh *mesh, Vector3 scale, bool wantsDoubleSided)
 	{
@@ -313,6 +324,26 @@ namespace RN
 		_shapes.push_back(shape->Retain());
 		JPH::MutableCompoundShape *compoundShape = static_cast<JPH::MutableCompoundShape *>(_shape);
 		compoundShape->AddShape(JPH::Vec3Arg(position.x, position.y, position.z), JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), shape->GetJoltShape(), userData);
+		UpdateCenterOfMass();
+	}
+
+	void JoltCompoundShape::SetMass(float mass)
+	{
+		if(mass <= k::EpsilonFloat) return;
+
+		JPH::MassProperties properties = _shape->GetMassProperties();
+		if(properties.mMass <= k::EpsilonFloat) return;
+
+		float scale = mass / properties.mMass;
+		for(JoltShape *shape : _shapes)
+		{
+			if(!shape) continue;
+
+			JPH::MassProperties childProperties = shape->GetJoltShape()->GetMassProperties();
+			if(childProperties.mMass <= k::EpsilonFloat) continue;
+			shape->SetMass(childProperties.mMass * scale);
+		}
+
 		UpdateCenterOfMass();
 	}
 
