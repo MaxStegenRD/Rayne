@@ -241,15 +241,13 @@ namespace RN
 			info1.linearVelocity = velocity1;
 			info1.otherLinearVelocity = velocity2;
 			info1.distance = 0.0f;
-			info1.position = Vector3();
-			info1.normal = Vector3();
+			FillContactManifoldInfo(info1, inManifold, inBody1, inBody2, true);
 			info2.node = co1 ? co1->GetParent() : nullptr;
 			info2.collisionObject = co1;
 			info2.linearVelocity = velocity2;
 			info2.otherLinearVelocity = velocity1;
 			info2.distance = 0.0f;
-			info2.position = Vector3();
-			info2.normal = Vector3();
+			FillContactManifoldInfo(info2, inManifold, inBody2, inBody1, false);
 			JoltContactInfoShapeData::FillForBody(info1, inBody2, inManifold.mSubShapeID2);
 			JoltContactInfoShapeData::FillForBody(info2, inBody1, inManifold.mSubShapeID1);
 			if(co1) co1->NotifyContact(info1, JoltCollisionObject::ContactState::Begin);
@@ -275,15 +273,13 @@ namespace RN
 			info1.linearVelocity = velocity1;
 			info1.otherLinearVelocity = velocity2;
 			info1.distance = 0.0f;
-			info1.position = Vector3();
-			info1.normal = Vector3();
+			FillContactManifoldInfo(info1, inManifold, inBody1, inBody2, true);
 			info2.node = co1 ? co1->GetParent() : nullptr;
 			info2.collisionObject = co1;
 			info2.linearVelocity = velocity2;
 			info2.otherLinearVelocity = velocity1;
 			info2.distance = 0.0f;
-			info2.position = Vector3();
-			info2.normal = Vector3();
+			FillContactManifoldInfo(info2, inManifold, inBody2, inBody1, false);
 			JoltContactInfoShapeData::FillForBody(info1, inBody2, inManifold.mSubShapeID2);
 			JoltContactInfoShapeData::FillForBody(info2, inBody1, inManifold.mSubShapeID1);
 			if(co1) co1->NotifyContact(info1, JoltCollisionObject::ContactState::Continue);
@@ -297,6 +293,61 @@ namespace RN
 		}
 
 	private:
+		static Vector3 GetBodyContactPointVelocity(const JPH::Body &body, const Vector3 &position)
+		{
+			JPH::Vec3 velocity = body.GetPointVelocity(JPH::RVec3Arg(position.x, position.y, position.z));
+			return Vector3(velocity.GetX(), velocity.GetY(), velocity.GetZ());
+		}
+
+		static void FillContactManifoldInfo(JoltContactInfo &info, const JPH::ContactManifold &manifold, const JPH::Body &body, const JPH::Body &otherBody, bool isFirstBody)
+		{
+			JPH::Vec3 normal = manifold.mWorldSpaceNormal;
+			if(!isFirstBody) normal = -normal;
+			info.normal = Vector3(normal.GetX(), normal.GetY(), normal.GetZ());
+			uint32 contactPointCount = static_cast<uint32>(manifold.mRelativeContactPointsOn1.size());
+			if(contactPointCount == 0)
+			{
+				info.position = Vector3(static_cast<float>(manifold.mBaseOffset.GetX()), static_cast<float>(manifold.mBaseOffset.GetY()), static_cast<float>(manifold.mBaseOffset.GetZ()));
+				info.contactPatchRadius = 0.0f;
+				info.relativeContactVelocity = GetBodyContactPointVelocity(body, info.position) - GetBodyContactPointVelocity(otherBody, info.position);
+				return;
+			}
+
+			double centerX = 0.0;
+			double centerY = 0.0;
+			double centerZ = 0.0;
+			for(uint32 i = 0; i < contactPointCount; i += 1)
+			{
+				JPH::RVec3 point1 = manifold.GetWorldSpaceContactPointOn1(i);
+				JPH::RVec3 point2 = manifold.GetWorldSpaceContactPointOn2(i);
+				centerX += (point1.GetX() + point2.GetX()) * 0.5;
+				centerY += (point1.GetY() + point2.GetY()) * 0.5;
+				centerZ += (point1.GetZ() + point2.GetZ()) * 0.5;
+			}
+
+			double inversePointCount = 1.0 / static_cast<double>(contactPointCount);
+			centerX *= inversePointCount;
+			centerY *= inversePointCount;
+			centerZ *= inversePointCount;
+			info.position = Vector3(static_cast<float>(centerX), static_cast<float>(centerY), static_cast<float>(centerZ));
+
+			double patchRadiusSquared = 0.0;
+			for(uint32 i = 0; i < contactPointCount; i += 1)
+			{
+				JPH::RVec3 point1 = manifold.GetWorldSpaceContactPointOn1(i);
+				JPH::RVec3 point2 = manifold.GetWorldSpaceContactPointOn2(i);
+				double pointX = (point1.GetX() + point2.GetX()) * 0.5;
+				double pointY = (point1.GetY() + point2.GetY()) * 0.5;
+				double pointZ = (point1.GetZ() + point2.GetZ()) * 0.5;
+				double offsetX = pointX - centerX;
+				double offsetY = pointY - centerY;
+				double offsetZ = pointZ - centerZ;
+				patchRadiusSquared = std::max(patchRadiusSquared, offsetX * offsetX + offsetY * offsetY + offsetZ * offsetZ);
+			}
+			info.contactPatchRadius = static_cast<float>(std::sqrt(patchRadiusSquared));
+			info.relativeContactVelocity = GetBodyContactPointVelocity(body, info.position) - GetBodyContactPointVelocity(otherBody, info.position);
+		}
+
 		struct CountedBodyPair
 		{
 			uint32 body1;

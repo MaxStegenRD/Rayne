@@ -24,7 +24,9 @@ namespace RN
 		Vector3 normal;
 		Vector3 linearVelocity;
 		Vector3 otherLinearVelocity;
+		Vector3 relativeContactVelocity;
 		float distance = 0.0f;
+		float contactPatchRadius = 0.0f;
 		uint64 subShapeUserData = 0;
 		uint32 compoundChildIndex = 0xffffffffU;
 		uint32 compoundChildUserData = 0;
