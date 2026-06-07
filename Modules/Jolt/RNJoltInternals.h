@@ -38,25 +38,35 @@ namespace RN
 	public:
 		static void FillForBody(JoltContactInfo &info, const JPH::Body &body, const JPH::SubShapeID &subShapeID)
 		{
+			FillShapeData(body, subShapeID, info.subShapeUserData, info.compoundChildIndex, info.compoundChildUserData);
+		}
+
+		static void FillForOwnBody(JoltContactInfo &info, const JPH::Body &body, const JPH::SubShapeID &subShapeID)
+		{
+			FillShapeData(body, subShapeID, info.ownSubShapeUserData, info.ownCompoundChildIndex, info.ownCompoundChildUserData);
+		}
+
+	private:
+		static void FillShapeData(const JPH::Body &body, const JPH::SubShapeID &subShapeID, uint64 &subShapeUserData, uint32 &compoundChildIndex, uint32 &compoundChildUserData)
+		{
 			const JPH::Shape *bodyShape = body.GetShape();
 			const JPH::Shape *shape = GetUndecoratedShape(bodyShape);
 			if(!bodyShape || !shape) return;
 
-			info.subShapeUserData = bodyShape->GetSubShapeUserData(subShapeID);
+			subShapeUserData = bodyShape->GetSubShapeUserData(subShapeID);
 			if(shape->GetType() != JPH::EShapeType::Compound) return;
 
 			const JPH::CompoundShape *compoundShape = static_cast<const JPH::CompoundShape *>(shape);
 			if(!compoundShape->IsSubShapeIDValid(subShapeID)) return;
 
 			JPH::SubShapeID remainder;
-			uint32 compoundChildIndex = compoundShape->GetSubShapeIndexFromID(subShapeID, remainder);
-			if(compoundChildIndex >= compoundShape->GetNumSubShapes()) return;
+			uint32 childIndex = compoundShape->GetSubShapeIndexFromID(subShapeID, remainder);
+			if(childIndex >= compoundShape->GetNumSubShapes()) return;
 
-			info.compoundChildIndex = compoundChildIndex;
-			info.compoundChildUserData = compoundShape->GetCompoundUserData(compoundChildIndex);
+			compoundChildIndex = childIndex;
+			compoundChildUserData = compoundShape->GetCompoundUserData(childIndex);
 		}
 
-	private:
 		static const JPH::Shape *GetUndecoratedShape(const JPH::Shape *shape)
 		{
 			while(shape && shape->GetType() == JPH::EShapeType::Decorated)
@@ -249,7 +259,9 @@ namespace RN
 			info2.distance = 0.0f;
 			FillContactManifoldInfo(info2, inManifold, inBody2, inBody1, false);
 			JoltContactInfoShapeData::FillForBody(info1, inBody2, inManifold.mSubShapeID2);
+			JoltContactInfoShapeData::FillForOwnBody(info1, inBody1, inManifold.mSubShapeID1);
 			JoltContactInfoShapeData::FillForBody(info2, inBody1, inManifold.mSubShapeID1);
+			JoltContactInfoShapeData::FillForOwnBody(info2, inBody2, inManifold.mSubShapeID2);
 			if(co1) co1->NotifyContact(info1, JoltCollisionObject::ContactState::Begin);
 			if(co2) co2->NotifyContact(info2, JoltCollisionObject::ContactState::Begin);
 		}
@@ -281,7 +293,9 @@ namespace RN
 			info2.distance = 0.0f;
 			FillContactManifoldInfo(info2, inManifold, inBody2, inBody1, false);
 			JoltContactInfoShapeData::FillForBody(info1, inBody2, inManifold.mSubShapeID2);
+			JoltContactInfoShapeData::FillForOwnBody(info1, inBody1, inManifold.mSubShapeID1);
 			JoltContactInfoShapeData::FillForBody(info2, inBody1, inManifold.mSubShapeID1);
+			JoltContactInfoShapeData::FillForOwnBody(info2, inBody2, inManifold.mSubShapeID2);
 			if(co1) co1->NotifyContact(info1, JoltCollisionObject::ContactState::Continue);
 			if(co2) co2->NotifyContact(info2, JoltCollisionObject::ContactState::Continue);
 		}

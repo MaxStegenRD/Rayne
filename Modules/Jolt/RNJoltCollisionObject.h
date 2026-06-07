@@ -30,6 +30,9 @@ namespace RN
 		uint64 subShapeUserData = 0;
 		uint32 compoundChildIndex = 0xffffffffU;
 		uint32 compoundChildUserData = 0;
+		uint64 ownSubShapeUserData = 0;
+		uint32 ownCompoundChildIndex = 0xffffffffU;
+		uint32 ownCompoundChildUserData = 0;
 	};
 
 	class JoltCollisionObject : public SceneNodeAttachment
