@@ -136,10 +136,20 @@ namespace RN
 
 		if(_externalSupportAnchorValid && _externalSupportConstraint && _externalSupportBodyID == bodyID && _externalSupportLocalPosition == localPosition && _externalSupportAnchorMaxForce == maxForce)
 		{
+			if(IsExternalSupportBodyUsable(bodyID))
+			{
+				return;
+			}
+
+			ClearExternalSupportAnchor();
 			return;
 		}
 
 		ClearExternalSupportAnchor();
+		if(!IsExternalSupportBodyUsable(bodyID))
+		{
+			return;
+		}
 
 		Vector3 supportPosition;
 		Quaternion supportRotation;
@@ -413,6 +423,21 @@ namespace RN
 
 		rotation.Normalize();
 		return true;
+	}
+
+	bool JoltRigidBodyController::IsExternalSupportBodyUsable(uint32 bodyID) const
+	{
+		if(bodyID == InvalidSupportBodyID) return false;
+
+		JPH::BodyID joltBodyID(bodyID);
+		if(joltBodyID.IsInvalid()) return false;
+
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		if(!bodyInterface.IsAdded(joltBodyID)) return false;
+
+		JPH::BodyLockRead lock(physics->GetBodyLockInterface(), joltBodyID);
+		return lock.Succeeded();
 	}
 
 	bool JoltRigidBodyController::GetExternalSupportAnchorState(Vector3 &position, Vector3 &velocity) const

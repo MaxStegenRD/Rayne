@@ -73,6 +73,7 @@ namespace RN
 		void ApplyStepOffset(const Vector3 &velocity, float delta);
 		bool HasBlockingCollisionAt(const Vector3 &position, const Quaternion &rotation, const Vector3 &movementDirection) const;
 		bool HasPenetrationAt(const Vector3 &position, const Quaternion &rotation, const Vector3 &movementDirection) const;
+		bool IsExternalSupportBodyUsable(uint32 bodyID) const;
 		bool GetSupportBodyTransform(uint32 bodyID, Vector3 &position, Quaternion &rotation) const;
 		bool GetExternalSupportAnchorState(Vector3 &position, Vector3 &velocity) const;
 		void UpdateControllerTransform();
