@@ -1230,6 +1230,20 @@ namespace RN
 			{
 				RNDebug("Member left: " << Data->TargetUserId);
 				connectedLobbyInfo->RemoveRemotePeer(Data->TargetUserId);
+				if(Data->TargetUserId == world->GetUserID())
+				{
+					if(connectedLobbyInfo->_associatedHost)
+					{
+						connectedLobbyInfo->_associatedHost->Disconnect();
+					}
+				}
+				else
+				{
+					if(connectedLobbyInfo->_associatedHost)
+					{
+						connectedLobbyInfo->_associatedHost->DisconnectClient(Data->TargetUserId);
+					}
+				}
 				break;
 			}
 			case EOS_ELobbyMemberStatus::EOS_LMS_CLOSED:
