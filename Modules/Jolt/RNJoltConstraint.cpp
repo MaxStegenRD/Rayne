@@ -310,17 +310,29 @@ namespace RN
 
 		JPH::SixDOFConstraintSettings settings;
 		settings.mSpace = JPH::EConstraintSpace::WorldSpace;
-		Quaternion normalizedWorldRotation1 = worldRotation1;
-		Quaternion normalizedWorldRotation2 = worldRotation2;
-		normalizedWorldRotation1.Normalize();
-		normalizedWorldRotation2.Normalize();
+		auto getSafeRotation = [](const Quaternion &rotation) -> Quaternion {
+			if(!rotation.IsValid()) return Quaternion();
+
+			Quaternion result(rotation);
+			result.Normalize();
+			return result.IsValid() ? result : Quaternion();
+		};
+		auto getAxis = [](const Quaternion &rotation, const Vector3 &fallbackAxis) -> Vector3 {
+			Vector3 axis = rotation.GetRotatedVector(fallbackAxis);
+			if(!axis.IsValid() || axis.GetSquaredLength() <= k::EpsilonFloat) return fallbackAxis;
+
+			axis.Normalize();
+			return axis.IsValid() ? axis : fallbackAxis;
+		};
+		Quaternion normalizedWorldRotation1 = getSafeRotation(worldRotation1);
+		Quaternion normalizedWorldRotation2 = getSafeRotation(worldRotation2);
 
 		settings.mPosition1 = JPH::RVec3(worldPosition1.x, worldPosition1.y, worldPosition1.z);
-		settings.mAxisX1 = ToJoltVec3(normalizedWorldRotation1.GetRotatedVector(Vector3(1.0f, 0.0f, 0.0f)));
-		settings.mAxisY1 = ToJoltVec3(normalizedWorldRotation1.GetRotatedVector(Vector3(0.0f, 1.0f, 0.0f)));
+		settings.mAxisX1 = ToJoltVec3(getAxis(normalizedWorldRotation1, Vector3(1.0f, 0.0f, 0.0f)));
+		settings.mAxisY1 = ToJoltVec3(getAxis(normalizedWorldRotation1, Vector3(0.0f, 1.0f, 0.0f)));
 		settings.mPosition2 = JPH::RVec3(worldPosition2.x, worldPosition2.y, worldPosition2.z);
-		settings.mAxisX2 = ToJoltVec3(normalizedWorldRotation2.GetRotatedVector(Vector3(1.0f, 0.0f, 0.0f)));
-		settings.mAxisY2 = ToJoltVec3(normalizedWorldRotation2.GetRotatedVector(Vector3(0.0f, 1.0f, 0.0f)));
+		settings.mAxisX2 = ToJoltVec3(getAxis(normalizedWorldRotation2, Vector3(1.0f, 0.0f, 0.0f)));
+		settings.mAxisY2 = ToJoltVec3(getAxis(normalizedWorldRotation2, Vector3(0.0f, 1.0f, 0.0f)));
 
 		// Allow all DOFs; motors will drive to targets each tick
 		settings.MakeFreeAxis(JPH::SixDOFConstraintSettings::TranslationX);
