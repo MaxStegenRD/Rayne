@@ -75,6 +75,7 @@ namespace RN
 		static JoltWorld *GetSharedInstance() { return _sharedInstance; }
 
 	private:
+		static void InitializeWorkerThread(int threadIndex);
 		JTAPI void QueueBodyRemoval(const JPH::BodyID &bodyID);
 		JTAPI void CancelQueuedBodyRemoval(const JPH::BodyID &bodyID);
 		JTAPI void SetBodyPairCollisionEnabled(const JPH::BodyID &body1, const JPH::BodyID &body2, bool enabled);

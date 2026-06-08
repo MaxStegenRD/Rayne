@@ -10,11 +10,30 @@
 #include "RNJoltInternals.h"
 #include "RNJoltWheelCylinderShape.h"
 
+#if RN_PLATFORM_ANDROID
+	#include <sys/resource.h>
+#endif
+
+#if RN_PLATFORM_MAC_OS || RN_PLATFORM_IOS || RN_PLATFORM_VISIONOS
+	#include <pthread/qos.h>
+#endif
+
 namespace RN
 {
 	RNDefineMeta(JoltWorld, SceneAttachment)
 
 	JoltWorld *JoltWorld::_sharedInstance = nullptr;
+
+	void JoltWorld::InitializeWorkerThread(int)
+	{
+#if RN_PLATFORM_ANDROID
+		setpriority(PRIO_PROCESS, 0, -2);
+#elif RN_PLATFORM_MAC_OS || RN_PLATFORM_IOS || RN_PLATFORM_VISIONOS
+		pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
+#elif RN_PLATFORM_WINDOWS
+		SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
+#endif
+	}
 
 	JoltWorld::JoltWorld(const Vector3 &gravity, uint32 maxBodies, uint32 maxBodyPairs, uint32 maxContactConstraints) :
 		_defaultDynamicBodyLinearDamping(0.05f), _defaultDynamicBodyAngularDamping(0.05f), _substeps(1), _paused(false), _isSimulating(false), _isLoadingLevel(false)
@@ -37,7 +56,9 @@ namespace RN
 		// We need a job system that will execute physics jobs on multiple threads. Typically
 		// you would implement the JobSystem interface yourself and let Jolt Physics run on top
 		// of your own job scheduler. JobSystemThreadPool is an example implementation.
-		_internals->jobSystem = new JPH::JobSystemThreadPool(JPH::cMaxPhysicsJobs, JPH::cMaxPhysicsBarriers, std::thread::hardware_concurrency() - 1);
+		_internals->jobSystem = new JPH::JobSystemThreadPool();
+		_internals->jobSystem->SetThreadInitFunction(InitializeWorkerThread);
+		_internals->jobSystem->Init(JPH::cMaxPhysicsJobs, JPH::cMaxPhysicsBarriers, std::thread::hardware_concurrency() - 1);
 
 		_physicsSystem = new JPH::PhysicsSystem();
 		_physicsSystem->Init(maxBodies, 0, maxBodyPairs, maxContactConstraints, _internals->objectLayerMapper, _internals->objectLayerMapper, _internals->objectLayerMapper);
