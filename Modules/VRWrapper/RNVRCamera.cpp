@@ -274,6 +274,7 @@ namespace RN
 		for(size_t i = 0; i < _window->GetEyeCount() && i < 2; i++)
 		{
 			_eye[i]->SetPosition(hmdState.eyeOffset[i]);
+			_eye[i]->SetRotation(hmdState.eyeRotation[i]);
 			_eye[i]->SetProjectionMatrix(hmdState.eyeProjection[i]);
 		}
 

@@ -2316,6 +2316,8 @@ namespace RN
 
 		_hmdTrackingState.eyeOffset[0] = _hmdTrackingState.rotation.GetConjugated().GetRotatedVector(leftEyePosition - _hmdTrackingState.position);
 		_hmdTrackingState.eyeOffset[1] = _hmdTrackingState.rotation.GetConjugated().GetRotatedVector(rightEyePosition - _hmdTrackingState.position);
+		_hmdTrackingState.eyeRotation[0] = leftEyeRotation / _hmdTrackingState.rotation;
+		_hmdTrackingState.eyeRotation[1] = rightEyeRotation / _hmdTrackingState.rotation;
 		_hmdTrackingState.eyeProjection[0] = GetProjectionMatrixForXRFovf(_internals->views[0].fov, near, far);
 		_hmdTrackingState.eyeProjection[1] = GetProjectionMatrixForXRFovf(_internals->views[1].fov, near, far);
 

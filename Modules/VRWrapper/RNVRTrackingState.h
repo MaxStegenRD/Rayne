@@ -34,6 +34,7 @@ namespace RN
 		Type type;
 
 		Vector3 eyeOffset[2];
+		Quaternion eyeRotation[2];
 		Matrix eyeProjection[2];
 
 		Vector3 position;
