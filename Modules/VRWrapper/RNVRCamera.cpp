@@ -261,6 +261,40 @@ namespace RN
 		_didUpdateVRWindow = true;
 	}
 
+	void VRCamera::UpdateHeadFrustumPlaneOffsets()
+	{
+		_head->SetFrustumPlaneOffset(0.0f, 0.0f, 0.0f, 0.0f);
+
+		Vector4 headFrustumPlanes[6];
+		_head->GetFrustumPlanes(headFrustumPlanes);
+
+		// Top, bottom, left, right; bottom/right are negated when passed back to Camera.
+		const size_t planeIndices[4] = {2, 3, 0, 1};
+		float outsideDistances[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+		for(size_t i = 0; i < _window->GetEyeCount() && i < 2; i++)
+		{
+			float depths[2] = {_eye[i]->GetClipNear(), _eye[i]->GetClipFar()};
+			for(size_t depthIndex = 0; depthIndex < 2; depthIndex++)
+			{
+				for(int x = -1; x <= 1; x += 2)
+				{
+					for(int y = -1; y <= 1; y += 2)
+					{
+						Vector3 corner = _eye[i]->ToWorld(Vector3(static_cast<float>(x), static_cast<float>(y), depths[depthIndex]));
+						for(size_t plane = 0; plane < 4; plane++)
+						{
+							const Vector4 &headPlane = headFrustumPlanes[planeIndices[plane]];
+							float distance = corner.GetDotProduct(Vector3(headPlane)) + headPlane.w;
+							if(distance < outsideDistances[plane]) outsideDistances[plane] = distance;
+						}
+					}
+				}
+			}
+		}
+
+		_head->SetFrustumPlaneOffset(outsideDistances[0], -outsideDistances[1], outsideDistances[2], -outsideDistances[3]);
+	}
+
 	void VRCamera::Update(float delta)
 	{
 		SceneNode::Update(delta);
@@ -284,8 +318,7 @@ namespace RN
 			_head->SetPosition(hmdState.position);
 		}
 
-		//This assumes that the eyes are equal and only shifted horizontally
-		_head->SetFrustumPlaneOffset(0.0f, 0.0f, _eye[0] ? _eye[0]->GetPosition().x : 0.0f, _eye[1] ? _eye[1]->GetPosition().x : 0.0f);
+		UpdateHeadFrustumPlaneOffsets();
 
 		_didUpdateVRWindow = false;
 	}
