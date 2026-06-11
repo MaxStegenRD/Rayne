@@ -10,7 +10,7 @@
 #include "RNJoltInternals.h"
 #include "RNJoltWheelCylinderShape.h"
 
-#if RN_PLATFORM_ANDROID
+#if RN_PLATFORM_LINUX || RN_PLATFORM_ANDROID
 	#include <sys/resource.h>
 #endif
 
@@ -26,10 +26,10 @@ namespace RN
 
 	void JoltWorld::InitializeWorkerThread(int)
 	{
-#if RN_PLATFORM_ANDROID
+#if RN_PLATFORM_LINUX || RN_PLATFORM_ANDROID
 		setpriority(PRIO_PROCESS, 0, -2);
 #elif RN_PLATFORM_MAC_OS || RN_PLATFORM_IOS || RN_PLATFORM_VISIONOS
-		pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
+		pthread_set_qos_class_self_np(QOS_CLASS_USER_INITIATED, 0);
 #elif RN_PLATFORM_WINDOWS
 		SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
 #endif
