@@ -137,6 +137,7 @@ endif()
 
 set(HEADERS
         RNJolt.h
+        RNJoltBodyMotion.h
         RNJoltWorld.h
         RNJoltDynamicBody.h
         RNJoltStaticBody.h

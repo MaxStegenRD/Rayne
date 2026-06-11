@@ -266,6 +266,76 @@ namespace RN
 		return Vector3(velocity.GetX(), velocity.GetY(), velocity.GetZ());
 	}
 
+	JoltPointMotionProperties JoltDynamicBody::GetPointMotionProperties(const Vector3 &worldPosition) const
+	{
+		JoltPointMotionProperties properties;
+		if(!worldPosition.IsValid()) return properties;
+
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyLockRead lock(physics->GetBodyLockInterface(), *_actor);
+		if(!lock.Succeeded()) return properties;
+
+		const JPH::Body &body = lock.GetBody();
+		JPH::RVec3 joltWorldPosition(worldPosition.x, worldPosition.y, worldPosition.z);
+		JPH::Vec3 velocity = body.GetPointVelocity(joltWorldPosition);
+		properties.velocity = Vector3(velocity.GetX(), velocity.GetY(), velocity.GetZ());
+
+		if(body.IsDynamic())
+		{
+			const JPH::MotionProperties *motionProperties = body.GetMotionPropertiesUnchecked();
+			if(motionProperties)
+			{
+				properties.isDynamic = true;
+				properties.inverseMass = motionProperties->GetInverseMass();
+
+				JPH::Vec3 centerOffset = JPH::Vec3(joltWorldPosition - body.GetCenterOfMassPosition());
+				properties.centerOffset = Vector3(centerOffset.GetX(), centerOffset.GetY(), centerOffset.GetZ());
+
+				JPH::Vec3 inverseInertiaColumnX = body.GetInverseInertia() * JPH::Vec3::sAxisX();
+				JPH::Vec3 inverseInertiaColumnY = body.GetInverseInertia() * JPH::Vec3::sAxisY();
+				JPH::Vec3 inverseInertiaColumnZ = body.GetInverseInertia() * JPH::Vec3::sAxisZ();
+				properties.inverseInertiaColumnX = Vector3(inverseInertiaColumnX.GetX(), inverseInertiaColumnX.GetY(), inverseInertiaColumnX.GetZ());
+				properties.inverseInertiaColumnY = Vector3(inverseInertiaColumnY.GetX(), inverseInertiaColumnY.GetY(), inverseInertiaColumnY.GetZ());
+				properties.inverseInertiaColumnZ = Vector3(inverseInertiaColumnZ.GetX(), inverseInertiaColumnZ.GetY(), inverseInertiaColumnZ.GetZ());
+			}
+		}
+
+		return properties;
+	}
+
+	Vector3 JoltDynamicBody::GetCenterOfMassPosition() const
+	{
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyLockRead lock(physics->GetBodyLockInterface(), *_actor);
+		if(!lock.Succeeded()) return GetWorldPosition();
+
+		JPH::RVec3 center = lock.GetBody().GetCenterOfMassPosition();
+		return Vector3(center.GetX(), center.GetY(), center.GetZ());
+	}
+
+	float JoltDynamicBody::GetPointImpulseEffectiveMass(const Vector3 &worldPosition, const Vector3 &direction) const
+	{
+		return GetPointMotionProperties(worldPosition).GetPointImpulseEffectiveMass(direction);
+	}
+
+	float JoltDynamicBody::GetAngularImpulseEffectiveInertia(const Vector3 &axis) const
+	{
+		if(!axis.IsValid() || axis.GetSquaredLength() <= k::EpsilonFloat) return 0.0f;
+
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyLockRead lock(physics->GetBodyLockInterface(), *_actor);
+		if(!lock.Succeeded()) return 0.0f;
+
+		const JPH::Body &body = lock.GetBody();
+		if(!body.IsDynamic()) return 0.0f;
+
+		Vector3 normalizedAxis = axis.GetNormalized();
+		JPH::Vec3 angularAxis(normalizedAxis.x, normalizedAxis.y, normalizedAxis.z);
+		JPH::Vec3 angularVelocityPerImpulse = body.GetInverseInertia() * angularAxis;
+		float denominator = angularAxis.Dot(angularVelocityPerImpulse);
+		return denominator > 0.0f ? 1.0f / denominator : 0.0f;
+	}
+
 	void JoltDynamicBody::SetEnableSleeping(bool sleeping)
 	{
 		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();

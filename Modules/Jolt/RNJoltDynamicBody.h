@@ -9,6 +9,7 @@
 #ifndef __RAYNE_JOLTDYNAMICBODY_H_
 #define __RAYNE_JOLTDYNAMICBODY_H_
 
+#include "RNJoltBodyMotion.h"
 #include "RNJoltCollisionObject.h"
 
 namespace JPH
@@ -78,6 +79,10 @@ namespace RN
 		JTAPI Vector3 GetLinearVelocity() const;
 		JTAPI Vector3 GetAngularVelocity() const;
 		JTAPI Vector3 GetPointVelocity(const Vector3 &worldPosition) const;
+		JTAPI JoltPointMotionProperties GetPointMotionProperties(const Vector3 &worldPosition) const;
+		JTAPI Vector3 GetCenterOfMassPosition() const;
+		JTAPI float GetPointImpulseEffectiveMass(const Vector3 &worldPosition, const Vector3 &direction) const;
+		JTAPI float GetAngularImpulseEffectiveInertia(const Vector3 &axis) const;
 
 		JTAPI void SetEnableSleeping(bool enable);
 		JTAPI void SetAllowSleeping(bool allow);
