@@ -417,12 +417,9 @@ namespace RN
 
 	void Mesh::CalculateBoundingVolumes()
 	{
-		Vector3 min = Vector3();
-		Vector3 max = Vector3();
-
 		const VertexAttribute *attribute = GetAttribute(VertexAttribute::Feature::Vertices);
 
-		if(!attribute)
+		if(!attribute || _verticesCount == 0)
 		{
 			_boundingBox = AABB(Vector3(0.0f), Vector3(0.0f));
 			_boundingSphere = Sphere(_boundingBox);
@@ -431,14 +428,19 @@ namespace RN
 		}
 
 		Chunk chunk = GetChunk();
+		Vector3 min;
+		Vector3 max;
 
 		switch(attribute->GetType())
 		{
 			case PrimitiveType::Vector2:
 			{
 				ElementIterator<Vector2> iterator = chunk.GetIterator<Vector2>(VertexAttribute::Feature::Vertices);
+				const Vector2 &firstVertex = *(iterator++);
+				min = Vector3(firstVertex.x, firstVertex.y, 0.0f);
+				max = min;
 
-				for(size_t i = 0; i < _verticesCount; i++)
+				for(size_t i = 1; i < _verticesCount; i++)
 				{
 					const Vector2 &vertex = *(iterator++);
 
@@ -455,8 +457,11 @@ namespace RN
 			case PrimitiveType::Vector3:
 			{
 				ElementIterator<Vector3> iterator = chunk.GetIterator<Vector3>(VertexAttribute::Feature::Vertices);
+				const Vector3 &firstVertex = *(iterator++);
+				min = firstVertex;
+				max = firstVertex;
 
-				for(size_t i = 0; i < _verticesCount; i++)
+				for(size_t i = 1; i < _verticesCount; i++)
 				{
 					const Vector3 &vertex = *(iterator++);
 
@@ -476,8 +481,11 @@ namespace RN
 			case PrimitiveType::HalfVector3:
 			{
 				ElementIterator<HalfVector3> iterator = chunk.GetIterator<HalfVector3>(VertexAttribute::Feature::Vertices);
+				const Vector3 firstVertex = (*(iterator++)).GetVector3();
+				min = firstVertex;
+				max = firstVertex;
 
-				for(size_t i = 0; i < _verticesCount; i++)
+				for(size_t i = 1; i < _verticesCount; i++)
 				{
 					const Vector3 vertex = (*(iterator++)).GetVector3();
 
@@ -497,7 +505,7 @@ namespace RN
 			default:
 				_boundingBox = AABB(Vector3(0.0f), Vector3(0.0f));
 				_boundingSphere = Sphere(_boundingBox);
-				break;
+				return;
 		}
 
 		_boundingBox = AABB(min, max);

@@ -349,12 +349,28 @@ namespace RN
 
 	void Model::CalculateBoundingVolumes()
 	{
-		_boundingBox = AABB(Vector3(0.0), Vector3(0.0));
+		if(GetLODStageCount() == 0)
+		{
+			_boundingBox = AABB(Vector3(0.0f), Vector3(0.0f));
+			_boundingSphere = Sphere(_boundingBox);
+			return;
+		}
 
 		LODStage *stage = GetLODStage(0);
-
-		for(Mesh *mesh : stage->_meshes)
+		if(!stage || stage->GetCount() == 0)
 		{
+			_boundingBox = AABB(Vector3(0.0f), Vector3(0.0f));
+			_boundingSphere = Sphere(_boundingBox);
+			return;
+		}
+
+		Mesh *firstMesh = stage->GetMeshAtIndex(0);
+		firstMesh->CalculateBoundingVolumes();
+		_boundingBox = firstMesh->GetBoundingBox();
+
+		for(size_t i = 1; i < stage->GetCount(); i++)
+		{
+			Mesh *mesh = stage->GetMeshAtIndex(i);
 			mesh->CalculateBoundingVolumes();
 			_boundingBox += mesh->GetBoundingBox();
 		}
