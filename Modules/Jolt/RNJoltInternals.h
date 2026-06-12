@@ -211,7 +211,10 @@ namespace RN
 			CollectConnectedFilteredBodies(bodyID1, affectedBodies);
 			CollectConnectedFilteredBodies(bodyID2, affectedBodies);
 
-			SetBodyPairTracked(_connectedFilteredBodyPairs, bodyID1, bodyID2, enabled);
+			if(SetBodyPairTracked(_connectedFilteredBodyPairs, bodyID1, bodyID2, enabled))
+			{
+				RebuildConnectedFilteredComponents();
+			}
 
 			CollectConnectedFilteredBodies(bodyID1, affectedBodies);
 			CollectConnectedFilteredBodies(bodyID2, affectedBodies);
@@ -369,7 +372,16 @@ namespace RN
 			uint32 count;
 		};
 
-		void SetBodyPairTracked(std::vector<CountedBodyPair> &bodyPairs, uint32 bodyID1, uint32 bodyID2, bool tracked)
+		struct ConnectedFilteredComponent
+		{
+			uint32 bodyID = 0xffffffffU;
+			uint32 componentID = 0xffffffffU;
+		};
+
+		static constexpr uint32 InvalidConnectedFilteredBodyID = 0xffffffffU;
+		static constexpr uint32 InvalidConnectedFilteredComponentID = 0xffffffffU;
+
+		bool SetBodyPairTracked(std::vector<CountedBodyPair> &bodyPairs, uint32 bodyID1, uint32 bodyID2, bool tracked)
 		{
 			for(CountedBodyPair &pair : bodyPairs)
 			{
@@ -378,23 +390,28 @@ namespace RN
 					if(tracked)
 					{
 						pair.count += 1;
-						return;
+						return false;
 					}
 
-					if(pair.count > 0) pair.count -= 1;
-					if(pair.count == 0)
+					if(pair.count > 1)
 					{
-						pair = bodyPairs.back();
-						bodyPairs.pop_back();
+						pair.count -= 1;
+						return false;
 					}
-					return;
+
+					pair = bodyPairs.back();
+					bodyPairs.pop_back();
+					return true;
 				}
 			}
 
 			if(tracked)
 			{
 				bodyPairs.push_back({bodyID1, bodyID2, 1});
+				return true;
 			}
+
+			return false;
 		}
 
 		bool GetBodyPair(const JPH::BodyID &body1, const JPH::BodyID &body2, uint32 &id1, uint32 &id2) const
@@ -414,17 +431,66 @@ namespace RN
 			return true;
 		}
 
-		void CollectConnectedFilteredBodies(uint32 bodyID, std::vector<JPH::BodyID> &bodies) const
+		uint32 GetConnectedFilteredComponentID(uint32 bodyID) const
 		{
-			std::vector<uint32> bodyIDs;
-			CollectConnectedFilteredBodyIDs(bodyID, bodyIDs);
-			for(uint32 connectedBodyID : bodyIDs)
+			JPH::BodyID joltBodyID(bodyID);
+			uint32 bodyIndex = joltBodyID.GetIndex();
+			if(bodyIndex >= _connectedFilteredComponents.size()) return InvalidConnectedFilteredComponentID;
+
+			const ConnectedFilteredComponent &component = _connectedFilteredComponents[bodyIndex];
+			return component.bodyID == bodyID ? component.componentID : InvalidConnectedFilteredComponentID;
+		}
+
+		void SetConnectedFilteredComponentID(uint32 bodyID, uint32 componentID)
+		{
+			JPH::BodyID joltBodyID(bodyID);
+			uint32 bodyIndex = joltBodyID.GetIndex();
+			if(bodyIndex >= _connectedFilteredComponents.size()) _connectedFilteredComponents.resize(bodyIndex + 1);
+
+			ConnectedFilteredComponent &component = _connectedFilteredComponents[bodyIndex];
+			component.bodyID = bodyID;
+			component.componentID = componentID;
+		}
+
+		void RebuildConnectedFilteredComponents()
+		{
+			_connectedFilteredComponents.clear();
+			uint32 componentID = 0;
+
+			for(const CountedBodyPair &pair : _connectedFilteredBodyPairs)
 			{
-				bodies.push_back(JPH::BodyID(connectedBodyID));
+				if(GetConnectedFilteredComponentID(pair.body1) != InvalidConnectedFilteredComponentID) continue;
+
+				std::vector<uint32> bodyIDs;
+				CollectConnectedFilteredBodyIDsFromPairs(pair.body1, bodyIDs);
+				for(uint32 bodyID : bodyIDs)
+				{
+					SetConnectedFilteredComponentID(bodyID, componentID);
+				}
+
+				componentID += 1;
 			}
 		}
 
-		void CollectConnectedFilteredBodyIDs(uint32 bodyID, std::vector<uint32> &bodyIDs) const
+		void CollectConnectedFilteredBodies(uint32 bodyID, std::vector<JPH::BodyID> &bodies) const
+		{
+			uint32 componentID = GetConnectedFilteredComponentID(bodyID);
+			if(componentID == InvalidConnectedFilteredComponentID)
+			{
+				bodies.push_back(JPH::BodyID(bodyID));
+				return;
+			}
+
+			for(const ConnectedFilteredComponent &component : _connectedFilteredComponents)
+			{
+				if(component.bodyID != InvalidConnectedFilteredBodyID && component.componentID == componentID)
+				{
+					bodies.push_back(JPH::BodyID(component.bodyID));
+				}
+			}
+		}
+
+		void CollectConnectedFilteredBodyIDsFromPairs(uint32 bodyID, std::vector<uint32> &bodyIDs) const
 		{
 			for(uint32 currentBodyID : bodyIDs)
 			{
@@ -485,14 +551,8 @@ namespace RN
 
 			if(_connectedFilteredBodyPairs.empty()) return false;
 
-			std::vector<uint32> connectedBodyIDs;
-			CollectConnectedFilteredBodyIDs(bodyID1, connectedBodyIDs);
-			for(uint32 connectedBodyID : connectedBodyIDs)
-			{
-				if(connectedBodyID == bodyID2) return true;
-			}
-
-			return false;
+			uint32 componentID1 = GetConnectedFilteredComponentID(bodyID1);
+			return componentID1 != InvalidConnectedFilteredComponentID && componentID1 == GetConnectedFilteredComponentID(bodyID2);
 		}
 
 		bool HasConnectedFilteredBody(uint32 bodyID, uint32 connectedBodyID) const
@@ -500,14 +560,8 @@ namespace RN
 			if(bodyID == connectedBodyID) return true;
 			if(_connectedFilteredBodyPairs.empty()) return false;
 
-			std::vector<uint32> connectedBodyIDs;
-			CollectConnectedFilteredBodyIDs(bodyID, connectedBodyIDs);
-			for(uint32 currentConnectedBodyID : connectedBodyIDs)
-			{
-				if(currentConnectedBodyID == connectedBodyID) return true;
-			}
-
-			return false;
+			uint32 componentID = GetConnectedFilteredComponentID(bodyID);
+			return componentID != InvalidConnectedFilteredComponentID && componentID == GetConnectedFilteredComponentID(connectedBodyID);
 		}
 
 		void ApplyContactResponseMassScale(const JoltCollisionObject *collisionObject, const JoltCollisionObject *otherCollisionObject, const JPH::BodyID &bodyID, JPH::ContactSettings &settings, bool isFirstBody) const
@@ -537,6 +591,7 @@ namespace RN
 
 		std::vector<CountedBodyPair> _ignoredBodyPairs;
 		std::vector<CountedBodyPair> _connectedFilteredBodyPairs;
+		std::vector<ConnectedFilteredComponent> _connectedFilteredComponents;
 	};
 
 	// An example activation listener
