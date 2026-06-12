@@ -831,11 +831,20 @@ namespace RN
 		bool shouldUpdatePose = (changeSet & SceneNode::ChangeSet::Position) || ((changeSet & SceneNode::ChangeSet::Attachments) && !_owner && GetParent());
 		if(shouldUpdatePose)
 		{
-			RN::Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
-			Vector3 position = GetWorldPosition() - positionOffset;
-			Quaternion rotation = GetWorldRotation() * _rotationOffset;
+			RN::Quaternion worldRotation = GetWorldRotation();
+			if(worldRotation.IsValid())
+			{
+				worldRotation.Normalize();
 
-			bodyInterface->SetPositionAndRotation(*_actor, JPH::RVec3Arg(position.x, position.y, position.z), JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), JPH::EActivation::DontActivate);
+				RN::Vector3 positionOffset = worldRotation.GetRotatedVector(_positionOffset);
+				Vector3 position = GetWorldPosition() - positionOffset;
+				Quaternion rotation = worldRotation * _rotationOffset;
+				if(position.IsValid() && rotation.IsValid())
+				{
+					rotation.Normalize();
+					bodyInterface->SetPositionAndRotation(*_actor, JPH::RVec3Arg(position.x, position.y, position.z), JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), JPH::EActivation::DontActivate);
+				}
+			}
 		}
 
 		if(changeSet & SceneNode::ChangeSet::Attachments)

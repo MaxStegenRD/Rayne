@@ -485,9 +485,15 @@ namespace RN
 
 	void JoltRigidBodyController::UpdateControllerTransform()
 	{
-		Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
+		Quaternion worldRotation = GetWorldRotation();
+		if(!worldRotation.IsValid()) return;
+		worldRotation.Normalize();
+
+		Vector3 positionOffset = worldRotation.GetRotatedVector(_positionOffset);
 		Vector3 position = GetWorldPosition() - positionOffset;
-		Quaternion rotation = GetWorldRotation() * _rotationOffset;
+		Quaternion rotation = worldRotation * _rotationOffset;
+		if(!position.IsValid() || !rotation.IsValid()) return;
+		rotation.Normalize();
 
 		_controller->SetPositionAndRotation(JPH::RVec3Arg(position.x, position.y, position.z), JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), JPH::EActivation::DontActivate);
 	}
