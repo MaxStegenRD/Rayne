@@ -33,6 +33,11 @@ set(FLOATING_POINT_EXCEPTIONS_ENABLED OFF)
 # Number of bits to use in ObjectLayer. Can be 16 or 32.
 set(OBJECT_LAYER_BITS 16)
 
+set(JPH_USE_CPU_COMPUTE OFF)
+set(JPH_USE_DX12 OFF)
+set(JPH_USE_MTL OFF)
+set(JPH_USE_VK OFF)
+
 rayne_fetch_content(JoltPhysics
         GIT_REPOSITORY "https://github.com/jrouwe/JoltPhysics.git"
         GIT_TAG "9bc7080346639d8511cba090dd10aeb5154e18cf"
