@@ -16,6 +16,7 @@
 #include <Jolt/Physics/Collision/Shape/ConvexShape.h>
 #include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
 #include <Jolt/Physics/Collision/Shape/CylinderShape.h>
+#include <Jolt/Physics/Collision/Shape/HeightFieldShape.h>
 #include <Jolt/Physics/Collision/Shape/MeshShape.h>
 #include <Jolt/Physics/Collision/Shape/MutableCompoundShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
@@ -31,6 +32,7 @@ namespace RN
 	RNDefineMeta(JoltCylinderShape, JoltShape)
 	RNDefineMeta(JoltWheelCylinderShape, JoltShape)
 	RNDefineMeta(JoltTriangleMeshShape, JoltShape)
+	RNDefineMeta(JoltHeightFieldShape, JoltShape)
 	RNDefineMeta(JoltConvexHullShape, JoltShape)
 	RNDefineMeta(JoltCompoundShape, JoltShape)
 
@@ -208,6 +210,30 @@ namespace RN
 	JoltTriangleMeshShape *JoltTriangleMeshShape::WithMesh(Mesh *mesh, Vector3 scale, bool wantsDoubleSided)
 	{
 		JoltTriangleMeshShape *shape = new JoltTriangleMeshShape(mesh, scale, wantsDoubleSided);
+		return shape->Autorelease();
+	}
+
+	JoltHeightFieldShape::JoltHeightFieldShape(const float *samples, uint32 sampleCount, const Vector3 &offset, const Vector3 &scale, uint32 blockSize, uint32 bitsPerSample)
+	{
+		JPH::HeightFieldShapeSettings settings(samples,
+											   JPH::Vec3Arg(offset.x, offset.y, offset.z),
+											   JPH::Vec3Arg(scale.x, scale.y, scale.z),
+											   sampleCount);
+		settings.mBlockSize = blockSize;
+		settings.mBitsPerSample = bitsPerSample;
+
+		JPH::Shape::ShapeResult result = settings.Create();
+		RN_DEBUG_ASSERT(result.IsValid(), "Invalid height field shape!");
+		if(result.IsValid())
+		{
+			_shape = result.Get();
+			_shape->AddRef();
+		}
+	}
+
+	JoltHeightFieldShape *JoltHeightFieldShape::WithSamples(const float *samples, uint32 sampleCount, const Vector3 &offset, const Vector3 &scale, uint32 blockSize, uint32 bitsPerSample)
+	{
+		JoltHeightFieldShape *shape = new JoltHeightFieldShape(samples, sampleCount, offset, scale, blockSize, bitsPerSample);
 		return shape->Autorelease();
 	}
 

@@ -102,6 +102,17 @@ namespace RN
 		RNDeclareMetaAPI(JoltTriangleMeshShape, JTAPI)
 	};
 
+	class JoltHeightFieldShape : public JoltShape
+	{
+	public:
+		JTAPI JoltHeightFieldShape(const float *samples, uint32 sampleCount, const Vector3 &offset, const Vector3 &scale, uint32 blockSize = 2, uint32 bitsPerSample = 8);
+
+		JTAPI static JoltHeightFieldShape *WithSamples(const float *samples, uint32 sampleCount, const Vector3 &offset, const Vector3 &scale, uint32 blockSize = 2, uint32 bitsPerSample = 8);
+
+	private:
+		RNDeclareMetaAPI(JoltHeightFieldShape, JTAPI)
+	};
+
 	class JoltConvexHullShape : public JoltShape
 	{
 	public:
