@@ -125,7 +125,7 @@ namespace RN
 		DVector3(const double n);
 		DVector3(const double x, const double y, const double z);
 		explicit DVector3(const Vector2 &other, double z = 0.0);
-		explicit DVector3(const Vector3 &other);
+		DVector3(const Vector3 &other);
 
 		bool operator==(const DVector3 &other) const;
 		bool operator!=(const DVector3 &other) const;

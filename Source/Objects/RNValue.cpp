@@ -59,6 +59,11 @@ namespace RN
 				Vector3 value(GetValue<Vector3>());
 				return RNSTRF("<Vector3(%f, %f)>", value.x, value.y, value.z);
 			}
+			case TypeTranslator<DVector3>::value:
+			{
+				DVector3 value(GetValue<DVector3>());
+				return RNSTRF("<DVector3(%f, %f, %f)>", value.x, value.y, value.z);
+			}
 			case TypeTranslator<Vector4>::value:
 			{
 				Vector4 value(GetValue<Vector4>());
@@ -101,6 +106,12 @@ namespace RN
 	}
 
 	Value *Value::WithVector3(const Vector3 &vector)
+	{
+		Value *value = new Value(vector);
+		return value->Autorelease();
+	}
+
+	Value *Value::WithDVector3(const DVector3 &vector)
 	{
 		Value *value = new Value(vector);
 		return value->Autorelease();

@@ -67,6 +67,9 @@ namespace RN
 	struct TypeTranslator<Vector3> : public std::integral_constant<char, '3'>
 	{};
 	template<>
+	struct TypeTranslator<DVector3> : public std::integral_constant<char, 'D'>
+	{};
+	template<>
 	struct TypeTranslator<Vector4> : public std::integral_constant<char, '4'>
 	{};
 	template<>

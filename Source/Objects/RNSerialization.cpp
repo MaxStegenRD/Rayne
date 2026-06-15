@@ -242,6 +242,10 @@ namespace RN
 	{
 		EncodeData('3', sizeof(Vector3), &value);
 	}
+	void FlatSerializer::EncodeDVector3(const DVector3 &value)
+	{
+		EncodeData('D', sizeof(DVector3), &value);
+	}
 	void FlatSerializer::EncodeVector4(const Vector4 &value)
 	{
 		EncodeData('4', sizeof(Vector4), &value);
@@ -619,6 +623,13 @@ namespace RN
 	{
 		Vector3 result;
 		DecodeData('3', &result, sizeof(Vector3));
+
+		return result;
+	}
+	DVector3 FlatDeserializer::DecodeDVector3()
+	{
+		DVector3 result;
+		DecodeData('D', &result, sizeof(DVector3));
 
 		return result;
 	}

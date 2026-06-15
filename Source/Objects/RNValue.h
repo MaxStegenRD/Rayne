@@ -45,6 +45,7 @@ namespace RN
 
 		RNAPI static Value *WithVector2(const Vector2 &vector);
 		RNAPI static Value *WithVector3(const Vector3 &vector);
+		RNAPI static Value *WithDVector3(const DVector3 &vector);
 		RNAPI static Value *WithVector4(const Vector4 &vector);
 
 		RNAPI static Value *WithColor(const Color &color);

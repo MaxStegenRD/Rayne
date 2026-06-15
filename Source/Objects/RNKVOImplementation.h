@@ -522,6 +522,12 @@ namespace RN
 	__ObservableValuePointerLikes(Vector3)
 	__ObservableValueEnd()
 
+	__ObservableValueBegin(DVector3)
+	__ObservableValueComparison(DVector3)
+	__ObservableValueBinaryArithmetic(DVector3)
+	__ObservableValuePointerLikes(DVector3)
+	__ObservableValueEnd()
+
 	__ObservableValueBegin(Vector4)
 	__ObservableValueComparison(Vector4)
 	__ObservableValueBinaryArithmetic(Vector4)

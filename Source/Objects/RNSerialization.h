@@ -38,6 +38,7 @@ namespace RN
 
 		RNAPI virtual void EncodeVector2(const Vector2 &value) = 0;
 		RNAPI virtual void EncodeVector3(const Vector3 &value) = 0;
+		RNAPI virtual void EncodeDVector3(const DVector3 &value) = 0;
 		RNAPI virtual void EncodeVector4(const Vector4 &value) = 0;
 		RNAPI virtual void EncodeColor(const Color &color) = 0;
 
@@ -67,6 +68,7 @@ namespace RN
 
 		RNAPI virtual Vector2 DecodeVector2() = 0;
 		RNAPI virtual Vector3 DecodeVector3() = 0;
+		RNAPI virtual DVector3 DecodeDVector3() = 0;
 		RNAPI virtual Vector4 DecodeVector4() = 0;
 		RNAPI virtual Color DecodeColor() = 0;
 
@@ -100,6 +102,7 @@ namespace RN
 
 		RNAPI void EncodeVector2(const Vector2 &value) override;
 		RNAPI void EncodeVector3(const Vector3 &value) override;
+		RNAPI void EncodeDVector3(const DVector3 &value) override;
 		RNAPI void EncodeVector4(const Vector4 &value) override;
 		RNAPI void EncodeColor(const Color &color) override;
 
@@ -138,6 +141,7 @@ namespace RN
 
 		RNAPI Vector2 DecodeVector2() override;
 		RNAPI Vector3 DecodeVector3() override;
+		RNAPI DVector3 DecodeDVector3() override;
 		RNAPI Vector4 DecodeVector4() override;
 		RNAPI Color DecodeColor() override;
 
