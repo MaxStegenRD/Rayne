@@ -159,9 +159,9 @@ namespace RN
 		_sceneInfo = nullptr;
 		_updated = 1;
 		_lastUpdatedVersion = 0;
-		_updatedTransform = true;
-		_updatedInverseTransform = true;
-		_updatedBounds = true;
+		_lastTransformUpdatedVersion = 0;
+		_lastInverseTransformUpdatedVersion = 0;
+		_lastBoundsUpdatedVersion = 0;
 		_flags = 0;
 
 		_updatePriority = UpdatePriority::UpdateNormal;
@@ -478,9 +478,6 @@ namespace RN
 		if(changeSet & ChangeSet::Position)
 		{
 			_updated += 1;
-			_updatedTransform = true;
-			_updatedInverseTransform = true;
-			_updatedBounds = true;
 
 			//Updated flag Needs to be passed on to all children and their children
 			_children->Enumerate<SceneNode>([](SceneNode *child, size_t index, bool &stop) {
@@ -497,10 +494,6 @@ namespace RN
 				SetWorldRotation(_rotation);
 				SetWorldScale(_scale);
 			}
-
-			_updatedTransform = true;
-			_updatedInverseTransform = true;
-			_updatedBounds = true;
 
 			//Updated flag Needs to be passed on to all children and their children
 			_children->Enumerate<SceneNode>([](SceneNode *child, size_t index, bool &stop) {
@@ -546,7 +539,8 @@ namespace RN
 
 	void SceneNode::UpdateInternalTransformData() const
 	{
-		if(_updatedTransform)
+		uint64 transformVersion = GetTransformVersion();
+		if(_lastTransformUpdatedVersion != transformVersion)
 		{
 			_localTransform = Matrix::WithTranslation(_position);
 			_localTransform.Rotate(_rotation);
@@ -562,13 +556,14 @@ namespace RN
 				_worldTransform = _localTransform;
 			}
 
-			_updatedTransform = false;
+			_lastTransformUpdatedVersion = transformVersion;
 		}
 	}
 
 	void SceneNode::UpdateInternalInverseTransformData() const
 	{
-		if(_updatedInverseTransform)
+		uint64 transformVersion = GetTransformVersion();
+		if(_lastInverseTransformUpdatedVersion != transformVersion)
 		{
 			_inverseLocalTransform = Matrix::WithScaling(_scale != 0.0f ? (Vector3(1.0f, 1.0f, 1.0f) / _scale) : Vector3(0.0f, 0.0f, 0.0f));
 			_inverseLocalTransform.Rotate(_rotation->GetConjugated());
@@ -584,13 +579,14 @@ namespace RN
 				_inverseWorldTransform = _inverseLocalTransform;
 			}
 
-			_updatedInverseTransform = false;
+			_lastInverseTransformUpdatedVersion = transformVersion;
 		}
 	}
 
 	void SceneNode::UpdateInternalBoundsData() const
 	{
-		if(_updatedBounds)
+		uint64 transformVersion = GetTransformVersion();
+		if(_lastBoundsUpdatedVersion != transformVersion)
 		{
 			UpdateInternalData();
 
@@ -604,7 +600,7 @@ namespace RN
 			_transformedBoundingSphere *= _worldScale;
 			_transformedBoundingSphere.SetRotation(_worldRotation);
 
-			_updatedBounds = false;
+			_lastBoundsUpdatedVersion = transformVersion;
 		}
 	}
 } // namespace RN

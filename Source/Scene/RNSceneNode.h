@@ -233,19 +233,19 @@ namespace RN
 
 		mutable uint64 _updated;
 		mutable uint64 _lastUpdatedVersion;
+		mutable uint64 _lastTransformUpdatedVersion;
+		mutable uint64 _lastInverseTransformUpdatedVersion;
+		mutable uint64 _lastBoundsUpdatedVersion;
 		mutable Vector3 _worldPosition;
 		mutable Quaternion _worldRotation;
 		mutable Vector3 _worldScale;
 		mutable Vector3 _worldEuler;
 
-		mutable bool _updatedTransform;
-		mutable bool _updatedInverseTransform;
 		mutable Matrix _worldTransform;
 		mutable Matrix _inverseWorldTransform;
 		mutable Matrix _localTransform;
 		mutable Matrix _inverseLocalTransform;
 
-		mutable bool _updatedBounds;
 		mutable AABB _transformedBoundingBox;
 		mutable Sphere _transformedBoundingSphere;
 
