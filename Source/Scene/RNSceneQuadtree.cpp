@@ -36,7 +36,11 @@ namespace RN
 	}
 
 	SceneQuadtree::SceneQuadtree(AABB worldBounds, float minNodeSize) :
-		_nodesToRemove(new Array()), _currentFrameCount(0)
+		_nodesToRemove(new Array()),
+#if RN_ENABLE_UNIVERSE_SCALE
+		_treeOrigin(0.0),
+#endif
+		_currentFrameCount(0)
 	{
 		RN_PROFILE_SCOPE();
 		_occlusionCuller = new OcclusionCuller(40, 40);
@@ -561,6 +565,15 @@ namespace RN
 		DidRender(renderer);
 	}
 
+	AABB SceneQuadtree::GetSceneNodeTreeBounds(const SceneNode *node) const
+	{
+		AABB bounds = node->GetBoundingBox();
+#if RN_ENABLE_UNIVERSE_SCALE
+		bounds.position = (node->GetUniversePosition() - _treeOrigin).ToVector3();
+#endif
+		return bounds;
+	}
+
 	void SceneQuadtree::TraverseTree(RN::Camera *camera, std::vector<SceneNode *> &sceneNodesToRender)
 	{
 		RN_PROFILE_SCOPE();
@@ -572,6 +585,9 @@ namespace RN
 		const Vector3 cameraRight = lodCamera->GetRight();
 		const Vector3 cameraForward = lodCamera->GetForward();
 		const float fovFactor = lodCamera->GetProjectionMatrix().m[0];
+#if RN_ENABLE_UNIVERSE_SCALE
+		const Vector3 treeRenderOffset = (_treeOrigin - GetUniverseOrigin()).ToVector3();
+#endif
 		
 		std::vector<uint32> stack;
 		stack.reserve(128);
@@ -583,8 +599,15 @@ namespace RN
 			uint32 i = stack.back();
 			stack.pop_back();
 			const TreeNode& node = _treeNodes[i];
+#if RN_ENABLE_UNIVERSE_SCALE
+			AABB bounds = node.bounds;
+			bounds.minExtend += treeRenderOffset;
+			bounds.maxExtend += treeRenderOffset;
+#else
+			const AABB &bounds = node.bounds;
+#endif
 
-			if(node.numberOfObjects == 0 || !lodCamera->InFrustum(node.bounds)) continue;
+			if(node.numberOfObjects == 0 || !lodCamera->InFrustum(bounds)) continue;
 			
 			counter += 1;
 
@@ -601,8 +624,8 @@ namespace RN
 			}
 
 			//Node center and half extents in world (AABB built with absolute min/max)
-			const Vector3 center = (node.bounds.minExtend + node.bounds.maxExtend) * 0.5f;
-			const Vector3 half = (node.bounds.maxExtend - node.bounds.minExtend) * 0.5f;
+			const Vector3 center = (bounds.minExtend + bounds.maxExtend) * 0.5f;
+			const Vector3 half = (bounds.maxExtend - bounds.minExtend) * 0.5f;
 
 			//Depth = view-space z (along camera forward)
 			const Vector3 v = center - cameraPosition;
@@ -713,7 +736,8 @@ namespace RN
 		Lock();
 		
 		SceneQuadtreeInfo *sceneInfo = static_cast<SceneQuadtreeInfo*>(node->GetSceneInfo());
-		uint32 n = FindTreeNode(node->GetBoundingBox(), true, sceneInfo->maxDepth);
+		AABB box = GetSceneNodeTreeBounds(node);
+		uint32 n = FindTreeNode(box, true, sceneInfo->maxDepth);
 		_treeNodes[n].objects.push_back(node);
 		sceneInfo->quadtreeNodeIndex = n;
 
@@ -764,7 +788,7 @@ namespace RN
 		uint32 nodeIndex = sceneInfo->quadtreeNodeIndex;
 		if(nodeIndex == UINT32_MAX) return; // Not a render node in the quadtree
 
-		const AABB &box = node->GetBoundingBox();
+		AABB box = GetSceneNodeTreeBounds(node);
 		// Fast path: still contained in current leaf in XZ
 		if(_treeNodes[nodeIndex].Contains(box)) return;
 

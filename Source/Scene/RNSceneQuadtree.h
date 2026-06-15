@@ -83,7 +83,11 @@ namespace RN
 		Array *_nodesToAdd;
 
 		void RemoveAllNodes();
+		AABB GetSceneNodeTreeBounds(const SceneNode *node) const;
 
+#if RN_ENABLE_UNIVERSE_SCALE
+		DVector3 _treeOrigin;
+#endif
 		size_t _currentFrameCount;
 
 		__RNDeclareMetaInternal(SceneQuadtree)
@@ -109,4 +113,3 @@ namespace RN
 
 
 #endif /* __RAYNE_SCENEQUADTREE_H__ */
-
