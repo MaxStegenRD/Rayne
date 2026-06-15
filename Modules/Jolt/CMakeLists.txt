@@ -12,7 +12,11 @@ set(VERSION_ABI 1)
 set(VERSION_STRING "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 
 # When turning this option on, the library will be compiled using doubles for positions. This allows for much bigger worlds.
-set(DOUBLE_PRECISION OFF)
+if(DEFINED RAYNE_UNIVERSE_SCALE AND RAYNE_UNIVERSE_SCALE)
+    set(DOUBLE_PRECISION ON)
+else()
+    set(DOUBLE_PRECISION OFF)
+endif()
 
 # When turning this option on, the library will be compiled with debug symbols
 set(GENERATE_DEBUG_SYMBOLS ON)
