@@ -211,8 +211,8 @@ namespace RN
 
 		JPH::PointConstraintSettings settings;
 		settings.mSpace = JPH::EConstraintSpace::WorldSpace;
-		settings.mPoint1 = JPH::Vec3(worldPoint1.x, worldPoint1.y, worldPoint1.z);
-		settings.mPoint2 = JPH::Vec3(worldPoint2.x, worldPoint2.y, worldPoint2.z);
+		settings.mPoint1 = JoltConversions::ToJoltRVec3(worldPoint1);
+		settings.mPoint2 = JoltConversions::ToJoltRVec3(worldPoint2);
 		SetConstraint(settings.Create(*b1, *b2));
 	}
 
@@ -243,8 +243,8 @@ namespace RN
 		JPH::FixedConstraintSettings settings;
 		settings.mSpace = JPH::EConstraintSpace::WorldSpace;
 		settings.mAutoDetectPoint = false;
-		settings.mPoint1 = JPH::Vec3(worldPosition1.x, worldPosition1.y, worldPosition1.z);
-		settings.mPoint2 = JPH::Vec3(worldPosition2.x, worldPosition2.y, worldPosition2.z);
+		settings.mPoint1 = JoltConversions::ToJoltRVec3(worldPosition1);
+		settings.mPoint2 = JoltConversions::ToJoltRVec3(worldPosition2);
 		settings.mAxisX1 = ToJoltVec3(worldRotation1.GetRotatedVector(Vector3(1.0f, 0.0f, 0.0f)));
 		settings.mAxisY1 = ToJoltVec3(worldRotation1.GetRotatedVector(Vector3(0.0f, 1.0f, 0.0f)));
 		settings.mAxisX2 = ToJoltVec3(worldRotation2.GetRotatedVector(Vector3(1.0f, 0.0f, 0.0f)));
@@ -278,8 +278,8 @@ namespace RN
 
 		JPH::DistanceConstraintSettings settings;
 		settings.mSpace = JPH::EConstraintSpace::WorldSpace;
-		settings.mPoint1 = JPH::Vec3(worldPoint1.x, worldPoint1.y, worldPoint1.z);
-		settings.mPoint2 = JPH::Vec3(worldPoint2.x, worldPoint2.y, worldPoint2.z);
+		settings.mPoint1 = JoltConversions::ToJoltRVec3(worldPoint1);
+		settings.mPoint2 = JoltConversions::ToJoltRVec3(worldPoint2);
 		settings.mMinDistance = minDistance;
 		settings.mMaxDistance = maxDistance;
 		SetConstraint(settings.Create(*b1, *b2));
@@ -327,10 +327,10 @@ namespace RN
 		Quaternion normalizedWorldRotation1 = getSafeRotation(worldRotation1);
 		Quaternion normalizedWorldRotation2 = getSafeRotation(worldRotation2);
 
-		settings.mPosition1 = JPH::RVec3(worldPosition1.x, worldPosition1.y, worldPosition1.z);
+		settings.mPosition1 = JoltConversions::ToJoltRVec3(worldPosition1);
 		settings.mAxisX1 = ToJoltVec3(getAxis(normalizedWorldRotation1, Vector3(1.0f, 0.0f, 0.0f)));
 		settings.mAxisY1 = ToJoltVec3(getAxis(normalizedWorldRotation1, Vector3(0.0f, 1.0f, 0.0f)));
-		settings.mPosition2 = JPH::RVec3(worldPosition2.x, worldPosition2.y, worldPosition2.z);
+		settings.mPosition2 = JoltConversions::ToJoltRVec3(worldPosition2);
 		settings.mAxisX2 = ToJoltVec3(getAxis(normalizedWorldRotation2, Vector3(1.0f, 0.0f, 0.0f)));
 		settings.mAxisY2 = ToJoltVec3(getAxis(normalizedWorldRotation2, Vector3(0.0f, 1.0f, 0.0f)));
 

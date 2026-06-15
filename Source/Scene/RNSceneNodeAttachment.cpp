@@ -63,6 +63,13 @@ namespace RN
 		_node->SetWorldPosition(position);
 		_consumeChangeSets &= ~SceneNode::ChangeSet::Position;
 	}
+	void SceneNodeAttachment::SetUniversePosition(const DVector3 &position)
+	{
+		RN_DEBUG_ASSERT(_node, "SceneNodeAttachment must be attached to a SceneNode before setting universe position.");
+		_consumeChangeSets |= SceneNode::ChangeSet::Position;
+		_node->SetUniversePosition(position);
+		_consumeChangeSets &= ~SceneNode::ChangeSet::Position;
+	}
 	void SceneNodeAttachment::SetWorldScale(const Vector3 &scale)
 	{
 		RN_DEBUG_ASSERT(_node, "SceneNodeAttachment must be attached to a SceneNode before setting world scale.");
@@ -82,6 +89,11 @@ namespace RN
 	{
 		RN_DEBUG_ASSERT(_node, "SceneNodeAttachment must be attached to a SceneNode before getting world position.");
 		return _node->GetWorldPosition();
+	}
+	DVector3 SceneNodeAttachment::GetUniversePosition() const
+	{
+		RN_DEBUG_ASSERT(_node, "SceneNodeAttachment must be attached to a SceneNode before getting universe position.");
+		return _node->GetUniversePosition();
 	}
 	Vector3 SceneNodeAttachment::GetWorldScale() const
 	{

@@ -157,6 +157,7 @@ set(HEADERS
         RNJoltKinematicController.h)
 
 set(PRIVATE_HEADERS
+        RNJoltConversions.h
         RNJoltInternals.h
         RNJoltExternalSupportAnchorConstraint.h
         RNJoltWheelCylinderShape.h)

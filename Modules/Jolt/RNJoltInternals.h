@@ -10,6 +10,7 @@
 #define __RAYNE_JOLTINTERNALS_H_
 
 #include "RNJolt.h"
+#include "RNJoltConversions.h"
 #include "RNJoltKinematicController.h"
 #include "RNJoltCollisionObject.h"
 
@@ -310,10 +311,10 @@ namespace RN
 		}
 
 	private:
-		static Vector3 GetBodyContactPointVelocity(const JPH::Body &body, const Vector3 &position)
+		static Vector3 GetBodyContactPointVelocity(const JPH::Body &body, const JPH::RVec3 &position)
 		{
-			JPH::Vec3 velocity = body.GetPointVelocity(JPH::RVec3Arg(position.x, position.y, position.z));
-			return Vector3(velocity.GetX(), velocity.GetY(), velocity.GetZ());
+			JPH::Vec3 velocity = body.GetPointVelocity(position);
+			return JoltConversions::ToVector3(velocity);
 		}
 
 		static void FillContactManifoldInfo(JoltContactInfo &info, const JPH::ContactManifold &manifold, const JPH::Body &body, const JPH::Body &otherBody, bool isFirstBody)
@@ -324,9 +325,9 @@ namespace RN
 			uint32 contactPointCount = static_cast<uint32>(manifold.mRelativeContactPointsOn1.size());
 			if(contactPointCount == 0)
 			{
-				info.position = Vector3(static_cast<float>(manifold.mBaseOffset.GetX()), static_cast<float>(manifold.mBaseOffset.GetY()), static_cast<float>(manifold.mBaseOffset.GetZ()));
+				info.position = JoltConversions::ToVector3FromRVec3(manifold.mBaseOffset);
 				info.contactPatchRadius = 0.0f;
-				info.relativeContactVelocity = GetBodyContactPointVelocity(body, info.position) - GetBodyContactPointVelocity(otherBody, info.position);
+				info.relativeContactVelocity = GetBodyContactPointVelocity(body, manifold.mBaseOffset) - GetBodyContactPointVelocity(otherBody, manifold.mBaseOffset);
 				return;
 			}
 
@@ -346,7 +347,8 @@ namespace RN
 			centerX *= inversePointCount;
 			centerY *= inversePointCount;
 			centerZ *= inversePointCount;
-			info.position = Vector3(static_cast<float>(centerX), static_cast<float>(centerY), static_cast<float>(centerZ));
+			JPH::RVec3 center(centerX, centerY, centerZ);
+			info.position = JoltConversions::ToVector3FromRVec3(center);
 
 			double patchRadiusSquared = 0.0;
 			for(uint32 i = 0; i < contactPointCount; i += 1)
@@ -362,7 +364,7 @@ namespace RN
 				patchRadiusSquared = std::max(patchRadiusSquared, offsetX * offsetX + offsetY * offsetY + offsetZ * offsetZ);
 			}
 			info.contactPatchRadius = static_cast<float>(std::sqrt(patchRadiusSquared));
-			info.relativeContactVelocity = GetBodyContactPointVelocity(body, info.position) - GetBodyContactPointVelocity(otherBody, info.position);
+			info.relativeContactVelocity = GetBodyContactPointVelocity(body, center) - GetBodyContactPointVelocity(otherBody, center);
 		}
 
 		struct CountedBodyPair

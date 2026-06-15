@@ -23,7 +23,7 @@ namespace RN
 		JPH::PhysicsSystem *physics = world->GetJoltInstance();
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 
-		JPH::BodyCreationSettings settings(shape->GetJoltShape(), JPH::RVec3Arg(0.0f, 0.0f, 0.0f), JPH::QuatArg(0.0f, 0.0f, 0.0f, 1.0f), JPH::EMotionType::Static, world->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 0));
+		JPH::BodyCreationSettings settings(shape->GetJoltShape(), JPH::RVec3::sZero(), JPH::QuatArg(0.0f, 0.0f, 0.0f, 1.0f), JPH::EMotionType::Static, world->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 0));
 		settings.mUserData = reinterpret_cast<uint64>(this);
 
 		JPH::BodyID bodyID;
@@ -93,14 +93,14 @@ namespace RN
 		if(changeSet & SceneNode::ChangeSet::Position)
 		{
 			RN::Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
-			Vector3 position = GetWorldPosition() - positionOffset;
+			JPH::RVec3 position = JoltConversions::GetAttachmentPosition(this, -positionOffset);
 			Quaternion rotation = GetWorldRotation() * _rotationOffset;
 			rotation.Normalize();
 
 			JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 			JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 
-			bodyInterface.SetPositionAndRotation(*_actor, JPH::RVec3Arg(position.x, position.y, position.z), JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), JPH::EActivation::DontActivate);
+			bodyInterface.SetPositionAndRotation(*_actor, position, JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), JPH::EActivation::DontActivate);
 		}
 
 		if(changeSet & SceneNode::ChangeSet::Attachments)
@@ -108,14 +108,14 @@ namespace RN
 			if(!_owner && GetParent())
 			{
 				RN::Vector3 positionOffset = GetWorldRotation().GetRotatedVector(_positionOffset);
-				Vector3 position = GetWorldPosition() - positionOffset;
+				JPH::RVec3 position = JoltConversions::GetAttachmentPosition(this, -positionOffset);
 				Quaternion rotation = GetWorldRotation() * _rotationOffset;
 				rotation.Normalize();
 
 				JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 				JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 
-				bodyInterface.SetPositionAndRotation(*_actor, JPH::RVec3Arg(position.x, position.y, position.z), JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), JPH::EActivation::DontActivate);
+				bodyInterface.SetPositionAndRotation(*_actor, position, JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), JPH::EActivation::DontActivate);
 			}
 
 			_owner = GetParent();
@@ -138,7 +138,7 @@ namespace RN
 
 		RN::Quaternion rotationResult = Quaternion(rotation.GetX(), rotation.GetY(), rotation.GetZ(), rotation.GetW()) * _rotationOffset.GetConjugated();
 		RN::Vector3 positionOffset = rotationResult.GetRotatedVector(_positionOffset);
-		SetWorldPosition(Vector3(position.GetX(), position.GetY(), position.GetZ()) + positionOffset);
+		JoltConversions::SetAttachmentPosition(this, position, positionOffset);
 		SetWorldRotation(rotationResult);
 	}
 } // namespace RN

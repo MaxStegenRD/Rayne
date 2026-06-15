@@ -23,10 +23,12 @@ namespace RN
 		RNAPI ~SceneNodeAttachment();
 
 		RNAPI void SetWorldPosition(const Vector3 &position);
+		RNAPI void SetUniversePosition(const DVector3 &position);
 		RNAPI void SetWorldScale(const Vector3 &scale);
 		RNAPI void SetWorldRotation(const Quaternion &rotation);
 
 		RNAPI Vector3 GetWorldPosition() const;
+		RNAPI DVector3 GetUniversePosition() const;
 		RNAPI Vector3 GetWorldScale() const;
 		RNAPI Quaternion GetWorldRotation() const;
 

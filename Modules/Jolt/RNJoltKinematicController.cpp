@@ -80,26 +80,26 @@ namespace RN
 
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 
-		Vector3 pos = GetWorldPosition() + offset;
+		JPH::RVec3 baseOffset = JoltConversions::GetAttachmentPosition(this, offset);
 		Quaternion rot = GetWorldRotation();
 
-		JPH::Mat44 worldTransform = JPH::Mat44::sRotationTranslation(JPH::QuatArg(rot.x, rot.y, rot.z, rot.w), JPH::Vec3Arg(pos.x, pos.y, pos.z));
+		JPH::RMat44 worldTransform = JoltConversions::ToJoltRMat44(rot, baseOffset);
 
 		//TODO: Limit max distance of raycast or the result
 
-		JPH::RShapeCast castInfo = JPH::RShapeCast::sFromWorldTransform(_shape->GetJoltShape(), JPH::Vec3Arg(1, 1, 1), worldTransform, JPH::Vec3Arg(direction.x, direction.y, direction.z));
+		JPH::RShapeCast castInfo = JPH::RShapeCast::sFromWorldTransform(_shape->GetJoltShape(), JPH::Vec3::sOne(), worldTransform, JoltConversions::ToJoltVec3(direction));
 
 		JPH::ShapeCastSettings castSettings; //Defaults seem ok for now!?
 
 		uint16 objectLayer = JoltWorld::GetSharedInstance()->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1);
 		JPH::AllHitCollisionCollector<JPH::CastShapeCollector> results;
-		physics->GetNarrowPhaseQuery().CastShape(castInfo, castSettings, JPH::RVec3Arg(0, 0, 0), results, physics->GetDefaultBroadPhaseLayerFilter(objectLayer), physics->GetDefaultLayerFilter(objectLayer));
+		physics->GetNarrowPhaseQuery().CastShape(castInfo, castSettings, baseOffset, results, physics->GetDefaultBroadPhaseLayerFilter(objectLayer), physics->GetDefaultLayerFilter(objectLayer));
 
 		for(auto result : results.mHits)
 		{
 			JoltContactInfo hit;
 
-			JPH::Vec3 position = result.mContactPointOn2; //castInfo.GetPointOnRay(result.mFraction);
+			JPH::RVec3 position = baseOffset + result.mContactPointOn2; //castInfo.GetPointOnRay(result.mFraction);
 			JPH::Vec3 normal;
 
 			// Scoped lock
@@ -118,15 +118,10 @@ namespace RN
 				}
 			}
 
-			hit.position.x = position.GetX();
-			hit.position.y = position.GetY();
-			hit.position.z = position.GetZ();
+			hit.position = JoltConversions::ToVector3FromRVec3(position);
+			hit.normal = JoltConversions::ToVector3(normal);
 
-			hit.normal.x = normal.GetX();
-			hit.normal.y = normal.GetY();
-			hit.normal.z = normal.GetZ();
-
-			hit.distance = pos.GetDistance(hit.position);
+			hit.distance = JoltConversions::ToVector3(result.mContactPointOn2).GetLength();
 
 			if(hit.collisionObject) hit.node = hit.collisionObject->GetParent();
 			if(hit.node) hit.node->Retain()->Autorelease();
@@ -146,26 +141,26 @@ namespace RN
 
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 
-		Vector3 pos = GetWorldPosition() + offset;
+		JPH::RVec3 baseOffset = JoltConversions::GetAttachmentPosition(this, offset);
 		Quaternion rot = GetWorldRotation();
 
-		JPH::Mat44 worldTransform = JPH::Mat44::sRotationTranslation(JPH::QuatArg(rot.x, rot.y, rot.z, rot.w), JPH::Vec3Arg(pos.x, pos.y, pos.z));
+		JPH::RMat44 worldTransform = JoltConversions::ToJoltRMat44(rot, baseOffset);
 
 		//TODO: Limit max distance of raycast or the result
 
-		JPH::RShapeCast castInfo = JPH::RShapeCast::sFromWorldTransform(_shape->GetJoltShape(), JPH::Vec3Arg(1, 1, 1), worldTransform, JPH::Vec3Arg(direction.x, direction.y, direction.z));
+		JPH::RShapeCast castInfo = JPH::RShapeCast::sFromWorldTransform(_shape->GetJoltShape(), JPH::Vec3::sOne(), worldTransform, JoltConversions::ToJoltVec3(direction));
 
 		JPH::ShapeCastSettings castSettings; //Defaults seem ok for now!?
 
 		uint16 objectLayer = JoltWorld::GetSharedInstance()->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1);
 		JPH::ClosestHitCollisionCollector<JPH::CastShapeCollector> result;
-		physics->GetNarrowPhaseQuery().CastShape(castInfo, castSettings, JPH::RVec3Arg(0, 0, 0), result, physics->GetDefaultBroadPhaseLayerFilter(objectLayer), physics->GetDefaultLayerFilter(objectLayer));
+		physics->GetNarrowPhaseQuery().CastShape(castInfo, castSettings, baseOffset, result, physics->GetDefaultBroadPhaseLayerFilter(objectLayer), physics->GetDefaultLayerFilter(objectLayer));
 		if(!result.HadHit())
 		{
 			return hit;
 		}
 
-		JPH::Vec3 position = result.mHit.mContactPointOn2; //castInfo.GetPointOnRay(result.mHit.mFraction);
+		JPH::RVec3 position = baseOffset + result.mHit.mContactPointOn2; //castInfo.GetPointOnRay(result.mHit.mFraction);
 		JPH::Vec3 normal;
 
 		// Scoped lock
@@ -184,15 +179,10 @@ namespace RN
 			}
 		}
 
-		hit.position.x = position.GetX();
-		hit.position.y = position.GetY();
-		hit.position.z = position.GetZ();
+		hit.position = JoltConversions::ToVector3FromRVec3(position);
+		hit.normal = JoltConversions::ToVector3(normal);
 
-		hit.normal.x = normal.GetX();
-		hit.normal.y = normal.GetY();
-		hit.normal.z = normal.GetZ();
-
-		hit.distance = pos.GetDistance(hit.position);
+		hit.distance = JoltConversions::ToVector3(result.mHit.mContactPointOn2).GetLength();
 
 		if(hit.collisionObject) hit.node = hit.collisionObject->GetParent();
 		if(hit.node) hit.node->Retain()->Autorelease();
@@ -210,14 +200,15 @@ namespace RN
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 
 		Vector3 position = GetWorldPosition();
+		JPH::RVec3 baseOffset = JoltConversions::GetAttachmentPosition(this);
 		Quaternion rotation = GetWorldRotation();
 
-		JPH::Mat44 worldTransform = JPH::Mat44::sRotationTranslation(JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), JPH::Vec3Arg(position.x, position.y, position.z));
+		JPH::RMat44 worldTransform = JoltConversions::ToJoltRMat44(rotation, baseOffset);
 		JPH::CollideShapeSettings collideSettings; //Defaults seem ok for now!?
 
 		JPH::ClosestHitCollisionCollector<JPH::CollideShapeCollector> results;
 		uint16 objectLayer = JoltWorld::GetSharedInstance()->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1);
-		physics->GetNarrowPhaseQuery().CollideShape(_shape->GetJoltShape(), JPH::Vec3Arg(1, 1, 1), worldTransform.PreTranslated(_shape->GetJoltShape()->GetCenterOfMass()), collideSettings, JPH::RVec3Arg(0, 0, 0), results, physics->GetDefaultBroadPhaseLayerFilter(objectLayer), physics->GetDefaultLayerFilter(objectLayer));
+		physics->GetNarrowPhaseQuery().CollideShape(_shape->GetJoltShape(), JPH::Vec3::sOne(), worldTransform.PreTranslated(_shape->GetJoltShape()->GetCenterOfMass()), collideSettings, baseOffset, results, physics->GetDefaultBroadPhaseLayerFilter(objectLayer), physics->GetDefaultLayerFilter(objectLayer));
 
 		if(!results.HadHit())
 		{
@@ -250,14 +241,15 @@ namespace RN
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 
 		Vector3 position = GetWorldPosition();
+		JPH::RVec3 baseOffset = JoltConversions::GetAttachmentPosition(this);
 		Quaternion rotation = GetWorldRotation();
 
-		JPH::Mat44 worldTransform = JPH::Mat44::sRotationTranslation(JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), JPH::Vec3Arg(position.x, position.y, position.z));
+		JPH::RMat44 worldTransform = JoltConversions::ToJoltRMat44(rotation, baseOffset);
 		JPH::CollideShapeSettings collideSettings; //Defaults seem ok for now!?
 
 		JPH::AllHitCollisionCollector<JPH::CollideShapeCollector> results;
 		uint16 objectLayer = JoltWorld::GetSharedInstance()->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1);
-		physics->GetNarrowPhaseQuery().CollideShape(_shape->GetJoltShape(), JPH::Vec3Arg(1, 1, 1), worldTransform.PreTranslated(_shape->GetJoltShape()->GetCenterOfMass()), collideSettings, JPH::RVec3Arg(0, 0, 0), results, physics->GetDefaultBroadPhaseLayerFilter(objectLayer), physics->GetDefaultLayerFilter(objectLayer));
+		physics->GetNarrowPhaseQuery().CollideShape(_shape->GetJoltShape(), JPH::Vec3::sOne(), worldTransform.PreTranslated(_shape->GetJoltShape()->GetCenterOfMass()), collideSettings, baseOffset, results, physics->GetDefaultBroadPhaseLayerFilter(objectLayer), physics->GetDefaultLayerFilter(objectLayer));
 
 		for(auto result : results.mHits)
 		{
@@ -335,16 +327,14 @@ namespace RN
 
 		if(changeSet & SceneNode::ChangeSet::Position)
 		{
-			Vector3 position = GetWorldPosition() - _positionOffset;
-			_controller->SetPosition(JPH::RVec3Arg(position.x, position.y, position.z));
+			_controller->SetPosition(JoltConversions::GetAttachmentPosition(this, -_positionOffset));
 		}
 
 		if(changeSet & SceneNode::ChangeSet::Attachments)
 		{
 			if(!_owner && GetParent())
 			{
-				Vector3 position = GetWorldPosition() - _positionOffset;
-				_controller->SetPosition(JPH::RVec3Arg(position.x, position.y, position.z));
+				_controller->SetPosition(JoltConversions::GetAttachmentPosition(this, -_positionOffset));
 			}
 
 			_owner = GetParent();
@@ -359,6 +349,6 @@ namespace RN
 		}
 
 		JPH::RVec3 position = _controller->GetPosition();
-		SetWorldPosition(Vector3(position.GetX(), position.GetY(), position.GetZ()) + _positionOffset);
+		JoltConversions::SetAttachmentPosition(this, position, _positionOffset);
 	}
 } // namespace RN

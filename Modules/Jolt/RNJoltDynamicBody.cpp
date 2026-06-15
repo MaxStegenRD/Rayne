@@ -26,7 +26,7 @@ namespace RN
 		JPH::PhysicsSystem *physics = world->GetJoltInstance();
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 
-		JPH::BodyCreationSettings settings(shape->GetJoltShape(), JPH::RVec3Arg(0.0f, 0.0f, 0.0f), JPH::QuatArg(0.0f, 0.0f, 0.0f, 1.0f), JPH::EMotionType::Dynamic, world->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1));
+		JPH::BodyCreationSettings settings(shape->GetJoltShape(), JPH::RVec3::sZero(), JPH::QuatArg(0.0f, 0.0f, 0.0f, 1.0f), JPH::EMotionType::Dynamic, world->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1));
 		settings.mLinearDamping = world->GetDefaultDynamicBodyLinearDamping();
 		settings.mAngularDamping = world->GetDefaultDynamicBodyAngularDamping();
 		settings.mMassPropertiesOverride.mMass = mass;
@@ -108,7 +108,6 @@ namespace RN
 	{
 		if(!shape || !_actor) return;
 
-		Vector3 worldPosition = GetWorldPosition();
 		Quaternion worldRotation = GetWorldRotation();
 
 		JoltShape *previousShape = _shape;
@@ -136,15 +135,15 @@ namespace RN
 		if(previousShape) previousShape->Release();
 		SetMass(mass);
 
-		if(worldPosition.IsValid() && worldRotation.IsValid() && positionOffset.IsValid())
+		if(worldRotation.IsValid() && positionOffset.IsValid())
 		{
 			worldRotation.Normalize();
 			Quaternion bodyRotation = worldRotation * _rotationOffset;
 			bodyRotation.Normalize();
-			Vector3 bodyPosition = worldPosition - worldRotation.GetRotatedVector(_positionOffset);
+			JPH::RVec3 bodyPosition = JoltConversions::GetAttachmentPosition(this, -worldRotation.GetRotatedVector(_positionOffset));
 			if(wasInSimulation)
 			{
-				bodyInterface.SetPositionAndRotation(*_actor, JPH::RVec3Arg(bodyPosition.x, bodyPosition.y, bodyPosition.z), JPH::QuatArg(bodyRotation.x, bodyRotation.y, bodyRotation.z, bodyRotation.w), JPH::EActivation::DontActivate);
+				bodyInterface.SetPositionAndRotation(*_actor, bodyPosition, JPH::QuatArg(bodyRotation.x, bodyRotation.y, bodyRotation.z, bodyRotation.w), JPH::EActivation::DontActivate);
 			}
 			else
 			{
@@ -152,7 +151,7 @@ namespace RN
 				JPH::BodyLockWrite transformLock(lockInterface, *_actor);
 				if(transformLock.Succeeded())
 				{
-					transformLock.GetBody().SetPositionAndRotationInternal(JPH::RVec3Arg(bodyPosition.x, bodyPosition.y, bodyPosition.z), JPH::QuatArg(bodyRotation.x, bodyRotation.y, bodyRotation.z, bodyRotation.w));
+					transformLock.GetBody().SetPositionAndRotationInternal(bodyPosition, JPH::QuatArg(bodyRotation.x, bodyRotation.y, bodyRotation.z, bodyRotation.w));
 				}
 			}
 		}
@@ -262,7 +261,7 @@ namespace RN
 		if(!lock.Succeeded()) return Vector3();
 
 		const JPH::Body &body = lock.GetBody();
-		JPH::Vec3 velocity = body.GetPointVelocity(JPH::RVec3Arg(worldPosition.x, worldPosition.y, worldPosition.z));
+		JPH::Vec3 velocity = body.GetPointVelocity(JoltConversions::ToJoltRVec3(worldPosition));
 		return Vector3(velocity.GetX(), velocity.GetY(), velocity.GetZ());
 	}
 
@@ -276,7 +275,7 @@ namespace RN
 		if(!lock.Succeeded()) return properties;
 
 		const JPH::Body &body = lock.GetBody();
-		JPH::RVec3 joltWorldPosition(worldPosition.x, worldPosition.y, worldPosition.z);
+		JPH::RVec3 joltWorldPosition = JoltConversions::ToJoltRVec3(worldPosition);
 		JPH::Vec3 velocity = body.GetPointVelocity(joltWorldPosition);
 		properties.velocity = Vector3(velocity.GetX(), velocity.GetY(), velocity.GetZ());
 
@@ -457,7 +456,7 @@ namespace RN
 		if(!bodyInterface) return;
 
 		if(force.GetSquaredLength() > k::EpsilonFloat) bodyInterface->ActivateBody(*_actor);
-		bodyInterface->AddForce(*_actor, JPH::Vec3Arg(force.x, force.y, force.z));
+		bodyInterface->AddForce(*_actor, JoltConversions::ToJoltVec3(force));
 	}
 
 	void JoltDynamicBody::AddForce(const Vector3 &force, const Vector3 &origin)
@@ -466,7 +465,7 @@ namespace RN
 		if(!bodyInterface) return;
 
 		if(force.GetSquaredLength() > k::EpsilonFloat) bodyInterface->ActivateBody(*_actor);
-		bodyInterface->AddForce(*_actor, JPH::Vec3Arg(force.x, force.y, force.z), JPH::Vec3Arg(origin.x, origin.y, origin.z));
+		bodyInterface->AddForce(*_actor, JoltConversions::ToJoltVec3(force), JoltConversions::ToJoltRVec3(origin));
 	}
 
 	/*	void JoltDynamicBody::ClearForces()
@@ -499,7 +498,7 @@ namespace RN
 		if(!bodyInterface) return;
 
 		if(impulse.GetSquaredLength() > k::EpsilonFloat) bodyInterface->ActivateBody(*_actor);
-		bodyInterface->AddImpulse(*_actor, JPH::Vec3Arg(impulse.x, impulse.y, impulse.z));
+		bodyInterface->AddImpulse(*_actor, JoltConversions::ToJoltVec3(impulse));
 	}
 	void JoltDynamicBody::AddImpulse(const Vector3 &impulse, const Vector3 &origin)
 	{
@@ -507,7 +506,7 @@ namespace RN
 		if(!bodyInterface) return;
 
 		if(impulse.GetSquaredLength() > k::EpsilonFloat) bodyInterface->ActivateBody(*_actor);
-		bodyInterface->AddImpulse(*_actor, JPH::Vec3Arg(impulse.x, impulse.y, impulse.z), JPH::Vec3Arg(origin.x, origin.y, origin.z));
+		bodyInterface->AddImpulse(*_actor, JoltConversions::ToJoltVec3(impulse), JoltConversions::ToJoltRVec3(origin));
 	}
 
 	bool JoltDynamicBody::ApplyBuoyancyImpulse(const Vector3 &surfacePosition, const Vector3 &surfaceNormal, float buoyancy, float linearDrag, float angularDrag, const Vector3 &fluidVelocity, const Vector3 &gravity, float delta)
@@ -527,7 +526,7 @@ namespace RN
 		if(!body.IsActive()) return false;
 
 		Vector3 normalizedSurfaceNormal = surfaceNormal.GetNormalized();
-		return body.ApplyBuoyancyImpulse(JPH::RVec3Arg(surfacePosition.x, surfacePosition.y, surfacePosition.z),
+		return body.ApplyBuoyancyImpulse(JoltConversions::ToJoltRVec3(surfacePosition),
 			JPH::Vec3Arg(normalizedSurfaceNormal.x, normalizedSurfaceNormal.y, normalizedSurfaceNormal.z),
 			buoyancy,
 			linearDrag,
@@ -577,10 +576,10 @@ namespace RN
 			{
 				worldRotation.Normalize();
 				RN::Vector3 positionOffset = worldRotation.GetRotatedVector(_positionOffset);
-				RN::Vector3 position = worldPosition - positionOffset;
+				JPH::RVec3 position = JoltConversions::GetAttachmentPosition(this, -positionOffset);
 				RN::Quaternion rotation = worldRotation * _rotationOffset;
 				rotation.Normalize();
-				bodyInterface.SetPositionAndRotation(*_actor, JPH::RVec3Arg(position.x, position.y, position.z), JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), JPH::EActivation::DontActivate);
+				bodyInterface.SetPositionAndRotation(*_actor, position, JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), JPH::EActivation::DontActivate);
 			}
 			bodyInterface.AddBody(*_actor, JPH::EActivation::Activate);
 			_isInSimulation = true;
@@ -631,7 +630,7 @@ namespace RN
 
 		targetRotation.Normalize();
 
-		JPH::RVec3 targetPosition(targetPositionVector.x, targetPositionVector.y, targetPositionVector.z);
+		JPH::RVec3 targetPosition = JoltConversions::ToJoltRVec3(targetPositionVector);
 		JPH::Quat targetJoltRotation(targetRotation.x, targetRotation.y, targetRotation.z, targetRotation.w);
 		targetJoltRotation = targetJoltRotation.Normalized();
 		if(targetJoltRotation.IsNaN() || !targetJoltRotation.IsNormalized())
@@ -837,12 +836,12 @@ namespace RN
 				worldRotation.Normalize();
 
 				RN::Vector3 positionOffset = worldRotation.GetRotatedVector(_positionOffset);
-				Vector3 position = GetWorldPosition() - positionOffset;
+				JPH::RVec3 position = JoltConversions::GetAttachmentPosition(this, -positionOffset);
 				Quaternion rotation = worldRotation * _rotationOffset;
-				if(position.IsValid() && rotation.IsValid())
+				if(rotation.IsValid())
 				{
 					rotation.Normalize();
-					bodyInterface->SetPositionAndRotation(*_actor, JPH::RVec3Arg(position.x, position.y, position.z), JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), JPH::EActivation::DontActivate);
+					bodyInterface->SetPositionAndRotation(*_actor, position, JPH::QuatArg(rotation.x, rotation.y, rotation.z, rotation.w), JPH::EActivation::DontActivate);
 				}
 			}
 		}
@@ -876,7 +875,7 @@ namespace RN
 
 		RN::Quaternion rotationResult = Quaternion(rotation.GetX(), rotation.GetY(), rotation.GetZ(), rotation.GetW()) * _rotationOffset.GetConjugated();
 		RN::Vector3 positionOffset = rotationResult.GetRotatedVector(_positionOffset);
-		SetWorldPosition(Vector3(position.GetX(), position.GetY(), position.GetZ()) + positionOffset);
+		JoltConversions::SetAttachmentPosition(this, position, positionOffset);
 		SetWorldRotation(rotationResult);
 	}
 } // namespace RN
