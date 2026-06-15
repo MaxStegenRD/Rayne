@@ -268,6 +268,7 @@ namespace RN
 		{
 #if RN_ENABLE_UNIVERSE_SCALE
 			Scene *scene = _sceneInfo ? _sceneInfo->GetScene() : nullptr;
+			RN_DEBUG_ASSERT(scene, "SetWorldPosition() on a detached root SceneNode is ambiguous when RN_ENABLE_UNIVERSE_SCALE is enabled. Add the node to a scene first, use SetUniversePosition() for absolute universe-space placement, or use SetPosition() for local/stored placement.");
 			SetPosition(scene ? scene->ConvertWorldPositionToUniversePosition(pos) : DVector3(pos));
 #else
 			SetPosition(pos);
