@@ -13,6 +13,7 @@
 
 namespace RN
 {
+	class DVector3;
 	class Vector3;
 	class Vector4;
 
@@ -72,6 +73,7 @@ namespace RN
 		Vector3(const float n);
 		Vector3(const float x, const float y, const float z);
 		explicit Vector3(const Vector2 &other, float z = 0.0f);
+		explicit Vector3(const DVector3 &other);
 		explicit Vector3(const Vector4 &other);
 
 		bool operator==(const Vector3 &other) const;
@@ -113,6 +115,58 @@ namespace RN
 			float x;
 			float y;
 			float z;
+		};
+	};
+
+	class DVector3
+	{
+	public:
+		DVector3();
+		DVector3(const double n);
+		DVector3(const double x, const double y, const double z);
+		explicit DVector3(const Vector2 &other, double z = 0.0);
+		explicit DVector3(const Vector3 &other);
+
+		bool operator==(const DVector3 &other) const;
+		bool operator!=(const DVector3 &other) const;
+
+		DVector3 operator-() const;
+
+		DVector3 operator+(const DVector3 &other) const;
+		DVector3 operator-(const DVector3 &other) const;
+		DVector3 operator*(const DVector3 &other) const;
+		DVector3 operator/(const DVector3 &other) const;
+		DVector3 operator*(const double n) const;
+		DVector3 operator/(const double n) const;
+
+		DVector3 &operator+=(const DVector3 &other);
+		DVector3 &operator-=(const DVector3 &other);
+		DVector3 &operator*=(const DVector3 &other);
+		DVector3 &operator/=(const DVector3 &other);
+
+		double GetLength() const;
+		double GetSquaredLength() const;
+		double GetMax() const;
+		double GetMin() const;
+		double GetDotProduct(const DVector3 &other) const;
+		DVector3 GetCrossProduct(const DVector3 &other) const;
+		bool IsEqual(const DVector3 &other, double epsilon) const;
+		double GetDistance(const DVector3 &other) const;
+		double GetSquaredDistance(const DVector3 &other) const;
+		double GetDistanceToSegment(const DVector3 &a, const DVector3 &b) const;
+		DVector3 GetLerp(const DVector3 &other, double factor) const;
+
+		bool IsValid() const;
+
+		DVector3 &Normalize(const double n = 1.0);
+		DVector3 GetNormalized(const double n = 1.0) const;
+		Vector3 ToVector3() const;
+
+		struct
+		{
+			double x;
+			double y;
+			double z;
 		};
 	};
 
@@ -589,6 +643,248 @@ namespace RN
 	}
 
 
+	RN_INLINE DVector3::DVector3()
+	{
+		x = y = z = 0.0;
+	}
+
+	RN_INLINE DVector3::DVector3(const double n)
+	{
+		x = y = z = n;
+	}
+
+	RN_INLINE DVector3::DVector3(const double _x, const double _y, const double _z)
+	{
+		x = _x;
+		y = _y;
+		z = _z;
+	}
+
+	RN_INLINE DVector3::DVector3(const Vector2 &other, double _z)
+	{
+		x = static_cast<double>(other.x);
+		y = static_cast<double>(other.y);
+		z = _z;
+	}
+
+	RN_INLINE DVector3::DVector3(const Vector3 &other)
+	{
+		x = static_cast<double>(other.x);
+		y = static_cast<double>(other.y);
+		z = static_cast<double>(other.z);
+	}
+
+	RN_INLINE Vector3::Vector3(const DVector3 &other)
+	{
+		x = static_cast<float>(other.x);
+		y = static_cast<float>(other.y);
+		z = static_cast<float>(other.z);
+	}
+
+	RN_INLINE bool DVector3::operator==(const DVector3 &other) const
+	{
+		if(Math::FastAbs(x - other.x) > static_cast<double>(k::EpsilonFloat))
+			return false;
+
+		if(Math::FastAbs(y - other.y) > static_cast<double>(k::EpsilonFloat))
+			return false;
+
+		if(Math::FastAbs(z - other.z) > static_cast<double>(k::EpsilonFloat))
+			return false;
+
+		return true;
+	}
+
+	RN_INLINE bool DVector3::operator!=(const DVector3 &other) const
+	{
+		if(Math::FastAbs(x - other.x) <= static_cast<double>(k::EpsilonFloat) && Math::FastAbs(y - other.y) <= static_cast<double>(k::EpsilonFloat) && Math::FastAbs(z - other.z) <= static_cast<double>(k::EpsilonFloat))
+			return false;
+
+		return true;
+	}
+
+	RN_INLINE DVector3 DVector3::operator-() const
+	{
+		return DVector3(-x, -y, -z);
+	}
+
+	RN_INLINE DVector3 DVector3::operator+(const DVector3 &other) const
+	{
+		return DVector3(x + other.x, y + other.y, z + other.z);
+	}
+	RN_INLINE DVector3 DVector3::operator-(const DVector3 &other) const
+	{
+		return DVector3(x - other.x, y - other.y, z - other.z);
+	}
+	RN_INLINE DVector3 DVector3::operator*(const DVector3 &other) const
+	{
+		return DVector3(x * other.x, y * other.y, z * other.z);
+	}
+	RN_INLINE DVector3 DVector3::operator/(const DVector3 &other) const
+	{
+		return DVector3(x / other.x, y / other.y, z / other.z);
+	}
+	RN_INLINE DVector3 DVector3::operator*(const double n) const
+	{
+		return DVector3(x * n, y * n, z * n);
+	}
+	RN_INLINE DVector3 DVector3::operator/(const double n) const
+	{
+		return DVector3(x / n, y / n, z / n);
+	}
+
+	RN_INLINE DVector3 &DVector3::operator+=(const DVector3 &other)
+	{
+		x += other.x;
+		y += other.y;
+		z += other.z;
+
+		return *this;
+	}
+	RN_INLINE DVector3 &DVector3::operator-=(const DVector3 &other)
+	{
+		x -= other.x;
+		y -= other.y;
+		z -= other.z;
+
+		return *this;
+	}
+	RN_INLINE DVector3 &DVector3::operator*=(const DVector3 &other)
+	{
+		x *= other.x;
+		y *= other.y;
+		z *= other.z;
+
+		return *this;
+	}
+	RN_INLINE DVector3 &DVector3::operator/=(const DVector3 &other)
+	{
+		x /= other.x;
+		y /= other.y;
+		z /= other.z;
+
+		return *this;
+	}
+
+	RN_INLINE double DVector3::GetLength() const
+	{
+		return std::sqrt(x * x + y * y + z * z);
+	}
+
+	RN_INLINE double DVector3::GetSquaredLength() const
+	{
+		return x * x + y * y + z * z;
+	}
+
+	RN_INLINE double DVector3::GetMax() const
+	{
+		return std::max(std::max(x, y), z);
+	}
+
+	RN_INLINE double DVector3::GetMin() const
+	{
+		return std::min(std::min(x, y), z);
+	}
+
+	RN_INLINE double DVector3::GetDotProduct(const DVector3 &other) const
+	{
+		return (x * other.x + y * other.y + z * other.z);
+	}
+
+	RN_INLINE DVector3 DVector3::GetCrossProduct(const DVector3 &other) const
+	{
+		DVector3 result;
+
+		result.x = y * other.z - z * other.y;
+		result.y = z * other.x - x * other.z;
+		result.z = x * other.y - y * other.x;
+
+		return result;
+	}
+
+	RN_INLINE bool DVector3::IsEqual(const DVector3 &other, double epsilon) const
+	{
+		if(Math::FastAbs(x - other.x) > epsilon)
+			return false;
+
+		if(Math::FastAbs(y - other.y) > epsilon)
+			return false;
+
+		if(Math::FastAbs(z - other.z) > epsilon)
+			return false;
+
+		return true;
+	}
+
+	RN_INLINE DVector3 &DVector3::Normalize(const double n)
+	{
+		double lengthSquared = x * x + y * y + z * z;
+		if(lengthSquared > static_cast<double>(k::EpsilonFloat))
+		{
+			double invlength = n / std::sqrt(lengthSquared);
+			x *= invlength;
+			y *= invlength;
+			z *= invlength;
+		}
+
+		return *this;
+	}
+
+	RN_INLINE DVector3 DVector3::GetNormalized(const double n) const
+	{
+		return DVector3(*this).Normalize(n);
+	}
+
+	RN_INLINE double DVector3::GetDistance(const DVector3 &other) const
+	{
+		DVector3 difference = *this - other;
+		return difference.GetLength();
+	}
+
+	RN_INLINE double DVector3::GetSquaredDistance(const DVector3 &other) const
+	{
+		DVector3 difference = *this - other;
+		return difference.GetDotProduct(difference);
+	}
+
+	RN_INLINE double DVector3::GetDistanceToSegment(const DVector3 &a, const DVector3 &b) const
+	{
+		DVector3 ab = b - a;
+		DVector3 av = *this - a;
+
+		if(av.GetDotProduct(ab) <= 0.0) return av.GetLength();
+
+		DVector3 bv = *this - b;
+		if(bv.GetDotProduct(ab) >= 0.0) return bv.GetLength();
+
+		return (ab.GetCrossProduct(av)).GetLength() / ab.GetLength();
+	}
+
+	RN_INLINE DVector3 DVector3::GetLerp(const DVector3 &other, double factor) const
+	{
+		return *this * (1.0 - factor) + other * factor;
+	}
+
+	RN_INLINE bool DVector3::IsValid() const
+	{
+		if(!std::isfinite(x))
+			return false;
+
+		if(!std::isfinite(y))
+			return false;
+
+		if(!std::isfinite(z))
+			return false;
+
+		return true;
+	}
+
+	RN_INLINE Vector3 DVector3::ToVector3() const
+	{
+		return Vector3(*this);
+	}
+
+
 	RN_INLINE Vector4::Vector4()
 	{
 		x = y = z = w = 0.0f;
@@ -817,6 +1113,7 @@ namespace RN
 #if RN_SUPPORTS_TRIVIALLY_COPYABLE
 	static_assert(std::is_trivially_copyable<Vector2>::value, "Vector2 must be trivially copyable");
 	static_assert(std::is_trivially_copyable<Vector3>::value, "Vector3 must be trivially copyable");
+	static_assert(std::is_trivially_copyable<DVector3>::value, "DVector3 must be trivially copyable");
 	static_assert(std::is_trivially_copyable<Vector4>::value, "Vector4 must be trivially copyable");
 #endif
 } // namespace RN
