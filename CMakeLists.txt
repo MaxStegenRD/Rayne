@@ -14,8 +14,15 @@ option(RAYNE_THREAD_SANITIZER "Enable Clang thread sanitizer if available" OFF)
 option(RAYNE_ADDRESS_SANITIZER "Enable Clang address sanitizer if available" OFF)
 option(RAYNE_MEMORY_SANITIZER "Enable Clang memory sanitizer if available" OFF)
 option(RAYNE_VTUNE "Enable VTune if avaialable" ON)
+option(RAYNE_UNIVERSE_SCALE "Enable universe-scale floating origin support" OFF)
 
 option(CMAKE_BUILD_TYPE "The Build Type (Debug/Release)" "Debug")
+
+if(RAYNE_UNIVERSE_SCALE)
+    set(RAYNE_ENABLE_UNIVERSE_SCALE 1)
+else()
+    set(RAYNE_ENABLE_UNIVERSE_SCALE 0)
+endif()
 
 if((CMAKE_SYSTEM_NAME STREQUAL "visionOS"))
     set(VISIONOS 1)

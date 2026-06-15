@@ -24,6 +24,7 @@ namespace RN
 	public:
 		friend class Kernel;
 		friend class SceneManager;
+		friend class SceneInfo;
 
 		RNAPI ~Scene();
 
@@ -32,6 +33,13 @@ namespace RN
 
 		RNAPI void AddAttachment(SceneAttachment *attachment);
 		RNAPI void RemoveAttachment(SceneAttachment *attachment);
+
+		RNAPI void SetUniverseOrigin(const DVector3 &origin);
+		RNAPI void ShiftUniverseOrigin(const DVector3 &shift);
+		RNAPI DVector3 GetUniverseOrigin() const;
+		RNAPI uint64 GetUniverseOriginVersion() const;
+		RNAPI Vector3 ConvertUniversePositionToWorldPosition(const DVector3 &position) const;
+		RNAPI DVector3 ConvertWorldPositionToUniversePosition(const Vector3 &position) const;
 
 	protected:
 		RNAPI Scene();
@@ -58,6 +66,10 @@ namespace RN
 		bool _isPreparedForShutdown;
 
 	private:
+#if RN_ENABLE_UNIVERSE_SCALE
+		DVector3 _universeOrigin;
+		uint64 _universeOriginVersion;
+#endif
 		Array *_attachments;
 
 		__RNDeclareMetaInternal(Scene)
@@ -70,6 +82,14 @@ namespace RN
 		RNAPI ~SceneInfo();
 
 		RNAPI Scene *GetScene() const;
+		uint64 GetUniverseOriginVersion() const
+		{
+#if RN_ENABLE_UNIVERSE_SCALE
+			return _scene->_universeOriginVersion;
+#else
+			return 0;
+#endif
+		}
 
 	private:
 		Scene *_scene;

@@ -34,13 +34,13 @@ namespace RN
 		SetBoundingBox(AABB(Vector3(-1.0f), Vector3(1.0f)));
 	}
 
-	SceneNode::SceneNode(const Vector3 &position) :
+	SceneNode::SceneNode(const SceneNode::PositionType &position) :
 		SceneNode()
 	{
 		SetPosition(position);
 	}
 
-	SceneNode::SceneNode(const Vector3 &position, const Quaternion &rotation) :
+	SceneNode::SceneNode(const SceneNode::PositionType &position, const Quaternion &rotation) :
 		SceneNode(position)
 	{
 		SetRotation(rotation);
@@ -97,7 +97,11 @@ namespace RN
 	SceneNode::SceneNode(Deserializer *deserializer) :
 		SceneNode()
 	{
+#if RN_ENABLE_UNIVERSE_SCALE
+		SetPosition(deserializer->DecodeDVector3());
+#else
 		SetPosition(deserializer->DecodeVector3());
+#endif
 		SetScale(deserializer->DecodeVector3());
 		SetRotation(deserializer->DecodeQuaternion());
 
@@ -128,7 +132,11 @@ namespace RN
 	{
 		UpdateInternalData();
 
+#if RN_ENABLE_UNIVERSE_SCALE
+		serializer->EncodeDVector3(_position);
+#else
 		serializer->EncodeVector3(_position);
+#endif
 		serializer->EncodeVector3(_scale);
 		serializer->EncodeQuarternion(_rotation);
 
@@ -252,6 +260,79 @@ namespace RN
 		rotation = Quaternion::WithLookAt(worldPos - target, GetUp(), keepUpAxis);
 
 		SetWorldRotation(rotation);
+	}
+
+	void SceneNode::SetWorldPosition(const Vector3 &pos)
+	{
+		if(!_parent)
+		{
+#if RN_ENABLE_UNIVERSE_SCALE
+			Scene *scene = _sceneInfo ? _sceneInfo->GetScene() : nullptr;
+			SetPosition(scene ? scene->ConvertWorldPositionToUniversePosition(pos) : DVector3(pos));
+#else
+			SetPosition(pos);
+#endif
+			return;
+		}
+
+		WillUpdate(ChangeSet::Position);
+		Vector3 tempPosition = pos - _parent->GetWorldPosition();
+		Quaternion tempRotation = Quaternion() / _parent->GetWorldRotation();
+		_position = tempRotation.GetRotatedVector(tempPosition) / _parent->GetWorldScale();
+		DidUpdate(ChangeSet::Position);
+	}
+
+	void SceneNode::SetUniversePosition(const DVector3 &pos)
+	{
+#if RN_ENABLE_UNIVERSE_SCALE
+		if(_parent)
+		{
+			DVector3 localPosition = pos - _parent->GetUniversePosition();
+			Vector3 localPositionFloat = _parent->GetWorldRotation().GetConjugated().GetRotatedVector(localPosition.ToVector3()) / _parent->GetWorldScale();
+			SetPosition(localPositionFloat);
+			return;
+		}
+
+		SetPosition(pos);
+#else
+		SetWorldPosition(pos.ToVector3());
+#endif
+	}
+
+	DVector3 SceneNode::GetUniversePosition() const
+	{
+#if RN_ENABLE_UNIVERSE_SCALE
+		if(_parent)
+		{
+			DVector3 parentPosition = _parent->GetUniversePosition();
+			Vector3 localPosition = _position->ToVector3();
+			Vector3 localOffset = _parent->GetWorldScale() * _parent->GetWorldRotation().GetRotatedVector(localPosition);
+			return parentPosition + localOffset;
+		}
+
+		return _position;
+#else
+		return DVector3(GetWorldPosition());
+#endif
+	}
+
+	uint64 SceneNode::GetTransformVersion() const
+	{
+#if RN_ENABLE_UNIVERSE_SCALE
+		return _updated + (_sceneInfo ? _sceneInfo->GetUniverseOriginVersion() : 0);
+#else
+		return _updated;
+#endif
+	}
+
+	Vector3 SceneNode::GetPositionForTransform() const
+	{
+#if RN_ENABLE_UNIVERSE_SCALE
+		Scene *scene = _sceneInfo ? _sceneInfo->GetScene() : nullptr;
+		if(!_parent && scene)
+			return scene->ConvertUniversePositionToWorldPosition(_position);
+#endif
+		return Vector3(_position);
 	}
 
 	SceneNode::Flags SceneNode::RemoveFlags(Flags flags)
@@ -490,7 +571,7 @@ namespace RN
 			_updated += 1;
 			if(_parent == nullptr)
 			{
-				SetWorldPosition(_position);
+				SetWorldPosition(Vector3(_position));
 				SetWorldRotation(_rotation);
 				SetWorldScale(_scale);
 			}
@@ -514,26 +595,28 @@ namespace RN
 
 	void SceneNode::UpdateInternalData() const
 	{
-		if(_lastUpdatedVersion != _updated)
+		uint64 transformVersion = GetTransformVersion();
+		if(_lastUpdatedVersion != transformVersion)
 		{
+			Vector3 position = GetPositionForTransform();
 			if(_parent)
 			{
 				_parent->UpdateInternalData();
 
-				_worldPosition = _parent->GetWorldPosition() + _parent->GetWorldScale() * _parent->GetWorldRotation().GetRotatedVector(_position);
+				_worldPosition = _parent->GetWorldPosition() + _parent->GetWorldScale() * _parent->GetWorldRotation().GetRotatedVector(position);
 				_worldRotation = _parent->GetWorldRotation() * _rotation;
 				_worldScale = _parent->GetWorldScale() * _scale;
 				_worldEuler = _parent->GetWorldEulerAngle() + _euler;
 			}
 			else
 			{
-				_worldPosition = _position;
+				_worldPosition = position;
 				_worldRotation = _rotation;
 				_worldScale = _scale;
 				_worldEuler = _euler;
 			}
 
-			_lastUpdatedVersion = _updated;
+			_lastUpdatedVersion = transformVersion;
 		}
 	}
 
@@ -542,7 +625,8 @@ namespace RN
 		uint64 transformVersion = GetTransformVersion();
 		if(_lastTransformUpdatedVersion != transformVersion)
 		{
-			_localTransform = Matrix::WithTranslation(_position);
+			Vector3 position = GetPositionForTransform();
+			_localTransform = Matrix::WithTranslation(position);
 			_localTransform.Rotate(_rotation);
 			_localTransform.Scale(_scale);
 
@@ -565,9 +649,10 @@ namespace RN
 		uint64 transformVersion = GetTransformVersion();
 		if(_lastInverseTransformUpdatedVersion != transformVersion)
 		{
+			Vector3 position = GetPositionForTransform();
 			_inverseLocalTransform = Matrix::WithScaling(_scale != 0.0f ? (Vector3(1.0f, 1.0f, 1.0f) / _scale) : Vector3(0.0f, 0.0f, 0.0f));
 			_inverseLocalTransform.Rotate(_rotation->GetConjugated());
-			_inverseLocalTransform.Translate(_position * -1.0f);
+			_inverseLocalTransform.Translate(position * -1.0f);
 
 			if(_parent)
 			{

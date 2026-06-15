@@ -35,6 +35,12 @@ namespace RN
 	public:
 		friend class Scene;
 
+#if RN_ENABLE_UNIVERSE_SCALE
+		using PositionType = DVector3;
+#else
+		using PositionType = Vector3;
+#endif
+
 		enum class UpdatePriority
 		{
 			UpdateEarliest,
@@ -81,8 +87,8 @@ namespace RN
 				   Tag = (1 << 9));
 
 		RNAPI SceneNode();
-		RNAPI SceneNode(const Vector3 &position);
-		RNAPI SceneNode(const Vector3 &position, const Quaternion &rotation);
+		RNAPI SceneNode(const PositionType &position);
+		RNAPI SceneNode(const PositionType &position, const Quaternion &rotation);
 		RNAPI SceneNode(const SceneNode *other);
 		RNAPI SceneNode(Deserializer *deserializer);
 		RNAPI ~SceneNode() override;
@@ -101,13 +107,14 @@ namespace RN
 		RNAPI void SetRenderGroup(uint16 group);
 		RNAPI void SetCollisionGroup(uint8 group);
 
-		virtual void SetPosition(const Vector3 &pos);
+		virtual void SetPosition(const PositionType &pos);
 		virtual void SetScale(const Vector3 &scal);
 		virtual void SetRotation(const Quaternion &rot);
 
 		virtual void SetWorldPosition(const Vector3 &pos);
 		virtual void SetWorldScale(const Vector3 &scal);
 		virtual void SetWorldRotation(const Quaternion &rot);
+		RNAPI void SetUniversePosition(const DVector3 &pos);
 
 		RNAPI void SetBoundingBox(const AABB &boundingBox, bool calculateBoundingSphere = true);
 		RNAPI void SetBoundingSphere(const Sphere &boundingSphere);
@@ -129,15 +136,16 @@ namespace RN
 		virtual Vector3 GetRight() const;
 
 		Vector3 GetWorldPosition() const;
+		RNAPI DVector3 GetUniversePosition() const;
 		Vector3 GetWorldScale() const;
 		Vector3 GetWorldEulerAngle() const;
 		Quaternion GetWorldRotation() const;
-		uint64 GetTransformVersion() const { return _updated; }
+		RNAPI uint64 GetTransformVersion() const;
 
 		AABB GetBoundingBox() const;
 		Sphere GetBoundingSphere() const;
 
-		const Vector3 &GetPosition() const { return _position; }
+		const PositionType &GetPosition() const { return _position; }
 		const Vector3 &GetScale() const { return _scale; }
 		const Vector3 &GetEulerAngle() const { return _euler; }
 		const Quaternion &GetRotation() const { return _rotation; }
@@ -197,6 +205,7 @@ namespace RN
 
 	private:
 		void Initialize();
+		RNAPI Vector3 GetPositionForTransform() const;
 		RNAPI void UpdateInternalData() const;
 		RNAPI void UpdateInternalTransformData() const;
 		RNAPI void UpdateInternalInverseTransformData() const;
@@ -224,7 +233,7 @@ namespace RN
 
 		ObservableScalar<Tag, SceneNode> _tag;
 
-		ObservableValue<Vector3, SceneNode> _position;
+		ObservableValue<PositionType, SceneNode> _position;
 		ObservableValue<Vector3, SceneNode> _scale;
 		ObservableValue<Quaternion, SceneNode> _rotation;
 		Vector3 _euler;
@@ -299,7 +308,7 @@ namespace RN
 		DidUpdate(ChangeSet::Position);
 	}
 
-	RN_INLINE void SceneNode::SetPosition(const Vector3 &pos)
+	RN_INLINE void SceneNode::SetPosition(const PositionType &pos)
 	{
 		WillUpdate(ChangeSet::Position);
 		_position = pos;
@@ -323,21 +332,6 @@ namespace RN
 		DidUpdate(ChangeSet::Position);
 	}
 
-
-	RN_INLINE void SceneNode::SetWorldPosition(const Vector3 &pos)
-	{
-		if(!_parent)
-		{
-			SetPosition(pos);
-			return;
-		}
-
-		WillUpdate(ChangeSet::Position);
-		Vector3 tempPosition = pos - _parent->GetWorldPosition();
-		Quaternion tempRotation = Quaternion() / _parent->GetWorldRotation();
-		_position = tempRotation.GetRotatedVector(tempPosition) / _parent->GetWorldScale();
-		DidUpdate(ChangeSet::Position);
-	}
 
 	RN_INLINE void SceneNode::SetWorldScale(const Vector3 &scal)
 	{

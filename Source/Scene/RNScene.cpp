@@ -15,6 +15,10 @@ namespace RN
 
 	Scene::Scene() :
 		_isPreparedForShutdown(false),
+#if RN_ENABLE_UNIVERSE_SCALE
+		_universeOrigin(0.0),
+		_universeOriginVersion(0),
+#endif
 		_attachments(nullptr)
 	{
 	}
@@ -47,6 +51,65 @@ namespace RN
 		{
 			node->Update(delta);
 		}
+	}
+
+	DVector3 Scene::GetUniverseOrigin() const
+	{
+#if RN_ENABLE_UNIVERSE_SCALE
+		return _universeOrigin;
+#else
+		return DVector3(0.0);
+#endif
+	}
+
+	uint64 Scene::GetUniverseOriginVersion() const
+	{
+#if RN_ENABLE_UNIVERSE_SCALE
+		return _universeOriginVersion;
+#else
+		return 0;
+#endif
+	}
+
+	void Scene::SetUniverseOrigin(const DVector3 &origin)
+	{
+#if RN_ENABLE_UNIVERSE_SCALE
+		if(!origin.IsValid()) return;
+		if(origin == _universeOrigin) return;
+
+		_universeOrigin = origin;
+		_universeOriginVersion += 1;
+#else
+		(void)origin;
+#endif
+	}
+
+	void Scene::ShiftUniverseOrigin(const DVector3 &shift)
+	{
+#if RN_ENABLE_UNIVERSE_SCALE
+		if(!shift.IsValid()) return;
+		SetUniverseOrigin(_universeOrigin + shift);
+#else
+		(void)shift;
+#endif
+	}
+
+	Vector3 Scene::ConvertUniversePositionToWorldPosition(const DVector3 &position) const
+	{
+#if RN_ENABLE_UNIVERSE_SCALE
+		return (position - _universeOrigin).ToVector3();
+#else
+		return position.ToVector3();
+#endif
+	}
+
+	DVector3 Scene::ConvertWorldPositionToUniversePosition(const Vector3 &position) const
+	{
+#if RN_ENABLE_UNIVERSE_SCALE
+		return _universeOrigin + DVector3(position);
+#else
+		return DVector3(position);
+#endif
 	}
 
 	void Scene::AddAttachment(SceneAttachment *attachment)
