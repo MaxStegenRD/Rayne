@@ -63,6 +63,7 @@ namespace RN
 
 		_clipNear = 0.1f;
 		_clipFar = 500.0f;
+		_referenceFar = 0.0f;
 
 		_orthoLeft = -100.0f;
 		_orthoRight = 100.0f;
@@ -172,6 +173,12 @@ namespace RN
 	void Camera::SetClipFarUnlimited()
 	{
 		SetClipFar(INFINITY);
+	}
+
+	void Camera::SetReferenceFar(float far)
+	{
+		RN_DEBUG_ASSERT(far == 0.0f || (far > 0.0f && !isinf(far)), "Camera reference far needs to be positive and finite, or 0 to use the automatic value");
+		_referenceFar = far;
 	}
 
 	void Camera::SetFogColor0(Color color)

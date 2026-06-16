@@ -67,6 +67,7 @@ namespace RN
 		RNAPI void SetClipNear(float near);
 		RNAPI void SetClipFar(float far);
 		RNAPI void SetClipFarUnlimited();
+		RNAPI void SetReferenceFar(float far);
 		RNAPI void SetFogColor0(Color color);
 		RNAPI void SetFogColor1(Color color);
 		RNAPI void SetFogNear(float near);
@@ -107,6 +108,12 @@ namespace RN
 		float GetAspectRatio() const { return _aspect; }
 		float GetClipNear() const { return _clipNear; }
 		float GetClipFar() const { return _clipFar; }
+		float GetReferenceFar() const
+		{
+			if(_referenceFar != 0.0f) return _referenceFar;
+			if(!isinf(_clipFar)) return _clipFar;
+			return 500.0f;
+		}
 		const Color &GetFogColor0() const { return _fogColor0; }
 		const Color &GetFogColor1() const { return _fogColor1; }
 		float GetFogNear() const { return _fogNear; }
@@ -169,6 +176,7 @@ namespace RN
 		float _aspect;
 		float _clipNear;
 		float _clipFar;
+		float _referenceFar;
 
 		float _fogNear;
 		float _fogFar;

@@ -125,7 +125,7 @@ namespace RN
 		Camera *distanceCamera = camera->GetLODCamera();
 
 		float lodDistance = GetWorldPosition().GetDistance(distanceCamera->GetWorldPosition());
-		lodDistance /= distanceCamera->GetClipFar();
+		lodDistance /= distanceCamera->GetReferenceFar();
 
 		const Model::LODStage *stage = _model->GetLODStageForDistance(lodDistance);
 

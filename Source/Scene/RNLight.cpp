@@ -556,6 +556,7 @@ namespace RN
 			if(_shadowTarget)
 			{
 				float near = _shadowTarget->GetClipNear();
+				float referenceFar = _shadowTarget->GetReferenceFar();
 				float far = 0.01f;
 
 				for(uint32 i = 0; i < _shadowParameter.splits.size(); i++)
@@ -578,8 +579,8 @@ namespace RN
 
 					if(_shadowParameter.splits[i].maxDistance < far)
 					{
-						float linear = _shadowTarget->GetClipNear() + (_shadowParameter.maxShadowDist * _shadowTarget->GetClipFar() - _shadowTarget->GetClipNear()) * (i + 1.0f) / float(_shadowParameter.splits.size());
-						float log = _shadowTarget->GetClipNear() * powf(_shadowParameter.maxShadowDist * _shadowTarget->GetClipFar() / _shadowTarget->GetClipNear(), (i + 1.0f) / float(_shadowParameter.splits.size()));
+						float linear = _shadowTarget->GetClipNear() + (_shadowParameter.maxShadowDist * referenceFar - _shadowTarget->GetClipNear()) * (i + 1.0f) / float(_shadowParameter.splits.size());
+						float log = _shadowTarget->GetClipNear() * powf(_shadowParameter.maxShadowDist * referenceFar / _shadowTarget->GetClipNear(), (i + 1.0f) / float(_shadowParameter.splits.size()));
 						far = linear * _shadowParameter.distanceBlendFactor + log * (1.0f - _shadowParameter.distanceBlendFactor);
 					}
 					else

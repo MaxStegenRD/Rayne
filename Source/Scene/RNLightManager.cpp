@@ -187,7 +187,7 @@ namespace RN
 	{
 		const uint32 slices = _grid.clustersZ;
 		const float n = camera->GetClipNear();
-		const float f = camera->GetClipFar();
+		const float f = camera->GetReferenceFar();
 		const float z = std::clamp(viewZ, n, f);
 
 		if(_grid.zFirstSliceDepth > 0.0f)
@@ -262,7 +262,7 @@ namespace RN
 		}
 
 		const float zNear = camera->GetClipNear();
-		const float zFar = camera->GetClipFar();
+		const float zFar = camera->GetReferenceFar();
 		const bool clipPlanesMatch = Math::Compare(_lastClipNear, zNear) && Math::Compare(_lastClipFar, zFar);
 		uint32 tilesX = _grid.clustersX;
 		uint32 tilesY = _grid.clustersY;
