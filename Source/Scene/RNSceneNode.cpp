@@ -570,12 +570,6 @@ namespace RN
 		if(changeSet & ChangeSet::Parent)
 		{
 			_updated += 1;
-			if(_parent == nullptr)
-			{
-				SetWorldPosition(Vector3(_position));
-				SetWorldRotation(_rotation);
-				SetWorldScale(_scale);
-			}
 
 			//Updated flag Needs to be passed on to all children and their children
 			_children->Enumerate<SceneNode>([](SceneNode *child, size_t index, bool &stop) {
