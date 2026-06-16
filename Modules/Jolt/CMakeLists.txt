@@ -132,6 +132,8 @@ set(SOURCES
         RNJoltInternals.cpp
         RNJoltCollisionObject.cpp
         RNJoltShape.cpp
+        RNJoltCustomPlanetTerrainShape.cpp
+        RNJoltCustomPlanetTerrainShapeInternal.cpp
         RNJoltWheelCylinderShape.cpp
         RNJoltConstraint.cpp
         RNJoltExternalSupportAnchorConstraint.cpp
@@ -139,9 +141,9 @@ set(SOURCES
         RNJoltKinematicController.cpp)
 
 if (MSVC)
-    set_source_files_properties(RNJoltWheelCylinderShape.cpp RNJoltExternalSupportAnchorConstraint.cpp PROPERTIES COMPILE_OPTIONS "/GR-")
+    set_source_files_properties(RNJoltCustomPlanetTerrainShapeInternal.cpp RNJoltWheelCylinderShape.cpp RNJoltExternalSupportAnchorConstraint.cpp PROPERTIES COMPILE_OPTIONS "/GR-")
 else()
-    set_source_files_properties(RNJoltWheelCylinderShape.cpp RNJoltExternalSupportAnchorConstraint.cpp PROPERTIES COMPILE_OPTIONS "-fno-rtti")
+    set_source_files_properties(RNJoltCustomPlanetTerrainShapeInternal.cpp RNJoltWheelCylinderShape.cpp RNJoltExternalSupportAnchorConstraint.cpp PROPERTIES COMPILE_OPTIONS "-fno-rtti")
 endif()
 
 set(HEADERS
@@ -152,6 +154,7 @@ set(HEADERS
         RNJoltStaticBody.h
         RNJoltCollisionObject.h
         RNJoltShape.h
+        RNJoltCustomPlanetTerrainShape.h
         RNJoltConstraint.h
         RNJoltRigidBodyController.h
         RNJoltKinematicController.h)
@@ -159,6 +162,7 @@ set(HEADERS
 set(PRIVATE_HEADERS
         RNJoltConversions.h
         RNJoltInternals.h
+        RNJoltCustomPlanetTerrainShapeInternal.h
         RNJoltExternalSupportAnchorConstraint.h
         RNJoltWheelCylinderShape.h)
 
