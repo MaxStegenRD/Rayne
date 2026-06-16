@@ -325,7 +325,7 @@ namespace RN
 			uint32 contactPointCount = static_cast<uint32>(manifold.mRelativeContactPointsOn1.size());
 			if(contactPointCount == 0)
 			{
-				info.position = JoltConversions::ToVector3FromRVec3(manifold.mBaseOffset);
+				info.position = JoltConversions::ToPosition(manifold.mBaseOffset);
 				info.contactPatchRadius = 0.0f;
 				info.relativeContactVelocity = GetBodyContactPointVelocity(body, manifold.mBaseOffset) - GetBodyContactPointVelocity(otherBody, manifold.mBaseOffset);
 				return;
@@ -348,7 +348,7 @@ namespace RN
 			centerY *= inversePointCount;
 			centerZ *= inversePointCount;
 			JPH::RVec3 center(centerX, centerY, centerZ);
-			info.position = JoltConversions::ToVector3FromRVec3(center);
+			info.position = JoltConversions::ToPosition(center);
 
 			double patchRadiusSquared = 0.0;
 			for(uint32 i = 0; i < contactPointCount; i += 1)

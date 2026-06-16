@@ -191,7 +191,7 @@ namespace RN
 		return JPH::Vec3(v.x, v.y, v.z);
 	}
 
-	JoltPointConstraint::JoltPointConstraint(JoltDynamicBody *body1, const Vector3 &worldPoint1, JoltDynamicBody *body2, const Vector3 &worldPoint2)
+	JoltPointConstraint::JoltPointConstraint(JoltDynamicBody *body1, const JoltPosition &globalPoint1, JoltDynamicBody *body2, const JoltPosition &globalPoint2)
 	{
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 		const JPH::BodyLockInterface &lockInterface = physics->GetBodyLockInterface();
@@ -211,18 +211,18 @@ namespace RN
 
 		JPH::PointConstraintSettings settings;
 		settings.mSpace = JPH::EConstraintSpace::WorldSpace;
-		settings.mPoint1 = JoltConversions::ToJoltRVec3(worldPoint1);
-		settings.mPoint2 = JoltConversions::ToJoltRVec3(worldPoint2);
+		settings.mPoint1 = JoltConversions::ToJoltRVec3(globalPoint1);
+		settings.mPoint2 = JoltConversions::ToJoltRVec3(globalPoint2);
 		SetConstraint(settings.Create(*b1, *b2));
 	}
 
-	JoltPointConstraint *JoltPointConstraint::WithBodiesAndWorldPoints(JoltDynamicBody *body1, const Vector3 &worldPoint1, JoltDynamicBody *body2, const Vector3 &worldPoint2)
+	JoltPointConstraint *JoltPointConstraint::WithBodiesAndGlobalPoints(JoltDynamicBody *body1, const JoltPosition &globalPoint1, JoltDynamicBody *body2, const JoltPosition &globalPoint2)
 	{
-		JoltPointConstraint *constraint = new JoltPointConstraint(body1, worldPoint1, body2, worldPoint2);
+		JoltPointConstraint *constraint = new JoltPointConstraint(body1, globalPoint1, body2, globalPoint2);
 		return constraint->Autorelease();
 	}
 
-	JoltFixedConstraint::JoltFixedConstraint(JoltDynamicBody *body1, const Vector3 &worldPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const Vector3 &worldPosition2, const Quaternion &worldRotation2)
+	JoltFixedConstraint::JoltFixedConstraint(JoltDynamicBody *body1, const JoltPosition &globalPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const JoltPosition &globalPosition2, const Quaternion &worldRotation2)
 	{
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 		const JPH::BodyLockInterface &lockInterface = physics->GetBodyLockInterface();
@@ -243,8 +243,8 @@ namespace RN
 		JPH::FixedConstraintSettings settings;
 		settings.mSpace = JPH::EConstraintSpace::WorldSpace;
 		settings.mAutoDetectPoint = false;
-		settings.mPoint1 = JoltConversions::ToJoltRVec3(worldPosition1);
-		settings.mPoint2 = JoltConversions::ToJoltRVec3(worldPosition2);
+		settings.mPoint1 = JoltConversions::ToJoltRVec3(globalPosition1);
+		settings.mPoint2 = JoltConversions::ToJoltRVec3(globalPosition2);
 		settings.mAxisX1 = ToJoltVec3(worldRotation1.GetRotatedVector(Vector3(1.0f, 0.0f, 0.0f)));
 		settings.mAxisY1 = ToJoltVec3(worldRotation1.GetRotatedVector(Vector3(0.0f, 1.0f, 0.0f)));
 		settings.mAxisX2 = ToJoltVec3(worldRotation2.GetRotatedVector(Vector3(1.0f, 0.0f, 0.0f)));
@@ -252,13 +252,13 @@ namespace RN
 		SetConstraint(settings.Create(*b1, *b2));
 	}
 
-	JoltFixedConstraint *JoltFixedConstraint::WithBodiesAndWorldFrames(JoltDynamicBody *body1, const Vector3 &worldPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const Vector3 &worldPosition2, const Quaternion &worldRotation2)
+	JoltFixedConstraint *JoltFixedConstraint::WithBodiesAndGlobalFrames(JoltDynamicBody *body1, const JoltPosition &globalPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const JoltPosition &globalPosition2, const Quaternion &worldRotation2)
 	{
-		JoltFixedConstraint *constraint = new JoltFixedConstraint(body1, worldPosition1, worldRotation1, body2, worldPosition2, worldRotation2);
+		JoltFixedConstraint *constraint = new JoltFixedConstraint(body1, globalPosition1, worldRotation1, body2, globalPosition2, worldRotation2);
 		return constraint->Autorelease();
 	}
 
-	JoltDistanceConstraint::JoltDistanceConstraint(JoltDynamicBody *body1, const Vector3 &worldPoint1, JoltDynamicBody *body2, const Vector3 &worldPoint2, float minDistance, float maxDistance)
+	JoltDistanceConstraint::JoltDistanceConstraint(JoltDynamicBody *body1, const JoltPosition &globalPoint1, JoltDynamicBody *body2, const JoltPosition &globalPoint2, float minDistance, float maxDistance)
 	{
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 		const JPH::BodyLockInterface &lockInterface = physics->GetBodyLockInterface();
@@ -278,20 +278,20 @@ namespace RN
 
 		JPH::DistanceConstraintSettings settings;
 		settings.mSpace = JPH::EConstraintSpace::WorldSpace;
-		settings.mPoint1 = JoltConversions::ToJoltRVec3(worldPoint1);
-		settings.mPoint2 = JoltConversions::ToJoltRVec3(worldPoint2);
+		settings.mPoint1 = JoltConversions::ToJoltRVec3(globalPoint1);
+		settings.mPoint2 = JoltConversions::ToJoltRVec3(globalPoint2);
 		settings.mMinDistance = minDistance;
 		settings.mMaxDistance = maxDistance;
 		SetConstraint(settings.Create(*b1, *b2));
 	}
 
-	JoltDistanceConstraint *JoltDistanceConstraint::WithBodiesAndWorldPoints(JoltDynamicBody *body1, const Vector3 &worldPoint1, JoltDynamicBody *body2, const Vector3 &worldPoint2, float minDistance, float maxDistance)
+	JoltDistanceConstraint *JoltDistanceConstraint::WithBodiesAndGlobalPoints(JoltDynamicBody *body1, const JoltPosition &globalPoint1, JoltDynamicBody *body2, const JoltPosition &globalPoint2, float minDistance, float maxDistance)
 	{
-		JoltDistanceConstraint *constraint = new JoltDistanceConstraint(body1, worldPoint1, body2, worldPoint2, minDistance, maxDistance);
+		JoltDistanceConstraint *constraint = new JoltDistanceConstraint(body1, globalPoint1, body2, globalPoint2, minDistance, maxDistance);
 		return constraint->Autorelease();
 	}
 
-	JoltSixDOFConstraint::JoltSixDOFConstraint(JoltDynamicBody *body1, const Vector3 &worldPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const Vector3 &worldPosition2, const Quaternion &worldRotation2)
+	JoltSixDOFConstraint::JoltSixDOFConstraint(JoltDynamicBody *body1, const JoltPosition &globalPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const JoltPosition &globalPosition2, const Quaternion &worldRotation2)
 	{
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 		const JPH::BodyLockInterface &lockInterface = physics->GetBodyLockInterface();
@@ -327,10 +327,10 @@ namespace RN
 		Quaternion normalizedWorldRotation1 = getSafeRotation(worldRotation1);
 		Quaternion normalizedWorldRotation2 = getSafeRotation(worldRotation2);
 
-		settings.mPosition1 = JoltConversions::ToJoltRVec3(worldPosition1);
+		settings.mPosition1 = JoltConversions::ToJoltRVec3(globalPosition1);
 		settings.mAxisX1 = ToJoltVec3(getAxis(normalizedWorldRotation1, Vector3(1.0f, 0.0f, 0.0f)));
 		settings.mAxisY1 = ToJoltVec3(getAxis(normalizedWorldRotation1, Vector3(0.0f, 1.0f, 0.0f)));
-		settings.mPosition2 = JoltConversions::ToJoltRVec3(worldPosition2);
+		settings.mPosition2 = JoltConversions::ToJoltRVec3(globalPosition2);
 		settings.mAxisX2 = ToJoltVec3(getAxis(normalizedWorldRotation2, Vector3(1.0f, 0.0f, 0.0f)));
 		settings.mAxisY2 = ToJoltVec3(getAxis(normalizedWorldRotation2, Vector3(0.0f, 1.0f, 0.0f)));
 
@@ -357,9 +357,9 @@ namespace RN
 		SetMotorState(Axis::RotationZ, 2);
 	}
 
-	JoltSixDOFConstraint *JoltSixDOFConstraint::WithBodiesAndWorldFrames(JoltDynamicBody *body1, const Vector3 &worldPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const Vector3 &worldPosition2, const Quaternion &worldRotation2)
+	JoltSixDOFConstraint *JoltSixDOFConstraint::WithBodiesAndGlobalFrames(JoltDynamicBody *body1, const JoltPosition &globalPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const JoltPosition &globalPosition2, const Quaternion &worldRotation2)
 	{
-		JoltSixDOFConstraint *c = new JoltSixDOFConstraint(body1, worldPosition1, worldRotation1, body2, worldPosition2, worldRotation2);
+		JoltSixDOFConstraint *c = new JoltSixDOFConstraint(body1, globalPosition1, worldRotation1, body2, globalPosition2, worldRotation2);
 		return c->Autorelease();
 	}
 

@@ -118,7 +118,7 @@ namespace RN
 				}
 			}
 
-			hit.position = JoltConversions::ToVector3FromRVec3(position);
+			hit.position = JoltConversions::ToPosition(position);
 			hit.normal = JoltConversions::ToVector3(normal);
 
 			hit.distance = JoltConversions::ToVector3(result.mContactPointOn2).GetLength();
@@ -179,7 +179,7 @@ namespace RN
 			}
 		}
 
-		hit.position = JoltConversions::ToVector3FromRVec3(position);
+		hit.position = JoltConversions::ToPosition(position);
 		hit.normal = JoltConversions::ToVector3(normal);
 
 		hit.distance = JoltConversions::ToVector3(result.mHit.mContactPointOn2).GetLength();
@@ -199,8 +199,8 @@ namespace RN
 
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 
-		Vector3 position = GetWorldPosition();
 		JPH::RVec3 baseOffset = JoltConversions::GetAttachmentPosition(this);
+		JoltPosition position = JoltConversions::ToPosition(baseOffset);
 		Quaternion rotation = GetWorldRotation();
 
 		JPH::RMat44 worldTransform = JoltConversions::ToJoltRMat44(rotation, baseOffset);
@@ -240,8 +240,8 @@ namespace RN
 
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 
-		Vector3 position = GetWorldPosition();
 		JPH::RVec3 baseOffset = JoltConversions::GetAttachmentPosition(this);
+		JoltPosition position = JoltConversions::ToPosition(baseOffset);
 		Quaternion rotation = GetWorldRotation();
 
 		JPH::RMat44 worldTransform = JoltConversions::ToJoltRMat44(rotation, baseOffset);

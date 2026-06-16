@@ -20,7 +20,7 @@ namespace RN
 	{
 		SceneNode *node = nullptr;
 		JoltCollisionObject *collisionObject = nullptr;
-		Vector3 position;
+		JoltPosition position;
 		Vector3 normal;
 		Vector3 linearVelocity;
 		Vector3 otherLinearVelocity;

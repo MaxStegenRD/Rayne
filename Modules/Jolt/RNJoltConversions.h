@@ -58,7 +58,7 @@ namespace RN
 			return DVector3(vector.GetX(), vector.GetY(), vector.GetZ());
 		}
 
-		static SceneNode::PositionType ToPosition(const JPH::RVec3 &vector)
+		static JoltPosition ToPosition(const JPH::RVec3 &vector)
 		{
 #if RN_ENABLE_UNIVERSE_SCALE
 			return ToDVector3(vector);
@@ -67,7 +67,7 @@ namespace RN
 #endif
 		}
 
-		static Vector3 ToVector3(const SceneNode::PositionType &vector)
+		static Vector3 ToVector3(const JoltPosition &vector)
 		{
 #if RN_ENABLE_UNIVERSE_SCALE
 			return vector.ToVector3();

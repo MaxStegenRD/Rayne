@@ -61,27 +61,27 @@ namespace RN
 		JTAPI void SetFriction(float friction);
 		JTAPI void SetRestitution(float restitution);
 
-		JTAPI void SetKinematicTarget(const Vector3 &position, const Quaternion &rotation, float delta);
+		JTAPI void SetKinematicTarget(const JoltPosition &globalPosition, const Quaternion &rotation, float delta);
 		//JTAPI void AccelerateToTarget(const Vector3 &position, const Quaternion &rotation, float delta);
 
 		JTAPI void AddForce(const Vector3 &force);
-		JTAPI void AddForce(const Vector3 &force, const Vector3 &origin);
+		JTAPI void AddForce(const Vector3 &force, const JoltPosition &globalOrigin);
 		//		JTAPI void ClearForces();
 
 		JTAPI void AddTorque(const Vector3 &torque);
 		JTAPI void AddTorqueImpulse(const Vector3 &torque);
 		JTAPI void AddImpulse(const Vector3 &impulse);
-		JTAPI void AddImpulse(const Vector3 &impulse, const Vector3 &origin);
-		JTAPI bool ApplyBuoyancyImpulse(const Vector3 &surfacePosition, const Vector3 &surfaceNormal, float buoyancy, float linearDrag, float angularDrag, const Vector3 &fluidVelocity, const Vector3 &gravity, float delta);
+		JTAPI void AddImpulse(const Vector3 &impulse, const JoltPosition &globalOrigin);
+		JTAPI bool ApplyBuoyancyImpulse(const JoltPosition &globalSurfacePosition, const Vector3 &surfaceNormal, float buoyancy, float linearDrag, float angularDrag, const Vector3 &fluidVelocity, const Vector3 &gravity, float delta);
 
 		JTAPI float GetMass() const;
 
 		JTAPI Vector3 GetLinearVelocity() const;
 		JTAPI Vector3 GetAngularVelocity() const;
-		JTAPI Vector3 GetPointVelocity(const Vector3 &worldPosition) const;
-		JTAPI JoltPointMotionProperties GetPointMotionProperties(const Vector3 &worldPosition) const;
-		JTAPI Vector3 GetCenterOfMassPosition() const;
-		JTAPI float GetPointImpulseEffectiveMass(const Vector3 &worldPosition, const Vector3 &direction) const;
+		JTAPI Vector3 GetPointVelocity(const JoltPosition &globalPosition) const;
+		JTAPI JoltPointMotionProperties GetPointMotionProperties(const JoltPosition &globalPosition) const;
+		JTAPI JoltPosition GetCenterOfMassPosition() const;
+		JTAPI float GetPointImpulseEffectiveMass(const JoltPosition &globalPosition, const Vector3 &direction) const;
 		JTAPI float GetAngularImpulseEffectiveInertia(const Vector3 &axis) const;
 
 		JTAPI void SetEnableSleeping(bool enable);

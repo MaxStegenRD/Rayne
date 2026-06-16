@@ -40,9 +40,7 @@ namespace RN
 		if(info.collisionObject) info.node = info.collisionObject->GetParent();
 		if(info.node) info.node->Retain()->Autorelease();
 
-		info.position.x = inContact.mPosition.GetX();
-		info.position.y = inContact.mPosition.GetY();
-		info.position.z = inContact.mPosition.GetZ();
+		info.position = JoltConversions::ToPosition(inContact.mPosition);
 		info.normal.x = -inContact.mContactNormal.GetX();
 		info.normal.y = -inContact.mContactNormal.GetY();
 		info.normal.z = -inContact.mContactNormal.GetZ();

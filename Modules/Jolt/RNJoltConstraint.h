@@ -55,8 +55,8 @@ namespace RN
 	class JoltPointConstraint : public JoltConstraint
 	{
 	public:
-		JTAPI JoltPointConstraint(JoltDynamicBody *body1, const Vector3 &worldPoint1, JoltDynamicBody *body2, const Vector3 &worldPoint2);
-		JTAPI static JoltPointConstraint *WithBodiesAndWorldPoints(JoltDynamicBody *body1, const Vector3 &worldPoint1, JoltDynamicBody *body2, const Vector3 &worldPoint2);
+		JTAPI JoltPointConstraint(JoltDynamicBody *body1, const JoltPosition &globalPoint1, JoltDynamicBody *body2, const JoltPosition &globalPoint2);
+		JTAPI static JoltPointConstraint *WithBodiesAndGlobalPoints(JoltDynamicBody *body1, const JoltPosition &globalPoint1, JoltDynamicBody *body2, const JoltPosition &globalPoint2);
 
 		RNDeclareMetaAPI(JoltPointConstraint, JTAPI)
 	};
@@ -64,8 +64,8 @@ namespace RN
 	class JoltFixedConstraint : public JoltConstraint
 	{
 	public:
-		JTAPI JoltFixedConstraint(JoltDynamicBody *body1, const Vector3 &worldPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const Vector3 &worldPosition2, const Quaternion &worldRotation2);
-		JTAPI static JoltFixedConstraint *WithBodiesAndWorldFrames(JoltDynamicBody *body1, const Vector3 &worldPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const Vector3 &worldPosition2, const Quaternion &worldRotation2);
+		JTAPI JoltFixedConstraint(JoltDynamicBody *body1, const JoltPosition &globalPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const JoltPosition &globalPosition2, const Quaternion &worldRotation2);
+		JTAPI static JoltFixedConstraint *WithBodiesAndGlobalFrames(JoltDynamicBody *body1, const JoltPosition &globalPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const JoltPosition &globalPosition2, const Quaternion &worldRotation2);
 
 		RNDeclareMetaAPI(JoltFixedConstraint, JTAPI)
 	};
@@ -73,8 +73,8 @@ namespace RN
 	class JoltDistanceConstraint : public JoltConstraint
 	{
 	public:
-		JTAPI JoltDistanceConstraint(JoltDynamicBody *body1, const Vector3 &worldPoint1, JoltDynamicBody *body2, const Vector3 &worldPoint2, float minDistance, float maxDistance);
-		JTAPI static JoltDistanceConstraint *WithBodiesAndWorldPoints(JoltDynamicBody *body1, const Vector3 &worldPoint1, JoltDynamicBody *body2, const Vector3 &worldPoint2, float minDistance, float maxDistance);
+		JTAPI JoltDistanceConstraint(JoltDynamicBody *body1, const JoltPosition &globalPoint1, JoltDynamicBody *body2, const JoltPosition &globalPoint2, float minDistance, float maxDistance);
+		JTAPI static JoltDistanceConstraint *WithBodiesAndGlobalPoints(JoltDynamicBody *body1, const JoltPosition &globalPoint1, JoltDynamicBody *body2, const JoltPosition &globalPoint2, float minDistance, float maxDistance);
 
 		RNDeclareMetaAPI(JoltDistanceConstraint, JTAPI)
 	};
@@ -92,8 +92,8 @@ namespace RN
 			RotationZ
 		};
 
-		JTAPI JoltSixDOFConstraint(JoltDynamicBody *body1, const Vector3 &worldPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const Vector3 &worldPosition2, const Quaternion &worldRotation2);
-		JTAPI static JoltSixDOFConstraint *WithBodiesAndWorldFrames(JoltDynamicBody *body1, const Vector3 &worldPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const Vector3 &worldPosition2, const Quaternion &worldRotation2);
+		JTAPI JoltSixDOFConstraint(JoltDynamicBody *body1, const JoltPosition &globalPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const JoltPosition &globalPosition2, const Quaternion &worldRotation2);
+		JTAPI static JoltSixDOFConstraint *WithBodiesAndGlobalFrames(JoltDynamicBody *body1, const JoltPosition &globalPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const JoltPosition &globalPosition2, const Quaternion &worldRotation2);
 
 		JTAPI void SetMotorState(Axis axis, int state); // 0=Off,1=Velocity,2=Position,3=PositionAndVelocity
 		JTAPI void SetTargetPositionCS(const Vector3 &p_cs);

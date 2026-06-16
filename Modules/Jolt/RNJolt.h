@@ -17,4 +17,13 @@
 	#define JTAPI RN_IMPORT
 #endif
 
+namespace RN
+{
+#if RN_ENABLE_UNIVERSE_SCALE
+	using JoltPosition = DVector3;
+#else
+	using JoltPosition = Vector3;
+#endif
+} // namespace RN
+
 #endif /* __RAYNE_JOLT_H_ */

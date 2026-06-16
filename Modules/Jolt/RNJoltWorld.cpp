@@ -319,19 +319,19 @@ namespace RN
 	}
 
 
-	JoltContactInfo JoltWorld::CastRay(const Vector3 &from, const Vector3 &to, uint32 filterGroup, uint32 filterMask)
+	JoltContactInfo JoltWorld::CastRay(const JoltPosition &globalFrom, const JoltPosition &globalTo, uint32 filterGroup, uint32 filterMask)
 	{
 		JoltContactInfo hit;
 		hit.distance = -1.0f;
 		hit.node = nullptr;
 		hit.collisionObject = nullptr;
 
-		Vector3 diff = to - from;
+		Vector3 diff = JoltConversions::ToVector3(globalTo - globalFrom);
 
 		//TODO: Limit max distance of raycast or the result
 
 		JPH::RRayCast rayInfo;
-		rayInfo.mOrigin = JoltConversions::ToJoltRVec3(from);
+		rayInfo.mOrigin = JoltConversions::ToJoltRVec3(globalFrom);
 		rayInfo.mDirection = JoltConversions::ToJoltVec3(diff);
 
 		JPH::RayCastResult result;
@@ -360,10 +360,10 @@ namespace RN
 			}
 		}
 
-		hit.position = JoltConversions::ToVector3FromRVec3(position);
+		hit.position = JoltConversions::ToPosition(position);
 		hit.normal = JoltConversions::ToVector3(normal);
 
-		hit.distance = from.GetDistance(hit.position);
+		hit.distance = static_cast<float>(globalFrom.GetDistance(hit.position));
 
 		if(hit.collisionObject) hit.node = hit.collisionObject->GetParent();
 		if(hit.node) hit.node->Retain()->Autorelease();
@@ -371,16 +371,16 @@ namespace RN
 		return hit;
 	}
 
-	JoltContactInfo JoltWorld::CastSweep(JoltShape *shape, const Quaternion &rotation, const Vector3 &from, const Vector3 &to, const Vector3 &scale, uint32 filterGroup, uint32 filterMask)
+	JoltContactInfo JoltWorld::CastSweep(JoltShape *shape, const Quaternion &rotation, const JoltPosition &globalFrom, const JoltPosition &globalTo, const Vector3 &scale, uint32 filterGroup, uint32 filterMask)
 	{
 		JoltContactInfo hit;
 		hit.distance = -1.0f;
 		hit.node = nullptr;
 		hit.collisionObject = nullptr;
 
-		Vector3 diff = to - from;
+		Vector3 diff = JoltConversions::ToVector3(globalTo - globalFrom);
 
-		JPH::RVec3 baseOffset = JoltConversions::ToJoltRVec3(from);
+		JPH::RVec3 baseOffset = JoltConversions::ToJoltRVec3(globalFrom);
 		JPH::RMat44 worldTransform = JoltConversions::ToJoltRMat44(rotation, baseOffset);
 
 		//TODO: Limit max distance of raycast or the result
@@ -416,7 +416,7 @@ namespace RN
 			}
 		}
 
-		hit.position = JoltConversions::ToVector3FromRVec3(position);
+		hit.position = JoltConversions::ToPosition(position);
 		hit.normal = JoltConversions::ToVector3(normal);
 
 		hit.distance = JoltConversions::ToVector3(result.mHit.mContactPointOn2).GetLength();
@@ -427,11 +427,11 @@ namespace RN
 		return hit;
 	}
 
-	std::vector<JoltContactInfo> JoltWorld::CheckOverlap(JoltShape *shape, const Vector3 &position, const Quaternion &rotation, const Vector3 &scale, uint32 filterGroup, uint32 filterMask)
+	std::vector<JoltContactInfo> JoltWorld::CheckOverlap(JoltShape *shape, const JoltPosition &globalPosition, const Quaternion &rotation, const Vector3 &scale, uint32 filterGroup, uint32 filterMask)
 	{
 		std::vector<JoltContactInfo> hits;
 
-		JPH::RVec3 baseOffset = JoltConversions::ToJoltRVec3(position);
+		JPH::RVec3 baseOffset = JoltConversions::ToJoltRVec3(globalPosition);
 		JPH::RMat44 worldTransform = JoltConversions::ToJoltRMat44(rotation, baseOffset);
 		JPH::CollideShapeSettings collideSettings; //Defaults seem ok for now!?
 
@@ -443,7 +443,7 @@ namespace RN
 		{
 			JoltContactInfo hit;
 			hit.distance = 0.0f;
-			hit.position = position;
+			hit.position = globalPosition;
 			hit.node = nullptr;
 			hit.collisionObject = nullptr;
 
