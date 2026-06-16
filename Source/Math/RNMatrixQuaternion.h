@@ -71,6 +71,7 @@ namespace RN
 		float m[16];
 
 	private:
+		static void SetProjectionPerspectiveDepth(Matrix &matrix, float clipnear, float clipfar);
 		float GetSubmatrixDeterminant(const int k) const;
 	};
 

@@ -46,6 +46,7 @@ namespace RN
 		RNVRAPI RN::Quaternion GetOriginRotationOffset() const { return _originalOrientationOffset; }
 
 		RNVRAPI void SetClipFar(float clipFar);
+		RNVRAPI void SetClipFarUnlimited();
 		RNVRAPI void SetClipNear(float clipNear);
 
 	private:

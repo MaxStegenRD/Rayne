@@ -132,6 +132,7 @@ namespace RN
 
 	void Camera::SetFlags(Flags flags)
 	{
+		RN_DEBUG_ASSERT(!(flags & Flags::Orthogonal) || !isinf(_clipFar), "Orthogonal cameras do not support an infinite far clip plane");
 		_flags = flags;
 	}
 
@@ -163,8 +164,14 @@ namespace RN
 	}
 	void Camera::SetClipFar(float far)
 	{
+		RN_DEBUG_ASSERT(!(_flags & Flags::Orthogonal) || !isinf(far), "Orthogonal cameras do not support an infinite far clip plane");
 		_clipFar = far;
 		_dirtyProjection = true;
+	}
+
+	void Camera::SetClipFarUnlimited()
+	{
+		SetClipFar(INFINITY);
 	}
 
 	void Camera::SetFogColor0(Color color)
@@ -321,6 +328,7 @@ namespace RN
 
 		if(_flags & Flags::Orthogonal)
 		{
+			RN_DEBUG_ASSERT(!isinf(_clipFar), "Orthogonal cameras do not support an infinite far clip plane");
 			_projectionMatrix = Matrix::WithProjectionOrthogonal(_orthoLeft, _orthoRight, _orthoBottom, _orthoTop, _clipNear, _clipFar);
 			_inverseProjectionMatrix = _projectionMatrix.GetInverse();
 			return;
@@ -355,60 +363,78 @@ namespace RN
 		_dirtyFrustum = false;
 
 		bool useSimpleCulling = _flags & Flags::UseSimpleCulling;
-		if(useSimpleCulling)
+		const bool hasInfiniteFarPlane = isinf(_clipFar);
+		const Vector3 &position = GetWorldPosition();
+		Vector3 direction = GetWorldRotation().GetRotatedVector(Vector3(0.0, 0.0, -1.0));
+
+		if(hasInfiniteFarPlane)
 		{
-			_frustumCenter = Vector3(0.0f, 0.0f, _clipFar * 0.5f) + GetWorldPosition();
+			_frustumCenter = position;
+			_frustumRadius = FLT_MAX;
+		}
+		else if(useSimpleCulling)
+		{
+			_frustumCenter = Vector3(0.0f, 0.0f, _clipFar * 0.5f) + position;
 			_frustumRadius = _clipFar * 1.5;
 		}
 
 		//far plane is at z=0, near plane z=1 for reverse-z!
 		Vector3 pos1 = __ToWorld(Vector3(-1.0f, 1.0f, 1.0f));
-		Vector3 pos2 = __ToWorld(Vector3(-1.0f, 1.0f, 0.0));
-		Vector3 pos3 = __ToWorld(Vector3(-1.0f, -1.0f, 0.0));
 		Vector3 pos4 = __ToWorld(Vector3(1.0f, -1.0f, 1.0));
-		Vector3 pos5 = __ToWorld(Vector3(1.0f, 1.0f, 0.0));
-		Vector3 pos6 = __ToWorld(Vector3(1.0f, -1.0f, 0.0));
 		Vector3 pos7 = __ToWorld(Vector3(1.0f, 1.0f, 1.0f));
 		Vector3 pos8 = __ToWorld(Vector3(-1.0f, -1.0f, 1.0f));
 
-		const Vector3 &position = GetWorldPosition();
-		Vector3 direction = GetWorldRotation().GetRotatedVector(Vector3(0.0, 0.0, -1.0));
-
-		if(!useSimpleCulling)
+		if(hasInfiniteFarPlane)
 		{
-			// Tighter sphere via farthest corner pair among 8 corners
-			Vector3 corners[8] = { pos1, pos2, pos3, pos4, pos5, pos6, pos7, pos8 };
-			float maxDist2 = 0.0f;
-			Vector3 bestA = corners[0], bestB = corners[0];
-			for(int i = 0; i < 8; ++i)
+			frustums._frustumLeft = Plane::WithTriangle(position, pos1, pos8, -1.0f, _frustumPlaneOffsets[2]);
+			frustums._frustumRight = Plane::WithTriangle(position, pos4, pos7, -1.0f, -_frustumPlaneOffsets[3]);
+			frustums._frustumTop = Plane::WithTriangle(position, pos7, pos1, -1.0f, _frustumPlaneOffsets[0]);
+			frustums._frustumBottom = Plane::WithTriangle(position, pos8, pos4, -1.0f, -_frustumPlaneOffsets[1]);
+		}
+		else
+		{
+			Vector3 pos2 = __ToWorld(Vector3(-1.0f, 1.0f, 0.0));
+			Vector3 pos3 = __ToWorld(Vector3(-1.0f, -1.0f, 0.0));
+			Vector3 pos5 = __ToWorld(Vector3(1.0f, 1.0f, 0.0));
+			Vector3 pos6 = __ToWorld(Vector3(1.0f, -1.0f, 0.0));
+
+			if(!useSimpleCulling)
 			{
-				for(int j = i + 1; j < 8; ++j)
+				// Tighter sphere via farthest corner pair among 8 corners
+				Vector3 corners[8] = { pos1, pos2, pos3, pos4, pos5, pos6, pos7, pos8 };
+				float maxDist2 = 0.0f;
+				Vector3 bestA = corners[0], bestB = corners[0];
+				for(int i = 0; i < 8; ++i)
 				{
-					float d2 = corners[i].GetSquaredDistance(corners[j]);
-					if(d2 > maxDist2)
+					for(int j = i + 1; j < 8; ++j)
 					{
-						maxDist2 = d2;
-						bestA = corners[i];
-						bestB = corners[j];
+						float d2 = corners[i].GetSquaredDistance(corners[j]);
+						if(d2 > maxDist2)
+						{
+							maxDist2 = d2;
+							bestA = corners[i];
+							bestB = corners[j];
+						}
 					}
 				}
+				_frustumCenter = (bestA + bestB) * 0.5f;
+				float radius = 0.0f;
+				for(int i = 0; i < 8; ++i)
+				{
+					float d = _frustumCenter.GetDistance(corners[i]);
+					if(d > radius) radius = d;
+				}
+				_frustumRadius = radius;
 			}
-			_frustumCenter = (bestA + bestB) * 0.5f;
-			float radius = 0.0f;
-			for(int i = 0; i < 8; ++i)
-			{
-				float d = _frustumCenter.GetDistance(corners[i]);
-				if(d > radius) radius = d;
-			}
-			_frustumRadius = radius;
-		}
 
-		frustums._frustumLeft = Plane::WithTriangle(pos1, pos2, pos3, -1.0f, _frustumPlaneOffsets[2]);
-		frustums._frustumRight = Plane::WithTriangle(pos4, pos5, pos6, 1.0f, -_frustumPlaneOffsets[3]);
-		frustums._frustumTop = Plane::WithTriangle(pos1, pos2, pos5, 1.0f, _frustumPlaneOffsets[0]);
-		frustums._frustumBottom = Plane::WithTriangle(pos4, pos3, pos6, -1.0f, -_frustumPlaneOffsets[1]);
+			frustums._frustumLeft = Plane::WithTriangle(pos1, pos2, pos3, -1.0f, _frustumPlaneOffsets[2]);
+			frustums._frustumRight = Plane::WithTriangle(pos4, pos5, pos6, 1.0f, -_frustumPlaneOffsets[3]);
+			frustums._frustumTop = Plane::WithTriangle(pos1, pos2, pos5, 1.0f, _frustumPlaneOffsets[0]);
+			frustums._frustumBottom = Plane::WithTriangle(pos4, pos3, pos6, -1.0f, -_frustumPlaneOffsets[1]);
+			frustums._frustumFar = Plane::WithPositionNormal(position + direction * _clipFar, -direction);
+		}
 		frustums._frustumNear = Plane::WithPositionNormal(position + direction * std::min(_clipNear, _clipFar), direction);
-		frustums._frustumFar = Plane::WithPositionNormal(position + direction * std::max(_clipNear, _clipFar), -direction);
+		if(hasInfiniteFarPlane) frustums._frustumFar = Plane::WithPositionNormal(position + direction * _clipNear, -direction);
 	}
 
 	Vector3 Camera::__ToWorld(const Vector3 &dir)
@@ -477,7 +503,15 @@ namespace RN
 		planes[2] = frustums._frustumTop.GetPlaneVector();
 		planes[3] = frustums._frustumBottom.GetPlaneVector();
 		planes[4] = frustums._frustumNear.GetPlaneVector();
-		planes[5] = frustums._frustumFar.GetPlaneVector();
+		if(isinf(_clipFar))
+		{
+			Vector3 direction = GetWorldRotation().GetRotatedVector(Vector3(0.0, 0.0, -1.0));
+			planes[5] = Vector4(-direction, FLT_MAX);
+		}
+		else
+		{
+			planes[5] = frustums._frustumFar.GetPlaneVector();
+		}
 	}
 
 	bool Camera::InFrustum(const Vector3 &position, float radius)
@@ -505,7 +539,7 @@ namespace RN
 		if(frustums._frustumNear.GetDistance(position) < -radius)
 			return false;
 
-		if(frustums._frustumFar.GetDistance(position) < -radius)
+		if(!isinf(_clipFar) && frustums._frustumFar.GetDistance(position) < -radius)
 			return false;
 
 		return true;
@@ -533,9 +567,11 @@ namespace RN
 		const float dist2 = dx*dx + dy*dy + dz*dz;
 		if(dist2 > _frustumRadius*_frustumRadius) return false;
 
-		for(int i = 0; i < 6; ++i)
+		const Plane *planes[6] = { &frustums._frustumLeft, &frustums._frustumRight, &frustums._frustumTop, &frustums._frustumBottom, &frustums._frustumNear, &frustums._frustumFar };
+		const int planeCount = isinf(_clipFar) ? 5 : 6;
+		for(int i = 0; i < planeCount; ++i)
 		{
-			const Plane &plane = (&frustums._frustumLeft)[i];
+			const Plane &plane = *planes[i];
 
 			//Pick the corner most in direction of the plane normal
 			Vector3 positive;

@@ -29,6 +29,19 @@ namespace RN
 		m[0] = m[5] = m[10] = m[15] = 1.0f;
 	}
 
+	RN_INLINE void Matrix::SetProjectionPerspectiveDepth(Matrix &matrix, float clipnear, float clipfar)
+	{
+		if(isinf(clipfar))
+		{
+			matrix.m[10] = 0.0f;
+			matrix.m[14] = clipnear;
+			return;
+		}
+
+		matrix.m[10] = clipfar / (clipfar - clipnear) - 1.0f;
+		matrix.m[14] = (clipfar * clipnear) / (clipfar - clipnear);
+	}
+
 	RN_INLINE Matrix &Matrix::operator*=(const Matrix &other)
 	{
 		/*		float temp[16];
@@ -338,6 +351,8 @@ namespace RN
 
 	RN_INLINE Matrix Matrix::WithProjectionOrthogonal(float left, float right, float bottom, float top, float clipnear, float clipfar)
 	{
+		RN_DEBUG_ASSERT(!isinf(clipfar), "Orthogonal projections do not support an infinite far clip plane");
+
 		Matrix mat;
 
 		float rl = right - left;
@@ -373,10 +388,9 @@ namespace RN
 
 		mat.m[0] = w;
 		mat.m[5] = h;
-		mat.m[10] = clipfar / (clipfar - clipnear) - 1.0;
 		mat.m[11] = -1.0f;
-		mat.m[14] = (clipfar * clipnear) / (clipfar - clipnear);
 		mat.m[15] = 0.0f;
+		SetProjectionPerspectiveDepth(mat, clipnear, clipfar);
 
 		//Using these will put the near plane at 0 and far plane at 1, while the above does the opposite for better precision with floating point depth buffer
 		//mat.m[10] = -clipfar / (clipfar - clipnear);
@@ -398,16 +412,9 @@ namespace RN
 		mat.m[2] = (rightTangent + leftTangent) / (rightTangent - leftTangent);
 		mat.m[5] = 2.0f * clipnear / (topTangent - bottomTangent);
 		mat.m[6] = (topTangent + bottomTangent) / (topTangent - bottomTangent);
-		mat.m[10] = clipfar / (clipfar - clipnear) - 1.0;
 		mat.m[11] = -1.0f;
-		mat.m[14] = (clipfar * clipnear) / (clipfar - clipnear);
 		mat.m[15] = 0.0f;
-
-		if(isinf(clipfar))
-		{
-			mat.m[10] = 0;
-			mat.m[14] = clipnear;
-		}
+		SetProjectionPerspectiveDepth(mat, clipnear, clipfar);
 
 		//Using these will put the near plane at 0 and far plane at 1, while the above does the opposite for better precision with floating point depth buffer
 		//mat.m[10] = -clipfar / (clipfar - clipnear);

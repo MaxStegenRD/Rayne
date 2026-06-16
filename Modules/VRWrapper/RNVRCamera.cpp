@@ -270,22 +270,51 @@ namespace RN
 
 		// Top, bottom, left, right; bottom/right are negated when passed back to Camera.
 		const size_t planeIndices[4] = {2, 3, 0, 1};
+		Vector3 headPlaneNormals[4];
+		for(size_t plane = 0; plane < 4; plane++)
+		{
+			headPlaneNormals[plane] = Vector3(headFrustumPlanes[planeIndices[plane]]);
+		}
+
 		float outsideDistances[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+		auto includePoint = [&](const Vector3 &point) {
+			for(size_t plane = 0; plane < 4; plane++)
+			{
+				const Vector4 &headPlane = headFrustumPlanes[planeIndices[plane]];
+				float distance = point.GetDotProduct(headPlaneNormals[plane]) + headPlane.w;
+				if(distance < outsideDistances[plane]) outsideDistances[plane] = distance;
+			}
+		};
+		auto includeInfiniteRay = [&](const Vector3 &ray) {
+			for(size_t plane = 0; plane < 4; plane++)
+			{
+				if(ray.GetDotProduct(headPlaneNormals[plane]) < -k::EpsilonFloat)
+				{
+					outsideDistances[plane] = -FLT_MAX;
+				}
+			}
+		};
+
 		for(size_t i = 0; i < _window->GetEyeCount() && i < 2; i++)
 		{
-			float depths[2] = {_eye[i]->GetClipNear(), _eye[i]->GetClipFar()};
-			for(size_t depthIndex = 0; depthIndex < 2; depthIndex++)
+			Camera *eye = _eye[i];
+			if(!eye) continue;
+
+			const bool hasInfiniteFarPlane = isinf(eye->GetClipFar());
+			const float depths[2] = {eye->GetClipNear(), eye->GetClipFar()};
+			const size_t depthCount = hasInfiniteFarPlane ? 1 : 2;
+			for(size_t depthIndex = 0; depthIndex < depthCount; depthIndex++)
 			{
 				for(int x = -1; x <= 1; x += 2)
 				{
 					for(int y = -1; y <= 1; y += 2)
 					{
-						Vector3 corner = _eye[i]->ToWorld(Vector3(static_cast<float>(x), static_cast<float>(y), depths[depthIndex]));
-						for(size_t plane = 0; plane < 4; plane++)
+						Vector3 corner = eye->ToWorld(Vector3(static_cast<float>(x), static_cast<float>(y), depths[depthIndex]));
+						includePoint(corner);
+
+						if(hasInfiniteFarPlane)
 						{
-							const Vector4 &headPlane = headFrustumPlanes[planeIndices[plane]];
-							float distance = corner.GetDotProduct(Vector3(headPlane)) + headPlane.w;
-							if(distance < outsideDistances[plane]) outsideDistances[plane] = distance;
+							includeInfiniteRay(corner - eye->GetWorldPosition());
 						}
 					}
 				}
@@ -392,6 +421,14 @@ namespace RN
 
 		if(_eye[0]) _eye[0]->SetClipFar(clipFar);
 		if(_eye[1]) _eye[1]->SetClipFar(clipFar);
+	}
+
+	void VRCamera::SetClipFarUnlimited()
+	{
+		_head->SetClipFarUnlimited();
+
+		if(_eye[0]) _eye[0]->SetClipFarUnlimited();
+		if(_eye[1]) _eye[1]->SetClipFarUnlimited();
 	}
 
 	void VRCamera::SetClipNear(float clipNear)

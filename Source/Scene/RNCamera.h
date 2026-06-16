@@ -66,6 +66,7 @@ namespace RN
 		RNAPI void SetAspectRatio(float ratio);
 		RNAPI void SetClipNear(float near);
 		RNAPI void SetClipFar(float far);
+		RNAPI void SetClipFarUnlimited();
 		RNAPI void SetFogColor0(Color color);
 		RNAPI void SetFogColor1(Color color);
 		RNAPI void SetFogNear(float near);

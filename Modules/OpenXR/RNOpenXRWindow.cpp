@@ -2097,9 +2097,18 @@ namespace RN
 
 		float a31 = (tan_right + tan_left) / tan_width;
 		float a32 = (tan_up + tan_down) / tan_height;
-		float a33 = far / (far - near) - 1.0f;
-
-		float a43 = (far * near) / (far - near);
+		float a33;
+		float a43;
+		if(isinf(far))
+		{
+			a33 = 0.0f;
+			a43 = near;
+		}
+		else
+		{
+			a33 = far / (far - near) - 1.0f;
+			a43 = (far * near) / (far - near);
+		}
 
 		Matrix result;
 		result.m[0] = a11;
