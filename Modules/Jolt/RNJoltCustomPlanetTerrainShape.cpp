@@ -87,6 +87,7 @@ namespace RN
 						internalTriangle.vertices[i][1] = triangle.vertices[i].y;
 						internalTriangle.vertices[i][2] = triangle.vertices[i].z;
 					}
+					internalTriangle.id = triangle.id;
 					internalTriangle.activeEdges = triangle.activeEdges;
 					return _collector.AddPlanetTerrainTriangle(internalTriangle);
 				}

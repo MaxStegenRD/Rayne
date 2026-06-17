@@ -32,6 +32,7 @@ public:
 	struct Triangle
 	{
 		Vec3 vertices[3];
+		uint32 id;
 		uint8 activeEdges;
 	};
 
@@ -65,7 +66,7 @@ public:
 
 	uint GetSubShapeIDBitsRecursive() const override
 	{
-		return 16;
+		return 32;
 	}
 
 	float GetInnerRadius() const override
@@ -203,7 +204,8 @@ public:
 		for(uint i = 0; i < triangles.size() && !visitor.ShouldAbort(); i += 1)
 		{
 			const Triangle &triangle = triangles[i];
-			visitor.Collide(triangle.vertices[0], triangle.vertices[1], triangle.vertices[2], triangle.activeEdges, subShapeIDCreator.PushID(i & 0xffffu, 16).GetID());
+			const uint32 triangleID = triangle.id == 0xffffffffu ? 0xfffffffeu : triangle.id;
+			visitor.Collide(triangle.vertices[0], triangle.vertices[1], triangle.vertices[2], triangle.activeEdges, subShapeIDCreator.PushID(triangleID, 32).GetID());
 		}
 	}
 
@@ -622,6 +624,7 @@ private:
 				{
 					triangle.vertices[i] = RNCustomPlanetTerrainShape::GetOffsetPosition(source.vertices[i][0], source.vertices[i][1], source.vertices[i][2], _localBase);
 				}
+				triangle.id = static_cast<uint32>(source.id);
 				triangle.activeEdges = source.activeEdges;
 				_triangles.push_back(triangle);
 				return _triangles.size() < _maximumTriangleCount;

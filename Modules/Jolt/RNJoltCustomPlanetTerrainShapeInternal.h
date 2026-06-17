@@ -29,6 +29,7 @@ namespace RN
 	struct JoltCustomPlanetTerrainTriangle
 	{
 		double vertices[3][3];
+		unsigned int id;
 		unsigned char activeEdges;
 	};
 

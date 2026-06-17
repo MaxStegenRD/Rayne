@@ -18,6 +18,7 @@ namespace RN
 		struct SurfaceTriangle
 		{
 			JoltPosition vertices[3];
+			uint32 id;
 			uint8 activeEdges;
 		};
 
