@@ -124,6 +124,15 @@ namespace RN
 		SetUniverseTransform(_universePosition, rotation);
 	}
 
+	DVector3 JoltWorld::GetRotatedDVector3(const Quaternion &rotation, const DVector3 &vector)
+	{
+		const DVector3 axis(static_cast<double>(rotation.x), static_cast<double>(rotation.y), static_cast<double>(rotation.z));
+		const double scalar = static_cast<double>(rotation.w);
+		return axis * (2.0 * axis.GetDotProduct(vector)) +
+			vector * (scalar * scalar - axis.GetDotProduct(axis)) +
+			axis.GetCrossProduct(vector) * (2.0 * scalar);
+	}
+
 	JoltPosition JoltWorld::ConvertPositionToPhysicsWorld(const JoltPosition &position) const
 	{
 #if RN_ENABLE_UNIVERSE_SCALE
@@ -132,21 +141,21 @@ namespace RN
 		DVector3 offset(position);
 		offset -= _universePosition;
 #endif
-		Vector3 physicsPosition = _inverseUniverseRotation.GetRotatedVector(offset.ToVector3());
+		DVector3 physicsPosition = GetRotatedDVector3(_inverseUniverseRotation, offset);
 #if RN_ENABLE_UNIVERSE_SCALE
-		return DVector3(physicsPosition);
-#else
 		return physicsPosition;
+#else
+		return physicsPosition.ToVector3();
 #endif
 	}
 
 	JoltPosition JoltWorld::ConvertPositionFromPhysicsWorld(const JoltPosition &position) const
 	{
-		Vector3 sceneOffset = _universeRotation.GetRotatedVector(JoltConversions::ToVector3(position));
+		DVector3 sceneOffset = GetRotatedDVector3(_universeRotation, DVector3(position));
 #if RN_ENABLE_UNIVERSE_SCALE
-		return _universePosition + DVector3(sceneOffset);
+		return _universePosition + sceneOffset;
 #else
-		return (_universePosition + DVector3(sceneOffset)).ToVector3();
+		return (_universePosition + sceneOffset).ToVector3();
 #endif
 	}
 

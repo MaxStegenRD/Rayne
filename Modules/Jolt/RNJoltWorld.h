@@ -95,6 +95,7 @@ namespace RN
 		JTAPI void SetBodyPairCollisionEnabled(const JPH::BodyID &body1, const JPH::BodyID &body2, bool enabled);
 		JTAPI void SetConnectedBodyCollisionFilteringEnabled(const JPH::BodyID &body1, const JPH::BodyID &body2, bool enabled);
 		JTAPI void ProcessQueuedBodyRemovals();
+		static DVector3 GetRotatedDVector3(const Quaternion &rotation, const DVector3 &vector);
 
 		static JoltWorld *_sharedInstance;
 
