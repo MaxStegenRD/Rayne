@@ -196,10 +196,10 @@ public:
 	}
 
 	template<class Visitor>
-	void CollideTriangles(const AABox &box, float maxSeparationDistance, const SubShapeIDCreator &subShapeIDCreator, Visitor &visitor) const
+	void CollideTriangles(const AABox &box, float maxSeparationDistance, const SubShapeIDCreator &subShapeIDCreator, Visitor &visitor, Vec3Arg localBase) const
 	{
 		Array<Triangle> triangles;
-		CollectTriangles(box, maxSeparationDistance, triangles, MaxCollisionTriangles);
+		CollectTriangles(box, maxSeparationDistance, localBase, triangles, MaxCollisionTriangles);
 		for(uint i = 0; i < triangles.size() && !visitor.ShouldAbort(); i += 1)
 		{
 			const Triangle &triangle = triangles[i];
@@ -207,7 +207,7 @@ public:
 		}
 	}
 
-	void CollideSolidVolume(const ConvexShape *shape, Vec3Arg scale, Mat44Arg shapeTransform, Mat44Arg planetTransform, const SubShapeIDCreator &shapeSubShapeIDCreator, const SubShapeIDCreator &planetSubShapeIDCreator, const CollideShapeSettings &settings, CollideShapeCollector &collector) const
+	void CollideSolidVolume(const ConvexShape *shape, Vec3Arg scale, Mat44Arg shapeTransform, Mat44Arg planetTransform, Vec3Arg localBase, const SubShapeIDCreator &shapeSubShapeIDCreator, const SubShapeIDCreator &planetSubShapeIDCreator, const CollideShapeSettings &settings, CollideShapeCollector &collector) const
 	{
 		if(!_provider) return;
 
@@ -215,7 +215,7 @@ public:
 		Vec3 surfaceNormal;
 		Vec3 supportInPlanet;
 		float penetration = 0.0f;
-		if(!SampleConvexSupport(shape, scale, planetTransform.InversedRotationTranslation() * shapeTransform, surfacePosition, surfaceNormal, supportInPlanet, penetration)) return;
+		if(!SampleConvexSupport(shape, scale, planetTransform.InversedRotationTranslation() * shapeTransform, localBase, surfacePosition, surfaceNormal, supportInPlanet, penetration)) return;
 		if(penetration < -settings.mMaxSeparationDistance) return;
 
 		const Vec3 supportWorld = planetTransform * supportInPlanet;
@@ -250,6 +250,87 @@ private:
 	static constexpr uint MaxCollisionTriangles = 2048;
 	static constexpr uint MaxContextTriangles = 64;
 
+	static Mat44 GetShiftedTransform(Mat44Arg transform, Vec3Arg worldBase)
+	{
+		Mat44 shiftedTransform = transform;
+		shiftedTransform.SetTranslation(transform.GetTranslation() - worldBase);
+		return shiftedTransform;
+	}
+
+	static Mat44 GetShiftedReferenceTransform(Mat44Arg transform, Vec3Arg localBase, Vec3Arg worldBase)
+	{
+		Mat44 shiftedTransform = transform;
+		shiftedTransform.SetTranslation(transform.GetTranslation() - worldBase + transform.Multiply3x3(localBase));
+		return shiftedTransform;
+	}
+
+	static Vec3 GetOffsetPosition(double x, double y, double z, Vec3Arg localBase)
+	{
+		return Vec3(static_cast<float>(x - static_cast<double>(localBase.GetX())),
+					static_cast<float>(y - static_cast<double>(localBase.GetY())),
+					static_cast<float>(z - static_cast<double>(localBase.GetZ())));
+	}
+
+	static void TranslateFace(CollideShapeResult::Face &face, Vec3Arg offset)
+	{
+		for(CollideShapeResult::Face::size_type i = 0; i < face.size(); i += 1)
+		{
+			face[i] += offset;
+		}
+	}
+
+	static void TranslateResult(CollideShapeResult &result, Vec3Arg offset)
+	{
+		result.mContactPointOn1 += offset;
+		result.mContactPointOn2 += offset;
+		TranslateFace(result.mShape1Face, offset);
+		TranslateFace(result.mShape2Face, offset);
+	}
+
+	class OffsetCollideShapeCollector final : public CollideShapeCollector
+	{
+	public:
+		OffsetCollideShapeCollector(CollideShapeCollector &collector, Vec3Arg offset) :
+			CollideShapeCollector(collector),
+			_collector(collector),
+			_offset(offset)
+		{}
+
+		void AddHit(const CollideShapeResult &result) override
+		{
+			CollideShapeResult offsetResult = result;
+			RNCustomPlanetTerrainShape::TranslateResult(offsetResult, _offset);
+			_collector.AddHit(offsetResult);
+			UpdateEarlyOutFraction(_collector.GetEarlyOutFraction());
+		}
+
+	private:
+		CollideShapeCollector &_collector;
+		Vec3 _offset;
+	};
+
+	class OffsetCastShapeCollector final : public CastShapeCollector
+	{
+	public:
+		OffsetCastShapeCollector(CastShapeCollector &collector, Vec3Arg offset) :
+			CastShapeCollector(collector),
+			_collector(collector),
+			_offset(offset)
+		{}
+
+		void AddHit(const ShapeCastResult &result) override
+		{
+			ShapeCastResult offsetResult = result;
+			RNCustomPlanetTerrainShape::TranslateResult(offsetResult, _offset);
+			_collector.AddHit(offsetResult);
+			UpdateEarlyOutFraction(_collector.GetEarlyOutFraction());
+		}
+
+	private:
+		CastShapeCollector &_collector;
+		Vec3 _offset;
+	};
+
 	struct TriangleContext
 	{
 		Triangle triangles[MaxContextTriangles];
@@ -281,9 +362,15 @@ private:
 			}
 		};
 
-		Visitor visitor(convex, scale1, scale2, transform1, transform2, subShapeIDCreator1.GetID(), settings, collector);
-		planet->CollideTriangles(visitor.GetQueryBounds(), settings.mMaxSeparationDistance, subShapeIDCreator2, visitor);
-		planet->CollideSolidVolume(convex, scale1, transform1, transform2, subShapeIDCreator1, subShapeIDCreator2, settings, collector);
+		const Vec3 worldBase = transform1.GetTranslation();
+		const Vec3 localBase = transform2.InversedRotationTranslation() * worldBase;
+		const Mat44 shiftedTransform1 = GetShiftedTransform(transform1, worldBase);
+		const Mat44 shiftedTransform2 = GetShiftedReferenceTransform(transform2, localBase, worldBase);
+		OffsetCollideShapeCollector offsetCollector(collector, worldBase);
+
+		Visitor visitor(convex, scale1, scale2, shiftedTransform1, shiftedTransform2, subShapeIDCreator1.GetID(), settings, offsetCollector);
+		planet->CollideTriangles(visitor.GetQueryBounds(), settings.mMaxSeparationDistance, subShapeIDCreator2, visitor, localBase);
+		planet->CollideSolidVolume(convex, scale1, shiftedTransform1, shiftedTransform2, localBase, subShapeIDCreator1, subShapeIDCreator2, settings, offsetCollector);
 	}
 
 	static void sCastConvexVsPlanetTerrain(const ShapeCast &shapeCast, [[maybe_unused]] const ShapeCastSettings &settings, const Shape *shape, [[maybe_unused]] Vec3Arg scale, [[maybe_unused]] const ShapeFilter &shapeFilter, Mat44Arg planetTransform, const SubShapeIDCreator &shapeSubShapeIDCreator, const SubShapeIDCreator &planetSubShapeIDCreator, CastShapeCollector &collector)
@@ -292,14 +379,19 @@ private:
 		JPH_ASSERT(shape->GetSubType() == EShapeSubType::User1);
 		const ConvexShape *convex = static_cast<const ConvexShape *>(shapeCast.mShape);
 		const RNCustomPlanetTerrainShape *planet = static_cast<const RNCustomPlanetTerrainShape *>(shape);
+		const Vec3 localBase = shapeCast.mCenterOfMassStart.GetTranslation();
+		const Vec3 worldBase = planetTransform * localBase;
+		const Mat44 shiftedPlanetTransform = GetShiftedReferenceTransform(planetTransform, localBase, worldBase);
+		const ShapeCast shiftedShapeCast = shapeCast.PostTranslated(-localBase);
+		OffsetCastShapeCollector offsetCollector(collector, worldBase);
 
 		Vec3 surfacePosition;
 		Vec3 surfaceNormal;
 		Vec3 supportInPlanet;
 		float penetration = 0.0f;
-		if(planet->SampleConvexSupport(convex, shapeCast.mScale, shapeCast.mCenterOfMassStart, surfacePosition, surfaceNormal, supportInPlanet, penetration) && penetration > 0.0f)
+		if(planet->SampleConvexSupport(convex, shiftedShapeCast.mScale, shiftedShapeCast.mCenterOfMassStart, localBase, surfacePosition, surfaceNormal, supportInPlanet, penetration) && penetration > 0.0f)
 		{
-			planet->AddShapeCastHit(0.0f, planetTransform, surfacePosition, surfaceNormal, supportInPlanet, shapeSubShapeIDCreator, planetSubShapeIDCreator, collector);
+			planet->AddShapeCastHit(0.0f, shiftedPlanetTransform, surfacePosition, surfaceNormal, supportInPlanet, shapeSubShapeIDCreator, planetSubShapeIDCreator, offsetCollector);
 			return;
 		}
 
@@ -307,16 +399,16 @@ private:
 		for(uint i = 1; i <= 32; i += 1)
 		{
 			const float currentFraction = static_cast<float>(i) / 32.0f;
-			const Mat44 shapeTransform = shapeCast.mCenterOfMassStart.PostTranslated(shapeCast.mDirection * currentFraction);
-			if(planet->SampleConvexSupport(convex, shapeCast.mScale, shapeTransform, surfacePosition, surfaceNormal, supportInPlanet, penetration) && penetration > 0.0f)
+			const Mat44 shapeTransform = shiftedShapeCast.mCenterOfMassStart.PostTranslated(shiftedShapeCast.mDirection * currentFraction);
+			if(planet->SampleConvexSupport(convex, shiftedShapeCast.mScale, shapeTransform, localBase, surfacePosition, surfaceNormal, supportInPlanet, penetration) && penetration > 0.0f)
 			{
 				float minFraction = previousFraction;
 				float maxFraction = currentFraction;
 				for(uint step = 0; step < 10; step += 1)
 				{
 					const float midFraction = (minFraction + maxFraction) * 0.5f;
-					const Mat44 midTransform = shapeCast.mCenterOfMassStart.PostTranslated(shapeCast.mDirection * midFraction);
-					if(planet->SampleConvexSupport(convex, shapeCast.mScale, midTransform, surfacePosition, surfaceNormal, supportInPlanet, penetration) && penetration > 0.0f)
+					const Mat44 midTransform = shiftedShapeCast.mCenterOfMassStart.PostTranslated(shiftedShapeCast.mDirection * midFraction);
+					if(planet->SampleConvexSupport(convex, shiftedShapeCast.mScale, midTransform, localBase, surfacePosition, surfaceNormal, supportInPlanet, penetration) && penetration > 0.0f)
 					{
 						maxFraction = midFraction;
 					}
@@ -326,10 +418,10 @@ private:
 					}
 				}
 
-				const Mat44 hitTransform = shapeCast.mCenterOfMassStart.PostTranslated(shapeCast.mDirection * maxFraction);
-				if(planet->SampleConvexSupport(convex, shapeCast.mScale, hitTransform, surfacePosition, surfaceNormal, supportInPlanet, penetration))
+				const Mat44 hitTransform = shiftedShapeCast.mCenterOfMassStart.PostTranslated(shiftedShapeCast.mDirection * maxFraction);
+				if(planet->SampleConvexSupport(convex, shiftedShapeCast.mScale, hitTransform, localBase, surfacePosition, surfaceNormal, supportInPlanet, penetration))
 				{
-					planet->AddShapeCastHit(maxFraction, planetTransform, surfacePosition, surfaceNormal, supportInPlanet, shapeSubShapeIDCreator, planetSubShapeIDCreator, collector);
+					planet->AddShapeCastHit(maxFraction, shiftedPlanetTransform, surfacePosition, surfaceNormal, supportInPlanet, shapeSubShapeIDCreator, planetSubShapeIDCreator, offsetCollector);
 				}
 				return;
 			}
@@ -354,24 +446,29 @@ private:
 
 	bool Sample(Vec3Arg direction, Vec3 &position, Vec3 &normal, float &radius) const
 	{
+		return Sample(direction, Vec3::sZero(), position, normal, radius);
+	}
+
+	bool Sample(Vec3Arg direction, Vec3Arg localBase, Vec3 &position, Vec3 &normal, float &radius) const
+	{
 		if(!_provider) return false;
 		const Vec3 normalizedDirection = direction.NormalizedOr(Vec3::sAxisY());
 		RN::JoltCustomPlanetTerrainSample sample;
 		if(!_provider->SamplePlanetTerrain(normalizedDirection.GetX(), normalizedDirection.GetY(), normalizedDirection.GetZ(), sample)) return false;
 
-		position = Vec3(static_cast<float>(sample.positionX), static_cast<float>(sample.positionY), static_cast<float>(sample.positionZ));
+		position = GetOffsetPosition(sample.positionX, sample.positionY, sample.positionZ, localBase);
 		normal = Vec3(sample.normalX, sample.normalY, sample.normalZ).NormalizedOr(normalizedDirection);
-		radius = sample.radius > 0.0f ? sample.radius : position.Length();
+		radius = sample.radius > 0.0f ? sample.radius : (position + localBase).Length();
 		return true;
 	}
 
-	bool SampleConvexSupport(const ConvexShape *shape, Vec3Arg scale, Mat44Arg shapeTransformInPlanet, Vec3 &surfacePosition, Vec3 &surfaceNormal, Vec3 &supportInPlanet, float &penetration) const
+	bool SampleConvexSupport(const ConvexShape *shape, Vec3Arg scale, Mat44Arg shapeTransformInPlanet, Vec3Arg localBase, Vec3 &surfacePosition, Vec3 &surfaceNormal, Vec3 &supportInPlanet, float &penetration) const
 	{
-		const Vec3 shapeCenter = shapeTransformInPlanet.GetTranslation();
+		const Vec3 shapeCenter = shapeTransformInPlanet.GetTranslation() + localBase;
 		const Vec3 direction = shapeCenter.NormalizedOr(Vec3::sAxisY());
 
 		float surfaceRadius = 0.0f;
-		if(!Sample(direction, surfacePosition, surfaceNormal, surfaceRadius)) return false;
+		if(!Sample(direction, localBase, surfacePosition, surfaceNormal, surfaceRadius)) return false;
 
 		ConvexShape::SupportBuffer supportBuffer;
 		const ConvexShape::Support *support = shape->GetSupportFunction(ConvexShape::ESupportMode::Default, supportBuffer, scale);
@@ -379,10 +476,10 @@ private:
 
 		const Vec3 supportDirection = shapeTransformInPlanet.Multiply3x3Transposed(-surfaceNormal);
 		supportInPlanet = shapeTransformInPlanet * support->GetSupport(supportDirection);
-		const Vec3 supportDirectionInPlanet = supportInPlanet.NormalizedOr(direction);
-		if(!Sample(supportDirectionInPlanet, surfacePosition, surfaceNormal, surfaceRadius)) return false;
+		const Vec3 supportDirectionInPlanet = (supportInPlanet + localBase).NormalizedOr(direction);
+		if(!Sample(supportDirectionInPlanet, localBase, surfacePosition, surfaceNormal, surfaceRadius)) return false;
 
-		penetration = surfaceRadius - supportInPlanet.Length();
+		penetration = (surfacePosition - supportInPlanet).Dot(surfaceNormal);
 		return true;
 	}
 
@@ -484,16 +581,17 @@ private:
 		return surfaceDistance <= projectedRadius + tolerance && surfaceDistance >= -projectedRadius - tolerance;
 	}
 
-	void CollectProviderTriangles(const AABox &box, Array<Triangle> &triangles, uint maximumTriangleCount) const
+	void CollectProviderTriangles(const AABox &box, Vec3Arg localBase, Array<Triangle> &triangles, uint maximumTriangleCount) const
 	{
 		if(!_provider) return;
 
 		class TriangleCollector final : public RN::JoltCustomPlanetTerrainInternalTriangleCollector
 		{
 		public:
-			TriangleCollector(Array<Triangle> &triangles, uint maximumTriangleCount) :
+			TriangleCollector(Array<Triangle> &triangles, uint maximumTriangleCount, Vec3Arg localBase) :
 				_triangles(triangles),
-				_maximumTriangleCount(maximumTriangleCount)
+				_maximumTriangleCount(maximumTriangleCount),
+				_localBase(localBase)
 			{}
 
 			bool AddPlanetTerrainTriangle(const RN::JoltCustomPlanetTerrainTriangle &source) override
@@ -503,7 +601,7 @@ private:
 				Triangle triangle;
 				for(uint i = 0; i < 3; i += 1)
 				{
-					triangle.vertices[i] = Vec3(static_cast<float>(source.vertices[i][0]), static_cast<float>(source.vertices[i][1]), static_cast<float>(source.vertices[i][2]));
+					triangle.vertices[i] = RNCustomPlanetTerrainShape::GetOffsetPosition(source.vertices[i][0], source.vertices[i][1], source.vertices[i][2], _localBase);
 				}
 				triangle.activeEdges = source.activeEdges;
 				_triangles.push_back(triangle);
@@ -513,16 +611,24 @@ private:
 		private:
 			Array<Triangle> &_triangles;
 			uint _maximumTriangleCount;
+			Vec3 _localBase;
 		};
 
-		TriangleCollector collector(triangles, maximumTriangleCount);
+		TriangleCollector collector(triangles, maximumTriangleCount, localBase);
 		_provider->CollectPlanetTerrainTriangles(box.mMin.GetX(), box.mMin.GetY(), box.mMin.GetZ(), box.mMax.GetX(), box.mMax.GetY(), box.mMax.GetZ(), collector, maximumTriangleCount);
 	}
 
 	void CollectTriangles(const AABox &box, float maxSeparationDistance, Array<Triangle> &triangles, uint maximumTriangleCount) const
 	{
-		if(!ShouldCollectTriangles(box, maxSeparationDistance)) return;
-		CollectProviderTriangles(box, triangles, maximumTriangleCount);
+		CollectTriangles(box, maxSeparationDistance, Vec3::sZero(), triangles, maximumTriangleCount);
+	}
+
+	void CollectTriangles(const AABox &box, float maxSeparationDistance, Vec3Arg localBase, Array<Triangle> &triangles, uint maximumTriangleCount) const
+	{
+		AABox queryBox = box;
+		queryBox.Translate(localBase);
+		if(!ShouldCollectTriangles(queryBox, maxSeparationDistance)) return;
+		CollectProviderTriangles(queryBox, localBase, triangles, maximumTriangleCount);
 	}
 
 	RN::JoltCustomPlanetTerrainInternalProvider *_provider;
