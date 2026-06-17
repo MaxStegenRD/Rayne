@@ -124,6 +124,7 @@ namespace RN
 		Quaternion GetLerpLinear(const Quaternion &other, float factor) const;
 
 		Vector3 GetRotatedVector(const Vector3 &vec) const;
+		DVector3 GetRotatedVector(const DVector3 &vec) const;
 		Vector4 GetRotatedVector(const Vector4 &vec) const;
 
 		Matrix GetRotationMatrix() const;

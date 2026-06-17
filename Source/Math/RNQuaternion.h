@@ -462,6 +462,18 @@ namespace RN
 		return Vector3(resultquat.x, resultquat.y, resultquat.z);
 	}
 
+	RN_INLINE DVector3 Quaternion::GetRotatedVector(const DVector3 &vector) const
+	{
+		const DVector3 axis(static_cast<double>(x), static_cast<double>(y), static_cast<double>(z));
+		const double scalar = static_cast<double>(w);
+		const double lengthSquared = axis.GetDotProduct(axis) + scalar * scalar;
+		if(lengthSquared <= static_cast<double>(k::EpsilonFloat)) return vector;
+
+		return (axis * (2.0 * axis.GetDotProduct(vector)) +
+			vector * (scalar * scalar - axis.GetDotProduct(axis)) +
+			axis.GetCrossProduct(vector) * (2.0 * scalar)) / lengthSquared;
+	}
+
 	RN_INLINE Vector4 Quaternion::GetRotatedVector(const Vector4 &vector) const
 	{
 		Quaternion vectorquat(vector.x, vector.y, vector.z, 0.0f);
