@@ -475,7 +475,7 @@ namespace RN
 		if(_isKinematic || !_isGravityEnabled || !bodyInterface->IsActive(*_actor)) return;
 		if(_mass <= k::EpsilonFloat || gravity.GetSquaredLength() <= k::EpsilonFloat) return;
 
-		bodyInterface->AddForce(*_actor, JoltConversions::ToJoltVector(gravity * _mass));
+		bodyInterface->AddForce(*_actor, JoltConversions::ToJoltVector(gravity * _mass), JPH::EActivation::DontActivate);
 	}
 
 	/*	void JoltDynamicBody::ClearForces()
