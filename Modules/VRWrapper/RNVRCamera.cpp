@@ -75,7 +75,7 @@ namespace RN
 		if(_eye[0]) _eye[0]->SetPosition(Vector3(-0.032f, 0.0f, 0.0f));
 		if(_eye[1]) _eye[1]->SetPosition(Vector3(0.032f, 0.0f, 0.0f));
 
-		RebuildHiddenAreaMeshes();
+		//RebuildHiddenAreaMeshes(); //TODO: Bring back and fix once quest supports it again
 		CreatePostprocessingPipeline();
 
 		NotificationManager::GetSharedInstance()->AddSubscriber(kRNWindowDidChangeSize, [this](Notification *notification) {
@@ -84,11 +84,11 @@ namespace RN
 				CreatePostprocessingPipeline();
 			} }, this);
 
-		NotificationManager::GetSharedInstance()->AddSubscriber(kRNVRVisibilityMaskChanged, [this](Notification *notification) {
+		/*NotificationManager::GetSharedInstance()->AddSubscriber(kRNVRVisibilityMaskChanged, [this](Notification *notification) {
 			if(notification->GetInfo<VRWindow>() == _window)
 			{
 				RebuildHiddenAreaMeshes();
-			} }, this);
+			} }, this);*/ //TODO: Bring back and fix once quest supports it again
 	}
 
 	void VRCamera::CreatePostprocessingPipeline()
