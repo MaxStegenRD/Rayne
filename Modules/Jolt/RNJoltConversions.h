@@ -43,6 +43,21 @@ namespace RN
 			return JPH::RMat44::sRotationTranslation(ToJoltQuat(rotation), position);
 		}
 
+		static JPH::RMat44 ToJoltRMat44(const JPH::Quat &rotation, const JPH::RVec3 &position)
+		{
+			return JPH::RMat44::sRotationTranslation(rotation, position);
+		}
+
+		static JPH::RVec3 ToJoltPosition(const JoltPosition &position)
+		{
+			return ToJoltRVec3(position);
+		}
+
+		static JPH::Vec3 ToJoltVector(const Vector3 &vector)
+		{
+			return ToJoltVec3(vector);
+		}
+
 		static Vector3 ToVector3(const JPH::Vec3 &vector)
 		{
 			return Vector3(vector.GetX(), vector.GetY(), vector.GetZ());
@@ -65,6 +80,11 @@ namespace RN
 #else
 			return ToVector3FromRVec3(vector);
 #endif
+		}
+
+		static Vector3 ToEngineVector(const JPH::Vec3 &vector)
+		{
+			return ToVector3(vector);
 		}
 
 		static Vector3 ToVector3(const JoltPosition &vector)

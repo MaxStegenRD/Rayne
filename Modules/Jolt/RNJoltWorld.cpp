@@ -89,13 +89,13 @@ namespace RN
 
 	void JoltWorld::SetGravity(const Vector3 &gravity)
 	{
-		_physicsSystem->SetGravity(JPH::Vec3Arg(gravity.x, gravity.y, gravity.z));
+		_physicsSystem->SetGravity(JoltConversions::ToJoltVector(gravity));
 	}
 
 	Vector3 JoltWorld::GetGravity()
 	{
 		JPH::Vec3 gravity = _physicsSystem->GetGravity();
-		return Vector3(gravity.GetX(), gravity.GetY(), gravity.GetZ());
+		return JoltConversions::ToEngineVector(gravity);
 	}
 
 	void JoltWorld::SetDefaultDynamicBodyDamping(float linear, float angular)
@@ -333,8 +333,8 @@ namespace RN
 		//TODO: Limit max distance of raycast or the result
 
 		JPH::RRayCast rayInfo;
-		rayInfo.mOrigin = JoltConversions::ToJoltRVec3(globalFrom);
-		rayInfo.mDirection = JoltConversions::ToJoltVec3(diff);
+		rayInfo.mOrigin = JoltConversions::ToJoltPosition(globalFrom);
+		rayInfo.mDirection = JoltConversions::ToJoltVector(diff);
 
 		JPH::RayCastResult result;
 		uint16 objectLayer = GetObjectLayer(filterGroup, filterMask, 1);
@@ -363,7 +363,7 @@ namespace RN
 		}
 
 		hit.position = JoltConversions::ToPosition(position);
-		hit.normal = JoltConversions::ToVector3(normal);
+		hit.normal = JoltConversions::ToEngineVector(normal);
 
 		hit.distance = static_cast<float>(globalFrom.GetDistance(hit.position));
 
@@ -382,12 +382,12 @@ namespace RN
 
 		Vector3 diff = JoltConversions::ToVector3(globalTo - globalFrom);
 
-		JPH::RVec3 baseOffset = JoltConversions::ToJoltRVec3(globalFrom);
+		JPH::RVec3 baseOffset = JoltConversions::ToJoltPosition(globalFrom);
 		JPH::RMat44 worldTransform = JoltConversions::ToJoltRMat44(rotation, baseOffset);
 
 		//TODO: Limit max distance of raycast or the result
 
-		JPH::RShapeCast castInfo = JPH::RShapeCast::sFromWorldTransform(shape->GetJoltShape(), JoltConversions::ToJoltVec3(scale), worldTransform, JoltConversions::ToJoltVec3(diff));
+		JPH::RShapeCast castInfo = JPH::RShapeCast::sFromWorldTransform(shape->GetJoltShape(), JoltConversions::ToJoltVec3(scale), worldTransform, JoltConversions::ToJoltVector(diff));
 
 		JPH::ShapeCastSettings castSettings; //Defaults seem ok for now!?
 
@@ -419,7 +419,7 @@ namespace RN
 		}
 
 		hit.position = JoltConversions::ToPosition(position);
-		hit.normal = JoltConversions::ToVector3(normal);
+		hit.normal = JoltConversions::ToEngineVector(normal);
 
 		hit.distance = JoltConversions::ToVector3(result.mHit.mContactPointOn2).GetLength();
 
@@ -433,7 +433,7 @@ namespace RN
 	{
 		std::vector<JoltContactInfo> hits;
 
-		JPH::RVec3 baseOffset = JoltConversions::ToJoltRVec3(globalPosition);
+		JPH::RVec3 baseOffset = JoltConversions::ToJoltPosition(globalPosition);
 		JPH::RMat44 worldTransform = JoltConversions::ToJoltRMat44(rotation, baseOffset);
 		JPH::CollideShapeSettings collideSettings; //Defaults seem ok for now!?
 

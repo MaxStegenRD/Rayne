@@ -246,8 +246,8 @@ namespace RN
 			ApplyContactResponseMassScale(co2, co1, inBody2.GetID(), ioSettings, false);
 			JPH::Vec3 joltVelocity1 = inBody1.GetLinearVelocity();
 			JPH::Vec3 joltVelocity2 = inBody2.GetLinearVelocity();
-			Vector3 velocity1(joltVelocity1.GetX(), joltVelocity1.GetY(), joltVelocity1.GetZ());
-			Vector3 velocity2(joltVelocity2.GetX(), joltVelocity2.GetY(), joltVelocity2.GetZ());
+			Vector3 velocity1 = JoltConversions::ToEngineVector(joltVelocity1);
+			Vector3 velocity2 = JoltConversions::ToEngineVector(joltVelocity2);
 			JoltContactInfo info1{};
 			JoltContactInfo info2{};
 			info1.node = co2 ? co2->GetParent() : nullptr;
@@ -280,8 +280,8 @@ namespace RN
 			ApplyContactResponseMassScale(co2, co1, inBody2.GetID(), ioSettings, false);
 			JPH::Vec3 joltVelocity1 = inBody1.GetLinearVelocity();
 			JPH::Vec3 joltVelocity2 = inBody2.GetLinearVelocity();
-			Vector3 velocity1(joltVelocity1.GetX(), joltVelocity1.GetY(), joltVelocity1.GetZ());
-			Vector3 velocity2(joltVelocity2.GetX(), joltVelocity2.GetY(), joltVelocity2.GetZ());
+			Vector3 velocity1 = JoltConversions::ToEngineVector(joltVelocity1);
+			Vector3 velocity2 = JoltConversions::ToEngineVector(joltVelocity2);
 			JoltContactInfo info1{};
 			JoltContactInfo info2{};
 			info1.node = co2 ? co2->GetParent() : nullptr;
@@ -314,14 +314,14 @@ namespace RN
 		static Vector3 GetBodyContactPointVelocity(const JPH::Body &body, const JPH::RVec3 &position)
 		{
 			JPH::Vec3 velocity = body.GetPointVelocity(position);
-			return JoltConversions::ToVector3(velocity);
+			return JoltConversions::ToEngineVector(velocity);
 		}
 
 		static void FillContactManifoldInfo(JoltContactInfo &info, const JPH::ContactManifold &manifold, const JPH::Body &body, const JPH::Body &otherBody, bool isFirstBody)
 		{
 			JPH::Vec3 normal = manifold.mWorldSpaceNormal;
 			if(!isFirstBody) normal = -normal;
-			info.normal = Vector3(normal.GetX(), normal.GetY(), normal.GetZ());
+			info.normal = JoltConversions::ToEngineVector(normal);
 			uint32 contactPointCount = static_cast<uint32>(manifold.mRelativeContactPointsOn1.size());
 			if(contactPointCount == 0)
 			{

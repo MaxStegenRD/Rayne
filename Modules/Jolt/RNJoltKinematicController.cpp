@@ -55,9 +55,9 @@ namespace RN
 		JoltWorld *world = JoltWorld::GetSharedInstance();
 		uint16 objectLayer = world->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1);
 		JPH::PhysicsSystem *physics = world->GetJoltInstance();
-		JPH::Vec3 joltGravity(gravity.x, gravity.y, gravity.z);
+		JPH::Vec3 joltGravity = JoltConversions::ToJoltVector(gravity);
 
-		_controller->SetLinearVelocity(JPH::Vec3Arg(velocity.x, velocity.y, velocity.z));
+		_controller->SetLinearVelocity(JoltConversions::ToJoltVector(velocity));
 		if(_stepOffset > k::EpsilonFloat)
 		{
 			JPH::CharacterVirtual::ExtendedUpdateSettings updateSettings;
@@ -87,7 +87,7 @@ namespace RN
 
 		//TODO: Limit max distance of raycast or the result
 
-		JPH::RShapeCast castInfo = JPH::RShapeCast::sFromWorldTransform(_shape->GetJoltShape(), JPH::Vec3::sOne(), worldTransform, JoltConversions::ToJoltVec3(direction));
+		JPH::RShapeCast castInfo = JPH::RShapeCast::sFromWorldTransform(_shape->GetJoltShape(), JPH::Vec3::sOne(), worldTransform, JoltConversions::ToJoltVector(direction));
 
 		JPH::ShapeCastSettings castSettings; //Defaults seem ok for now!?
 
@@ -119,7 +119,7 @@ namespace RN
 			}
 
 			hit.position = JoltConversions::ToPosition(position);
-			hit.normal = JoltConversions::ToVector3(normal);
+			hit.normal = JoltConversions::ToEngineVector(normal);
 
 			hit.distance = JoltConversions::ToVector3(result.mContactPointOn2).GetLength();
 
@@ -148,7 +148,7 @@ namespace RN
 
 		//TODO: Limit max distance of raycast or the result
 
-		JPH::RShapeCast castInfo = JPH::RShapeCast::sFromWorldTransform(_shape->GetJoltShape(), JPH::Vec3::sOne(), worldTransform, JoltConversions::ToJoltVec3(direction));
+		JPH::RShapeCast castInfo = JPH::RShapeCast::sFromWorldTransform(_shape->GetJoltShape(), JPH::Vec3::sOne(), worldTransform, JoltConversions::ToJoltVector(direction));
 
 		JPH::ShapeCastSettings castSettings; //Defaults seem ok for now!?
 
@@ -180,7 +180,7 @@ namespace RN
 		}
 
 		hit.position = JoltConversions::ToPosition(position);
-		hit.normal = JoltConversions::ToVector3(normal);
+		hit.normal = JoltConversions::ToEngineVector(normal);
 
 		hit.distance = JoltConversions::ToVector3(result.mHit.mContactPointOn2).GetLength();
 

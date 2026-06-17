@@ -94,7 +94,7 @@ namespace RN
 		}
 
 		ApplyStepOffset(adjustedVelocity, delta);
-		_controller->SetLinearVelocity(JPH::Vec3Arg(adjustedVelocity.x, adjustedVelocity.y, adjustedVelocity.z));
+		_controller->SetLinearVelocity(JoltConversions::ToJoltVector(adjustedVelocity));
 		_controller->Activate();
 	}
 
@@ -184,7 +184,7 @@ namespace RN
 			return;
 		}
 
-		JPH::Constraint *constraint = CreateJoltExternalSupportAnchorConstraint(*supportBody, *controllerBody, JoltConversions::ToJoltRVec3(supportAnchorPosition), JoltConversions::ToJoltRVec3(controllerAnchorPosition), maxForce);
+		JPH::Constraint *constraint = CreateJoltExternalSupportAnchorConstraint(*supportBody, *controllerBody, JoltConversions::ToJoltPosition(supportAnchorPosition), JoltConversions::ToJoltPosition(controllerAnchorPosition), maxForce);
 		if(!constraint)
 		{
 			return;
@@ -476,9 +476,9 @@ namespace RN
 			return false;
 		}
 
-		JPH::Vec3 joltVelocity = body.GetPointVelocity(JoltConversions::ToJoltRVec3(anchorPosition));
+		JPH::Vec3 joltVelocity = body.GetPointVelocity(JoltConversions::ToJoltPosition(anchorPosition));
 		position = anchorPosition;
-		velocity = Vector3(joltVelocity.GetX(), joltVelocity.GetY(), joltVelocity.GetZ());
+		velocity = JoltConversions::ToEngineVector(joltVelocity);
 		return velocity.IsValid();
 	}
 
@@ -514,12 +514,12 @@ namespace RN
 		if(_objectBelow) _objectBelow->Retain()->Autorelease();
 
 		JPH::Vec3 groundVelocity = _controller->GetGroundVelocity();
-		_groundVelocity = Vector3(groundVelocity.GetX(), groundVelocity.GetY(), groundVelocity.GetZ());
+		_groundVelocity = JoltConversions::ToEngineVector(groundVelocity);
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 		JPH::Vec3 groundAngularVelocity = physics->GetBodyInterface().GetAngularVelocity(_controller->GetGroundBodyID());
-		_groundAngularVelocity = Vector3(groundAngularVelocity.GetX(), groundAngularVelocity.GetY(), groundAngularVelocity.GetZ());
+		_groundAngularVelocity = JoltConversions::ToEngineVector(groundAngularVelocity);
 		JPH::Vec3 groundNormal = _controller->GetGroundNormal();
-		_groundNormal = Vector3(groundNormal.GetX(), groundNormal.GetY(), groundNormal.GetZ());
+		_groundNormal = JoltConversions::ToEngineVector(groundNormal);
 		_isFalling = false;
 	}
 
