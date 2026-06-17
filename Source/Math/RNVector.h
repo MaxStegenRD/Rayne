@@ -110,6 +110,12 @@ namespace RN
 		Vector3 &Normalize(const float n = 1.0f);
 		Vector3 GetNormalized(const float n = 1.0f) const;
 
+		RN::Vector3 ProjectOntoVector(const RN::Vector3 &vec) const;
+		RN::Vector3 ProjectOntoVectorSameDir(const RN::Vector3 &vec) const;
+		RN::Vector3 GetLateralToVector(const RN::Vector3 &vec) const;
+		RN::Vector3 ProjectOntoNormal(const RN::Vector3 &normal) const;
+		RN::Vector3 ProjectOntoPlane(const RN::Vector3 &normal) const;
+
 		struct
 		{
 			float x;
@@ -642,6 +648,33 @@ namespace RN
 		return true;
 	}
 
+	RN_INLINE Vector3 Vector3::ProjectOntoVector(const RN::Vector3 &vec) const
+	{
+		const float sqrLength = vec.GetSquaredLength();
+		if(sqrLength <= RN::k::EpsilonFloat) return RN::Vector3(0.0f);
+		return vec * GetDotProduct(vec) / sqrLength;
+	}
+
+	RN_INLINE Vector3 Vector3::ProjectOntoVectorSameDir(const RN::Vector3 &vec) const
+	{
+		if(GetDotProduct(vec) <= 0.0f) return RN::Vector3(0.0f);
+		return ProjectOntoVector(vec);
+	}
+
+	RN_INLINE Vector3 Vector3::GetLateralToVector(const RN::Vector3 &vec) const
+	{
+		return *this - ProjectOntoVector(vec);
+	}
+
+	RN_INLINE Vector3 Vector3::ProjectOntoNormal(const RN::Vector3 &normal) const
+	{
+		return normal * GetDotProduct(normal);
+	}
+
+	RN_INLINE Vector3 Vector3::ProjectOntoPlane(const RN::Vector3 &normal) const
+	{
+		return *this - ProjectOntoNormal(normal);
+	}
 
 	RN_INLINE DVector3::DVector3()
 	{
