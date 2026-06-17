@@ -112,6 +112,8 @@ namespace RN
 		_universePosition = position;
 		_universeRotation = normalizedRotation;
 		_inverseUniverseRotation = _universeRotation.GetConjugated();
+
+		UpdateDynamicBodyPositions();
 	}
 
 	void JoltWorld::SetUniversePosition(const DVector3 &position)
@@ -122,6 +124,33 @@ namespace RN
 	void JoltWorld::SetUniverseRotation(const Quaternion &rotation)
 	{
 		SetUniverseTransform(_universePosition, rotation);
+	}
+
+	void JoltWorld::UpdateDynamicBodyPositions()
+	{
+		SceneQuadtree *quadtree = nullptr;
+		if(GetParent() && GetParent()->IsKindOfClass(SceneQuadtree::GetMetaClass()))
+		{
+			quadtree = static_cast<SceneQuadtree *>(GetParent());
+		}
+
+		JPH::BodyIDVector bodyIDs;
+		_physicsSystem->GetBodies(bodyIDs);
+
+		JPH::BodyInterface &bodyInterface = _physicsSystem->GetBodyInterface();
+		for(JPH::BodyID bodyID : bodyIDs)
+		{
+			uint64 userData = bodyInterface.GetUserData(bodyID);
+			JoltCollisionObject *collisionObject = reinterpret_cast<JoltCollisionObject *>(userData);
+			JoltDynamicBody *body = collisionObject ? collisionObject->Downcast<JoltDynamicBody>() : nullptr;
+			if(!body) continue;
+
+			body->UpdatePosition();
+			if(quadtree && body->GetParent())
+			{
+				quadtree->RelocateNodeIfNeeded(body->GetParent());
+			}
+		}
 	}
 
 	DVector3 JoltWorld::GetRotatedDVector3(const Quaternion &rotation, const DVector3 &vector)

@@ -46,12 +46,13 @@ namespace RN
 
 	JoltDynamicBody::~JoltDynamicBody()
 	{
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JoltWorld *world = JoltWorld::GetSharedInstance();
+		JPH::PhysicsSystem *physics = world->GetJoltInstance();
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 
 		if(_actor)
 		{
-			JoltWorld::GetSharedInstance()->CancelQueuedBodyRemoval(*_actor);
+			world->CancelQueuedBodyRemoval(*_actor);
 			if(bodyInterface.IsAdded(*_actor))
 			{
 				bodyInterface.DeactivateBody(*_actor);
