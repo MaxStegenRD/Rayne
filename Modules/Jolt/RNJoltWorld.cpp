@@ -38,7 +38,7 @@ namespace RN
 	}
 
 	JoltWorld::JoltWorld(const Vector3 &gravity, uint32 maxBodies, uint32 maxBodyPairs, uint32 maxContactConstraints) :
-		_defaultDynamicBodyLinearDamping(0.05f), _defaultDynamicBodyAngularDamping(0.05f), _universePosition(0.0), _universeRotation(), _inverseUniverseRotation(), _substeps(1), _paused(false), _isSimulating(false), _isLoadingLevel(false)
+		_defaultDynamicBodyLinearDamping(0.05f), _defaultDynamicBodyAngularDamping(0.05f), _universePosition(0.0), _universeRotation(), _inverseUniverseRotation(), _universePositionRotation(), _inverseUniversePositionRotation(), _substeps(1), _paused(false), _isSimulating(false), _isLoadingLevel(false)
 	{
 		RN_ASSERT(!_sharedInstance, "There can only be one Jolt instance at a time!");
 		_sharedInstance = this;
@@ -107,11 +107,13 @@ namespace RN
 		normalizedRotation.Normalize();
 		if(!normalizedRotation.IsValid()) return;
 
-		if(_universePosition == position && _universeRotation == normalizedRotation) return;
+		if(_universePosition == position && _universeRotation == normalizedRotation && _universePositionRotation == rotation) return;
 
 		_universePosition = position;
 		_universeRotation = normalizedRotation;
 		_inverseUniverseRotation = _universeRotation.GetConjugated();
+		_universePositionRotation = rotation;
+		_inverseUniversePositionRotation = _universePositionRotation.GetConjugated();
 
 		UpdateDynamicBodyPositions();
 	}
@@ -153,15 +155,6 @@ namespace RN
 		}
 	}
 
-	DVector3 JoltWorld::GetRotatedDVector3(const Quaternion &rotation, const DVector3 &vector)
-	{
-		const DVector3 axis(static_cast<double>(rotation.x), static_cast<double>(rotation.y), static_cast<double>(rotation.z));
-		const double scalar = static_cast<double>(rotation.w);
-		return axis * (2.0 * axis.GetDotProduct(vector)) +
-			vector * (scalar * scalar - axis.GetDotProduct(axis)) +
-			axis.GetCrossProduct(vector) * (2.0 * scalar);
-	}
-
 	JoltPosition JoltWorld::ConvertPositionToPhysicsWorld(const JoltPosition &position) const
 	{
 #if RN_ENABLE_UNIVERSE_SCALE
@@ -170,7 +163,7 @@ namespace RN
 		DVector3 offset(position);
 		offset -= _universePosition;
 #endif
-		DVector3 physicsPosition = GetRotatedDVector3(_inverseUniverseRotation, offset);
+		DVector3 physicsPosition = _inverseUniversePositionRotation.GetRotatedVector(offset);
 #if RN_ENABLE_UNIVERSE_SCALE
 		return physicsPosition;
 #else
@@ -180,7 +173,7 @@ namespace RN
 
 	JoltPosition JoltWorld::ConvertPositionFromPhysicsWorld(const JoltPosition &position) const
 	{
-		DVector3 sceneOffset = GetRotatedDVector3(_universeRotation, DVector3(position));
+		DVector3 sceneOffset = _universePositionRotation.GetRotatedVector(DVector3(position));
 #if RN_ENABLE_UNIVERSE_SCALE
 		return _universePosition + sceneOffset;
 #else
