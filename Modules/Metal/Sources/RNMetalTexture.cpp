@@ -32,10 +32,17 @@ namespace RN
 	{
 		SetData(GetFullRegionForMipMapLevel(mipmapLevel), mipmapLevel, bytes, bytesPerRow, numberOfRows);
 	}
-	void MetalTexture::SetData(const Region &region, uint32 mipmapLevel, const void *bytes, size_t bytesPerRow, size_t)
+	void MetalTexture::SetData(const Region &region, uint32 mipmapLevel, const void *bytes, size_t bytesPerRow, size_t numberOfRows)
 	{
 		id<MTLTexture> texture = (id<MTLTexture>)_texture;
-		[texture replaceRegion:MTLRegionMake3D(region.x, region.y, region.z, region.width, region.height, region.depth) mipmapLevel:mipmapLevel withBytes:bytes bytesPerRow:bytesPerRow];
+		MTLRegion metalRegion = MTLRegionMake3D(region.x, region.y, region.z, region.width, region.height, region.depth);
+		if(_descriptor.type == Texture::Type::Type3D)
+		{
+			[texture replaceRegion:metalRegion mipmapLevel:mipmapLevel slice:0 withBytes:bytes bytesPerRow:bytesPerRow bytesPerImage:bytesPerRow*numberOfRows];
+			return;
+		}
+
+		[texture replaceRegion:metalRegion mipmapLevel:mipmapLevel withBytes:bytes bytesPerRow:bytesPerRow];
 	}
 	void MetalTexture::SetData(const Region &region, uint32 mipmapLevel, uint32 slice, const void *bytes, size_t bytesPerRow, size_t numberOfRows)
 	{
