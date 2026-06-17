@@ -468,6 +468,16 @@ namespace RN
 		bodyInterface->AddForce(*_actor, JoltConversions::ToJoltVector(force), JoltConversions::ToJoltPosition(globalOrigin));
 	}
 
+	void JoltDynamicBody::ApplyGravity(const Vector3 &gravity)
+	{
+		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
+		if(!bodyInterface) return;
+		if(_isKinematic || !_isGravityEnabled || !bodyInterface->IsActive(*_actor)) return;
+		if(_mass <= k::EpsilonFloat || gravity.GetSquaredLength() <= k::EpsilonFloat) return;
+
+		bodyInterface->AddForce(*_actor, JoltConversions::ToJoltVector(gravity * _mass));
+	}
+
 	/*	void JoltDynamicBody::ClearForces()
 	{
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();

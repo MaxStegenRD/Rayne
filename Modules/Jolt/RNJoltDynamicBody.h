@@ -66,6 +66,7 @@ namespace RN
 
 		JTAPI void AddForce(const Vector3 &force);
 		JTAPI void AddForce(const Vector3 &force, const JoltPosition &globalOrigin);
+		JTAPI void ApplyGravity(const Vector3 &gravity);
 		//		JTAPI void ClearForces();
 
 		JTAPI void AddTorque(const Vector3 &torque);
