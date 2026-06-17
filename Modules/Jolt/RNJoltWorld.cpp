@@ -7,6 +7,7 @@
 //
 
 #include "RNJoltWorld.h"
+#include "RNJoltConversions.h"
 #include "RNJoltCustomPlanetTerrainShape.h"
 #include "RNJoltInternals.h"
 #include "RNJoltWheelCylinderShape.h"
@@ -37,7 +38,7 @@ namespace RN
 	}
 
 	JoltWorld::JoltWorld(const Vector3 &gravity, uint32 maxBodies, uint32 maxBodyPairs, uint32 maxContactConstraints) :
-		_defaultDynamicBodyLinearDamping(0.05f), _defaultDynamicBodyAngularDamping(0.05f), _substeps(1), _paused(false), _isSimulating(false), _isLoadingLevel(false)
+		_defaultDynamicBodyLinearDamping(0.05f), _defaultDynamicBodyAngularDamping(0.05f), _universePosition(0.0), _universeRotation(), _inverseUniverseRotation(), _substeps(1), _paused(false), _isSimulating(false), _isLoadingLevel(false)
 	{
 		RN_ASSERT(!_sharedInstance, "There can only be one Jolt instance at a time!");
 		_sharedInstance = this;
@@ -96,6 +97,81 @@ namespace RN
 	{
 		JPH::Vec3 gravity = _physicsSystem->GetGravity();
 		return JoltConversions::ToEngineVector(gravity);
+	}
+
+	void JoltWorld::SetUniverseTransform(const DVector3 &position, const Quaternion &rotation)
+	{
+		if(!position.IsValid() || !rotation.IsValid()) return;
+
+		Quaternion normalizedRotation(rotation);
+		normalizedRotation.Normalize();
+		if(!normalizedRotation.IsValid()) return;
+
+		if(_universePosition == position && _universeRotation == normalizedRotation) return;
+
+		_universePosition = position;
+		_universeRotation = normalizedRotation;
+		_inverseUniverseRotation = _universeRotation.GetConjugated();
+	}
+
+	void JoltWorld::SetUniversePosition(const DVector3 &position)
+	{
+		SetUniverseTransform(position, _universeRotation);
+	}
+
+	void JoltWorld::SetUniverseRotation(const Quaternion &rotation)
+	{
+		SetUniverseTransform(_universePosition, rotation);
+	}
+
+	JoltPosition JoltWorld::ConvertPositionToPhysicsWorld(const JoltPosition &position) const
+	{
+#if RN_ENABLE_UNIVERSE_SCALE
+		DVector3 offset = position - _universePosition;
+#else
+		DVector3 offset(position);
+		offset -= _universePosition;
+#endif
+		Vector3 physicsPosition = _inverseUniverseRotation.GetRotatedVector(offset.ToVector3());
+#if RN_ENABLE_UNIVERSE_SCALE
+		return DVector3(physicsPosition);
+#else
+		return physicsPosition;
+#endif
+	}
+
+	JoltPosition JoltWorld::ConvertPositionFromPhysicsWorld(const JoltPosition &position) const
+	{
+		Vector3 sceneOffset = _universeRotation.GetRotatedVector(JoltConversions::ToVector3(position));
+#if RN_ENABLE_UNIVERSE_SCALE
+		return _universePosition + DVector3(sceneOffset);
+#else
+		return (_universePosition + DVector3(sceneOffset)).ToVector3();
+#endif
+	}
+
+	Vector3 JoltWorld::ConvertVectorToPhysicsWorld(const Vector3 &vector) const
+	{
+		return _inverseUniverseRotation.GetRotatedVector(vector);
+	}
+
+	Vector3 JoltWorld::ConvertVectorFromPhysicsWorld(const Vector3 &vector) const
+	{
+		return _universeRotation.GetRotatedVector(vector);
+	}
+
+	Quaternion JoltWorld::ConvertRotationToPhysicsWorld(const Quaternion &rotation) const
+	{
+		Quaternion result = _inverseUniverseRotation * rotation;
+		result.Normalize();
+		return result;
+	}
+
+	Quaternion JoltWorld::ConvertRotationFromPhysicsWorld(const Quaternion &rotation) const
+	{
+		Quaternion result = _universeRotation * rotation;
+		result.Normalize();
+		return result;
 	}
 
 	void JoltWorld::SetDefaultDynamicBodyDamping(float linear, float angular)
@@ -383,7 +459,7 @@ namespace RN
 		Vector3 diff = JoltConversions::ToVector3(globalTo - globalFrom);
 
 		JPH::RVec3 baseOffset = JoltConversions::ToJoltPosition(globalFrom);
-		JPH::RMat44 worldTransform = JoltConversions::ToJoltRMat44(rotation, baseOffset);
+		JPH::RMat44 worldTransform = JoltConversions::ToJoltRMat44(JoltConversions::ToJoltRotation(rotation), baseOffset);
 
 		//TODO: Limit max distance of raycast or the result
 
@@ -434,7 +510,7 @@ namespace RN
 		std::vector<JoltContactInfo> hits;
 
 		JPH::RVec3 baseOffset = JoltConversions::ToJoltPosition(globalPosition);
-		JPH::RMat44 worldTransform = JoltConversions::ToJoltRMat44(rotation, baseOffset);
+		JPH::RMat44 worldTransform = JoltConversions::ToJoltRMat44(JoltConversions::ToJoltRotation(rotation), baseOffset);
 		JPH::CollideShapeSettings collideSettings; //Defaults seem ok for now!?
 
 		JPH::AllHitCollisionCollector<JPH::CollideShapeCollector> results;

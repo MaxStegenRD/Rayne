@@ -80,10 +80,10 @@ namespace RN
 
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 
-		JPH::RVec3 baseOffset = JoltConversions::GetAttachmentPosition(this, offset);
+		JPH::RVec3 baseOffset = JoltConversions::GetAttachmentPosition(this) + JoltConversions::ToJoltRVec3(offset);
 		Quaternion rot = GetWorldRotation();
 
-		JPH::RMat44 worldTransform = JoltConversions::ToJoltRMat44(rot, baseOffset);
+		JPH::RMat44 worldTransform = JoltConversions::ToJoltRMat44(JoltConversions::ToJoltSceneRotation(rot), baseOffset);
 
 		//TODO: Limit max distance of raycast or the result
 
@@ -141,10 +141,10 @@ namespace RN
 
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 
-		JPH::RVec3 baseOffset = JoltConversions::GetAttachmentPosition(this, offset);
+		JPH::RVec3 baseOffset = JoltConversions::GetAttachmentPosition(this) + JoltConversions::ToJoltRVec3(offset);
 		Quaternion rot = GetWorldRotation();
 
-		JPH::RMat44 worldTransform = JoltConversions::ToJoltRMat44(rot, baseOffset);
+		JPH::RMat44 worldTransform = JoltConversions::ToJoltRMat44(JoltConversions::ToJoltSceneRotation(rot), baseOffset);
 
 		//TODO: Limit max distance of raycast or the result
 
@@ -203,7 +203,7 @@ namespace RN
 		JoltPosition position = JoltConversions::ToPosition(baseOffset);
 		Quaternion rotation = GetWorldRotation();
 
-		JPH::RMat44 worldTransform = JoltConversions::ToJoltRMat44(rotation, baseOffset);
+		JPH::RMat44 worldTransform = JoltConversions::ToJoltRMat44(JoltConversions::ToJoltSceneRotation(rotation), baseOffset);
 		JPH::CollideShapeSettings collideSettings; //Defaults seem ok for now!?
 
 		JPH::ClosestHitCollisionCollector<JPH::CollideShapeCollector> results;
@@ -244,7 +244,7 @@ namespace RN
 		JoltPosition position = JoltConversions::ToPosition(baseOffset);
 		Quaternion rotation = GetWorldRotation();
 
-		JPH::RMat44 worldTransform = JoltConversions::ToJoltRMat44(rotation, baseOffset);
+		JPH::RMat44 worldTransform = JoltConversions::ToJoltRMat44(JoltConversions::ToJoltSceneRotation(rotation), baseOffset);
 		JPH::CollideShapeSettings collideSettings; //Defaults seem ok for now!?
 
 		JPH::AllHitCollisionCollector<JPH::CollideShapeCollector> results;

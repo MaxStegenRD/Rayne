@@ -10,6 +10,7 @@
 #define __RAYNE_JOLTCONVERSIONS_H_
 
 #include "RNJolt.h"
+#include "RNJoltWorld.h"
 
 #include <Jolt/Jolt.h>
 
@@ -58,6 +59,13 @@ namespace RN
 			return ToJoltVec3(vector);
 		}
 
+		static JPH::Quat ToJoltRotation(const Quaternion &rotation)
+		{
+			Quaternion result(rotation);
+			result.Normalize();
+			return ToJoltQuat(result);
+		}
+
 		static Vector3 ToVector3(const JPH::Vec3 &vector)
 		{
 			return Vector3(vector.GetX(), vector.GetY(), vector.GetZ());
@@ -87,6 +95,37 @@ namespace RN
 			return ToVector3(vector);
 		}
 
+		static Quaternion ToEngineRotation(const JPH::Quat &rotation)
+		{
+			Quaternion result(rotation.GetX(), rotation.GetY(), rotation.GetZ(), rotation.GetW());
+			result.Normalize();
+			return result;
+		}
+
+		static JPH::RVec3 ToJoltScenePosition(const JoltPosition &position)
+		{
+			JoltWorld *world = JoltWorld::GetSharedInstance();
+			return world ? ToJoltPosition(world->ConvertPositionToPhysicsWorld(position)) : ToJoltPosition(position);
+		}
+
+		static JPH::Quat ToJoltSceneRotation(const Quaternion &rotation)
+		{
+			JoltWorld *world = JoltWorld::GetSharedInstance();
+			return world ? ToJoltRotation(world->ConvertRotationToPhysicsWorld(rotation)) : ToJoltRotation(rotation);
+		}
+
+		static JoltPosition ToScenePosition(const JPH::RVec3 &vector)
+		{
+			JoltWorld *world = JoltWorld::GetSharedInstance();
+			return world ? world->ConvertPositionFromPhysicsWorld(ToPosition(vector)) : ToPosition(vector);
+		}
+
+		static Quaternion ToSceneRotation(const JPH::Quat &rotation)
+		{
+			JoltWorld *world = JoltWorld::GetSharedInstance();
+			return world ? world->ConvertRotationFromPhysicsWorld(ToEngineRotation(rotation)) : ToEngineRotation(rotation);
+		}
+
 		static Vector3 ToVector3(const JoltPosition &vector)
 		{
 #if RN_ENABLE_UNIVERSE_SCALE
@@ -99,36 +138,36 @@ namespace RN
 		static JPH::RVec3 GetAttachmentPosition(const SceneNodeAttachment *attachment)
 		{
 #if RN_ENABLE_UNIVERSE_SCALE
-			return ToJoltRVec3(attachment->GetUniversePosition());
+			return ToJoltScenePosition(attachment->GetUniversePosition());
 #else
-			return ToJoltRVec3(attachment->GetWorldPosition());
+			return ToJoltScenePosition(attachment->GetWorldPosition());
 #endif
 		}
 
 		static JPH::RVec3 GetAttachmentPosition(const SceneNodeAttachment *attachment, const Vector3 &offset)
 		{
 #if RN_ENABLE_UNIVERSE_SCALE
-			return ToJoltRVec3(attachment->GetUniversePosition() + DVector3(offset));
+			return ToJoltScenePosition(attachment->GetUniversePosition() + DVector3(offset));
 #else
-			return ToJoltRVec3(attachment->GetWorldPosition() + offset);
+			return ToJoltScenePosition(attachment->GetWorldPosition() + offset);
 #endif
 		}
 
 		static void SetAttachmentPosition(SceneNodeAttachment *attachment, const JPH::RVec3 &position)
 		{
 #if RN_ENABLE_UNIVERSE_SCALE
-			attachment->SetUniversePosition(ToDVector3(position));
+			attachment->SetUniversePosition(ToScenePosition(position));
 #else
-			attachment->SetWorldPosition(ToVector3FromRVec3(position));
+			attachment->SetWorldPosition(ToScenePosition(position));
 #endif
 		}
 
 		static void SetAttachmentPosition(SceneNodeAttachment *attachment, const JPH::RVec3 &position, const Vector3 &offset)
 		{
 #if RN_ENABLE_UNIVERSE_SCALE
-			attachment->SetUniversePosition(ToDVector3(position) + DVector3(offset));
+			attachment->SetUniversePosition(ToScenePosition(position) + DVector3(offset));
 #else
-			attachment->SetWorldPosition(ToVector3FromRVec3(position) + offset);
+			attachment->SetWorldPosition(ToScenePosition(position) + offset);
 #endif
 		}
 	};

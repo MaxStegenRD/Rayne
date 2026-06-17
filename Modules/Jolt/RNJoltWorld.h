@@ -28,6 +28,7 @@ namespace JPH
 namespace RN
 {
 	struct JoltInternals;
+	class JoltCollisionObject;
 
 	class JoltWorld : public SceneAttachment
 	{
@@ -42,6 +43,19 @@ namespace RN
 
 		JTAPI void SetGravity(const Vector3 &gravity);
 		JTAPI Vector3 GetGravity();
+
+		JTAPI void SetUniverseTransform(const DVector3 &position, const Quaternion &rotation);
+		JTAPI void SetUniversePosition(const DVector3 &position);
+		JTAPI void SetUniverseRotation(const Quaternion &rotation);
+		JTAPI const DVector3 &GetUniversePosition() const { return _universePosition; }
+		JTAPI const Quaternion &GetUniverseRotation() const { return _universeRotation; }
+
+		JTAPI JoltPosition ConvertPositionToPhysicsWorld(const JoltPosition &position) const;
+		JTAPI JoltPosition ConvertPositionFromPhysicsWorld(const JoltPosition &position) const;
+		JTAPI Vector3 ConvertVectorToPhysicsWorld(const Vector3 &vector) const;
+		JTAPI Vector3 ConvertVectorFromPhysicsWorld(const Vector3 &vector) const;
+		JTAPI Quaternion ConvertRotationToPhysicsWorld(const Quaternion &rotation) const;
+		JTAPI Quaternion ConvertRotationFromPhysicsWorld(const Quaternion &rotation) const;
 		JTAPI void SetDefaultDynamicBodyDamping(float linear, float angular);
 		JTAPI float GetDefaultDynamicBodyLinearDamping() const { return _defaultDynamicBodyLinearDamping; }
 		JTAPI float GetDefaultDynamicBodyAngularDamping() const { return _defaultDynamicBodyAngularDamping; }
@@ -87,6 +101,9 @@ namespace RN
 		JPH::PhysicsSystem *_physicsSystem;
 		float _defaultDynamicBodyLinearDamping;
 		float _defaultDynamicBodyAngularDamping;
+		DVector3 _universePosition;
+		Quaternion _universeRotation;
+		Quaternion _inverseUniverseRotation;
 
 		PIMPL<JoltInternals> _internals;
 
