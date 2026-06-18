@@ -657,7 +657,7 @@ namespace RN
 								}
 								case Number::Type::Int16:
 								{
-									if(descriptor->GetSize() == sizeof(int8))
+									if(descriptor->GetSize() == sizeof(int16))
 									{
 										int16 value = number->GetInt16Value();
 										std::memcpy(buffer + descriptor->GetOffset(), &value, descriptor->GetSize());
