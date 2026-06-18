@@ -14,6 +14,7 @@ class NumberTests : public KernelFixture
 
 TEST_F(NumberTests, TypeTests)
 {
+	ASSERT_EQ(RN::Number::Type::Float16, RN::Number::WithHalf(0.0f)->GetType());
 	ASSERT_EQ(RN::Number::Type::Float32, RN::Number::WithFloat(0.0f)->GetType());
 	ASSERT_EQ(RN::Number::Type::Float64, RN::Number::WithDouble(0.0f)->GetType());
 
@@ -30,14 +31,25 @@ TEST_F(NumberTests, TypeTests)
 	ASSERT_EQ(RN::Number::Type::Uint64, RN::Number::WithUint64(0)->GetType());
 }
 
+TEST_F(NumberTests, HalfTests)
+{
+	RN::Number *halfNumber = RN::Number::WithHalf(1.0f);
+
+	ASSERT_EQ(RN::Math::ConvertFloatToHalf(1.0f), halfNumber->GetHalfValue());
+	ASSERT_EQ(1.0f, halfNumber->GetFloatValue());
+	ASSERT_EQ(1.0, halfNumber->GetDoubleValue());
+}
+
 TEST_F(NumberTests, EqualityTests)
 {
+	RN::Number *halfNumber = RN::Number::WithHalf(32.0f);
 	RN::Number *floatNumber1 = RN::Number::WithFloat(32.0f);
 	RN::Number *floatNumber2 = RN::Number::WithFloat(64.0f);
 
 	RN::Number *doubleNumber1 = RN::Number::WithDouble(32.0f);
 	RN::Number *doubleNumber2 = RN::Number::WithDouble(64.0f);
 
+	ASSERT_TRUE(halfNumber->IsEqual(floatNumber1));
 	ASSERT_FALSE(floatNumber1->IsEqual(floatNumber2));
 	ASSERT_TRUE(floatNumber1->IsEqual(doubleNumber1));
 

@@ -30,7 +30,8 @@ namespace RN
 			Uint64,
 			Float32,
 			Float64,
-			Boolean
+			Boolean,
+			Float16
 		};
 
 		RNAPI Number(Deserializer *deserializer);
@@ -51,6 +52,7 @@ namespace RN
 		RNAPI ~Number() override;
 
 		RNAPI static Number *WithBool(bool value);
+		RNAPI static Number *WithHalf(float value);
 		RNAPI static Number *WithFloat(float value);
 		RNAPI static Number *WithDouble(double value);
 
@@ -67,6 +69,7 @@ namespace RN
 		RNAPI void Serialize(Serializer *serializer) const override;
 
 		RNAPI bool GetBoolValue() const;
+		RNAPI uint16 GetHalfValue() const;
 		RNAPI float GetFloatValue() const;
 		RNAPI double GetDoubleValue() const;
 
@@ -86,6 +89,8 @@ namespace RN
 		Type GetType() const { return _type; }
 
 	private:
+		Number(uint16 value, Type type);
+
 		static size_t SizeForType(Type type);
 		void CopyData(const void *data, size_t size, Type type);
 

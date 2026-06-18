@@ -7,6 +7,7 @@
 //
 
 #include "RNNumber.h"
+#include "../Math/RNMath.h"
 
 namespace RN
 {
@@ -15,7 +16,7 @@ namespace RN
 #define NumberPrimitiveAccess(type, target) static_cast<target>(*((type *)_buffer))
 #define NumberIsSignedInteger(type) (type == Type::Int8 || type == Type::Int16 || type == Type::Int32 || type == Type::Int64)
 #define NumberIsUnsignedInteger(type) (type == Type::Uint8 || type == Type::Uint16 || type == Type::Uint32 || type == Type::Uint64)
-#define NumberIsReal(type) (type == Type::Float32 || type == Type::Float64)
+#define NumberIsReal(type) (type == Type::Float16 || type == Type::Float32 || type == Type::Float64)
 #define NumberIsBoolean(type) (type == Type::Boolean)
 
 #define NumberAccessAndConvert(var, type)                  \
@@ -54,6 +55,9 @@ namespace RN
 				break;                                     \
 			case Type::Float64:                            \
 				var = NumberPrimitiveAccess(double, type); \
+				break;                                     \
+			case Type::Float16:                            \
+				var = static_cast<type>(Math::ConvertHalfToFloat(NumberPrimitiveAccess(uint16, uint16))); \
 				break;                                     \
 		}                                                  \
 	} while(0)
@@ -123,6 +127,11 @@ namespace RN
 	{
 		CopyData(&value, sizeof(uint64), Type::Uint64);
 	}
+	Number::Number(uint16 value, Type type)
+	{
+		RN_ASSERT(type == Type::Float16, "This constructor is only meant for half values");
+		CopyData(&value, sizeof(uint16), type);
+	}
 
 	Number::~Number()
 	{
@@ -133,6 +142,11 @@ namespace RN
 	Number *Number::WithBool(bool value)
 	{
 		Number *number = new Number(value);
+		return number->Autorelease();
+	}
+	Number *Number::WithHalf(float value)
+	{
+		Number *number = new Number(Math::ConvertFloatToHalf(value), Type::Float16);
 		return number->Autorelease();
 	}
 	Number *Number::WithFloat(float value)
@@ -228,6 +242,14 @@ namespace RN
 	}
 
 
+	uint16 Number::GetHalfValue() const
+	{
+		if(_type == Type::Float16)
+			return NumberPrimitiveAccess(uint16, uint16);
+
+		return Math::ConvertFloatToHalf(GetFloatValue());
+	}
+
 	float Number::GetFloatValue() const
 	{
 		float value = 0.0f;
@@ -321,6 +343,7 @@ namespace RN
 
 			case Type::Int16:
 			case Type::Uint16:
+			case Type::Float16:
 				return 2;
 
 			case Type::Int32:
