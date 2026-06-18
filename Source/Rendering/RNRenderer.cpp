@@ -709,6 +709,15 @@ namespace RN
 									}
 									break;
 								}
+								case Number::Type::Float16:
+								{
+									if(descriptor->GetType() == PrimitiveType::Half && descriptor->GetSize() == sizeof(uint16))
+									{
+										uint16 value = number->GetHalfValue();
+										std::memcpy(buffer + descriptor->GetOffset(), &value, descriptor->GetSize());
+									}
+									break;
+								}
 								case Number::Type::Boolean:
 								{
 									if(descriptor->GetSize() == sizeof(bool))
