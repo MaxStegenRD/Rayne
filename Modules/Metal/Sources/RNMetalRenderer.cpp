@@ -1326,6 +1326,11 @@ namespace RN
 		SubmitDrawable(GetActiveFrameSubmission(), drawable, node);
 	}
 
+	void MetalRenderer::SubmitDrawable(Drawable *drawable, const Matrix &modelMatrix, const Matrix &inverseModelMatrix, uint16 renderGroup, uint64 sourceNodeUID)
+	{
+		SubmitDrawable(GetActiveFrameSubmission(), drawable, modelMatrix, inverseModelMatrix, renderGroup, sourceNodeUID);
+	}
+
 	void MetalRenderer::SubmitDrawable(MetalFrameSubmission &frameSubmission, Drawable *sourceDrawable, const SceneNode *node)
 	{
 		RN_PROFILE_SCOPE();
@@ -1346,6 +1351,29 @@ namespace RN
 
 			if(drawItemIndex == RenderFrame::InvalidDrawItemIndex)
 				drawItemIndex = frameSubmission.renderFrame.AddDrawItem(drawable, node);
+			framePass.AddDrawItemIndex(drawItemIndex);
+		}
+	}
+
+	void MetalRenderer::SubmitDrawable(MetalFrameSubmission &frameSubmission, Drawable *sourceDrawable, const Matrix &modelMatrix, const Matrix &inverseModelMatrix, uint16 renderGroup, uint64 sourceNodeUID)
+	{
+		RN_PROFILE_SCOPE();
+		MetalDrawable *drawable = static_cast<MetalDrawable *>(sourceDrawable);
+		size_t drawItemIndex = RenderFrame::InvalidDrawItemIndex;
+
+		size_t startIndex = frameSubmission.activeRenderPassIndex;
+		for(size_t pi = startIndex; pi < frameSubmission.renderPasses.size(); pi += 1)
+		{
+			MetalRenderPass &pass = frameSubmission.renderPasses[pi];
+			if(!pass.UsesDrawItems()) continue;
+			if((pass.type == MetalRenderPass::Type::Convert || pass.renderPass->IsKindOfClass(PostProcessingStage::GetMetaClass())) && drawable != _defaultPostProcessingDrawable) continue;
+
+			RenderFrame::Pass &framePass = frameSubmission.renderFrame.GetPass(pass.renderFramePassIndex);
+			const RenderPass::DrawSnapshot &passDrawSnapshot = framePass.GetDrawSnapshot();
+			if((renderGroup & passDrawSnapshot.GetRenderGroupMask()) == 0) continue;
+
+			if(drawItemIndex == RenderFrame::InvalidDrawItemIndex)
+				drawItemIndex = frameSubmission.renderFrame.AddDrawItem(drawable, modelMatrix, inverseModelMatrix, sourceNodeUID);
 			framePass.AddDrawItemIndex(drawItemIndex);
 		}
 	}

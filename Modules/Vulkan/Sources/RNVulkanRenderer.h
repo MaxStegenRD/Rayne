@@ -76,6 +76,7 @@ namespace RN
 		VKAPI Drawable *CreateDrawable() final;
 		VKAPI void DeleteDrawable(Drawable *drawable) final;
 		VKAPI void SubmitDrawable(Drawable *drawable, const SceneNode *node) final;
+		VKAPI void SubmitDrawable(Drawable *drawable, const Matrix &modelMatrix, const Matrix &inverseModelMatrix, uint16 renderGroup, uint64 sourceNodeUID = RenderFrame::InvalidSourceNodeUID) final;
 		VKAPI void SubmitLight(const Light *light) final;
 		VKAPI void WarmupDrawable(Mesh *mesh, Material *material, Camera *camera) final;
 
@@ -114,6 +115,7 @@ namespace RN
 		void SubmitRenderPass(VulkanFrameSubmission &submission, Camera *camera, RenderPass *renderPass, VulkanRenderPass &previousRenderPass, const std::vector<Camera *> *multiviewSnapshotCameras);
 		void SubmitComputePass(VulkanFrameSubmission &submission, ComputePass *computePass, VulkanRenderPass *previousRenderPass, Camera *camera, const std::vector<Camera *> *multiviewSnapshotCameras);
 		void SubmitDrawable(VulkanFrameSubmission &submission, Drawable *drawable, const SceneNode *node);
+		void SubmitDrawable(VulkanFrameSubmission &submission, Drawable *drawable, const Matrix &modelMatrix, const Matrix &inverseModelMatrix, uint16 renderGroup, uint64 sourceNodeUID);
 		bool PrepareRenderFrame(VulkanFrameSubmission &submission);
 		void UpdateDescriptorSets(VulkanFrameSubmission &submission);
 		void RenderDrawable(VkCommandBuffer commandBuffer, const VulkanPreparedDrawItem &drawItem, uint32 instanceCount);

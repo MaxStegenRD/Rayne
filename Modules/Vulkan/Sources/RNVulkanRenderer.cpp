@@ -2110,6 +2110,11 @@ namespace RN
 		SubmitDrawable(GetActiveFrameSubmission(), drawable, node);
 	}
 
+	void VulkanRenderer::SubmitDrawable(Drawable *drawable, const Matrix &modelMatrix, const Matrix &inverseModelMatrix, uint16 renderGroup, uint64 sourceNodeUID)
+	{
+		SubmitDrawable(GetActiveFrameSubmission(), drawable, modelMatrix, inverseModelMatrix, renderGroup, sourceNodeUID);
+	}
+
 	void VulkanRenderer::SubmitDrawable(VulkanFrameSubmission &frameSubmission, Drawable *sourceDrawable, const SceneNode *node)
 	{
 		VulkanDrawable *drawable = static_cast<VulkanDrawable *>(sourceDrawable);
@@ -2130,6 +2135,49 @@ namespace RN
 
 			if(drawItemIndex == RenderFrame::InvalidDrawItemIndex)
 				drawItemIndex = frameSubmission.renderFrame.AddDrawItem(drawable, node);
+			framePass.AddDrawItemIndex(drawItemIndex);
+		};
+
+		for(size_t pi = frameSubmission.activeRenderPassIndex; pi < frameSubmission.renderPasses.size(); pi += 1)
+		{
+			VulkanRenderPass &renderPass = frameSubmission.renderPasses[pi];
+			if(!renderPass.UsesDrawItems())
+			{
+				continue;
+			}
+			else if(renderPass.subpasses.size() > 0)
+			{
+				for(VulkanRenderPass &renderSubPass : renderPass.subpasses)
+				{
+					submitDrawable(renderSubPass);
+				}
+			}
+			else
+			{
+				submitDrawable(renderPass);
+			}
+		}
+	}
+
+	void VulkanRenderer::SubmitDrawable(VulkanFrameSubmission &frameSubmission, Drawable *sourceDrawable, const Matrix &modelMatrix, const Matrix &inverseModelMatrix, uint16 renderGroup, uint64 sourceNodeUID)
+	{
+		VulkanDrawable *drawable = static_cast<VulkanDrawable *>(sourceDrawable);
+		size_t drawItemIndex = RenderFrame::InvalidDrawItemIndex;
+
+		auto submitDrawable = [&](VulkanRenderPass &renderSubPass) {
+			if(!renderSubPass.UsesDrawItems())
+				return;
+
+			if((renderSubPass.type == VulkanRenderPass::Type::Convert || renderSubPass.renderPass->IsKindOfClass(PostProcessingStage::GetMetaClass())) && drawable != _defaultPostProcessingDrawable)
+				return;
+
+			RenderFrame::Pass &framePass = frameSubmission.renderFrame.GetPass(renderSubPass.renderFramePassIndex);
+			const RenderPass::DrawSnapshot &renderSubPassDrawSnapshot = framePass.GetDrawSnapshot();
+			if((renderGroup & renderSubPassDrawSnapshot.GetRenderGroupMask()) == 0)
+				return;
+
+			if(drawItemIndex == RenderFrame::InvalidDrawItemIndex)
+				drawItemIndex = frameSubmission.renderFrame.AddDrawItem(drawable, modelMatrix, inverseModelMatrix, sourceNodeUID);
 			framePass.AddDrawItemIndex(drawItemIndex);
 		};
 

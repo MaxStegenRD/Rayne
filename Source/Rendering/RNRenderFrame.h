@@ -530,15 +530,20 @@ namespace RN
 
 		size_t AddDrawItem(Drawable *sourceDrawable, const SceneNode *node)
 		{
+			sourceDrawable->UpdateTransform(node);
+			return AddDrawItem(sourceDrawable, sourceDrawable->GetModelMatrix(), sourceDrawable->GetInverseModelMatrix(), node ? node->GetUID() : InvalidSourceNodeUID);
+		}
+
+		size_t AddDrawItem(Drawable *sourceDrawable, const Matrix &modelMatrix, const Matrix &inverseModelMatrix, uint64 sourceNodeUID = InvalidSourceNodeUID)
+		{
 			if(_drawItems.size() == _drawItems.capacity())
 			{
 				size_t capacity = _drawItems.capacity();
 				_drawItems.reserve(capacity + (capacity > 0 ? capacity : RN_RENDERING_DRAW_ITEM_RESERVE_BLOCK_SIZE));
 			}
 
-			sourceDrawable->UpdateTransform(node);
 			Drawable::DrawSnapshotBundle drawSnapshot = sourceDrawable->GetDrawSnapshotBundleForFrame(_frameID);
-			_drawItems.emplace_back(sourceDrawable, drawSnapshot, sourceDrawable->GetModelMatrix(), sourceDrawable->GetInverseModelMatrix(), node ? node->GetUID() : InvalidSourceNodeUID);
+			_drawItems.emplace_back(sourceDrawable, drawSnapshot, modelMatrix, inverseModelMatrix, sourceNodeUID);
 			return _drawItems.size() - 1;
 		}
 
