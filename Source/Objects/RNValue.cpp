@@ -69,6 +69,24 @@ namespace RN
 				Vector4 value(GetValue<Vector4>());
 				return RNSTRF("<Vector4(%f, %f, %f, %f)>", value.x, value.y, value.z, value.w);
 			}
+			case TypeTranslator<HalfVector2>::value:
+			{
+				HalfVector2 value(GetValue<HalfVector2>());
+				Vector2 vector(value.GetVector2());
+				return RNSTRF("<HalfVector2(%f, %f)>", vector.x, vector.y);
+			}
+			case TypeTranslator<HalfVector3>::value:
+			{
+				HalfVector3 value(GetValue<HalfVector3>());
+				Vector3 vector(value.GetVector3());
+				return RNSTRF("<HalfVector3(%f, %f, %f)>", vector.x, vector.y, vector.z);
+			}
+			case TypeTranslator<HalfVector4>::value:
+			{
+				HalfVector4 value(GetValue<HalfVector4>());
+				Vector4 vector(value.GetVector4());
+				return RNSTRF("<HalfVector4(%f, %f, %f, %f)>", vector.x, vector.y, vector.z, vector.w);
+			}
 
 			case TypeTranslator<Color>::value:
 			{
@@ -118,6 +136,24 @@ namespace RN
 	}
 
 	Value *Value::WithVector4(const Vector4 &vector)
+	{
+		Value *value = new Value(vector);
+		return value->Autorelease();
+	}
+
+	Value *Value::WithHalfVector2(const HalfVector2 &vector)
+	{
+		Value *value = new Value(vector);
+		return value->Autorelease();
+	}
+
+	Value *Value::WithHalfVector3(const HalfVector3 &vector)
+	{
+		Value *value = new Value(vector);
+		return value->Autorelease();
+	}
+
+	Value *Value::WithHalfVector4(const HalfVector4 &vector)
 	{
 		Value *value = new Value(vector);
 		return value->Autorelease();

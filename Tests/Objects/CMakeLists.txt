@@ -7,6 +7,7 @@ add_executable(objectTests
         ObjectTests.cpp
         StringTests.cpp
         NumberTests.cpp
+        ValueTests.cpp
         KVOTests.cpp)
 
 set(RESOURCES

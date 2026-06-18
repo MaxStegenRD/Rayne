@@ -13,6 +13,7 @@
 #include "../Math/RNMatrixQuaternion.h"
 #include "../Math/RNQuaternion.h"
 #include "../Math/RNVector.h"
+#include "../Math/RNHalfVector.h"
 #include "RNBase.h"
 
 namespace RN
@@ -71,6 +72,15 @@ namespace RN
 	{};
 	template<>
 	struct TypeTranslator<Vector4> : public std::integral_constant<char, '4'>
+	{};
+	template<>
+	struct TypeTranslator<HalfVector2> : public std::integral_constant<char, 'h'>
+	{};
+	template<>
+	struct TypeTranslator<HalfVector3> : public std::integral_constant<char, 'j'>
+	{};
+	template<>
+	struct TypeTranslator<HalfVector4> : public std::integral_constant<char, 'k'>
 	{};
 	template<>
 	struct TypeTranslator<Color> : public std::integral_constant<char, 'c'>

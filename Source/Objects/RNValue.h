@@ -15,6 +15,7 @@
 #include "../Math/RNColor.h"
 #include "../Math/RNMatrixQuaternion.h"
 #include "../Math/RNVector.h"
+#include "../Math/RNHalfVector.h"
 #include "RNObject.h"
 
 namespace RN
@@ -47,6 +48,9 @@ namespace RN
 		RNAPI static Value *WithVector3(const Vector3 &vector);
 		RNAPI static Value *WithDVector3(const DVector3 &vector);
 		RNAPI static Value *WithVector4(const Vector4 &vector);
+		RNAPI static Value *WithHalfVector2(const HalfVector2 &vector);
+		RNAPI static Value *WithHalfVector3(const HalfVector3 &vector);
+		RNAPI static Value *WithHalfVector4(const HalfVector4 &vector);
 
 		RNAPI static Value *WithColor(const Color &color);
 
