@@ -10,6 +10,7 @@
 #define __RAYNE_HALFVECTOR_H__
 
 #include "../Base/RNBase.h"
+#include "RNVector.h"
 
 namespace RN
 {

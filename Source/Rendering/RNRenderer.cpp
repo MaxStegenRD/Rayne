@@ -12,6 +12,7 @@
 #include "RNShadowRendererAttachment.h"
 #include "../Base/RNKernel.h"
 #include "../Debug/RNLogger.h"
+#include "../Math/RNHalfVector.h"
 #include "../Scene/RNLightClusterRendererAttachment.h"
 
 namespace RN
@@ -607,6 +608,33 @@ namespace RN
 									{
 										Vector4 vector = value->GetValue<Vector4>();
 										std::memcpy(buffer + descriptor->GetOffset(), &vector.x, descriptor->GetSize());
+									}
+									break;
+								}
+								case TypeTranslator<HalfVector2>::value:
+								{
+									if(descriptor->GetType() == PrimitiveType::HalfVector2 && descriptor->GetSize() == sizeof(HalfVector2))
+									{
+										HalfVector2 vector = value->GetValue<HalfVector2>();
+										std::memcpy(buffer + descriptor->GetOffset(), &vector, descriptor->GetSize());
+									}
+									break;
+								}
+								case TypeTranslator<HalfVector3>::value:
+								{
+									if(descriptor->GetType() == PrimitiveType::HalfVector3 && descriptor->GetSize() == sizeof(HalfVector3))
+									{
+										HalfVector3 vector = value->GetValue<HalfVector3>();
+										std::memcpy(buffer + descriptor->GetOffset(), &vector, descriptor->GetSize());
+									}
+									break;
+								}
+								case TypeTranslator<HalfVector4>::value:
+								{
+									if(descriptor->GetType() == PrimitiveType::HalfVector4 && descriptor->GetSize() == sizeof(HalfVector4))
+									{
+										HalfVector4 vector = value->GetValue<HalfVector4>();
+										std::memcpy(buffer + descriptor->GetOffset(), &vector, descriptor->GetSize());
 									}
 									break;
 								}
