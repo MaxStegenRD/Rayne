@@ -32,12 +32,14 @@ namespace RN
 		JTAPI void Move(const Vector3 &velocity, float delta);
 		JTAPI bool Resize(float height, bool checkIfBlocked = true);
 		JTAPI void SetStepOffset(float stepOffset) { _stepOffset = stepOffset; }
+		JTAPI void SetUpDirection(const Vector3 &upDirection);
 		JTAPI void SetExternalSupportAnchor(uint32 bodyID, const Vector3 &localPosition, float maxForce);
 		JTAPI void ClearExternalSupportAnchor();
 
 		JTAPI void SetCollisionFilter(uint32 group, uint32 mask) override;
 		JTAPI Vector3 GetFeetOffset() const;
 		JTAPI float GetStepOffset() const { return _stepOffset; }
+		JTAPI Vector3 GetUpDirection() const { return _upDirection; }
 		JTAPI Vector3 GetGroundVelocity() const { return _groundVelocity; }
 		JTAPI Vector3 GetGroundAngularVelocity() const { return _groundAngularVelocity; }
 		JTAPI Vector3 GetGroundNormal() const { return _groundNormal; }
@@ -57,6 +59,7 @@ namespace RN
 		float _height;
 		float _groundTolerance;
 		float _stepOffset;
+		Vector3 _upDirection;
 		SceneNode *_objectBelow;
 		Vector3 _groundVelocity;
 		Vector3 _groundAngularVelocity;

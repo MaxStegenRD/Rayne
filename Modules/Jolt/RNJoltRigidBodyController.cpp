@@ -28,7 +28,7 @@ namespace RN
 	constexpr float ExternalSupportAnchorMaxCorrectionSpeed = 20.0f;
 
 	JoltRigidBodyController::JoltRigidBodyController(float radius, float height, float groundTolerance, float mass, float stepOffset) :
-		_radius(radius), _height(height), _groundTolerance(groundTolerance), _stepOffset(stepOffset), _objectBelow(nullptr), _groundVelocity(), _groundAngularVelocity(), _groundNormal(), _isFalling(false), _externalSupportAnchorValid(false), _externalSupportCollisionFilteringEnabled(false), _externalSupportBodyID(InvalidSupportBodyID), _externalSupportLocalPosition(), _externalSupportAnchorMaxForce(0.0f), _externalSupportConstraint(nullptr)
+		_radius(radius), _height(height), _groundTolerance(groundTolerance), _stepOffset(stepOffset), _upDirection(0.0f, 1.0f, 0.0f), _objectBelow(nullptr), _groundVelocity(), _groundAngularVelocity(), _groundNormal(), _isFalling(false), _externalSupportAnchorValid(false), _externalSupportCollisionFilteringEnabled(false), _externalSupportBodyID(InvalidSupportBodyID), _externalSupportLocalPosition(), _externalSupportAnchorMaxForce(0.0f), _externalSupportConstraint(nullptr)
 	{
 		JoltWorld *world = JoltWorld::GetSharedInstance();
 		JPH::PhysicsSystem *physics = world->GetJoltInstance();
@@ -36,6 +36,7 @@ namespace RN
 		_shape = JoltCapsuleShape::WithRadius(radius, height)->Retain();
 
 		JPH::CharacterSettings settings;
+		settings.mUp = JoltConversions::ToJoltVector(_upDirection);
 		settings.mMaxSlopeAngle = JPH::DegreesToRadians(70.0f);
 		settings.mMass = mass;
 		settings.mFriction = 0.2f;
@@ -121,9 +122,21 @@ namespace RN
 		_controller->SetLayer(world->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1));
 	}
 
+	void JoltRigidBodyController::SetUpDirection(const Vector3 &upDirection)
+	{
+		if(!upDirection.IsValid() || upDirection.GetSquaredLength() <= k::EpsilonFloat)
+		{
+			return;
+		}
+
+		_upDirection = upDirection.GetNormalized();
+		_controller->SetUp(JoltConversions::ToJoltVector(_upDirection));
+		_controller->Activate();
+	}
+
 	Vector3 JoltRigidBodyController::GetFeetOffset() const
 	{
-		return Vector3(0.0f, -(_height * 0.5f + _radius), 0.0f);
+		return _upDirection * -(_height * 0.5f + _radius);
 	}
 
 	void JoltRigidBodyController::SetExternalSupportAnchor(uint32 bodyID, const Vector3 &localPosition, float maxForce)
@@ -237,9 +250,8 @@ namespace RN
 			return velocity;
 		}
 
-		const Vector3 physicsUp(0.0f, 1.0f, 0.0f);
 		Vector3 relativeVelocity = velocity - _groundVelocity;
-		Vector3 horizontalVelocity = relativeVelocity - physicsUp * relativeVelocity.GetDotProduct(physicsUp);
+		Vector3 horizontalVelocity = relativeVelocity - _upDirection * relativeVelocity.GetDotProduct(_upDirection);
 		float horizontalSpeed = horizontalVelocity.GetLength();
 
 		if(horizontalSpeed <= k::EpsilonFloat)
@@ -248,7 +260,7 @@ namespace RN
 		}
 
 		Vector3 groundNormal = _groundNormal;
-		if(groundNormal.GetSquaredLength() <= k::EpsilonFloat || groundNormal.GetDotProduct(physicsUp) <= k::EpsilonFloat)
+		if(groundNormal.GetSquaredLength() <= k::EpsilonFloat || groundNormal.GetDotProduct(_upDirection) <= k::EpsilonFloat)
 		{
 			return velocity;
 		}
@@ -261,10 +273,10 @@ namespace RN
 		}
 
 		slopeVelocity.Normalize(horizontalSpeed);
-		float upwardSpeed = relativeVelocity.GetDotProduct(physicsUp);
+		float upwardSpeed = relativeVelocity.GetDotProduct(_upDirection);
 		if(upwardSpeed > 0.0f)
 		{
-			slopeVelocity += physicsUp * upwardSpeed;
+			slopeVelocity += _upDirection * upwardSpeed;
 		}
 
 		return _groundVelocity + slopeVelocity;
@@ -277,9 +289,8 @@ namespace RN
 			return;
 		}
 
-		const Vector3 physicsUp(0.0f, 1.0f, 0.0f);
 		Vector3 relativeVelocity = velocity - _groundVelocity;
-		Vector3 horizontalVelocity = relativeVelocity - physicsUp * relativeVelocity.GetDotProduct(physicsUp);
+		Vector3 horizontalVelocity = relativeVelocity - _upDirection * relativeVelocity.GetDotProduct(_upDirection);
 		if(horizontalVelocity.GetSquaredLength() <= k::EpsilonFloat)
 		{
 			return;
@@ -318,7 +329,7 @@ namespace RN
 		for(int i = 1; i <= StepSearchCount; i++)
 		{
 			float candidateHeight = _stepOffset * (static_cast<float>(i) / static_cast<float>(StepSearchCount));
-			SceneNode::PositionType candidateStep(physicsUp * candidateHeight);
+			SceneNode::PositionType candidateStep(_upDirection * candidateHeight);
 			if(!HasPenetrationAt(currentPosition + candidateStep, currentRotation, movementDirection) && !HasPenetrationAt(currentPosition + candidateStep + SceneNode::PositionType(stepProbeMovement), currentRotation, movementDirection))
 			{
 				clearHeight = candidateHeight;
@@ -336,7 +347,7 @@ namespace RN
 		for(int i = 0; i < StepRefinementCount; i++)
 		{
 			float candidateHeight = (blockedHeight + clearHeight) * 0.5f;
-			SceneNode::PositionType candidateStep(physicsUp * candidateHeight);
+			SceneNode::PositionType candidateStep(_upDirection * candidateHeight);
 			if(!HasPenetrationAt(currentPosition + candidateStep, currentRotation, movementDirection) && !HasPenetrationAt(currentPosition + candidateStep + SceneNode::PositionType(stepProbeMovement), currentRotation, movementDirection))
 			{
 				clearHeight = candidateHeight;
@@ -350,7 +361,7 @@ namespace RN
 		float stepHeight = clearHeight + StepClearance;
 		if(stepHeight > _stepOffset) stepHeight = _stepOffset;
 
-		SceneNode::PositionType steppedPosition = currentPosition + SceneNode::PositionType(physicsUp * stepHeight);
+		SceneNode::PositionType steppedPosition = currentPosition + SceneNode::PositionType(_upDirection * stepHeight);
 		_controller->SetPosition(JoltConversions::ToJoltPosition(steppedPosition), JPH::EActivation::Activate);
 	}
 
@@ -359,6 +370,7 @@ namespace RN
 		JPH::RVec3 joltPosition = JoltConversions::ToJoltPosition(position);
 		JPH::Quat joltRotation = JoltConversions::ToJoltRotation(rotation);
 		JPH::Vec3 joltMovementDirection = JoltConversions::ToJoltVector(movementDirection);
+		JPH::Vec3 joltUpDirection = JoltConversions::ToJoltVector(_upDirection);
 		JPH::AllHitCollisionCollector<JPH::CollideShapeCollector> hits;
 		_controller->CheckCollision(joltPosition, joltRotation, joltMovementDirection, 0.0f, _shape->GetJoltShape(), joltPosition, hits);
 
@@ -370,7 +382,7 @@ namespace RN
 			}
 
 			JPH::Vec3 normal = -hit.mPenetrationAxis.NormalizedOr(JPH::Vec3::sZero());
-			if(normal.GetY() < 0.5f)
+			if(normal.Dot(joltUpDirection) < 0.5f)
 			{
 				return true;
 			}
