@@ -61,6 +61,9 @@ namespace RN
 		XrPath pico4Controller;
 		xrStringToPath(instance, "/interaction_profiles/bytedance/pico4_controller", &pico4Controller);
 
+		XrPath picoUltraController;
+		xrStringToPath(instance, "/interaction_profiles/bytedance/pico_ultra_controller_bd", &picoUltraController);
+
 		if(interactionProfile == khronosSimpleController)
 		{
 			return VRControllerTrackingState::Type::KhronosSimpleController;
@@ -89,6 +92,10 @@ namespace RN
 		{
 			return VRControllerTrackingState::Type::PicoNeo3Controller;
 		}
+		else if(interactionProfile == picoUltraController)
+		{
+			return VRControllerTrackingState::Type::PicoNeo3Controller;
+		}
 
 		return VRControllerTrackingState::Type::None;
 	}
@@ -110,6 +117,7 @@ namespace RN
 		_supportsDynamicResolution = false;
 		_supportsTilePropertiesHint = false;
 		_supportsControllerInteractionPICO = false;
+		_supportsUltraControllerInteractionPICO = false;
 		_supportsHandTracking = false;
 
 		_internals->session = XR_NULL_HANDLE;
@@ -279,6 +287,11 @@ namespace RN
 			{
 				extensions.push_back(extension.extensionName);
 				_supportsControllerInteractionPICO = true;
+			}
+			else if(std::strcmp(extension.extensionName, XR_BD_ULTRA_CONTROLLER_INTERACTION_EXTENSION_NAME) == 0)
+			{
+				extensions.push_back(extension.extensionName);
+				_supportsUltraControllerInteractionPICO = true;
 			}
 			else if(std::strcmp(extension.extensionName, XR_META_LOCAL_DIMMING_EXTENSION_NAME) == 0)
 			{
@@ -1460,6 +1473,73 @@ namespace RN
 			RNDebug("failed action profile suggested binding");
 		}
 
+		if(_supportsUltraControllerInteractionPICO)
+		{
+			//Pico Ultra bindings
+			//Left hand
+			xrStringToPath(_internals->instance, "/user/hand/left/input/aim/pose", &handLeftAimPosePath);
+			xrStringToPath(_internals->instance, "/user/hand/left/input/grip/pose", &handLeftGripPosePath);
+			xrStringToPath(_internals->instance, "/user/hand/left/input/trigger/value", &handLeftTriggerPath);
+			xrStringToPath(_internals->instance, "/user/hand/left/input/squeeze/value", &handLeftGrabPath);
+			xrStringToPath(_internals->instance, "/user/hand/left/input/thumbstick/x", &handLeftThumbstickXPath);
+			xrStringToPath(_internals->instance, "/user/hand/left/input/thumbstick/y", &handLeftThumbstickYPath);
+			xrStringToPath(_internals->instance, "/user/hand/left/input/thumbstick/click", &handLeftThumbstickPressPath);
+			xrStringToPath(_internals->instance, "/user/hand/left/input/menu/click", &handLeftButtonSystemPressPath);
+			xrStringToPath(_internals->instance, "/user/hand/left/input/y/click", &handLeftButtonUpperPressPath);
+			xrStringToPath(_internals->instance, "/user/hand/left/input/x/click", &handLeftButtonLowerPressPath);
+			xrStringToPath(_internals->instance, "/user/hand/left/output/haptic", &handLeftHapticsPath);
+
+			//Right hand
+			xrStringToPath(_internals->instance, "/user/hand/right/input/aim/pose", &handRightAimPosePath);
+			xrStringToPath(_internals->instance, "/user/hand/right/input/grip/pose", &handRightGripPosePath);
+			xrStringToPath(_internals->instance, "/user/hand/right/input/trigger/value", &handRightTriggerPath);
+			xrStringToPath(_internals->instance, "/user/hand/right/input/squeeze/value", &handRightGrabPath);
+			xrStringToPath(_internals->instance, "/user/hand/right/input/thumbstick/x", &handRightThumbstickXPath);
+			xrStringToPath(_internals->instance, "/user/hand/right/input/thumbstick/y", &handRightThumbstickYPath);
+			xrStringToPath(_internals->instance, "/user/hand/right/input/thumbstick/click", &handRightThumbstickPressPath);
+			xrStringToPath(_internals->instance, "/user/hand/right/input/system/click", &handRightButtonSystemPressPath);
+			xrStringToPath(_internals->instance, "/user/hand/right/input/b/click", &handRightButtonUpperPressPath);
+			xrStringToPath(_internals->instance, "/user/hand/right/input/a/click", &handRightButtonLowerPressPath);
+			xrStringToPath(_internals->instance, "/user/hand/right/output/haptic", &handRightHapticsPath);
+
+			std::vector<XrActionSuggestedBinding> picoUltraBindings;
+			picoUltraBindings.push_back({_internals->handLeftAimPoseAction, handLeftAimPosePath});
+			picoUltraBindings.push_back({_internals->handLeftGripPoseAction, handLeftGripPosePath});
+			picoUltraBindings.push_back({_internals->handLeftTriggerAction, handLeftTriggerPath});
+			picoUltraBindings.push_back({_internals->handLeftGrabAction, handLeftGrabPath});
+			picoUltraBindings.push_back({_internals->handLeftThumbstickXAction, handLeftThumbstickXPath});
+			picoUltraBindings.push_back({_internals->handLeftThumbstickYAction, handLeftThumbstickYPath});
+			picoUltraBindings.push_back({_internals->handLeftThumbstickPressAction, handLeftThumbstickPressPath});
+			picoUltraBindings.push_back({_internals->handLeftButtonSystemPressAction, handLeftButtonSystemPressPath});
+			picoUltraBindings.push_back({_internals->handLeftButtonUpperPressAction, handLeftButtonUpperPressPath});
+			picoUltraBindings.push_back({_internals->handLeftButtonLowerPressAction, handLeftButtonLowerPressPath});
+			picoUltraBindings.push_back({_internals->handLeftHapticsAction, handLeftHapticsPath});
+
+			picoUltraBindings.push_back({_internals->handRightAimPoseAction, handRightAimPosePath});
+			picoUltraBindings.push_back({_internals->handRightGripPoseAction, handRightGripPosePath});
+			picoUltraBindings.push_back({_internals->handRightTriggerAction, handRightTriggerPath});
+			picoUltraBindings.push_back({_internals->handRightGrabAction, handRightGrabPath});
+			picoUltraBindings.push_back({_internals->handRightThumbstickXAction, handRightThumbstickXPath});
+			picoUltraBindings.push_back({_internals->handRightThumbstickYAction, handRightThumbstickYPath});
+			picoUltraBindings.push_back({_internals->handRightThumbstickPressAction, handRightThumbstickPressPath});
+			picoUltraBindings.push_back({_internals->handRightButtonSystemPressAction, handRightButtonSystemPressPath});
+			picoUltraBindings.push_back({_internals->handRightButtonUpperPressAction, handRightButtonUpperPressPath});
+			picoUltraBindings.push_back({_internals->handRightButtonLowerPressAction, handRightButtonLowerPressPath});
+			picoUltraBindings.push_back({_internals->handRightHapticsAction, handRightHapticsPath});
+
+			xrStringToPath(_internals->instance, "/interaction_profiles/bytedance/pico_ultra_controller_bd", &interactionProfilePath);
+
+			XrInteractionProfileSuggestedBinding suggestedPicoUltraBindings {XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
+			suggestedPicoUltraBindings.interactionProfile = interactionProfilePath;
+			suggestedPicoUltraBindings.suggestedBindings = picoUltraBindings.data();
+			suggestedPicoUltraBindings.countSuggestedBindings = picoUltraBindings.size();
+			XrResult picoUltraBindingResult = xrSuggestInteractionProfileBindings(_internals->instance, &suggestedPicoUltraBindings);
+			if(!XR_SUCCEEDED(picoUltraBindingResult))
+			{
+				RNDebug("failed action profile suggested pico ultra binding");
+			}
+		}
+
 
 		//Vive wand bindings
 		//Left hand
@@ -2350,7 +2430,7 @@ namespace RN
 		_controllerTrackingState[0].SetType(GetControllerTypeForInteractionProfile(_internals->instance, leftHandInteractionProfileState.interactionProfile));
 		_controllerTrackingState[1].SetType(GetControllerTypeForInteractionProfile(_internals->instance, rightHandInteractionProfileState.interactionProfile));
 #else
-		if(_supportsControllerInteractionPICO && _deviceType == PicoVR)
+		if((_supportsControllerInteractionPICO || _supportsUltraControllerInteractionPICO) && _deviceType == PicoVR)
 		{
 			_controllerTrackingState[0].SetType(VRControllerTrackingState::Type::PicoNeo3Controller);
 			_controllerTrackingState[1].SetType(VRControllerTrackingState::Type::PicoNeo3Controller);

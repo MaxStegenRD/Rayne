@@ -153,6 +153,7 @@ namespace RN
 		bool _supportsDynamicResolution;
 		bool _supportsTilePropertiesHint;
 		bool _supportsControllerInteractionPICO;
+		bool _supportsUltraControllerInteractionPICO;
 		bool _supportsHandTracking;
 
 		bool _isHandTrackingEnabled;
