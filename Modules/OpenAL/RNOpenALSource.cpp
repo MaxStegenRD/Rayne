@@ -25,12 +25,11 @@ namespace RN
 		_isRepeating(false),
 		_isSelfdestructing(false),
 		_hasEnded(false),
-		_ringBufferTemp(nullptr),
 		_isBuffering(true),
-		_ignoreNextPositionUpdate(false)
+		_ignoreNextPositionUpdate(false),
+		_hasOldUniversePosition(false),
+		_ringBufferTemp(nullptr)
 	{
-		_oldPosition = GetWorldPosition();
-
 		OpenALWorld::GetSharedInstance()->GetOutputDevices()->Enumerate<OpenALOutputDevice>([&](OpenALOutputDevice *device, size_t index, bool &stop){
 			if(index == ignoreDeviceAtIndex) return;
 
@@ -471,7 +470,8 @@ namespace RN
 	{
 		_ignoreNextPositionUpdate = true;
 		
-		_oldPosition = position;
+		_oldUniversePosition = GetUniversePosition();
+		_hasOldUniversePosition = _oldUniversePosition.IsValid();
 		_velocity = velocity;
 		
 		for(auto &pair : _source)
@@ -491,14 +491,21 @@ namespace RN
 		}
 		
 		Vector3 position = GetWorldPosition();
-		
-		Vector3 velocity = position - _oldPosition;
-		_oldPosition = position;
-		if(delta != 0.0f)
+		DVector3 universePosition = GetUniversePosition();
+		const bool hasUniversePosition = universePosition.IsValid();
+
+		if(hasUniversePosition && _hasOldUniversePosition && delta > 0.0f)
 		{
-			velocity /= delta;
-			_velocity = _velocity * 0.95f + velocity * 0.05f; //Smoothen the velocity
+			Vector3 velocity = ((universePosition - _oldUniversePosition) / static_cast<double>(delta)).ToVector3();
+			_velocity = velocity.IsValid() ? _velocity * 0.95f + velocity * 0.05f : Vector3(); //Smoothen the velocity
 		}
+		else
+		{
+			_velocity = Vector3();
+		}
+
+		if(hasUniversePosition) _oldUniversePosition = universePosition;
+		_hasOldUniversePosition = hasUniversePosition;
 		
 		for(auto &pair : _source)
 		{

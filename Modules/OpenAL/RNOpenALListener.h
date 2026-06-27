@@ -33,10 +33,12 @@ namespace RN
 	private:
 		WeakRef<OpenALOutputDevice> _owner;
 		Vector3 _oldPosition;
+		DVector3 _oldUniversePosition;
 		Quaternion _rotation;
 		Vector3 _velocity;
 		
 		bool _manualUpdate;
+		bool _hasOldUniversePosition;
 
 		RNDeclareMetaAPI(OpenALListener, OALAPI)
 	};

@@ -16,7 +16,9 @@ namespace RN
 {
 	RNDefineMeta(OpenALListener, SceneNodeAttachment)
 
-	OpenALListener::OpenALListener() : _manualUpdate(false)
+	OpenALListener::OpenALListener() :
+		_manualUpdate(false),
+		_hasOldUniversePosition(false)
 	{
 	}
 
@@ -36,9 +38,21 @@ namespace RN
 			return;
 
 		Vector3 position = GetWorldPosition();
-		Vector3 velocity = position - _oldPosition;
-		velocity /= delta;
-		_velocity = velocity;
+		DVector3 universePosition = GetUniversePosition();
+		const bool hasUniversePosition = universePosition.IsValid();
+
+		if(hasUniversePosition && _hasOldUniversePosition)
+		{
+			_velocity = ((universePosition - _oldUniversePosition) / static_cast<double>(delta)).ToVector3();
+			if(!_velocity.IsValid()) _velocity = Vector3();
+		}
+		else
+		{
+			_velocity = Vector3();
+		}
+
+		if(hasUniversePosition) _oldUniversePosition = universePosition;
+		_hasOldUniversePosition = hasUniversePosition;
 		_oldPosition = position;
 		_rotation = GetWorldRotation();
 
@@ -49,7 +63,7 @@ namespace RN
 		_owner->MakeCurrent();
 
 		alListenerfv(AL_POSITION, &position.x);
-		alListenerfv(AL_VELOCITY, &velocity.x);
+		alListenerfv(AL_VELOCITY, &_velocity.x);
 		alListenerfv(AL_ORIENTATION, &orientation[0].x);
 	}
 } // namespace RN
