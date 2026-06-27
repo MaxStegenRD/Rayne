@@ -25,6 +25,7 @@
 #include <Jolt/Physics/Collision/CollideShape.h>
 #include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <Jolt/Physics/Collision/RayCast.h>
+#include <Jolt/Physics/Collision/TransformedShape.h>
 #include <Jolt/Physics/Collision/Shape/CompoundShape.h>
 #include <Jolt/Physics/Collision/Shape/DecoratedShape.h>
 #include <Jolt/Physics/Collision/ShapeCast.h>
@@ -47,10 +48,19 @@ namespace RN
 			FillShapeData(body, subShapeID, info.ownSubShapeUserData, info.ownCompoundChildIndex, info.ownCompoundChildUserData);
 		}
 
+		static void FillForTransformedShape(JoltContactInfo &info, const JPH::TransformedShape &transformedShape, const JPH::SubShapeID &subShapeID)
+		{
+			FillShapeData(transformedShape.mShape.GetPtr(), subShapeID, info.subShapeUserData, info.compoundChildIndex, info.compoundChildUserData);
+		}
+
 	private:
 		static void FillShapeData(const JPH::Body &body, const JPH::SubShapeID &subShapeID, uint64 &subShapeUserData, uint32 &compoundChildIndex, uint32 &compoundChildUserData)
 		{
-			const JPH::Shape *bodyShape = body.GetShape();
+			FillShapeData(body.GetShape(), subShapeID, subShapeUserData, compoundChildIndex, compoundChildUserData);
+		}
+
+		static void FillShapeData(const JPH::Shape *bodyShape, const JPH::SubShapeID &subShapeID, uint64 &subShapeUserData, uint32 &compoundChildIndex, uint32 &compoundChildUserData)
+		{
 			const JPH::Shape *shape = GetUndecoratedShape(bodyShape);
 			if(!bodyShape || !shape) return;
 

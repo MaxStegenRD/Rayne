@@ -9,6 +9,8 @@
 #include "RNJoltExternalSupportAnchorConstraint.h"
 
 #include <Jolt/Physics/Body/Body.h>
+#include <Jolt/Physics/Body/BodyID.h>
+#include <Jolt/Physics/Body/BodyInterface.h>
 #include <Jolt/Physics/Constraints/ConstraintPart/ContactConstraintPart.h>
 #include <Jolt/Physics/Constraints/TwoBodyConstraint.h>
 #include <Jolt/Physics/StateRecorder.h>
@@ -214,12 +216,12 @@ namespace RN
 		return settings;
 	}
 
-	JPH::Constraint *CreateJoltExternalSupportAnchorConstraint(JPH::Body &supportBody, JPH::Body &controllerBody, JPH::RVec3Arg supportAnchorPosition, JPH::RVec3Arg controllerAnchorPosition, float maxForce)
+	JPH::Constraint *CreateJoltExternalSupportAnchorConstraint(JPH::BodyInterface &bodyInterface, const JPH::BodyID &supportBodyID, const JPH::BodyID &controllerBodyID, JPH::RVec3Arg supportAnchorPosition, JPH::RVec3Arg controllerAnchorPosition, float maxForce)
 	{
 		JoltExternalSupportAnchorConstraintSettings settings;
 		settings._position1 = supportAnchorPosition;
 		settings._position2 = controllerAnchorPosition;
 		settings._maxForce = maxForce;
-		return settings.Create(supportBody, controllerBody);
+		return bodyInterface.CreateConstraint(&settings, supportBodyID, controllerBodyID);
 	}
 }

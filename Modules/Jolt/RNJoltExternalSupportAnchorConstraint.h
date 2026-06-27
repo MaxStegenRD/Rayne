@@ -14,13 +14,14 @@
 
 namespace JPH
 {
-	class Body;
+	class BodyID;
+	class BodyInterface;
 	class Constraint;
 }
 
 namespace RN
 {
-	JPH::Constraint *CreateJoltExternalSupportAnchorConstraint(JPH::Body &supportBody, JPH::Body &controllerBody, JPH::RVec3Arg supportAnchorPosition, JPH::RVec3Arg controllerAnchorPosition, float maxForce);
+	JPH::Constraint *CreateJoltExternalSupportAnchorConstraint(JPH::BodyInterface &bodyInterface, const JPH::BodyID &supportBodyID, const JPH::BodyID &controllerBodyID, JPH::RVec3Arg supportAnchorPosition, JPH::RVec3Arg controllerAnchorPosition, float maxForce);
 }
 
 #endif /* defined(__RAYNE_JOLTEXTERNALSUPPORTANCHORCONSTRAINT_H_) */

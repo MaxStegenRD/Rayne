@@ -221,14 +221,11 @@ namespace RN
 
 	void JoltDynamicBody::SetMaxAngularVelocity(float max)
 	{
+		if(!_actor) return;
+
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		const JPH::BodyLockInterface &lockInterface = physics->GetBodyLockInterface();
-		JPH::BodyLockWrite lock(lockInterface, *_actor);
-		if(!lock.Succeeded()) return;
-		JPH::Body &body = lock.GetBody();
-		JPH::MotionProperties *mp = body.GetMotionProperties();
-		if(!mp) return; // static/kinematic
-		mp->SetMaxAngularVelocity(max);
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		bodyInterface.SetMaxAngularVelocity(*_actor, max);
 	}
 
 	void JoltDynamicBody::SetMaxDepenetrationVelocity(float max)
@@ -255,12 +252,11 @@ namespace RN
 
 	Vector3 JoltDynamicBody::GetPointVelocity(const JoltPosition &globalPosition) const
 	{
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyLockRead lock(physics->GetBodyLockInterface(), *_actor);
-		if(!lock.Succeeded()) return Vector3();
+		if(!_actor) return Vector3();
 
-		const JPH::Body &body = lock.GetBody();
-		JPH::Vec3 velocity = body.GetPointVelocity(JoltConversions::ToJoltPosition(globalPosition));
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		JPH::Vec3 velocity = bodyInterface.GetPointVelocity(*_actor, JoltConversions::ToJoltPosition(globalPosition));
 		return JoltConversions::ToEngineVector(velocity);
 	}
 
@@ -303,11 +299,11 @@ namespace RN
 
 	JoltPosition JoltDynamicBody::GetCenterOfMassPosition() const
 	{
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyLockRead lock(physics->GetBodyLockInterface(), *_actor);
-		if(!lock.Succeeded()) return JoltConversions::ToPosition(JoltConversions::GetAttachmentPosition(this));
+		if(!_actor) return JoltConversions::ToPosition(JoltConversions::GetAttachmentPosition(this));
 
-		JPH::RVec3 center = lock.GetBody().GetCenterOfMassPosition();
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		JPH::RVec3 center = bodyInterface.GetCenterOfMassPosition(*_actor);
 		return JoltConversions::ToPosition(center);
 	}
 
@@ -319,17 +315,15 @@ namespace RN
 	float JoltDynamicBody::GetAngularImpulseEffectiveInertia(const Vector3 &axis) const
 	{
 		if(!axis.IsValid() || axis.GetSquaredLength() <= k::EpsilonFloat) return 0.0f;
+		if(!_actor) return 0.0f;
 
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyLockRead lock(physics->GetBodyLockInterface(), *_actor);
-		if(!lock.Succeeded()) return 0.0f;
-
-		const JPH::Body &body = lock.GetBody();
-		if(!body.IsDynamic()) return 0.0f;
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		if(bodyInterface.GetMotionType(*_actor) != JPH::EMotionType::Dynamic) return 0.0f;
 
 		Vector3 normalizedAxis = axis.GetNormalized();
 		JPH::Vec3 angularAxis = JoltConversions::ToJoltVector(normalizedAxis);
-		JPH::Vec3 angularVelocityPerImpulse = body.GetInverseInertia() * angularAxis;
+		JPH::Vec3 angularVelocityPerImpulse = bodyInterface.GetInverseInertia(*_actor) * angularAxis;
 		float denominator = angularAxis.Dot(angularVelocityPerImpulse);
 		return denominator > 0.0f ? 1.0f / denominator : 0.0f;
 	}

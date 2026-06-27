@@ -11,6 +11,8 @@
 #include "RNJoltKinematicController.h"
 #include "RNJoltWorld.h"
 
+#include <Jolt/Physics/Body/BodyInterface.h>
+
 namespace RN
 {
 	void JoltCharacterContactListener::OnAdjustBodyVelocity(const JPH::CharacterVirtual *inCharacter, const JPH::Body &inBody2, JPH::Vec3 &ioLinearVelocity, JPH::Vec3 &ioAngularVelocity)
@@ -29,12 +31,13 @@ namespace RN
 		JoltContactInfo info;
 
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		info.collisionObject = reinterpret_cast<JoltCollisionObject *>(physics->GetBodyInterface().GetUserData(inContact.mBodyB));
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		info.collisionObject = reinterpret_cast<JoltCollisionObject *>(bodyInterface.GetUserData(inContact.mBodyB));
 		{
-			JPH::BodyLockRead lock(physics->GetBodyLockInterface(), inContact.mBodyB);
-			if(lock.Succeeded())
+			JPH::TransformedShape transformedShape = bodyInterface.GetTransformedShape(inContact.mBodyB);
+			if(transformedShape.mShape)
 			{
-				JoltContactInfoShapeData::FillForBody(info, lock.GetBody(), inContact.mSubShapeIDB);
+				JoltContactInfoShapeData::FillForTransformedShape(info, transformedShape, inContact.mSubShapeIDB);
 			}
 		}
 		if(info.collisionObject) info.node = info.collisionObject->GetParent();

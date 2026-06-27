@@ -14,6 +14,7 @@
 
 namespace JPH
 {
+	class BodyID;
 	class Constraint;
 }
 
@@ -34,7 +35,7 @@ namespace RN
 		JoltConstraint();
 		~JoltConstraint() override;
 
-		void SetConstraint(JPH::Constraint *constraint);
+		void SetConstraint(JPH::Constraint *constraint, const JPH::BodyID &bodyID1, const JPH::BodyID &bodyID2);
 		void ActivateConstrainedBodies();
 		void ResetStoredBodyPairCollisionState();
 		void UpdateBodyPairCollisionState();

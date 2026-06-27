@@ -11,10 +11,8 @@
 #include "RNJoltInternals.h"
 #include "RNJoltWorld.h"
 
-#include <Jolt/Physics/Body/Body.h>
 #include <Jolt/Physics/Body/BodyID.h>
 #include <Jolt/Physics/Body/BodyInterface.h>
-#include <Jolt/Physics/Body/BodyLock.h>
 #include <Jolt/Physics/Character/Character.h>
 #include <Jolt/Physics/Constraints/Constraint.h>
 
@@ -179,25 +177,8 @@ namespace RN
 		}
 
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		const JPH::BodyLockInterface &lockInterface = physics->GetBodyLockInterface();
-
-		JPH::Body *supportBody = nullptr;
-		JPH::Body *controllerBody = nullptr;
-		{
-			JPH::BodyLockRead lock(lockInterface, JPH::BodyID(bodyID));
-			if(lock.Succeeded()) supportBody = const_cast<JPH::Body *>(&lock.GetBody());
-		}
-		{
-			JPH::BodyLockRead lock(lockInterface, _controller->GetBodyID());
-			if(lock.Succeeded()) controllerBody = const_cast<JPH::Body *>(&lock.GetBody());
-		}
-
-		if(!supportBody || !controllerBody)
-		{
-			return;
-		}
-
-		JPH::Constraint *constraint = CreateJoltExternalSupportAnchorConstraint(*supportBody, *controllerBody, JoltConversions::ToJoltPosition(supportAnchorPosition), JoltConversions::ToJoltPosition(controllerAnchorPosition), maxForce);
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		JPH::Constraint *constraint = CreateJoltExternalSupportAnchorConstraint(bodyInterface, JPH::BodyID(bodyID), _controller->GetBodyID(), JoltConversions::ToJoltPosition(supportAnchorPosition), JoltConversions::ToJoltPosition(controllerAnchorPosition), maxForce);
 		if(!constraint)
 		{
 			return;
@@ -215,7 +196,7 @@ namespace RN
 		_externalSupportAnchorMaxForce = maxForce;
 		_externalSupportConstraint = constraint;
 
-		physics->GetBodyInterface().ActivateBody(JPH::BodyID(bodyID));
+		bodyInterface.ActivateBody(JPH::BodyID(bodyID));
 		_controller->Activate();
 	}
 
@@ -418,16 +399,15 @@ namespace RN
 			return false;
 		}
 
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyLockRead lock(physics->GetBodyLockInterface(), joltBodyID);
-		if(!lock.Succeeded())
+		JPH::BodyInterface &bodyInterface = JoltWorld::GetSharedInstance()->GetJoltInstance()->GetBodyInterface();
+		if(!bodyInterface.IsAdded(joltBodyID))
 		{
 			return false;
 		}
 
-		const JPH::Body &body = lock.GetBody();
-		JPH::RVec3 joltPosition = body.GetPosition();
-		JPH::Quat joltRotation = body.GetRotation();
+		JPH::RVec3 joltPosition;
+		JPH::Quat joltRotation;
+		bodyInterface.GetPositionAndRotation(joltBodyID, joltPosition, joltRotation);
 		position = JoltConversions::ToPosition(joltPosition);
 		rotation = JoltConversions::ToEngineRotation(joltRotation);
 		if(!position.IsValid() || !rotation.IsValid())
@@ -449,9 +429,7 @@ namespace RN
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 		if(!bodyInterface.IsAdded(joltBodyID)) return false;
-
-		JPH::BodyLockRead lock(physics->GetBodyLockInterface(), joltBodyID);
-		return lock.Succeeded();
+		return true;
 	}
 
 	bool JoltRigidBodyController::GetExternalSupportAnchorState(SceneNode::PositionType &position, Vector3 &velocity) const
@@ -467,16 +445,15 @@ namespace RN
 			return false;
 		}
 
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyLockRead lock(physics->GetBodyLockInterface(), joltBodyID);
-		if(!lock.Succeeded())
+		JPH::BodyInterface &bodyInterface = JoltWorld::GetSharedInstance()->GetJoltInstance()->GetBodyInterface();
+		if(!bodyInterface.IsAdded(joltBodyID))
 		{
 			return false;
 		}
 
-		const JPH::Body &body = lock.GetBody();
-		JPH::RVec3 joltPosition = body.GetPosition();
-		JPH::Quat joltRotation = body.GetRotation();
+		JPH::RVec3 joltPosition;
+		JPH::Quat joltRotation;
+		bodyInterface.GetPositionAndRotation(joltBodyID, joltPosition, joltRotation);
 		SceneNode::PositionType supportPosition = JoltConversions::ToPosition(joltPosition);
 		Quaternion supportRotation = JoltConversions::ToEngineRotation(joltRotation);
 		if(!supportPosition.IsValid() || !supportRotation.IsValid())
@@ -491,7 +468,7 @@ namespace RN
 			return false;
 		}
 
-		JPH::Vec3 joltVelocity = body.GetPointVelocity(JoltConversions::ToJoltPosition(anchorPosition));
+		JPH::Vec3 joltVelocity = bodyInterface.GetPointVelocity(joltBodyID, JoltConversions::ToJoltPosition(anchorPosition));
 		position = anchorPosition;
 		velocity = JoltConversions::ToEngineVector(joltVelocity);
 		return velocity.IsValid();

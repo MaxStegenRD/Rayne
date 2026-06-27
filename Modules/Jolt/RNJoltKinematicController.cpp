@@ -10,6 +10,7 @@
 #include "RNJoltInternals.h"
 #include "RNJoltWorld.h"
 
+#include <Jolt/Physics/Body/BodyInterface.h>
 #include <Jolt/Physics/Character/CharacterVirtual.h>
 
 namespace RN
@@ -95,6 +96,7 @@ namespace RN
 		JPH::AllHitCollisionCollector<JPH::CastShapeCollector> results;
 		physics->GetNarrowPhaseQuery().CastShape(castInfo, castSettings, baseOffset, results, physics->GetDefaultBroadPhaseLayerFilter(objectLayer), physics->GetDefaultLayerFilter(objectLayer));
 
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 		for(auto result : results.mHits)
 		{
 			JoltContactInfo hit;
@@ -102,20 +104,13 @@ namespace RN
 			JPH::RVec3 position = baseOffset + result.mContactPointOn2; //castInfo.GetPointOnRay(result.mFraction);
 			JPH::Vec3 normal;
 
-			// Scoped lock
 			{
-				JPH::BodyLockRead lock(physics->GetBodyLockInterface(), result.mBodyID2);
-				if(lock.Succeeded()) // bodyID may no longer be valid
-				{
-					const JPH::Body &body = lock.GetBody();
-					normal = body.GetWorldSpaceSurfaceNormal(result.mSubShapeID2, position);
-					hit.collisionObject = reinterpret_cast<JoltCollisionObject *>(body.GetUserData());
-					JoltContactInfoShapeData::FillForBody(hit, body, result.mSubShapeID2);
-				}
-				else
-				{
-					continue;
-				}
+				JPH::TransformedShape transformedShape = bodyInterface.GetTransformedShape(result.mBodyID2);
+				if(!transformedShape.mShape) continue;
+
+				normal = transformedShape.GetWorldSpaceSurfaceNormal(result.mSubShapeID2, position);
+				hit.collisionObject = reinterpret_cast<JoltCollisionObject *>(bodyInterface.GetUserData(result.mBodyID2));
+				JoltContactInfoShapeData::FillForTransformedShape(hit, transformedShape, result.mSubShapeID2);
 			}
 
 			hit.position = JoltConversions::ToPosition(position);
@@ -163,20 +158,14 @@ namespace RN
 		JPH::RVec3 position = baseOffset + result.mHit.mContactPointOn2; //castInfo.GetPointOnRay(result.mHit.mFraction);
 		JPH::Vec3 normal;
 
-		// Scoped lock
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 		{
-			JPH::BodyLockRead lock(physics->GetBodyLockInterface(), result.mHit.mBodyID2);
-			if(lock.Succeeded()) // bodyID may no longer be valid
-			{
-				const JPH::Body &body = lock.GetBody();
-				normal = body.GetWorldSpaceSurfaceNormal(result.mHit.mSubShapeID2, position);
-				hit.collisionObject = reinterpret_cast<JoltCollisionObject *>(body.GetUserData());
-				JoltContactInfoShapeData::FillForBody(hit, body, result.mHit.mSubShapeID2);
-			}
-			else
-			{
-				return hit;
-			}
+			JPH::TransformedShape transformedShape = bodyInterface.GetTransformedShape(result.mHit.mBodyID2);
+			if(!transformedShape.mShape) return hit;
+
+			normal = transformedShape.GetWorldSpaceSurfaceNormal(result.mHit.mSubShapeID2, position);
+			hit.collisionObject = reinterpret_cast<JoltCollisionObject *>(bodyInterface.GetUserData(result.mHit.mBodyID2));
+			JoltContactInfoShapeData::FillForTransformedShape(hit, transformedShape, result.mHit.mSubShapeID2);
 		}
 
 		hit.position = JoltConversions::ToPosition(position);
@@ -221,12 +210,12 @@ namespace RN
 		contact.collisionObject = nullptr;
 
 		{
-			JPH::BodyLockRead lock(physics->GetBodyLockInterface(), results.mHit.mBodyID2);
-			if(!lock.Succeeded()) return contact;
+			JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+			JPH::TransformedShape transformedShape = bodyInterface.GetTransformedShape(results.mHit.mBodyID2);
+			if(!transformedShape.mShape) return contact;
 
-			const JPH::Body &body = lock.GetBody();
-			contact.collisionObject = reinterpret_cast<JoltCollisionObject *>(body.GetUserData());
-			JoltContactInfoShapeData::FillForBody(contact, body, results.mHit.mSubShapeID2);
+			contact.collisionObject = reinterpret_cast<JoltCollisionObject *>(bodyInterface.GetUserData(results.mHit.mBodyID2));
+			JoltContactInfoShapeData::FillForTransformedShape(contact, transformedShape, results.mHit.mSubShapeID2);
 		}
 		if(contact.collisionObject) contact.node = contact.collisionObject->GetParent();
 		if(contact.node) contact.node->Retain()->Autorelease();
@@ -251,6 +240,7 @@ namespace RN
 		uint16 objectLayer = JoltWorld::GetSharedInstance()->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1);
 		physics->GetNarrowPhaseQuery().CollideShape(_shape->GetJoltShape(), JPH::Vec3::sOne(), worldTransform.PreTranslated(_shape->GetJoltShape()->GetCenterOfMass()), collideSettings, baseOffset, results, physics->GetDefaultBroadPhaseLayerFilter(objectLayer), physics->GetDefaultLayerFilter(objectLayer));
 
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 		for(auto result : results.mHits)
 		{
 			JoltContactInfo hit;
@@ -260,12 +250,11 @@ namespace RN
 			hit.collisionObject = nullptr;
 
 			{
-				JPH::BodyLockRead lock(physics->GetBodyLockInterface(), result.mBodyID2);
-				if(!lock.Succeeded()) continue;
+				JPH::TransformedShape transformedShape = bodyInterface.GetTransformedShape(result.mBodyID2);
+				if(!transformedShape.mShape) continue;
 
-				const JPH::Body &body = lock.GetBody();
-				hit.collisionObject = reinterpret_cast<JoltCollisionObject *>(body.GetUserData());
-				JoltContactInfoShapeData::FillForBody(hit, body, result.mSubShapeID2);
+				hit.collisionObject = reinterpret_cast<JoltCollisionObject *>(bodyInterface.GetUserData(result.mBodyID2));
+				JoltContactInfoShapeData::FillForTransformedShape(hit, transformedShape, result.mSubShapeID2);
 			}
 			if(hit.collisionObject) hit.node = hit.collisionObject->GetParent();
 			if(hit.node) hit.node->Retain()->Autorelease();
