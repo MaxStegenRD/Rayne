@@ -400,10 +400,6 @@ namespace RN
 		}
 
 		JPH::BodyInterface &bodyInterface = JoltWorld::GetSharedInstance()->GetJoltInstance()->GetBodyInterface();
-		if(!bodyInterface.IsAdded(joltBodyID))
-		{
-			return false;
-		}
 
 		JPH::RVec3 joltPosition;
 		JPH::Quat joltRotation;

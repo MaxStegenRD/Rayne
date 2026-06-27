@@ -103,7 +103,7 @@ namespace RN
 		//		void UpdateFromMaterial(BulletMaterial *material) override;
 
 	private:
-		JPH::BodyInterface *GetBodyInterfaceIfAdded();
+		JPH::BodyInterface *GetBodyInterfaceIfInSimulation();
 
 		JoltShape *_shape;
 		JPH::BodyID *_actor;
