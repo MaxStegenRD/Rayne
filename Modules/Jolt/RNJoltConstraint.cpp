@@ -88,14 +88,11 @@ namespace RN
 
 	void JoltConstraint::ActivateConstrainedBodies()
 	{
-		if(!_constraint || !HasStoredBodyPair()) return;
+		if(!_constraint || _constraint->GetType() != JPH::EConstraintType::TwoBodyConstraint) return;
 
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
-		JPH::BodyID bodyID1(_bodyPairCollisionBody1);
-		JPH::BodyID bodyID2(_bodyPairCollisionBody2);
-		if(bodyInterface.IsAdded(bodyID1)) bodyInterface.ActivateBody(bodyID1);
-		if(bodyInterface.IsAdded(bodyID2)) bodyInterface.ActivateBody(bodyID2);
+		bodyInterface.ActivateConstraint(static_cast<JPH::TwoBodyConstraint *>(_constraint));
 	}
 
 	void JoltConstraint::SetEnabled(bool enabled)
