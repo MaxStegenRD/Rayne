@@ -29,6 +29,8 @@ namespace RN
 		JPH::BodyCreationSettings settings(shape->GetJoltShape(), JPH::RVec3::sZero(), JPH::QuatArg(0.0f, 0.0f, 0.0f, 1.0f), JPH::EMotionType::Dynamic, world->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1));
 		settings.mLinearDamping = world->GetDefaultDynamicBodyLinearDamping();
 		settings.mAngularDamping = world->GetDefaultDynamicBodyAngularDamping();
+		settings.mMaxLinearVelocity = world->GetDefaultDynamicBodyMaxLinearVelocity();
+		settings.mMaxAngularVelocity = world->GetDefaultDynamicBodyMaxAngularVelocity();
 		settings.mMassPropertiesOverride.mMass = mass;
 		settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
 		settings.mMotionQuality = JPH::EMotionQuality::LinearCast;
@@ -246,6 +248,15 @@ namespace RN
 		if(!mp) return; // static/kinematic
 		mp->SetLinearDamping(linear);
 		mp->SetAngularDamping(angular);
+	}
+
+	void JoltDynamicBody::SetMaxLinearVelocity(float max)
+	{
+		if(!_actor) return;
+
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		bodyInterface.SetMaxLinearVelocity(*_actor, max);
 	}
 
 	void JoltDynamicBody::SetMaxAngularVelocity(float max)

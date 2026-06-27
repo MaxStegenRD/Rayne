@@ -57,8 +57,11 @@ namespace RN
 		JTAPI Quaternion ConvertRotationToPhysicsWorld(const Quaternion &rotation) const;
 		JTAPI Quaternion ConvertRotationFromPhysicsWorld(const Quaternion &rotation) const;
 		JTAPI void SetDefaultDynamicBodyDamping(float linear, float angular);
+		JTAPI void SetDefaultDynamicBodyMaxVelocity(float linear, float angular);
 		JTAPI float GetDefaultDynamicBodyLinearDamping() const { return _defaultDynamicBodyLinearDamping; }
 		JTAPI float GetDefaultDynamicBodyAngularDamping() const { return _defaultDynamicBodyAngularDamping; }
+		JTAPI float GetDefaultDynamicBodyMaxLinearVelocity() const { return _defaultDynamicBodyMaxLinearVelocity; }
+		JTAPI float GetDefaultDynamicBodyMaxAngularVelocity() const { return _defaultDynamicBodyMaxAngularVelocity; }
 
 		JTAPI void Update(float delta) final;
 		JTAPI void WillUpdate(float delta) final;
@@ -102,6 +105,8 @@ namespace RN
 		JPH::PhysicsSystem *_physicsSystem;
 		float _defaultDynamicBodyLinearDamping;
 		float _defaultDynamicBodyAngularDamping;
+		float _defaultDynamicBodyMaxLinearVelocity;
+		float _defaultDynamicBodyMaxAngularVelocity;
 		DVector3 _universePosition;
 		Quaternion _universeRotation;
 		Quaternion _inverseUniverseRotation;

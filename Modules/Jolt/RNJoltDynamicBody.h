@@ -49,6 +49,7 @@ namespace RN
 		JTAPI void SetLinearVelocity(const Vector3 &velocity);
 		JTAPI void SetAngularVelocity(const Vector3 &velocity);
 		JTAPI void SetDamping(float linear, float angular);
+		JTAPI void SetMaxLinearVelocity(float max);
 		JTAPI void SetMaxAngularVelocity(float max);
 		JTAPI void SetMaxDepenetrationVelocity(float max);
 		JTAPI void SetEnableCCD(bool enable);
