@@ -196,7 +196,6 @@ namespace RN
 		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
 		if(!bodyInterface) return;
 
-		if(velocity.GetSquaredLength() > k::EpsilonFloat) bodyInterface->ActivateBody(*_actor);
 		bodyInterface->SetLinearVelocity(*_actor, JoltConversions::ToJoltVector(velocity));
 	}
 	void JoltDynamicBody::SetAngularVelocity(const Vector3 &velocity)
@@ -204,7 +203,6 @@ namespace RN
 		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
 		if(!bodyInterface) return;
 
-		if(velocity.GetSquaredLength() > k::EpsilonFloat) bodyInterface->ActivateBody(*_actor);
 		bodyInterface->SetAngularVelocity(*_actor, JoltConversions::ToJoltVector(velocity));
 	}
 
@@ -456,7 +454,6 @@ namespace RN
 		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
 		if(!bodyInterface) return;
 
-		if(force.GetSquaredLength() > k::EpsilonFloat) bodyInterface->ActivateBody(*_actor);
 		bodyInterface->AddForce(*_actor, JoltConversions::ToJoltVector(force));
 	}
 
@@ -465,7 +462,6 @@ namespace RN
 		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
 		if(!bodyInterface) return;
 
-		if(force.GetSquaredLength() > k::EpsilonFloat) bodyInterface->ActivateBody(*_actor);
 		bodyInterface->AddForce(*_actor, JoltConversions::ToJoltVector(force), JoltConversions::ToJoltPosition(globalOrigin));
 	}
 
@@ -473,7 +469,7 @@ namespace RN
 	{
 		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
 		if(!bodyInterface) return;
-		if(_isKinematic || !_isGravityEnabled || !bodyInterface->IsActive(*_actor)) return;
+		if(_isKinematic || !_isGravityEnabled) return;
 		if(_mass <= k::EpsilonFloat || gravity.GetSquaredLength() <= k::EpsilonFloat) return;
 
 		bodyInterface->AddForce(*_actor, JoltConversions::ToJoltVector(gravity * _mass), JPH::EActivation::DontActivate);
@@ -492,7 +488,6 @@ namespace RN
 		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
 		if(!bodyInterface) return;
 
-		if(torque.GetSquaredLength() > k::EpsilonFloat) bodyInterface->ActivateBody(*_actor);
 		bodyInterface->AddTorque(*_actor, JoltConversions::ToJoltVector(torque));
 	}
 	void JoltDynamicBody::AddTorqueImpulse(const Vector3 &torque)
@@ -500,7 +495,6 @@ namespace RN
 		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
 		if(!bodyInterface) return;
 
-		if(torque.GetSquaredLength() > k::EpsilonFloat) bodyInterface->ActivateBody(*_actor);
 		bodyInterface->AddAngularImpulse(*_actor, JoltConversions::ToJoltVector(torque));
 	}
 	void JoltDynamicBody::AddImpulse(const Vector3 &impulse)
@@ -508,7 +502,6 @@ namespace RN
 		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
 		if(!bodyInterface) return;
 
-		if(impulse.GetSquaredLength() > k::EpsilonFloat) bodyInterface->ActivateBody(*_actor);
 		bodyInterface->AddImpulse(*_actor, JoltConversions::ToJoltVector(impulse));
 	}
 	void JoltDynamicBody::AddImpulse(const Vector3 &impulse, const JoltPosition &globalOrigin)
@@ -516,7 +509,6 @@ namespace RN
 		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
 		if(!bodyInterface) return;
 
-		if(impulse.GetSquaredLength() > k::EpsilonFloat) bodyInterface->ActivateBody(*_actor);
 		bodyInterface->AddImpulse(*_actor, JoltConversions::ToJoltVector(impulse), JoltConversions::ToJoltPosition(globalOrigin));
 	}
 
@@ -526,18 +518,9 @@ namespace RN
 
 		JPH::BodyInterface *bodyInterface = GetBodyInterfaceIfAdded();
 		if(!bodyInterface) return false;
-		bodyInterface->ActivateBody(*_actor);
-
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		const JPH::BodyLockInterface &lockInterface = physics->GetBodyLockInterface();
-		JPH::BodyLockWrite lock(lockInterface, *_actor);
-		if(!lock.Succeeded()) return false;
-
-		JPH::Body &body = lock.GetBody();
-		if(!body.IsActive()) return false;
 
 		Vector3 normalizedSurfaceNormal = surfaceNormal.GetNormalized();
-		return body.ApplyBuoyancyImpulse(JoltConversions::ToJoltPosition(globalSurfacePosition),
+		return bodyInterface->ApplyBuoyancyImpulse(*_actor, JoltConversions::ToJoltPosition(globalSurfacePosition),
 			JoltConversions::ToJoltVector(normalizedSurfaceNormal),
 			buoyancy,
 			linearDrag,
