@@ -104,6 +104,8 @@ namespace RN
 
 	private:
 		JPH::BodyInterface *GetBodyInterfaceIfInSimulation();
+		bool RefreshMotionCacheIfNeeded() const;
+		void InvalidateMotionCache() const { _motionCacheIsValid = false; }
 
 		JoltShape *_shape;
 		JPH::BodyID *_actor;
@@ -111,6 +113,11 @@ namespace RN
 		bool _isKinematic;
 		bool _isGravityEnabled;
 		bool _isInSimulation;
+		mutable bool _motionCacheIsValid = false;
+		mutable JoltPointMotionProperties _motionCacheProperties;
+		mutable JoltPosition _motionCacheCenterOfMass = JoltPosition();
+		mutable Vector3 _motionCacheLinearVelocity = Vector3();
+		mutable Vector3 _motionCacheAngularVelocity = Vector3();
 
 		RNDeclareMetaAPI(JoltDynamicBody, JTAPI)
 	};

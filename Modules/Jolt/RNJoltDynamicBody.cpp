@@ -89,9 +89,41 @@ namespace RN
 	JPH::BodyInterface *JoltDynamicBody::GetBodyInterfaceIfInSimulation()
 	{
 		if(!_actor || !_isInSimulation) return nullptr;
+		InvalidateMotionCache();
 
 		JPH::BodyInterface &bodyInterface = JoltWorld::GetSharedInstance()->GetJoltInstance()->GetBodyInterface();
 		return &bodyInterface;
+	}
+
+	bool JoltDynamicBody::RefreshMotionCacheIfNeeded() const
+	{
+		if(!_actor) return false;
+		if(_motionCacheIsValid) return true;
+
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyLockRead lock(physics->GetBodyLockInterface(), *_actor);
+		if(!lock.Succeeded()) return false;
+
+		const JPH::Body &body = lock.GetBody();
+		_motionCacheProperties = JoltPointMotionProperties();
+		_motionCacheCenterOfMass = JoltConversions::ToPosition(body.GetCenterOfMassPosition());
+		_motionCacheLinearVelocity = JoltConversions::ToEngineVector(body.GetLinearVelocity());
+		_motionCacheAngularVelocity = JoltConversions::ToEngineVector(body.GetAngularVelocity());
+
+		const JPH::MotionProperties *motionProperties = body.IsDynamic() ? body.GetMotionPropertiesUnchecked() : nullptr;
+		if(motionProperties)
+		{
+			_motionCacheProperties.isDynamic = true;
+			_motionCacheProperties.inverseMass = motionProperties->GetInverseMass();
+
+			JPH::Mat44 inverseInertia = body.GetInverseInertia();
+			_motionCacheProperties.inverseInertiaColumnX = JoltConversions::ToEngineVector(inverseInertia * JPH::Vec3::sAxisX());
+			_motionCacheProperties.inverseInertiaColumnY = JoltConversions::ToEngineVector(inverseInertia * JPH::Vec3::sAxisY());
+			_motionCacheProperties.inverseInertiaColumnZ = JoltConversions::ToEngineVector(inverseInertia * JPH::Vec3::sAxisZ());
+		}
+
+		_motionCacheIsValid = true;
+		return true;
 	}
 
 	void JoltDynamicBody::SetShape(JoltShape *shape, float mass)
@@ -150,6 +182,8 @@ namespace RN
 				}
 			}
 		}
+
+		InvalidateMotionCache();
 	}
 
 	void JoltDynamicBody::SetMass(float mass)
@@ -173,6 +207,7 @@ namespace RN
 
 		// Apply new mass properties
 		mp->SetMassProperties(allowed, props);
+		InvalidateMotionCache();
 	}
 
 	float JoltDynamicBody::GetMass() const
@@ -229,76 +264,31 @@ namespace RN
 
 	Vector3 JoltDynamicBody::GetLinearVelocity() const
 	{
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
-
-		JPH::Vec3 velocity = bodyInterface.GetLinearVelocity(*_actor);
-		return JoltConversions::ToEngineVector(velocity);
+		return RefreshMotionCacheIfNeeded() ? _motionCacheLinearVelocity : Vector3();
 	}
 	Vector3 JoltDynamicBody::GetAngularVelocity() const
 	{
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
-
-		JPH::Vec3 velocity = bodyInterface.GetAngularVelocity(*_actor);
-		return JoltConversions::ToEngineVector(velocity);
+		return RefreshMotionCacheIfNeeded() ? _motionCacheAngularVelocity : Vector3();
 	}
 
 	Vector3 JoltDynamicBody::GetPointVelocity(const JoltPosition &globalPosition) const
 	{
-		if(!_actor) return Vector3();
-
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
-		JPH::Vec3 velocity = bodyInterface.GetPointVelocity(*_actor, JoltConversions::ToJoltPosition(globalPosition));
-		return JoltConversions::ToEngineVector(velocity);
+		return GetPointMotionProperties(globalPosition).velocity;
 	}
 
 	JoltPointMotionProperties JoltDynamicBody::GetPointMotionProperties(const JoltPosition &globalPosition) const
 	{
-		JoltPointMotionProperties properties;
-		if(!globalPosition.IsValid()) return properties;
+		if(!globalPosition.IsValid() || !RefreshMotionCacheIfNeeded()) return JoltPointMotionProperties();
 
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyLockRead lock(physics->GetBodyLockInterface(), *_actor);
-		if(!lock.Succeeded()) return properties;
-
-		const JPH::Body &body = lock.GetBody();
-		JPH::RVec3 joltGlobalPosition = JoltConversions::ToJoltPosition(globalPosition);
-		JPH::Vec3 velocity = body.GetPointVelocity(joltGlobalPosition);
-		properties.velocity = JoltConversions::ToEngineVector(velocity);
-
-		if(body.IsDynamic())
-		{
-			const JPH::MotionProperties *motionProperties = body.GetMotionPropertiesUnchecked();
-			if(motionProperties)
-			{
-				properties.isDynamic = true;
-				properties.inverseMass = motionProperties->GetInverseMass();
-
-					JPH::Vec3 centerOffset = JPH::Vec3(joltGlobalPosition - body.GetCenterOfMassPosition());
-				properties.centerOffset = JoltConversions::ToEngineVector(centerOffset);
-
-				JPH::Vec3 inverseInertiaColumnX = body.GetInverseInertia() * JoltConversions::ToJoltVector(Vector3(1.0f, 0.0f, 0.0f));
-				JPH::Vec3 inverseInertiaColumnY = body.GetInverseInertia() * JoltConversions::ToJoltVector(Vector3(0.0f, 1.0f, 0.0f));
-				JPH::Vec3 inverseInertiaColumnZ = body.GetInverseInertia() * JoltConversions::ToJoltVector(Vector3(0.0f, 0.0f, 1.0f));
-				properties.inverseInertiaColumnX = JoltConversions::ToEngineVector(inverseInertiaColumnX);
-				properties.inverseInertiaColumnY = JoltConversions::ToEngineVector(inverseInertiaColumnY);
-				properties.inverseInertiaColumnZ = JoltConversions::ToEngineVector(inverseInertiaColumnZ);
-			}
-		}
-
+		JoltPointMotionProperties properties = _motionCacheProperties;
+		properties.centerOffset = JoltConversions::ToVector3(globalPosition - _motionCacheCenterOfMass);
+		properties.velocity = _motionCacheLinearVelocity + _motionCacheAngularVelocity.GetCrossProduct(properties.centerOffset);
 		return properties;
 	}
 
 	JoltPosition JoltDynamicBody::GetCenterOfMassPosition() const
 	{
-		if(!_actor) return JoltConversions::ToPosition(JoltConversions::GetAttachmentPosition(this));
-
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
-		JPH::RVec3 center = bodyInterface.GetCenterOfMassPosition(*_actor);
-		return JoltConversions::ToPosition(center);
+		return (_actor && RefreshMotionCacheIfNeeded()) ? _motionCacheCenterOfMass : JoltConversions::ToPosition(JoltConversions::GetAttachmentPosition(this));
 	}
 
 	float JoltDynamicBody::GetPointImpulseEffectiveMass(const JoltPosition &globalPosition, const Vector3 &direction) const
@@ -309,16 +299,11 @@ namespace RN
 	float JoltDynamicBody::GetAngularImpulseEffectiveInertia(const Vector3 &axis) const
 	{
 		if(!axis.IsValid() || axis.GetSquaredLength() <= k::EpsilonFloat) return 0.0f;
-		if(!_actor) return 0.0f;
-
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
-		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
-		if(bodyInterface.GetMotionType(*_actor) != JPH::EMotionType::Dynamic) return 0.0f;
+		if(!RefreshMotionCacheIfNeeded() || !_motionCacheProperties.isDynamic) return 0.0f;
 
 		Vector3 normalizedAxis = axis.GetNormalized();
-		JPH::Vec3 angularAxis = JoltConversions::ToJoltVector(normalizedAxis);
-		JPH::Vec3 angularVelocityPerImpulse = bodyInterface.GetInverseInertia(*_actor) * angularAxis;
-		float denominator = angularAxis.Dot(angularVelocityPerImpulse);
+		Vector3 angularVelocityPerImpulse = _motionCacheProperties.inverseInertiaColumnX * normalizedAxis.x + _motionCacheProperties.inverseInertiaColumnY * normalizedAxis.y + _motionCacheProperties.inverseInertiaColumnZ * normalizedAxis.z;
+		float denominator = normalizedAxis.GetDotProduct(angularVelocityPerImpulse);
 		return denominator > 0.0f ? 1.0f / denominator : 0.0f;
 	}
 
@@ -392,6 +377,7 @@ namespace RN
 		JPH::MassProperties massProps = _shape->GetJoltShape()->GetMassProperties();
 		massProps.ScaleToMass(mass);
 		mp->SetMassProperties(allowed, massProps);
+		InvalidateMotionCache();
 	}
 
 	void JoltDynamicBody::SetSolverIterationCount(uint32 positionIterations, uint32 velocityIterations)
@@ -530,6 +516,7 @@ namespace RN
 	void JoltDynamicBody::SetEnableSimulation(bool enable)
 	{
 		if(!_actor) return;
+		InvalidateMotionCache();
 
 		JoltWorld *world = JoltWorld::GetSharedInstance();
 		JPH::PhysicsSystem *physics = world->GetJoltInstance();
@@ -626,10 +613,11 @@ namespace RN
 		if(!std::isfinite(delta) || delta <= k::EpsilonFloat)
 		{
 			setTargetPoseDirectly();
-			return;
 		}
-
-		bodyInterface->MoveKinematic(*_actor, targetPosition, targetJoltRotation, delta);
+		else
+		{
+			bodyInterface->MoveKinematic(*_actor, targetPosition, targetJoltRotation, delta);
+		}
 	}
 
 	/*	void JoltDynamicBody::AccelerateToTarget(const Vector3 &position, const Quaternion &rotation, float delta)
