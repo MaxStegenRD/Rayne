@@ -259,6 +259,11 @@ namespace RN
 			_stream << "(" << val.x << ", " << val.y << ", " << val.z << ")";
 			return *this;
 		}
+		StringBuilder &operator<<(const RN::DVector3 &val)
+		{
+			_stream << "(" << val.x << ", " << val.y << ", " << val.z << ")";
+			return *this;
+		}
 		StringBuilder &operator<<(const RN::Vector4 &val)
 		{
 			_stream << "(" << val.x << ", " << val.y << ", " << val.z << ", " << val.w << ")";
