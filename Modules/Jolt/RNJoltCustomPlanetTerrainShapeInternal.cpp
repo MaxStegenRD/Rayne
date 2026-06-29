@@ -303,6 +303,7 @@ private:
 	static constexpr float MinimumTriangleNormalLengthSq = 1.0e-12f;
 	static constexpr float MinimumSolidRecoveryCenterDepth = 0.5f;
 	static constexpr float InactiveEdgeNormalRejectDotThreshold = 0.5f;
+	static constexpr float AboveSurfaceQueryMargin = 4.0f;
 
 	struct SampledGridKey
 	{
@@ -541,6 +542,30 @@ private:
 		int result = static_cast<int>(scaledCoordinate);
 		if(static_cast<double>(result) > scaledCoordinate) result -= 1;
 		return result;
+	}
+
+	static int GetNearestGridCoordinate(double coordinateMeters)
+	{
+		const double scaledCoordinate = coordinateMeters / CollisionGridCellSize;
+		int result = static_cast<int>(scaledCoordinate);
+		if(static_cast<double>(result) > scaledCoordinate) result -= 1;
+		if(scaledCoordinate - static_cast<double>(result) >= 0.5) result += 1;
+		return result;
+	}
+
+	static double GetAbsoluteValue(double value)
+	{
+		return value < 0.0 ? -value : value;
+	}
+
+	static uint8 GetDominantCubeSphereFace(double x, double y, double z)
+	{
+		const double absX = GetAbsoluteValue(x);
+		const double absY = GetAbsoluteValue(y);
+		const double absZ = GetAbsoluteValue(z);
+		if(absX >= absY && absX >= absZ) return x >= 0.0 ? 0 : 1;
+		if(absY >= absZ) return y >= 0.0 ? 2 : 3;
+		return z >= 0.0 ? 4 : 5;
 	}
 
 	static int GetGridBlockOrigin(int gridCoordinate)
@@ -1370,13 +1395,60 @@ private:
 		if(range.minU > range.maxU || range.minV > range.maxV) range.valid = false;
 	}
 
-	void CollectSampledGridTriangles(const AABox &box, const PrecisionBase &localBase, const PrecisionBase &localOrigin, Array<Triangle> &triangles, uint maximumTriangleCount) const
+	bool GetClosestSampledGridVertexKey(Vec3Arg point, const PrecisionBase &localBase, const PrecisionBase &localOrigin, double referenceRadius, SampledGridKey &key) const
+	{
+		double x = 0.0;
+		double y = 0.0;
+		double z = 0.0;
+		if(!GetDirectionForPosition(point, localBase, localOrigin, x, y, z)) return false;
+
+		const uint8 face = GetDominantCubeSphereFace(x, y, z);
+		double u = 0.0;
+		double v = 0.0;
+		if(!GetFaceCoordinatesOnFace(x, y, z, face, u, v)) return false;
+
+		key.face = face;
+		key.diagonal = 0;
+		key.gridU = GetNearestGridCoordinate(u * referenceRadius);
+		key.gridV = GetNearestGridCoordinate(v * referenceRadius);
+		return true;
+	}
+
+	static double GetMinimumProjectedBoxRadius(const AABox &box, Vec3Arg direction, const PrecisionBase &localBase, const PrecisionBase &localOrigin)
+	{
+		const Vec3 center = box.GetCenter();
+		const Vec3 extent = box.GetExtent();
+		const double centerX = static_cast<double>(center.GetX()) + localBase.x + localOrigin.x;
+		const double centerY = static_cast<double>(center.GetY()) + localBase.y + localOrigin.y;
+		const double centerZ = static_cast<double>(center.GetZ()) + localBase.z + localOrigin.z;
+		const double projectedCenterRadius = centerX * static_cast<double>(direction.GetX()) +
+											 centerY * static_cast<double>(direction.GetY()) +
+											 centerZ * static_cast<double>(direction.GetZ());
+		const double projectedExtent = GetAbsoluteValue(static_cast<double>(direction.GetX())) * static_cast<double>(extent.GetX()) +
+									   GetAbsoluteValue(static_cast<double>(direction.GetY())) * static_cast<double>(extent.GetY()) +
+									   GetAbsoluteValue(static_cast<double>(direction.GetZ())) * static_cast<double>(extent.GetZ());
+		return projectedCenterRadius - projectedExtent;
+	}
+
+	bool ShouldSkipAboveSurfaceQuery(const AABox &box, const PrecisionBase &localBase, const PrecisionBase &localOrigin, double referenceRadius, uint32 collisionRevision, uint32 cacheEpoch, float queryExpansion) const
+	{
+		SampledGridKey key;
+		if(!GetClosestSampledGridVertexKey(box.GetCenter(), localBase, localOrigin, referenceRadius, key)) return false;
+
+		Vec3 surfacePosition;
+		if(!BuildSampledGridVertex(key.face, key.gridU, key.gridV, localBase, localOrigin, referenceRadius, collisionRevision, cacheEpoch, surfacePosition)) return false;
+
+		const Vec3 direction = GetPlanetLocalDirection(box.GetCenter(), localBase, localOrigin);
+		const double minimumBoxRadius = GetMinimumProjectedBoxRadius(box, direction, localBase, localOrigin);
+		const double surfaceRadius = GetPlanetLocalRadius(surfacePosition, localBase, localOrigin);
+		const double clearance = minimumBoxRadius - surfaceRadius;
+		return clearance > static_cast<double>(queryExpansion + AboveSurfaceQueryMargin);
+	}
+
+	void CollectSampledGridTriangles(const AABox &box, const PrecisionBase &localBase, const PrecisionBase &localOrigin, double referenceRadius, uint32 collisionRevision, uint32 cacheEpoch, Array<Triangle> &triangles, uint maximumTriangleCount) const
 	{
 		if(maximumTriangleCount == 0) return;
 
-		const double referenceRadius = GetGridReferenceRadius(localOrigin, _boundsRadius);
-		const uint32 collisionRevision = _provider->GetPlanetTerrainCollisionRevision();
-		const uint32 cacheEpoch = _provider->GetPlanetTerrainCollisionCacheEpoch();
 		SampledGridFaceRange ranges[6];
 
 		IncludeSampledGridPoint(box.GetCenter(), localBase, localOrigin, referenceRadius, ranges);
@@ -1460,11 +1532,16 @@ private:
 
 		const float radialExpansion = maxSeparationDistance > 0.0f ? maxSeparationDistance : 0.0f;
 		const PrecisionBase localOrigin = GetLocalOrigin();
-		AABox queryBox = GetSurfaceQueryBox(box, localBase, localOrigin, radialExpansion);
+		const double referenceRadius = GetGridReferenceRadius(localOrigin, _boundsRadius);
+		const uint32 collisionRevision = _provider->GetPlanetTerrainCollisionRevision();
+		const uint32 cacheEpoch = _provider->GetPlanetTerrainCollisionCacheEpoch();
 		float padding = 0.01f;
 		if(maxSeparationDistance > 0.0f) padding += maxSeparationDistance;
+		if(ShouldSkipAboveSurfaceQuery(box, localBase, localOrigin, referenceRadius, collisionRevision, cacheEpoch, radialExpansion + padding)) return;
+
+		AABox queryBox = GetSurfaceQueryBox(box, localBase, localOrigin, radialExpansion);
 		queryBox.ExpandBy(Vec3::sReplicate(padding));
-		CollectSampledGridTriangles(queryBox, localBase, localOrigin, triangles, maximumTriangleCount);
+		CollectSampledGridTriangles(queryBox, localBase, localOrigin, referenceRadius, collisionRevision, cacheEpoch, triangles, maximumTriangleCount);
 	}
 
 	RN::JoltCustomPlanetTerrainInternalProvider *_provider;
