@@ -115,6 +115,8 @@ namespace RN
 		virtual void SetWorldScale(const Vector3 &scal);
 		virtual void SetWorldRotation(const Quaternion &rot);
 		RNAPI void SetUniversePosition(const DVector3 &pos);
+		RNAPI virtual void SetWorldTransform(const Vector3 &pos, const Quaternion &rot);
+		RNAPI void SetUniverseTransform(const DVector3 &pos, const Quaternion &rot);
 
 		RNAPI void SetBoundingBox(const AABB &boundingBox, bool calculateBoundingSphere = true);
 		RNAPI void SetBoundingSphere(const Sphere &boundingSphere);

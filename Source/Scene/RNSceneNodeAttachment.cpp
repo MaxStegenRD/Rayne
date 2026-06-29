@@ -84,6 +84,20 @@ namespace RN
 		_node->SetWorldRotation(rotation);
 		_consumeChangeSets &= ~SceneNode::ChangeSet::Position;
 	}
+	void SceneNodeAttachment::SetWorldTransform(const Vector3 &position, const Quaternion &rotation)
+	{
+		RN_DEBUG_ASSERT(_node, "SceneNodeAttachment must be attached to a SceneNode before setting world transform.");
+		_consumeChangeSets |= SceneNode::ChangeSet::Position;
+		_node->SetWorldTransform(position, rotation);
+		_consumeChangeSets &= ~SceneNode::ChangeSet::Position;
+	}
+	void SceneNodeAttachment::SetUniverseTransform(const DVector3 &position, const Quaternion &rotation)
+	{
+		RN_DEBUG_ASSERT(_node, "SceneNodeAttachment must be attached to a SceneNode before setting universe transform.");
+		_consumeChangeSets |= SceneNode::ChangeSet::Position;
+		_node->SetUniverseTransform(position, rotation);
+		_consumeChangeSets &= ~SceneNode::ChangeSet::Position;
+	}
 
 	Vector3 SceneNodeAttachment::GetWorldPosition() const
 	{

@@ -26,6 +26,8 @@ namespace RN
 		RNAPI void SetUniversePosition(const DVector3 &position);
 		RNAPI void SetWorldScale(const Vector3 &scale);
 		RNAPI void SetWorldRotation(const Quaternion &rotation);
+		RNAPI void SetWorldTransform(const Vector3 &position, const Quaternion &rotation);
+		RNAPI void SetUniverseTransform(const DVector3 &position, const Quaternion &rotation);
 
 		RNAPI Vector3 GetWorldPosition() const;
 		RNAPI DVector3 GetUniversePosition() const;

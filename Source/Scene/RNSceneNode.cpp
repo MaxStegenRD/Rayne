@@ -300,6 +300,57 @@ namespace RN
 #endif
 	}
 
+	void SceneNode::SetWorldTransform(const Vector3 &pos, const Quaternion &rot)
+	{
+		WillUpdate(ChangeSet::Position);
+
+		if(_parent)
+		{
+			Vector3 tempPosition = pos - _parent->GetWorldPosition();
+			Quaternion tempRotation = Quaternion() / _parent->GetWorldRotation();
+			_position = tempRotation.GetRotatedVector(tempPosition) / _parent->GetWorldScale();
+			_rotation = rot / _parent->GetWorldRotation();
+		}
+		else
+		{
+#if RN_ENABLE_UNIVERSE_SCALE
+			Scene *scene = _sceneInfo ? _sceneInfo->GetScene() : nullptr;
+			RN_DEBUG_ASSERT(scene, "SetWorldTransform() on a detached root SceneNode is ambiguous when RN_ENABLE_UNIVERSE_SCALE is enabled. Add the node to a scene first, use SetUniverseTransform() for absolute universe-space placement, or use SetPosition() and SetRotation() for local/stored placement.");
+			_position = scene ? scene->ConvertWorldPositionToUniversePosition(pos) : DVector3(pos);
+#else
+			_position = pos;
+#endif
+			_rotation = rot;
+		}
+
+		_euler = _rotation->GetEulerAngle();
+		DidUpdate(ChangeSet::Position);
+	}
+
+	void SceneNode::SetUniverseTransform(const DVector3 &pos, const Quaternion &rot)
+	{
+#if RN_ENABLE_UNIVERSE_SCALE
+		WillUpdate(ChangeSet::Position);
+
+		if(_parent)
+		{
+			DVector3 localPosition = pos - _parent->GetUniversePosition();
+			_position = _parent->GetWorldRotation().GetConjugated().GetRotatedVector(localPosition.ToVector3()) / _parent->GetWorldScale();
+			_rotation = rot / _parent->GetWorldRotation();
+		}
+		else
+		{
+			_position = pos;
+			_rotation = rot;
+		}
+
+		_euler = _rotation->GetEulerAngle();
+		DidUpdate(ChangeSet::Position);
+#else
+		SetWorldTransform(pos.ToVector3(), rot);
+#endif
+	}
+
 	DVector3 SceneNode::GetUniversePosition() const
 	{
 #if RN_ENABLE_UNIVERSE_SCALE
