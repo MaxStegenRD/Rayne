@@ -170,6 +170,24 @@ namespace RN
 			attachment->SetWorldPosition(ToScenePosition(position) + offset);
 #endif
 		}
+
+		static void SetAttachmentTransform(SceneNodeAttachment *attachment, const JPH::RVec3 &position, const Quaternion &rotation)
+		{
+#if RN_ENABLE_UNIVERSE_SCALE
+			attachment->SetUniverseTransform(ToScenePosition(position), rotation);
+#else
+			attachment->SetWorldTransform(ToScenePosition(position), rotation);
+#endif
+		}
+
+		static void SetAttachmentTransform(SceneNodeAttachment *attachment, const JPH::RVec3 &position, const Vector3 &offset, const Quaternion &rotation)
+		{
+#if RN_ENABLE_UNIVERSE_SCALE
+			attachment->SetUniverseTransform(ToScenePosition(position) + DVector3(offset), rotation);
+#else
+			attachment->SetWorldTransform(ToScenePosition(position) + offset, rotation);
+#endif
+		}
 	};
 } // namespace RN
 

@@ -856,7 +856,6 @@ namespace RN
 
 		RN::Quaternion rotationResult = JoltConversions::ToSceneRotation(rotation) * _rotationOffset.GetConjugated();
 		RN::Vector3 positionOffset = rotationResult.GetRotatedVector(_positionOffset);
-		JoltConversions::SetAttachmentPosition(this, position, positionOffset);
-		SetWorldRotation(rotationResult);
+		JoltConversions::SetAttachmentTransform(this, position, positionOffset, rotationResult);
 	}
 } // namespace RN
