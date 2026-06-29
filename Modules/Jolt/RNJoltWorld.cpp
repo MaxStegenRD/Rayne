@@ -262,6 +262,13 @@ namespace RN
 		_physicsSystem->SetPhysicsSettings(settings);
 	}
 
+	void JoltWorld::SetDeterministicSimulation(bool deterministic)
+	{
+		JPH::PhysicsSettings settings = _physicsSystem->GetPhysicsSettings();
+		settings.mDeterministicSimulation = deterministic;
+		_physicsSystem->SetPhysicsSettings(settings);
+	}
+
 	void JoltWorld::SetPaused(bool paused)
 	{
 		_paused = paused;

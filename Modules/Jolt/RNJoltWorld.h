@@ -70,6 +70,7 @@ namespace RN
 		JTAPI void SetPenetrationSlop(float penetrationSlop);
 		JTAPI void SetContactCorrection(float baumgarte, float maxPenetrationDistance);
 		JTAPI void SetInternalEdgeRemovalVertexTolerance(float tolerance);
+		JTAPI void SetDeterministicSimulation(bool deterministic);
 		JTAPI void SetPaused(bool paused);
 
 		JTAPI JoltContactInfo CastRay(const JoltPosition &globalFrom, const JoltPosition &globalTo, uint32 filterGroup = 0xffffffff, uint32 filterMask = 0xffffffff);
