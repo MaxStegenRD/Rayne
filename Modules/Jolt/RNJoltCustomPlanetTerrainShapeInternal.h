@@ -10,6 +10,7 @@
 
 namespace JPH
 {
+	class PhysicsSystem;
 	class Shape;
 }
 
@@ -26,32 +27,16 @@ namespace RN
 		float radius;
 	};
 
-	struct JoltCustomPlanetTerrainTriangle
-	{
-		double vertices[3][3];
-		unsigned int id;
-		unsigned char activeEdges;
-	};
-
-	class JoltCustomPlanetTerrainInternalTriangleCollector
-	{
-	public:
-		virtual bool AddPlanetTerrainTriangle(const JoltCustomPlanetTerrainTriangle &triangle) = 0;
-
-	protected:
-		virtual ~JoltCustomPlanetTerrainInternalTriangleCollector() = default;
-	};
-
 	class JoltCustomPlanetTerrainInternalProvider
 	{
 	public:
 		virtual void RetainProvider() = 0;
 		virtual void ReleaseProvider() = 0;
-		virtual float GetMinimumPlanetTerrainRadius() const = 0;
 		virtual float GetMaximumPlanetTerrainRadius() const = 0;
-		virtual float GetPlanetTerrainCollisionSampleSpacing() const = 0;
+		virtual void GetPlanetTerrainLocalOrigin(double &x, double &y, double &z) const = 0;
+		virtual unsigned int GetPlanetTerrainCollisionRevision() const = 0;
+		virtual unsigned int GetPlanetTerrainCollisionCacheEpoch() const = 0;
 		virtual bool SamplePlanetTerrain(float directionX, float directionY, float directionZ, JoltCustomPlanetTerrainSample &sample) const = 0;
-		virtual bool CollectPlanetTerrainTriangles(float minimumX, float minimumY, float minimumZ, float maximumX, float maximumY, float maximumZ, JoltCustomPlanetTerrainInternalTriangleCollector &collector, unsigned int maximumTriangleCount) const = 0;
 
 	protected:
 		virtual ~JoltCustomPlanetTerrainInternalProvider() = default;
@@ -59,9 +44,10 @@ namespace RN
 
 	namespace JoltCustomPlanetTerrainInternal
 	{
-		JPH::Shape *CreateShape(JoltCustomPlanetTerrainInternalProvider *provider);
+		JPH::Shape *CreateShape(JoltCustomPlanetTerrainInternalProvider *provider, bool solidRecoveryOnly);
 		void RegisterShape();
-	}
-}
+		void InstallSimulationCollideBodyVsBody(JPH::PhysicsSystem *physicsSystem);
+	} // namespace JoltCustomPlanetTerrainInternal
+} // namespace RN
 
 #endif /* defined(__RAYNE_JOLTCUSTOMPLANETTERRAINSHAPEINTERNAL_H_) */

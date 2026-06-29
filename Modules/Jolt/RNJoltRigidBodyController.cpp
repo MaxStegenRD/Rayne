@@ -128,7 +128,9 @@ namespace RN
 		}
 
 		_upDirection = upDirection.GetNormalized();
-		_controller->SetUp(JoltConversions::ToJoltVector(_upDirection));
+		JPH::Vec3 joltUpDirection = JoltConversions::ToJoltVector(_upDirection);
+		_controller->SetUp(joltUpDirection);
+		_controller->SetSupportingVolume(JPH::Plane((_controller->GetRotation().Conjugated() * joltUpDirection).NormalizedOr(JPH::Vec3::sAxisY()), -_radius));
 		_controller->Activate();
 	}
 
@@ -538,12 +540,11 @@ namespace RN
 			return;
 		}
 
-		_controller->PostSimulation(_groundTolerance);
-		UpdateGroundState();
-
 		JPH::RVec3 position;
 		JPH::Quat rotation;
+		_controller->PostSimulation(_groundTolerance);
 		_controller->GetPositionAndRotation(position, rotation);
+		UpdateGroundState();
 
 		Quaternion rotationResult = JoltConversions::ToSceneRotation(rotation) * _rotationOffset.GetConjugated();
 		Vector3 positionOffset = rotationResult.GetRotatedVector(_positionOffset);

@@ -35,19 +35,28 @@ namespace RN
 			if(_referenceCount == 0) delete this;
 		}
 
-		float GetMinimumPlanetTerrainRadius() const override
-		{
-			return _provider ? _provider->GetMinimumPlanetTerrainRadius() : 0.0f;
-		}
-
 		float GetMaximumPlanetTerrainRadius() const override
 		{
 			return _provider ? _provider->GetMaximumPlanetTerrainRadius() : 0.0f;
 		}
 
-		float GetPlanetTerrainCollisionSampleSpacing() const override
+		void GetPlanetTerrainLocalOrigin(double &x, double &y, double &z) const override
 		{
-			return _provider ? _provider->GetPlanetTerrainCollisionSampleSpacing() : 2.0f;
+			JoltPosition origin;
+			if(_provider) origin = _provider->GetPlanetTerrainLocalOrigin();
+			x = origin.x;
+			y = origin.y;
+			z = origin.z;
+		}
+
+		unsigned int GetPlanetTerrainCollisionRevision() const override
+		{
+			return _provider ? _provider->GetPlanetTerrainCollisionRevision() : 0;
+		}
+
+		unsigned int GetPlanetTerrainCollisionCacheEpoch() const override
+		{
+			return _provider ? _provider->GetPlanetTerrainCollisionCacheEpoch() : 0;
 		}
 
 		bool SamplePlanetTerrain(float directionX, float directionY, float directionZ, JoltCustomPlanetTerrainSample &sample) const override
@@ -67,39 +76,6 @@ namespace RN
 			return true;
 		}
 
-		bool CollectPlanetTerrainTriangles(float minimumX, float minimumY, float minimumZ, float maximumX, float maximumY, float maximumZ, JoltCustomPlanetTerrainInternalTriangleCollector &collector, unsigned int maximumTriangleCount) const override
-		{
-			if(!_provider) return false;
-
-			class CollectorAdapter final : public JoltCustomPlanetTerrainProvider::SurfaceTriangleCollector
-			{
-			public:
-				CollectorAdapter(JoltCustomPlanetTerrainInternalTriangleCollector &collector) :
-					_collector(collector)
-				{}
-
-				bool AddTriangle(const JoltCustomPlanetTerrainProvider::SurfaceTriangle &triangle) override
-				{
-					JoltCustomPlanetTerrainTriangle internalTriangle;
-					for(uint8 i = 0; i < 3; i += 1)
-					{
-						internalTriangle.vertices[i][0] = triangle.vertices[i].x;
-						internalTriangle.vertices[i][1] = triangle.vertices[i].y;
-						internalTriangle.vertices[i][2] = triangle.vertices[i].z;
-					}
-					internalTriangle.id = triangle.id;
-					internalTriangle.activeEdges = triangle.activeEdges;
-					return _collector.AddPlanetTerrainTriangle(internalTriangle);
-				}
-
-			private:
-				JoltCustomPlanetTerrainInternalTriangleCollector &_collector;
-			};
-
-			CollectorAdapter adapter(collector);
-			return _provider->CollectPlanetTerrainTriangles(JoltPosition(minimumX, minimumY, minimumZ), JoltPosition(maximumX, maximumY, maximumZ), adapter, maximumTriangleCount);
-		}
-
 	private:
 		~JoltCustomPlanetTerrainProviderAdapter() override
 		{
@@ -110,27 +86,32 @@ namespace RN
 		JoltCustomPlanetTerrainProvider *_provider;
 	};
 
-	float JoltCustomPlanetTerrainProvider::GetPlanetTerrainCollisionSampleSpacing() const
+	JoltPosition JoltCustomPlanetTerrainProvider::GetPlanetTerrainLocalOrigin() const
 	{
-		return 2.0f;
+		return JoltPosition();
 	}
 
-	bool JoltCustomPlanetTerrainProvider::CollectPlanetTerrainTriangles([[maybe_unused]] const JoltPosition &minimum, [[maybe_unused]] const JoltPosition &maximum, [[maybe_unused]] SurfaceTriangleCollector &collector, [[maybe_unused]] uint32 maximumTriangleCount) const
+	uint32 JoltCustomPlanetTerrainProvider::GetPlanetTerrainCollisionRevision() const
 	{
-		return false;
+		return 0;
 	}
 
-	JoltCustomPlanetTerrainShape::JoltCustomPlanetTerrainShape(JoltCustomPlanetTerrainProvider *provider)
+	uint32 JoltCustomPlanetTerrainProvider::GetPlanetTerrainCollisionCacheEpoch() const
+	{
+		return 0;
+	}
+
+	JoltCustomPlanetTerrainShape::JoltCustomPlanetTerrainShape(JoltCustomPlanetTerrainProvider *provider, bool solidRecoveryOnly)
 	{
 		JoltCustomPlanetTerrainProviderAdapter *adapter = new JoltCustomPlanetTerrainProviderAdapter(provider);
-		_shape = JoltCustomPlanetTerrainInternal::CreateShape(adapter);
+		_shape = JoltCustomPlanetTerrainInternal::CreateShape(adapter, solidRecoveryOnly);
 		adapter->ReleaseProvider();
 		_shape->AddRef();
 	}
 
-	JoltCustomPlanetTerrainShape *JoltCustomPlanetTerrainShape::WithProvider(JoltCustomPlanetTerrainProvider *provider)
+	JoltCustomPlanetTerrainShape *JoltCustomPlanetTerrainShape::WithProvider(JoltCustomPlanetTerrainProvider *provider, bool solidRecoveryOnly)
 	{
-		JoltCustomPlanetTerrainShape *shape = new JoltCustomPlanetTerrainShape(provider);
+		JoltCustomPlanetTerrainShape *shape = new JoltCustomPlanetTerrainShape(provider, solidRecoveryOnly);
 		return shape->Autorelease();
 	}
 
@@ -138,4 +119,4 @@ namespace RN
 	{
 		JoltCustomPlanetTerrainInternal::RegisterShape();
 	}
-}
+} // namespace RN

@@ -8,16 +8,21 @@
 #include "RNJoltCustomPlanetTerrainShapeInternal.h"
 
 #include <Jolt/Jolt.h>
+#include <Jolt/Geometry/RayTriangle.h>
+#include <Jolt/Physics/Body/Body.h>
+#include <Jolt/Physics/Collision/CastConvexVsTriangles.h>
 #include <Jolt/Physics/Collision/CastResult.h>
 #include <Jolt/Physics/Collision/CollidePointResult.h>
 #include <Jolt/Physics/Collision/CollideShape.h>
 #include <Jolt/Physics/Collision/CollideConvexVsTriangles.h>
 #include <Jolt/Physics/Collision/CollisionDispatch.h>
+#include <Jolt/Physics/Collision/InternalEdgeRemovingCollector.h>
 #include <Jolt/Physics/Collision/RayCast.h>
 #include <Jolt/Physics/Collision/TransformedShape.h>
 #include <Jolt/Physics/Collision/Shape/ConvexShape.h>
 #include <Jolt/Physics/Collision/Shape/ScaleHelpers.h>
 #include <Jolt/Physics/Collision/Shape/Shape.h>
+#include <Jolt/Physics/PhysicsSystem.h>
 #ifdef JPH_DEBUG_RENDERER
 	#include <Jolt/Renderer/DebugRenderer.h>
 #endif
@@ -33,19 +38,35 @@ public:
 	{
 		Vec3 vertices[3];
 		uint32 id;
-		uint8 activeEdges;
+	};
+
+	struct PrecisionBase
+	{
+		double x = 0.0;
+		double y = 0.0;
+		double z = 0.0;
+		Vec3 vector = Vec3::sZero();
 	};
 
 	RNCustomPlanetTerrainShape() :
 		Shape(EShapeType::User1, EShapeSubType::User1),
-		_provider(nullptr)
+		_provider(nullptr),
+		_boundsRadius(0.0f),
+		_solidRecoveryOnly(false)
 	{}
 
-	RNCustomPlanetTerrainShape(RN::JoltCustomPlanetTerrainInternalProvider *provider) :
+	RNCustomPlanetTerrainShape(RN::JoltCustomPlanetTerrainInternalProvider *provider, bool solidRecoveryOnly) :
 		Shape(EShapeType::User1, EShapeSubType::User1),
-		_provider(provider)
+		_provider(provider),
+		_boundsRadius(0.0f),
+		_solidRecoveryOnly(solidRecoveryOnly)
 	{
-		if(_provider) _provider->RetainProvider();
+		if(_provider)
+		{
+			_provider->RetainProvider();
+			_boundsRadius = _provider->GetMaximumPlanetTerrainRadius();
+			if(_boundsRadius < 0.0f) _boundsRadius = 0.0f;
+		}
 	}
 
 	~RNCustomPlanetTerrainShape() override
@@ -60,18 +81,17 @@ public:
 
 	AABox GetLocalBounds() const override
 	{
-		const float radius = GetMaximumRadius();
-		return AABox(Vec3::sReplicate(-radius), Vec3::sReplicate(radius));
+		return AABox(Vec3::sReplicate(-_boundsRadius), Vec3::sReplicate(_boundsRadius));
 	}
 
 	uint GetSubShapeIDBitsRecursive() const override
 	{
-		return 32;
+		return TriangleSubShapeIDBits;
 	}
 
 	float GetInnerRadius() const override
 	{
-		return _provider ? _provider->GetMinimumPlanetTerrainRadius() : 0.0f;
+		return 0.0f;
 	}
 
 	MassProperties GetMassProperties() const override
@@ -86,12 +106,49 @@ public:
 
 	Vec3 GetSurfaceNormal([[maybe_unused]] const SubShapeID &subShapeID, Vec3Arg localSurfacePosition) const override
 	{
-		Vec3 direction = localSurfacePosition.NormalizedOr(Vec3::sAxisY());
+		const PrecisionBase localOrigin = GetLocalOrigin();
+		Triangle triangle;
+		if(GetTriangleBySubShapeID(subShapeID, MakePrecisionBase(RVec3(localSurfacePosition)), localOrigin, triangle))
+		{
+			const Vec3 normal = GetTriangleNormal(triangle);
+			if(normal.LengthSq() > 0.0f) return normal;
+		}
+
+		const Vec3 direction = GetPlanetLocalDirection(localSurfacePosition, MakePrecisionBase(RVec3::sZero()), localOrigin);
 		Vec3 position;
 		Vec3 normal;
 		float radius = 0.0f;
 		if(Sample(direction, position, normal, radius)) return normal;
 		return direction;
+	}
+
+	void GetSupportingFace(const SubShapeID &subShapeID, [[maybe_unused]] Vec3Arg direction, Vec3Arg scale, Mat44Arg centerOfMassTransform, SupportingFace &outVertices) const override
+	{
+		const PrecisionBase localOrigin = GetLocalOrigin();
+		Triangle triangle;
+		if(!GetTriangleBySubShapeID(subShapeID, MakePrecisionBase(RVec3::sZero()), localOrigin, triangle))
+		{
+			outVertices.clear();
+			return;
+		}
+
+		outVertices.resize(3);
+		outVertices[0] = triangle.vertices[0];
+		outVertices[1] = triangle.vertices[1];
+		outVertices[2] = triangle.vertices[2];
+
+		if(ScaleHelpers::IsInsideOut(scale))
+		{
+			const Vec3 vertex = outVertices[1];
+			outVertices[1] = outVertices[2];
+			outVertices[2] = vertex;
+		}
+
+		const Mat44 transform = centerOfMassTransform.PreScaled(scale);
+		for(Vec3 &vertex : outVertices)
+		{
+			vertex = transform * vertex;
+		}
 	}
 
 	void GetSubmergedVolume([[maybe_unused]] Mat44Arg centerOfMassTransform, [[maybe_unused]] Vec3Arg scale, [[maybe_unused]] const Plane &surface, float &totalVolume, float &submergedVolume, Vec3 &centerOfBuoyancy
@@ -112,24 +169,15 @@ public:
 
 	bool CastRay(const RayCast &ray, const SubShapeIDCreator &subShapeIDCreator, RayCastResult &hit) const override
 	{
-		float fraction = 0.0f;
-		if(!FindRayHit(ray, hit.mFraction, fraction)) return false;
-
-		hit.mFraction = fraction;
-		hit.mSubShapeID2 = subShapeIDCreator.GetID();
-		return true;
+		RayCastSettings settings;
+		return FindRayTriangleHit(ray, settings, subShapeIDCreator, hit);
 	}
 
-	void CastRay(const RayCast &ray, [[maybe_unused]] const RayCastSettings &rayCastSettings, const SubShapeIDCreator &subShapeIDCreator, CastRayCollector &collector, const ShapeFilter &shapeFilter = { }) const override
+	void CastRay(const RayCast &ray, const RayCastSettings &rayCastSettings, const SubShapeIDCreator &subShapeIDCreator, CastRayCollector &collector, const ShapeFilter &shapeFilter = { }) const override
 	{
 		if(!shapeFilter.ShouldCollide(this, subShapeIDCreator.GetID())) return;
 
-		RayCastResult hit;
-		hit.mFraction = collector.GetEarlyOutFraction();
-		if(CastRay(ray, subShapeIDCreator, hit))
-		{
-			collector.AddHit(hit);
-		}
+		CastRayTriangles(ray, rayCastSettings, subShapeIDCreator, collector);
 	}
 
 	void CollidePoint(Vec3Arg point, const SubShapeIDCreator &subShapeIDCreator, CollidePointCollector &collector, const ShapeFilter &shapeFilter = { }) const override
@@ -150,7 +198,7 @@ public:
 
 		Array<Triangle> triangles;
 		CollectTriangles(box, 0.0f, triangles, MaxContextTriangles);
-		triangleContext->count = triangles.size();
+		triangleContext->count = static_cast<uint>(triangles.size());
 		for(uint i = 0; i < triangleContext->count; i += 1)
 		{
 			triangleContext->triangles[i] = triangles[i];
@@ -197,40 +245,19 @@ public:
 	}
 
 	template<class Visitor>
-	void CollideTriangles(const AABox &box, float maxSeparationDistance, const SubShapeIDCreator &subShapeIDCreator, Visitor &visitor, Vec3Arg localBase) const
+	uint CollideTriangles(const AABox &box, float maxSeparationDistance, const SubShapeIDCreator &subShapeIDCreator, Visitor &visitor, const PrecisionBase &localBase) const
 	{
 		Array<Triangle> triangles;
 		CollectTriangles(box, maxSeparationDistance, localBase, triangles, MaxCollisionTriangles);
-		for(uint i = 0; i < triangles.size() && !visitor.ShouldAbort(); i += 1)
+		const uint triangleCount = static_cast<uint>(triangles.size());
+		for(uint i = 0; i < triangleCount && !visitor.ShouldAbort(); i += 1)
 		{
 			const Triangle &triangle = triangles[i];
-			const uint32 triangleID = triangle.id == 0xffffffffu ? 0xfffffffeu : triangle.id;
-			visitor.Collide(triangle.vertices[0], triangle.vertices[1], triangle.vertices[2], triangle.activeEdges, subShapeIDCreator.PushID(triangleID, 32).GetID());
+			visitor.SetTriangleContactInfo(triangle);
+			visitor.Collide(triangle.vertices[0], triangle.vertices[1], triangle.vertices[2], 0, subShapeIDCreator.PushID(GetTriangleSubShapeID(triangle.id), TriangleSubShapeIDBits).GetID());
 		}
-	}
-
-	void CollideSolidVolume(const ConvexShape *shape, Vec3Arg scale, Mat44Arg shapeTransform, Mat44Arg planetTransform, Vec3Arg localBase, const SubShapeIDCreator &shapeSubShapeIDCreator, const SubShapeIDCreator &planetSubShapeIDCreator, const CollideShapeSettings &settings, CollideShapeCollector &collector) const
-	{
-		if(!_provider) return;
-
-		Vec3 contactPointOnTerrain;
-		Vec3 surfaceNormal;
-		Vec3 supportInPlanet;
-		float penetration = 0.0f;
-		if(!SampleConvexSupport(shape, scale, planetTransform.InversedRotationTranslation() * shapeTransform, localBase, contactPointOnTerrain, surfaceNormal, supportInPlanet, penetration)) return;
-		if(penetration <= -settings.mMaxSeparationDistance) return;
-
-		const Vec3 supportWorld = planetTransform * supportInPlanet;
-		const Vec3 terrainWorld = planetTransform * contactPointOnTerrain;
-		const Vec3 contactNormalWorld = planetTransform.Multiply3x3(surfaceNormal).NormalizedOr(Vec3::sAxisY());
-		CollideShapeResult result(supportWorld,
-								  terrainWorld,
-								  -contactNormalWorld,
-								  penetration,
-								  shapeSubShapeIDCreator.GetID(),
-								  planetSubShapeIDCreator.GetID(),
-								  TransformedShape::sGetBodyID(collector.GetContext()));
-		collector.AddHit(result);
+		visitor.ClearTriangleContactInfo();
+		return triangleCount;
 	}
 
 	static void sRegister()
@@ -248,9 +275,115 @@ public:
 		}
 	}
 
+	static void sInstallSimulationCollideBodyVsBody(PhysicsSystem *physicsSystem)
+	{
+		if(!physicsSystem) return;
+		physicsSystem->SetSimCollideBodyVsBody(sSimCollideBodyVsBody);
+	}
+
 private:
-	static constexpr uint MaxCollisionTriangles = 2048;
+	static constexpr uint MaxCollisionTriangles = 8192;
+	static constexpr uint MaxCastTriangles = 8192;
+	static constexpr uint MaxRayTriangles = 8192;
 	static constexpr uint MaxContextTriangles = 64;
+	static constexpr uint TriangleSubShapeIDBits = 32;
+	static constexpr uint32 TriangleSubShapeIDMask = 0xffffffffu;
+	static constexpr double CollisionGridCellSize = 1.0;
+	static constexpr int CollisionGridQueryPaddingCells = 2;
+	static constexpr int CollisionGridBlockCellBits = 13;
+	static constexpr int CollisionGridBlockCellCount = 1 << CollisionGridBlockCellBits;
+	static constexpr uint32 SampledTriangleIDFlag = 0x80000000u;
+	static constexpr uint32 SampledTriangleFaceShift = 28;
+	static constexpr uint32 SampledTriangleDiagonalShift = 27;
+	static constexpr uint32 SampledTriangleGridUShift = 14;
+	static constexpr uint32 SampledTriangleGridVShift = 1;
+	static constexpr uint32 SampledTriangleGridMask = (1u << CollisionGridBlockCellBits) - 1u;
+	static constexpr uint SampledGridVertexCacheSize = 8192;
+	static constexpr uint32 SampledGridVertexCacheMask = SampledGridVertexCacheSize - 1u;
+	static constexpr float MinimumTriangleNormalLengthSq = 1.0e-12f;
+	static constexpr float MinimumSolidRecoveryCenterDepth = 0.5f;
+	static constexpr float InactiveEdgeNormalRejectDotThreshold = 0.5f;
+
+	struct SampledGridKey
+	{
+		uint8 face = 0;
+		uint8 diagonal = 0;
+		int gridU = 0;
+		int gridV = 0;
+	};
+
+	struct SampledGridFaceRange
+	{
+		bool valid = false;
+		int minU = 0;
+		int maxU = 0;
+		int minV = 0;
+		int maxV = 0;
+	};
+
+	struct CachedSampledGridVertex
+	{
+		const RNCustomPlanetTerrainShape *shape = nullptr;
+		uint32 revision = 0;
+		uint32 cacheEpoch = 0;
+		uint8 face = 0xff;
+		int gridU = 0;
+		int gridV = 0;
+		double absoluteX = 0.0;
+		double absoluteY = 0.0;
+		double absoluteZ = 0.0;
+		bool valid = false;
+	};
+
+	struct SampledGridVertexCache
+	{
+		CachedSampledGridVertex entries[SampledGridVertexCacheSize];
+	};
+
+	static uint32 GetTriangleSubShapeID(uint32 triangleID)
+	{
+		uint32 subShapeID = triangleID & TriangleSubShapeIDMask;
+		if(subShapeID == TriangleSubShapeIDMask) subShapeID -= 1u;
+		return subShapeID;
+	}
+
+	static uint32 GetTriangleSubShapeID(const SubShapeID &subShapeID)
+	{
+		SubShapeID remainder;
+		uint32 triangleID = subShapeID.PopID(TriangleSubShapeIDBits, remainder);
+		if(triangleID == TriangleSubShapeIDMask) triangleID -= 1u;
+		return triangleID;
+	}
+
+	static bool IsSampledTriangleID(uint32 triangleID)
+	{
+		return (triangleID & SampledTriangleIDFlag) != 0;
+	}
+
+	static uint32 GetSampledGridVertexHash(uint32 revision, uint32 cacheEpoch, uint8 face, int gridU, int gridV)
+	{
+		uint32 hash = revision + 0x9e3779b9u;
+		hash ^= cacheEpoch + 0x165667b1u + (hash << 6u) + (hash >> 2u);
+		hash ^= static_cast<uint32>(face) + 0x85ebca6bu + (hash << 6u) + (hash >> 2u);
+		hash ^= static_cast<uint32>(gridU) + 0xc2b2ae35u + (hash << 6u) + (hash >> 2u);
+		hash ^= static_cast<uint32>(gridV) + 0x27d4eb2fu + (hash << 6u) + (hash >> 2u);
+		hash ^= hash >> 16u;
+		hash *= 0x7feb352du;
+		hash ^= hash >> 15u;
+		hash *= 0x846ca68bu;
+		hash ^= hash >> 16u;
+		return hash;
+	}
+
+	static Vec3 GetTriangleNormal(const Triangle &triangle)
+	{
+		return (triangle.vertices[1] - triangle.vertices[0]).Cross(triangle.vertices[2] - triangle.vertices[0]).NormalizedOr(Vec3::sZero());
+	}
+
+	static bool IsTriangleDegenerate(const Triangle &triangle)
+	{
+		return (triangle.vertices[1] - triangle.vertices[0]).Cross(triangle.vertices[2] - triangle.vertices[0]).LengthSq() <= MinimumTriangleNormalLengthSq;
+	}
 
 	static Mat44 GetShiftedTransform(Mat44Arg transform, Vec3Arg worldBase)
 	{
@@ -259,18 +392,373 @@ private:
 		return shiftedTransform;
 	}
 
-	static Mat44 GetShiftedReferenceTransform(Mat44Arg transform, Vec3Arg localBase, Vec3Arg worldBase)
+	static Mat44 GetShiftedReferenceTransform(Mat44Arg transform)
 	{
 		Mat44 shiftedTransform = transform;
-		shiftedTransform.SetTranslation(transform.GetTranslation() - worldBase + transform.Multiply3x3(localBase));
+		shiftedTransform.SetTranslation(Vec3::sZero());
 		return shiftedTransform;
 	}
 
-	static Vec3 GetOffsetPosition(double x, double y, double z, Vec3Arg localBase)
+	static PrecisionBase MakePrecisionBase(RVec3Arg localBase)
 	{
-		return Vec3(static_cast<float>(x - static_cast<double>(localBase.GetX())),
-					static_cast<float>(y - static_cast<double>(localBase.GetY())),
-					static_cast<float>(z - static_cast<double>(localBase.GetZ())));
+		PrecisionBase base;
+		base.x = localBase.GetX();
+		base.y = localBase.GetY();
+		base.z = localBase.GetZ();
+		base.vector = Vec3(static_cast<float>(base.x), static_cast<float>(base.y), static_cast<float>(base.z));
+		return base;
+	}
+
+	static bool Normalize(double &x, double &y, double &z)
+	{
+		const double length = sqrt(x * x + y * y + z * z);
+		if(length <= 1.0e-8) return false;
+
+		x /= length;
+		y /= length;
+		z /= length;
+		return true;
+	}
+
+	static bool GetDirectionForPosition(Vec3Arg position, const PrecisionBase &localBase, const PrecisionBase &localOrigin, double &x, double &y, double &z)
+	{
+		x = static_cast<double>(position.GetX()) + localBase.x + localOrigin.x;
+		y = static_cast<double>(position.GetY()) + localBase.y + localOrigin.y;
+		z = static_cast<double>(position.GetZ()) + localBase.z + localOrigin.z;
+		return Normalize(x, y, z);
+	}
+
+	static bool GetDirectionForOrigin(const PrecisionBase &localOrigin, double &x, double &y, double &z)
+	{
+		x = localOrigin.x;
+		y = localOrigin.y;
+		z = localOrigin.z;
+		return Normalize(x, y, z);
+	}
+
+	static bool GetFaceCoordinatesOnFace(double x, double y, double z, uint8 face, double &u, double &v)
+	{
+		switch(face)
+		{
+			case 0:
+				if(x <= 1.0e-8) return false;
+				u = -z / x;
+				v = y / x;
+				break;
+			case 1:
+			{
+				const double scale = -x;
+				if(scale <= 1.0e-8) return false;
+				u = z / scale;
+				v = y / scale;
+				break;
+			}
+			case 2:
+				if(y <= 1.0e-8) return false;
+				u = x / y;
+				v = -z / y;
+				break;
+			case 3:
+			{
+				const double scale = -y;
+				if(scale <= 1.0e-8) return false;
+				u = x / scale;
+				v = z / scale;
+				break;
+			}
+			case 4:
+				if(z <= 1.0e-8) return false;
+				u = x / z;
+				v = y / z;
+				break;
+			default:
+			{
+				const double scale = -z;
+				if(scale <= 1.0e-8) return false;
+				u = -x / scale;
+				v = y / scale;
+				break;
+			}
+		}
+
+		return u >= -1.25 && u <= 1.25 && v >= -1.25 && v <= 1.25;
+	}
+
+	static Vec3 GetCubeSphereDirection(uint8 face, double u, double v)
+	{
+		double x = 0.0;
+		double y = 0.0;
+		double z = 0.0;
+		switch(face)
+		{
+			case 0:
+				x = 1.0;
+				y = v;
+				z = -u;
+				break;
+			case 1:
+				x = -1.0;
+				y = v;
+				z = u;
+				break;
+			case 2:
+				x = u;
+				y = 1.0;
+				z = -v;
+				break;
+			case 3:
+				x = u;
+				y = -1.0;
+				z = v;
+				break;
+			case 4:
+				x = u;
+				y = v;
+				z = 1.0;
+				break;
+			default:
+				x = -u;
+				y = v;
+				z = -1.0;
+				break;
+		}
+
+		if(!Normalize(x, y, z)) return Vec3::sAxisY();
+		return Vec3(static_cast<float>(x), static_cast<float>(y), static_cast<float>(z));
+	}
+
+	static double GetGridReferenceRadius(const PrecisionBase &localOrigin, float boundsRadius)
+	{
+		if(boundsRadius > 1.0f) return static_cast<double>(boundsRadius);
+
+		const double radius = sqrt(localOrigin.x * localOrigin.x + localOrigin.y * localOrigin.y + localOrigin.z * localOrigin.z);
+		return radius > 1.0 ? radius : 1.0;
+	}
+
+	static int GetGridCoordinate(double coordinateMeters)
+	{
+		const double scaledCoordinate = coordinateMeters / CollisionGridCellSize;
+		int result = static_cast<int>(scaledCoordinate);
+		if(static_cast<double>(result) > scaledCoordinate) result -= 1;
+		return result;
+	}
+
+	static int GetGridBlockOrigin(int gridCoordinate)
+	{
+		int block = gridCoordinate / CollisionGridBlockCellCount;
+		if(gridCoordinate < 0 && gridCoordinate % CollisionGridBlockCellCount != 0) block -= 1;
+		return block * CollisionGridBlockCellCount;
+	}
+
+	static void GetSampledGridBlockOrigin(uint8 face, const PrecisionBase &localOrigin, double referenceRadius, int &originU, int &originV)
+	{
+		double x = 0.0;
+		double y = 0.0;
+		double z = 0.0;
+		double u = 0.0;
+		double v = 0.0;
+		if(GetDirectionForOrigin(localOrigin, x, y, z) && GetFaceCoordinatesOnFace(x, y, z, face, u, v))
+		{
+			originU = GetGridBlockOrigin(GetGridCoordinate(u * referenceRadius));
+			originV = GetGridBlockOrigin(GetGridCoordinate(v * referenceRadius));
+			return;
+		}
+
+		originU = 0;
+		originV = 0;
+	}
+
+	static bool MakeSampledTriangleID(uint8 face, uint8 diagonal, int gridU, int gridV, const PrecisionBase &localOrigin, double referenceRadius, uint32 &id)
+	{
+		if(face >= 6 || diagonal > 1) return false;
+
+		int originU = 0;
+		int originV = 0;
+		GetSampledGridBlockOrigin(face, localOrigin, referenceRadius, originU, originV);
+		const int localU = gridU - originU;
+		const int localV = gridV - originV;
+		if(localU < 0 || localU >= CollisionGridBlockCellCount) return false;
+		if(localV < 0 || localV >= CollisionGridBlockCellCount) return false;
+
+		id = SampledTriangleIDFlag |
+			 (static_cast<uint32>(face) << SampledTriangleFaceShift) |
+			 (static_cast<uint32>(diagonal) << SampledTriangleDiagonalShift) |
+			 (static_cast<uint32>(localU) << SampledTriangleGridUShift) |
+			 (static_cast<uint32>(localV) << SampledTriangleGridVShift);
+		return true;
+	}
+
+	static bool DecodeSampledTriangleID(uint32 id, const PrecisionBase &localOrigin, double referenceRadius, SampledGridKey &key)
+	{
+		if(!IsSampledTriangleID(id)) return false;
+
+		key.face = static_cast<uint8>((id >> SampledTriangleFaceShift) & 0x7u);
+		key.diagonal = static_cast<uint8>((id >> SampledTriangleDiagonalShift) & 0x1u);
+		if(key.face >= 6) return false;
+
+		int originU = 0;
+		int originV = 0;
+		GetSampledGridBlockOrigin(key.face, localOrigin, referenceRadius, originU, originV);
+		key.gridU = originU + static_cast<int>((id >> SampledTriangleGridUShift) & SampledTriangleGridMask);
+		key.gridV = originV + static_cast<int>((id >> SampledTriangleGridVShift) & SampledTriangleGridMask);
+		return true;
+	}
+
+	static void IncludeSampledGridCoordinate(SampledGridFaceRange &range, int gridU, int gridV)
+	{
+		if(!range.valid)
+		{
+			range.valid = true;
+			range.minU = gridU;
+			range.maxU = gridU;
+			range.minV = gridV;
+			range.maxV = gridV;
+			return;
+		}
+
+		if(gridU < range.minU) range.minU = gridU;
+		if(gridU > range.maxU) range.maxU = gridU;
+		if(gridV < range.minV) range.minV = gridV;
+		if(gridV > range.maxV) range.maxV = gridV;
+	}
+
+	static bool DoesTriangleOverlapBox(const Triangle &triangle, const AABox &box)
+	{
+		Vec3 minimum = triangle.vertices[0];
+		Vec3 maximum = triangle.vertices[0];
+		for(uint i = 1; i < 3; i += 1)
+		{
+			const Vec3 vertex = triangle.vertices[i];
+			minimum = Vec3(vertex.GetX() < minimum.GetX() ? vertex.GetX() : minimum.GetX(),
+						   vertex.GetY() < minimum.GetY() ? vertex.GetY() : minimum.GetY(),
+						   vertex.GetZ() < minimum.GetZ() ? vertex.GetZ() : minimum.GetZ());
+			maximum = Vec3(vertex.GetX() > maximum.GetX() ? vertex.GetX() : maximum.GetX(),
+						   vertex.GetY() > maximum.GetY() ? vertex.GetY() : maximum.GetY(),
+						   vertex.GetZ() > maximum.GetZ() ? vertex.GetZ() : maximum.GetZ());
+		}
+
+		if(maximum.GetX() < box.mMin.GetX() || minimum.GetX() > box.mMax.GetX()) return false;
+		if(maximum.GetY() < box.mMin.GetY() || minimum.GetY() > box.mMax.GetY()) return false;
+		if(maximum.GetZ() < box.mMin.GetZ() || minimum.GetZ() > box.mMax.GetZ()) return false;
+		return true;
+	}
+
+	PrecisionBase GetLocalOrigin() const
+	{
+		if(!_provider) return MakePrecisionBase(RVec3::sZero());
+
+		double x = 0.0;
+		double y = 0.0;
+		double z = 0.0;
+		_provider->GetPlanetTerrainLocalOrigin(x, y, z);
+		return MakePrecisionBase(RVec3(x, y, z));
+	}
+
+	static PrecisionBase GetCollisionLocalBase(Mat44Arg shapeTransform, Mat44Arg planetTransform)
+	{
+		return MakePrecisionBase(RVec3(planetTransform.InversedRotationTranslation() * shapeTransform.GetTranslation()));
+	}
+
+	static PrecisionBase GetCastLocalBase(const ShapeCast &shapeCast, Mat44Arg planetTransform)
+	{
+		return MakePrecisionBase(RVec3(planetTransform.InversedRotationTranslation() * shapeCast.mCenterOfMassStart.GetTranslation()));
+	}
+
+	static PrecisionBase GetSimulationCollisionLocalBase(const Body &shapeBody, const Body &planetBody)
+	{
+		return MakePrecisionBase(planetBody.GetInverseCenterOfMassTransform() * shapeBody.GetCenterOfMassPosition());
+	}
+
+	static Vec3 GetOffsetPosition(double x, double y, double z, const PrecisionBase &localBase)
+	{
+		return Vec3(static_cast<float>(x - localBase.x),
+					static_cast<float>(y - localBase.y),
+					static_cast<float>(z - localBase.z));
+	}
+
+	static double GetPlanetLocalRadius(Vec3Arg position, const PrecisionBase &localBase, const PrecisionBase &localOrigin)
+	{
+		const double x = static_cast<double>(position.GetX()) + localBase.x + localOrigin.x;
+		const double y = static_cast<double>(position.GetY()) + localBase.y + localOrigin.y;
+		const double z = static_cast<double>(position.GetZ()) + localBase.z + localOrigin.z;
+		return sqrt(x * x + y * y + z * z);
+	}
+
+	static Vec3 GetPlanetLocalDirection(Vec3Arg position, const PrecisionBase &localBase, const PrecisionBase &localOrigin)
+	{
+		const double x = static_cast<double>(position.GetX()) + localBase.x + localOrigin.x;
+		const double y = static_cast<double>(position.GetY()) + localBase.y + localOrigin.y;
+		const double z = static_cast<double>(position.GetZ()) + localBase.z + localOrigin.z;
+		const double radius = sqrt(x * x + y * y + z * z);
+		if(radius <= 1.0e-8) return Vec3::sAxisY();
+
+		return Vec3(static_cast<float>(x / radius), static_cast<float>(y / radius), static_cast<float>(z / radius));
+	}
+
+	static AABox GetShapeCastBounds(const ShapeCast &shapeCast)
+	{
+		AABox bounds = shapeCast.mShapeWorldBounds;
+		AABox endBounds = shapeCast.mShapeWorldBounds;
+		endBounds.Translate(shapeCast.mDirection);
+		bounds.Encapsulate(endBounds);
+		return bounds;
+	}
+
+	static AABox GetRayBounds(const RayCast &ray, float maximumFraction)
+	{
+		AABox bounds(ray.mOrigin, ray.mOrigin);
+		bounds.Encapsulate(ray.mOrigin + ray.mDirection * maximumFraction);
+		return bounds;
+	}
+
+	static bool ShouldRayHitTriangle(const RayCast &ray, const RayCastSettings &settings, const Triangle &triangle)
+	{
+		if(settings.mBackFaceModeTriangles == EBackFaceMode::CollideWithBackFaces) return true;
+		return ray.mDirection.Dot(GetTriangleNormal(triangle)) < 0.0f;
+	}
+
+	static AABox GetSurfaceQueryBox(const AABox &box, const PrecisionBase &localBase, const PrecisionBase &localOrigin, float sweepDistance)
+	{
+		if(sweepDistance <= 0.0f) return box;
+
+		const Vec3 direction = GetPlanetLocalDirection(box.GetCenter(), localBase, localOrigin);
+		AABox sweptBox = box;
+
+		AABox outwardBox = box;
+		outwardBox.Translate(direction * sweepDistance);
+		sweptBox.Encapsulate(outwardBox);
+
+		AABox inwardBox = box;
+		inwardBox.Translate(direction * -sweepDistance);
+		sweptBox.Encapsulate(inwardBox);
+
+		float tangentXSq = 1.0f - direction.GetX() * direction.GetX();
+		float tangentYSq = 1.0f - direction.GetY() * direction.GetY();
+		float tangentZSq = 1.0f - direction.GetZ() * direction.GetZ();
+		if(tangentXSq < 0.0f) tangentXSq = 0.0f;
+		if(tangentYSq < 0.0f) tangentYSq = 0.0f;
+		if(tangentZSq < 0.0f) tangentZSq = 0.0f;
+
+		const float tangentX = Sqrt(tangentXSq);
+		const float tangentY = Sqrt(tangentYSq);
+		const float tangentZ = Sqrt(tangentZSq);
+		sweptBox.ExpandBy(Vec3(tangentX, tangentY, tangentZ) * sweepDistance);
+
+		return sweptBox;
+	}
+
+	static bool GetTriangleWindingDot(const Triangle &triangle, const PrecisionBase &localBase, const PrecisionBase &localOrigin, float &dot)
+	{
+		const Vec3 normal = (triangle.vertices[1] - triangle.vertices[0]).Cross(triangle.vertices[2] - triangle.vertices[0]);
+		if(normal.LengthSq() <= 1.0e-12f)
+		{
+			dot = 0.0f;
+			return false;
+		}
+
+		const Vec3 centerDirection = GetPlanetLocalDirection((triangle.vertices[0] + triangle.vertices[1] + triangle.vertices[2]) * (1.0f / 3.0f), localBase, localOrigin);
+		dot = normal.Dot(centerDirection);
+		return true;
 	}
 
 	static void TranslateFace(CollideShapeResult::Face &face, Vec3Arg offset)
@@ -289,34 +777,84 @@ private:
 		TranslateFace(result.mShape2Face, offset);
 	}
 
+	static void BuildSurfaceFace(Vec3Arg center, Vec3Arg normal, float extent, CollideShapeResult::Face &face)
+	{
+		Vec3 tangent = normal.Cross(Vec3::sAxisX());
+		if(tangent.LengthSq() <= 1.0e-6f) tangent = normal.Cross(Vec3::sAxisY());
+		tangent = tangent.NormalizedOr(Vec3::sAxisZ());
+		const Vec3 bitangent = normal.Cross(tangent).NormalizedOr(Vec3::sAxisX());
+
+		face.resize(4);
+		face[0] = center - tangent * extent - bitangent * extent;
+		face[1] = center + tangent * extent - bitangent * extent;
+		face[2] = center + tangent * extent + bitangent * extent;
+		face[3] = center - tangent * extent + bitangent * extent;
+	}
+
+	static bool IsUsefulTriangleContact(const CollideShapeResult &result, float maxSeparationDistance)
+	{
+		return result.mPenetrationDepth >= -maxSeparationDistance;
+	}
+
 	class OffsetCollideShapeCollector final : public CollideShapeCollector
 	{
 	public:
-		OffsetCollideShapeCollector(CollideShapeCollector &collector, Vec3Arg offset) :
+		OffsetCollideShapeCollector(CollideShapeCollector &collector, Vec3Arg offset, float maxSeparationDistance, Mat44Arg terrainTransform) :
 			CollideShapeCollector(collector),
 			_collector(collector),
 			_offset(offset),
-			_hitCount(0)
+			_maxSeparationDistance(maxSeparationDistance),
+			_terrainTransform(terrainTransform)
 		{}
+
+		void SetTriangleContactInfo(const Triangle &triangle)
+		{
+			_triangleNormalWorld = _terrainTransform.Multiply3x3(GetTriangleNormal(triangle)).NormalizedOr(Vec3::sZero());
+			_hasTriangleContactInfo = true;
+		}
+
+		void ClearTriangleContactInfo()
+		{
+			_hasTriangleContactInfo = false;
+		}
 
 		void AddHit(const CollideShapeResult &result) override
 		{
-			_hitCount += 1;
+			bool inactiveEdgeNormalRejected = false;
+
+			if(_hasTriangleContactInfo)
+			{
+				const Vec3 rawContactNormal = -result.mPenetrationAxis.NormalizedOr(Vec3::sZero());
+				inactiveEdgeNormalRejected = rawContactNormal.Dot(_triangleNormalWorld) < InactiveEdgeNormalRejectDotThreshold;
+			}
+
+			const bool useful = !inactiveEdgeNormalRejected && IsUsefulTriangleContact(result, _maxSeparationDistance);
+			if(useful)
+			{
+				_usefulHitCount += 1;
+			}
+
+			if(inactiveEdgeNormalRejected) return;
+
 			CollideShapeResult offsetResult = result;
 			RNCustomPlanetTerrainShape::TranslateResult(offsetResult, _offset);
 			_collector.AddHit(offsetResult);
 			UpdateEarlyOutFraction(_collector.GetEarlyOutFraction());
 		}
 
-		uint GetHitCount() const
+		uint GetUsefulHitCount() const
 		{
-			return _hitCount;
+			return _usefulHitCount;
 		}
 
 	private:
 		CollideShapeCollector &_collector;
 		Vec3 _offset;
-		uint _hitCount;
+		float _maxSeparationDistance;
+		Mat44 _terrainTransform;
+		Vec3 _triangleNormalWorld = Vec3::sZero();
+		uint _usefulHitCount = 0;
+		bool _hasTriangleContactInfo = false;
 	};
 
 	class OffsetCastShapeCollector final : public CastShapeCollector
@@ -341,6 +879,24 @@ private:
 		Vec3 _offset;
 	};
 
+	class ReversedCollideShapeCollector final : public CollideShapeCollector
+	{
+	public:
+		explicit ReversedCollideShapeCollector(CollideShapeCollector &collector) :
+			CollideShapeCollector(collector),
+			_collector(collector)
+		{}
+
+		void AddHit(const CollideShapeResult &result) override
+		{
+			_collector.AddHit(result.Reversed());
+			UpdateEarlyOutFraction(_collector.GetEarlyOutFraction());
+		}
+
+	private:
+		CollideShapeCollector &_collector;
+	};
+
 	struct TriangleContext
 	{
 		Triangle triangles[MaxContextTriangles];
@@ -350,13 +906,8 @@ private:
 
 	static_assert(sizeof(TriangleContext) <= sizeof(GetTrianglesContext), "Triangle context is too large.");
 
-	static void sCollideConvexVsPlanetTerrain(const Shape *shape1, const Shape *shape2, Vec3Arg scale1, Vec3Arg scale2, Mat44Arg transform1, Mat44Arg transform2, const SubShapeIDCreator &subShapeIDCreator1, const SubShapeIDCreator &subShapeIDCreator2, const CollideShapeSettings &settings, CollideShapeCollector &collector, [[maybe_unused]] const ShapeFilter &shapeFilter)
+	static void CollideConvexVsPlanetTerrain(const ConvexShape *convex, const RNCustomPlanetTerrainShape *planet, Vec3Arg scale1, Vec3Arg scale2, Mat44Arg transform1, Mat44Arg transform2, const SubShapeID &subShapeID1, const SubShapeIDCreator &subShapeIDCreator2, const CollideShapeSettings &settings, CollideShapeCollector &collector, const PrecisionBase &localBase, Vec3Arg worldBase)
 	{
-		JPH_ASSERT(shape1->GetType() == EShapeType::Convex);
-		JPH_ASSERT(shape2->GetSubType() == EShapeSubType::User1);
-		const ConvexShape *convex = static_cast<const ConvexShape *>(shape1);
-		const RNCustomPlanetTerrainShape *planet = static_cast<const RNCustomPlanetTerrainShape *>(shape2);
-
 		struct Visitor : public CollideConvexVsTriangles
 		{
 			using CollideConvexVsTriangles::CollideConvexVsTriangles;
@@ -370,103 +921,284 @@ private:
 			{
 				return mBoundsOf1InSpaceOf2;
 			}
+
+			void SetTriangleContactInfo(const Triangle &triangle)
+			{
+				static_cast<OffsetCollideShapeCollector &>(mCollector).SetTriangleContactInfo(triangle);
+			}
+
+			void ClearTriangleContactInfo()
+			{
+				static_cast<OffsetCollideShapeCollector &>(mCollector).ClearTriangleContactInfo();
+			}
 		};
 
-		const Vec3 worldBase = transform1.GetTranslation();
-		const Vec3 localBase = transform2.InversedRotationTranslation() * worldBase;
 		const Mat44 shiftedTransform1 = GetShiftedTransform(transform1, worldBase);
-		const Mat44 shiftedTransform2 = GetShiftedReferenceTransform(transform2, localBase, worldBase);
+		const Mat44 shiftedTransform2 = GetShiftedReferenceTransform(transform2);
 
-		CollideShapeSettings triangleSettings = settings;
-		triangleSettings.mActiveEdgeMode = EActiveEdgeMode::CollideOnlyWithActive;
-		triangleSettings.mCollectFacesMode = ECollectFacesMode::CollectFaces;
+		OffsetCollideShapeCollector offsetCollector(collector, worldBase, settings.mMaxSeparationDistance, shiftedTransform2);
+		Visitor visitor(convex, scale1, scale2, shiftedTransform1, shiftedTransform2, subShapeID1, settings, offsetCollector);
 
-		OffsetCollideShapeCollector triangleCollector(collector, worldBase);
-		Visitor visitor(convex, scale1, scale2, shiftedTransform1, shiftedTransform2, subShapeIDCreator1.GetID(), triangleSettings, triangleCollector);
-		planet->CollideTriangles(visitor.GetQueryBounds(), triangleSettings.mMaxSeparationDistance, subShapeIDCreator2, visitor, localBase);
-		if(triangleCollector.GetHitCount() != 0) return;
-
-		OffsetCollideShapeCollector solidCollector(collector, worldBase);
-		planet->CollideSolidVolume(convex, scale1, shiftedTransform1, shiftedTransform2, localBase, subShapeIDCreator1, subShapeIDCreator2, settings, solidCollector);
-	}
-
-	static void sCastConvexVsPlanetTerrain(const ShapeCast &shapeCast, [[maybe_unused]] const ShapeCastSettings &settings, const Shape *shape, [[maybe_unused]] Vec3Arg scale, [[maybe_unused]] const ShapeFilter &shapeFilter, Mat44Arg planetTransform, const SubShapeIDCreator &shapeSubShapeIDCreator, const SubShapeIDCreator &planetSubShapeIDCreator, CastShapeCollector &collector)
-	{
-		JPH_ASSERT(shapeCast.mShape->GetType() == EShapeType::Convex);
-		JPH_ASSERT(shape->GetSubType() == EShapeSubType::User1);
-		const ConvexShape *convex = static_cast<const ConvexShape *>(shapeCast.mShape);
-		const RNCustomPlanetTerrainShape *planet = static_cast<const RNCustomPlanetTerrainShape *>(shape);
-		const Vec3 localBase = shapeCast.mCenterOfMassStart.GetTranslation();
-		const Vec3 worldBase = planetTransform * localBase;
-		const Mat44 shiftedPlanetTransform = GetShiftedReferenceTransform(planetTransform, localBase, worldBase);
-		const ShapeCast shiftedShapeCast = shapeCast.PostTranslated(-localBase);
-		OffsetCastShapeCollector offsetCollector(collector, worldBase);
-
-		Vec3 surfacePosition;
-		Vec3 surfaceNormal;
-		Vec3 supportInPlanet;
-		float penetration = 0.0f;
-		if(planet->SampleConvexSupport(convex, shiftedShapeCast.mScale, shiftedShapeCast.mCenterOfMassStart, localBase, surfacePosition, surfaceNormal, supportInPlanet, penetration) && penetration > 0.0f)
+		if(planet->_solidRecoveryOnly)
 		{
-			planet->AddShapeCastHit(0.0f, shiftedPlanetTransform, surfacePosition, surfaceNormal, supportInPlanet, shapeSubShapeIDCreator, planetSubShapeIDCreator, offsetCollector);
+			planet->AddSolidRecoveryContact(convex, scale1, scale2, shiftedTransform1, shiftedTransform2, subShapeID1, subShapeIDCreator2.GetID(), settings, offsetCollector, localBase);
 			return;
 		}
 
-		float previousFraction = 0.0f;
-		for(uint i = 1; i <= 32; i += 1)
+		planet->CollideTriangles(visitor.GetQueryBounds(), settings.mMaxSeparationDistance, subShapeIDCreator2, visitor, localBase);
+		const uint usefulTriangleHitCount = offsetCollector.GetUsefulHitCount();
+		if(usefulTriangleHitCount == 0)
 		{
-			const float currentFraction = static_cast<float>(i) / 32.0f;
-			const Mat44 shapeTransform = shiftedShapeCast.mCenterOfMassStart.PostTranslated(shiftedShapeCast.mDirection * currentFraction);
-			if(planet->SampleConvexSupport(convex, shiftedShapeCast.mScale, shapeTransform, localBase, surfacePosition, surfaceNormal, supportInPlanet, penetration) && penetration > 0.0f)
-			{
-				float minFraction = previousFraction;
-				float maxFraction = currentFraction;
-				for(uint step = 0; step < 10; step += 1)
-				{
-					const float midFraction = (minFraction + maxFraction) * 0.5f;
-					const Mat44 midTransform = shiftedShapeCast.mCenterOfMassStart.PostTranslated(shiftedShapeCast.mDirection * midFraction);
-					if(planet->SampleConvexSupport(convex, shiftedShapeCast.mScale, midTransform, localBase, surfacePosition, surfaceNormal, supportInPlanet, penetration) && penetration > 0.0f)
-					{
-						maxFraction = midFraction;
-					}
-					else
-					{
-						minFraction = midFraction;
-					}
-				}
-
-				const Mat44 hitTransform = shiftedShapeCast.mCenterOfMassStart.PostTranslated(shiftedShapeCast.mDirection * maxFraction);
-				if(planet->SampleConvexSupport(convex, shiftedShapeCast.mScale, hitTransform, localBase, surfacePosition, surfaceNormal, supportInPlanet, penetration))
-				{
-					planet->AddShapeCastHit(maxFraction, shiftedPlanetTransform, surfacePosition, surfaceNormal, supportInPlanet, shapeSubShapeIDCreator, planetSubShapeIDCreator, offsetCollector);
-				}
-				return;
-			}
-
-			previousFraction = currentFraction;
+			planet->AddSolidRecoveryContact(convex, scale1, scale2, shiftedTransform1, shiftedTransform2, subShapeID1, subShapeIDCreator2.GetID(), settings, offsetCollector, localBase);
 		}
 	}
 
-	float GetMaximumRadius() const
+	static void sCollideConvexVsPlanetTerrain(const Shape *shape1, const Shape *shape2, Vec3Arg scale1, Vec3Arg scale2, Mat44Arg transform1, Mat44Arg transform2, const SubShapeIDCreator &subShapeIDCreator1, const SubShapeIDCreator &subShapeIDCreator2, const CollideShapeSettings &settings, CollideShapeCollector &collector, [[maybe_unused]] const ShapeFilter &shapeFilter)
 	{
-		if(!_provider) return 0.0f;
-		const float radius = _provider->GetMaximumPlanetTerrainRadius();
-		return radius > 0.0f ? radius : 0.0f;
+		JPH_ASSERT(shape1->GetType() == EShapeType::Convex);
+		JPH_ASSERT(shape2->GetSubType() == EShapeSubType::User1);
+		const ConvexShape *convex = static_cast<const ConvexShape *>(shape1);
+		const RNCustomPlanetTerrainShape *planet = static_cast<const RNCustomPlanetTerrainShape *>(shape2);
+
+		const PrecisionBase localBase = GetCollisionLocalBase(transform1, transform2);
+		const Vec3 worldBase = transform2 * localBase.vector;
+		CollideConvexVsPlanetTerrain(convex, planet, scale1, scale2, transform1, transform2, subShapeIDCreator1.GetID(), subShapeIDCreator2, settings, collector, localBase, worldBase);
 	}
 
-	float GetSampleSpacing() const
+	static void sSimCollideBodyVsBody(const Body &body1, const Body &body2, Mat44Arg transform1, Mat44Arg transform2, CollideShapeSettings &settings, CollideShapeCollector &collector, const ShapeFilter &shapeFilter)
 	{
-		if(!_provider) return 4.0f;
-		const float spacing = _provider->GetPlanetTerrainCollisionSampleSpacing();
-		return spacing > 0.25f ? spacing : 0.25f;
+		const Shape *shape1 = body1.GetShape();
+		const Shape *shape2 = body2.GetShape();
+		if(shape1 && shape2 && shape1->GetType() == EShapeType::Convex && shape2->GetSubType() == EShapeSubType::User1)
+		{
+			SubShapeIDCreator subShapeIDCreator1;
+			SubShapeIDCreator subShapeIDCreator2;
+			if(!shapeFilter.ShouldCollide(shape1, subShapeIDCreator1.GetID(), shape2, subShapeIDCreator2.GetID())) return;
+
+			const ConvexShape *convex = static_cast<const ConvexShape *>(shape1);
+			const RNCustomPlanetTerrainShape *planet = static_cast<const RNCustomPlanetTerrainShape *>(shape2);
+			const PrecisionBase localBase = GetSimulationCollisionLocalBase(body1, body2);
+			if(body1.GetEnhancedInternalEdgeRemovalWithBody(body2))
+			{
+				settings.mActiveEdgeMode = EActiveEdgeMode::CollideWithAll;
+				settings.mCollectFacesMode = ECollectFacesMode::CollectFaces;
+				InternalEdgeRemovingCollector edgeRemovingCollector(collector, settings.mInternalEdgeRemovalVertexToleranceSq);
+				CollideConvexVsPlanetTerrain(convex, planet, Vec3::sOne(), Vec3::sOne(), transform1, transform2, subShapeIDCreator1.GetID(), subShapeIDCreator2, settings, edgeRemovingCollector, localBase, Vec3::sZero());
+				edgeRemovingCollector.Flush();
+			}
+			else
+			{
+				CollideConvexVsPlanetTerrain(convex, planet, Vec3::sOne(), Vec3::sOne(), transform1, transform2, subShapeIDCreator1.GetID(), subShapeIDCreator2, settings, collector, localBase, Vec3::sZero());
+			}
+			return;
+		}
+		if(shape1 && shape2 && shape1->GetSubType() == EShapeSubType::User1 && shape2->GetType() == EShapeType::Convex)
+		{
+			SubShapeIDCreator subShapeIDCreator1;
+			SubShapeIDCreator subShapeIDCreator2;
+			if(!shapeFilter.ShouldCollide(shape1, subShapeIDCreator1.GetID(), shape2, subShapeIDCreator2.GetID())) return;
+
+			const RNCustomPlanetTerrainShape *planet = static_cast<const RNCustomPlanetTerrainShape *>(shape1);
+			const ConvexShape *convex = static_cast<const ConvexShape *>(shape2);
+			const PrecisionBase localBase = GetSimulationCollisionLocalBase(body2, body1);
+			ReversedCollideShapeCollector reversedCollector(collector);
+			if(body1.GetEnhancedInternalEdgeRemovalWithBody(body2))
+			{
+				settings.mActiveEdgeMode = EActiveEdgeMode::CollideWithAll;
+				settings.mCollectFacesMode = ECollectFacesMode::CollectFaces;
+				InternalEdgeRemovingCollector edgeRemovingCollector(reversedCollector, settings.mInternalEdgeRemovalVertexToleranceSq);
+				CollideConvexVsPlanetTerrain(convex, planet, Vec3::sOne(), Vec3::sOne(), transform2, transform1, subShapeIDCreator2.GetID(), subShapeIDCreator1, settings, edgeRemovingCollector, localBase, Vec3::sZero());
+				edgeRemovingCollector.Flush();
+			}
+			else
+			{
+				CollideConvexVsPlanetTerrain(convex, planet, Vec3::sOne(), Vec3::sOne(), transform2, transform1, subShapeIDCreator2.GetID(), subShapeIDCreator1, settings, reversedCollector, localBase, Vec3::sZero());
+			}
+			return;
+		}
+
+		PhysicsSystem::sDefaultSimCollideBodyVsBody(body1, body2, transform1, transform2, settings, collector, shapeFilter);
+	}
+
+	static void sCastConvexVsPlanetTerrain(const ShapeCast &shapeCast, const ShapeCastSettings &settings, const Shape *shape, Vec3Arg scale, [[maybe_unused]] const ShapeFilter &shapeFilter, Mat44Arg planetTransform, const SubShapeIDCreator &shapeSubShapeIDCreator, const SubShapeIDCreator &planetSubShapeIDCreator, CastShapeCollector &collector)
+	{
+		JPH_ASSERT(shapeCast.mShape->GetType() == EShapeType::Convex);
+		JPH_ASSERT(shape->GetSubType() == EShapeSubType::User1);
+		const RNCustomPlanetTerrainShape *planet = static_cast<const RNCustomPlanetTerrainShape *>(shape);
+
+		struct Visitor : public CastConvexVsTriangles
+		{
+			using CastConvexVsTriangles::CastConvexVsTriangles;
+
+			bool ShouldAbort() const
+			{
+				return mCollector.ShouldEarlyOut();
+			}
+		};
+
+		const PrecisionBase localBase = GetCastLocalBase(shapeCast, planetTransform);
+		const Vec3 worldBase = planetTransform * localBase.vector;
+		const Mat44 shiftedPlanetTransform = GetShiftedReferenceTransform(planetTransform);
+		const ShapeCast shiftedShapeCast = shapeCast.PostTranslated(-worldBase);
+		OffsetCastShapeCollector offsetCollector(collector, worldBase);
+
+		Array<Triangle> triangles;
+		const AABox castBounds = GetShapeCastBounds(shiftedShapeCast);
+		planet->CollectTriangles(castBounds, 0.0f, localBase, triangles, MaxCastTriangles);
+
+		Visitor visitor(shiftedShapeCast, settings, scale, shiftedPlanetTransform, shapeSubShapeIDCreator, offsetCollector);
+		for(uint i = 0; i < triangles.size() && !visitor.ShouldAbort(); i += 1)
+		{
+			const Triangle &triangle = triangles[i];
+			visitor.Cast(triangle.vertices[0], triangle.vertices[1], triangle.vertices[2], 0, planetSubShapeIDCreator.PushID(GetTriangleSubShapeID(triangle.id), TriangleSubShapeIDBits).GetID());
+		}
+	}
+
+	void CollectRayTriangles(const RayCast &shiftedRay, float maximumFraction, const PrecisionBase &localBase, Array<Triangle> &triangles) const
+	{
+		if(maximumFraction <= 0.0f) return;
+		if(shiftedRay.mDirection.LengthSq() <= 0.0f) return;
+
+		AABox rayBounds = GetRayBounds(shiftedRay, maximumFraction);
+		rayBounds.ExpandBy(Vec3::sReplicate(0.01f));
+		CollectTriangles(rayBounds, 0.0f, localBase, triangles, MaxRayTriangles);
+	}
+
+	bool FindRayTriangleHit(const RayCast &ray, const RayCastSettings &settings, const SubShapeIDCreator &subShapeIDCreator, RayCastResult &hit) const
+	{
+		const PrecisionBase localBase = MakePrecisionBase(RVec3(ray.mOrigin));
+		const RayCast shiftedRay(ray.mOrigin - localBase.vector, ray.mDirection);
+
+		Array<Triangle> triangles;
+		CollectRayTriangles(shiftedRay, hit.mFraction, localBase, triangles);
+		bool hasHit = false;
+
+		for(const Triangle &triangle : triangles)
+		{
+			if(!ShouldRayHitTriangle(shiftedRay, settings, triangle)) continue;
+
+			const float fraction = RayTriangle(shiftedRay.mOrigin, shiftedRay.mDirection, triangle.vertices[0], triangle.vertices[1], triangle.vertices[2]);
+			if(fraction >= hit.mFraction) continue;
+
+			hit.mFraction = fraction;
+			hit.mSubShapeID2 = subShapeIDCreator.PushID(GetTriangleSubShapeID(triangle.id), TriangleSubShapeIDBits).GetID();
+			hasHit = true;
+		}
+
+		return hasHit;
+	}
+
+	void CastRayTriangles(const RayCast &ray, const RayCastSettings &settings, const SubShapeIDCreator &subShapeIDCreator, CastRayCollector &collector) const
+	{
+		const PrecisionBase localBase = MakePrecisionBase(RVec3(ray.mOrigin));
+		const RayCast shiftedRay(ray.mOrigin - localBase.vector, ray.mDirection);
+
+		Array<Triangle> triangles;
+		CollectRayTriangles(shiftedRay, collector.GetEarlyOutFraction(), localBase, triangles);
+
+		for(const Triangle &triangle : triangles)
+		{
+			if(collector.ShouldEarlyOut()) return;
+			if(!ShouldRayHitTriangle(shiftedRay, settings, triangle)) continue;
+
+			const float fraction = RayTriangle(shiftedRay.mOrigin, shiftedRay.mDirection, triangle.vertices[0], triangle.vertices[1], triangle.vertices[2]);
+			if(fraction >= collector.GetEarlyOutFraction()) continue;
+
+			RayCastResult result;
+			result.mFraction = fraction;
+			result.mSubShapeID2 = subShapeIDCreator.PushID(GetTriangleSubShapeID(triangle.id), TriangleSubShapeIDBits).GetID();
+			collector.AddHit(result);
+		}
+	}
+
+	bool AddSolidRecoveryContact(const ConvexShape *convex, Vec3Arg scale1, Vec3Arg scale2, Mat44Arg shiftedTransform1, Mat44Arg shiftedTransform2, const SubShapeID &subShapeID1, const SubShapeID &subShapeID2, const CollideShapeSettings &settings, CollideShapeCollector &collector, const PrecisionBase &localBase) const
+	{
+		const PrecisionBase localOrigin = GetLocalOrigin();
+		const float centerRadius = static_cast<float>(GetPlanetLocalRadius(Vec3::sZero(), localBase, localOrigin));
+		if(centerRadius <= 1.0e-4f) return false;
+
+		const Vec3 direction = GetPlanetLocalDirection(Vec3::sZero(), localBase, localOrigin);
+		Vec3 surfacePosition;
+		Vec3 surfaceNormal;
+		float surfaceRadius = 0.0f;
+		if(!Sample(direction, localBase, surfacePosition, surfaceNormal, surfaceRadius)) return false;
+		if(surfaceRadius <= 0.0f) return false;
+
+		const float centerDepth = surfaceRadius - centerRadius;
+		const float minimumCenterDepth = MinimumSolidRecoveryCenterDepth;
+		if(centerDepth <= minimumCenterDepth)
+		{
+			return false;
+		}
+
+		Vec3 surfaceNormalWorld = shiftedTransform2.Multiply3x3(surfaceNormal).NormalizedOr(Vec3::sZero());
+		if(surfaceNormalWorld.LengthSq() <= 1.0e-6f)
+		{
+			surfaceNormalWorld = shiftedTransform2.Multiply3x3(direction).NormalizedOr(Vec3::sAxisY());
+		}
+
+		const Vec3 surfacePositionWorld = shiftedTransform2 * (scale2 * surfacePosition);
+		const float centerSurfaceDistance = (shiftedTransform1.GetTranslation() - surfacePositionWorld).Dot(surfaceNormalWorld);
+		if(centerSurfaceDistance > 0.0f)
+		{
+			return false;
+		}
+
+		const Vec3 normalInConvexSpace = shiftedTransform1.Multiply3x3Transposed(surfaceNormalWorld).NormalizedOr(Vec3::sAxisY());
+		ConvexShape::SupportBuffer supportBuffer;
+		const ConvexShape::Support *support = convex->GetSupportFunction(ConvexShape::ESupportMode::Default, supportBuffer, scale1);
+		const Vec3 supportPoint = support->GetSupport(-normalInConvexSpace);
+		const float convexRadius = support->GetConvexRadius();
+		const Vec3 supportPointWorld = shiftedTransform1 * supportPoint;
+		const float signedDistance = (supportPointWorld - surfacePositionWorld).Dot(surfaceNormalWorld);
+		const float penetrationDepth = -signedDistance + convexRadius;
+		if(penetrationDepth <= -settings.mMaxSeparationDistance) return false;
+		if(-penetrationDepth >= collector.GetEarlyOutFraction()) return false;
+
+		const Vec3 point1 = supportPointWorld - surfaceNormalWorld * convexRadius;
+		const Vec3 point2 = supportPointWorld - surfaceNormalWorld * signedDistance;
+		CollideShapeResult result(point1, point2, -surfaceNormalWorld, penetrationDepth, subShapeID1, subShapeID2, TransformedShape::sGetBodyID(collector.GetContext()));
+
+		if(settings.mCollectFacesMode == ECollectFacesMode::CollectFaces)
+		{
+			convex->GetSupportingFace(SubShapeID(), normalInConvexSpace, scale1, shiftedTransform1, result.mShape1Face);
+			if(!result.mShape1Face.empty())
+			{
+				float faceExtent = convex->GetLocalBounds().Scaled(scale1).GetExtent().Length();
+				if(faceExtent < 1.0f) faceExtent = 1.0f;
+				if(faceExtent > 16.0f) faceExtent = 16.0f;
+				BuildSurfaceFace(point2, surfaceNormalWorld, faceExtent, result.mShape2Face);
+			}
+		}
+
+		collector.AddHit(result);
+		return true;
 	}
 
 	bool Sample(Vec3Arg direction, Vec3 &position, Vec3 &normal, float &radius) const
 	{
-		return Sample(direction, Vec3::sZero(), position, normal, radius);
+		return Sample(direction, MakePrecisionBase(RVec3::sZero()), position, normal, radius);
 	}
 
-	bool Sample(Vec3Arg direction, Vec3Arg localBase, Vec3 &position, Vec3 &normal, float &radius) const
+	bool GetTriangleBySubShapeID(const SubShapeID &subShapeID, const PrecisionBase &localBase, const PrecisionBase &localOrigin, Triangle &triangle) const
+	{
+		if(!_provider) return false;
+
+		const uint32 triangleID = GetTriangleSubShapeID(subShapeID);
+		if(IsSampledTriangleID(triangleID))
+		{
+			const double referenceRadius = GetGridReferenceRadius(localOrigin, _boundsRadius);
+			const uint32 collisionRevision = _provider->GetPlanetTerrainCollisionRevision();
+			const uint32 cacheEpoch = _provider->GetPlanetTerrainCollisionCacheEpoch();
+			SampledGridKey key;
+			if(!DecodeSampledTriangleID(triangleID, localOrigin, referenceRadius, key)) return false;
+			return BuildSampledGridTriangle(key, localBase, localOrigin, referenceRadius, collisionRevision, cacheEpoch, triangle);
+		}
+
+		return false;
+	}
+
+	bool Sample(Vec3Arg direction, const PrecisionBase &localBase, const PrecisionBase &localOrigin, Vec3 &position, Vec3 &normal, float &radius) const
 	{
 		if(!_provider) return false;
 		const Vec3 normalizedDirection = direction.NormalizedOr(Vec3::sAxisY());
@@ -475,185 +1207,269 @@ private:
 
 		position = GetOffsetPosition(sample.positionX, sample.positionY, sample.positionZ, localBase);
 		normal = Vec3(sample.normalX, sample.normalY, sample.normalZ).NormalizedOr(normalizedDirection);
-		radius = sample.radius > 0.0f ? sample.radius : (position + localBase).Length();
+		radius = sample.radius > 0.0f ? sample.radius : static_cast<float>(GetPlanetLocalRadius(position, localBase, localOrigin));
 		return true;
 	}
 
-	bool SampleConvexSupport(const ConvexShape *shape, Vec3Arg scale, Mat44Arg shapeTransformInPlanet, Vec3Arg localBase, Vec3 &surfacePosition, Vec3 &surfaceNormal, Vec3 &supportInPlanet, float &penetration) const
+	bool Sample(Vec3Arg direction, const PrecisionBase &localBase, Vec3 &position, Vec3 &normal, float &radius) const
 	{
-		const Vec3 shapeCenter = shapeTransformInPlanet.GetTranslation() + localBase;
-		const Vec3 direction = shapeCenter.NormalizedOr(Vec3::sAxisY());
-
-		float surfaceRadius = 0.0f;
-		if(!Sample(direction, localBase, surfacePosition, surfaceNormal, surfaceRadius)) return false;
-
-		ConvexShape::SupportBuffer supportBuffer;
-		const ConvexShape::Support *support = shape->GetSupportFunction(ConvexShape::ESupportMode::Default, supportBuffer, scale);
-		if(!support) return false;
-
-		const Vec3 supportDirection = shapeTransformInPlanet.Multiply3x3Transposed(-surfaceNormal);
-		const Vec3 supportPositionInPlanet = shapeTransformInPlanet * support->GetSupport(supportDirection);
-		const Vec3 supportDirectionInPlanet = (supportPositionInPlanet + localBase).NormalizedOr(direction);
-		if(!Sample(supportDirectionInPlanet, localBase, surfacePosition, surfaceNormal, surfaceRadius)) return false;
-
-		const float signedDistance = (supportPositionInPlanet - surfacePosition).Dot(surfaceNormal);
-		const float convexRadius = support->GetConvexRadius();
-		surfacePosition = supportPositionInPlanet - surfaceNormal * signedDistance;
-		supportInPlanet = supportPositionInPlanet - surfaceNormal * convexRadius;
-		penetration = -signedDistance + convexRadius;
-		return true;
-	}
-
-	void AddShapeCastHit(float fraction, Mat44Arg planetTransform, Vec3Arg surfacePosition, Vec3Arg surfaceNormal, Vec3Arg supportInPlanet, const SubShapeIDCreator &shapeSubShapeIDCreator, const SubShapeIDCreator &planetSubShapeIDCreator, CastShapeCollector &collector) const
-	{
-		if(fraction >= collector.GetEarlyOutFraction()) return;
-
-		const Vec3 supportWorld = planetTransform * supportInPlanet;
-		const Vec3 surfaceWorld = planetTransform * surfacePosition;
-		const Vec3 normalWorld = planetTransform.Multiply3x3(surfaceNormal).NormalizedOr(Vec3::sAxisY());
-		ShapeCastResult result(fraction,
-							   supportWorld,
-							   surfaceWorld,
-							   -normalWorld,
-							   false,
-							   shapeSubShapeIDCreator.GetID(),
-							   planetSubShapeIDCreator.GetID(),
-							   TransformedShape::sGetBodyID(collector.GetContext()));
-		collector.AddHit(result);
+		return Sample(direction, localBase, GetLocalOrigin(), position, normal, radius);
 	}
 
 	float GetSignedDistance(Vec3Arg point) const
 	{
-		const Vec3 direction = point.NormalizedOr(Vec3::sAxisY());
+		const PrecisionBase localOrigin = GetLocalOrigin();
+		const PrecisionBase localBase = MakePrecisionBase(RVec3::sZero());
+		const Vec3 direction = GetPlanetLocalDirection(point, localBase, localOrigin);
 		Vec3 position;
 		Vec3 normal;
 		float radius = 0.0f;
 		if(!Sample(direction, position, normal, radius)) return FLT_MAX;
-		return point.Length() - radius;
+		return static_cast<float>(GetPlanetLocalRadius(point, localBase, localOrigin)) - radius;
 	}
 
-	bool FindRayHit(const RayCast &ray, float maximumFraction, float &fraction) const
+	static bool MakeTriangleWindingOutward(Triangle &triangle, const PrecisionBase &localBase, const PrecisionBase &localOrigin)
 	{
-		if(ray.mDirection.LengthSq() <= 0.0f) return false;
+		float windingDot = 0.0f;
+		if(!GetTriangleWindingDot(triangle, localBase, localOrigin, windingDot)) return false;
 
-		float previousFraction = 0.0f;
-		if(GetSignedDistance(ray.mOrigin) <= 0.0f)
+		if(windingDot >= 0.0f) return false;
+
+		const Vec3 vertex = triangle.vertices[1];
+		triangle.vertices[1] = triangle.vertices[2];
+		triangle.vertices[2] = vertex;
+
+		return true;
+	}
+
+	bool BuildSampledGridVertex(uint8 face, int gridU, int gridV, const PrecisionBase &localBase, const PrecisionBase &localOrigin, double referenceRadius, uint32 collisionRevision, uint32 cacheEpoch, Vec3 &position) const
+	{
+		static thread_local SampledGridVertexCache cache;
+
+		const uint32 cacheIndex = GetSampledGridVertexHash(collisionRevision, cacheEpoch, face, gridU, gridV) & SampledGridVertexCacheMask;
+		CachedSampledGridVertex &cachedVertex = cache.entries[cacheIndex];
+		if(cachedVertex.shape == this &&
+			cachedVertex.revision == collisionRevision &&
+			cachedVertex.cacheEpoch == cacheEpoch &&
+			cachedVertex.face == face &&
+			cachedVertex.gridU == gridU &&
+			cachedVertex.gridV == gridV)
 		{
-			fraction = 0.0f;
+			if(!cachedVertex.valid) return false;
+
+			position = GetOffsetPosition(cachedVertex.absoluteX - localOrigin.x,
+										 cachedVertex.absoluteY - localOrigin.y,
+										 cachedVertex.absoluteZ - localOrigin.z,
+										 localBase);
 			return true;
 		}
 
-		for(uint i = 1; i <= 64; i += 1)
-		{
-			const float currentFraction = maximumFraction * static_cast<float>(i) / 64.0f;
-			const Vec3 currentPosition = ray.mOrigin + ray.mDirection * currentFraction;
-			const float currentDistance = GetSignedDistance(currentPosition);
-			if(currentDistance <= 0.0f)
-			{
-				float minFraction = previousFraction;
-				float maxFraction = currentFraction;
-				for(uint step = 0; step < 10; step += 1)
-				{
-					const float midFraction = (minFraction + maxFraction) * 0.5f;
-					if(GetSignedDistance(ray.mOrigin + ray.mDirection * midFraction) <= 0.0f)
-					{
-						maxFraction = midFraction;
-					}
-					else
-					{
-						minFraction = midFraction;
-					}
-				}
-				fraction = maxFraction;
-				return true;
-			}
+		const double u = static_cast<double>(gridU) * CollisionGridCellSize / referenceRadius;
+		const double v = static_cast<double>(gridV) * CollisionGridCellSize / referenceRadius;
+		const Vec3 direction = GetCubeSphereDirection(face, u, v);
+		RN::JoltCustomPlanetTerrainSample sample;
+		const bool valid = _provider && _provider->SamplePlanetTerrain(direction.GetX(), direction.GetY(), direction.GetZ(), sample);
 
-			previousFraction = currentFraction;
+		cachedVertex.shape = this;
+		cachedVertex.revision = collisionRevision;
+		cachedVertex.cacheEpoch = cacheEpoch;
+		cachedVertex.face = face;
+		cachedVertex.gridU = gridU;
+		cachedVertex.gridV = gridV;
+		cachedVertex.valid = valid;
+		if(!valid) return false;
+
+		cachedVertex.absoluteX = sample.positionX + localOrigin.x;
+		cachedVertex.absoluteY = sample.positionY + localOrigin.y;
+		cachedVertex.absoluteZ = sample.positionZ + localOrigin.z;
+		position = GetOffsetPosition(sample.positionX, sample.positionY, sample.positionZ, localBase);
+		return true;
+	}
+
+	void FillSampledGridVertexRow(uint8 face, int minU, int gridV, uint vertexCount, const PrecisionBase &localBase, const PrecisionBase &localOrigin, double referenceRadius, uint32 collisionRevision, uint32 cacheEpoch, Array<Vec3> &positions, Array<uint8> &valid) const
+	{
+		positions.resize(vertexCount);
+		valid.resize(vertexCount);
+		for(uint i = 0; i < vertexCount; i += 1)
+		{
+			valid[i] = BuildSampledGridVertex(face, minU + static_cast<int>(i), gridV, localBase, localOrigin, referenceRadius, collisionRevision, cacheEpoch, positions[i]) ? 1 : 0;
+		}
+	}
+
+	bool BuildSampledGridTriangleFromVertices(const SampledGridKey &key, const Vec3 &p00, const Vec3 &p10, const Vec3 &p01, const Vec3 &p11, const PrecisionBase &localBase, const PrecisionBase &localOrigin, double referenceRadius, Triangle &triangle) const
+	{
+		if(key.diagonal == 0)
+		{
+			triangle.vertices[0] = p00;
+			triangle.vertices[1] = p10;
+			triangle.vertices[2] = p01;
+		}
+		else
+		{
+			triangle.vertices[0] = p10;
+			triangle.vertices[1] = p11;
+			triangle.vertices[2] = p01;
 		}
 
-		return false;
+		if(!MakeSampledTriangleID(key.face, key.diagonal, key.gridU, key.gridV, localOrigin, referenceRadius, triangle.id)) return false;
+		MakeTriangleWindingOutward(triangle, localBase, localOrigin);
+		return !IsTriangleDegenerate(triangle);
 	}
 
-	bool ShouldCollectTriangles(const AABox &box, float maxSeparationDistance) const
+	bool BuildSampledGridTriangle(const SampledGridKey &key, const PrecisionBase &localBase, const PrecisionBase &localOrigin, double referenceRadius, uint32 collisionRevision, uint32 cacheEpoch, Triangle &triangle) const
 	{
-		if(!_provider) return false;
-
-		const float spacing = GetSampleSpacing();
-		const Vec3 boxCenter = box.GetCenter();
-		const Vec3 boxExtent = box.GetExtent();
-		const float boxRadius = boxExtent.Length();
-		const float centerDistance = boxCenter.Length();
-		const float maximumRadius = _provider->GetMaximumPlanetTerrainRadius();
-		const float minimumRadius = _provider->GetMinimumPlanetTerrainRadius();
-		if(centerDistance - boxRadius > maximumRadius + spacing * 4.0f) return false;
-
-		const Vec3 up = boxCenter.NormalizedOr(Vec3::sAxisY());
-		if(centerDistance + boxRadius < minimumRadius - spacing * 4.0f) return false;
-
-		Vec3 centerPosition;
-		Vec3 centerNormal;
-		float centerRadius = 0.0f;
-		if(!Sample(up, centerPosition, centerNormal, centerRadius)) return false;
-		(void)centerRadius;
-
-		const float projectedRadius = abs(centerNormal.GetX()) * boxExtent.GetX() + abs(centerNormal.GetY()) * boxExtent.GetY() + abs(centerNormal.GetZ()) * boxExtent.GetZ();
-		const float surfaceDistance = (boxCenter - centerPosition).Dot(centerNormal);
-		const float tolerance = maxSeparationDistance + spacing * 0.5f;
-		return surfaceDistance <= projectedRadius + tolerance && surfaceDistance >= -projectedRadius - tolerance;
+		Vec3 p00;
+		Vec3 p10;
+		Vec3 p01;
+		Vec3 p11;
+		if(!BuildSampledGridVertex(key.face, key.gridU, key.gridV, localBase, localOrigin, referenceRadius, collisionRevision, cacheEpoch, p00)) return false;
+		if(!BuildSampledGridVertex(key.face, key.gridU + 1, key.gridV, localBase, localOrigin, referenceRadius, collisionRevision, cacheEpoch, p10)) return false;
+		if(!BuildSampledGridVertex(key.face, key.gridU, key.gridV + 1, localBase, localOrigin, referenceRadius, collisionRevision, cacheEpoch, p01)) return false;
+		if(!BuildSampledGridVertex(key.face, key.gridU + 1, key.gridV + 1, localBase, localOrigin, referenceRadius, collisionRevision, cacheEpoch, p11)) return false;
+		return BuildSampledGridTriangleFromVertices(key, p00, p10, p01, p11, localBase, localOrigin, referenceRadius, triangle);
 	}
 
-	void CollectProviderTriangles(const AABox &box, Vec3Arg localBase, Array<Triangle> &triangles, uint maximumTriangleCount) const
+	void IncludeSampledGridPoint(Vec3Arg point, const PrecisionBase &localBase, const PrecisionBase &localOrigin, double referenceRadius, SampledGridFaceRange ranges[6]) const
 	{
-		if(!_provider) return;
+		double x = 0.0;
+		double y = 0.0;
+		double z = 0.0;
+		if(!GetDirectionForPosition(point, localBase, localOrigin, x, y, z)) return;
 
-		class TriangleCollector final : public RN::JoltCustomPlanetTerrainInternalTriangleCollector
+		for(uint8 face = 0; face < 6; face += 1)
 		{
-		public:
-			TriangleCollector(Array<Triangle> &triangles, uint maximumTriangleCount, Vec3Arg localBase) :
-				_triangles(triangles),
-				_maximumTriangleCount(maximumTriangleCount),
-				_localBase(localBase)
-			{}
+			double u = 0.0;
+			double v = 0.0;
+			if(!GetFaceCoordinatesOnFace(x, y, z, face, u, v)) continue;
 
-			bool AddPlanetTerrainTriangle(const RN::JoltCustomPlanetTerrainTriangle &source) override
+			const int gridU = GetGridCoordinate(u * referenceRadius);
+			const int gridV = GetGridCoordinate(v * referenceRadius);
+			IncludeSampledGridCoordinate(ranges[face], gridU, gridV);
+		}
+	}
+
+	void ExpandSampledGridRangeToBlock(SampledGridFaceRange &range, uint8 face, const PrecisionBase &localOrigin, double referenceRadius) const
+	{
+		if(!range.valid) return;
+
+		range.minU -= CollisionGridQueryPaddingCells;
+		range.maxU += CollisionGridQueryPaddingCells;
+		range.minV -= CollisionGridQueryPaddingCells;
+		range.maxV += CollisionGridQueryPaddingCells;
+
+		int originU = 0;
+		int originV = 0;
+		GetSampledGridBlockOrigin(face, localOrigin, referenceRadius, originU, originV);
+		const int maxBlockU = originU + CollisionGridBlockCellCount - 1;
+		const int maxBlockV = originV + CollisionGridBlockCellCount - 1;
+		if(range.minU < originU) range.minU = originU;
+		if(range.maxU > maxBlockU) range.maxU = maxBlockU;
+		if(range.minV < originV) range.minV = originV;
+		if(range.maxV > maxBlockV) range.maxV = maxBlockV;
+
+		if(range.minU > range.maxU || range.minV > range.maxV) range.valid = false;
+	}
+
+	void CollectSampledGridTriangles(const AABox &box, const PrecisionBase &localBase, const PrecisionBase &localOrigin, Array<Triangle> &triangles, uint maximumTriangleCount) const
+	{
+		if(maximumTriangleCount == 0) return;
+
+		const double referenceRadius = GetGridReferenceRadius(localOrigin, _boundsRadius);
+		const uint32 collisionRevision = _provider->GetPlanetTerrainCollisionRevision();
+		const uint32 cacheEpoch = _provider->GetPlanetTerrainCollisionCacheEpoch();
+		SampledGridFaceRange ranges[6];
+
+		IncludeSampledGridPoint(box.GetCenter(), localBase, localOrigin, referenceRadius, ranges);
+		for(uint x = 0; x < 2; x += 1)
+		{
+			for(uint y = 0; y < 2; y += 1)
 			{
-				if(_triangles.size() >= _maximumTriangleCount) return false;
-
-				Triangle triangle;
-				for(uint i = 0; i < 3; i += 1)
+				for(uint z = 0; z < 2; z += 1)
 				{
-					triangle.vertices[i] = RNCustomPlanetTerrainShape::GetOffsetPosition(source.vertices[i][0], source.vertices[i][1], source.vertices[i][2], _localBase);
+					const Vec3 point(x == 0 ? box.mMin.GetX() : box.mMax.GetX(),
+									 y == 0 ? box.mMin.GetY() : box.mMax.GetY(),
+									 z == 0 ? box.mMin.GetZ() : box.mMax.GetZ());
+					IncludeSampledGridPoint(point, localBase, localOrigin, referenceRadius, ranges);
 				}
-				triangle.id = static_cast<uint32>(source.id);
-				triangle.activeEdges = source.activeEdges;
-				_triangles.push_back(triangle);
-				return _triangles.size() < _maximumTriangleCount;
 			}
+		}
 
-		private:
-			Array<Triangle> &_triangles;
-			uint _maximumTriangleCount;
-			Vec3 _localBase;
-		};
+		for(uint8 face = 0; face < 6; face += 1)
+		{
+			if(triangles.size() >= maximumTriangleCount) return;
 
-		TriangleCollector collector(triangles, maximumTriangleCount, localBase);
-		_provider->CollectPlanetTerrainTriangles(box.mMin.GetX(), box.mMin.GetY(), box.mMin.GetZ(), box.mMax.GetX(), box.mMax.GetY(), box.mMax.GetZ(), collector, maximumTriangleCount);
+			ExpandSampledGridRangeToBlock(ranges[face], face, localOrigin, referenceRadius);
+			if(!ranges[face].valid) continue;
+
+			const uint vertexCount = static_cast<uint>(ranges[face].maxU - ranges[face].minU + 2);
+			Array<Vec3> vertexRows[2];
+			Array<uint8> validRows[2];
+			FillSampledGridVertexRow(face, ranges[face].minU, ranges[face].minV, vertexCount, localBase, localOrigin, referenceRadius, collisionRevision, cacheEpoch, vertexRows[0], validRows[0]);
+			FillSampledGridVertexRow(face, ranges[face].minU, ranges[face].minV + 1, vertexCount, localBase, localOrigin, referenceRadius, collisionRevision, cacheEpoch, vertexRows[1], validRows[1]);
+
+			for(int gridV = ranges[face].minV; gridV <= ranges[face].maxV; gridV += 1)
+			{
+				if(triangles.size() >= maximumTriangleCount) return;
+
+				const uint lowerRowIndex = static_cast<uint>(gridV - ranges[face].minV) & 0x1u;
+				const uint upperRowIndex = 1u - lowerRowIndex;
+				if(gridV != ranges[face].minV)
+				{
+					FillSampledGridVertexRow(face, ranges[face].minU, gridV + 1, vertexCount, localBase, localOrigin, referenceRadius, collisionRevision, cacheEpoch, vertexRows[upperRowIndex], validRows[upperRowIndex]);
+				}
+
+				for(int gridU = ranges[face].minU; gridU <= ranges[face].maxU; gridU += 1)
+				{
+					const uint column = static_cast<uint>(gridU - ranges[face].minU);
+					if(!validRows[lowerRowIndex][column] || !validRows[lowerRowIndex][column + 1] || !validRows[upperRowIndex][column] || !validRows[upperRowIndex][column + 1]) continue;
+
+					const Vec3 &p00 = vertexRows[lowerRowIndex][column];
+					const Vec3 &p10 = vertexRows[lowerRowIndex][column + 1];
+					const Vec3 &p01 = vertexRows[upperRowIndex][column];
+					const Vec3 &p11 = vertexRows[upperRowIndex][column + 1];
+
+					for(uint8 diagonal = 0; diagonal < 2; diagonal += 1)
+					{
+						if(triangles.size() >= maximumTriangleCount) return;
+
+						SampledGridKey key;
+						key.face = face;
+						key.diagonal = diagonal;
+						key.gridU = gridU;
+						key.gridV = gridV;
+
+						Triangle triangle;
+						if(!BuildSampledGridTriangleFromVertices(key, p00, p10, p01, p11, localBase, localOrigin, referenceRadius, triangle)) continue;
+						if(!DoesTriangleOverlapBox(triangle, box)) continue;
+
+						triangles.push_back(triangle);
+					}
+				}
+			}
+		}
 	}
 
 	void CollectTriangles(const AABox &box, float maxSeparationDistance, Array<Triangle> &triangles, uint maximumTriangleCount) const
 	{
-		CollectTriangles(box, maxSeparationDistance, Vec3::sZero(), triangles, maximumTriangleCount);
+		CollectTriangles(box, maxSeparationDistance, MakePrecisionBase(RVec3::sZero()), triangles, maximumTriangleCount);
 	}
 
-	void CollectTriangles(const AABox &box, float maxSeparationDistance, Vec3Arg localBase, Array<Triangle> &triangles, uint maximumTriangleCount) const
+	void CollectTriangles(const AABox &box, float maxSeparationDistance, const PrecisionBase &localBase, Array<Triangle> &triangles, uint maximumTriangleCount) const
 	{
-		AABox queryBox = box;
-		queryBox.Translate(localBase);
-		if(!ShouldCollectTriangles(queryBox, maxSeparationDistance)) return;
-		CollectProviderTriangles(queryBox, localBase, triangles, maximumTriangleCount);
+		if(!_provider) return;
+
+		const float radialExpansion = maxSeparationDistance > 0.0f ? maxSeparationDistance : 0.0f;
+		const PrecisionBase localOrigin = GetLocalOrigin();
+		AABox queryBox = GetSurfaceQueryBox(box, localBase, localOrigin, radialExpansion);
+		float padding = 0.01f;
+		if(maxSeparationDistance > 0.0f) padding += maxSeparationDistance;
+		queryBox.ExpandBy(Vec3::sReplicate(padding));
+		CollectSampledGridTriangles(queryBox, localBase, localOrigin, triangles, maximumTriangleCount);
 	}
 
 	RN::JoltCustomPlanetTerrainInternalProvider *_provider;
+	float _boundsRadius;
+	bool _solidRecoveryOnly;
 };
 
 JPH_NAMESPACE_END
@@ -662,14 +1478,19 @@ namespace RN
 {
 	namespace JoltCustomPlanetTerrainInternal
 	{
-		JPH::Shape *CreateShape(JoltCustomPlanetTerrainInternalProvider *provider)
+		JPH::Shape *CreateShape(JoltCustomPlanetTerrainInternalProvider *provider, bool solidRecoveryOnly)
 		{
-			return new JPH::RNCustomPlanetTerrainShape(provider);
+			return new JPH::RNCustomPlanetTerrainShape(provider, solidRecoveryOnly);
 		}
 
 		void RegisterShape()
 		{
 			JPH::RNCustomPlanetTerrainShape::sRegister();
+		}
+
+		void InstallSimulationCollideBodyVsBody(JPH::PhysicsSystem *physicsSystem)
+		{
+			JPH::RNCustomPlanetTerrainShape::sInstallSimulationCollideBodyVsBody(physicsSystem);
 		}
 	}
 }

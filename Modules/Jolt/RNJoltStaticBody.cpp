@@ -24,6 +24,7 @@ namespace RN
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 
 		JPH::BodyCreationSettings settings(shape->GetJoltShape(), JPH::RVec3::sZero(), JPH::QuatArg(0.0f, 0.0f, 0.0f, 1.0f), JPH::EMotionType::Static, world->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 0));
+		settings.mEnhancedInternalEdgeRemoval = true;
 		settings.mUserData = reinterpret_cast<uint64>(this);
 
 		JPH::BodyID bodyID;
@@ -49,13 +50,16 @@ namespace RN
 
 	JoltStaticBody::~JoltStaticBody()
 	{
-		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JoltWorld *world = JoltWorld::GetSharedInstance();
+		JPH::PhysicsSystem *physics = world->GetJoltInstance();
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 
-		bodyInterface.RemoveBody(*_actor);
-		bodyInterface.DestroyBody(*_actor);
-
-		if(_actor) delete _actor;
+		if(_actor)
+		{
+			bodyInterface.RemoveBody(*_actor);
+			bodyInterface.DestroyBody(*_actor);
+			delete _actor;
+		}
 		_shape->Release();
 	}
 
@@ -84,6 +88,15 @@ namespace RN
 		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
 		bodyInterface.SetRestitution(*_actor, restitution);
+	}
+
+	void JoltStaticBody::InvalidateContactCache()
+	{
+		if(!_actor) return;
+
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		bodyInterface.InvalidateContactCache(*_actor);
 	}
 
 	void JoltStaticBody::DidUpdate(SceneNode::ChangeSet changeSet)

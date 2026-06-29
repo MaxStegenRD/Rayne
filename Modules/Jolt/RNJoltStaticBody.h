@@ -33,6 +33,7 @@ namespace RN
 
 		JTAPI void SetFriction(float friction);
 		JTAPI void SetRestitution(float restitution);
+		JTAPI void InvalidateContactCache();
 
 		JTAPI JPH::BodyID *GetJoltActor() const { return _actor; }
 

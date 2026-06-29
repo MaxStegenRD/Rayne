@@ -9,6 +9,7 @@
 #include "RNJoltWorld.h"
 #include "RNJoltConversions.h"
 #include "RNJoltCustomPlanetTerrainShape.h"
+#include "RNJoltCustomPlanetTerrainShapeInternal.h"
 #include "RNJoltInternals.h"
 #include "RNJoltWheelCylinderShape.h"
 
@@ -65,6 +66,7 @@ namespace RN
 
 		_physicsSystem = new JPH::PhysicsSystem();
 		_physicsSystem->Init(maxBodies, 0, maxBodyPairs, maxContactConstraints, _internals->objectLayerMapper, _internals->objectLayerMapper, _internals->objectLayerMapper);
+		JoltCustomPlanetTerrainInternal::InstallSimulationCollideBodyVsBody(_physicsSystem);
 
 		_physicsSystem->SetContactListener(&_internals->contactListener);
 
@@ -252,6 +254,14 @@ namespace RN
 		_physicsSystem->SetPhysicsSettings(settings);
 	}
 
+	void JoltWorld::SetInternalEdgeRemovalVertexTolerance(float tolerance)
+	{
+		JPH::PhysicsSettings settings = _physicsSystem->GetPhysicsSettings();
+		if(tolerance < 0.0f) tolerance = 0.0f;
+		settings.mInternalEdgeRemovalVertexToleranceSq = tolerance * tolerance;
+		_physicsSystem->SetPhysicsSettings(settings);
+	}
+
 	void JoltWorld::SetPaused(bool paused)
 	{
 		_paused = paused;
@@ -263,10 +273,10 @@ namespace RN
 
 		if(_paused)
 			return;
-		
+
 		if(delta > 0.1f || delta < k::EpsilonFloat)
 			return;
-		
+
 		// Step physics
 		_isSimulating = true;
 		_physicsSystem->Update(delta, _substeps, _internals->tempAllocator, _internals->jobSystem); //This waits for all jobs to finish! Maybe it can be split up into simulate and finish like with physx (wait here for all jobs, but start them in WillUpdate)
