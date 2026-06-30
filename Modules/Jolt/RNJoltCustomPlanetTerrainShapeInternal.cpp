@@ -301,7 +301,7 @@ private:
 	static constexpr uint SampledGridVertexCacheSize = 8192;
 	static constexpr uint32 SampledGridVertexCacheMask = SampledGridVertexCacheSize - 1u;
 	static constexpr float MinimumTriangleNormalLengthSq = 1.0e-12f;
-	static constexpr float MinimumSolidRecoveryCenterDepth = 0.5f;
+	static constexpr float MinimumSolidRecoverySupportDepth = 0.05f;
 	static constexpr float InactiveEdgeNormalRejectDotThreshold = 0.5f;
 	static constexpr float AboveSurfaceQueryMargin = 4.0f;
 
@@ -333,6 +333,7 @@ private:
 		double absoluteX = 0.0;
 		double absoluteY = 0.0;
 		double absoluteZ = 0.0;
+		Vec3 normal = Vec3::sZero();
 		bool valid = false;
 	};
 
@@ -547,8 +548,7 @@ private:
 	static int GetNearestGridCoordinate(double coordinateMeters)
 	{
 		const double scaledCoordinate = coordinateMeters / CollisionGridCellSize;
-		int result = static_cast<int>(scaledCoordinate);
-		if(static_cast<double>(result) > scaledCoordinate) result -= 1;
+		int result = GetGridCoordinate(coordinateMeters);
 		if(scaledCoordinate - static_cast<double>(result) >= 0.5) result += 1;
 		return result;
 	}
@@ -1138,37 +1138,22 @@ private:
 
 	bool AddSolidRecoveryContact(const ConvexShape *convex, Vec3Arg scale1, Vec3Arg scale2, Mat44Arg shiftedTransform1, Mat44Arg shiftedTransform2, const SubShapeID &subShapeID1, const SubShapeID &subShapeID2, const CollideShapeSettings &settings, CollideShapeCollector &collector, const PrecisionBase &localBase) const
 	{
-		const PrecisionBase localOrigin = GetLocalOrigin();
-		const float centerRadius = static_cast<float>(GetPlanetLocalRadius(Vec3::sZero(), localBase, localOrigin));
-		if(centerRadius <= 1.0e-4f) return false;
+		if(!_provider) return false;
 
-		const Vec3 direction = GetPlanetLocalDirection(Vec3::sZero(), localBase, localOrigin);
+		const PrecisionBase localOrigin = GetLocalOrigin();
+		const double referenceRadius = GetGridReferenceRadius(localOrigin, _boundsRadius);
+		const uint32 collisionRevision = _provider->GetPlanetTerrainCollisionRevision();
+		const uint32 cacheEpoch = _provider->GetPlanetTerrainCollisionCacheEpoch();
+
+		SampledGridKey key;
+		if(!GetClosestSampledGridVertexKey(Vec3::sZero(), localBase, localOrigin, referenceRadius, key)) return false;
+
 		Vec3 surfacePosition;
 		Vec3 surfaceNormal;
-		float surfaceRadius = 0.0f;
-		if(!Sample(direction, localBase, surfacePosition, surfaceNormal, surfaceRadius)) return false;
-		if(surfaceRadius <= 0.0f) return false;
+		if(!BuildSampledGridVertex(key.face, key.gridU, key.gridV, localBase, localOrigin, referenceRadius, collisionRevision, cacheEpoch, surfacePosition, &surfaceNormal)) return false;
 
-		const float centerDepth = surfaceRadius - centerRadius;
-		const float minimumCenterDepth = MinimumSolidRecoveryCenterDepth;
-		if(centerDepth <= minimumCenterDepth)
-		{
-			return false;
-		}
-
-		Vec3 surfaceNormalWorld = shiftedTransform2.Multiply3x3(surfaceNormal).NormalizedOr(Vec3::sZero());
-		if(surfaceNormalWorld.LengthSq() <= 1.0e-6f)
-		{
-			surfaceNormalWorld = shiftedTransform2.Multiply3x3(direction).NormalizedOr(Vec3::sAxisY());
-		}
-
+		const Vec3 surfaceNormalWorld = shiftedTransform2.Multiply3x3(surfaceNormal).NormalizedOr(Vec3::sAxisY());
 		const Vec3 surfacePositionWorld = shiftedTransform2 * (scale2 * surfacePosition);
-		const float centerSurfaceDistance = (shiftedTransform1.GetTranslation() - surfacePositionWorld).Dot(surfaceNormalWorld);
-		if(centerSurfaceDistance > 0.0f)
-		{
-			return false;
-		}
-
 		const Vec3 normalInConvexSpace = shiftedTransform1.Multiply3x3Transposed(surfaceNormalWorld).NormalizedOr(Vec3::sAxisY());
 		ConvexShape::SupportBuffer supportBuffer;
 		const ConvexShape::Support *support = convex->GetSupportFunction(ConvexShape::ESupportMode::Default, supportBuffer, scale1);
@@ -1177,7 +1162,7 @@ private:
 		const Vec3 supportPointWorld = shiftedTransform1 * supportPoint;
 		const float signedDistance = (supportPointWorld - surfacePositionWorld).Dot(surfaceNormalWorld);
 		const float penetrationDepth = -signedDistance + convexRadius;
-		if(penetrationDepth <= -settings.mMaxSeparationDistance) return false;
+		if(penetrationDepth <= MinimumSolidRecoverySupportDepth) return false;
 		if(-penetrationDepth >= collector.GetEarlyOutFraction()) return false;
 
 		const Vec3 point1 = supportPointWorld - surfaceNormalWorld * convexRadius;
@@ -1267,7 +1252,7 @@ private:
 		return true;
 	}
 
-	bool BuildSampledGridVertex(uint8 face, int gridU, int gridV, const PrecisionBase &localBase, const PrecisionBase &localOrigin, double referenceRadius, uint32 collisionRevision, uint32 cacheEpoch, Vec3 &position) const
+	bool BuildSampledGridVertex(uint8 face, int gridU, int gridV, const PrecisionBase &localBase, const PrecisionBase &localOrigin, double referenceRadius, uint32 collisionRevision, uint32 cacheEpoch, Vec3 &position, Vec3 *normal = nullptr) const
 	{
 		static thread_local SampledGridVertexCache cache;
 
@@ -1286,6 +1271,7 @@ private:
 										 cachedVertex.absoluteY - localOrigin.y,
 										 cachedVertex.absoluteZ - localOrigin.z,
 										 localBase);
+			if(normal) *normal = cachedVertex.normal;
 			return true;
 		}
 
@@ -1307,7 +1293,9 @@ private:
 		cachedVertex.absoluteX = sample.positionX + localOrigin.x;
 		cachedVertex.absoluteY = sample.positionY + localOrigin.y;
 		cachedVertex.absoluteZ = sample.positionZ + localOrigin.z;
+		cachedVertex.normal = Vec3(sample.normalX, sample.normalY, sample.normalZ).NormalizedOr(direction);
 		position = GetOffsetPosition(sample.positionX, sample.positionY, sample.positionZ, localBase);
+		if(normal) *normal = cachedVertex.normal;
 		return true;
 	}
 
