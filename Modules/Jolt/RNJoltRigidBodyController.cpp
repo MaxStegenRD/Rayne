@@ -136,7 +136,7 @@ namespace RN
 
 	Vector3 JoltRigidBodyController::GetFeetOffset() const
 	{
-		return _upDirection * -(_height * 0.5f + _radius);
+		return Vector3(0.0f, -(_height * 0.5f + _radius), 0.0f);
 	}
 
 	void JoltRigidBodyController::SetExternalSupportAnchor(uint32 bodyID, const Vector3 &localPosition, float maxForce)
