@@ -1075,6 +1075,7 @@ namespace RN
 
 		_currentCommandBuffer->End();
 		SubmitCommandBuffer(_currentCommandBuffer);
+		_currentCommandBuffer->Release();
 		_currentCommandBuffer = nullptr;
 
 		std::vector<VkCommandBuffer> buffers;
