@@ -2447,12 +2447,8 @@ namespace RN
 #endif
 
 		_controllerTrackingState[0].hasHaptics = true;
-		_controllerTrackingState[0].active = false;
-		_controllerTrackingState[0].tracking = false;
 		_controllerTrackingState[0].hapticsSampleLength = 0.0;
 		_controllerTrackingState[0].hapticsMaxSamples = 0;
-		_controllerTrackingState[1].active = false;
-		_controllerTrackingState[1].tracking = false;
 		_controllerTrackingState[1].hasHaptics = true;
 		_controllerTrackingState[1].hapticsSampleLength = 0.0;
 		_controllerTrackingState[1].hapticsMaxSamples = 0;
@@ -2472,7 +2468,14 @@ namespace RN
 			}
 		}
 
-		if(!_hasInputFocus) return;
+		if(!_hasInputFocus)
+		{
+			_controllerTrackingState[0].active = false;
+			_controllerTrackingState[0].tracking = false;
+			_controllerTrackingState[1].active = false;
+			_controllerTrackingState[1].tracking = false;
+			return;
+		}
 
 		XrActiveActionSet activeActionSet {_internals->gameActionSet, XR_NULL_PATH};
 		XrActionsSyncInfo syncInfo {XR_TYPE_ACTIONS_SYNC_INFO};
