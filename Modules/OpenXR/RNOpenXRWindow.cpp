@@ -2298,11 +2298,6 @@ namespace RN
 							//RNDebug("Changed pose: (" << referenceSpaceChangePendingEvent.poseInPreviousSpace.position.x << ", " << referenceSpaceChangePendingEvent.poseInPreviousSpace.position.y << ", " << referenceSpaceChangePendingEvent.poseInPreviousSpace.position.z << ")");
 						}
 
-#if RN_PLATFORM_ANDROID
-						_internals->_trackingSpaceCounterRotation = RN::Vector3(_hmdTrackingState.rotation.GetEulerAngle().x, 0.0f, 0.0f);
-						RNInfo("Recenter: " << _internals->_trackingSpaceCounterRotation.GetEulerAngle().x);
-#endif
-
 						NotificationManager::GetSharedInstance()->PostNotification(kRNVRDidRecenter, nullptr);
 						break;
 					}
@@ -2483,6 +2478,25 @@ namespace RN
 		syncInfo.activeActionSets = &activeActionSet;
 		xrSyncActions(_internals->session, &syncInfo);
 
+#if RN_PLATFORM_ANDROID
+		auto GetPicoFallbackLinearVelocity = [delta](const XrSpaceLocation &gripLocation, const Vector3 &previousGripPosition, bool wasControllerTracking) {
+			Vector3 linearVelocity;
+			if((gripLocation.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT) && wasControllerTracking && delta > k::EpsilonFloat)
+			{
+				Vector3 gripPosition(gripLocation.pose.position.x, gripLocation.pose.position.y, gripLocation.pose.position.z);
+				linearVelocity = ((gripPosition - previousGripPosition) / std::min(1.0f / 45.0f, delta));
+
+				const float maxFallbackVelocity = 23.0f;
+				if(linearVelocity.GetSquaredLength() > maxFallbackVelocity * maxFallbackVelocity)
+				{
+					linearVelocity.Normalize(maxFallbackVelocity);
+				}
+			}
+
+			return linearVelocity;
+		};
+#endif
+
 		//Left hand
 		XrActionStatePose handLeftState {XR_TYPE_ACTION_STATE_POSE};
 		XrActionStateGetInfo getHandLeftInfo {XR_TYPE_ACTION_STATE_GET_INFO};
@@ -2493,6 +2507,7 @@ namespace RN
 		getHandLeftInfo.action = _internals->handLeftGripPoseAction;
 		xrGetActionStatePose(_internals->session, &getHandLeftInfo, &handLeftState);
 
+		const bool wasLeftControllerTracking = _controllerTrackingState[0].tracking;
 		_controllerTrackingState[0].active = handLeftState.isActive;
 		_controllerTrackingState[0].tracking = handLeftState.isActive;
 		if(handLeftState.isActive)
@@ -2513,25 +2528,23 @@ namespace RN
 			XrSpaceLocation gripLocation {XR_TYPE_SPACE_LOCATION, &velocity};
 			xrLocateSpace(_internals->handLeftGripPoseSpace, _internals->trackingSpace, _internals->currentFramePredictedDisplayTime, &gripLocation);
 
-			if(velocity.velocityFlags & XR_SPACE_VELOCITY_LINEAR_VALID_BIT)
-			{
-				if(_controllerTrackingState[0].type == VRControllerTrackingState::Type::PicoNeo3Controller)
-				{
-					//On pico the velocity is somehow wrong after recentering the view, this rotation corrects for that
-					//TODO: This will break if they ever fix it...
 #if RN_PLATFORM_ANDROID
-					_controllerTrackingState[0].velocityLinear = _internals->_trackingSpaceCounterRotation.GetRotatedVector(Vector3(velocity.linearVelocity.x, velocity.linearVelocity.y, velocity.linearVelocity.z));
+			if(_controllerTrackingState[0].type == VRControllerTrackingState::Type::PicoNeo3Controller)
+			{
+				_controllerTrackingState[0].velocityLinear = GetPicoFallbackLinearVelocity(gripLocation, _controllerTrackingState[0].positionGrip, wasLeftControllerTracking);
+			}
+			else
 #endif
-				}
-				else
+			{
+				if(velocity.velocityFlags & XR_SPACE_VELOCITY_LINEAR_VALID_BIT)
 				{
 					_controllerTrackingState[0].velocityLinear = Vector3(velocity.linearVelocity.x, velocity.linearVelocity.y, velocity.linearVelocity.z);
 				}
-			}
-			else
-			{
-				//Set velocity to 0, if not valid
-				_controllerTrackingState[0].velocityLinear = RN::Vector3();
+				else
+				{
+					//Set velocity to 0, if not valid
+					_controllerTrackingState[0].velocityLinear = RN::Vector3();
+				}
 			}
 			if(velocity.velocityFlags & XR_SPACE_VELOCITY_ANGULAR_VALID_BIT)
 			{
@@ -2658,6 +2671,7 @@ namespace RN
 		getHandRightInfo.action = _internals->handRightGripPoseAction;
 		xrGetActionStatePose(_internals->session, &getHandRightInfo, &handRightState);
 
+		const bool wasRightControllerTracking = _controllerTrackingState[1].tracking;
 		_controllerTrackingState[1].active = handRightState.isActive;
 		_controllerTrackingState[1].tracking = handRightState.isActive;
 		if(handRightState.isActive)
@@ -2678,25 +2692,23 @@ namespace RN
 			XrSpaceLocation gripLocation {XR_TYPE_SPACE_LOCATION, &velocity};
 			xrLocateSpace(_internals->handRightGripPoseSpace, _internals->trackingSpace, _internals->currentFramePredictedDisplayTime, &gripLocation);
 
-			if(velocity.velocityFlags & XR_SPACE_VELOCITY_LINEAR_VALID_BIT)
-			{
-				if(_controllerTrackingState[1].type == VRControllerTrackingState::Type::PicoNeo3Controller)
-				{
-					//On pico the velocity is somehow wrong after recentering the view, this rotation corrects for that
-					//TODO: This will break if they ever fix it...
 #if RN_PLATFORM_ANDROID
-					_controllerTrackingState[1].velocityLinear = _internals->_trackingSpaceCounterRotation.GetRotatedVector(Vector3(velocity.linearVelocity.x, velocity.linearVelocity.y, velocity.linearVelocity.z));
+			if(_controllerTrackingState[1].type == VRControllerTrackingState::Type::PicoNeo3Controller)
+			{
+				_controllerTrackingState[1].velocityLinear = GetPicoFallbackLinearVelocity(gripLocation, _controllerTrackingState[1].positionGrip, wasRightControllerTracking);
+			}
+			else
 #endif
-				}
-				else
+			{
+				if(velocity.velocityFlags & XR_SPACE_VELOCITY_LINEAR_VALID_BIT)
 				{
 					_controllerTrackingState[1].velocityLinear = Vector3(velocity.linearVelocity.x, velocity.linearVelocity.y, velocity.linearVelocity.z);
 				}
-			}
-			else
-			{
-				//Set velocity to 0, if not valid
-				_controllerTrackingState[1].velocityLinear = RN::Vector3();
+				else
+				{
+					//Set velocity to 0, if not valid
+					_controllerTrackingState[1].velocityLinear = RN::Vector3();
+				}
 			}
 
 			if(velocity.velocityFlags & XR_SPACE_VELOCITY_ANGULAR_VALID_BIT)

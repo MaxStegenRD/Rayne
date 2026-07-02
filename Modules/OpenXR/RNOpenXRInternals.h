@@ -120,7 +120,6 @@ namespace RN
 
 #if XR_USE_PLATFORM_ANDROID
 		PFN_xrSetAndroidApplicationThreadKHR SetAndroidApplicationThreadKHR;
-		RN::Quaternion _trackingSpaceCounterRotation; //TODO: Only used on pico as a workaround when resetting the view
 #endif
 
 		PFN_xrCreateHandTrackerEXT CreateHandTrackerEXT;
