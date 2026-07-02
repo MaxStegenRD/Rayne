@@ -432,6 +432,10 @@ namespace RN
 		{
 			_deviceType = DeviceType::PicoVR;
 		}
+		else if(std::strncmp(_internals->systemProperties.systemName, "PICO", 4) == 0) //If name starts with PICO just fallback to pico
+		{
+			_deviceType = DeviceType::PicoVR;
+		}
 		else
 		{
 			_deviceType = DeviceType::Unknown;
