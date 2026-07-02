@@ -169,6 +169,13 @@ public:
 
 	bool CastRay(const RayCast &ray, const SubShapeIDCreator &subShapeIDCreator, RayCastResult &hit) const override
 	{
+		if(GetSignedDistance(ray.mOrigin) <= 0.0f)
+		{
+			hit.mFraction = 0.0f;
+			hit.mSubShapeID2 = subShapeIDCreator.GetID();
+			return true;
+		}
+
 		RayCastSettings settings;
 		return FindRayTriangleHit(ray, settings, subShapeIDCreator, hit);
 	}
@@ -176,6 +183,14 @@ public:
 	void CastRay(const RayCast &ray, const RayCastSettings &rayCastSettings, const SubShapeIDCreator &subShapeIDCreator, CastRayCollector &collector, const ShapeFilter &shapeFilter = { }) const override
 	{
 		if(!shapeFilter.ShouldCollide(this, subShapeIDCreator.GetID())) return;
+		if(GetSignedDistance(ray.mOrigin) <= 0.0f)
+		{
+			RayCastResult result;
+			result.mFraction = 0.0f;
+			result.mSubShapeID2 = subShapeIDCreator.GetID();
+			collector.AddHit(result);
+			return;
+		}
 
 		CastRayTriangles(ray, rayCastSettings, subShapeIDCreator, collector);
 	}
