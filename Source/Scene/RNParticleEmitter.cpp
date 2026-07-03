@@ -7,6 +7,7 @@
 //
 
 #include "RNParticleEmitter.h"
+#include "RNScene.h"
 #include "../Rendering/RNRenderer.h"
 
 #include "../Debug/RNLogger.h"
@@ -34,6 +35,11 @@ namespace RN
 		_spawnRate(0.05f),
 		_canRollParticles(false),
 		_time(0.0f),
+#if RN_ENABLE_UNIVERSE_SCALE
+		_lastParticleUniverseOrigin(0.0),
+		_lastParticleUniverseOriginVersion(0),
+		_hasLastParticleUniverseOrigin(false),
+#endif
 		_meshIsInitialized(false)
 	{
 		_rng = new RandomNumberGenerator(RandomNumberGenerator::Type::MersenneTwister);
@@ -72,6 +78,11 @@ namespace RN
 		_maxParticles(emitter->_maxParticles),
 		_spawnRate(emitter->_spawnRate),
 		_time(emitter->_time)
+#if RN_ENABLE_UNIVERSE_SCALE
+		, _lastParticleUniverseOrigin(0.0)
+		, _lastParticleUniverseOriginVersion(0)
+		, _hasLastParticleUniverseOrigin(false)
+#endif
 	{
 		_rng = emitter->GetGenerator();
 
@@ -195,6 +206,53 @@ namespace RN
 	void ParticleEmitter::UpdateParticles(float delta)
 	{
 	}
+
+#if RN_ENABLE_UNIVERSE_SCALE
+	void ParticleEmitter::UpdateParticleUniverseOrigin()
+	{
+		if(GetIsLocal())
+		{
+			_hasLastParticleUniverseOrigin = false;
+			return;
+		}
+
+		SceneInfo *sceneInfo = GetSceneInfo();
+		Scene *scene = sceneInfo ? sceneInfo->GetScene() : nullptr;
+		if(!scene)
+		{
+			_hasLastParticleUniverseOrigin = false;
+			return;
+		}
+
+		const DVector3 universeOrigin = scene->GetUniverseOrigin();
+		const uint64 universeOriginVersion = scene->GetUniverseOriginVersion();
+		if(!_hasLastParticleUniverseOrigin)
+		{
+			_lastParticleUniverseOrigin = universeOrigin;
+			_lastParticleUniverseOriginVersion = universeOriginVersion;
+			_hasLastParticleUniverseOrigin = true;
+			return;
+		}
+
+		if(_lastParticleUniverseOriginVersion == universeOriginVersion)
+		{
+			return;
+		}
+
+		const Vector3 originShift = (_lastParticleUniverseOrigin - universeOrigin).ToVector3();
+		if(originShift.IsValid())
+		{
+			for(ParticleData &particle : _particles)
+			{
+				particle.position += originShift;
+			}
+		}
+
+		_lastParticleUniverseOrigin = universeOrigin;
+		_lastParticleUniverseOriginVersion = universeOriginVersion;
+	}
+#endif
+
 
 	void ParticleEmitter::SpawnParticles(float delta)
 	{
@@ -390,6 +448,10 @@ namespace RN
 	void ParticleEmitter::Update(float delta)
 	{
 		SceneNode::Update(delta);
+
+#if RN_ENABLE_UNIVERSE_SCALE
+		UpdateParticleUniverseOrigin();
+#endif
 
 		SpawnParticles(delta);
 		UpdateParticles(delta);
