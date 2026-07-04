@@ -409,7 +409,7 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::InverseModelViewMatrix:
 				{
-					Matrix result = cameraSnapshot.GetInverseViewMatrix() * inverseModelMatrix;
+					Matrix result = inverseModelMatrix * cameraSnapshot.GetInverseViewMatrix();
 					std::memcpy(buffer + descriptor->GetOffset(), result.m, descriptor->GetSize());
 					break;
 				}
@@ -421,7 +421,7 @@ namespace RN
 						size_t viewCount = std::min(multiviewCameraSnapshots.size(), descriptor->GetElementCount());
 						for(size_t i = 0; i < viewCount; i += 1)
 						{
-							Matrix result = multiviewCameraSnapshots[i].GetInverseViewMatrix() * inverseModelMatrix;
+							Matrix result = inverseModelMatrix * multiviewCameraSnapshots[i].GetInverseViewMatrix();
 							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, result.m, 64);
 						}
 					}
@@ -430,7 +430,7 @@ namespace RN
 
 				case Shader::UniformDescriptor::Identifier::InverseModelViewProjectionMatrix:
 				{
-					Matrix result = cameraSnapshot.GetInverseProjectionViewMatrix() * inverseModelMatrix;
+					Matrix result = inverseModelMatrix * cameraSnapshot.GetInverseProjectionViewMatrix();
 					std::memcpy(buffer + descriptor->GetOffset(), result.m, descriptor->GetSize());
 					break;
 				}
@@ -442,7 +442,7 @@ namespace RN
 						size_t viewCount = std::min(multiviewCameraSnapshots.size(), descriptor->GetElementCount());
 						for(size_t i = 0; i < viewCount; i += 1)
 						{
-							Matrix result = multiviewCameraSnapshots[i].GetInverseProjectionViewMatrix() * inverseModelMatrix;
+							Matrix result = inverseModelMatrix * multiviewCameraSnapshots[i].GetInverseProjectionViewMatrix();
 							std::memcpy(buffer + descriptor->GetOffset() + 64 * i, result.m, 64);
 						}
 					}
