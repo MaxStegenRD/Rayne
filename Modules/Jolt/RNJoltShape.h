@@ -138,6 +138,7 @@ namespace RN
 		JTAPI void AddChild(Mesh *mesh, const RN::Vector3 &position, const RN::Quaternion &rotation, Vector3 scale, bool useTriangleMesh, bool wantsDoubleSided, uint32 userData);
 		JTAPI void AddChild(JoltShape *shape, const RN::Vector3 &position, const RN::Quaternion &rotation);
 		JTAPI void AddChild(JoltShape *shape, const RN::Vector3 &position, const RN::Quaternion &rotation, uint32 userData);
+		JTAPI bool SetChildMass(size_t index, float mass);
 		JTAPI void SetMass(float mass) override;
 
 		JoltShape *GetShape(size_t index) const { return _shapes[index]; }

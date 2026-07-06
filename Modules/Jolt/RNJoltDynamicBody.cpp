@@ -20,7 +20,7 @@ namespace RN
 
 	JoltDynamicBody::JoltDynamicBody(JoltShape *shape, float mass) :
 		_shape(shape->Retain()),
-		_actor(nullptr), _mass(mass), _isKinematic(false), _isGravityEnabled(true), _isInSimulation(false)
+		_actor(nullptr), _mass(mass), _appliedShapeCenterOfMass(shape->GetCenterOfMass()), _isKinematic(false), _isGravityEnabled(true), _isInSimulation(false)
 	{
 		JoltWorld *world = JoltWorld::GetSharedInstance();
 		JPH::PhysicsSystem *physics = world->GetJoltInstance();
@@ -163,6 +163,7 @@ namespace RN
 
 		if(previousShape) previousShape->Release();
 		SetMass(mass);
+		_appliedShapeCenterOfMass = _shape->GetCenterOfMass();
 
 		if(worldRotation.IsValid() && positionOffset.IsValid())
 		{
@@ -210,6 +211,41 @@ namespace RN
 		// Apply new mass properties
 		mp->SetMassProperties(allowed, props);
 		InvalidateMotionCache();
+	}
+
+	void JoltDynamicBody::RefreshShapeMassProperties(float mass)
+	{
+		if(!_shape || !_actor || mass <= k::EpsilonFloat) return;
+
+		Vector3 currentCenterOfMass = _shape->GetCenterOfMass();
+		Vector3 previousCenterOfMass = _appliedShapeCenterOfMass.IsValid() ? _appliedShapeCenterOfMass : Vector3();
+		Vector3 localCenterOfMassDelta = currentCenterOfMass - previousCenterOfMass;
+		Vector3 linearVelocity = GetLinearVelocity();
+		Vector3 angularVelocity = GetAngularVelocity();
+		Quaternion worldRotation = GetWorldRotation();
+		bool hasCenterOfMassDelta = localCenterOfMassDelta.IsValid() && worldRotation.IsValid();
+		Vector3 centerOfMassDelta;
+		if(hasCenterOfMassDelta)
+		{
+			worldRotation.Normalize();
+			centerOfMassDelta = worldRotation.GetRotatedVector(localCenterOfMassDelta);
+		}
+
+		_mass = mass;
+
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		bool wasInSimulation = bodyInterface.IsAdded(*_actor);
+		bool shouldActivate = wasInSimulation && _isInSimulation;
+		bodyInterface.NotifyShapeChanged(*_actor, JoltConversions::ToJoltVector(previousCenterOfMass), true, shouldActivate ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
+		_appliedShapeCenterOfMass = currentCenterOfMass;
+
+		if(hasCenterOfMassDelta)
+		{
+			SetLinearVelocity(linearVelocity + angularVelocity.GetCrossProduct(centerOfMassDelta));
+		}
+		InvalidateMotionCache();
+		UpdatePosition();
 	}
 
 	float JoltDynamicBody::GetMass() const

@@ -353,6 +353,18 @@ namespace RN
 		UpdateCenterOfMass();
 	}
 
+	bool JoltCompoundShape::SetChildMass(size_t index, float mass)
+	{
+		if(index >= _shapes.size() || mass <= k::EpsilonFloat) return false;
+
+		JoltShape *shape = _shapes[index];
+		if(!shape) return false;
+
+		shape->SetMass(mass);
+		UpdateCenterOfMass();
+		return true;
+	}
+
 	void JoltCompoundShape::SetMass(float mass)
 	{
 		if(mass <= k::EpsilonFloat) return;

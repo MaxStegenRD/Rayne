@@ -46,6 +46,7 @@ namespace RN
 		JTAPI void SetShape(JoltShape *shape, float mass);
 		JTAPI void SetShape(JoltShape *shape, float mass, const Vector3 &positionOffset);
 		JTAPI void SetMass(float mass);
+		JTAPI void RefreshShapeMassProperties(float mass);
 		JTAPI void SetLinearVelocity(const Vector3 &velocity);
 		JTAPI void SetAngularVelocity(const Vector3 &velocity);
 		JTAPI void SetDamping(float linear, float angular);
@@ -111,6 +112,7 @@ namespace RN
 		JoltShape *_shape;
 		JPH::BodyID *_actor;
 		float _mass;
+		Vector3 _appliedShapeCenterOfMass;
 		bool _isKinematic;
 		bool _isGravityEnabled;
 		bool _isInSimulation;
