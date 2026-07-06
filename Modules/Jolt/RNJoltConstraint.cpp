@@ -418,6 +418,22 @@ namespace RN
 		}
 	}
 
+	Vector3 JoltSixDOFConstraint::GetTotalMotorTranslationImpulse() const
+	{
+		if(!_constraint) return Vector3();
+
+		JPH::Vec3 impulse = static_cast<JPH::SixDOFConstraint *>(_constraint)->GetTotalLambdaMotorTranslation();
+		return Vector3(impulse.GetX(), impulse.GetY(), impulse.GetZ());
+	}
+
+	Vector3 JoltSixDOFConstraint::GetTotalMotorRotationImpulse() const
+	{
+		if(!_constraint) return Vector3();
+
+		JPH::Vec3 impulse = static_cast<JPH::SixDOFConstraint *>(_constraint)->GetTotalLambdaMotorRotation();
+		return Vector3(impulse.GetX(), impulse.GetY(), impulse.GetZ());
+	}
+
 	void JoltSixDOFConstraint::SetTranslationLimits(const Vector3 &limitMin, const Vector3 &limitMax)
 	{
 		if(!_constraint) return;
