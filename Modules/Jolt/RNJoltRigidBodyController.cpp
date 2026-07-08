@@ -93,7 +93,17 @@ namespace RN
 		}
 
 		ApplyStepOffset(adjustedVelocity, delta);
-		_controller->SetLinearVelocity(JoltConversions::ToJoltVector(adjustedVelocity));
+		SetLinearVelocity(adjustedVelocity);
+	}
+
+	void JoltRigidBodyController::SetLinearVelocity(const Vector3 &velocity)
+	{
+		if(!velocity.IsValid())
+		{
+			return;
+		}
+
+		_controller->SetLinearVelocity(JoltConversions::ToJoltVector(velocity));
 		_controller->Activate();
 	}
 
