@@ -31,6 +31,7 @@ namespace RN
 
 		JTAPI void Move(const Vector3 &velocity, float delta);
 		JTAPI void SetLinearVelocity(const Vector3 &velocity);
+		JTAPI void SetMaxLinearVelocity(float max);
 		JTAPI void ApplyGravity(const Vector3 &gravity);
 		JTAPI bool Resize(float height, bool checkIfBlocked = true);
 		JTAPI void SetStepOffset(float stepOffset) { _stepOffset = stepOffset; }

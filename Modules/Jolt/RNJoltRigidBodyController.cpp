@@ -45,6 +45,7 @@ namespace RN
 
 		_controller = new JPH::Character(&settings, JPH::RVec3::sZero(), JPH::Quat::sIdentity(), reinterpret_cast<uint64>(this), physics);
 		_controller->AddToPhysicsSystem(JPH::EActivation::DontActivate);
+		SetMaxLinearVelocity(world->GetDefaultDynamicBodyMaxLinearVelocity());
 	}
 
 	JoltRigidBodyController::~JoltRigidBodyController()
@@ -105,6 +106,23 @@ namespace RN
 
 		_controller->SetLinearVelocity(JoltConversions::ToJoltVector(velocity));
 		_controller->Activate();
+	}
+
+	void JoltRigidBodyController::SetMaxLinearVelocity(float max)
+	{
+		if(max <= k::EpsilonFloat)
+		{
+			return;
+		}
+
+		JPH::BodyInterface &bodyInterface = JoltWorld::GetSharedInstance()->GetJoltInstance()->GetBodyInterface();
+		JPH::BodyID bodyID = _controller->GetBodyID();
+		if(bodyID.IsInvalid())
+		{
+			return;
+		}
+
+		bodyInterface.SetMaxLinearVelocity(bodyID, max);
 	}
 
 	void JoltRigidBodyController::ApplyGravity(const Vector3 &gravity)
