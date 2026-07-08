@@ -26,7 +26,7 @@ namespace RN
 	constexpr float ExternalSupportAnchorMaxCorrectionSpeed = 20.0f;
 
 	JoltRigidBodyController::JoltRigidBodyController(float radius, float height, float groundTolerance, float mass, float stepOffset) :
-		_radius(radius), _height(height), _groundTolerance(groundTolerance), _stepOffset(stepOffset), _upDirection(0.0f, 1.0f, 0.0f), _objectBelow(nullptr), _groundVelocity(), _groundAngularVelocity(), _groundNormal(), _isFalling(false), _externalSupportAnchorValid(false), _externalSupportCollisionFilteringEnabled(false), _externalSupportBodyID(InvalidSupportBodyID), _externalSupportLocalPosition(), _externalSupportAnchorMaxForce(0.0f), _externalSupportConstraint(nullptr)
+		_radius(radius), _height(height), _groundTolerance(groundTolerance), _mass(mass), _stepOffset(stepOffset), _upDirection(0.0f, 1.0f, 0.0f), _objectBelow(nullptr), _groundVelocity(), _groundAngularVelocity(), _groundNormal(), _isFalling(false), _externalSupportAnchorValid(false), _externalSupportCollisionFilteringEnabled(false), _externalSupportBodyID(InvalidSupportBodyID), _externalSupportLocalPosition(), _externalSupportAnchorMaxForce(0.0f), _externalSupportConstraint(nullptr)
 	{
 		JoltWorld *world = JoltWorld::GetSharedInstance();
 		JPH::PhysicsSystem *physics = world->GetJoltInstance();
@@ -36,7 +36,7 @@ namespace RN
 		JPH::CharacterSettings settings;
 		settings.mUp = JoltConversions::ToJoltVector(_upDirection);
 		settings.mMaxSlopeAngle = JPH::DegreesToRadians(70.0f);
-		settings.mMass = mass;
+		settings.mMass = _mass;
 		settings.mFriction = 0.2f;
 		settings.mGravityFactor = 0.0f;
 		settings.mLayer = world->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1);
@@ -95,6 +95,22 @@ namespace RN
 		ApplyStepOffset(adjustedVelocity, delta);
 		_controller->SetLinearVelocity(JoltConversions::ToJoltVector(adjustedVelocity));
 		_controller->Activate();
+	}
+
+	void JoltRigidBodyController::ApplyGravity(const Vector3 &gravity)
+	{
+		if(!gravity.IsValid() || gravity.GetSquaredLength() <= k::EpsilonFloat || _mass <= k::EpsilonFloat)
+		{
+			return;
+		}
+
+		JPH::BodyInterface &bodyInterface = JoltWorld::GetSharedInstance()->GetJoltInstance()->GetBodyInterface();
+		bodyInterface.AddForce(_controller->GetBodyID(), JoltConversions::ToJoltVector(gravity * _mass), JPH::EActivation::DontActivate);
+	}
+
+	Vector3 JoltRigidBodyController::GetLinearVelocity() const
+	{
+		return JoltConversions::ToEngineVector(_controller->GetLinearVelocity());
 	}
 
 	bool JoltRigidBodyController::Resize(float height, bool checkIfBlocked)

@@ -30,6 +30,7 @@ namespace RN
 		JTAPI void UpdatePosition() override;
 
 		JTAPI void Move(const Vector3 &velocity, float delta);
+		JTAPI void ApplyGravity(const Vector3 &gravity);
 		JTAPI bool Resize(float height, bool checkIfBlocked = true);
 		JTAPI void SetStepOffset(float stepOffset) { _stepOffset = stepOffset; }
 		JTAPI void SetUpDirection(const Vector3 &upDirection);
@@ -43,6 +44,7 @@ namespace RN
 		JTAPI Vector3 GetGroundVelocity() const { return _groundVelocity; }
 		JTAPI Vector3 GetGroundAngularVelocity() const { return _groundAngularVelocity; }
 		JTAPI Vector3 GetGroundNormal() const { return _groundNormal; }
+		JTAPI Vector3 GetLinearVelocity() const;
 
 		JoltShape *GetShape() const { return _shape; }
 		SceneNode *GetObjectBelow() const { return _objectBelow; }
@@ -58,6 +60,7 @@ namespace RN
 		float _radius;
 		float _height;
 		float _groundTolerance;
+		float _mass;
 		float _stepOffset;
 		Vector3 _upDirection;
 		SceneNode *_objectBelow;
