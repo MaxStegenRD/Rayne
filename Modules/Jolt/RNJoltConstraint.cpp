@@ -457,6 +457,10 @@ namespace RN
 
 		Quaternion normalizedWorldRotation1 = getSafeRotation(worldRotation1);
 		Quaternion normalizedWorldRotation2 = getSafeRotation(worldRotation2);
+		_constraintToBody1 = JoltConversions::ToEngineRotation(bodyInterface.GetRotation(bodyID1)).GetConjugated() * normalizedWorldRotation1;
+		_constraintToBody1.Normalize();
+		_constraintToBody2 = JoltConversions::ToEngineRotation(bodyInterface.GetRotation(bodyID2)).GetConjugated() * normalizedWorldRotation2;
+		_constraintToBody2.Normalize();
 		Vector3 hingeAxis = GetAxisVector(axis);
 		Vector3 normalAxis = GetNormalVector(axis);
 
@@ -478,6 +482,101 @@ namespace RN
 		return constraint->Autorelease();
 	}
 
+	void JoltHingeConstraint::SetLimits(float limitMin, float limitMax)
+	{
+		if(!_constraint) return;
+		if(limitMin > limitMax)
+		{
+			float temporary = limitMin;
+			limitMin = limitMax;
+			limitMax = temporary;
+		}
+		if(limitMin < -k::Pi) limitMin = -k::Pi;
+		if(limitMin > 0.0f) limitMin = 0.0f;
+		if(limitMax < 0.0f) limitMax = 0.0f;
+		if(limitMax > k::Pi) limitMax = k::Pi;
+
+		JPH::HingeConstraint *hinge = static_cast<JPH::HingeConstraint *>(_constraint);
+		bool shouldActivate = hinge->GetLimitsMin() != limitMin || hinge->GetLimitsMax() != limitMax;
+		hinge->SetLimits(limitMin, limitMax);
+		if(shouldActivate) ActivateConstrainedBodies();
+	}
+
+	void JoltHingeConstraint::SetMotorState(int state)
+	{
+		if(!_constraint) return;
+		JPH::HingeConstraint *hinge = static_cast<JPH::HingeConstraint *>(_constraint);
+		JPH::EMotorState motorState = JPH::EMotorState::Off;
+		if(state == 1) motorState = JPH::EMotorState::Velocity;
+		else if(state == 2) motorState = JPH::EMotorState::Position;
+		else if(state == 3) motorState = JPH::EMotorState::PositionAndVelocity;
+
+		bool shouldActivate = hinge->GetMotorState() != motorState;
+		hinge->SetMotorState(motorState);
+		if(shouldActivate && motorState != JPH::EMotorState::Off) ActivateConstrainedBodies();
+	}
+
+	void JoltHingeConstraint::SetTargetAngle(float angle)
+	{
+		if(!_constraint) return;
+		JPH::HingeConstraint *hinge = static_cast<JPH::HingeConstraint *>(_constraint);
+		bool shouldActivate = hinge->GetTargetAngle() != angle;
+		hinge->SetTargetAngle(angle);
+		if(shouldActivate) ActivateConstrainedBodies();
+	}
+
+	void JoltHingeConstraint::SetTargetAngularVelocity(float velocity)
+	{
+		if(!_constraint) return;
+		JPH::HingeConstraint *hinge = static_cast<JPH::HingeConstraint *>(_constraint);
+		bool shouldActivate = hinge->GetTargetAngularVelocity() != velocity || velocity * velocity > k::EpsilonFloat;
+		hinge->SetTargetAngularVelocity(velocity);
+		if(shouldActivate) ActivateConstrainedBodies();
+	}
+
+	void JoltHingeConstraint::SetTargetOrientationCS(const Quaternion &q_cs)
+	{
+		SetTargetOrientationBS(_constraintToBody1 * q_cs * _constraintToBody2.GetConjugated());
+	}
+
+	void JoltHingeConstraint::SetTargetOrientationBS(const Quaternion &q_bs)
+	{
+		if(!_constraint) return;
+		JPH::HingeConstraint *hinge = static_cast<JPH::HingeConstraint *>(_constraint);
+		float previousTarget = hinge->GetTargetAngle();
+		hinge->SetTargetOrientationBS(ToJoltQuat(q_bs));
+		if(hinge->GetTargetAngle() != previousTarget) ActivateConstrainedBodies();
+	}
+
+	void JoltHingeConstraint::SetMotorParams(float frequency, float damping, float maxTorque)
+	{
+		if(!_constraint) return;
+		if(frequency < 0.0f) frequency = 0.0f;
+		if(damping < 0.0f) damping = 0.0f;
+		if(maxTorque < 0.0f) maxTorque = 0.0f;
+
+		JPH::HingeConstraint *hinge = static_cast<JPH::HingeConstraint *>(_constraint);
+		JPH::MotorSettings &motorSettings = hinge->GetMotorSettings();
+		motorSettings.mSpringSettings.mMode = JPH::ESpringMode::FrequencyAndDamping;
+		motorSettings.mSpringSettings.mFrequency = frequency;
+		motorSettings.mSpringSettings.mDamping = damping;
+		motorSettings.SetTorqueLimit(maxTorque);
+	}
+
+	void JoltHingeConstraint::SetLimitsSpringParams(float frequency, float damping)
+	{
+		if(!_constraint) return;
+		if(frequency < 0.0f) frequency = 0.0f;
+		if(damping < 0.0f) damping = 0.0f;
+
+		JPH::HingeConstraint *hinge = static_cast<JPH::HingeConstraint *>(_constraint);
+		JPH::SpringSettings springSettings;
+		springSettings.mMode = JPH::ESpringMode::FrequencyAndDamping;
+		springSettings.mFrequency = frequency;
+		springSettings.mDamping = damping;
+		hinge->SetLimitsSpringSettings(springSettings);
+	}
+
 	void JoltHingeConstraint::SetMaxFrictionTorque(float maxFriction)
 	{
 		if(!_constraint) return;
@@ -487,6 +586,18 @@ namespace RN
 		bool shouldActivate = hinge->GetMaxFrictionTorque() != maxFriction && maxFriction > k::EpsilonFloat;
 		hinge->SetMaxFrictionTorque(maxFriction);
 		if(shouldActivate) ActivateConstrainedBodies();
+	}
+
+	float JoltHingeConstraint::GetCurrentAngle() const
+	{
+		if(!_constraint) return 0.0f;
+		return static_cast<JPH::HingeConstraint *>(_constraint)->GetCurrentAngle();
+	}
+
+	float JoltHingeConstraint::GetTotalMotorImpulse() const
+	{
+		if(!_constraint) return 0.0f;
+		return static_cast<JPH::HingeConstraint *>(_constraint)->GetTotalLambdaMotor();
 	}
 
 	JoltSixDOFConstraint::JoltSixDOFConstraint(JoltDynamicBody *body1, const JoltPosition &globalPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const JoltPosition &globalPosition2, const Quaternion &worldRotation2)

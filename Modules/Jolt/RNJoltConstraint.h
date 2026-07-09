@@ -122,11 +122,24 @@ namespace RN
 		JTAPI JoltHingeConstraint(JoltDynamicBody *body1, const JoltPosition &globalPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const JoltPosition &globalPosition2, const Quaternion &worldRotation2, Axis axis = Axis::X);
 		JTAPI static JoltHingeConstraint *WithBodiesAndGlobalFrames(JoltDynamicBody *body1, const JoltPosition &globalPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const JoltPosition &globalPosition2, const Quaternion &worldRotation2, Axis axis = Axis::X);
 
+		JTAPI void SetLimits(float limitMin, float limitMax);
+		JTAPI void SetMotorState(int state); // 0=Off,1=Velocity,2=Position,3=PositionAndVelocity
+		JTAPI void SetTargetAngle(float angle);
+		JTAPI void SetTargetAngularVelocity(float velocity);
+		JTAPI void SetTargetOrientationCS(const Quaternion &q_cs);
+		JTAPI void SetTargetOrientationBS(const Quaternion &q_bs);
+		JTAPI void SetMotorParams(float frequency, float damping, float maxTorque);
+		JTAPI void SetLimitsSpringParams(float frequency, float damping);
 		JTAPI void SetMaxFrictionTorque(float maxFriction);
+		JTAPI float GetCurrentAngle() const;
+		JTAPI float GetTotalMotorImpulse() const;
 
 		RNDeclareMetaAPI(JoltHingeConstraint, JTAPI)
 
 	private:
+		Quaternion _constraintToBody1;
+		Quaternion _constraintToBody2;
+
 		static Vector3 GetAxisVector(Axis axis);
 		static Vector3 GetNormalVector(Axis axis);
 	};
