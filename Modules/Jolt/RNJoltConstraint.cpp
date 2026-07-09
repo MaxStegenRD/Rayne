@@ -15,6 +15,7 @@
 #include <Jolt/Physics/Constraints/FixedConstraint.h>
 #include <Jolt/Physics/Constraints/DistanceConstraint.h>
 #include <Jolt/Physics/Constraints/SliderConstraint.h>
+#include <Jolt/Physics/Constraints/HingeConstraint.h>
 #include <Jolt/Physics/Constraints/SixDOFConstraint.h>
 #include <Jolt/Physics/Constraints/TwoBodyConstraint.h>
 #include <Jolt/Physics/Constraints/MotorSettings.h>
@@ -27,6 +28,7 @@ namespace RN
 	RNDefineMeta(JoltFixedConstraint, JoltConstraint)
 	RNDefineMeta(JoltDistanceConstraint, JoltConstraint)
 	RNDefineMeta(JoltSliderConstraint, JoltConstraint)
+	RNDefineMeta(JoltHingeConstraint, JoltConstraint)
 	RNDefineMeta(JoltSixDOFConstraint, JoltConstraint)
 
 	JoltConstraint::JoltConstraint() :
@@ -415,6 +417,76 @@ namespace RN
 	{
 		if(!_constraint) return 0.0f;
 		return static_cast<JPH::SliderConstraint *>(_constraint)->GetCurrentPosition();
+	}
+
+	Vector3 JoltHingeConstraint::GetAxisVector(Axis axis)
+	{
+		if(axis == Axis::Y) return Vector3(0.0f, 1.0f, 0.0f);
+		if(axis == Axis::Z) return Vector3(0.0f, 0.0f, 1.0f);
+		return Vector3(1.0f, 0.0f, 0.0f);
+	}
+
+	Vector3 JoltHingeConstraint::GetNormalVector(Axis axis)
+	{
+		if(axis == Axis::Y) return Vector3(1.0f, 0.0f, 0.0f);
+		return Vector3(0.0f, 1.0f, 0.0f);
+	}
+
+	JoltHingeConstraint::JoltHingeConstraint(JoltDynamicBody *body1, const JoltPosition &globalPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const JoltPosition &globalPosition2, const Quaternion &worldRotation2, Axis axis)
+	{
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		JPH::BodyID bodyID1 = body1 && body1->GetJoltActor() ? *body1->GetJoltActor() : JPH::BodyID();
+		JPH::BodyID bodyID2 = body2 && body2->GetJoltActor() ? *body2->GetJoltActor() : JPH::BodyID();
+		RN_ASSERT(!bodyID1.IsInvalid() && !bodyID2.IsInvalid(), "Invalid bodies for constraint creation");
+
+		auto getSafeRotation = [](const Quaternion &rotation) -> Quaternion {
+			if(!rotation.IsValid()) return Quaternion();
+
+			Quaternion result(rotation);
+			result.Normalize();
+			return result.IsValid() ? result : Quaternion();
+		};
+		auto getAxis = [](const Quaternion &rotation, const Vector3 &fallbackAxis) -> Vector3 {
+			Vector3 axis = rotation.GetRotatedVector(fallbackAxis);
+			if(!axis.IsValid() || axis.GetSquaredLength() <= k::EpsilonFloat) return fallbackAxis;
+
+			axis.Normalize();
+			return axis.IsValid() ? axis : fallbackAxis;
+		};
+
+		Quaternion normalizedWorldRotation1 = getSafeRotation(worldRotation1);
+		Quaternion normalizedWorldRotation2 = getSafeRotation(worldRotation2);
+		Vector3 hingeAxis = GetAxisVector(axis);
+		Vector3 normalAxis = GetNormalVector(axis);
+
+		JPH::HingeConstraintSettings settings;
+		settings.mSpace = JPH::EConstraintSpace::WorldSpace;
+		settings.mPoint1 = JoltConversions::ToJoltPosition(globalPosition1);
+		settings.mHingeAxis1 = JoltConversions::ToJoltVector(getAxis(normalizedWorldRotation1, hingeAxis));
+		settings.mNormalAxis1 = JoltConversions::ToJoltVector(getAxis(normalizedWorldRotation1, normalAxis));
+		settings.mPoint2 = JoltConversions::ToJoltPosition(globalPosition2);
+		settings.mHingeAxis2 = JoltConversions::ToJoltVector(getAxis(normalizedWorldRotation2, hingeAxis));
+		settings.mNormalAxis2 = JoltConversions::ToJoltVector(getAxis(normalizedWorldRotation2, normalAxis));
+
+		SetConstraint(bodyInterface.CreateConstraint(&settings, bodyID1, bodyID2), bodyID1, bodyID2);
+	}
+
+	JoltHingeConstraint *JoltHingeConstraint::WithBodiesAndGlobalFrames(JoltDynamicBody *body1, const JoltPosition &globalPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const JoltPosition &globalPosition2, const Quaternion &worldRotation2, Axis axis)
+	{
+		JoltHingeConstraint *constraint = new JoltHingeConstraint(body1, globalPosition1, worldRotation1, body2, globalPosition2, worldRotation2, axis);
+		return constraint->Autorelease();
+	}
+
+	void JoltHingeConstraint::SetMaxFrictionTorque(float maxFriction)
+	{
+		if(!_constraint) return;
+		if(maxFriction < 0.0f) maxFriction = 0.0f;
+
+		JPH::HingeConstraint *hinge = static_cast<JPH::HingeConstraint *>(_constraint);
+		bool shouldActivate = hinge->GetMaxFrictionTorque() != maxFriction && maxFriction > k::EpsilonFloat;
+		hinge->SetMaxFrictionTorque(maxFriction);
+		if(shouldActivate) ActivateConstrainedBodies();
 	}
 
 	JoltSixDOFConstraint::JoltSixDOFConstraint(JoltDynamicBody *body1, const JoltPosition &globalPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const JoltPosition &globalPosition2, const Quaternion &worldRotation2)

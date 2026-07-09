@@ -109,6 +109,28 @@ namespace RN
 		static Vector3 GetNormalVector(Axis axis);
 	};
 
+	class JoltHingeConstraint : public JoltConstraint
+	{
+	public:
+		enum class Axis
+		{
+			X,
+			Y,
+			Z
+		};
+
+		JTAPI JoltHingeConstraint(JoltDynamicBody *body1, const JoltPosition &globalPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const JoltPosition &globalPosition2, const Quaternion &worldRotation2, Axis axis = Axis::X);
+		JTAPI static JoltHingeConstraint *WithBodiesAndGlobalFrames(JoltDynamicBody *body1, const JoltPosition &globalPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const JoltPosition &globalPosition2, const Quaternion &worldRotation2, Axis axis = Axis::X);
+
+		JTAPI void SetMaxFrictionTorque(float maxFriction);
+
+		RNDeclareMetaAPI(JoltHingeConstraint, JTAPI)
+
+	private:
+		static Vector3 GetAxisVector(Axis axis);
+		static Vector3 GetNormalVector(Axis axis);
+	};
+
 	class JoltSixDOFConstraint : public JoltConstraint
 	{
 	public:
