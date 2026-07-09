@@ -24,6 +24,7 @@
 #include <Jolt/Physics/Collision/CastResult.h>
 #include <Jolt/Physics/Collision/CollideShape.h>
 #include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
+#include <Jolt/Physics/Collision/EstimateCollisionResponse.h>
 #include <Jolt/Physics/Collision/RayCast.h>
 #include <Jolt/Physics/Collision/TransformedShape.h>
 #include <Jolt/Physics/Collision/Shape/CompoundShape.h>
@@ -204,6 +205,13 @@ namespace RN
 	class JoltContactListener : public JPH::ContactListener
 	{
 	public:
+		void SetCollisionEstimationSettings(float timeStep, float minimumVelocityForRestitution, JPH::uint32 velocityIterations)
+		{
+			_collisionEstimationTimeStep = timeStep;
+			_collisionEstimationMinimumVelocityForRestitution = minimumVelocityForRestitution;
+			_collisionEstimationVelocityIterations = std::max(velocityIterations, static_cast<JPH::uint32>(1));
+		}
+
 		void SetBodyPairCollisionEnabled(const JPH::BodyID &body1, const JPH::BodyID &body2, bool enabled)
 		{
 			uint32 bodyID1;
@@ -276,6 +284,10 @@ namespace RN
 			JoltContactInfoShapeData::FillForOwnBody(info1, inBody1, inManifold.mSubShapeID1);
 			JoltContactInfoShapeData::FillForBody(info2, inBody1, inManifold.mSubShapeID1);
 			JoltContactInfoShapeData::FillForOwnBody(info2, inBody2, inManifold.mSubShapeID2);
+			if((co1 && co1->GetContactResponseEstimationEnabled()) || (co2 && co2->GetContactResponseEstimationEnabled()))
+			{
+				FillEstimatedCollisionResponse(info1, info2, inBody1, inBody2, inManifold, ioSettings);
+			}
 			if(co1) co1->NotifyContact(info1, JoltCollisionObject::ContactState::Begin);
 			if(co2) co2->NotifyContact(info2, JoltCollisionObject::ContactState::Begin);
 		}
@@ -321,6 +333,40 @@ namespace RN
 		}
 
 	private:
+		void FillEstimatedCollisionResponse(JoltContactInfo &info1, JoltContactInfo &info2, const JPH::Body &body1, const JPH::Body &body2, const JPH::ContactManifold &manifold, const JPH::ContactSettings &settings) const
+		{
+			if(_collisionEstimationTimeStep <= k::EpsilonFloat) return;
+
+			JPH::CollisionEstimationResult estimation;
+			JPH::EstimateCollisionResponse(body1, body2, manifold, estimation, settings.mCombinedFriction, settings.mCombinedRestitution, _collisionEstimationMinimumVelocityForRestitution, _collisionEstimationVelocityIterations);
+			size_t contactPointCount = std::min(static_cast<size_t>(manifold.mRelativeContactPointsOn1.size()), static_cast<size_t>(estimation.mImpulses.size()));
+			if(contactPointCount == 0) return;
+
+			info1.estimatedContactPointImpulses.reserve(contactPointCount);
+			info2.estimatedContactPointImpulses.reserve(contactPointCount);
+			info1.estimatedContactImpulseTimeStep = _collisionEstimationTimeStep;
+			info2.estimatedContactImpulseTimeStep = _collisionEstimationTimeStep;
+
+			for(size_t i = 0; i < contactPointCount; i += 1)
+			{
+				const JPH::CollisionEstimationResult::Impulse &estimatedImpulse = estimation.mImpulses[i];
+				JPH::Vec3 impulse = manifold.mWorldSpaceNormal * estimatedImpulse.mContactImpulse + estimation.mTangent1 * estimatedImpulse.mFrictionImpulse1 + estimation.mTangent2 * estimatedImpulse.mFrictionImpulse2;
+				JPH::RVec3 position = (manifold.GetWorldSpaceContactPointOn1(static_cast<JPH::uint>(i)) + manifold.GetWorldSpaceContactPointOn2(static_cast<JPH::uint>(i))) * 0.5f;
+
+				JoltEstimatedContactPointImpulse point1;
+				point1.position = JoltConversions::ToPosition(position);
+				point1.impulse = JoltConversions::ToEngineVector(-impulse);
+				point1.normalImpulse = estimatedImpulse.mContactImpulse;
+				info1.estimatedContactPointImpulses.push_back(point1);
+
+				JoltEstimatedContactPointImpulse point2;
+				point2.position = point1.position;
+				point2.impulse = JoltConversions::ToEngineVector(impulse);
+				point2.normalImpulse = estimatedImpulse.mContactImpulse;
+				info2.estimatedContactPointImpulses.push_back(point2);
+			}
+		}
+
 		static Vector3 GetBodyContactPointVelocity(const JPH::Body &body, const JPH::RVec3 &position)
 		{
 			JPH::Vec3 velocity = body.GetPointVelocity(position);
@@ -604,6 +650,9 @@ namespace RN
 		std::vector<CountedBodyPair> _ignoredBodyPairs;
 		std::vector<CountedBodyPair> _connectedFilteredBodyPairs;
 		std::vector<ConnectedFilteredComponent> _connectedFilteredComponents;
+		float _collisionEstimationTimeStep = 0.0f;
+		float _collisionEstimationMinimumVelocityForRestitution = 1.0f;
+		JPH::uint32 _collisionEstimationVelocityIterations = 10;
 	};
 
 	// An example activation listener

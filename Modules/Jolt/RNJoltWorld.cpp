@@ -286,6 +286,8 @@ namespace RN
 
 		// Step physics
 		_isSimulating = true;
+		const JPH::PhysicsSettings &physicsSettings = _physicsSystem->GetPhysicsSettings();
+		_internals->contactListener.SetCollisionEstimationSettings(delta / static_cast<float>(_substeps), physicsSettings.mMinVelocityForRestitution, physicsSettings.mNumVelocitySteps);
 		_physicsSystem->Update(delta, _substeps, _internals->tempAllocator, _internals->jobSystem); //This waits for all jobs to finish! Maybe it can be split up into simulate and finish like with physx (wait here for all jobs, but start them in WillUpdate)
 		_isSimulating = false;
 

@@ -16,6 +16,13 @@ namespace RN
 	class JoltWorld;
 	class JoltCollisionObject;
 
+	struct JoltEstimatedContactPointImpulse
+	{
+		JoltPosition position;
+		Vector3 impulse; // Estimated impulse applied to the collision object receiving the callback.
+		float normalImpulse = 0.0f; // Magnitude along the contact manifold normal before applying the per-body sign.
+	};
+
 	struct JoltContactInfo
 	{
 		SceneNode *node = nullptr;
@@ -33,6 +40,8 @@ namespace RN
 		uint64 ownSubShapeUserData = 0;
 		uint32 ownCompoundChildIndex = 0xffffffffU;
 		uint32 ownCompoundChildUserData = 0;
+		std::vector<JoltEstimatedContactPointImpulse> estimatedContactPointImpulses; // Populated for Begin contacts when estimation is enabled.
+		float estimatedContactImpulseTimeStep = 0.0f; // Physics step duration used to estimate these impulses.
 	};
 
 	class JoltCollisionObject : public SceneNodeAttachment
@@ -57,6 +66,8 @@ namespace RN
 		JTAPI virtual void SetCollisionFilter(uint32 group, uint32 mask);
 		JTAPI void SetContactCallback(std::function<void(JoltCollisionObject *, const JoltContactInfo &, ContactState)> &&callback);
 		JTAPI std::function<void(JoltCollisionObject *, const JoltContactInfo &, ContactState)> GetContactCallback() const { return _contactCallback; }
+		JTAPI void SetContactResponseEstimationEnabled(bool enabled);
+		bool GetContactResponseEstimationEnabled() const { return _contactResponseEstimationEnabled; }
 		JTAPI void SetContactResponseMassScale(uint32 collisionMask, float inverseMassScale, float inverseInertiaScale);
 		JTAPI float GetContactResponseInverseMassScaleFor(const JoltCollisionObject *collisionObject) const;
 		JTAPI float GetContactResponseInverseInertiaScaleFor(const JoltCollisionObject *collisionObject) const;
@@ -81,6 +92,7 @@ namespace RN
 		uint32 _contactResponseMassScaleMask;
 		float _contactResponseInverseMassScale;
 		float _contactResponseInverseInertiaScale;
+		bool _contactResponseEstimationEnabled;
 
 		SceneNode *_owner;
 

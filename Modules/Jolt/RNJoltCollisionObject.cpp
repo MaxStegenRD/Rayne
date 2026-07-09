@@ -21,6 +21,7 @@ namespace RN
 		_contactResponseMassScaleMask(0),
 		_contactResponseInverseMassScale(1.0f),
 		_contactResponseInverseInertiaScale(1.0f),
+		_contactResponseEstimationEnabled(false),
 		_owner(nullptr)
 	{}
 
@@ -38,6 +39,11 @@ namespace RN
 	void JoltCollisionObject::SetContactCallback(std::function<void(JoltCollisionObject *, const JoltContactInfo &, ContactState)> &&callback)
 	{
 		_contactCallback = std::move(callback);
+	}
+
+	void JoltCollisionObject::SetContactResponseEstimationEnabled(bool enabled)
+	{
+		_contactResponseEstimationEnabled = enabled;
 	}
 
 	void JoltCollisionObject::SetContactResponseMassScale(uint32 collisionMask, float inverseMassScale, float inverseInertiaScale)
