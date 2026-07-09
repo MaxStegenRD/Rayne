@@ -14,6 +14,7 @@
 #include <Jolt/Physics/Constraints/PointConstraint.h>
 #include <Jolt/Physics/Constraints/FixedConstraint.h>
 #include <Jolt/Physics/Constraints/DistanceConstraint.h>
+#include <Jolt/Physics/Constraints/SliderConstraint.h>
 #include <Jolt/Physics/Constraints/SixDOFConstraint.h>
 #include <Jolt/Physics/Constraints/TwoBodyConstraint.h>
 #include <Jolt/Physics/Constraints/MotorSettings.h>
@@ -25,6 +26,7 @@ namespace RN
 	RNDefineMeta(JoltPointConstraint, JoltConstraint)
 	RNDefineMeta(JoltFixedConstraint, JoltConstraint)
 	RNDefineMeta(JoltDistanceConstraint, JoltConstraint)
+	RNDefineMeta(JoltSliderConstraint, JoltConstraint)
 	RNDefineMeta(JoltSixDOFConstraint, JoltConstraint)
 
 	JoltConstraint::JoltConstraint() :
@@ -253,6 +255,166 @@ namespace RN
 	{
 		JoltDistanceConstraint *constraint = new JoltDistanceConstraint(body1, globalPoint1, body2, globalPoint2, minDistance, maxDistance);
 		return constraint->Autorelease();
+	}
+
+	Vector3 JoltSliderConstraint::GetAxisVector(Axis axis)
+	{
+		if(axis == Axis::Y) return Vector3(0.0f, 1.0f, 0.0f);
+		if(axis == Axis::Z) return Vector3(0.0f, 0.0f, 1.0f);
+		return Vector3(1.0f, 0.0f, 0.0f);
+	}
+
+	Vector3 JoltSliderConstraint::GetNormalVector(Axis axis)
+	{
+		if(axis == Axis::Y) return Vector3(1.0f, 0.0f, 0.0f);
+		return Vector3(0.0f, 1.0f, 0.0f);
+	}
+
+	JoltSliderConstraint::JoltSliderConstraint(JoltDynamicBody *body1, const JoltPosition &globalPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const JoltPosition &globalPosition2, const Quaternion &worldRotation2, Axis axis)
+	{
+		JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
+		JPH::BodyInterface &bodyInterface = physics->GetBodyInterface();
+		JPH::BodyID bodyID1 = body1 && body1->GetJoltActor() ? *body1->GetJoltActor() : JPH::BodyID();
+		JPH::BodyID bodyID2 = body2 && body2->GetJoltActor() ? *body2->GetJoltActor() : JPH::BodyID();
+		RN_ASSERT(!bodyID1.IsInvalid() && !bodyID2.IsInvalid(), "Invalid bodies for constraint creation");
+
+		auto getSafeRotation = [](const Quaternion &rotation) -> Quaternion {
+			if(!rotation.IsValid()) return Quaternion();
+
+			Quaternion result(rotation);
+			result.Normalize();
+			return result.IsValid() ? result : Quaternion();
+		};
+		auto getAxis = [](const Quaternion &rotation, const Vector3 &fallbackAxis) -> Vector3 {
+			Vector3 axis = rotation.GetRotatedVector(fallbackAxis);
+			if(!axis.IsValid() || axis.GetSquaredLength() <= k::EpsilonFloat) return fallbackAxis;
+
+			axis.Normalize();
+			return axis.IsValid() ? axis : fallbackAxis;
+		};
+
+		Quaternion normalizedWorldRotation1 = getSafeRotation(worldRotation1);
+		Quaternion normalizedWorldRotation2 = getSafeRotation(worldRotation2);
+		Vector3 sliderAxis = GetAxisVector(axis);
+		Vector3 normalAxis = GetNormalVector(axis);
+
+		JPH::SliderConstraintSettings settings;
+		settings.mSpace = JPH::EConstraintSpace::WorldSpace;
+		settings.mAutoDetectPoint = false;
+		settings.mPoint1 = JoltConversions::ToJoltPosition(globalPosition1);
+		settings.mSliderAxis1 = JoltConversions::ToJoltVector(getAxis(normalizedWorldRotation1, sliderAxis));
+		settings.mNormalAxis1 = JoltConversions::ToJoltVector(getAxis(normalizedWorldRotation1, normalAxis));
+		settings.mPoint2 = JoltConversions::ToJoltPosition(globalPosition2);
+		settings.mSliderAxis2 = JoltConversions::ToJoltVector(getAxis(normalizedWorldRotation2, sliderAxis));
+		settings.mNormalAxis2 = JoltConversions::ToJoltVector(getAxis(normalizedWorldRotation2, normalAxis));
+
+		SetConstraint(bodyInterface.CreateConstraint(&settings, bodyID1, bodyID2), bodyID1, bodyID2);
+	}
+
+	JoltSliderConstraint *JoltSliderConstraint::WithBodiesAndGlobalFrames(JoltDynamicBody *body1, const JoltPosition &globalPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const JoltPosition &globalPosition2, const Quaternion &worldRotation2, Axis axis)
+	{
+		JoltSliderConstraint *constraint = new JoltSliderConstraint(body1, globalPosition1, worldRotation1, body2, globalPosition2, worldRotation2, axis);
+		return constraint->Autorelease();
+	}
+
+	void JoltSliderConstraint::SetLimits(float limitMin, float limitMax)
+	{
+		if(!_constraint) return;
+		if(limitMin <= -1000000.0f && limitMax >= 1000000.0f)
+		{
+			limitMin = -FLT_MAX;
+			limitMax = FLT_MAX;
+		}
+		if(limitMin > limitMax)
+		{
+			float temporary = limitMin;
+			limitMin = limitMax;
+			limitMax = temporary;
+		}
+		if(limitMin > 0.0f) limitMin = 0.0f;
+		if(limitMax < 0.0f) limitMax = 0.0f;
+
+		JPH::SliderConstraint *slider = static_cast<JPH::SliderConstraint *>(_constraint);
+		bool shouldActivate = !slider->HasLimits() || slider->GetLimitsMin() != limitMin || slider->GetLimitsMax() != limitMax;
+		slider->SetLimits(limitMin, limitMax);
+		if(shouldActivate) ActivateConstrainedBodies();
+	}
+
+	void JoltSliderConstraint::SetMotorState(int state)
+	{
+		if(!_constraint) return;
+		JPH::SliderConstraint *slider = static_cast<JPH::SliderConstraint *>(_constraint);
+		JPH::EMotorState motorState = JPH::EMotorState::Off;
+		if(state == 1) motorState = JPH::EMotorState::Velocity;
+		else if(state == 2) motorState = JPH::EMotorState::Position;
+
+		bool shouldActivate = slider->GetMotorState() != motorState;
+		slider->SetMotorState(motorState);
+		if(shouldActivate && motorState != JPH::EMotorState::Off) ActivateConstrainedBodies();
+	}
+
+	void JoltSliderConstraint::SetTargetPosition(float position)
+	{
+		if(!_constraint) return;
+		JPH::SliderConstraint *slider = static_cast<JPH::SliderConstraint *>(_constraint);
+		bool shouldActivate = slider->GetTargetPosition() != position;
+		slider->SetTargetPosition(position);
+		if(shouldActivate) ActivateConstrainedBodies();
+	}
+
+	void JoltSliderConstraint::SetTargetVelocity(float velocity)
+	{
+		if(!_constraint) return;
+		JPH::SliderConstraint *slider = static_cast<JPH::SliderConstraint *>(_constraint);
+		bool shouldActivate = slider->GetTargetVelocity() != velocity || velocity * velocity > k::EpsilonFloat;
+		slider->SetTargetVelocity(velocity);
+		if(shouldActivate) ActivateConstrainedBodies();
+	}
+
+	void JoltSliderConstraint::SetMotorParams(float frequency, float damping, float maxForce)
+	{
+		if(!_constraint) return;
+		if(frequency < 0.0f) frequency = 0.0f;
+		if(damping < 0.0f) damping = 0.0f;
+		if(maxForce < 0.0f) maxForce = 0.0f;
+
+		JPH::SliderConstraint *slider = static_cast<JPH::SliderConstraint *>(_constraint);
+		JPH::MotorSettings &motorSettings = slider->GetMotorSettings();
+		motorSettings.mSpringSettings.mMode = JPH::ESpringMode::FrequencyAndDamping;
+		motorSettings.mSpringSettings.mFrequency = frequency;
+		motorSettings.mSpringSettings.mDamping = damping;
+		motorSettings.SetForceLimit(maxForce);
+	}
+
+	void JoltSliderConstraint::SetLimitsSpringParams(float frequency, float damping)
+	{
+		if(!_constraint) return;
+		if(frequency < 0.0f) frequency = 0.0f;
+		if(damping < 0.0f) damping = 0.0f;
+
+		JPH::SliderConstraint *slider = static_cast<JPH::SliderConstraint *>(_constraint);
+		JPH::SpringSettings springSettings;
+		springSettings.mMode = JPH::ESpringMode::FrequencyAndDamping;
+		springSettings.mFrequency = frequency;
+		springSettings.mDamping = damping;
+		slider->SetLimitsSpringSettings(springSettings);
+	}
+
+	void JoltSliderConstraint::SetMaxFrictionForce(float maxFriction)
+	{
+		if(!_constraint) return;
+		if(maxFriction < 0.0f) maxFriction = 0.0f;
+
+		JPH::SliderConstraint *slider = static_cast<JPH::SliderConstraint *>(_constraint);
+		bool shouldActivate = slider->GetMaxFrictionForce() != maxFriction && maxFriction > k::EpsilonFloat;
+		slider->SetMaxFrictionForce(maxFriction);
+		if(shouldActivate) ActivateConstrainedBodies();
+	}
+
+	float JoltSliderConstraint::GetCurrentPosition() const
+	{
+		if(!_constraint) return 0.0f;
+		return static_cast<JPH::SliderConstraint *>(_constraint)->GetCurrentPosition();
 	}
 
 	JoltSixDOFConstraint::JoltSixDOFConstraint(JoltDynamicBody *body1, const JoltPosition &globalPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const JoltPosition &globalPosition2, const Quaternion &worldRotation2)

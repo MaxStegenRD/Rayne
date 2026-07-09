@@ -80,6 +80,35 @@ namespace RN
 		RNDeclareMetaAPI(JoltDistanceConstraint, JTAPI)
 	};
 
+	class JoltSliderConstraint : public JoltConstraint
+	{
+	public:
+		enum class Axis
+		{
+			X,
+			Y,
+			Z
+		};
+
+		JTAPI JoltSliderConstraint(JoltDynamicBody *body1, const JoltPosition &globalPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const JoltPosition &globalPosition2, const Quaternion &worldRotation2, Axis axis = Axis::X);
+		JTAPI static JoltSliderConstraint *WithBodiesAndGlobalFrames(JoltDynamicBody *body1, const JoltPosition &globalPosition1, const Quaternion &worldRotation1, JoltDynamicBody *body2, const JoltPosition &globalPosition2, const Quaternion &worldRotation2, Axis axis = Axis::X);
+
+		JTAPI void SetLimits(float limitMin, float limitMax);
+		JTAPI void SetMotorState(int state); // 0=Off,1=Velocity,2=Position
+		JTAPI void SetTargetPosition(float position);
+		JTAPI void SetTargetVelocity(float velocity);
+		JTAPI void SetMotorParams(float frequency, float damping, float maxForce);
+		JTAPI void SetLimitsSpringParams(float frequency, float damping);
+		JTAPI void SetMaxFrictionForce(float maxFriction);
+		JTAPI float GetCurrentPosition() const;
+
+		RNDeclareMetaAPI(JoltSliderConstraint, JTAPI)
+
+	private:
+		static Vector3 GetAxisVector(Axis axis);
+		static Vector3 GetNormalVector(Axis axis);
+	};
+
 	class JoltSixDOFConstraint : public JoltConstraint
 	{
 	public:
