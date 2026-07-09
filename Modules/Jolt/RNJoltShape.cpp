@@ -57,6 +57,16 @@ namespace RN
 		return Vector3(center.GetX(), center.GetY(), center.GetZ());
 	}
 
+	AABB JoltShape::GetLocalBounds() const
+	{
+		if(!_shape) return AABB(Vector3(), Vector3());
+
+		JPH::AABox bounds = _shape->GetLocalBounds();
+		AABB result(JoltConversions::ToVector3(bounds.mMin), JoltConversions::ToVector3(bounds.mMax));
+		result.position = Vector3();
+		return result;
+	}
+
 	void JoltShape::SetMass(float mass)
 	{
 		if(!_shape || mass <= k::EpsilonFloat || _shape->GetType() != JPH::EShapeType::Convex) return;

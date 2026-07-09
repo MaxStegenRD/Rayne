@@ -29,6 +29,7 @@ namespace RN
 
 		JTAPI JPH::Shape *GetJoltShape() const { return _shape; }
 		JTAPI Vector3 GetCenterOfMass() const;
+		JTAPI AABB GetLocalBounds() const;
 		JTAPI virtual void SetMass(float mass);
 		JTAPI void SetPose(RN::Vector3 positionOffset, RN::Quaternion rotationOffset);
 
