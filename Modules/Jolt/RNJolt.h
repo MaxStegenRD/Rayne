@@ -17,8 +17,20 @@
 	#define JTAPI RN_IMPORT
 #endif
 
+namespace JPH
+{
+	class Constraint;
+}
+
 namespace RN
 {
+	class JoltConstraintOwner
+	{
+	public:
+		virtual ~JoltConstraintOwner() = default;
+		virtual void InvalidateJoltConstraint(JPH::Constraint *constraint) = 0;
+	};
+
 #if RN_ENABLE_UNIVERSE_SCALE
 	using JoltPosition = DVector3;
 #else

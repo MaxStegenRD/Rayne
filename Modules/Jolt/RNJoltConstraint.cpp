@@ -64,6 +64,14 @@ namespace RN
 		}
 	}
 
+	void JoltConstraint::InvalidateJoltConstraint(JPH::Constraint *constraint)
+	{
+		if(_constraint != constraint) return;
+
+		ResetStoredBodyPairCollisionState();
+		_constraint = nullptr;
+	}
+
 	void JoltConstraint::SetConstraint(JPH::Constraint *constraint, const JPH::BodyID &bodyID1, const JPH::BodyID &bodyID2)
 	{
 		if(_constraint == constraint) return;
@@ -78,6 +86,7 @@ namespace RN
 		_constraint = constraint;
 		if(_constraint)
 		{
+			_constraint->SetUserData(reinterpret_cast<uint64>(static_cast<JoltConstraintOwner *>(this)));
 			JPH::PhysicsSystem *physics = JoltWorld::GetSharedInstance()->GetJoltInstance();
 			physics->AddConstraint(_constraint);
 		}

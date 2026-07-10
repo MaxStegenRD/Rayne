@@ -37,6 +37,7 @@ namespace RN
 		friend class JoltDynamicBody;
 		friend class JoltKinematicController;
 		friend class JoltRigidBodyController;
+		friend class JoltStaticBody;
 
 		JTAPI JoltWorld(const Vector3 &gravity = Vector3(0.0f, -9.81f, 0.0f), uint32 maxBodies = 65536, uint32 maxBodyPairs = 65536, uint32 maxContactConstraints = 10240);
 		JTAPI ~JoltWorld();
@@ -100,6 +101,7 @@ namespace RN
 		JTAPI void UpdateDynamicBodyPositions();
 		JTAPI void SetBodyPairCollisionEnabled(const JPH::BodyID &body1, const JPH::BodyID &body2, bool enabled);
 		JTAPI void SetConnectedBodyCollisionFilteringEnabled(const JPH::BodyID &body1, const JPH::BodyID &body2, bool enabled);
+		JTAPI void RemoveConstraintsForBody(const JPH::BodyID &bodyID);
 		JTAPI void ProcessQueuedBodyRemovals();
 
 		static JoltWorld *_sharedInstance;

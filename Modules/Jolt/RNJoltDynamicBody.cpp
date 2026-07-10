@@ -54,6 +54,7 @@ namespace RN
 
 		if(_actor)
 		{
+			world->RemoveConstraintsForBody(*_actor);
 			world->CancelQueuedBodyRemoval(*_actor);
 			if(bodyInterface.IsAdded(*_actor))
 			{

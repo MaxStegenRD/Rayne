@@ -21,7 +21,7 @@ namespace JPH
 
 namespace RN
 {
-	class JoltRigidBodyController : public JoltCollisionObject
+	class JoltRigidBodyController : public JoltCollisionObject, private JoltConstraintOwner
 	{
 	public:
 		JTAPI JoltRigidBodyController(float radius, float height, float groundTolerance = 0.05f, float mass = 80.0f, float stepOffset = 0.0f);
@@ -84,6 +84,7 @@ namespace RN
 		bool IsExternalSupportBodyUsable(uint32 bodyID) const;
 		bool GetSupportBodyTransform(uint32 bodyID, SceneNode::PositionType &position, Quaternion &rotation) const;
 		bool GetExternalSupportAnchorState(SceneNode::PositionType &position, Vector3 &velocity) const;
+		void InvalidateJoltConstraint(JPH::Constraint *constraint) override;
 		void UpdateControllerTransform();
 		void UpdateGroundState();
 

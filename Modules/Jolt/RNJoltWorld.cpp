@@ -13,6 +13,8 @@
 #include "RNJoltInternals.h"
 #include "RNJoltWheelCylinderShape.h"
 
+#include <Jolt/Physics/Constraints/TwoBodyConstraint.h>
+
 #if RN_PLATFORM_LINUX || RN_PLATFORM_ANDROID
 	#include <sys/resource.h>
 #endif
@@ -367,6 +369,23 @@ namespace RN
 	{
 		RN_DEBUG_ASSERT(_isLoadingLevel, "Not currently loading a level! This should only be called internally for bulk body creation!");
 		_internals->bodiesToAddLoadingLevel.push_back(body->GetID());
+	}
+
+	void JoltWorld::RemoveConstraintsForBody(const JPH::BodyID &bodyID)
+	{
+		if(bodyID.IsInvalid()) return;
+
+		for(JPH::Constraint *constraint : _physicsSystem->GetConstraints())
+		{
+			if(constraint->GetType() != JPH::EConstraintType::TwoBodyConstraint) continue;
+
+			auto *twoBodyConstraint = static_cast<JPH::TwoBodyConstraint *>(constraint);
+			if(twoBodyConstraint->GetBody1()->GetID() != bodyID && twoBodyConstraint->GetBody2()->GetID() != bodyID) continue;
+
+			constraint->SetEnabled(false);
+			if(JoltConstraintOwner *owner = reinterpret_cast<JoltConstraintOwner *>(constraint->GetUserData())) owner->InvalidateJoltConstraint(constraint);
+			_physicsSystem->RemoveConstraint(constraint);
+		}
 	}
 
 

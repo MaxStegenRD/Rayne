@@ -20,7 +20,7 @@ namespace JPH
 
 namespace RN
 {
-	class JoltConstraint : public Object
+	class JoltConstraint : public Object, private JoltConstraintOwner
 	{
 	public:
 		JTAPI JPH::Constraint *GetJoltConstraint() const { return _constraint; }
@@ -41,6 +41,7 @@ namespace RN
 		void UpdateBodyPairCollisionState();
 		void SetStoredBodyPairCollisionEnabled(bool enabled);
 		bool HasStoredBodyPair() const;
+		void InvalidateJoltConstraint(JPH::Constraint *constraint) override;
 
 		JPH::Constraint *_constraint;
 		uint32 _bodyPairCollisionBody1;

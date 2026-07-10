@@ -232,6 +232,7 @@ namespace RN
 
 		constraint->SetNumVelocityStepsOverride(10);
 		constraint->SetNumPositionStepsOverride(10);
+		constraint->SetUserData(reinterpret_cast<uint64>(static_cast<JoltConstraintOwner *>(this)));
 		physics->AddConstraint(constraint);
 		JoltWorld::GetSharedInstance()->SetConnectedBodyCollisionFilteringEnabled(JPH::BodyID(bodyID), _controller->GetBodyID(), true);
 
@@ -268,6 +269,14 @@ namespace RN
 		_externalSupportLocalPosition = Vector3();
 		_externalSupportAnchorMaxForce = 0.0f;
 		_externalSupportConstraint = nullptr;
+	}
+
+	void JoltRigidBodyController::InvalidateJoltConstraint(JPH::Constraint *constraint)
+	{
+		if(_externalSupportConstraint != constraint) return;
+
+		_externalSupportConstraint = nullptr;
+		ClearExternalSupportAnchor();
 	}
 
 	Vector3 JoltRigidBodyController::GetGroundAdjustedVelocity(const Vector3 &velocity) const

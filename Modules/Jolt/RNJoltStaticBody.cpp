@@ -56,6 +56,7 @@ namespace RN
 
 		if(_actor)
 		{
+			world->RemoveConstraintsForBody(*_actor);
 			bodyInterface.RemoveBody(*_actor);
 			bodyInterface.DestroyBody(*_actor);
 			delete _actor;
