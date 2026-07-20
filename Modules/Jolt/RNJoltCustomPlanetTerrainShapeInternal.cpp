@@ -262,15 +262,23 @@ public:
 	template<class Visitor>
 	uint CollideTriangles(const AABox &box, float maxSeparationDistance, const SubShapeIDCreator &subShapeIDCreator, Visitor &visitor, const PrecisionBase &localBase) const
 	{
-		Array<Triangle> triangles;
-		CollectTriangles(box, maxSeparationDistance, localBase, triangles, MaxCollisionTriangles);
-		const uint triangleCount = static_cast<uint>(triangles.size());
-		for(uint i = 0; i < triangleCount && !visitor.ShouldAbort(); i += 1)
+		struct CollisionVisitor
 		{
-			const Triangle &triangle = triangles[i];
-			visitor.SetTriangleContactInfo(triangle);
-			visitor.Collide(triangle.vertices[0], triangle.vertices[1], triangle.vertices[2], 0, subShapeIDCreator.PushID(GetTriangleSubShapeID(triangle.id), TriangleSubShapeIDBits).GetID());
-		}
+			CollisionVisitor(Visitor &target, const SubShapeIDCreator &creator) : visitor(target), subShapeIDCreator(creator) {}
+
+			bool ShouldAbort() const { return visitor.ShouldAbort(); }
+			void VisitTriangle(const Triangle &triangle, Vec3Arg normal)
+			{
+				visitor.SetTriangleContactInfo(normal);
+				visitor.Collide(triangle.vertices[0], triangle.vertices[1], triangle.vertices[2], 0, subShapeIDCreator.PushID(GetTriangleSubShapeID(triangle.id), TriangleSubShapeIDBits).GetID());
+			}
+
+			Visitor &visitor;
+			const SubShapeIDCreator &subShapeIDCreator;
+		};
+
+		CollisionVisitor collisionVisitor(visitor, subShapeIDCreator);
+		const uint triangleCount = VisitTriangles(box, maxSeparationDistance, localBase, collisionVisitor, MaxCollisionTriangles);
 		visitor.ClearTriangleContactInfo();
 		return triangleCount;
 	}
@@ -357,6 +365,12 @@ private:
 		CachedSampledGridVertex entries[SampledGridVertexCacheSize];
 	};
 
+	struct SampledGridRowScratch
+	{
+		Array<Vec3> positions[2];
+		Array<uint8> valid[2];
+	};
+
 	static uint32 GetTriangleSubShapeID(uint32 triangleID)
 	{
 		uint32 subShapeID = triangleID & TriangleSubShapeIDMask;
@@ -395,11 +409,6 @@ private:
 	static Vec3 GetTriangleNormal(const Triangle &triangle)
 	{
 		return (triangle.vertices[1] - triangle.vertices[0]).Cross(triangle.vertices[2] - triangle.vertices[0]).NormalizedOr(Vec3::sZero());
-	}
-
-	static bool IsTriangleDegenerate(const Triangle &triangle)
-	{
-		return (triangle.vertices[1] - triangle.vertices[0]).Cross(triangle.vertices[2] - triangle.vertices[0]).LengthSq() <= MinimumTriangleNormalLengthSq;
 	}
 
 	static Mat44 GetShiftedTransform(Mat44Arg transform, Vec3Arg worldBase)
@@ -751,10 +760,10 @@ private:
 		return bounds;
 	}
 
-	static bool ShouldRayHitTriangle(const RayCast &ray, const RayCastSettings &settings, const Triangle &triangle)
+	static bool ShouldRayHitTriangle(const RayCast &ray, const RayCastSettings &settings, Vec3Arg triangleNormal)
 	{
 		if(settings.mBackFaceModeTriangles == EBackFaceMode::CollideWithBackFaces) return true;
-		return ray.mDirection.Dot(GetTriangleNormal(triangle)) < 0.0f;
+		return ray.mDirection.Dot(triangleNormal) < 0.0f;
 	}
 
 	static AABox GetSurfaceQueryBox(const AABox &box, const PrecisionBase &localBase, const PrecisionBase &localOrigin, float sweepDistance)
@@ -785,20 +794,6 @@ private:
 		sweptBox.ExpandBy(Vec3(tangentX, tangentY, tangentZ) * sweepDistance);
 
 		return sweptBox;
-	}
-
-	static bool GetTriangleWindingDot(const Triangle &triangle, const PrecisionBase &localBase, const PrecisionBase &localOrigin, float &dot)
-	{
-		const Vec3 normal = (triangle.vertices[1] - triangle.vertices[0]).Cross(triangle.vertices[2] - triangle.vertices[0]);
-		if(normal.LengthSq() <= 1.0e-12f)
-		{
-			dot = 0.0f;
-			return false;
-		}
-
-		const Vec3 centerDirection = GetPlanetLocalDirection((triangle.vertices[0] + triangle.vertices[1] + triangle.vertices[2]) * (1.0f / 3.0f), localBase, localOrigin);
-		dot = normal.Dot(centerDirection);
-		return true;
 	}
 
 	static void TranslateFace(CollideShapeResult::Face &face, Vec3Arg offset)
@@ -847,9 +842,9 @@ private:
 			_terrainTransform(terrainTransform)
 		{}
 
-		void SetTriangleContactInfo(const Triangle &triangle)
+		void SetTriangleContactInfo(Vec3Arg triangleNormal)
 		{
-			_triangleNormalWorld = _terrainTransform.Multiply3x3(GetTriangleNormal(triangle)).NormalizedOr(Vec3::sZero());
+			_triangleNormalWorld = _terrainTransform.Multiply3x3(triangleNormal).NormalizedOr(Vec3::sZero());
 			_hasTriangleContactInfo = true;
 		}
 
@@ -962,9 +957,9 @@ private:
 				return mBoundsOf1InSpaceOf2;
 			}
 
-			void SetTriangleContactInfo(const Triangle &triangle)
+			void SetTriangleContactInfo(Vec3Arg triangleNormal)
 			{
-				static_cast<OffsetCollideShapeCollector &>(mCollector).SetTriangleContactInfo(triangle);
+				static_cast<OffsetCollideShapeCollector &>(mCollector).SetTriangleContactInfo(triangleNormal);
 			}
 
 			void ClearTriangleContactInfo()
@@ -1082,26 +1077,35 @@ private:
 		const ShapeCast shiftedShapeCast = shapeCast.PostTranslated(-worldBase);
 		OffsetCastShapeCollector offsetCollector(collector, worldBase);
 
-		Array<Triangle> triangles;
 		const AABox castBounds = GetShapeCastBounds(shiftedShapeCast);
-		planet->CollectTriangles(castBounds, 0.0f, localBase, triangles, MaxCastTriangles);
-
 		Visitor visitor(shiftedShapeCast, settings, scale, shiftedPlanetTransform, shapeSubShapeIDCreator, offsetCollector);
-		for(uint i = 0; i < triangles.size() && !visitor.ShouldAbort(); i += 1)
+		struct StreamingVisitor
 		{
-			const Triangle &triangle = triangles[i];
-			visitor.Cast(triangle.vertices[0], triangle.vertices[1], triangle.vertices[2], 0, planetSubShapeIDCreator.PushID(GetTriangleSubShapeID(triangle.id), TriangleSubShapeIDBits).GetID());
-		}
+			StreamingVisitor(Visitor &target, const SubShapeIDCreator &creator) : visitor(target), subShapeIDCreator(creator) {}
+
+			bool ShouldAbort() const { return visitor.ShouldAbort(); }
+			void VisitTriangle(const Triangle &triangle, [[maybe_unused]] Vec3Arg normal)
+			{
+				visitor.Cast(triangle.vertices[0], triangle.vertices[1], triangle.vertices[2], 0, subShapeIDCreator.PushID(GetTriangleSubShapeID(triangle.id), TriangleSubShapeIDBits).GetID());
+			}
+
+			Visitor &visitor;
+			const SubShapeIDCreator &subShapeIDCreator;
+		};
+
+		StreamingVisitor streamingVisitor(visitor, planetSubShapeIDCreator);
+		planet->VisitTriangles(castBounds, 0.0f, localBase, streamingVisitor, MaxCastTriangles);
 	}
 
-	void CollectRayTriangles(const RayCast &shiftedRay, float maximumFraction, const PrecisionBase &localBase, Array<Triangle> &triangles) const
+	template<class Visitor>
+	void VisitRayTriangles(const RayCast &shiftedRay, float maximumFraction, const PrecisionBase &localBase, Visitor &visitor) const
 	{
 		if(maximumFraction <= 0.0f) return;
 		if(shiftedRay.mDirection.LengthSq() <= 0.0f) return;
 
 		AABox rayBounds = GetRayBounds(shiftedRay, maximumFraction);
 		rayBounds.ExpandBy(Vec3::sReplicate(0.01f));
-		CollectTriangles(rayBounds, 0.0f, localBase, triangles, MaxRayTriangles);
+		VisitTriangles(rayBounds, 0.0f, localBase, visitor, MaxRayTriangles);
 	}
 
 	bool FindRayTriangleHit(const RayCast &ray, const RayCastSettings &settings, const SubShapeIDCreator &subShapeIDCreator, RayCastResult &hit) const
@@ -1109,21 +1113,35 @@ private:
 		const PrecisionBase localBase = MakePrecisionBase(RVec3(ray.mOrigin));
 		const RayCast shiftedRay(ray.mOrigin - localBase.vector, ray.mDirection);
 
-		Array<Triangle> triangles;
-		CollectRayTriangles(shiftedRay, hit.mFraction, localBase, triangles);
 		bool hasHit = false;
-
-		for(const Triangle &triangle : triangles)
+		struct Visitor
 		{
-			if(!ShouldRayHitTriangle(shiftedRay, settings, triangle)) continue;
+			Visitor(const RayCast &sourceRay, const RayCastSettings &sourceSettings, const SubShapeIDCreator &creator, RayCastResult &targetHit, bool &targetHasHit) :
+				ray(sourceRay), settings(sourceSettings), subShapeIDCreator(creator), hit(targetHit), hasHit(targetHasHit)
+			{}
 
-			const float fraction = RayTriangle(shiftedRay.mOrigin, shiftedRay.mDirection, triangle.vertices[0], triangle.vertices[1], triangle.vertices[2]);
-			if(fraction >= hit.mFraction) continue;
+			bool ShouldAbort() const { return false; }
+			void VisitTriangle(const Triangle &triangle, Vec3Arg normal)
+			{
+				if(!ShouldRayHitTriangle(ray, settings, normal)) return;
 
-			hit.mFraction = fraction;
-			hit.mSubShapeID2 = subShapeIDCreator.PushID(GetTriangleSubShapeID(triangle.id), TriangleSubShapeIDBits).GetID();
-			hasHit = true;
-		}
+				const float fraction = RayTriangle(ray.mOrigin, ray.mDirection, triangle.vertices[0], triangle.vertices[1], triangle.vertices[2]);
+				if(fraction >= hit.mFraction) return;
+
+				hit.mFraction = fraction;
+				hit.mSubShapeID2 = subShapeIDCreator.PushID(GetTriangleSubShapeID(triangle.id), TriangleSubShapeIDBits).GetID();
+				hasHit = true;
+			}
+
+			const RayCast &ray;
+			const RayCastSettings &settings;
+			const SubShapeIDCreator &subShapeIDCreator;
+			RayCastResult &hit;
+			bool &hasHit;
+		};
+
+		Visitor visitor(shiftedRay, settings, subShapeIDCreator, hit, hasHit);
+		VisitRayTriangles(shiftedRay, hit.mFraction, localBase, visitor);
 
 		return hasHit;
 	}
@@ -1133,22 +1151,34 @@ private:
 		const PrecisionBase localBase = MakePrecisionBase(RVec3(ray.mOrigin));
 		const RayCast shiftedRay(ray.mOrigin - localBase.vector, ray.mDirection);
 
-		Array<Triangle> triangles;
-		CollectRayTriangles(shiftedRay, collector.GetEarlyOutFraction(), localBase, triangles);
-
-		for(const Triangle &triangle : triangles)
+		struct Visitor
 		{
-			if(collector.ShouldEarlyOut()) return;
-			if(!ShouldRayHitTriangle(shiftedRay, settings, triangle)) continue;
+			Visitor(const RayCast &sourceRay, const RayCastSettings &sourceSettings, const SubShapeIDCreator &creator, CastRayCollector &targetCollector) :
+				ray(sourceRay), settings(sourceSettings), subShapeIDCreator(creator), collector(targetCollector)
+			{}
 
-			const float fraction = RayTriangle(shiftedRay.mOrigin, shiftedRay.mDirection, triangle.vertices[0], triangle.vertices[1], triangle.vertices[2]);
-			if(fraction >= collector.GetEarlyOutFraction()) continue;
+			bool ShouldAbort() const { return collector.ShouldEarlyOut(); }
+			void VisitTriangle(const Triangle &triangle, Vec3Arg normal)
+			{
+				if(!ShouldRayHitTriangle(ray, settings, normal)) return;
 
-			RayCastResult result;
-			result.mFraction = fraction;
-			result.mSubShapeID2 = subShapeIDCreator.PushID(GetTriangleSubShapeID(triangle.id), TriangleSubShapeIDBits).GetID();
-			collector.AddHit(result);
-		}
+				const float fraction = RayTriangle(ray.mOrigin, ray.mDirection, triangle.vertices[0], triangle.vertices[1], triangle.vertices[2]);
+				if(fraction >= collector.GetEarlyOutFraction()) return;
+
+				RayCastResult result;
+				result.mFraction = fraction;
+				result.mSubShapeID2 = subShapeIDCreator.PushID(GetTriangleSubShapeID(triangle.id), TriangleSubShapeIDBits).GetID();
+				collector.AddHit(result);
+			}
+
+			const RayCast &ray;
+			const RayCastSettings &settings;
+			const SubShapeIDCreator &subShapeIDCreator;
+			CastRayCollector &collector;
+		};
+
+		Visitor visitor(shiftedRay, settings, subShapeIDCreator, collector);
+		VisitRayTriangles(shiftedRay, collector.GetEarlyOutFraction(), localBase, visitor);
 	}
 
 	bool AddSolidRecoveryContact(const ConvexShape *convex, Vec3Arg scale1, Vec3Arg scale2, Mat44Arg shiftedTransform1, Mat44Arg shiftedTransform2, const SubShapeID &subShapeID1, const SubShapeID &subShapeID2, const CollideShapeSettings &settings, CollideShapeCollector &collector, const PrecisionBase &localBase) const
@@ -1253,18 +1283,10 @@ private:
 		return static_cast<float>(GetPlanetLocalRadius(point, localBase, localOrigin)) - radius;
 	}
 
-	static bool MakeTriangleWindingOutward(Triangle &triangle, const PrecisionBase &localBase, const PrecisionBase &localOrigin)
+	static SampledGridRowScratch &GetSampledGridRowScratch()
 	{
-		float windingDot = 0.0f;
-		if(!GetTriangleWindingDot(triangle, localBase, localOrigin, windingDot)) return false;
-
-		if(windingDot >= 0.0f) return false;
-
-		const Vec3 vertex = triangle.vertices[1];
-		triangle.vertices[1] = triangle.vertices[2];
-		triangle.vertices[2] = vertex;
-
-		return true;
+		static thread_local SampledGridRowScratch scratch;
+		return scratch;
 	}
 
 	bool BuildSampledGridVertex(uint8 face, int gridU, int gridV, const PrecisionBase &localBase, const PrecisionBase &localOrigin, double referenceRadius, uint32 collisionRevision, uint32 cacheEpoch, Vec3 &position, Vec3 *normal = nullptr) const
@@ -1324,7 +1346,7 @@ private:
 		}
 	}
 
-	bool BuildSampledGridTriangleFromVertices(const SampledGridKey &key, const Vec3 &p00, const Vec3 &p10, const Vec3 &p01, const Vec3 &p11, const PrecisionBase &localBase, const PrecisionBase &localOrigin, double referenceRadius, Triangle &triangle) const
+	bool BuildSampledGridTriangleFromVertices(const SampledGridKey &key, const Vec3 &p00, const Vec3 &p10, const Vec3 &p01, const Vec3 &p11, const PrecisionBase &localOrigin, double referenceRadius, Triangle &triangle, Vec3 &normal) const
 	{
 		if(key.diagonal == 0)
 		{
@@ -1340,8 +1362,12 @@ private:
 		}
 
 		if(!MakeSampledTriangleID(key.face, key.diagonal, key.gridU, key.gridV, localOrigin, referenceRadius, triangle.id)) return false;
-		MakeTriangleWindingOutward(triangle, localBase, localOrigin);
-		return !IsTriangleDegenerate(triangle);
+		// All cube-sphere faces use the same outward u/v winding, which positive radial terrain samples preserve.
+		normal = (triangle.vertices[1] - triangle.vertices[0]).Cross(triangle.vertices[2] - triangle.vertices[0]);
+		const float normalLengthSq = normal.LengthSq();
+		if(normalLengthSq <= MinimumTriangleNormalLengthSq) return false;
+		normal /= Sqrt(normalLengthSq);
+		return true;
 	}
 
 	bool BuildSampledGridTriangle(const SampledGridKey &key, const PrecisionBase &localBase, const PrecisionBase &localOrigin, double referenceRadius, uint32 collisionRevision, uint32 cacheEpoch, Triangle &triangle) const
@@ -1354,7 +1380,8 @@ private:
 		if(!BuildSampledGridVertex(key.face, key.gridU + 1, key.gridV, localBase, localOrigin, referenceRadius, collisionRevision, cacheEpoch, p10)) return false;
 		if(!BuildSampledGridVertex(key.face, key.gridU, key.gridV + 1, localBase, localOrigin, referenceRadius, collisionRevision, cacheEpoch, p01)) return false;
 		if(!BuildSampledGridVertex(key.face, key.gridU + 1, key.gridV + 1, localBase, localOrigin, referenceRadius, collisionRevision, cacheEpoch, p11)) return false;
-		return BuildSampledGridTriangleFromVertices(key, p00, p10, p01, p11, localBase, localOrigin, referenceRadius, triangle);
+		Vec3 normal;
+		return BuildSampledGridTriangleFromVertices(key, p00, p10, p01, p11, localOrigin, referenceRadius, triangle, normal);
 	}
 
 	void IncludeSampledGridPoint(Vec3Arg point, const PrecisionBase &localBase, const PrecisionBase &localOrigin, double referenceRadius, SampledGridFaceRange ranges[6]) const
@@ -1448,9 +1475,10 @@ private:
 		return clearance > static_cast<double>(queryExpansion + AboveSurfaceQueryMargin);
 	}
 
-	void CollectSampledGridTriangles(const AABox &box, const PrecisionBase &localBase, const PrecisionBase &localOrigin, double referenceRadius, uint32 collisionRevision, uint32 cacheEpoch, Array<Triangle> &triangles, uint maximumTriangleCount) const
+	template<class Visitor>
+	uint VisitSampledGridTriangles(const AABox &box, const PrecisionBase &localBase, const PrecisionBase &localOrigin, double referenceRadius, uint32 collisionRevision, uint32 cacheEpoch, Visitor &visitor, uint maximumTriangleCount) const
 	{
-		if(maximumTriangleCount == 0) return;
+		if(maximumTriangleCount == 0) return 0;
 
 		SampledGridFaceRange ranges[6];
 
@@ -1469,22 +1497,24 @@ private:
 			}
 		}
 
+		uint triangleCount = 0;
+		SampledGridRowScratch &scratch = GetSampledGridRowScratch();
 		for(uint8 face = 0; face < 6; face += 1)
 		{
-			if(triangles.size() >= maximumTriangleCount) return;
+			if(triangleCount >= maximumTriangleCount || visitor.ShouldAbort()) return triangleCount;
 
 			ExpandSampledGridRangeToBlock(ranges[face], face, localOrigin, referenceRadius);
 			if(!ranges[face].valid) continue;
 
 			const uint vertexCount = static_cast<uint>(ranges[face].maxU - ranges[face].minU + 2);
-			Array<Vec3> vertexRows[2];
-			Array<uint8> validRows[2];
+			Array<Vec3> *vertexRows = scratch.positions;
+			Array<uint8> *validRows = scratch.valid;
 			FillSampledGridVertexRow(face, ranges[face].minU, ranges[face].minV, vertexCount, localBase, localOrigin, referenceRadius, collisionRevision, cacheEpoch, vertexRows[0], validRows[0]);
 			FillSampledGridVertexRow(face, ranges[face].minU, ranges[face].minV + 1, vertexCount, localBase, localOrigin, referenceRadius, collisionRevision, cacheEpoch, vertexRows[1], validRows[1]);
 
 			for(int gridV = ranges[face].minV; gridV <= ranges[face].maxV; gridV += 1)
 			{
-				if(triangles.size() >= maximumTriangleCount) return;
+				if(triangleCount >= maximumTriangleCount || visitor.ShouldAbort()) return triangleCount;
 
 				const uint lowerRowIndex = static_cast<uint>(gridV - ranges[face].minV) & 0x1u;
 				const uint upperRowIndex = 1u - lowerRowIndex;
@@ -1505,7 +1535,7 @@ private:
 
 					for(uint8 diagonal = 0; diagonal < 2; diagonal += 1)
 					{
-						if(triangles.size() >= maximumTriangleCount) return;
+						if(triangleCount >= maximumTriangleCount || visitor.ShouldAbort()) return triangleCount;
 
 						SampledGridKey key;
 						key.face = face;
@@ -1514,24 +1544,23 @@ private:
 						key.gridV = gridV;
 
 						Triangle triangle;
-						if(!BuildSampledGridTriangleFromVertices(key, p00, p10, p01, p11, localBase, localOrigin, referenceRadius, triangle)) continue;
+						Vec3 normal;
+						if(!BuildSampledGridTriangleFromVertices(key, p00, p10, p01, p11, localOrigin, referenceRadius, triangle, normal)) continue;
 						if(!DoesTriangleOverlapBox(triangle, box)) continue;
 
-						triangles.push_back(triangle);
+						visitor.VisitTriangle(triangle, normal);
+						triangleCount += 1;
 					}
 				}
 			}
 		}
+		return triangleCount;
 	}
 
-	void CollectTriangles(const AABox &box, float maxSeparationDistance, Array<Triangle> &triangles, uint maximumTriangleCount) const
+	template<class Visitor>
+	uint VisitTriangles(const AABox &box, float maxSeparationDistance, const PrecisionBase &localBase, Visitor &visitor, uint maximumTriangleCount) const
 	{
-		CollectTriangles(box, maxSeparationDistance, MakePrecisionBase(RVec3::sZero()), triangles, maximumTriangleCount);
-	}
-
-	void CollectTriangles(const AABox &box, float maxSeparationDistance, const PrecisionBase &localBase, Array<Triangle> &triangles, uint maximumTriangleCount) const
-	{
-		if(!_provider) return;
+		if(!_provider) return 0;
 
 		const float radialExpansion = maxSeparationDistance > 0.0f ? maxSeparationDistance : 0.0f;
 		const PrecisionBase localOrigin = GetLocalOrigin();
@@ -1540,11 +1569,28 @@ private:
 		const uint32 cacheEpoch = _provider->GetPlanetTerrainCollisionCacheEpoch();
 		float padding = 0.01f;
 		if(maxSeparationDistance > 0.0f) padding += maxSeparationDistance;
-		if(ShouldSkipAboveSurfaceQuery(box, localBase, localOrigin, referenceRadius, collisionRevision, cacheEpoch, radialExpansion + padding)) return;
+		if(ShouldSkipAboveSurfaceQuery(box, localBase, localOrigin, referenceRadius, collisionRevision, cacheEpoch, radialExpansion + padding)) return 0;
 
 		AABox queryBox = GetSurfaceQueryBox(box, localBase, localOrigin, radialExpansion);
 		queryBox.ExpandBy(Vec3::sReplicate(padding));
-		CollectSampledGridTriangles(queryBox, localBase, localOrigin, referenceRadius, collisionRevision, cacheEpoch, triangles, maximumTriangleCount);
+		return VisitSampledGridTriangles(queryBox, localBase, localOrigin, referenceRadius, collisionRevision, cacheEpoch, visitor, maximumTriangleCount);
+	}
+
+	void CollectTriangles(const AABox &box, float maxSeparationDistance, Array<Triangle> &triangles, uint maximumTriangleCount) const
+	{
+		struct Collector
+		{
+			explicit Collector(Array<Triangle> &target) : triangles(target) {}
+
+			bool ShouldAbort() const { return false; }
+			void VisitTriangle(const Triangle &triangle, [[maybe_unused]] Vec3Arg normal) { triangles.push_back(triangle); }
+
+			Array<Triangle> &triangles;
+		};
+
+		if(triangles.size() >= maximumTriangleCount) return;
+		Collector collector(triangles);
+		VisitTriangles(box, maxSeparationDistance, MakePrecisionBase(RVec3::sZero()), collector, maximumTriangleCount - static_cast<uint>(triangles.size()));
 	}
 
 	RN::JoltCustomPlanetTerrainInternalProvider *_provider;
