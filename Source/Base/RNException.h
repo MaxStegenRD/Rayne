@@ -18,18 +18,18 @@ namespace RN
 {
 	class Thread;
 	class String;
-	class Exception : public std::exception
+	class RNAPI Exception : public std::exception
 	{
 	public:
-		RNAPI Exception(const std::string &reason);
-		RNAPI Exception(const String *reason);
-		RNAPI ~Exception();
+		Exception(const std::string &reason);
+		Exception(const String *reason);
+		~Exception();
 
 		Thread *GetThread() const { return _thread; }
 		const std::string &GetReason() const { return _reason; }
 		const std::vector<std::pair<uintptr_t, std::string>> &GetCallStack() const { return _callStack; }
 
-		RNAPI const char *what() const RN_NOEXCEPT override;
+		const char *what() const RN_NOEXCEPT override;
 
 	private:
 		void GatherInfo();
@@ -41,11 +41,11 @@ namespace RN
 	};
 
 #define RNExceptionType(name)                             \
-	class name##Exception : public RN::Exception          \
+	class RNAPI name##Exception : public RN::Exception    \
 	{                                                     \
 	public:                                               \
-		RNAPI name##Exception(const std::string &reason); \
-		RNAPI name##Exception(const String *reason);      \
+		name##Exception(const std::string &reason);       \
+		name##Exception(const String *reason);            \
 	};
 
 #define RNExceptionImp(name)                                      \
