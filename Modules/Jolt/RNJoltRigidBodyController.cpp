@@ -11,8 +11,11 @@
 #include "RNJoltInternals.h"
 #include "RNJoltWorld.h"
 
+#include <Jolt/Physics/Body/Body.h>
 #include <Jolt/Physics/Body/BodyID.h>
 #include <Jolt/Physics/Body/BodyInterface.h>
+#include <Jolt/Physics/Body/BodyLock.h>
+#include <Jolt/Physics/Body/MotionProperties.h>
 #include <Jolt/Physics/Character/Character.h>
 #include <Jolt/Physics/Constraints/Constraint.h>
 
@@ -37,13 +40,23 @@ namespace RN
 		settings.mUp = JoltConversions::ToJoltVector(_upDirection);
 		settings.mMaxSlopeAngle = JPH::DegreesToRadians(70.0f);
 		settings.mMass = _mass;
-		settings.mFriction = 0.2f;
+		// Movement and support velocity are supplied explicitly by Move(). Contact
+		// friction would otherwise erase sufficiently small movement commands.
+		settings.mFriction = 0.0f;
 		settings.mGravityFactor = 0.0f;
 		settings.mLayer = world->GetObjectLayer(_collisionFilterGroup, _collisionFilterMask, 1);
 		settings.mShape = _shape->GetJoltShape();
 		settings.mSupportingVolume = JPH::Plane(JPH::Vec3::sAxisY(), -radius);
 
 		_controller = new JPH::Character(&settings, JPH::RVec3::sZero(), JPH::Quat::sIdentity(), reinterpret_cast<uint64>(this), physics);
+		{
+			JPH::BodyLockWrite lock(physics->GetBodyLockInterface(), _controller->GetBodyID());
+			if(lock.Succeeded())
+			{
+				JPH::MotionProperties *motionProperties = lock.GetBody().GetMotionProperties();
+				if(motionProperties) motionProperties->SetLinearDamping(0.0f);
+			}
+		}
 		_controller->AddToPhysicsSystem(JPH::EActivation::DontActivate);
 		SetMaxLinearVelocity(world->GetDefaultDynamicBodyMaxLinearVelocity());
 	}
@@ -132,8 +145,22 @@ namespace RN
 			return;
 		}
 
+		Vector3 appliedGravity = gravity;
+		if(_controller->GetGroundState() == JPH::Character::EGroundState::OnGround && _groundNormal.GetSquaredLength() > k::EpsilonFloat)
+		{
+			Vector3 groundNormal = _groundNormal.GetNormalized();
+			float normalGravity = gravity.GetDotProduct(groundNormal);
+			Vector3 relativeVelocity = GetLinearVelocity() - _groundVelocity;
+			if(normalGravity < 0.0f && relativeVelocity.GetDotProduct(groundNormal) <= k::EpsilonFloat)
+			{
+				// The controller follows the ground explicitly. Keep only the force that
+				// holds it against a walkable surface so a frictionless motor cannot drift downhill.
+				appliedGravity = groundNormal * normalGravity;
+			}
+		}
+
 		JPH::BodyInterface &bodyInterface = JoltWorld::GetSharedInstance()->GetJoltInstance()->GetBodyInterface();
-		bodyInterface.AddForce(_controller->GetBodyID(), JoltConversions::ToJoltVector(gravity * _mass), JPH::EActivation::DontActivate);
+		bodyInterface.AddForce(_controller->GetBodyID(), JoltConversions::ToJoltVector(appliedGravity * _mass), JPH::EActivation::DontActivate);
 	}
 
 	Vector3 JoltRigidBodyController::GetLinearVelocity() const
