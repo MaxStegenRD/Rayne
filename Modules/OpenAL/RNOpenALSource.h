@@ -64,7 +64,7 @@ namespace RN
 		AudioAsset *_asset;
 
 		std::map<OpenALOutputDevice*, SourceState> _source;
-		DVector3 _oldUniversePosition;
+		PositionType _oldWorldPosition;
 		Vector3 _velocity;
 
 		bool _isPlaying;
@@ -74,7 +74,7 @@ namespace RN
 		bool _isBuffering;
 		
 		bool _ignoreNextPositionUpdate;
-		bool _hasOldUniversePosition;
+		bool _hasOldWorldPosition;
 
 		int16 *_ringBufferTemp;
 

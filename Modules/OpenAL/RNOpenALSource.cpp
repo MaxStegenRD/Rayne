@@ -27,7 +27,7 @@ namespace RN
 		_hasEnded(false),
 		_isBuffering(true),
 		_ignoreNextPositionUpdate(false),
-		_hasOldUniversePosition(false),
+		_hasOldWorldPosition(false),
 		_ringBufferTemp(nullptr)
 	{
 		OpenALWorld::GetSharedInstance()->GetOutputDevices()->Enumerate<OpenALOutputDevice>([&](OpenALOutputDevice *device, size_t index, bool &stop){
@@ -470,8 +470,8 @@ namespace RN
 	{
 		_ignoreNextPositionUpdate = true;
 		
-		_oldUniversePosition = GetUniversePosition();
-		_hasOldUniversePosition = _oldUniversePosition.IsValid();
+		_oldWorldPosition = GetWorldPosition();
+		_hasOldWorldPosition = _oldWorldPosition.IsValid();
 		_velocity = velocity;
 		
 		for(auto &pair : _source)
@@ -490,13 +490,12 @@ namespace RN
 			return;
 		}
 		
-		Vector3 position = GetWorldPosition();
-		DVector3 universePosition = GetUniversePosition();
-		const bool hasUniversePosition = universePosition.IsValid();
+		const PositionType worldPosition = GetWorldPosition();
+		const bool hasWorldPosition = worldPosition.IsValid();
 
-		if(hasUniversePosition && _hasOldUniversePosition && delta > 0.0f)
+		if(hasWorldPosition && _hasOldWorldPosition && delta > 0.0f)
 		{
-			Vector3 velocity = ((universePosition - _oldUniversePosition) / static_cast<double>(delta)).ToVector3();
+			Vector3 velocity((worldPosition - _oldWorldPosition) / delta);
 			_velocity = velocity.IsValid() ? _velocity * 0.95f + velocity * 0.05f : Vector3(); //Smoothen the velocity
 		}
 		else
@@ -504,11 +503,13 @@ namespace RN
 			_velocity = Vector3();
 		}
 
-		if(hasUniversePosition) _oldUniversePosition = universePosition;
-		_hasOldUniversePosition = hasUniversePosition;
+		if(hasWorldPosition) _oldWorldPosition = worldPosition;
+		_hasOldWorldPosition = hasWorldPosition;
 		
 		for(auto &pair : _source)
 		{
+			OpenALListener *listener = pair.first->GetListener();
+			const Vector3 position = listener ? Vector3(worldPosition - listener->GetWorldPosition()) : Vector3(worldPosition);
 			pair.first->MakeCurrent();
 			alSourcefv(pair.second.sourceID, AL_POSITION, &position.x);
 			alSourcefv(pair.second.sourceID, AL_VELOCITY, &_velocity.x);
