@@ -176,6 +176,13 @@ namespace RN
 		};
 	};
 
+	// Absolute scene positions and coordinate anchors. Geometry and offsets remain Vector3.
+#if RN_ENABLE_UNIVERSE_SCALE
+	using PositionType = DVector3;
+#else
+	using PositionType = Vector3;
+#endif
+
 	class RN_ALIGNAS(16) Vector4
 	{
 	public:
