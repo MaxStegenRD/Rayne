@@ -403,6 +403,9 @@ namespace RN
 
 	std::vector<PhysXContactInfo> PhysXWorld::CheckOverlap(PhysXShape *shape, const Vector3 &position, const Quaternion &rotation, float inflation, uint32 filterGroup, uint32 filterMask, uint32 maxNumberOfOverlaps)
 	{
+		std::vector<PhysXContactInfo> results;
+		if(!shape || maxNumberOfOverlaps == 0) return results;
+
 		const physx::PxU32 bufferSize = maxNumberOfOverlaps;
 		physx::PxSweepHit *hitBuffer = new physx::PxSweepHit[bufferSize];
 		physx::PxSweepBuffer callback(hitBuffer, bufferSize);
@@ -414,7 +417,6 @@ namespace RN
 		filterData.word3 = 0;
 		PhysXQueryFilterCallback queryFilter;
 		physx::PxTransform pose = physx::PxTransform(physx::PxVec3(position.x, position.y, position.z), physx::PxQuat(rotation.x, rotation.y, rotation.z, rotation.w));
-		std::vector<PhysXContactInfo> results;
 		if(shape->GetPhysXShape())
 		{
 			if(_scene->sweep(shape->GetPhysXShape()->getGeometry().any(), pose, physx::PxVec3(0.0f, 1.0f, 0.0f), 0.0f, callback, physx::PxHitFlags(physx::PxHitFlag::eDEFAULT), physx::PxQueryFilterData(filterData, physx::PxQueryFlag::eDYNAMIC | physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::eNO_BLOCK | physx::PxQueryFlag::ePREFILTER), &queryFilter, 0, inflation))
