@@ -31,11 +31,8 @@ namespace RN
 		virtual void InvalidateJoltConstraint(JPH::Constraint *constraint) = 0;
 	};
 
-#if RN_ENABLE_UNIVERSE_SCALE
-	using JoltPosition = DVector3;
-#else
-	using JoltPosition = Vector3;
-#endif
+	// Positions inside the Jolt simulation frame. Geometry, offsets, and vectors remain float.
+	using JoltPosition = PositionType;
 } // namespace RN
 
 #endif /* __RAYNE_JOLT_H_ */

@@ -41,7 +41,7 @@ namespace RN
 	}
 
 	JoltWorld::JoltWorld(const Vector3 &gravity, uint32 maxBodies, uint32 maxBodyPairs, uint32 maxContactConstraints) :
-		_defaultDynamicBodyLinearDamping(0.05f), _defaultDynamicBodyAngularDamping(0.05f), _defaultDynamicBodyMaxLinearVelocity(500.0f), _defaultDynamicBodyMaxAngularVelocity(0.25f * k::Pi * 60.0f), _universePosition(0.0), _universeRotation(), _inverseUniverseRotation(), _universePositionRotation(), _inverseUniversePositionRotation(), _substeps(1), _paused(false), _isSimulating(false), _isLoadingLevel(false)
+		_defaultDynamicBodyLinearDamping(0.05f), _defaultDynamicBodyAngularDamping(0.05f), _defaultDynamicBodyMaxLinearVelocity(500.0f), _defaultDynamicBodyMaxAngularVelocity(0.25f * k::Pi * 60.0f), _worldPosition(), _worldRotation(), _inverseWorldRotation(), _worldPositionRotation(), _inverseWorldPositionRotation(), _substeps(1), _paused(false), _isSimulating(false), _isLoadingLevel(false)
 	{
 		RN_ASSERT(!_sharedInstance, "There can only be one Jolt instance at a time!");
 		_sharedInstance = this;
@@ -103,7 +103,7 @@ namespace RN
 		return JoltConversions::ToEngineVector(gravity);
 	}
 
-	void JoltWorld::SetUniverseTransform(const DVector3 &position, const Quaternion &rotation)
+	void JoltWorld::SetWorldTransform(const PositionType &position, const Quaternion &rotation)
 	{
 		if(!position.IsValid() || !rotation.IsValid()) return;
 
@@ -111,25 +111,25 @@ namespace RN
 		normalizedRotation.Normalize();
 		if(!normalizedRotation.IsValid()) return;
 
-		if(_universePosition == position && _universeRotation == normalizedRotation && _universePositionRotation == rotation) return;
+		if(_worldPosition == position && _worldRotation == normalizedRotation && _worldPositionRotation == rotation) return;
 
-		_universePosition = position;
-		_universeRotation = normalizedRotation;
-		_inverseUniverseRotation = _universeRotation.GetConjugated();
-		_universePositionRotation = rotation;
-		_inverseUniversePositionRotation = _universePositionRotation.GetConjugated();
+		_worldPosition = position;
+		_worldRotation = normalizedRotation;
+		_inverseWorldRotation = _worldRotation.GetConjugated();
+		_worldPositionRotation = rotation;
+		_inverseWorldPositionRotation = _worldPositionRotation.GetConjugated();
 
 		UpdateDynamicBodyPositions();
 	}
 
-	void JoltWorld::SetUniversePosition(const DVector3 &position)
+	void JoltWorld::SetWorldPosition(const PositionType &position)
 	{
-		SetUniverseTransform(position, _universeRotation);
+		SetWorldTransform(position, _worldPositionRotation);
 	}
 
-	void JoltWorld::SetUniverseRotation(const Quaternion &rotation)
+	void JoltWorld::SetWorldRotation(const Quaternion &rotation)
 	{
-		SetUniverseTransform(_universePosition, rotation);
+		SetWorldTransform(_worldPosition, rotation);
 	}
 
 	void JoltWorld::UpdateDynamicBodyPositions()
@@ -159,52 +159,40 @@ namespace RN
 		}
 	}
 
-	JoltPosition JoltWorld::ConvertPositionToPhysicsWorld(const JoltPosition &position) const
+	JoltPosition JoltWorld::ConvertPositionToPhysicsWorld(const PositionType &position) const
 	{
-#if RN_ENABLE_UNIVERSE_SCALE
-		DVector3 offset = position - _universePosition;
-#else
 		DVector3 offset(position);
-		offset -= _universePosition;
-#endif
-		DVector3 physicsPosition = _inverseUniversePositionRotation.GetRotatedVector(offset);
-#if RN_ENABLE_UNIVERSE_SCALE
-		return physicsPosition;
-#else
-		return physicsPosition.ToVector3();
-#endif
+		offset -= DVector3(_worldPosition);
+		const DVector3 physicsPosition = _inverseWorldPositionRotation.GetRotatedVector(offset);
+		return JoltPosition(physicsPosition);
 	}
 
-	JoltPosition JoltWorld::ConvertPositionFromPhysicsWorld(const JoltPosition &position) const
+	PositionType JoltWorld::ConvertPositionFromPhysicsWorld(const JoltPosition &position) const
 	{
-		DVector3 sceneOffset = _universePositionRotation.GetRotatedVector(DVector3(position));
-#if RN_ENABLE_UNIVERSE_SCALE
-		return _universePosition + sceneOffset;
-#else
-		return (_universePosition + sceneOffset).ToVector3();
-#endif
+		const DVector3 worldPosition = DVector3(_worldPosition) + _worldPositionRotation.GetRotatedVector(DVector3(position));
+		return PositionType(worldPosition);
 	}
 
 	Vector3 JoltWorld::ConvertVectorToPhysicsWorld(const Vector3 &vector) const
 	{
-		return _inverseUniverseRotation.GetRotatedVector(vector);
+		return _inverseWorldRotation.GetRotatedVector(vector);
 	}
 
 	Vector3 JoltWorld::ConvertVectorFromPhysicsWorld(const Vector3 &vector) const
 	{
-		return _universeRotation.GetRotatedVector(vector);
+		return _worldRotation.GetRotatedVector(vector);
 	}
 
 	Quaternion JoltWorld::ConvertRotationToPhysicsWorld(const Quaternion &rotation) const
 	{
-		Quaternion result = _inverseUniverseRotation * rotation;
+		Quaternion result = _inverseWorldRotation * rotation;
 		result.Normalize();
 		return result;
 	}
 
 	Quaternion JoltWorld::ConvertRotationFromPhysicsWorld(const Quaternion &rotation) const
 	{
-		Quaternion result = _universeRotation * rotation;
+		Quaternion result = _worldRotation * rotation;
 		result.Normalize();
 		return result;
 	}

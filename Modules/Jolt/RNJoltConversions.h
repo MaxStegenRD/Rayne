@@ -102,7 +102,7 @@ namespace RN
 			return result;
 		}
 
-		static JPH::RVec3 ToJoltScenePosition(const JoltPosition &position)
+		static JPH::RVec3 ToJoltScenePosition(const PositionType &position)
 		{
 			JoltWorld *world = JoltWorld::GetSharedInstance();
 			return world ? ToJoltPosition(world->ConvertPositionToPhysicsWorld(position)) : ToJoltPosition(position);
@@ -114,7 +114,7 @@ namespace RN
 			return world ? ToJoltRotation(world->ConvertRotationToPhysicsWorld(rotation)) : ToJoltRotation(rotation);
 		}
 
-		static JoltPosition ToScenePosition(const JPH::RVec3 &vector)
+		static PositionType ToScenePosition(const JPH::RVec3 &vector)
 		{
 			JoltWorld *world = JoltWorld::GetSharedInstance();
 			return world ? world->ConvertPositionFromPhysicsWorld(ToPosition(vector)) : ToPosition(vector);
@@ -137,56 +137,32 @@ namespace RN
 
 		static JPH::RVec3 GetAttachmentPosition(const SceneNodeAttachment *attachment)
 		{
-#if RN_ENABLE_UNIVERSE_SCALE
-			return ToJoltScenePosition(attachment->GetUniversePosition());
-#else
 			return ToJoltScenePosition(attachment->GetWorldPosition());
-#endif
 		}
 
 		static JPH::RVec3 GetAttachmentPosition(const SceneNodeAttachment *attachment, const Vector3 &offset)
 		{
-#if RN_ENABLE_UNIVERSE_SCALE
-			return ToJoltScenePosition(attachment->GetUniversePosition() + DVector3(offset));
-#else
 			return ToJoltScenePosition(attachment->GetWorldPosition() + offset);
-#endif
 		}
 
 		static void SetAttachmentPosition(SceneNodeAttachment *attachment, const JPH::RVec3 &position)
 		{
-#if RN_ENABLE_UNIVERSE_SCALE
-			attachment->SetUniversePosition(ToScenePosition(position));
-#else
 			attachment->SetWorldPosition(ToScenePosition(position));
-#endif
 		}
 
 		static void SetAttachmentPosition(SceneNodeAttachment *attachment, const JPH::RVec3 &position, const Vector3 &offset)
 		{
-#if RN_ENABLE_UNIVERSE_SCALE
-			attachment->SetUniversePosition(ToScenePosition(position) + DVector3(offset));
-#else
 			attachment->SetWorldPosition(ToScenePosition(position) + offset);
-#endif
 		}
 
 		static void SetAttachmentTransform(SceneNodeAttachment *attachment, const JPH::RVec3 &position, const Quaternion &rotation)
 		{
-#if RN_ENABLE_UNIVERSE_SCALE
-			attachment->SetUniverseTransform(ToScenePosition(position), rotation);
-#else
 			attachment->SetWorldTransform(ToScenePosition(position), rotation);
-#endif
 		}
 
 		static void SetAttachmentTransform(SceneNodeAttachment *attachment, const JPH::RVec3 &position, const Vector3 &offset, const Quaternion &rotation)
 		{
-#if RN_ENABLE_UNIVERSE_SCALE
-			attachment->SetUniverseTransform(ToScenePosition(position) + DVector3(offset), rotation);
-#else
 			attachment->SetWorldTransform(ToScenePosition(position) + offset, rotation);
-#endif
 		}
 	};
 } // namespace RN

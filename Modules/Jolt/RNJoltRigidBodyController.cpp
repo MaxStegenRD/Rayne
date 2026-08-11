@@ -80,27 +80,27 @@ namespace RN
 		Vector3 adjustedVelocity = GetGroundAdjustedVelocity(velocity);
 		if(_externalSupportAnchorValid)
 		{
-			SceneNode::PositionType supportAnchorPosition;
+			JoltPosition supportAnchorPosition;
 			Vector3 supportAnchorVelocity;
 			if(GetExternalSupportAnchorState(supportAnchorPosition, supportAnchorVelocity))
 			{
 				adjustedVelocity += supportAnchorVelocity;
 
-				SceneNode::PositionType anchorDelta = supportAnchorPosition - JoltConversions::ToPosition(_controller->GetPosition());
-				double anchorDistance = anchorDelta.GetLength();
+				Vector3 anchorDelta(supportAnchorPosition - JoltConversions::ToPosition(_controller->GetPosition()));
+				float anchorDistance = anchorDelta.GetLength();
 				if(anchorDistance > k::EpsilonFloat)
 				{
 					anchorDelta.Normalize();
-					double correctionDistance = anchorDistance - static_cast<double>(ExternalSupportAnchorCorrectionSlop);
+					float correctionDistance = anchorDistance - ExternalSupportAnchorCorrectionSlop;
 					if(correctionDistance > 0.0f)
 					{
-						double correctingSpeed = correctionDistance * static_cast<double>(ExternalSupportAnchorCorrectionFrequency);
+						float correctingSpeed = correctionDistance * ExternalSupportAnchorCorrectionFrequency;
 						if(correctingSpeed > ExternalSupportAnchorMaxCorrectionSpeed)
 						{
 							correctingSpeed = ExternalSupportAnchorMaxCorrectionSpeed;
 						}
 
-						adjustedVelocity += JoltConversions::ToVector3(anchorDelta) * static_cast<float>(correctingSpeed);
+						adjustedVelocity += anchorDelta * correctingSpeed;
 					}
 				}
 			}
@@ -235,15 +235,15 @@ namespace RN
 			return;
 		}
 
-		SceneNode::PositionType supportPosition;
+		JoltPosition supportPosition;
 		Quaternion supportRotation;
 		if(!GetSupportBodyTransform(bodyID, supportPosition, supportRotation))
 		{
 			return;
 		}
 
-		SceneNode::PositionType supportAnchorPosition = supportPosition + SceneNode::PositionType(supportRotation.GetRotatedVector(localPosition));
-		SceneNode::PositionType controllerAnchorPosition = JoltConversions::ToPosition(JoltConversions::GetAttachmentPosition(this));
+		JoltPosition supportAnchorPosition = supportPosition + supportRotation.GetRotatedVector(localPosition);
+		JoltPosition controllerAnchorPosition = JoltConversions::ToPosition(JoltConversions::GetAttachmentPosition(this));
 		if(!supportAnchorPosition.IsValid() || !controllerAnchorPosition.IsValid())
 		{
 			return;
@@ -362,7 +362,7 @@ namespace RN
 		RN::Vector3 movementDirection = horizontalVelocity;
 		movementDirection.Normalize();
 
-		SceneNode::PositionType currentPosition = JoltConversions::ToPosition(_controller->GetPosition());
+		JoltPosition currentPosition = JoltConversions::ToPosition(_controller->GetPosition());
 		JPH::Quat rotation = _controller->GetRotation();
 		Quaternion currentRotation = JoltConversions::ToEngineRotation(rotation);
 		Vector3 horizontalMovement = horizontalVelocity * delta;
@@ -378,7 +378,7 @@ namespace RN
 			stepProbeMovement *= 0.02f / horizontalDistance;
 		}
 
-		if(!HasBlockingCollisionAt(currentPosition + SceneNode::PositionType(stepProbeMovement), currentRotation, movementDirection))
+		if(!HasBlockingCollisionAt(currentPosition + stepProbeMovement, currentRotation, movementDirection))
 		{
 			return;
 		}
@@ -392,8 +392,8 @@ namespace RN
 		for(int i = 1; i <= StepSearchCount; i++)
 		{
 			float candidateHeight = _stepOffset * (static_cast<float>(i) / static_cast<float>(StepSearchCount));
-			SceneNode::PositionType candidateStep(_upDirection * candidateHeight);
-			if(!HasPenetrationAt(currentPosition + candidateStep, currentRotation, movementDirection) && !HasPenetrationAt(currentPosition + candidateStep + SceneNode::PositionType(stepProbeMovement), currentRotation, movementDirection))
+			JoltPosition candidateStep(_upDirection * candidateHeight);
+			if(!HasPenetrationAt(currentPosition + candidateStep, currentRotation, movementDirection) && !HasPenetrationAt(currentPosition + candidateStep + stepProbeMovement, currentRotation, movementDirection))
 			{
 				clearHeight = candidateHeight;
 				break;
@@ -410,8 +410,8 @@ namespace RN
 		for(int i = 0; i < StepRefinementCount; i++)
 		{
 			float candidateHeight = (blockedHeight + clearHeight) * 0.5f;
-			SceneNode::PositionType candidateStep(_upDirection * candidateHeight);
-			if(!HasPenetrationAt(currentPosition + candidateStep, currentRotation, movementDirection) && !HasPenetrationAt(currentPosition + candidateStep + SceneNode::PositionType(stepProbeMovement), currentRotation, movementDirection))
+			JoltPosition candidateStep(_upDirection * candidateHeight);
+			if(!HasPenetrationAt(currentPosition + candidateStep, currentRotation, movementDirection) && !HasPenetrationAt(currentPosition + candidateStep + stepProbeMovement, currentRotation, movementDirection))
 			{
 				clearHeight = candidateHeight;
 			}
@@ -424,11 +424,11 @@ namespace RN
 		float stepHeight = clearHeight + StepClearance;
 		if(stepHeight > _stepOffset) stepHeight = _stepOffset;
 
-		SceneNode::PositionType steppedPosition = currentPosition + SceneNode::PositionType(_upDirection * stepHeight);
+		JoltPosition steppedPosition = currentPosition + _upDirection * stepHeight;
 		_controller->SetPosition(JoltConversions::ToJoltPosition(steppedPosition), JPH::EActivation::Activate);
 	}
 
-	bool JoltRigidBodyController::HasBlockingCollisionAt(const SceneNode::PositionType &position, const Quaternion &rotation, const Vector3 &movementDirection) const
+	bool JoltRigidBodyController::HasBlockingCollisionAt(const JoltPosition &position, const Quaternion &rotation, const Vector3 &movementDirection) const
 	{
 		JPH::RVec3 joltPosition = JoltConversions::ToJoltPosition(position);
 		JPH::Quat joltRotation = JoltConversions::ToJoltRotation(rotation);
@@ -454,7 +454,7 @@ namespace RN
 		return false;
 	}
 
-	bool JoltRigidBodyController::HasPenetrationAt(const SceneNode::PositionType &position, const Quaternion &rotation, const Vector3 &movementDirection) const
+	bool JoltRigidBodyController::HasPenetrationAt(const JoltPosition &position, const Quaternion &rotation, const Vector3 &movementDirection) const
 	{
 		JPH::RVec3 joltPosition = JoltConversions::ToJoltPosition(position);
 		JPH::Quat joltRotation = JoltConversions::ToJoltRotation(rotation);
@@ -473,7 +473,7 @@ namespace RN
 		return false;
 	}
 
-	bool JoltRigidBodyController::GetSupportBodyTransform(uint32 bodyID, SceneNode::PositionType &position, Quaternion &rotation) const
+	bool JoltRigidBodyController::GetSupportBodyTransform(uint32 bodyID, JoltPosition &position, Quaternion &rotation) const
 	{
 		JPH::BodyID joltBodyID(bodyID);
 		if(joltBodyID.IsInvalid())
@@ -510,7 +510,7 @@ namespace RN
 		return true;
 	}
 
-	bool JoltRigidBodyController::GetExternalSupportAnchorState(SceneNode::PositionType &position, Vector3 &velocity) const
+	bool JoltRigidBodyController::GetExternalSupportAnchorState(JoltPosition &position, Vector3 &velocity) const
 	{
 		if(!_externalSupportAnchorValid || _externalSupportBodyID == InvalidSupportBodyID)
 		{
@@ -532,7 +532,7 @@ namespace RN
 		JPH::RVec3 joltPosition;
 		JPH::Quat joltRotation;
 		bodyInterface.GetPositionAndRotation(joltBodyID, joltPosition, joltRotation);
-		SceneNode::PositionType supportPosition = JoltConversions::ToPosition(joltPosition);
+		JoltPosition supportPosition = JoltConversions::ToPosition(joltPosition);
 		Quaternion supportRotation = JoltConversions::ToEngineRotation(joltRotation);
 		if(!supportPosition.IsValid() || !supportRotation.IsValid())
 		{
@@ -540,7 +540,7 @@ namespace RN
 		}
 
 		supportRotation.Normalize();
-		SceneNode::PositionType anchorPosition = supportPosition + SceneNode::PositionType(supportRotation.GetRotatedVector(_externalSupportLocalPosition));
+		JoltPosition anchorPosition = supportPosition + supportRotation.GetRotatedVector(_externalSupportLocalPosition);
 		if(!anchorPosition.IsValid())
 		{
 			return false;

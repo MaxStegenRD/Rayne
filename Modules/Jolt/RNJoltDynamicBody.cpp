@@ -588,7 +588,7 @@ namespace RN
 			world->CancelQueuedBodyRemoval(*_actor);
 
 			RN::Quaternion worldRotation = GetWorldRotation();
-			RN::Vector3 worldPosition = GetWorldPosition();
+			RN::PositionType worldPosition = GetWorldPosition();
 			if(worldPosition.IsValid() && worldRotation.IsValid())
 			{
 				worldRotation.Normalize();

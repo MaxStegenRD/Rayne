@@ -79,11 +79,11 @@ namespace RN
 
 		Vector3 GetGroundAdjustedVelocity(const Vector3 &velocity) const;
 		void ApplyStepOffset(const Vector3 &velocity, float delta);
-		bool HasBlockingCollisionAt(const SceneNode::PositionType &position, const Quaternion &rotation, const Vector3 &movementDirection) const;
-		bool HasPenetrationAt(const SceneNode::PositionType &position, const Quaternion &rotation, const Vector3 &movementDirection) const;
+		bool HasBlockingCollisionAt(const JoltPosition &position, const Quaternion &rotation, const Vector3 &movementDirection) const;
+		bool HasPenetrationAt(const JoltPosition &position, const Quaternion &rotation, const Vector3 &movementDirection) const;
 		bool IsExternalSupportBodyUsable(uint32 bodyID) const;
-		bool GetSupportBodyTransform(uint32 bodyID, SceneNode::PositionType &position, Quaternion &rotation) const;
-		bool GetExternalSupportAnchorState(SceneNode::PositionType &position, Vector3 &velocity) const;
+		bool GetSupportBodyTransform(uint32 bodyID, JoltPosition &position, Quaternion &rotation) const;
+		bool GetExternalSupportAnchorState(JoltPosition &position, Vector3 &velocity) const;
 		void InvalidateJoltConstraint(JPH::Constraint *constraint) override;
 		void UpdateControllerTransform();
 		void UpdateGroundState();
