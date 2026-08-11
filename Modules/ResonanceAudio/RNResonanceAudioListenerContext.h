@@ -23,7 +23,7 @@ namespace RN
 
 	struct ResonanceAudioListenerState
 	{
-		Vector3 position;
+		PositionType position;
 		Vector3 velocity;
 		Quaternion rotation;
 		bool isValid = false;
@@ -48,7 +48,7 @@ namespace RN
 		float GetDopplerSpeedOfSound() const { return _dopplerSpeedOfSound; }
 		float GetDopplerVelocitySmoothing() const { return _dopplerVelocitySmoothing; }
 
-		RAAPI void SetSimpleRoom(Vector3 position, Vector3 dimensions, float reflectionConstant, ResonanceAudioMaterial left, ResonanceAudioMaterial right, ResonanceAudioMaterial bottom, ResonanceAudioMaterial top, ResonanceAudioMaterial front, ResonanceAudioMaterial back);
+		RAAPI void SetSimpleRoom(const PositionType &position, Vector3 dimensions, float reflectionConstant, ResonanceAudioMaterial left, ResonanceAudioMaterial right, ResonanceAudioMaterial bottom, ResonanceAudioMaterial top, ResonanceAudioMaterial front, ResonanceAudioMaterial back);
 		RAAPI void SetSimpleRoomEnabled(bool enabled);
 
 		RAAPI void SetInputSamplesCallback(std::function<void(uint32 /*sampleRate*/, uint32 /*channelCount*/, uint32 /*frameCount*/, const float * /*frames*/)> inputSamplesCallback);
@@ -68,7 +68,7 @@ namespace RN
 	private:
 		WeakRef<ResonanceAudioWorld> _world;
 		SceneNode *_listener;
-		Vector3 _oldPosition;
+		PositionType _oldPosition;
 
 		uint32 _frameSize;
 		uint32 _channelCount;
@@ -87,7 +87,7 @@ namespace RN
 
 		bool _roomEnabled;
 		bool _roomDirty;
-		Vector3 _roomPosition;
+		PositionType _roomPosition;
 		Vector3 _roomDimensions;
 		float _roomReflectionConstant;
 		ResonanceAudioMaterial _roomMaterials[6];
@@ -102,4 +102,3 @@ namespace RN
 } // namespace RN
 
 #endif // __RAYNE_RESONANCEAUDIO_LISTENERCONTEXT_H_
-

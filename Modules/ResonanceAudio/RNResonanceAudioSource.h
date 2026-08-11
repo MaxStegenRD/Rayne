@@ -106,7 +106,7 @@ namespace RN
 		// Updated from ResonanceAudioWorld on the main thread; consumed on the audio thread.
 		// This mirrors OpenAL's Doppler behaviour by modulating the sampler pitch.
 		std::atomic<float> _dopplerPitchMultiplier;
-		Vector3 _dopplerOldPosition;
+		PositionType _dopplerOldPosition;
 		Vector3 _dopplerVelocity; // smoothed
 		bool _dopplerInitialized;
 

@@ -52,10 +52,10 @@ namespace RN
 		ResonanceAudioListenerState GetListenerState() const;
 
 		RAAPI ResonanceAudioSource *PlaySound(AudioAsset *resource) const;
-		RAAPI ResonanceAudioSource *PlaySound(AudioAsset *resource, Vector3 position) const;
+		RAAPI ResonanceAudioSource *PlaySound(AudioAsset *resource, const PositionType &position) const;
 
-		RAAPI void SetRaycastCallback(const std::function<void(Vector3, Vector3, float &)> &raycastCallback);
-		RAAPI void SetSimpleRoom(Vector3 position, Vector3 dimensions, float reflectionConstant, ResonanceAudioMaterial left, ResonanceAudioMaterial right, ResonanceAudioMaterial bottom, ResonanceAudioMaterial top, ResonanceAudioMaterial front, ResonanceAudioMaterial back);
+		RAAPI void SetRaycastCallback(const std::function<void(PositionType, Vector3, float &)> &raycastCallback);
+		RAAPI void SetSimpleRoom(const PositionType &position, Vector3 dimensions, float reflectionConstant, ResonanceAudioMaterial left, ResonanceAudioMaterial right, ResonanceAudioMaterial bottom, ResonanceAudioMaterial top, ResonanceAudioMaterial front, ResonanceAudioMaterial back);
 		RAAPI void SetSimpleRoomEnabled(bool enabled);
 
 		RAAPI void SetInputSamplesCallback(std::function<void(uint32 /*sampleRate*/, uint32 /*channelCount*/, uint32 /*frameCount*/, const float * /*frames*/)> inputSamplesCallback);
@@ -83,7 +83,7 @@ namespace RN
 
 		std::atomic<float> _worldMasterVolume;
 
-		std::function<void(Vector3, Vector3, float &)> _raycastCallback;
+		std::function<void(PositionType, Vector3, float &)> _raycastCallback;
 
 		RNDeclareMetaAPI(ResonanceAudioWorld, RAAPI)
 	};

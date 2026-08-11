@@ -29,7 +29,7 @@ namespace RN
 	ResonanceAudioListenerContext::ResonanceAudioListenerContext(ResonanceAudioWorld *world, uint32 channelCount, uint32 frameSize, uint32 sampleRate) :
 		_world(world),
 		_listener(nullptr),
-		_oldPosition(Vector3()),
+		_oldPosition(PositionType()),
 		_frameSize(frameSize),
 		_channelCount(channelCount),
 		_sharedFrameData(nullptr),
@@ -41,7 +41,7 @@ namespace RN
 		_dopplerVelocitySmoothing(0.95f),
 		_roomEnabled(false),
 		_roomDirty(false),
-		_roomPosition(Vector3()),
+		_roomPosition(PositionType()),
 		_roomDimensions(Vector3(1.0f, 1.0f, 1.0f)),
 		_roomReflectionConstant(1.0f),
 		_audioAPI(nullptr)
@@ -99,7 +99,7 @@ namespace RN
 		_dopplerVelocitySmoothing = std::clamp(oldVelocityWeight, 0.0f, 0.999f);
 	}
 
-	void ResonanceAudioListenerContext::SetSimpleRoom(Vector3 position, Vector3 dimensions, float reflectionConstant, ResonanceAudioMaterial left, ResonanceAudioMaterial right, ResonanceAudioMaterial bottom, ResonanceAudioMaterial top, ResonanceAudioMaterial front, ResonanceAudioMaterial back)
+	void ResonanceAudioListenerContext::SetSimpleRoom(const PositionType &position, Vector3 dimensions, float reflectionConstant, ResonanceAudioMaterial left, ResonanceAudioMaterial right, ResonanceAudioMaterial bottom, ResonanceAudioMaterial top, ResonanceAudioMaterial front, ResonanceAudioMaterial back)
 	{
 		_roomPosition = position;
 		_roomDimensions = dimensions;
@@ -115,6 +115,7 @@ namespace RN
 
 	void ResonanceAudioListenerContext::SetSimpleRoomEnabled(bool enabled)
 	{
+		if(enabled && !_roomEnabled) _roomDirty = true;
 		_roomEnabled = enabled;
 		_audioAPI->EnableRoomEffects(enabled);
 	}
@@ -131,7 +132,8 @@ namespace RN
 	{
 		SafeRelease(_listener);
 		_listener = SafeRetain(listener);
-		_oldPosition = _listener ? _listener->GetWorldPosition() : Vector3();
+		_oldPosition = _listener ? _listener->GetWorldPosition() : PositionType();
+		_roomDirty = true;
 
 		const uint32 currentIndex = _stateIndex.load(std::memory_order_relaxed) & 1;
 		const uint32 nextIndex = currentIndex ^ 1;
@@ -143,7 +145,7 @@ namespace RN
 			dst.rotation = _listener->GetWorldRotation();
 			dst.isValid = true;
 
-			_audioAPI->SetHeadPosition(dst.position.x, dst.position.y, dst.position.z);
+			_audioAPI->SetHeadPosition(0.0f, 0.0f, 0.0f);
 			_audioAPI->SetHeadRotation(dst.rotation.x, dst.rotation.y, dst.rotation.z, dst.rotation.w);
 		}
 		else
@@ -165,16 +167,17 @@ namespace RN
 		if(!_listener)
 			return;
 
-		const Vector3 position = _listener->GetWorldPosition();
+		const PositionType position = _listener->GetWorldPosition();
 		const Quaternion rotation = _listener->GetWorldRotation();
+		const bool listenerMoved = !(position == _oldPosition);
 
-		_audioAPI->SetHeadPosition(position.x, position.y, position.z);
+		_audioAPI->SetHeadPosition(0.0f, 0.0f, 0.0f);
 		_audioAPI->SetHeadRotation(rotation.x, rotation.y, rotation.z, rotation.w);
 
 		Vector3 velocity(0.0f, 0.0f, 0.0f);
 		if(delta > 0.0f)
 		{
-			velocity = (position - _oldPosition) / delta;
+			velocity = Vector3(position - _oldPosition) / delta;
 			_oldPosition = position;
 		}
 
@@ -187,19 +190,21 @@ namespace RN
 		dst.isValid = true;
 		_stateIndex.store(nextIndex, std::memory_order_release);
 
-		if(!_roomEnabled)
-			return;
+		ResonanceAudioWorld *world = _world;
+		if(!world) return;
+
+		const Vector3 roomPosition = _roomEnabled ? Vector3(_roomPosition - position) : Vector3();
 
 		// Apply room properties if they changed.
-		if(_roomDirty)
+		if(_roomEnabled && (_roomDirty || listenerMoved))
 		{
 			vraudio::RoomProperties roomProperties;
 			roomProperties.dimensions[0] = _roomDimensions.x;
 			roomProperties.dimensions[1] = _roomDimensions.y;
 			roomProperties.dimensions[2] = _roomDimensions.z;
-			roomProperties.position[0] = _roomPosition.x;
-			roomProperties.position[1] = _roomPosition.y;
-			roomProperties.position[2] = _roomPosition.z;
+			roomProperties.position[0] = roomPosition.x;
+			roomProperties.position[1] = roomPosition.y;
+			roomProperties.position[2] = roomPosition.z;
 			roomProperties.reflection_scalar = _roomReflectionConstant;
 			roomProperties.material_names[0] = static_cast<vraudio::MaterialName>(_roomMaterials[0]);
 			roomProperties.material_names[1] = static_cast<vraudio::MaterialName>(_roomMaterials[1]);
@@ -214,14 +219,11 @@ namespace RN
 			_roomDirty = false;
 		}
 
-		ResonanceAudioWorld *world = _world;
-		if(!world) return;
-
 		// Keep per-source room gain + occlusion up to date (main thread only).
 		vraudio::WorldPosition audioRoomPosition;
-		audioRoomPosition[0] = _roomPosition.x;
-		audioRoomPosition[1] = _roomPosition.y;
-		audioRoomPosition[2] = _roomPosition.z;
+		audioRoomPosition[0] = roomPosition.x;
+		audioRoomPosition[1] = roomPosition.y;
+		audioRoomPosition[2] = roomPosition.z;
 		vraudio::WorldRotation audioRoomRotation; // identity
 		vraudio::WorldPosition audioRoomDimensions;
 		audioRoomDimensions[0] = _roomDimensions.x;
@@ -229,14 +231,18 @@ namespace RN
 		audioRoomDimensions[2] = _roomDimensions.z;
 
 		SceneNode *listener = _listener;
-		const Vector3 listenerPosition = listener ? listener->GetWorldPosition() : Vector3();
+		const PositionType listenerPosition = listener ? listener->GetWorldPosition() : PositionType();
 
 		world->Lock();
 		for(ResonanceAudioSource *source : world->_audioSources)
 		{
 			if(!source || !source->IsPositional()) continue;
 
-			Vector3 sourcePosition = source->GetWorldPosition();
+			const PositionType sourceWorldPosition = source->GetWorldPosition();
+			Vector3 sourcePosition(sourceWorldPosition - listenerPosition);
+			_audioAPI->SetSourcePosition(source->_sourceID, sourcePosition.x, sourcePosition.y, sourcePosition.z);
+			if(!_roomEnabled) continue;
+
 			vraudio::WorldPosition audioSourcePosition;
 			audioSourcePosition[0] = sourcePosition.x;
 			audioSourcePosition[1] = sourcePosition.y;
@@ -247,7 +253,7 @@ namespace RN
 			if(world->_raycastCallback && listener)
 			{
 				float distance;
-				world->_raycastCallback(sourcePosition, listenerPosition - sourcePosition, distance);
+				world->_raycastCallback(sourceWorldPosition, Vector3(listenerPosition - sourceWorldPosition), distance);
 				_audioAPI->SetSoundObjectOcclusionIntensity(source->_sourceID, (distance > -0.5f) ? 10.0f : 0.0f);
 			}
 		}
@@ -322,4 +328,3 @@ namespace RN
 		}
 	}
 } // namespace RN
-

@@ -65,9 +65,9 @@ namespace RN
 			return;
 		}
 
-		const Vector3 listenerPosition = listenerState.position;
+		const PositionType listenerPosition = listenerState.position;
 		const Vector3 listenerVelocity = listenerState.velocity;
-		const Vector3 sourcePosition = GetWorldPosition();
+		const PositionType sourcePosition = GetWorldPosition();
 
 		if(!_dopplerInitialized)
 		{
@@ -79,11 +79,11 @@ namespace RN
 		}
 
 		const float smoothingOld = std::clamp(listenerContext->GetDopplerVelocitySmoothing(), 0.0f, 0.999f);
-		Vector3 rawVelocity = (sourcePosition - _dopplerOldPosition) / delta;
+		Vector3 rawVelocity = Vector3(sourcePosition - _dopplerOldPosition) / delta;
 		_dopplerOldPosition = sourcePosition;
 		_dopplerVelocity = _dopplerVelocity * smoothingOld + rawVelocity * (1.0f - smoothingOld);
 
-		Vector3 dir = listenerPosition - sourcePosition; // source -> listener
+		Vector3 dir(listenerPosition - sourcePosition); // source -> listener
 		const float dist = dir.GetLength();
 		if(dist <= k::EpsilonFloat)
 		{
@@ -121,7 +121,7 @@ namespace RN
 		_volume(1.0f),
 		_pitch(1.0f),
 		_dopplerPitchMultiplier(1.0f),
-		_dopplerOldPosition(Vector3()),
+		_dopplerOldPosition(PositionType()),
 		_dopplerVelocity(Vector3()),
 		_dopplerInitialized(false),
 		_minMaxRange(RN::Vector2(0.2f, 200.0f)),
@@ -424,7 +424,10 @@ namespace RN
 
 		if(changeSet & SceneNode::ChangeSet::Position || changeSet & SceneNode::ChangeSet::Parent || changeSet & SceneNode::ChangeSet::World || changeSet & SceneNode::ChangeSet::Attachments)
 		{
-			RN::Vector3 position = GetWorldPosition();
+			ResonanceAudioListenerContext *listenerContext = ResonanceAudioWorld::_instance->GetListenerContext();
+			const ResonanceAudioListenerState listenerState = listenerContext ? listenerContext->GetListenerState() : ResonanceAudioListenerState();
+			const PositionType listenerPosition = listenerState.isValid ? listenerState.position : PositionType();
+			RN::Vector3 position(GetWorldPosition() - listenerPosition);
 			RN::Quaternion rotation = GetWorldRotation();
 			ResonanceAudioWorld::_instance->GetAudioAPI()->SetSourcePosition(_sourceID, position.x, position.y, position.z);
 			ResonanceAudioWorld::_instance->GetAudioAPI()->SetSourceRotation(_sourceID, rotation.x, rotation.y, rotation.z, rotation.w);

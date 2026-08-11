@@ -107,7 +107,7 @@ namespace RN
 		}
 	}
 
-	void ResonanceAudioWorld::SetSimpleRoom(Vector3 position, Vector3 dimensions, float reflectionConstant, ResonanceAudioMaterial left, ResonanceAudioMaterial right, ResonanceAudioMaterial bottom, ResonanceAudioMaterial top, ResonanceAudioMaterial front, ResonanceAudioMaterial back)
+	void ResonanceAudioWorld::SetSimpleRoom(const PositionType &position, Vector3 dimensions, float reflectionConstant, ResonanceAudioMaterial left, ResonanceAudioMaterial right, ResonanceAudioMaterial bottom, ResonanceAudioMaterial top, ResonanceAudioMaterial front, ResonanceAudioMaterial back)
 	{
 		if(!_audioSystem) return;
 		for(ResonanceAudioListenerContext *ctx : _audioSystem->_listenerContexts)
@@ -116,7 +116,7 @@ namespace RN
 		}
 	}
 
-	void ResonanceAudioWorld::SetRaycastCallback(const std::function<void(Vector3, Vector3, float &distance)> &raycastCallback)
+	void ResonanceAudioWorld::SetRaycastCallback(const std::function<void(PositionType, Vector3, float &distance)> &raycastCallback)
 	{
 		_raycastCallback = raycastCallback;
 	}
@@ -218,7 +218,7 @@ namespace RN
 		return source->Autorelease();
 	}
 
-	ResonanceAudioSource *ResonanceAudioWorld::PlaySound(AudioAsset *resource, Vector3 position) const
+	ResonanceAudioSource *ResonanceAudioWorld::PlaySound(AudioAsset *resource, const PositionType &position) const
 	{
 		ResonanceAudioSource *source = new ResonanceAudioSource(resource);
 		source->SetWorldPosition(position);
