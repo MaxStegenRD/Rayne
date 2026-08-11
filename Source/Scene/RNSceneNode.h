@@ -35,12 +35,6 @@ namespace RN
 	public:
 		friend class Scene;
 
-#if RN_ENABLE_UNIVERSE_SCALE
-		using PositionType = DVector3;
-#else
-		using PositionType = Vector3;
-#endif
-
 		enum class UpdatePriority
 		{
 			UpdateEarliest,
@@ -111,12 +105,10 @@ namespace RN
 		virtual void SetScale(const Vector3 &scal);
 		virtual void SetRotation(const Quaternion &rot);
 
-		RNAPI virtual void SetWorldPosition(const Vector3 &pos);
+		RNAPI virtual void SetWorldPosition(const PositionType &pos);
 		virtual void SetWorldScale(const Vector3 &scal);
 		virtual void SetWorldRotation(const Quaternion &rot);
-		RNAPI void SetUniversePosition(const DVector3 &pos);
-		RNAPI virtual void SetWorldTransform(const Vector3 &pos, const Quaternion &rot);
-		RNAPI void SetUniverseTransform(const DVector3 &pos, const Quaternion &rot);
+		RNAPI virtual void SetWorldTransform(const PositionType &pos, const Quaternion &rot);
 
 		RNAPI void SetBoundingBox(const AABB &boundingBox, bool calculateBoundingSphere = true);
 		RNAPI void SetBoundingSphere(const Sphere &boundingSphere);
@@ -137,13 +129,16 @@ namespace RN
 		virtual Vector3 GetUp() const;
 		virtual Vector3 GetRight() const;
 
-		Vector3 GetWorldPosition() const;
-		RNAPI DVector3 GetUniversePosition() const;
+		PositionType GetWorldPosition() const;
+		// Float-space matrices relative to the supplied rendering origin.
+		RNAPI Matrix GetWorldTransform(const PositionType &renderOrigin = PositionType()) const;
+		RNAPI Matrix GetInverseWorldTransform(const PositionType &renderOrigin = PositionType()) const;
 		Vector3 GetWorldScale() const;
 		Vector3 GetWorldEulerAngle() const;
 		Quaternion GetWorldRotation() const;
 		RNAPI uint64 GetTransformVersion() const;
 
+		// Bounds use an exact world-space position with float geometry relative to it.
 		AABB GetBoundingBox() const;
 		Sphere GetBoundingSphere() const;
 
@@ -152,7 +147,7 @@ namespace RN
 		const Vector3 &GetEulerAngle() const { return _euler; }
 		const Quaternion &GetRotation() const { return _rotation; }
 
-		RNAPI void LookAt(const RN::Vector3 &target, bool keepUpAxis = false);
+		RNAPI void LookAt(const PositionType &target, bool keepUpAxis = false);
 
 		RNAPI void AddChild(SceneNode *child);
 		RNAPI void RemoveChild(SceneNode *child);
@@ -175,8 +170,6 @@ namespace RN
 
 		RNAPI void Traverse(const std::function<void(SceneNode *)> &callback);
 
-		RNAPI Matrix GetWorldTransform() const;
-		RNAPI Matrix GetInverseWorldTransform() const;
 		RNAPI Matrix GetTransform() const;
 		RNAPI Matrix GetInverseTransform() const;
 
@@ -207,7 +200,9 @@ namespace RN
 
 	private:
 		void Initialize();
-		RNAPI Vector3 GetPositionForTransform() const;
+		void InvalidateLinearTransform();
+		uint64 GetTransformCacheVersion() const;
+		static PositionType TransformLinearPosition(const Matrix &transform, const PositionType &position);
 		RNAPI void UpdateInternalData() const;
 		RNAPI void UpdateInternalTransformData() const;
 		RNAPI void UpdateInternalInverseTransformData() const;
@@ -242,16 +237,21 @@ namespace RN
 
 		Array *_attachments;
 
-		mutable uint64 _updated;
-		mutable uint64 _lastUpdatedVersion;
-		mutable uint64 _lastTransformUpdatedVersion;
-		mutable uint64 _lastInverseTransformUpdatedVersion;
-		mutable uint64 _lastBoundsUpdatedVersion;
-		mutable Vector3 _worldPosition;
+		uint64 _transformVersion;
+#if RN_ENABLE_UNIVERSE_SCALE
+		uint64 _linearTransformVersion;
+#endif
+		mutable bool _boundsDirty;
+		mutable uint64 _cachedWorldDataVersion;
+		mutable uint64 _cachedMatrixVersion;
+		mutable uint64 _cachedInverseMatrixVersion;
+		mutable uint64 _cachedBoundsVersion;
+		mutable PositionType _worldPosition;
 		mutable Quaternion _worldRotation;
 		mutable Vector3 _worldScale;
 		mutable Vector3 _worldEuler;
 
+		// Complete matrices without universe scale; translation-free linear matrices with it.
 		mutable Matrix _worldTransform;
 		mutable Matrix _inverseWorldTransform;
 		mutable Matrix _localTransform;
@@ -279,6 +279,7 @@ namespace RN
 		WillUpdate(ChangeSet::Position);
 
 		_scale += scal;
+		InvalidateLinearTransform();
 
 		DidUpdate(ChangeSet::Position);
 	}
@@ -289,6 +290,7 @@ namespace RN
 
 		_euler += rot;
 		_rotation = Quaternion(_euler);
+		InvalidateLinearTransform();
 
 		DidUpdate(ChangeSet::Position);
 	}
@@ -299,6 +301,7 @@ namespace RN
 
 		_rotation *= rot;
 		_euler = _rotation->GetEulerAngle();
+		InvalidateLinearTransform();
 
 		DidUpdate(ChangeSet::Position);
 	}
@@ -321,6 +324,7 @@ namespace RN
 	{
 		WillUpdate(ChangeSet::Position);
 		_scale = scal;
+		InvalidateLinearTransform();
 		DidUpdate(ChangeSet::Position);
 	}
 
@@ -330,6 +334,7 @@ namespace RN
 
 		_euler = rot.GetEulerAngle();
 		_rotation = rot;
+		InvalidateLinearTransform();
 
 		DidUpdate(ChangeSet::Position);
 	}
@@ -353,6 +358,7 @@ namespace RN
 		{
 			_scale = scal;
 		}
+		InvalidateLinearTransform();
 
 		DidUpdate(ChangeSet::Position);
 	}
@@ -369,8 +375,28 @@ namespace RN
 
 		_rotation = rot / _parent->GetWorldRotation();
 		_euler = _rotation->GetEulerAngle();
+		InvalidateLinearTransform();
 
 		DidUpdate(ChangeSet::Position);
+	}
+
+	RN_INLINE void SceneNode::InvalidateLinearTransform()
+	{
+#if RN_ENABLE_UNIVERSE_SCALE
+		_linearTransformVersion += 1;
+		_children->Enumerate<SceneNode>([](SceneNode *child, size_t index, bool &stop) {
+			child->InvalidateLinearTransform();
+		});
+#endif
+	}
+
+	RN_INLINE uint64 SceneNode::GetTransformCacheVersion() const
+	{
+#if RN_ENABLE_UNIVERSE_SCALE
+		return _linearTransformVersion;
+#else
+		return _transformVersion;
+#endif
 	}
 
 
@@ -392,10 +418,10 @@ namespace RN
 		return right;
 	}
 
-	RN_INLINE Vector3 SceneNode::GetWorldPosition() const
+	RN_INLINE PositionType SceneNode::GetWorldPosition() const
 	{
 		UpdateInternalData();
-		return Vector3(_worldPosition);
+		return _worldPosition;
 	}
 	RN_INLINE Vector3 SceneNode::GetWorldScale() const
 	{
@@ -416,37 +442,51 @@ namespace RN
 	RN_INLINE Matrix SceneNode::GetTransform() const
 	{
 		UpdateInternalTransformData();
+
+#if RN_ENABLE_UNIVERSE_SCALE
+		Matrix transform = _localTransform;
+		const Vector3 position(_position);
+		transform.m[12] = position.x;
+		transform.m[13] = position.y;
+		transform.m[14] = position.z;
+		return transform;
+#else
 		return Matrix(_localTransform);
+#endif
 	}
 
 	RN_INLINE Matrix SceneNode::GetInverseTransform() const
 	{
 		UpdateInternalInverseTransformData();
+
+#if RN_ENABLE_UNIVERSE_SCALE
+		Matrix transform = _inverseLocalTransform;
+		const Vector3 position(_position);
+		transform.m[12] = -(transform.m[0] * position.x + transform.m[4] * position.y + transform.m[8] * position.z);
+		transform.m[13] = -(transform.m[1] * position.x + transform.m[5] * position.y + transform.m[9] * position.z);
+		transform.m[14] = -(transform.m[2] * position.x + transform.m[6] * position.y + transform.m[10] * position.z);
+		return transform;
+#else
 		return Matrix(_inverseLocalTransform);
-	}
-
-	RN_INLINE Matrix SceneNode::GetWorldTransform() const
-	{
-		UpdateInternalTransformData();
-		return Matrix(_worldTransform);
-	}
-
-	RN_INLINE Matrix SceneNode::GetInverseWorldTransform() const
-	{
-		UpdateInternalInverseTransformData();
-		return Matrix(_inverseWorldTransform);
+#endif
 	}
 
 	RN_INLINE AABB SceneNode::GetBoundingBox() const
 	{
 		UpdateInternalBoundsData();
-		return AABB(_transformedBoundingBox);
+
+		AABB result(_transformedBoundingBox);
+		result.position = _worldPosition;
+		return result;
 	}
 
 	RN_INLINE Sphere SceneNode::GetBoundingSphere() const
 	{
 		UpdateInternalBoundsData();
-		return Sphere(_transformedBoundingSphere);
+
+		Sphere result(_transformedBoundingSphere);
+		result.position = _worldPosition;
+		return result;
 	}
 } // namespace RN
 

@@ -81,7 +81,7 @@ namespace RN
 
 		void Query(const AABB &aabb, std::vector<T> &result)
 		{
-			Vector3 position(std::move(TranslateVector(aabb.position)));
+			Vector3 position(std::move(TranslateVector(Vector3(aabb.position))));
 			Vector3 extents(aabb.maxExtend - aabb.minExtend);
 
 			extents /= Vector3(_spacing, _spacingY ? _spacing : 1.0, _spacing);

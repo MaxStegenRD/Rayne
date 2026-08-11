@@ -577,7 +577,7 @@ namespace RN
 	{
 		//Based on https://terathon.com/blog/oblique-clipping.html and https://aras-p.info/texts/obliqueortho.html
 		
-		Vector4 clipPlaneVector = clipPlane.GetPlaneVector();
+		Vector4 clipPlaneVector = clipPlane.GetPlaneVector(PositionType());
 
 		// Calculate the clip-space corner point opposite(!? z = 1 IS the clipping plane in my case!? but this seems to work...) the clipping plane
 		// as (sgn(clipPlane.x), sgn(clipPlane.y), 1, 1) and

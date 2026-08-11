@@ -74,6 +74,7 @@ namespace RN
 		RNAPI void DrawRay(const Vector3 &from, const Vector3 &to, const DebugDrawOptions &options = DebugDrawOptions());
 		RNAPI void DrawAABB(const RN::AABB &aabb, const DebugDrawOptions &options = DebugDrawOptions());
 		RNAPI void DrawSphere(const Vector3 &center, float radius, const DebugDrawOptions &options = DebugDrawOptions());
+		RNAPI void DrawSphere(const RN::Sphere &sphere, const DebugDrawOptions &options = DebugDrawOptions());
 		RNAPI void DrawText(const Vector3 &position, const String *text, const DebugDrawOptions &options = DebugDrawOptions());
 
 		struct Internals;
@@ -82,7 +83,7 @@ namespace RN
 		void InstallInScene(Scene *scene);
 		void UninstallFromScene();
 		void SetTextBackend(DebugTextBackend *backend);
-		void AddCommand(uint8 type, const Vector3 &from, const Vector3 &to, const RN::AABB &aabb, float radius, const DebugDrawOptions &options);
+		void AddCommand(uint8 type, const PositionType &origin, const Vector3 &from, const Vector3 &to, const RN::AABB &aabb, float radius, const DebugDrawOptions &options);
 		void Rebuild(Renderer *renderer);
 
 		RNDeclareMetaAPI(DebugRenderer, RNAPI)

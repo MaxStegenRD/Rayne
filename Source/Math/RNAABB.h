@@ -30,11 +30,11 @@ namespace RN
 		AABB &operator*=(const Vector3 &other);
 
 		bool Intersects(const AABB &other) const;
-		bool Contains(const Vector3 &position) const;
+		bool Contains(const PositionType &position) const;
 
 		void Rotate(const Quaternion &rotation);
 
-		Vector3 position;
+		PositionType position;
 		Vector3 minExtend;
 		Vector3 maxExtend;
 	};
@@ -62,35 +62,22 @@ namespace RN
 
 	RN_INLINE AABB AABB::operator+(const AABB &other) const
 	{
-		Vector3 min;
-		Vector3 max;
-
-		min.x = std::min(minExtend.x, other.minExtend.x);
-		min.y = std::min(minExtend.y, other.minExtend.y);
-		min.z = std::min(minExtend.z, other.minExtend.z);
-
-		max.x = std::max(maxExtend.x, other.maxExtend.x);
-		max.y = std::max(maxExtend.y, other.maxExtend.y);
-		max.z = std::max(maxExtend.z, other.maxExtend.z);
-
-		return AABB(min, max);
+		AABB result(*this);
+		result += other;
+		return result;
 	}
 
 	RN_INLINE AABB &AABB::operator+=(const AABB &other)
 	{
-		Vector3 min;
-		Vector3 max;
+		const Vector3 relativePosition(other.position - position);
 
-		min.x = std::min(minExtend.x, other.minExtend.x);
-		min.y = std::min(minExtend.y, other.minExtend.y);
-		min.z = std::min(minExtend.z, other.minExtend.z);
+		minExtend.x = std::min(minExtend.x, relativePosition.x + other.minExtend.x);
+		minExtend.y = std::min(minExtend.y, relativePosition.y + other.minExtend.y);
+		minExtend.z = std::min(minExtend.z, relativePosition.z + other.minExtend.z);
 
-		max.x = std::max(maxExtend.x, other.maxExtend.x);
-		max.y = std::max(maxExtend.y, other.maxExtend.y);
-		max.z = std::max(maxExtend.z, other.maxExtend.z);
-
-		minExtend = min;
-		maxExtend = max;
+		maxExtend.x = std::max(maxExtend.x, relativePosition.x + other.maxExtend.x);
+		maxExtend.y = std::max(maxExtend.y, relativePosition.y + other.maxExtend.y);
+		maxExtend.z = std::max(maxExtend.z, relativePosition.z + other.maxExtend.z);
 
 		return *this;
 	}
@@ -115,35 +102,33 @@ namespace RN
 
 	RN_INLINE bool AABB::Intersects(const AABB &other) const
 	{
-		Vector3 max0 = position + maxExtend;
-		Vector3 max1 = other.position + other.maxExtend;
+		const PositionType relativePosition = other.position - position;
 
-		Vector3 min0 = position + minExtend;
-		Vector3 min1 = other.position + other.minExtend;
-
-		if(min0.x > max1.x || min1.x > max0.x)
+		if(minExtend.x > relativePosition.x + other.maxExtend.x || relativePosition.x + other.minExtend.x > maxExtend.x)
 			return false;
-		if(min0.y > max1.y || min1.y > max0.y)
+		if(minExtend.y > relativePosition.y + other.maxExtend.y || relativePosition.y + other.minExtend.y > maxExtend.y)
 			return false;
-		if(min0.z > max1.z || min1.z > max0.z)
+		if(minExtend.z > relativePosition.z + other.maxExtend.z || relativePosition.z + other.minExtend.z > maxExtend.z)
 			return false;
 
 		return true;
 	}
 
-	RN_INLINE bool AABB::Contains(const Vector3 &position) const
+	RN_INLINE bool AABB::Contains(const PositionType &position) const
 	{
-		if(position.x - this->position.x > maxExtend.x)
+		const PositionType relativePosition = position - this->position;
+
+		if(relativePosition.x > maxExtend.x)
 			return false;
-		if(position.x - this->position.x < minExtend.x)
+		if(relativePosition.x < minExtend.x)
 			return false;
-		if(position.y - this->position.y > maxExtend.y)
+		if(relativePosition.y > maxExtend.y)
 			return false;
-		if(position.y - this->position.y < minExtend.y)
+		if(relativePosition.y < minExtend.y)
 			return false;
-		if(position.z - this->position.z > maxExtend.z)
+		if(relativePosition.z > maxExtend.z)
 			return false;
-		if(position.z - this->position.z < minExtend.z)
+		if(relativePosition.z < minExtend.z)
 			return false;
 
 		return true;

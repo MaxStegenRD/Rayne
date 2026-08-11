@@ -158,10 +158,6 @@ namespace RN
 		static constexpr uint8 SkeletonSnapshotDirty = 1 << 2;
 		static constexpr uint8 AllSnapshotsDirty = MeshSnapshotDirty | MaterialSnapshotDirty | SkeletonSnapshotDirty;
 
-		RNAPI void UpdateTransform(const SceneNode *node);
-		const Matrix &GetModelMatrix() const { return _modelMatrix; }
-		const Matrix &GetInverseModelMatrix() const { return _inverseModelMatrix; }
-
 		void UpdateSourceVersions();
 		bool DrainDrawSnapshots(uint64 completedFrameID);
 		bool HasDrawSnapshotHistory() const;
@@ -170,9 +166,6 @@ namespace RN
 		std::deque<MeshSnapshot> _meshSnapshots;
 		std::deque<MaterialSnapshot> _materialSnapshots;
 		std::deque<SkeletonSnapshot> _skeletonSnapshots;
-
-		Matrix _modelMatrix;
-		Matrix _inverseModelMatrix;
 
 		// Source objects are kept for snapshot refresh/version checks.
 		StrongRef<Mesh> _sourceMesh;
@@ -184,13 +177,8 @@ namespace RN
 		uint64 _materialDrawSnapshotVersion = 0;
 		uint64 _materialSnapshotVersion = 0;
 		uint64 _skeletonDrawSnapshotVersion = 0;
-		uint64 _transformVersion = 0;
-
 		uint8 _drawSnapshotDirtyMask = AllSnapshotsDirty;
-		bool _transformDirty = true;
 		bool _isRegisteredForSnapshotDrain = false;
-
-		const SceneNode *_transformNode = nullptr;
 	};
 } // namespace RN
 

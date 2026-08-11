@@ -25,9 +25,9 @@ namespace RN
 		Sphere &operator*=(const Vector3 &other);
 
 		void SetRotation(const Quaternion &rotation);
-		bool Contains(const Vector3 &position);
+		bool Contains(const PositionType &position) const;
 
-		Vector3 position;
+		PositionType position;
 		Vector3 offset;
 		float radius;
 	};
@@ -73,9 +73,10 @@ namespace RN
 		offset = rotation.GetRotatedVector(offset);
 	}
 
-	RN_INLINE bool Sphere::Contains(const Vector3 &position)
+	RN_INLINE bool Sphere::Contains(const PositionType &position) const
 	{
-		return offset.GetSquaredDistance(position) < radius * radius;
+		const Vector3 relativePosition(position - this->position);
+		return offset.GetSquaredDistance(relativePosition) < radius * radius;
 	}
 } // namespace RN
 

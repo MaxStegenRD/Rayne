@@ -1777,18 +1777,7 @@ namespace RN
 			if(!renderPass.UsesDrawItems()) return;
 			RenderFrame::Pass &framePass = frameSubmission.renderFrame.GetPass(renderPass.renderFramePassIndex);
 
-			if(light->GetType() == Light::Type::DirectionalLight)
-			{
-				framePass.AddDirectionalLight(RenderFrame::DirectionalLight::WithLight(light));
-			}
-			else if(light->GetType() == Light::Type::PointLight)
-			{
-				framePass.AddPointLight(RenderFrame::PointLight::WithLight(light));
-			}
-			else if(light->GetType() == Light::Type::SpotLight)
-			{
-				framePass.AddSpotLight(RenderFrame::SpotLight::WithLight(light));
-			}
+			framePass.AddLight(light);
 		};
 
 		for(size_t pi = startIndex; pi < frameSubmission.renderPasses.size(); pi++)
@@ -2135,7 +2124,7 @@ namespace RN
 				return;
 
 			if(drawItemIndex == RenderFrame::InvalidDrawItemIndex)
-				drawItemIndex = frameSubmission.renderFrame.AddDrawItem(drawable, node);
+				drawItemIndex = frameSubmission.renderFrame.AddDrawItem(drawable, node, framePass);
 			framePass.AddDrawItemIndex(drawItemIndex);
 		};
 

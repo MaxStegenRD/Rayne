@@ -88,6 +88,22 @@ namespace RN
 		return true;
 	}
 
+	static bool ReadPosition(const Dictionary *dictionary, const char *key, PositionType &position)
+	{
+		Array *array = GetArrayValue(dictionary, key);
+		if(!array || array->GetCount() < 3)
+			return false;
+
+		Number *x = array->GetObjectAtIndex<Number>(0);
+		Number *y = array->GetObjectAtIndex<Number>(1);
+		Number *z = array->GetObjectAtIndex<Number>(2);
+		if(!x || !y || !z)
+			return false;
+
+		position = PositionType(x->GetDoubleValue(), y->GetDoubleValue(), z->GetDoubleValue());
+		return true;
+	}
+
 	static bool ReadQuaternion(const Dictionary *dictionary, Quaternion &rotation)
 	{
 		Vector3 euler;
@@ -674,8 +690,8 @@ namespace RN
 			if(!target)
 				return PerformanceCommandResult::Failed("setNodePose command target was not registered");
 
-			Vector3 position;
-			if(ReadVector3(context.GetCommand(), "position", position))
+			PositionType position;
+			if(ReadPosition(context.GetCommand(), "position", position))
 				target->SetWorldPosition(position);
 
 			Quaternion rotation;
@@ -953,9 +969,9 @@ namespace RN
 				return false;
 			}
 
-			Vector3 position;
+			PositionType position;
 			Quaternion rotation;
-			if(!ReadVector3(action, "position", position) && !ReadQuaternion(action, rotation))
+			if(!ReadPosition(action, "position", position) && !ReadQuaternion(action, rotation))
 			{
 				message = "setNodePose action is missing position or rotation";
 				return false;

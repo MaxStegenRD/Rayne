@@ -80,9 +80,7 @@ namespace RN
 
 		RNAPI virtual void CreateParticles(size_t numParticlesToCreate);
 
-#if RN_ENABLE_UNIVERSE_SCALE
-		void UpdateParticleUniverseOrigin();
-#endif
+		void UpdateParticleOrigin();
 
 		RNAPI float *GetLifespans() { return _lifespans.data(); }
 		RNAPI ParticleData *GetParticleData() { return _particles.data(); }
@@ -125,11 +123,8 @@ namespace RN
 
 		float _time;
 
-#if RN_ENABLE_UNIVERSE_SCALE
-		DVector3 _lastParticleUniverseOrigin;
-		uint64 _lastParticleUniverseOriginVersion;
-		bool _hasLastParticleUniverseOrigin;
-#endif
+		PositionType _particleOrigin;
+		bool _hasParticleOrigin;
 
 		// mutable so it can change in UpdateMesh
 		mutable bool _meshIsInitialized;

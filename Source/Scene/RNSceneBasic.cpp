@@ -238,6 +238,8 @@ namespace RN
 		{
 			Camera *camera = cameraMember->Get();
 			camera->PostUpdate();
+			Camera *lodCamera = camera->GetLODCamera();
+			if(lodCamera != camera) lodCamera->PostUpdate();
 			cameraMember = cameraMember->GetNext();
 		}
 
@@ -263,6 +265,13 @@ namespace RN
 					continue;
 				}
 
+				const PositionType &renderOrigin = camera->GetRenderOrigin();
+				auto getRenderBounds = [&renderOrigin](const SceneNode *node) {
+					AABB bounds = node->GetBoundingBox();
+					bounds.position -= renderOrigin;
+					return bounds;
+				};
+
 				std::vector<SceneNode *> occluders;
 				std::vector<SceneNode *> sceneNodesToRender;
 				size_t firstTransparentIndex = 0;
@@ -277,7 +286,7 @@ namespace RN
 				if(firstNodeMember == _renderNodes.GetHead() && _occlusionCullingParameters.maxOccluders > 0 && !(camera->GetFlags() & Camera::Flags::NoOcclusionCulling) && !camera->GetRenderNodes())
 				{
 					RN_PROFILE_SCOPE_N("Collect Occluders");
-					const RN::Vector3 cameraWorldPosition = camera->GetWorldPosition();
+					const PositionType cameraWorldPosition = camera->GetWorldPosition();
 					for(size_t i = 0; i < _occluderNodes.size();)
 					{
 						SceneNode *node = _occluderNodes[i];
@@ -291,7 +300,7 @@ namespace RN
 						sceneInfo->isActiveOccluder = false;
 						if(node->CanRender(renderer, camera) && !node->GetBoundingBox().Contains(cameraWorldPosition))
 						{
-							sceneInfo->occluderDistance = std::max(node->GetWorldPosition().GetSquaredDistance(cameraWorldPosition), 1.0f);
+							sceneInfo->occluderDistance = std::max<float>(node->GetWorldPosition().GetSquaredDistance(cameraWorldPosition), 1.0f);
 							sceneInfo->occluderSize = node->GetBoundingSphere().radius * node->GetBoundingSphere().radius / sceneInfo->occluderDistance;
 							occluders.push_back(node);
 						}
@@ -352,7 +361,7 @@ namespace RN
 						//Render occluders to depth buffer first (first test if the bounding box is visible at all)
 						for(SceneNode *node : occluders)
 						{
-							bool testResult = _occlusionCuller->TestBoundingBox(matViewProj, node->GetBoundingBox(), screenPixelSize);
+							bool testResult = _occlusionCuller->TestBoundingBox(matViewProj, getRenderBounds(node), screenPixelSize);
 							SceneBasicInfo *sceneInfo = static_cast<SceneBasicInfo *>(node->GetSceneInfo());
 							sceneInfo->isActiveOccluder = true;
 							if(!testResult && sceneInfo->occludedFrameCounter < 1000)
@@ -372,7 +381,7 @@ namespace RN
 								RN::Entity *entity = node->Downcast<Entity>();
 								if(entity)
 								{
-									Matrix matModelViewProj = matViewProj * node->GetWorldTransform();
+									Matrix matModelViewProj = matViewProj * node->GetWorldTransform(renderOrigin);
 
 									Model *model = entity->GetModel();
 									RN::Model::LODStage *lodStage = model->GetLODStage(0);
@@ -432,7 +441,7 @@ namespace RN
 								}
 							}
 
-							bool testResult = _occlusionCuller->TestBoundingBox(matViewProj, node->GetBoundingBox(), screenPixelSize);
+							bool testResult = _occlusionCuller->TestBoundingBox(matViewProj, getRenderBounds(node), screenPixelSize);
 							if(!testResult && sceneInfo->occludedFrameCounter < 1000)
 							{
 								sceneInfo->occludedFrameCounter += 1;
@@ -525,7 +534,7 @@ namespace RN
 				if(camera->GetFlags() & Camera::Flags::SortFrontToBack)
 				{
 					RN_PROFILE_SCOPE_N("Sort Opaque");
-					const RN::Vector3 cameraWorldPosition = camera->GetWorldPosition();
+					const PositionType cameraWorldPosition = camera->GetWorldPosition();
 					std::sort(sceneNodesToRender.begin(), sceneNodesToRender.end(), [cameraWorldPosition](SceneNode *a, SceneNode *b) {
 						if(a->GetRenderPriority() == b->GetRenderPriority() && b->GetRenderPriority() < SceneNode::RenderSky)
 						{
@@ -538,7 +547,7 @@ namespace RN
 				if(camera->GetFlags() & Camera::Flags::SortTransparentBackToFront && firstTransparentIndex < lastTransparentIndex)
 				{
 					RN_PROFILE_SCOPE_N("Sort Transparent");
-					const RN::Vector3 cameraWorldPosition = camera->GetWorldPosition();
+					const PositionType cameraWorldPosition = camera->GetWorldPosition();
 					std::sort(sceneNodesToRender.begin() + firstTransparentIndex, sceneNodesToRender.begin() + lastTransparentIndex + 1, [cameraWorldPosition](SceneNode *a, SceneNode *b) {
 						return a->GetWorldPosition().GetSquaredDistance(cameraWorldPosition) > b->GetWorldPosition().GetSquaredDistance(cameraWorldPosition);
 					});

@@ -47,10 +47,10 @@ namespace RN
 		RNAPI void SetCubeLocal(Vector3 position, Vector3 size, uint32 density = 255);
 		RNAPI void SetSphereLocal(Vector3 position, float radius, uint32 density = 255);
 
-		RNAPI void SetSphere(Vector3 position, float radius);
-		RNAPI void RemoveSphere(Vector3 position, float radius);
-		RNAPI void SetCube(Vector3 position, Vector3 size);
-		RNAPI void RemoveCube(Vector3 position, Vector3 size);
+		RNAPI void SetSphere(PositionType position, float radius);
+		RNAPI void RemoveSphere(PositionType position, float radius);
+		RNAPI void SetCube(PositionType position, Vector3 size);
+		RNAPI void RemoveCube(PositionType position, Vector3 size);
 
 		RNAPI void SetMaterial(Material *material);
 		RNAPI void UpdateMesh();

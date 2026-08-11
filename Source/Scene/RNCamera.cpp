@@ -49,6 +49,12 @@ namespace RN
 		SafeRelease(_renderPass);
 		SafeRelease(_rootFramePass);
 
+		if(_multiviewCameras)
+		{
+			_multiviewCameras->Enumerate<Camera>([](Camera *camera, size_t index, bool &stop) {
+				camera->_multiviewParentCamera = nullptr;
+			});
+		}
 		SafeRelease(_multiviewCameras);
 		SafeRelease(_renderNodes);
 
@@ -74,18 +80,20 @@ namespace RN
 		_fogFar = 500.0f;
 		_ambient = Color::White();
 		_customData = Vector4(0.0f, 0.0f, 0.0f, 0.0f);
-		_customNearClipPlane = Plane();
 
 		_dirtyProjection = true;
 		_dirtyPosition = true;
 		_dirtyFrustum = true;
 		_hasCustomNearClipPlane = false;
+		_hasExplicitProjectionMatrix = false;
+		_customNearClipPlane = Plane();
+		_renderOrigin = PositionType();
 
 		_priority = 0;
 		_lodCamera = nullptr;
 
 		_multiviewCameras = nullptr;
-		_isMultiviewCamera = false;
+		_multiviewParentCamera = nullptr;
 
 		_frustumPlaneOffsets[0] = 0.0f;
 		_frustumPlaneOffsets[1] = 0.0f;
@@ -134,7 +142,11 @@ namespace RN
 	void Camera::SetFlags(Flags flags)
 	{
 		RN_DEBUG_ASSERT(!(flags & Flags::Orthogonal) || !isinf(_clipFar), "Orthogonal cameras do not support an infinite far clip plane");
+		const bool orthogonalChanged = static_cast<bool>(_flags & Flags::Orthogonal) != static_cast<bool>(flags & Flags::Orthogonal);
+		const bool simpleCullingChanged = static_cast<bool>(_flags & Flags::UseSimpleCulling) != static_cast<bool>(flags & Flags::UseSimpleCulling);
 		_flags = flags;
+		if(orthogonalChanged) _dirtyProjection = true;
+		if(simpleCullingChanged) _dirtyFrustum = true;
 	}
 
 	void Camera::SetLODCamera(Camera *camera)
@@ -150,23 +162,27 @@ namespace RN
 	void Camera::SetFOV(float fov)
 	{
 		_fov = fov;
+		_hasExplicitProjectionMatrix = false;
 		_dirtyProjection = true;
 	}
 	void Camera::SetAspectRatio(float ratio)
 	{
 		_aspect = ratio;
+		_hasExplicitProjectionMatrix = false;
 		_dirtyProjection = true;
 	}
 
 	void Camera::SetClipNear(float near)
 	{
 		_clipNear = near;
+		_hasExplicitProjectionMatrix = false;
 		_dirtyProjection = true;
 	}
 	void Camera::SetClipFar(float far)
 	{
 		RN_DEBUG_ASSERT(!(_flags & Flags::Orthogonal) || !isinf(far), "Orthogonal cameras do not support an infinite far clip plane");
 		_clipFar = far;
+		_hasExplicitProjectionMatrix = false;
 		_dirtyProjection = true;
 	}
 
@@ -211,6 +227,7 @@ namespace RN
 	{
 		_customNearClipPlane = clipPlane;
 		_hasCustomNearClipPlane = enabled;
+		_dirtyProjection = true;
 	}
 
 	void Camera::SetOrthogonalFrustum(float top, float bottom, float left, float right)
@@ -222,6 +239,7 @@ namespace RN
 		_orthoTop = top;
 		_orthoBottom = bottom;
 
+		_hasExplicitProjectionMatrix = false;
 		_dirtyProjection = true;
 	}
 
@@ -236,18 +254,17 @@ namespace RN
 
 	void Camera::SetProjectionMatrix(const Matrix &projectionMatrix)
 	{
-		_dirtyProjection = false;
-		_dirtyFrustum = true;
-		_projectionMatrix = projectionMatrix;
-		_inverseProjectionMatrix = _projectionMatrix.GetInverse();
-		UpdateFrustum();
+		_explicitProjectionMatrix = projectionMatrix;
+		_hasExplicitProjectionMatrix = true;
+		_dirtyProjection = true;
+		PostUpdate();
 	}
 
 	void Camera::DidUpdate(ChangeSet changeSet)
 	{
 		SceneNode::DidUpdate(changeSet);
 
-		if(changeSet & ChangeSet::Position)
+		if(changeSet & (ChangeSet::Position | ChangeSet::Parent))
 		{
 			_dirtyPosition = true;
 		}
@@ -256,12 +273,14 @@ namespace RN
 	Matrix Camera::MakeShadowSplit(Camera *camera, const Quaternion &shadowRotation, float cameraDistanceToCenter, float near, float far)
 	{
 		Rect frame = _renderPass->GetFrame();
+		camera->PostUpdate();
+		const PositionType renderOrigin = camera->GetRenderOrigin();
 
 		//Get camera frustum extends to be covered by the split
 		//far plane is at z=0, near plane z=1 for reverse-z!
-		Vector3 nearcenter = camera->ToWorld(Vector3(0.0f, 0.0f, near));
-		Vector3 farcorner1 = camera->ToWorld(Vector3(1.0f, 1.0f, far));
-		Vector3 farcorner2 = camera->ToWorld(Vector3(-1.0f, -1.0f, far));
+		Vector3 nearcenter = camera->ToRender(Vector3(0.0f, 0.0f, near));
+		Vector3 farcorner1 = camera->ToRender(Vector3(1.0f, 1.0f, far));
+		Vector3 farcorner2 = camera->ToRender(Vector3(-1.0f, -1.0f, far));
 		Vector3 farcenter = (farcorner1 + farcorner2) * 0.5f;
 		Vector3 center = (nearcenter + farcenter) * 0.5f;
 
@@ -285,7 +304,7 @@ namespace RN
 
 		//Transform back and place the camera there
 		pos = rot * pos;
-		SetWorldPosition(pos);
+		SetWorldPosition(renderOrigin + pos);
 
 		//Set the light camera frustum
 		_orthoLeft = -dist;
@@ -294,12 +313,11 @@ namespace RN
 		_orthoTop = dist;
 
 		//Update the projection matrix
+		_hasExplicitProjectionMatrix = false;
 		_dirtyProjection = true;
 		UpdateProjection(); //Because the target is always a valid framebuffer, we don't need to pass the renderer as parameter here
 
-		//Return the resulting matrix
-		Matrix projview = _projectionMatrix * GetWorldTransform().GetInverse();
-		return projview;
+		return _projectionMatrix * GetInverseWorldTransform(renderOrigin);
 	}
 
 	// Helper
@@ -312,12 +330,25 @@ namespace RN
 
 	void Camera::PostUpdate()
 	{
+		PrepareRender(ResolveRenderOrigin());
+	}
+
+	void Camera::PrepareRender(const PositionType &renderOrigin)
+	{
+		if(_renderOrigin != renderOrigin)
+		{
+			_renderOrigin = renderOrigin;
+			_dirtyPosition = true;
+		}
+
 		if(_dirtyPosition)
 		{
 			_dirtyPosition = false;
 			_dirtyFrustum = true;
+			if(_hasCustomNearClipPlane) _dirtyProjection = true;
+			const Vector3 renderPosition = GetRenderPosition();
 
-			_inverseViewMatrix = Matrix::WithTranslation(GetWorldPosition());
+			_inverseViewMatrix = Matrix::WithTranslation(renderPosition);
 			_inverseViewMatrix.Rotate(GetWorldRotation());
 			_inverseViewMatrix.Scale(GetScale());
 
@@ -326,6 +357,23 @@ namespace RN
 
 		UpdateProjection();
 		UpdateFrustum();
+
+		if(_multiviewCameras)
+		{
+			_multiviewCameras->Enumerate<Camera>([&](Camera *camera, size_t index, bool &stop) {
+				camera->PrepareRender(renderOrigin);
+			});
+		}
+	}
+
+	PositionType Camera::ResolveRenderOrigin() const
+	{
+#if RN_ENABLE_UNIVERSE_SCALE
+		const Camera *originCamera = _multiviewParentCamera ? _multiviewParentCamera : this;
+		return originCamera->GetWorldPosition();
+#else
+		return PositionType();
+#endif
 	}
 
 	void Camera::UpdateProjection()
@@ -333,25 +381,30 @@ namespace RN
 		if(!_dirtyProjection)
 			return;
 
-		if(_flags & Flags::Orthogonal)
+		if(_hasExplicitProjectionMatrix)
+		{
+			_projectionMatrix = _explicitProjectionMatrix;
+		}
+		else if(_flags & Flags::Orthogonal)
 		{
 			RN_DEBUG_ASSERT(!isinf(_clipFar), "Orthogonal cameras do not support an infinite far clip plane");
 			_projectionMatrix = Matrix::WithProjectionOrthogonal(_orthoLeft, _orthoRight, _orthoBottom, _orthoTop, _clipNear, _clipFar);
-			_inverseProjectionMatrix = _projectionMatrix.GetInverse();
-			return;
+		}
+		else
+		{
+			float tempAspect = _aspect;
+			if(std::abs(tempAspect) <= 0.0001)
+			{
+				Vector2 size = _renderPass->GetFrame().GetSize();
+				tempAspect = size.x / size.y;
+			}
+
+			_projectionMatrix = Matrix::WithProjectionPerspective(_fov, tempAspect, _clipNear, _clipFar);
 		}
 
-		float tempAspect = _aspect;
-		if(std::abs(tempAspect) <= 0.0001)
+		if(_hasCustomNearClipPlane && !(_flags & Flags::Orthogonal))
 		{
-			Vector2 size = _renderPass->GetFrame().GetSize();
-			tempAspect = size.x / size.y;
-		}
-
-		_projectionMatrix = Matrix::WithProjectionPerspective(_fov, tempAspect, _clipNear, _clipFar);
-		if(_hasCustomNearClipPlane)
-		{
-			Vector3 planePosition = _viewMatrix * _customNearClipPlane.GetPosition();
+			Vector3 planePosition = _viewMatrix * _customNearClipPlane.GetPointRelativeTo(_renderOrigin);
 			Vector4 planeNormal = _viewMatrix * RN::Vector4(_customNearClipPlane.GetNormal(), 0.0f);
 			_projectionMatrix.MakeObliqueNearPlane(Plane::WithPositionNormal(planePosition, RN::Vector3(planeNormal)));
 		}
@@ -371,7 +424,7 @@ namespace RN
 
 		bool useSimpleCulling = _flags & Flags::UseSimpleCulling;
 		const bool hasInfiniteFarPlane = isinf(_clipFar);
-		const Vector3 &position = GetWorldPosition();
+		const Vector3 position = GetRenderPosition();
 		Vector3 direction = GetWorldRotation().GetRotatedVector(Vector3(0.0, 0.0, -1.0));
 
 		if(hasInfiniteFarPlane)
@@ -386,10 +439,10 @@ namespace RN
 		}
 
 		//far plane is at z=0, near plane z=1 for reverse-z!
-		Vector3 pos1 = __ToWorld(Vector3(-1.0f, 1.0f, 1.0f));
-		Vector3 pos4 = __ToWorld(Vector3(1.0f, -1.0f, 1.0));
-		Vector3 pos7 = __ToWorld(Vector3(1.0f, 1.0f, 1.0f));
-		Vector3 pos8 = __ToWorld(Vector3(-1.0f, -1.0f, 1.0f));
+		Vector3 pos1 = __ToRender(Vector3(-1.0f, 1.0f, 1.0f));
+		Vector3 pos4 = __ToRender(Vector3(1.0f, -1.0f, 1.0));
+		Vector3 pos7 = __ToRender(Vector3(1.0f, 1.0f, 1.0f));
+		Vector3 pos8 = __ToRender(Vector3(-1.0f, -1.0f, 1.0f));
 
 		if(hasInfiniteFarPlane)
 		{
@@ -400,10 +453,10 @@ namespace RN
 		}
 		else
 		{
-			Vector3 pos2 = __ToWorld(Vector3(-1.0f, 1.0f, 0.0));
-			Vector3 pos3 = __ToWorld(Vector3(-1.0f, -1.0f, 0.0));
-			Vector3 pos5 = __ToWorld(Vector3(1.0f, 1.0f, 0.0));
-			Vector3 pos6 = __ToWorld(Vector3(1.0f, -1.0f, 0.0));
+			Vector3 pos2 = __ToRender(Vector3(-1.0f, 1.0f, 0.0));
+			Vector3 pos3 = __ToRender(Vector3(-1.0f, -1.0f, 0.0));
+			Vector3 pos5 = __ToRender(Vector3(1.0f, 1.0f, 0.0));
+			Vector3 pos6 = __ToRender(Vector3(1.0f, -1.0f, 0.0));
 
 			if(!useSimpleCulling)
 			{
@@ -444,10 +497,20 @@ namespace RN
 		if(hasInfiniteFarPlane) frustums._frustumFar = Plane::WithPositionNormal(position + direction * _clipNear, -direction);
 	}
 
-	Vector3 Camera::__ToWorld(const Vector3 &dir)
+	void Camera::EnsureFrustumUpdated()
 	{
-		PostUpdate();
+		const PositionType renderOrigin = ResolveRenderOrigin();
+		if(_dirtyPosition || _dirtyProjection || _renderOrigin != renderOrigin)
+		{
+			PrepareRender(renderOrigin);
+			return;
+		}
 
+		UpdateFrustum();
+	}
+
+	Vector3 Camera::__ToRender(const Vector3 &dir)
+	{
 		Vector4 ndcPos(dir.x, dir.y, dir.z, 1.0f);
 
 		Vector4 vec = _inverseViewMatrix * (_inverseProjectionMatrix * ndcPos);
@@ -457,7 +520,7 @@ namespace RN
 	}
 
 	// There should be a much better solution, but at least this works for now
-	Vector3 Camera::ToWorld(const Vector3 &dir)
+	Vector3 Camera::ToRender(const Vector3 &dir)
 	{
 		PostUpdate();
 		Vector4 ndcPos(dir.x, dir.y, 0.0f, 1.0f);
@@ -475,6 +538,12 @@ namespace RN
 		return Vector3(vec);
 	}
 
+	PositionType Camera::ToWorld(const Vector3 &dir)
+	{
+		const Vector3 renderPosition = ToRender(dir);
+		return _renderOrigin + renderPosition;
+	}
+
 	void Camera::CreateLightManager(uint16_t maxPackedPointLights, uint16_t maxPackedSpotLights)
 	{
 		if(_lightManager) return;
@@ -490,13 +559,13 @@ namespace RN
 
 	const Vector3 &Camera::GetFrustumCenter()
 	{
-		UpdateFrustum();
+		EnsureFrustumUpdated();
 		return _frustumCenter;
 	}
 
 	float Camera::GetFrustumRadius()
 	{
-		UpdateFrustum();
+		EnsureFrustumUpdated();
 		return _frustumRadius;
 	}
 
@@ -504,12 +573,12 @@ namespace RN
 	{
 		if(!planes) return;
 
-		const_cast<Camera *>(this)->UpdateFrustum();
-		planes[0] = frustums._frustumLeft.GetPlaneVector();
-		planes[1] = frustums._frustumRight.GetPlaneVector();
-		planes[2] = frustums._frustumTop.GetPlaneVector();
-		planes[3] = frustums._frustumBottom.GetPlaneVector();
-		planes[4] = frustums._frustumNear.GetPlaneVector();
+		const_cast<Camera *>(this)->EnsureFrustumUpdated();
+		planes[0] = frustums._frustumLeft.GetPlaneVector(PositionType());
+		planes[1] = frustums._frustumRight.GetPlaneVector(PositionType());
+		planes[2] = frustums._frustumTop.GetPlaneVector(PositionType());
+		planes[3] = frustums._frustumBottom.GetPlaneVector(PositionType());
+		planes[4] = frustums._frustumNear.GetPlaneVector(PositionType());
 		if(isinf(_clipFar))
 		{
 			Vector3 direction = GetWorldRotation().GetRotatedVector(Vector3(0.0, 0.0, -1.0));
@@ -517,11 +586,17 @@ namespace RN
 		}
 		else
 		{
-			planes[5] = frustums._frustumFar.GetPlaneVector();
+			planes[5] = frustums._frustumFar.GetPlaneVector(PositionType());
 		}
 	}
 
-	bool Camera::InFrustum(const Vector3 &position, float radius)
+	bool Camera::InFrustum(const PositionType &position, float radius)
+	{
+		EnsureFrustumUpdated();
+		return InRenderFrustum(Vector3(position - _renderOrigin), radius);
+	}
+
+	bool Camera::InRenderFrustum(const Vector3 &position, float radius) const
 	{
 		//if(_hasCustomNearClipPlane) return true;
 
@@ -554,17 +629,18 @@ namespace RN
 
 	bool Camera::InFrustum(const Sphere &sphere)
 	{
-		UpdateFrustum();
-		return InFrustum(sphere.position + sphere.offset, sphere.radius);
+		EnsureFrustumUpdated();
+		return InRenderFrustum(Vector3(sphere.position - _renderOrigin) + sphere.offset, sphere.radius);
 	}
 
 	bool Camera::InFrustum(const AABB &aabb)
 	{
-		UpdateFrustum();
+		EnsureFrustumUpdated();
+		const Vector3 renderPosition(aabb.position - _renderOrigin);
 
 		// Early-out: camera-centered sphere intersection
-		const Vector3 mn = aabb.position + aabb.minExtend;
-		const Vector3 mx = aabb.position + aabb.maxExtend;
+		const Vector3 mn = renderPosition + aabb.minExtend;
+		const Vector3 mx = renderPosition + aabb.maxExtend;
 		const float nx = std::max(mn.x, std::min(_frustumCenter.x, mx.x));
 		const float ny = std::max(mn.y, std::min(_frustumCenter.y, mx.y));
 		const float nz = std::max(mn.z, std::min(_frustumCenter.z, mx.z));
@@ -582,9 +658,9 @@ namespace RN
 
 			//Pick the corner most in direction of the plane normal
 			Vector3 positive;
-			positive.x = (plane.GetNormal().x >= 0) ? (aabb.position.x + aabb.maxExtend.x) : (aabb.position.x + aabb.minExtend.x);
-			positive.y = (plane.GetNormal().y >= 0) ? (aabb.position.y + aabb.maxExtend.y) : (aabb.position.y + aabb.minExtend.y);
-			positive.z = (plane.GetNormal().z >= 0) ? (aabb.position.z + aabb.maxExtend.z) : (aabb.position.z + aabb.minExtend.z);
+			positive.x = (plane.GetNormal().x >= 0) ? (renderPosition.x + aabb.maxExtend.x) : (renderPosition.x + aabb.minExtend.x);
+			positive.y = (plane.GetNormal().y >= 0) ? (renderPosition.y + aabb.maxExtend.y) : (renderPosition.y + aabb.minExtend.y);
+			positive.z = (plane.GetNormal().z >= 0) ? (renderPosition.z + aabb.maxExtend.z) : (renderPosition.z + aabb.minExtend.z);
 
 			if(plane.GetDistance(positive) <= 0.0f)
 			{
@@ -598,20 +674,26 @@ namespace RN
 	void Camera::AddMultiviewCamera(RN::Camera *camera)
 	{
 		RN_ASSERT(camera, "Camera cannot be empty");
+		RN_ASSERT(camera != this, "Camera cannot use itself for multiview");
+		RN_ASSERT(!_multiviewParentCamera, "A multiview child camera cannot own multiview cameras");
+		RN_ASSERT(!camera->_multiviewCameras || camera->_multiviewCameras->GetCount() == 0, "A multiview parent camera cannot become a multiview child");
+		RN_ASSERT(!camera->_multiviewParentCamera || camera->_multiviewParentCamera == this, "Camera already belongs to another multiview parent");
 
 		if(!_multiviewCameras)
 		{
 			_multiviewCameras = new RN::Array();
 		}
 
-		_multiviewCameras->AddObject(camera);
-		camera->_isMultiviewCamera = true;
+		if(!_multiviewCameras->ContainsObject(camera)) _multiviewCameras->AddObject(camera);
+		camera->_multiviewParentCamera = this;
 	}
 
 	void Camera::RemoveMultiviewCamera(RN::Camera *camera)
 	{
+		if(!_multiviewCameras) return;
 		_multiviewCameras->RemoveObject(camera);
-		camera->_isMultiviewCamera = false;
+		if(camera->_multiviewParentCamera == this)
+			camera->_multiviewParentCamera = nullptr;
 	}
 
 	void Camera::SetFirstSceneNodeMember(IntrusiveList<SceneNode>::Member *member)

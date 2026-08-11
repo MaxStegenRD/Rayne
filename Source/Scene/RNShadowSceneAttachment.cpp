@@ -43,7 +43,7 @@ namespace RN
 		SafeRelease(attachment);
 	}
 
-	void ShadowSceneAttachment::SubmitCameraPassAttachmentSnapshots(Renderer *renderer, Camera *, const SceneCameraPassContext &context)
+	void ShadowSceneAttachment::SubmitCameraPassAttachmentSnapshots(Renderer *renderer, Camera *camera, const SceneCameraPassContext &context)
 	{
 		RN_ASSERT(renderer, "Renderer mustn't be NULL");
 
@@ -63,7 +63,7 @@ namespace RN
 
 		shadowLight->GetShadowDepthCameras()->Enumerate<Camera>([&](Camera *shadowCamera, size_t index, bool &stop) {
 			Matrix shadowMatrix = projectionCorrection * shadowCamera->GetProjectionMatrix();
-			shadowMatrix = shadowMatrix * shadowCamera->GetWorldTransform().GetInverse();
+			shadowMatrix = shadowMatrix * shadowCamera->GetInverseWorldTransform(camera->GetRenderOrigin());
 
 			directionalShadowMatrices.push_back(shadowMatrix);
 			shadowCameraUIDs.push_back(shadowCamera->GetUID());

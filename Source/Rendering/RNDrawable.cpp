@@ -8,7 +8,6 @@
 
 #include "RNDrawable.h"
 #include "RNRenderer.h"
-#include "../Scene/RNSceneNode.h"
 
 namespace RN
 {
@@ -103,37 +102,6 @@ namespace RN
 	void Drawable::ClearIndirectDrawBuffer()
 	{
 		SetIndirectDrawBuffer(nullptr, IndirectDrawType::Draw, 0, 1, 0);
-	}
-
-	void Drawable::UpdateTransform(const SceneNode *node)
-	{
-		if(_transformNode != node)
-		{
-			_transformNode = node;
-			_transformDirty = true;
-		}
-
-		if(!node)
-		{
-			if(_transformDirty || _transformVersion != 0)
-			{
-				_modelMatrix = Matrix();
-				_inverseModelMatrix = Matrix();
-				_transformVersion = 0;
-				_transformDirty = false;
-			}
-
-			return;
-		}
-
-		uint64 transformVersion = node->GetTransformVersion();
-		if(_transformDirty || _transformVersion != transformVersion)
-		{
-			_modelMatrix = node->GetWorldTransform();
-			_inverseModelMatrix = node->GetInverseWorldTransform();
-			_transformVersion = transformVersion;
-			_transformDirty = false;
-		}
 	}
 
 	void Drawable::UpdateSourceVersions()

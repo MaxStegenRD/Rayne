@@ -56,18 +56,11 @@ namespace RN
 	}
 
 
-	void SceneNodeAttachment::SetWorldPosition(const Vector3 &position)
+	void SceneNodeAttachment::SetWorldPosition(const PositionType &position)
 	{
 		RN_DEBUG_ASSERT(_node, "SceneNodeAttachment must be attached to a SceneNode before setting world position.");
 		_consumeChangeSets |= SceneNode::ChangeSet::Position;
 		_node->SetWorldPosition(position);
-		_consumeChangeSets &= ~SceneNode::ChangeSet::Position;
-	}
-	void SceneNodeAttachment::SetUniversePosition(const DVector3 &position)
-	{
-		RN_DEBUG_ASSERT(_node, "SceneNodeAttachment must be attached to a SceneNode before setting universe position.");
-		_consumeChangeSets |= SceneNode::ChangeSet::Position;
-		_node->SetUniversePosition(position);
 		_consumeChangeSets &= ~SceneNode::ChangeSet::Position;
 	}
 	void SceneNodeAttachment::SetWorldScale(const Vector3 &scale)
@@ -84,30 +77,17 @@ namespace RN
 		_node->SetWorldRotation(rotation);
 		_consumeChangeSets &= ~SceneNode::ChangeSet::Position;
 	}
-	void SceneNodeAttachment::SetWorldTransform(const Vector3 &position, const Quaternion &rotation)
+	void SceneNodeAttachment::SetWorldTransform(const PositionType &position, const Quaternion &rotation)
 	{
 		RN_DEBUG_ASSERT(_node, "SceneNodeAttachment must be attached to a SceneNode before setting world transform.");
 		_consumeChangeSets |= SceneNode::ChangeSet::Position;
 		_node->SetWorldTransform(position, rotation);
 		_consumeChangeSets &= ~SceneNode::ChangeSet::Position;
 	}
-	void SceneNodeAttachment::SetUniverseTransform(const DVector3 &position, const Quaternion &rotation)
-	{
-		RN_DEBUG_ASSERT(_node, "SceneNodeAttachment must be attached to a SceneNode before setting universe transform.");
-		_consumeChangeSets |= SceneNode::ChangeSet::Position;
-		_node->SetUniverseTransform(position, rotation);
-		_consumeChangeSets &= ~SceneNode::ChangeSet::Position;
-	}
-
-	Vector3 SceneNodeAttachment::GetWorldPosition() const
+	PositionType SceneNodeAttachment::GetWorldPosition() const
 	{
 		RN_DEBUG_ASSERT(_node, "SceneNodeAttachment must be attached to a SceneNode before getting world position.");
 		return _node->GetWorldPosition();
-	}
-	DVector3 SceneNodeAttachment::GetUniversePosition() const
-	{
-		RN_DEBUG_ASSERT(_node, "SceneNodeAttachment must be attached to a SceneNode before getting universe position.");
-		return _node->GetUniversePosition();
 	}
 	Vector3 SceneNodeAttachment::GetWorldScale() const
 	{

@@ -213,8 +213,9 @@ namespace RN
 			edgeCounter[1][edgeIndex] = _edges[edgeIndex].counter[1];
 		}
 
-		Vector3 lightPosition = light->GetWorldPosition();
-		Vector3 lightDirection = light->GetForward();
+		const Matrix inverseNodeTransform = node->GetInverseWorldTransform(node->GetWorldPosition());
+		const Vector3 lightPosition = inverseNodeTransform * Vector3(light->GetWorldPosition() - node->GetWorldPosition());
+		Vector3 lightDirection(inverseNodeTransform * Vector4(light->GetForward(), 0.0f));
 		lightDirection.Normalize();
 		Vector3 normal;
 

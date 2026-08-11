@@ -48,7 +48,7 @@ namespace RN
 	{
 		Vector4 boxCorners[8];
 
-		const Vector4 position(aabb.position, 1.0f);
+		const Vector4 position(Vector3(aabb.position), 1.0f);
 		boxCorners[0] = position + Vector4(aabb.maxExtend.x, aabb.maxExtend.y, aabb.maxExtend.z, 0.0f);
 		boxCorners[1] = position + Vector4(aabb.maxExtend.x, aabb.maxExtend.y, aabb.minExtend.z, 0.0f);
 		boxCorners[2] = position + Vector4(aabb.maxExtend.x, aabb.minExtend.y, aabb.minExtend.z, 0.0f);

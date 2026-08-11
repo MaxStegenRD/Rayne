@@ -52,12 +52,14 @@ namespace RN
 			static constexpr size_t FrustumPlaneCount = 6;
 
 			CameraSnapshot() :
+				_renderOrigin(),
 				_sourceCameraUID(InvalidSourceCameraUID),
 				_tag(0)
 			{}
 
-			CameraSnapshot(const Vector3 &viewPosition, uint64 sourceCameraUID, const Matrix &viewMatrix, const Matrix &inverseViewMatrix, const Matrix &projectionMatrix, const Matrix &inverseProjectionMatrix, const Matrix &projectionViewMatrix, const Matrix &inverseProjectionViewMatrix, const Vector4 *frustumPlanes, const Color &ambientColor, const Vector4 &customData, const Color &fogColor0, const Color &fogColor1, const Vector2 &clipDistance, const Vector2 &fogDistance, int32 tag, const Rect &frame) :
-				_viewPosition(viewPosition),
+		private:
+			CameraSnapshot(const PositionType &renderOrigin, uint64 sourceCameraUID, const Matrix &viewMatrix, const Matrix &inverseViewMatrix, const Matrix &projectionMatrix, const Matrix &inverseProjectionMatrix, const Matrix &projectionViewMatrix, const Matrix &inverseProjectionViewMatrix, const Vector4 *frustumPlanes, const Color &ambientColor, const Vector4 &customData, const Color &fogColor0, const Color &fogColor1, const Vector2 &clipDistance, const Vector2 &fogDistance, int32 tag, const Rect &frame) :
+				_renderOrigin(renderOrigin),
 				_sourceCameraUID(sourceCameraUID),
 				_viewMatrix(viewMatrix),
 				_inverseViewMatrix(inverseViewMatrix),
@@ -80,17 +82,21 @@ namespace RN
 				}
 			}
 
-			static CameraSnapshot WithCamera(const Camera *camera, const Rect &frame)
+		public:
+			static CameraSnapshot WithCamera(Camera *camera, const Rect &frame)
 			{
+				camera->PostUpdate();
 				return WithCameraProjection(camera, frame, camera->GetProjectionMatrix());
 			}
 
-			static CameraSnapshot WithCamera(const Camera *camera, const Rect &frame, const Matrix &projectionCorrection)
+			static CameraSnapshot WithCamera(Camera *camera, const Rect &frame, const Matrix &projectionCorrection)
 			{
+				camera->PostUpdate();
 				return WithCameraProjection(camera, frame, projectionCorrection * camera->GetProjectionMatrix());
 			}
 
-			const Vector3 &GetViewPosition() const { return _viewPosition; }
+			Vector3 GetViewPosition() const { return Vector3(_inverseViewMatrix.m[12], _inverseViewMatrix.m[13], _inverseViewMatrix.m[14]); }
+			const PositionType &GetRenderOrigin() const { return _renderOrigin; }
 			uint64 GetSourceCameraUID() const { return _sourceCameraUID; }
 			const Matrix &GetViewMatrix() const { return _viewMatrix; }
 			const Matrix &GetInverseViewMatrix() const { return _inverseViewMatrix; }
@@ -109,17 +115,17 @@ namespace RN
 			const Rect &GetFrame() const { return _frame; }
 
 		private:
-			static CameraSnapshot WithCameraProjection(const Camera *camera, const Rect &frame, const Matrix &projectionMatrix)
+			static CameraSnapshot WithCameraProjection(Camera *camera, const Rect &frame, const Matrix &projectionMatrix)
 			{
 				Matrix viewMatrix = camera->GetViewMatrix();
 				Matrix inverseViewMatrix = camera->GetInverseViewMatrix();
-				Matrix inverseProjectionMatrix = camera->GetInverseProjectionMatrix();
+				Matrix inverseProjectionMatrix = projectionMatrix.GetInverse();
 				Vector4 frustumPlanes[FrustumPlaneCount];
 				camera->GetFrustumPlanes(frustumPlanes);
-				return CameraSnapshot(camera->GetWorldPosition(), camera->GetUID(), viewMatrix, inverseViewMatrix, projectionMatrix, inverseProjectionMatrix, projectionMatrix * viewMatrix, inverseViewMatrix * inverseProjectionMatrix, frustumPlanes, camera->GetAmbientColor(), camera->GetCustomData(), camera->GetFogColor0(), camera->GetFogColor1(), Vector2(camera->GetClipNear(), camera->GetClipFar()), Vector2(camera->GetFogNear(), camera->GetFogFar()), camera->GetTag(), frame);
+				return CameraSnapshot(camera->GetRenderOrigin(), camera->GetUID(), viewMatrix, inverseViewMatrix, projectionMatrix, inverseProjectionMatrix, projectionMatrix * viewMatrix, inverseViewMatrix * inverseProjectionMatrix, frustumPlanes, camera->GetAmbientColor(), camera->GetCustomData(), camera->GetFogColor0(), camera->GetFogColor1(), Vector2(camera->GetClipNear(), camera->GetClipFar()), Vector2(camera->GetFogNear(), camera->GetFogFar()), camera->GetTag(), frame);
 			}
 
-			Vector3 _viewPosition;
+			PositionType _renderOrigin;
 			uint64 _sourceCameraUID;
 			Matrix _viewMatrix;
 			Matrix _inverseViewMatrix;
@@ -147,11 +153,6 @@ namespace RN
 				_color(color)
 			{}
 
-			static DirectionalLight WithLight(const Light *light)
-			{
-				return DirectionalLight(light->GetForward(), light->GetFinalColor());
-			}
-
 		private:
 			Vector3 _direction;
 			float _padding;
@@ -166,11 +167,6 @@ namespace RN
 				_range(range),
 				_color(color)
 			{}
-
-			static PointLight WithLight(const Light *light)
-			{
-				return PointLight(light->GetWorldPosition(), light->GetRange(), light->GetFinalColor());
-			}
 
 		private:
 			Vector3 _position;
@@ -188,11 +184,6 @@ namespace RN
 				_angle(angle),
 				_color(color)
 			{}
-
-			static SpotLight WithLight(const Light *light)
-			{
-				return SpotLight(light->GetWorldPosition(), light->GetRange(), light->GetForward(), light->GetAngleCos(), light->GetFinalColor());
-			}
 
 		private:
 			Vector3 _position;
@@ -263,9 +254,21 @@ namespace RN
 			uint8 GetMultiviewCameraCount() const { return static_cast<uint8>(_multiviewCameraSnapshots.size()); }
 			const std::vector<CameraSnapshot> &GetMultiviewCameraSnapshots() const { return _multiviewCameraSnapshots; }
 
-			void AddDirectionalLight(const DirectionalLight &light) { _directionalLights.push_back(light); }
-			void AddPointLight(const PointLight &light) { _pointLights.push_back(light); }
-			void AddSpotLight(const SpotLight &light) { _spotLights.push_back(light); }
+			void AddLight(const Light *light)
+			{
+				if(light->GetType() == Light::Type::DirectionalLight)
+				{
+					_directionalLights.emplace_back(light->GetForward(), light->GetFinalColor());
+				}
+				else if(light->GetType() == Light::Type::PointLight)
+				{
+					_pointLights.emplace_back(Vector3(light->GetWorldPosition() - _cameraSnapshot.GetRenderOrigin()), light->GetRange(), light->GetFinalColor());
+				}
+				else if(light->GetType() == Light::Type::SpotLight)
+				{
+					_spotLights.emplace_back(Vector3(light->GetWorldPosition() - _cameraSnapshot.GetRenderOrigin()), light->GetRange(), light->GetForward(), light->GetAngleCos(), light->GetFinalColor());
+				}
+			}
 			const std::vector<DirectionalLight> &GetDirectionalLights() const { return _directionalLights; }
 			const std::vector<PointLight> &GetPointLights() const { return _pointLights; }
 			const std::vector<SpotLight> &GetSpotLights() const { return _spotLights; }
@@ -528,10 +531,12 @@ namespace RN
 			return _passes.size() - 1;
 		}
 
-		size_t AddDrawItem(Drawable *sourceDrawable, const SceneNode *node)
+		size_t AddDrawItem(Drawable *sourceDrawable, const SceneNode *node, const Pass &pass)
 		{
-			sourceDrawable->UpdateTransform(node);
-			return AddDrawItem(sourceDrawable, sourceDrawable->GetModelMatrix(), sourceDrawable->GetInverseModelMatrix(), node ? node->GetUID() : InvalidSourceNodeUID);
+			const PositionType &renderOrigin = pass.GetCameraSnapshot().GetRenderOrigin();
+			const Matrix modelMatrix = node ? node->GetWorldTransform(renderOrigin) : Matrix();
+			const Matrix inverseModelMatrix = node ? node->GetInverseWorldTransform(renderOrigin) : Matrix();
+			return AddDrawItem(sourceDrawable, modelMatrix, inverseModelMatrix, node ? node->GetUID() : InvalidSourceNodeUID);
 		}
 
 		size_t AddDrawItem(Drawable *sourceDrawable, const Matrix &modelMatrix, const Matrix &inverseModelMatrix, uint64 sourceNodeUID = InvalidSourceNodeUID)

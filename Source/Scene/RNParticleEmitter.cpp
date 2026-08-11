@@ -7,7 +7,6 @@
 //
 
 #include "RNParticleEmitter.h"
-#include "RNScene.h"
 #include "../Rendering/RNRenderer.h"
 
 #include "../Debug/RNLogger.h"
@@ -35,11 +34,8 @@ namespace RN
 		_spawnRate(0.05f),
 		_canRollParticles(false),
 		_time(0.0f),
-#if RN_ENABLE_UNIVERSE_SCALE
-		_lastParticleUniverseOrigin(0.0),
-		_lastParticleUniverseOriginVersion(0),
-		_hasLastParticleUniverseOrigin(false),
-#endif
+		_particleOrigin(),
+		_hasParticleOrigin(false),
 		_meshIsInitialized(false)
 	{
 		_rng = new RandomNumberGenerator(RandomNumberGenerator::Type::MersenneTwister);
@@ -77,12 +73,9 @@ namespace RN
 		_isRenderedInversed(emitter->_isRenderedInversed),
 		_maxParticles(emitter->_maxParticles),
 		_spawnRate(emitter->_spawnRate),
-		_time(emitter->_time)
-#if RN_ENABLE_UNIVERSE_SCALE
-		, _lastParticleUniverseOrigin(0.0)
-		, _lastParticleUniverseOriginVersion(0)
-		, _hasLastParticleUniverseOrigin(false)
-#endif
+		_time(emitter->_time),
+		_particleOrigin(),
+		_hasParticleOrigin(false)
 	{
 		_rng = emitter->GetGenerator();
 
@@ -207,51 +200,35 @@ namespace RN
 	{
 	}
 
-#if RN_ENABLE_UNIVERSE_SCALE
-	void ParticleEmitter::UpdateParticleUniverseOrigin()
+	void ParticleEmitter::UpdateParticleOrigin()
 	{
 		if(GetIsLocal())
 		{
-			_hasLastParticleUniverseOrigin = false;
+			_hasParticleOrigin = false;
 			return;
 		}
 
-		SceneInfo *sceneInfo = GetSceneInfo();
-		Scene *scene = sceneInfo ? sceneInfo->GetScene() : nullptr;
-		if(!scene)
+		const PositionType desiredOrigin(GetWorldPosition());
+		if(!_hasParticleOrigin || GetNumParticles() == 0)
 		{
-			_hasLastParticleUniverseOrigin = false;
+			_particleOrigin = desiredOrigin;
+			_hasParticleOrigin = true;
 			return;
 		}
 
-		const DVector3 universeOrigin = scene->GetUniverseOrigin();
-		const uint64 universeOriginVersion = scene->GetUniverseOriginVersion();
-		if(!_hasLastParticleUniverseOrigin)
-		{
-			_lastParticleUniverseOrigin = universeOrigin;
-			_lastParticleUniverseOriginVersion = universeOriginVersion;
-			_hasLastParticleUniverseOrigin = true;
-			return;
-		}
+		constexpr double MaximumParticleOriginDistance = 4096.0;
+		if(_particleOrigin.GetSquaredDistance(desiredOrigin) < MaximumParticleOriginDistance * MaximumParticleOriginDistance) return;
 
-		if(_lastParticleUniverseOriginVersion == universeOriginVersion)
-		{
-			return;
-		}
-
-		const Vector3 originShift = (_lastParticleUniverseOrigin - universeOrigin).ToVector3();
+		const Vector3 originShift(_particleOrigin - desiredOrigin);
 		if(originShift.IsValid())
 		{
 			for(ParticleData &particle : _particles)
 			{
 				particle.position += originShift;
 			}
+			_particleOrigin = desiredOrigin;
 		}
-
-		_lastParticleUniverseOrigin = universeOrigin;
-		_lastParticleUniverseOriginVersion = universeOriginVersion;
 	}
-#endif
 
 
 	void ParticleEmitter::SpawnParticles(float delta)
@@ -288,7 +265,12 @@ namespace RN
 		
 		_lifespans.resize(newNumParticles, 1.0f);
 
-		const Vector3 spawnPosition = GetIsLocal() ? Vector3(0.0f, 0.0f, 0.0f) : GetWorldPosition();
+		Vector3 spawnPosition;
+		if(!GetIsLocal())
+		{
+			UpdateParticleOrigin();
+			spawnPosition = Vector3(GetWorldPosition() - _particleOrigin);
+		}
 		ParticleData defaultParticle = {spawnPosition, 0.0f, Vector2(1.0f), RN::Color::White()};
 		_particles.resize(newNumParticles, defaultParticle);
 	}
@@ -449,9 +431,7 @@ namespace RN
 	{
 		SceneNode::Update(delta);
 
-#if RN_ENABLE_UNIVERSE_SCALE
-		UpdateParticleUniverseOrigin();
-#endif
+		UpdateParticleOrigin();
 
 		SpawnParticles(delta);
 		UpdateParticles(delta);
@@ -493,7 +473,19 @@ namespace RN
 			UpdateMesh();
 		}
 
-		renderer->SubmitDrawable(_drawable, _isLocal ? this : nullptr);
+		if(_isLocal)
+		{
+			renderer->SubmitDrawable(_drawable, this);
+		}
+		else if(_hasParticleOrigin)
+		{
+			const Vector3 renderPosition(_particleOrigin - camera->GetRenderOrigin());
+			renderer->SubmitDrawable(_drawable, Matrix::WithTranslation(renderPosition), Matrix::WithTranslation(renderPosition * -1.0f), 0xffff);
+		}
+		else
+		{
+			renderer->SubmitDrawable(_drawable, nullptr);
+		}
 	}
 
 
@@ -586,6 +578,7 @@ namespace RN
 
 		float *lifespans = GetLifespans();
 		ParticleData *particles = GetParticleData();
+		const Vector3 spawnPosition = prevNumParticles < newNumParticles ? particles[prevNumParticles].position : Vector3();
 
 		for(size_t i = prevNumParticles; i < newNumParticles; i++)
 		{
@@ -614,7 +607,7 @@ namespace RN
 		if(!GetIsLocal())
 		{
 			const Quaternion rotation = GetWorldRotation();
-			const Vector3 position = GetWorldPosition();
+			const Vector3 position = spawnPosition;
 			const bool ignoreScale = GetIgnoreScale();
 			const Vector3 scale = ignoreScale ? Vector3(1.0f) : GetWorldScale();
 			const float sizeScale = std::max(std::max(scale.x, scale.y), scale.z);

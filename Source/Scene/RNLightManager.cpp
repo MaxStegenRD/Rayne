@@ -128,7 +128,7 @@ namespace RN
 	void LightManager::BuildForCamera(Camera *camera, const std::vector<Light *> &lights)
 	{
 		ClearData();
-		PackLights(lights);
+		PackLights(camera, lights);
 		BuildClusters(camera);
 		UploadBuffers();
 	}
@@ -142,8 +142,9 @@ namespace RN
 		_clusterRecords.clear();
 	}
 
-	void LightManager::PackLights(const std::vector<Light *> &lights)
+	void LightManager::PackLights(const Camera *camera, const std::vector<Light *> &lights)
 	{
+		const PositionType &renderOrigin = camera->GetRenderOrigin();
 		_packedPointLights.reserve(lights.size());
 		_packedSpotLights.reserve(lights.size());
 		_spotLightCullData.reserve(lights.size());
@@ -155,7 +156,7 @@ namespace RN
 			if(type == Light::Type::SpotLight)
 			{
 				if(_packedSpotLights.size() >= _maxPackedSpotLights) continue;
-				Vector3 pos = light->GetWorldPosition();
+				Vector3 pos(light->GetWorldPosition() - renderOrigin);
 				Vector3 dir = light->GetForward();
 				SpotLightPacked out;
 				out.positionRange = Vector4(pos.x, pos.y, pos.z, light->GetRange());
@@ -165,7 +166,7 @@ namespace RN
 
 				const Sphere cullSphere = light->GetBoundingSphere();
 				SpotLightCullData cullData;
-				cullData.center = cullSphere.position + cullSphere.offset;
+				cullData.center = Vector3(cullSphere.position - renderOrigin) + cullSphere.offset;
 				cullData.radius = cullSphere.radius;
 				cullData.forward = dir;
 				cullData.tanHalfAngle = light->GetTanHalfAngle();
@@ -174,7 +175,7 @@ namespace RN
 			else // Point
 			{
 				if(_packedPointLights.size() >= _maxPackedPointLights) continue;
-				Vector3 pos = light->GetWorldPosition();
+				Vector3 pos(light->GetWorldPosition() - renderOrigin);
 				PointLightPacked out;
 				out.positionRange = Vector4(pos.x, pos.y, pos.z, light->GetRange());
 				out.color = light->GetFinalColor();
@@ -242,7 +243,7 @@ namespace RN
 				views.push_back(v);
 				projs.push_back(p);
 				viewProjs.push_back(p * v);
-				viewPositions.push_back(eye->GetWorldPosition());
+				viewPositions.push_back(eye->GetRenderPosition());
 			}
 		}
 		else
@@ -250,7 +251,7 @@ namespace RN
 			views.push_back(parentView);
 			projs.push_back(parentProj);
 			viewProjs.push_back(parentProj * parentView);
-			viewPositions.push_back(camera->GetWorldPosition());
+			viewPositions.push_back(camera->GetRenderPosition());
 		}
 		const size_t viewCount = views.size();
 		std::vector<float> projAbsX(viewCount);

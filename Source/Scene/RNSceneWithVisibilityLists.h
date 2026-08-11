@@ -19,7 +19,7 @@ namespace RN
 		class Volume : public Object
 		{
 		public:
-			RNAPI virtual bool ContainsPosition(const RN::Vector3 &cameraPosition) const;
+			RNAPI virtual bool ContainsPosition(const PositionType &cameraPosition) const;
 			std::vector<SceneNode *> nodes;
 
 			__RNDeclareMetaInternal(Volume)
@@ -28,10 +28,10 @@ namespace RN
 		class AxisAlignedBoxVolume : public Volume
 		{
 		public:
-			RNAPI bool ContainsPosition(const RN::Vector3 &cameraPosition) const final;
+			RNAPI bool ContainsPosition(const PositionType &cameraPosition) const final;
 
-			Vector3 boundsMin;
-			Vector3 boundsMax;
+			PositionType boundsMin;
+			PositionType boundsMax;
 
 			__RNDeclareMetaInternal(AxisAlignedBoxVolume)
 		};

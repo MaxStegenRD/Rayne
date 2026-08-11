@@ -34,6 +34,7 @@ namespace RN
 	struct DebugCommand
 	{
 		DebugCommandType type;
+		PositionType origin;
 		Vector3 from;
 		Vector3 to;
 		RN::AABB aabb;
@@ -55,6 +56,7 @@ namespace RN
 
 	struct DebugGeometry
 	{
+		PositionType origin;
 		std::vector<Vector3> positions;
 		std::vector<Color> colors;
 		std::vector<uint32> indices;
@@ -190,10 +192,10 @@ namespace RN
 				geometry.indices.push_back(base + index);
 		}
 
-		static void AppendAABB(DebugGeometry &geometry, const RN::AABB &aabb, const DebugDrawOptions &options)
+		static void AppendAABB(DebugGeometry &geometry, const Vector3 &origin, const RN::AABB &aabb, const DebugDrawOptions &options)
 		{
-			const Vector3 min = aabb.position + aabb.minExtend;
-			const Vector3 max = aabb.position + aabb.maxExtend;
+			const Vector3 min = origin + aabb.minExtend;
+			const Vector3 max = origin + aabb.maxExtend;
 
 			const Vector3 corners[] = {
 				Vector3(min.x, min.y, min.z),
@@ -262,27 +264,32 @@ namespace RN
 		static void AppendCommand(DebugGeometry &depthGeometry, DebugGeometry &noDepthGeometry, const DebugCommand &command)
 		{
 			DebugGeometry &geometry = command.options.depthTest ? depthGeometry : noDepthGeometry;
+			if(geometry.positions.empty())
+			{
+				geometry.origin = command.origin;
+			}
+			const Vector3 commandOrigin(command.origin - geometry.origin);
 
 			switch(command.type)
 			{
 				case DebugCommandType::Point:
-					AppendPoint(geometry, command.from, command.options);
+					AppendPoint(geometry, commandOrigin + command.from, command.options);
 					break;
 
 				case DebugCommandType::Line:
-					AppendLine(geometry, command.from, command.to, command.options);
+					AppendLine(geometry, commandOrigin + command.from, commandOrigin + command.to, command.options);
 					break;
 
 				case DebugCommandType::Ray:
-					AppendRay(geometry, command.from, command.to, command.options);
+					AppendRay(geometry, commandOrigin + command.from, commandOrigin + command.to, command.options);
 					break;
 
 				case DebugCommandType::AABB:
-					AppendAABB(geometry, command.aabb, command.options);
+					AppendAABB(geometry, commandOrigin, command.aabb, command.options);
 					break;
 
 				case DebugCommandType::Sphere:
-					AppendSphere(geometry, command.from, command.radius, command.options);
+					AppendSphere(geometry, commandOrigin + command.from, command.radius, command.options);
 					break;
 			}
 		}
@@ -336,6 +343,7 @@ namespace RN
 			}
 
 			batch.entity->SetFlags(SceneNode::Flags::NoCulling);
+			batch.entity->SetWorldPosition(geometry.origin);
 
 			if(!batch.mesh || batch.vertexCount != geometry.positions.size() || batch.indexCount != geometry.indices.size())
 			{
@@ -458,10 +466,11 @@ namespace RN
 			_internals->textBackend->Clear();
 	}
 
-	void DebugRenderer::AddCommand(uint8 type, const Vector3 &from, const Vector3 &to, const RN::AABB &aabb, float radius, const DebugDrawOptions &options)
+	void DebugRenderer::AddCommand(uint8 type, const PositionType &origin, const Vector3 &from, const Vector3 &to, const RN::AABB &aabb, float radius, const DebugDrawOptions &options)
 	{
 		DebugCommand command;
 		command.type = static_cast<DebugCommandType>(type);
+		command.origin = origin;
 		command.from = from;
 		command.to = to;
 		command.aabb = aabb;
@@ -477,27 +486,34 @@ namespace RN
 
 	void DebugRenderer::DrawPoint(const Vector3 &position, const DebugDrawOptions &options)
 	{
-		AddCommand(static_cast<uint8>(DebugCommandType::Point), position, Vector3(), RN::AABB(), 0.0f, options);
+		AddCommand(static_cast<uint8>(DebugCommandType::Point), position, Vector3(), Vector3(), RN::AABB(), 0.0f, options);
 	}
 
 	void DebugRenderer::DrawLine(const Vector3 &from, const Vector3 &to, const DebugDrawOptions &options)
 	{
-		AddCommand(static_cast<uint8>(DebugCommandType::Line), from, to, RN::AABB(), 0.0f, options);
+		AddCommand(static_cast<uint8>(DebugCommandType::Line), from, Vector3(), to - from, RN::AABB(), 0.0f, options);
 	}
 
 	void DebugRenderer::DrawRay(const Vector3 &from, const Vector3 &to, const DebugDrawOptions &options)
 	{
-		AddCommand(static_cast<uint8>(DebugCommandType::Ray), from, to, RN::AABB(), 0.0f, options);
+		AddCommand(static_cast<uint8>(DebugCommandType::Ray), from, Vector3(), to - from, RN::AABB(), 0.0f, options);
 	}
 
 	void DebugRenderer::DrawAABB(const RN::AABB &aabb, const DebugDrawOptions &options)
 	{
-		AddCommand(static_cast<uint8>(DebugCommandType::AABB), Vector3(), Vector3(), aabb, 0.0f, options);
+		RN::AABB localAABB(aabb);
+		localAABB.position = PositionType();
+		AddCommand(static_cast<uint8>(DebugCommandType::AABB), aabb.position, Vector3(), Vector3(), localAABB, 0.0f, options);
 	}
 
 	void DebugRenderer::DrawSphere(const Vector3 &center, float radius, const DebugDrawOptions &options)
 	{
-		AddCommand(static_cast<uint8>(DebugCommandType::Sphere), center, Vector3(), RN::AABB(), radius, options);
+		AddCommand(static_cast<uint8>(DebugCommandType::Sphere), center, Vector3(), Vector3(), RN::AABB(), radius, options);
+	}
+
+	void DebugRenderer::DrawSphere(const RN::Sphere &sphere, const DebugDrawOptions &options)
+	{
+		AddCommand(static_cast<uint8>(DebugCommandType::Sphere), sphere.position, sphere.offset, Vector3(), RN::AABB(), sphere.radius, options);
 	}
 
 	void DebugRenderer::DrawText(const Vector3 &position, const String *text, const DebugDrawOptions &options)
@@ -649,7 +665,7 @@ namespace RN
 	void DebugDraw::Sphere(const RN::Sphere &sphere, const DebugDrawOptions &options)
 	{
 		if(__defaultDebugRenderer)
-			__defaultDebugRenderer->DrawSphere(sphere.position + sphere.offset, sphere.radius, options);
+			__defaultDebugRenderer->DrawSphere(sphere, options);
 	}
 
 	void DebugDraw::Text(const Vector3 &position, const String *text, const DebugDrawOptions &options)

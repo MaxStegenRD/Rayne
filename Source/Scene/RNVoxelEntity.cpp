@@ -207,36 +207,36 @@ namespace RN
 		}
 	}
 
-	void VoxelEntity::SetSphere(Vector3 position, float radius)
+	void VoxelEntity::SetSphere(PositionType position, float radius)
 	{
 		Vector3 offset(_resolutionX * 0.5f, _resolutionY * 0.5f, _resolutionZ * 0.5f);
-		position = GetWorldRotation().Conjugate().GetRotatedVector(position - GetWorldPosition()) / GetWorldScale();
-		position += offset;
-		SetSphereLocal(position, radius / GetWorldScale().GetMin(), 255);
+		Vector3 localPosition = GetWorldRotation().Conjugate().GetRotatedVector(Vector3(position - GetWorldPosition())) / GetWorldScale();
+		localPosition += offset;
+		SetSphereLocal(localPosition, radius / GetWorldScale().GetMin(), 255);
 	}
 
-	void VoxelEntity::RemoveSphere(Vector3 position, float radius)
+	void VoxelEntity::RemoveSphere(PositionType position, float radius)
 	{
 		Vector3 offset(_resolutionX * 0.5f, _resolutionY * 0.5f, _resolutionZ * 0.5f);
-		position = GetWorldRotation().Conjugate().GetRotatedVector(position - GetWorldPosition()) / GetWorldScale();
-		position += offset;
-		SetSphereLocal(position, radius / GetWorldScale().GetMin(), 0);
+		Vector3 localPosition = GetWorldRotation().Conjugate().GetRotatedVector(Vector3(position - GetWorldPosition())) / GetWorldScale();
+		localPosition += offset;
+		SetSphereLocal(localPosition, radius / GetWorldScale().GetMin(), 0);
 	}
 
-	void VoxelEntity::SetCube(Vector3 position, Vector3 size)
+	void VoxelEntity::SetCube(PositionType position, Vector3 size)
 	{
 		Vector3 offset(_resolutionX * 0.5f, _resolutionY * 0.5f, _resolutionZ * 0.5f);
-		position = GetWorldRotation().Conjugate().GetRotatedVector(position - GetWorldPosition()) / GetWorldScale();
-		position += offset;
-		SetCubeLocal(position, size / GetWorldScale(), 255);
+		Vector3 localPosition = GetWorldRotation().Conjugate().GetRotatedVector(Vector3(position - GetWorldPosition())) / GetWorldScale();
+		localPosition += offset;
+		SetCubeLocal(localPosition, size / GetWorldScale(), 255);
 	}
 
-	void VoxelEntity::RemoveCube(Vector3 position, Vector3 size)
+	void VoxelEntity::RemoveCube(PositionType position, Vector3 size)
 	{
 		Vector3 offset(_resolutionX * 0.5f, _resolutionY * 0.5f, _resolutionZ * 0.5f);
-		position = GetWorldRotation().Conjugate().GetRotatedVector(position - GetWorldPosition()) / GetWorldScale();
-		position += offset;
-		SetCubeLocal(position, size / GetWorldScale(), 0);
+		Vector3 localPosition = GetWorldRotation().Conjugate().GetRotatedVector(Vector3(position - GetWorldPosition())) / GetWorldScale();
+		localPosition += offset;
+		SetCubeLocal(localPosition, size / GetWorldScale(), 0);
 	}
 
 	Vector3 VoxelEntity::LerpSurface(const Vector3 &p1, const Vector3 &p2, uint8 d1, uint8 d2) const

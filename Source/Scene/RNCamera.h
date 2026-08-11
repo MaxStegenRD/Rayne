@@ -88,9 +88,10 @@ namespace RN
 		RNAPI void Update(float delta) override;
 		RNAPI void PostUpdate();
 
-		RNAPI Vector3 ToWorld(const Vector3 &dir);
+		RNAPI Vector3 ToRender(const Vector3 &dir);
+		RNAPI PositionType ToWorld(const Vector3 &dir);
 
-		RNAPI virtual bool InFrustum(const Vector3 &position, float radius);
+		RNAPI virtual bool InFrustum(const PositionType &position, float radius);
 		RNAPI virtual bool InFrustum(const Sphere &sphere);
 		RNAPI virtual bool InFrustum(const AABB &aabb);
 
@@ -125,8 +126,10 @@ namespace RN
 		const Matrix &GetInverseProjectionMatrix() const { return _inverseProjectionMatrix; }
 		const Matrix &GetViewMatrix() const { return _viewMatrix; }
 		const Matrix &GetInverseViewMatrix() const { return _inverseViewMatrix; }
+		const PositionType &GetRenderOrigin() const { return _renderOrigin; }
+		Vector3 GetRenderPosition() const { return Vector3(GetWorldPosition() - _renderOrigin); }
 		const RN::Array *GetMultiviewCameras() const { return _multiviewCameras; }
-		bool GetIsMultiviewCamera() const { return _isMultiviewCamera; }
+		bool GetIsMultiviewCamera() const { return _multiviewParentCamera != nullptr; }
 
 		RNAPI void AddRenderNode(SceneNode *node);
 		RNAPI void RemoveRenderNode(SceneNode *node);
@@ -143,8 +146,12 @@ namespace RN
 	private:
 		void UpdateProjection();
 		void UpdateFrustum();
+		void EnsureFrustumUpdated();
+		void PrepareRender(const PositionType &renderOrigin);
+		bool InRenderFrustum(const Vector3 &position, float radius) const;
 
-		Vector3 __ToWorld(const Vector3 &dir);
+		Vector3 __ToRender(const Vector3 &dir);
+		PositionType ResolveRenderOrigin() const;
 		Matrix MakeShadowSplit(Camera *camera, const Quaternion &shadowRotation, float cameraDistanceToCenter, float near, float far);
 		void Initialize();
 
@@ -155,6 +162,7 @@ namespace RN
 		bool _dirtyProjection;
 		bool _dirtyFrustum;
 		bool _hasCustomNearClipPlane;
+		bool _hasExplicitProjectionMatrix;
 		int32 _priority;
 
 		Vector3 _frustumCenter;
@@ -190,9 +198,11 @@ namespace RN
 		LightManager *_lightManager;
 
 		Matrix _projectionMatrix;
+		Matrix _explicitProjectionMatrix;
 		Matrix _inverseProjectionMatrix;
 		Matrix _viewMatrix;
 		Matrix _inverseViewMatrix;
+		PositionType _renderOrigin;
 
 		float _orthoLeft;
 		float _orthoRight;
@@ -204,7 +214,7 @@ namespace RN
 		Camera *_lodCamera;
 
 		Array *_multiviewCameras;
-		bool _isMultiviewCamera;
+		Camera *_multiviewParentCamera;
 
 		Array *_renderNodes; //If this is set, only the scene nodes in this list will be rendered by the camera and everything else will be ignored, skipping occlusion culling. Useful when there is only a small set of things that can be visible in a camera
 

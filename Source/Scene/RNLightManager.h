@@ -57,13 +57,13 @@ namespace RN
 
 		struct PointLightPacked
 		{
-			Vector4 positionRange; // xyz = world position, w = range
+			Vector4 positionRange; // xyz = camera-relative position, w = range
 			Vector4 color; // xyz = color*intensity, w unused
 		};
 
 		struct SpotLightPacked
 		{
-			Vector4 positionRange; // xyz = world position, w = range
+			Vector4 positionRange; // xyz = camera-relative position, w = range
 			Vector4 color; // xyz = color*intensity, w unused
 			Vector4 dirCos; // xyz = direction, w = cos(angle)
 		};
@@ -125,7 +125,7 @@ namespace RN
 
 	private:
 		void ClearData();
-		void PackLights(const std::vector<Light *> &lights);
+		void PackLights(const Camera *camera, const std::vector<Light *> &lights);
 		void BuildClusters(Camera *camera);
 		void UploadBuffers();
 		void PreallocateBuffers(uint32 pointEstimate, uint32 spotEstimate, uint16 pointPerClusterEstimate, uint16 spotPerClusterEstimate);

@@ -29,12 +29,12 @@ namespace RN
 	{
 	}
 
-	bool SceneWithVisibilityLists::Volume::ContainsPosition(const RN::Vector3 &cameraPosition) const
+	bool SceneWithVisibilityLists::Volume::ContainsPosition(const PositionType &cameraPosition) const
 	{
 		return true;
 	}
 
-	bool SceneWithVisibilityLists::AxisAlignedBoxVolume::ContainsPosition(const RN::Vector3 &cameraPosition) const
+	bool SceneWithVisibilityLists::AxisAlignedBoxVolume::ContainsPosition(const PositionType &cameraPosition) const
 	{
 		return (cameraPosition.z >= boundsMin.z && cameraPosition.y >= boundsMin.y && cameraPosition.x >= boundsMin.x && cameraPosition.x <= boundsMax.x && cameraPosition.y <= boundsMax.y && cameraPosition.z <= boundsMax.z);
 	}
@@ -146,8 +146,16 @@ namespace RN
 					continue;
 				}
 
+				if(camera->GetIsMultiviewCamera())
+				{
+					member = member->GetNext();
+					continue;
+				}
+
 				camera->PostUpdate();
-				Vector3 cameraPosition = camera->GetWorldPosition();
+				Camera *lodCamera = camera->GetLODCamera();
+				if(lodCamera != camera) lodCamera->PostUpdate();
+				const PositionType cameraPosition = camera->GetWorldPosition();
 
 				IntrusiveList<Light>::Member *lightMember = _lights.GetHead();
 				std::vector<Light *> visibleLights;
@@ -157,7 +165,6 @@ namespace RN
 					if(light->CanRender(renderer, camera))
 					{
 						visibleLights.push_back(light);
-						light->Render(renderer, camera);
 					}
 					lightMember = lightMember->GetNext();
 				}
@@ -172,6 +179,9 @@ namespace RN
 				});
 
 				renderer->SubmitCamera(camera, [&] {
+					for(Light *light : visibleLights)
+						light->Render(renderer, camera);
+
 					if(LightManager *lm = camera->GetLightManager())
 					{
 						lm->BuildForCamera(camera, visibleLights);

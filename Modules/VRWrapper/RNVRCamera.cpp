@@ -309,12 +309,12 @@ namespace RN
 				{
 					for(int y = -1; y <= 1; y += 2)
 					{
-						Vector3 corner = eye->ToWorld(Vector3(static_cast<float>(x), static_cast<float>(y), depths[depthIndex]));
+						Vector3 corner = eye->ToRender(Vector3(static_cast<float>(x), static_cast<float>(y), depths[depthIndex]));
 						includePoint(corner);
 
 						if(hasInfiniteFarPlane)
 						{
-							includeInfiniteRay(corner - eye->GetWorldPosition());
+							includeInfiniteRay(corner - eye->GetRenderPosition());
 						}
 					}
 				}

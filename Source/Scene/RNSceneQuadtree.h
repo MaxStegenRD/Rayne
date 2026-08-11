@@ -26,15 +26,13 @@ namespace RN
 		RNAPI void RelocateNodeIfNeeded(SceneNode *node);
 
 	protected:
-		RNAPI SceneQuadtree(AABB worldBounds, float minNodeSize = 8.0f);
+		RNAPI SceneQuadtree(const AABB &worldBounds, float minNodeSize = 8.0f);
 
 		RNAPI void Update(float delta) override;
 		RNAPI void Render(Renderer *renderer) override;
 		RNAPI void PrepareForShutdown() override;
 
 		RNAPI void TraverseTree(RN::Camera *camera, std::vector<SceneNode *> &sceneNodesToRender);
-		RNAPI uint32 FindTreeNode(const AABB& box, bool isInserting, uint8 maxDepth = UINT8_MAX);
-
 		RNAPI void FlushAdditionQueue();
 		RNAPI void FlushDeletionQueue();
 
@@ -47,29 +45,39 @@ namespace RN
 		OcclusionCuller *_occlusionCuller;
 
 	private:
+		class TreeBounds
+		{
+		public:
+			TreeBounds() = default;
+			TreeBounds(const Vector3 &min, const Vector3 &max) : min(min), max(max) {}
+
+			Vector3 min;
+			Vector3 max;
+		};
+
 		class TreeNode
 		{
 		public:
-			bool Contains(const AABB& box) const
+			bool Contains(const TreeBounds &box) const
 			{
-				return Contains(box.minExtend + box.position) && Contains(box.maxExtend + box.position);
+				return Contains(box.min) && Contains(box.max);
 			}
-			bool Contains(const Vector3& position) const
+			bool Contains(const Vector3 &position) const
 			{
 				//Check if the position is inside the bounds, ignoring the y bounds
-				if(position.x - bounds.position.x > bounds.maxExtend.x)
+				if(position.x > bounds.max.x)
 					return false;
-				if(position.x - bounds.position.x < bounds.minExtend.x)
+				if(position.x < bounds.min.x)
 					return false;
-				if(position.z - bounds.position.z > bounds.maxExtend.z)
+				if(position.z > bounds.max.z)
 					return false;
-				if(position.z - bounds.position.z < bounds.minExtend.z)
+				if(position.z < bounds.min.z)
 					return false;
 				
 				return true;
 			}
 
-			AABB bounds;
+			TreeBounds bounds;
 			uint32 firstChild = UINT32_MAX;
 			uint32 numberOfObjects = 0;
 			std::vector<SceneNode *> objects;
@@ -83,11 +91,10 @@ namespace RN
 		Array *_nodesToAdd;
 
 		void RemoveAllNodes();
-		AABB GetSceneNodeTreeBounds(const SceneNode *node) const;
+		TreeBounds GetSceneNodeTreeBounds(const SceneNode *node) const;
+		uint32 FindTreeNode(const TreeBounds &box, bool isInserting, uint8 maxDepth = UINT8_MAX);
 
-#if RN_ENABLE_UNIVERSE_SCALE
-		DVector3 _treeOrigin;
-#endif
+		PositionType _treeOrigin;
 		size_t _currentFrameCount;
 
 		__RNDeclareMetaInternal(SceneQuadtree)
