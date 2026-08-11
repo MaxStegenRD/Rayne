@@ -26,6 +26,24 @@ option(RN_BUILD_FLEXUI_MODULE "Build the FlexUI module" ON)
 option(RN_BUILD_EPICONLINESERVICES_MODULE "Build the Epic Online Services module" OFF)
 option(RN_BUILD_BHAPTICS_MODULE "Build the bHaptics module" OFF)
 
+if(RAYNE_UNIVERSE_SCALE)
+    set(RN_UNIVERSE_SCALE_UNSUPPORTED_MODULE_OPTIONS
+        RN_BUILD_BULLET_MODULE
+        RN_BUILD_NEWTON_MODULE
+        RN_BUILD_ODE_MODULE
+        RN_BUILD_PHYSX_MODULE
+        RN_BUILD_RECAST_MODULE
+        RN_BUILD_SPLASH_MODULE
+        RN_BUILD_STEAMAUDIO_MODULE
+        RN_BUILD_OCULUSAUDIO_MODULE)
+
+    foreach(MODULE_OPTION IN LISTS RN_UNIVERSE_SCALE_UNSUPPORTED_MODULE_OPTIONS)
+        if(${MODULE_OPTION})
+            message(FATAL_ERROR "${MODULE_OPTION} does not support RAYNE_UNIVERSE_SCALE")
+        endif()
+    endforeach()
+endif()
+
 if(APPLE AND ${RN_BUILD_METAL_MODULE})
     add_subdirectory("Metal")
 endif()
