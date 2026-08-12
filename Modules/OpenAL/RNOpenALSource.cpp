@@ -509,7 +509,7 @@ namespace RN
 		for(auto &pair : _source)
 		{
 			OpenALListener *listener = pair.first->GetListener();
-			const Vector3 position = listener ? Vector3(worldPosition - listener->GetWorldPosition()) : Vector3(worldPosition);
+			const Vector3 position = listener && listener->GetParent() ? Vector3(worldPosition - listener->GetWorldPosition()) : Vector3(worldPosition);
 			pair.first->MakeCurrent();
 			alSourcefv(pair.second.sourceID, AL_POSITION, &position.x);
 			alSourcefv(pair.second.sourceID, AL_VELOCITY, &_velocity.x);
