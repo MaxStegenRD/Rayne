@@ -75,14 +75,15 @@ namespace RN
 		bool wasPlaying = _isPlaying;
 		_isPlaying = false;
 		
-		if(_ringBufferTemp) delete[] _ringBufferTemp;
+		if(_ringBufferTemp)
+		{
+			delete[] _ringBufferTemp;
+			_ringBufferTemp = nullptr;
+		}
 		
 		for(auto &pair : _source)
 		{
 			pair.first->MakeCurrent();
-			pair.second.freeBuffers.clear();
-			pair.second.allBuffers.clear();
-			pair.second.readOffset = 0;
 			alSourceStop(pair.second.sourceID);
 			alSourcei(pair.second.sourceID, AL_BUFFER, 0);
 			
@@ -90,6 +91,9 @@ namespace RN
 			{
 				alDeleteBuffers(pair.second.allBuffers.size(), pair.second.allBuffers.data());
 			}
+			pair.second.freeBuffers.clear();
+			pair.second.allBuffers.clear();
+			pair.second.readOffset = 0;
 		}
 
 		SafeRelease(_asset);
