@@ -49,11 +49,17 @@ namespace RN
 	{
 		RN_ASSERT(_type == Type::Ringbuffer || _type == Type::Decoder, "PushData can only be called on an AudioAsset initialized as Ringbuffer or decoder.");
 
+		const size_t capacity = _data->GetLength();
+		if(capacity == 0) return;
+
+		// Ring buffers must never publish more readable bytes than they own.
+		const size_t bufferedSize = std::min<size_t>(_bufferedSize.load(std::memory_order_acquire), capacity);
+		size = std::min(size, capacity - bufferedSize);
+
 		size_t remainingLength = size;
 		size_t offset = 0;
 		while(remainingLength)
 		{
-			//TODO: Something seems wrong about always assuming it can write to end of data cause read position can be in front if a lot has already been buffered!? Probably only works cause the buffer is big enough and it's only buffering n frames in the places I use this
 			size_t fittingLength = std::min(remainingLength, _data->GetLength() - _writePosition);
 			_data->ReplaceBytes(static_cast<const uint8 *>(bytes) + offset, Range(_writePosition, fittingLength));
 			offset += fittingLength;
@@ -67,22 +73,27 @@ namespace RN
 				newValue = oldValue % _data->GetLength();
 			}
 
-			_bufferedSize.fetch_add(fittingLength);
+			_bufferedSize.fetch_add(fittingLength, std::memory_order_release);
 			remainingLength -= fittingLength;
 		}
 	}
 
 	void AudioAsset::PopData(void *bytes, size_t size, bool keepData, size_t offset)
 	{
-		//TODO: Shuld probably just lock here to protect the read position... Two threads messing with the read position will just mess things up anyway and cause undefined issues
+		// TODO: This is safe for the intended single consumer. Multiple consumers
+		// advancing the read position would still need external synchronization.
 		RN_ASSERT(_type == Type::Ringbuffer || _type == Type::Decoder, "PopData can only be called on an AudioAsset initialized as Ringbuffer or Decoder.");
+		const size_t bufferedSize = _bufferedSize.load(std::memory_order_acquire);
+		const size_t availableSize = offset < bufferedSize ? bufferedSize - offset : 0;
+		size = std::min(size, availableSize);
+		if(size == 0) return;
 
 		if(!bytes)
 		{
 			if(keepData || offset > 0) return;
 
 			_readPosition.fetch_add(size);
-			_bufferedSize.fetch_sub(size);
+			_bufferedSize.fetch_sub(size, std::memory_order_release);
 
 			//Do the modulo atomically by trying it until the values match
 			uint32 oldValue = _readPosition;
