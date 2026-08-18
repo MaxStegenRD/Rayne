@@ -36,6 +36,8 @@
 
 namespace RN
 {
+	constexpr uint32 EOSMaxReceivedPacketsPerUpdate = 1024;
+
 	RNDefineMeta(EOSWorld, SceneAttachment)
 
 	EOSWorld *EOSWorld::_instance = nullptr;
@@ -200,30 +202,31 @@ namespace RN
 			EOS_P2P_GetNextReceivedPacketSizeOptions nextPacketSizeOptions = {};
 			nextPacketSizeOptions.ApiVersion = EOS_P2P_GETNEXTRECEIVEDPACKETSIZE_API_LATEST;
 			nextPacketSizeOptions.LocalUserId = _loggedInUserID;
-			while(EOS_P2P_GetNextReceivedPacketSize(_p2pInterfaceHandle, &nextPacketSizeOptions, &nextPacketSize) == EOS_EResult::EOS_Success)
+			uint32 receivedPacketCount = 0;
+			while(receivedPacketCount < EOSMaxReceivedPacketsPerUpdate && EOS_P2P_GetNextReceivedPacketSize(_p2pInterfaceHandle, &nextPacketSizeOptions, &nextPacketSize) == EOS_EResult::EOS_Success)
 			{
-				if(nextPacketSize < sizeof(EOSHost::ProtocolPacketHeader))
-				{
-					RNDebug("Packet too small, this is not supposed to ever happen...");
-					continue;
-				}
-				
 				EOS_P2P_ReceivePacketOptions receiveOptions = {};
 				receiveOptions.ApiVersion = EOS_P2P_RECEIVEPACKET_API_LATEST;
 				receiveOptions.LocalUserId = _loggedInUserID;
-				receiveOptions.MaxDataSizeBytes = nextPacketSize;
+				receiveOptions.MaxDataSizeBytes = std::max(nextPacketSize, static_cast<uint32>(1));
 				
 				EOS_ProductUserId senderUserID;
 				EOS_P2P_SocketId socketID;
 				uint8 channel = 0;
 				uint32 bytesWritten = 0;
 				
-				std::vector<uint8_t> rawData(nextPacketSize);
+				std::vector<uint8_t> rawData(receiveOptions.MaxDataSizeBytes);
 				
 				if(EOS_P2P_ReceivePacket(_p2pInterfaceHandle, &receiveOptions, &senderUserID, &socketID, &channel, rawData.data(), &bytesWritten) != EOS_EResult::EOS_Success)
 				{
 					RNDebug("Failed receiving Data");
 					break;
+				}
+				receivedPacketCount += 1;
+				if(bytesWritten < sizeof(EOSHost::ProtocolPacketHeader))
+				{
+					RNDebug("Discarding undersized EOS packet");
+					continue;
 				}
 				
 				EOSHost *host = _hosts->GetObjectForKey<EOSHost>(RNSTR(socketID.SocketName));
