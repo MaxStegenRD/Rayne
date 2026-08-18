@@ -15,6 +15,7 @@
 #include "eos_platform_prereqs.h"
 
 constexpr float RN_EOS_CONNECTION_TIMEOUT = 12.0f;
+constexpr float RN_EOS_CONNECTION_RETRY_INTERVAL = 3.0f;
 
 namespace RN
 {
@@ -63,10 +64,16 @@ namespace RN
 
 	void EOSP2PClient::Connect(EOS_ProductUserId remoteProductUserID)
 	{
+		if(!remoteProductUserID || remoteProductUserID == EOSWorld::GetInstance()->GetUserID() || !ShouldAcceptPeer(remoteProductUserID)) return;
 		RNDebug("Connecting to " << remoteProductUserID);
 		Lock();
 		RN_ASSERT(_status != Disconnecting, "Cannot connect while disconnecting.");
 		bool didReconnectLocalHost = false;
+		if(_blockedPeers.count(remoteProductUserID) > 0)
+		{
+			Unlock();
+			return;
+		}
 
 		if(_status == Disconnected)
 		{
@@ -83,11 +90,13 @@ namespace RN
 			Disconnect();
 			return;
 		}
+		peer->_reconnectTimer = 0.0f;
+		peer->_isReconnectScheduled = true;
 		Unlock();
 
 		if(!SendConnectRequest(remoteProductUserID))
 		{
-			RNWarning("Failed to send connection request to " << remoteProductUserID);
+			RNWarning("Failed to send connection request to " << remoteProductUserID << "; retrying without disconnecting the mesh");
 		}
 		if(didReconnectLocalHost) HandleDidConnect(_clientID);
 	}
@@ -130,6 +139,7 @@ namespace RN
 		for(auto &peer : _peers) ClearPeerData(peer.second);
 		_peers.clear();
 		_idMap.clear();
+		_blockedPeers.clear();
 		_hostClientID = CLIENT_ID_NONE;
 		_isHostMigrationPending = false;
 		_status = Disconnected;
@@ -147,7 +157,10 @@ namespace RN
 			Disconnect();
 			return;
 		}
+		bool shouldBlockReconnect = ShouldAcceptPeer(productUserId);
 		Lock();
+		if(shouldBlockReconnect) _blockedPeers.insert(productUserId);
+		else _blockedPeers.erase(productUserId);
 		auto peer = _peers.find(productUserId);
 		if(peer == _peers.end())
 		{
@@ -155,6 +168,7 @@ namespace RN
 			RNWarning("Trying to disconnect unknown peer " << productUserId);
 			return;
 		}
+		peer->second._isReconnectScheduled = false;
 		Unlock();
 		EOSWorld *world = EOSWorld::GetInstance();
 
@@ -198,11 +212,13 @@ namespace RN
 		auto mappedPeer = _idMap.find(clientID);
 		if(mappedPeer != _idMap.end())
 		{
+			_blockedPeers.insert(mappedPeer->second);
 			auto peer = _peers.find(mappedPeer->second);
 			if(peer != _peers.end())
 			{
 				peer->second._disconnectDelay = delay;
 				peer->second._wantsDisconnect = true;
+				peer->second._isReconnectScheduled = false;
 			}
 		}
 		Unlock();
@@ -272,7 +288,7 @@ namespace RN
 
 	EOSHost::Peer *EOSP2PClient::BindPeerLocked(EOS_ProductUserId productUserID)
 	{
-		if(!productUserID) return nullptr;
+		if(!productUserID || _blockedPeers.count(productUserID) > 0) return nullptr;
 		EOSClientID clientID = GetClientIDForProductUserID(productUserID);
 		if(clientID == CLIENT_ID_NONE || clientID == _clientID) return nullptr;
 		auto peer = _peers.find(productUserID);
@@ -291,7 +307,11 @@ namespace RN
 
 	void EOSP2PClient::ReceivedPacketInternal(uint8 *rawData, uint32 bytesWritten, EOS_ProductUserId senderUserID, uint8 channel)
 	{
-		if(!rawData || bytesWritten < sizeof(ProtocolPacketHeader)) return;
+		if(!rawData || bytesWritten < sizeof(ProtocolPacketHeader) || !ShouldAcceptPeer(senderUserID)) return;
+		Lock();
+		bool senderIsBlocked = _blockedPeers.count(senderUserID) > 0;
+		Unlock();
+		if(senderIsBlocked) return;
 		EOSHost::ReceivedPacketInternal(rawData, bytesWritten, senderUserID, channel);
 		if(channel == 255) return; //This is a ping, handled by the Host class
 		
@@ -332,6 +352,7 @@ namespace RN
 		std::vector<EOSClientID> connectedPeers;
 		if(receivedConnectRequest)
 		{
+			peer->_isReconnectScheduled = false;
 			if(senderUserID == _hostProductUserID && _status == Connecting)
 			{
 				_status = Connected;
@@ -396,9 +417,19 @@ namespace RN
 			return;
 		}
 
+		std::vector<EOS_ProductUserId> peersToReconnect;
 		std::vector<EOSClientID> peersToDisconnect;
 		for(auto &pair : _peers)
 		{
+			if(pair.second._isReconnectScheduled)
+			{
+				pair.second._reconnectTimer += std::max(delta, 0.0f);
+				if(pair.second._reconnectTimer >= RN_EOS_CONNECTION_RETRY_INTERVAL && ShouldAcceptPeer(pair.first))
+				{
+					peersToReconnect.push_back(pair.first);
+					pair.second._reconnectTimer = 0.0f;
+				}
+			}
 			if(pair.second._wantsDisconnect)
 			{
 				pair.second._disconnectDelay -= delta;
@@ -411,13 +442,21 @@ namespace RN
 
 		Unlock();
 		for(EOSClientID clientID : peersToDisconnect) DisconnectClient(clientID);
+		for(EOS_ProductUserId peer : peersToReconnect) Connect(peer);
 		Release();
 	}
 
 	void EOSP2PClient::OnConnectionRequestCallback(const EOS_P2P_OnIncomingConnectionRequestInfo *Data)
 	{
 		EOSP2PClient *client = static_cast<EOSP2PClient *>(Data->ClientData);
+		if(!client || !client->ShouldAcceptPeer(Data->RemoteUserId)) return;
 		EOSWorld *world = EOSWorld::GetInstance();
+		if(!world) return;
+
+		client->Lock();
+		bool isBlocked = client->_blockedPeers.count(Data->RemoteUserId) > 0;
+		client->Unlock();
+		if(isBlocked) return;
 
 		EOS_P2P_AcceptConnectionOptions acceptOptions;
 		acceptOptions.ApiVersion = EOS_P2P_ACCEPTCONNECTION_API_LATEST;
@@ -441,13 +480,22 @@ namespace RN
 			return;
 		}
 		peer->_isConnectionActive = true;
+		peer->_isReconnectScheduled = false;
 		client->Unlock();
 
 		RNDebug("Accepted connection request from " << Data->RemoteUserId);
 
 		if(!client->SendConnectRequest(Data->RemoteUserId))
 		{
-			RNWarning("Failed to send connection response to " << Data->RemoteUserId);
+			RNWarning("Failed to send connection response to " << Data->RemoteUserId << "; scheduling a connection retry");
+			client->Lock();
+			auto retryPeer = client->_peers.find(Data->RemoteUserId);
+			if(retryPeer != client->_peers.end())
+			{
+				retryPeer->second._reconnectTimer = 0.0f;
+				retryPeer->second._isReconnectScheduled = true;
+			}
+			client->Unlock();
 		}
 	}
 
@@ -461,6 +509,18 @@ namespace RN
 		if(peer == client->_peers.end())
 		{
 			client->Unlock();
+			return;
+		}
+
+		EOSClientID id = peer->second.clientID;
+		peer->second._isConnectionActive = false;
+		bool shouldReconnect = client->_status != Disconnected && client->_status != Disconnecting && client->_blockedPeers.count(Data->RemoteUserId) == 0 && client->ShouldAcceptPeer(Data->RemoteUserId);
+		if(shouldReconnect)
+		{
+			for(auto &assembly : peer->second._multipartAssemblies) assembly.second.age = 0.0f;
+			client->Unlock();
+			RNWarning("Connection to peer " << id << " closed while the peer is still present; reconnecting");
+			client->Connect(Data->RemoteUserId);
 			return;
 		}
 

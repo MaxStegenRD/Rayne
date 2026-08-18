@@ -10,6 +10,7 @@
 #define __RAYNE_EOSP2PCLIENT_H_
 
 #include "RNEOSHost.h"
+#include <set>
 
 typedef struct _tagEOS_P2P_OnIncomingConnectionRequestInfo EOS_P2P_OnIncomingConnectionRequestInfo;
 typedef struct _tagEOS_P2P_OnRemoteConnectionClosedInfo EOS_P2P_OnRemoteConnectionClosedInfo;
@@ -35,6 +36,7 @@ namespace RN
 		EOSAPI void ReceivedPacketInternal(uint8 *rawData, uint32 bytesWritten, EOS_ProductUserId senderUserID, uint8 channel) final;
 		EOSAPI void Update(float delta) override;
 		EOSAPI virtual void HandleHostMigration(){}
+		EOSAPI virtual bool ShouldAcceptPeer(EOS_ProductUserId productUserID) const { return true; }
 		EOSAPI void HandleReliablePacketLoss(EOSClientID clientID) override;
 		
 		EOSClientID _hostClientID;
@@ -54,6 +56,7 @@ namespace RN
 		void FinalizePeerDisconnect(EOS_ProductUserId productUserID, uint16 reason);
 		
 		float _connectionTimeout;
+		std::set<EOS_ProductUserId> _blockedPeers;
 
 		RNDeclareMetaAPI(EOSP2PClient, EOSAPI)
 	};

@@ -103,6 +103,8 @@ namespace RN
 			std::map<uint32, std::queue<Packet>> _scheduledPackets;
 			size_t _scheduledPacketBytes = 0;
 			std::map<uint32, MultipartAssembly> _multipartAssemblies;
+			float _reconnectTimer = 0.0f;
+			bool _isReconnectScheduled = false;
 		};
 
 		struct MultipartReceiveResult
