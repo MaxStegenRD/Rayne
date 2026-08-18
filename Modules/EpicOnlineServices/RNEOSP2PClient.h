@@ -19,25 +19,27 @@ namespace RN
 	class EOSP2PClient : public EOSHost
 	{
 	public:
-		EOSAPI EOSP2PClient(bool isHost, String *socketID);
+		EOSAPI EOSP2PClient(bool isHost, String *socketID, EOS_ProductUserId hostProductUserID);
 		EOSAPI ~EOSP2PClient() override;
 
 		EOSAPI void Connect(EOS_ProductUserId remoteProductUserID);
 		EOSAPI void Disconnect() override;
 		EOSAPI void DisconnectClient(EOS_ProductUserId productUserId) override;
-		EOSAPI void DisconnectClient(uint8 clientID);
-		EOSAPI void DisconnectClientDelayed(uint8 clientID, float delay = 1.0f); //Using this, will not immediately force disconnect the user, leaving some time for previously sent data to arrive (like a reason for getting disconnected)
+		EOSAPI void DisconnectClient(EOSClientID clientID);
+		EOSAPI void DisconnectClientDelayed(EOSClientID clientID, float delay = 1.0f); //Using this, will not immediately force disconnect the user, leaving some time for previously sent data to arrive (like a reason for getting disconnected)
 		EOSAPI void MigrateHost(EOS_ProductUserId hostProductUserId);
 		
-		EOSAPI bool IsHost() { return _hostClientID != CLIENT_ID_NONE && _hostClientID == _clientID; }
+		EOSAPI bool IsHost() const { return _hostClientID != CLIENT_ID_NONE && _hostClientID == _clientID; }
 
 	protected:
 		EOSAPI void ReceivedPacketInternal(uint8 *rawData, uint32 bytesWritten, EOS_ProductUserId senderUserID, uint8 channel) final;
 		EOSAPI void Update(float delta) override;
-		EOSAPI void LogPeers() const;
 		EOSAPI virtual void HandleHostMigration(){}
+		EOSAPI void HandleReliablePacketLoss(EOSClientID clientID) override;
 		
-		uint8 _hostClientID;
+		EOSClientID _hostClientID;
+		EOS_ProductUserId _hostProductUserID;
+		bool _isHostMigrationPending;
 
 	private:
 		static void OnConnectionRequestCallback(const EOS_P2P_OnIncomingConnectionRequestInfo *Data);
@@ -45,11 +47,11 @@ namespace RN
 
 		uint64 _connectionRequestNotificationID;
 		uint64 _connectionClosedNotificationID;
-		
-		uint8 _lastUsedClientID;
 
-		uint8 GetUnusedClientID();
-		void AssignClientID(uint8 clientID);
+		bool SendConnectRequest(EOS_ProductUserId receiverID);
+		Peer *BindPeerLocked(EOS_ProductUserId productUserID);
+		bool TryCompleteHostMigration();
+		void FinalizePeerDisconnect(EOS_ProductUserId productUserID, uint16 reason);
 		
 		float _connectionTimeout;
 

@@ -20,15 +20,17 @@ namespace RN
 {
 	RNDefineMeta(EOSP2PClient, EOSHost)
 
-	EOSP2PClient::EOSP2PClient(bool isHost, String *socketID_) :
-		EOSHost(socketID_), _connectionTimeout(0.0f), _lastUsedClientID(0)
+	EOSP2PClient::EOSP2PClient(bool isHost, String *socketID_, EOS_ProductUserId hostProductUserID) :
+		EOSHost(socketID_), _hostClientID(CLIENT_ID_NONE), _hostProductUserID(hostProductUserID), _isHostMigrationPending(false), _connectionTimeout(0.0f)
 	{
 		Lock();
+		RN_ASSERT(isHost || _hostProductUserID, "A non-host P2P client requires the lobby owner's product user ID.");
 		_status = isHost ? Connected : Disconnected;
-		_clientID = isHost ? 0 : CLIENT_ID_NONE;
-		_hostClientID = isHost ? 0 : CLIENT_ID_NONE;
 
 		EOSWorld *world = EOSWorld::GetInstance();
+		if(isHost) _hostProductUserID = world->GetUserID();
+		_clientID = GetClientIDForProductUserID(world->GetUserID());
+		_hostClientID = GetClientIDForProductUserID(_hostProductUserID);
 
 		EOS_P2P_SocketId socketID = {};
 		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
@@ -63,47 +65,31 @@ namespace RN
 	{
 		RNDebug("Connecting to " << remoteProductUserID);
 		Lock();
-		RN_ASSERT(_status != Disconnecting, "Cannot connect in current status." + _status);
+		RN_ASSERT(_status != Disconnecting, "Cannot connect while disconnecting.");
+		bool didReconnectLocalHost = false;
 
-		if(_status == Disconnected) _status = Connecting;
-		_connectionTimeout = 0.0f;
-
-		EOSWorld *world = EOSWorld::GetInstance();
-
-		EOS_P2P_SocketId socketID = {};
-		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-		strncpy(socketID.SocketName, _socketID->GetUTF8String(), EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
-
-		ProtocolPacketHeader packetHeader;
-		packetHeader.packetType = ProtocolPacketTypeConnectRequest;
-		packetHeader.packetID = 0;
-		packetHeader.dataLength = 0;
-
-		EOS_P2P_SendPacketOptions connectionOptions = {};
-		connectionOptions.ApiVersion = EOS_P2P_SENDPACKET_API_LATEST;
-		connectionOptions.SocketId = &socketID;
-		connectionOptions.LocalUserId = world->GetUserID();
-		connectionOptions.RemoteUserId = remoteProductUserID;
-		connectionOptions.Channel = 0;
-		connectionOptions.Reliability = EOS_EPacketReliability::EOS_PR_ReliableOrdered;
-		connectionOptions.bAllowDelayedDelivery = true;
-		connectionOptions.DataLengthBytes = sizeof(packetHeader);
-		connectionOptions.Data = &packetHeader;
-
-		EOS_EResult result = EOS_P2P_SendPacket(world->GetP2PHandle(), &connectionOptions);
-
-		if(result != EOS_EResult::EOS_Success) //TODO only do this when connecting to host failed, this should usually succeed, even if the peer is not reachable as the sending happens later!
+		if(_status == Disconnected)
 		{
-			RNDebug("Failed to connect to " << remoteProductUserID);
+			_hostClientID = GetClientIDForProductUserID(_hostProductUserID);
+			didReconnectLocalHost = _hostProductUserID == EOSWorld::GetInstance()->GetUserID();
+			_status = didReconnectLocalHost ? Connected : Connecting;
+			_connectionTimeout = 0.0f;
+		}
+		Peer *peer = BindPeerLocked(remoteProductUserID);
+		if(!peer)
+		{
 			Unlock();
+			RNWarning("EOS product user ID collision while connecting to " << remoteProductUserID);
 			Disconnect();
 			return;
 		}
-
-		//Create peer with unknown user ID. Will be set via connection response. The insert will just quietly fail if there already was a peer with the same product id
-		_peers.insert(std::pair(remoteProductUserID, CreatePeer(CLIENT_ID_NONE, remoteProductUserID)));
-
 		Unlock();
+
+		if(!SendConnectRequest(remoteProductUserID))
+		{
+			RNWarning("Failed to send connection request to " << remoteProductUserID);
+		}
+		if(didReconnectLocalHost) HandleDidConnect(_clientID);
 	}
 
 	void EOSP2PClient::Disconnect()
@@ -140,19 +126,16 @@ namespace RN
 		}
 
 		Lock();
-		uint8 localClientID = _clientID;
-
+		EOSClientID localClientID = _clientID;
+		for(auto &peer : _peers) ClearPeerData(peer.second);
+		_peers.clear();
+		_idMap.clear();
+		_hostClientID = CLIENT_ID_NONE;
+		_isHostMigrationPending = false;
 		_status = Disconnected;
 		Unlock();
 
 		HandleDidDisconnect(localClientID, 0);
-
-		Lock();
-		_peers.clear();
-		_idMap.clear();
-		_clientID = CLIENT_ID_NONE;
-		_hostClientID = CLIENT_ID_NONE;
-		Unlock();
 
 		Release();
 	}
@@ -162,32 +145,17 @@ namespace RN
 		if(productUserId == EOSWorld::GetInstance()->GetUserID())
 		{
 			Disconnect();
-		}
-		else if(_peers.find(productUserId) != _peers.end())
-		{
-			DisconnectClient(_peers[productUserId].clientID);
-		}
-		else
-		{
-			RNWarning("Trying to disconnect unknown peer " << productUserId);
-		}
-	}
-
-	void EOSP2PClient::DisconnectClient(uint8 clientID)
-	{
-		if(clientID == _clientID)
-		{
-			Disconnect();
 			return;
 		}
-		if(_idMap.find(clientID) == _idMap.end())
-		{
-			RNWarning("Trying to disconnect unknown client " << clientID);
-			return;
-		}
-		
-		RNDebug("Disconnecting user " << clientID);
 		Lock();
+		auto peer = _peers.find(productUserId);
+		if(peer == _peers.end())
+		{
+			Unlock();
+			RNWarning("Trying to disconnect unknown peer " << productUserId);
+			return;
+		}
+		Unlock();
 		EOSWorld *world = EOSWorld::GetInstance();
 
 		EOS_P2P_SocketId socketID = {};
@@ -197,134 +165,133 @@ namespace RN
 		EOS_P2P_CloseConnectionOptions options;
 		options.ApiVersion = EOS_P2P_CLOSECONNECTION_API_LATEST;
 		options.LocalUserId = world->GetUserID();
-		options.RemoteUserId = _idMap[clientID];
+		options.RemoteUserId = productUserId;
 		options.SocketId = &socketID;
 
 		EOS_P2P_CloseConnection(world->GetP2PHandle(), &options);
-		Unlock();
+		FinalizePeerDisconnect(productUserId, 0);
 	}
 
-	void EOSP2PClient::DisconnectClientDelayed(uint8 clientID, float delay)
+	void EOSP2PClient::DisconnectClient(EOSClientID clientID)
+	{
+		if(clientID == _clientID)
+		{
+			Disconnect();
+			return;
+		}
+		Lock();
+		auto mappedPeer = _idMap.find(clientID);
+		EOS_ProductUserId productUserID = mappedPeer != _idMap.end() ? mappedPeer->second : nullptr;
+		Unlock();
+		if(!productUserID)
+		{
+			RNWarning("Trying to disconnect unknown client " << clientID);
+			return;
+		}
+		DisconnectClient(productUserID);
+	}
+
+	void EOSP2PClient::DisconnectClientDelayed(EOSClientID clientID, float delay)
 	{
 		RNDebug("Disconnecting client " << clientID << " in " << delay << " seconds");
 		Lock();
-		EOS_ProductUserId internalID = _idMap[clientID];
-		if(_peers.find(internalID) != _peers.end())
+		auto mappedPeer = _idMap.find(clientID);
+		if(mappedPeer != _idMap.end())
 		{
-			_peers[internalID]._disconnectDelay = delay;
-			_peers[internalID]._wantsDisconnect = true;
+			auto peer = _peers.find(mappedPeer->second);
+			if(peer != _peers.end())
+			{
+				peer->second._disconnectDelay = delay;
+				peer->second._wantsDisconnect = true;
+			}
 		}
 		Unlock();
 	}
 
 	void EOSP2PClient::MigrateHost(EOS_ProductUserId hostProductUserId)
 	{
-		bool isNewClient = false;
-		if(_clientID == CLIENT_ID_NONE)
+		if(!hostProductUserId) return;
+		Lock();
+		if(_status == Disconnecting)
 		{
-			isNewClient = true;
-			if(hostProductUserId == EOSWorld::GetInstance()->GetUserID())
-			{
-				_clientID = 0; //This is save as 0 is reserved for hosts, though hosts can also have other ids
-			}
-			else
-			{
-				//Don't have a client id yet, but the host changed, so the original host won't provide it. Request it again from the new host.
-				Connect(hostProductUserId);
-			}
+			Unlock();
+			return;
 		}
 
-		if(hostProductUserId == EOSWorld::GetInstance()->GetUserID())
+		_hostProductUserID = hostProductUserId;
+		if(_status == Disconnected)
+		{
+			_hostClientID = CLIENT_ID_NONE;
+			_isHostMigrationPending = false;
+			Unlock();
+			return;
+		}
+		_hostClientID = GetClientIDForProductUserID(hostProductUserId);
+		_isHostMigrationPending = true;
+
+		bool didCompleteHostMigration = TryCompleteHostMigration();
+		bool shouldConnectHost = !didCompleteHostMigration && hostProductUserId != EOSWorld::GetInstance()->GetUserID();
+		Unlock();
+
+		if(shouldConnectHost) Connect(hostProductUserId);
+		if(didCompleteHostMigration) HandleHostMigration();
+	}
+
+	bool EOSP2PClient::TryCompleteHostMigration()
+	{
+		if(!_isHostMigrationPending) return false;
+
+		if(_hostProductUserID == EOSWorld::GetInstance()->GetUserID())
 		{
 			_hostClientID = _clientID;
-			RNDebug("Took over host role.");
-		}
-		else if(_peers.find(hostProductUserId) != _peers.end())
-		{
-			_hostClientID = _peers[hostProductUserId].clientID;
-			RNDebug("Server role was transferred to client " << _hostClientID);
 		}
 		else
 		{
-			RNWarning("Host migrated to " << hostProductUserId << ", but that peer is not known.");
+			auto host = _peers.find(_hostProductUserID);
+			if(host == _peers.end() || !host->second._didNotifyConnection) return false;
+			_hostClientID = host->second.clientID;
 		}
 
-		if(!isNewClient)
+		_isHostMigrationPending = false;
+		if(_hostProductUserID == EOSWorld::GetInstance()->GetUserID())
 		{
-			HandleHostMigration();
+			RNDebug("Took over host role.");
 		}
+		else
+		{
+			RNDebug("Lobby host role was transferred to client " << _hostClientID);
+		}
+		return true;
 	}
 
-	uint8 EOSP2PClient::GetUnusedClientID()
+	bool EOSP2PClient::SendConnectRequest(EOS_ProductUserId receiverID)
 	{
-		_lastUsedClientID += 1;
-		_lastUsedClientID = std::max(_lastUsedClientID, (uint8)1); //Starting by 1 so nobody but the host can have 0, so now in case of the host getting migrated to a newly joined user that doesn't have an id yet, 0 can safely be picked
-		for(; _lastUsedClientID < CLIENT_ID_RESERVED; _lastUsedClientID++)
-		{
-			if(_idMap.find(_lastUsedClientID) == _idMap.end() && _lastUsedClientID != _clientID)
-			{
-				return _lastUsedClientID;
-			}
-		}
-		
-		//Search again from the beginning before giving up
-		_lastUsedClientID = 1;
-		for(; _lastUsedClientID < CLIENT_ID_RESERVED; _lastUsedClientID++)
-		{
-			if(_idMap.find(_lastUsedClientID) == _idMap.end() && _lastUsedClientID != _clientID)
-			{
-				return _lastUsedClientID;
-			}
-		}
-
-		return CLIENT_ID_NONE;
+		ProtocolPacketHeader header {ProtocolPacketTypeConnectRequest, 0, 0};
+		return SendRawPacket(receiverID, 0, &header, sizeof(header), true);
 	}
 
-	void EOSP2PClient::AssignClientID(uint8 clientID)
+	EOSHost::Peer *EOSP2PClient::BindPeerLocked(EOS_ProductUserId productUserID)
 	{
-		RNDebug("Was assigned client ID " << clientID);
-		_clientID = clientID;
+		if(!productUserID) return nullptr;
+		EOSClientID clientID = GetClientIDForProductUserID(productUserID);
+		if(clientID == CLIENT_ID_NONE || clientID == _clientID) return nullptr;
+		auto peer = _peers.find(productUserID);
+		if(peer == _peers.end()) peer = _peers.insert(std::pair(productUserID, CreatePeer(clientID, productUserID))).first;
+		auto mappedPeer = _idMap.find(clientID);
+		if(peer->second.clientID != clientID || (mappedPeer != _idMap.end() && mappedPeer->second != productUserID)) return nullptr;
+		_idMap[clientID] = productUserID;
+		return &peer->second;
+	}
 
-		// Notify the client that we have our own ID now
-		HandleDidConnect(clientID);
-
-		//Let peers know
-		EOSWorld *world = EOSWorld::GetInstance();
-		EOS_P2P_SocketId socketID = {};
-		socketID.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
-		strncpy(socketID.SocketName, _socketID->GetUTF8String(), EOS_P2P_SOCKETID_SOCKETNAME_SIZE);
-
-		for(auto peer : _peers)
-		{
-			ProtocolPacketHeader packetHeader;
-			packetHeader.packetType = ProtocolPacketTypeConnectResponse;
-			packetHeader.packetID = 0;
-			packetHeader.dataLength = 2;
-
-			Data *packetData = new Data();
-			packetData->Append(&packetHeader, 4);
-			packetData->Append(&_clientID, sizeof(uint8));
-			packetData->Append(&peer.second.clientID, sizeof(uint8));
-
-			EOS_P2P_SendPacketOptions sendPacketOptions = {};
-			sendPacketOptions.ApiVersion = EOS_P2P_SENDPACKET_API_LATEST;
-			sendPacketOptions.SocketId = &socketID;
-			sendPacketOptions.LocalUserId = world->GetUserID();
-			sendPacketOptions.RemoteUserId = peer.first;
-			sendPacketOptions.Channel = 0;
-			sendPacketOptions.Reliability = EOS_EPacketReliability::EOS_PR_ReliableOrdered;
-			sendPacketOptions.bAllowDelayedDelivery = true;
-			sendPacketOptions.DataLengthBytes = packetData->GetLength();
-			sendPacketOptions.Data = packetData->GetBytes();
-
-			EOS_P2P_SendPacket(world->GetP2PHandle(), &sendPacketOptions);
-			
-			packetData->Release();
-		}
+	void EOSP2PClient::HandleReliablePacketLoss(EOSClientID clientID)
+	{
+		RNWarning("Unrecoverable reliable EOS data loss from peer " << clientID << "; disconnecting the P2P session");
+		Disconnect();
 	}
 
 	void EOSP2PClient::ReceivedPacketInternal(uint8 *rawData, uint32 bytesWritten, EOS_ProductUserId senderUserID, uint8 channel)
 	{
+		if(!rawData || bytesWritten < sizeof(ProtocolPacketHeader)) return;
 		EOSHost::ReceivedPacketInternal(rawData, bytesWritten, senderUserID, channel);
 		if(channel == 255) return; //This is a ping, handled by the Host class
 		
@@ -334,211 +301,82 @@ namespace RN
 			Unlock();
 			return;
 		}
-		
-		if(_peers.find(senderUserID) == _peers.end())
+
+		Peer *peer = BindPeerLocked(senderUserID);
+		if(!peer)
 		{
-			//Create peer with unknown user ID. Will be set via connection response
-			RNDebug("Received packet from unknown user " << senderUserID << " (creating peer)");
-			_peers.insert(std::pair(senderUserID, CreatePeer(CLIENT_ID_NONE, senderUserID)));
+			Unlock();
+			RNWarning("EOS product user ID collision from " << senderUserID << "; disconnecting the P2P session");
+			Disconnect();
+			return;
 		}
-		uint8 senderID = _peers[senderUserID].clientID;
-		Peer &peer = _peers[senderUserID];
 
-		if(static_cast<ProtocolPacketType>(rawData[0]) == ProtocolPacketTypeReliableDataMultipart)
+		EOSClientID senderID = peer->clientID;
+		peer->_isConnectionActive = true;
+		DecodeResult result = DecodePackets(*peer, rawData, bytesWritten, channel);
+		std::vector<Data *> receivedPackets;
+		bool receivedConnectRequest = false;
+		for(const DecodedPacket &packet : result.packets)
 		{
-			//If this is multipart data, wait for all parts before passing them on
-			ProtocolPacketHeaderMultipart packetHeader;
-			packetHeader.packetType = static_cast<ProtocolPacketType>(rawData[0]);
-			packetHeader.packetID = rawData[1];
-			packetHeader.dataPart = rawData[2] | rawData[3] << 8;
-			packetHeader.totalDataParts = rawData[4] | rawData[5] << 8;
-
-			//RNDebug("Received multipart data (" << packetHeader.packetID <<  "), part " << packetHeader.dataPart << " of " << packetHeader.totalDataParts);
-
-			if(peer._multipartPacketTotalParts.count(channel) == 0)
+			if(packet.type == ProtocolPacketTypeConnectRequest)
 			{
-				//Received new multipart data!
-
-				if(packetHeader.dataPart != 0)
-				{
-					//Received new multipart data, but it's missing previous parts!?
-					//TODO: Consider disconnecting user? For now just skip the data. But this case means that something is seriously wrong.
-					//Nothing to clean up here as the data does not exist yet
-
-					RNDebug("Received multipart data but it's missing previous parts!");
-
-					Unlock();
-					return;
-				}
-
-				peer._multipartPacketTotalParts[channel] = packetHeader.totalDataParts;
-				peer._multipartPacketCurrentPart[channel] = packetHeader.dataPart;
-				peer._multipartPacketID[channel] = packetHeader.packetID;
-				peer._multipartPacketData[channel] = new Data();
-			}
-			else
-			{
-				//Received another part of multipart data!
-
-				if(peer._multipartPacketCurrentPart[channel] + 1 != packetHeader.dataPart || peer._multipartPacketTotalParts[channel] != packetHeader.totalDataParts || peer._multipartPacketID[channel] != packetHeader.packetID)
-				{
-					//Received multipart data, but found some inconsistency
-					//TODO: Consider disconnecting user? For now just skip the data. But this case means that something is seriously wrong.
-
-					RNDebug("Received multipart data but it's missing parts!");
-
-					peer._multipartPacketTotalParts.erase(channel);
-					peer._multipartPacketCurrentPart.erase(channel);
-					peer._multipartPacketID.erase(channel);
-					peer._multipartPacketData[channel]->Release();
-					peer._multipartPacketData.erase(channel);
-
-					Unlock();
-					return;
-				}
-
-				peer._multipartPacketCurrentPart[channel] = packetHeader.dataPart;
+				receivedConnectRequest = packet.packetID == 0 && packet.data->GetLength() == 0;
+				continue;
 			}
 
-			//Append data from the packet without protocol header
-			peer._multipartPacketData[channel]->Append(&rawData[6], bytesWritten - 6);
+			if((packet.type == ProtocolPacketTypeData || packet.type == ProtocolPacketTypeReliableData) && peer->_didNotifyConnection)
+				receivedPackets.push_back(packet.data->Retain());
+		}
 
-			if(packetHeader.dataPart + 1 >= packetHeader.totalDataParts)
+		bool didConnectLocalClient = false;
+		std::vector<EOSClientID> connectedPeers;
+		if(receivedConnectRequest)
+		{
+			if(senderUserID == _hostProductUserID && _status == Connecting)
 			{
-				//RNDebug("Received full multipart data");
-				Unlock();
-				ReceivedPacket(peer._multipartPacketData[channel], senderID, channel);
-				Lock();
-
-				peer._multipartPacketTotalParts.erase(channel);
-				peer._multipartPacketCurrentPart.erase(channel);
-				peer._multipartPacketID.erase(channel);
-				peer._multipartPacketData[channel]->Release();
-				peer._multipartPacketData.erase(channel);
+				_status = Connected;
+				_connectionTimeout = 0.0f;
+				didConnectLocalClient = true;
+			}
+			if(_status == Connected)
+			{
+				for(auto &mappedPeer : _peers)
+				{
+					if(!mappedPeer.second._isConnectionActive || mappedPeer.second._didNotifyConnection) continue;
+					mappedPeer.second._didNotifyConnection = true;
+					connectedPeers.push_back(mappedPeer.second.clientID);
+				}
 			}
 		}
-		else
-		{
-			if(peer._multipartPacketTotalParts.count(channel) != 0)
-			{
-				if(static_cast<ProtocolPacketType>(rawData[0]) == ProtocolPacketTypeReliableData)
-				{
-					//Got non-multipart reliable data on a channel that got multipart data before that is still incomplete.
-					//TODO: Consider disconnecting user? For now just skip the data. But this case means that something is seriously wrong.
-
-					RNDebug("Received multipart data but it's incomplete!");
-
-					peer._multipartPacketTotalParts.erase(channel);
-					peer._multipartPacketCurrentPart.erase(channel);
-					peer._multipartPacketID.erase(channel);
-					peer._multipartPacketData[channel]->Release();
-					peer._multipartPacketData.erase(channel);
-
-					Unlock();
-					return;
-				}
-				else
-				{
-					//Got out of order unreliable data while still waiting for multipart data. Just ignore and wait for remaining multipart data.
-					Unlock();
-					return;
-				}
-			}
-
-			//All data fits into one packet, though multiple internal packets maybe encoded in a single networking packet and it needs to be unpacked
-			uint16 dataIndex = 0;
-			while(dataIndex < bytesWritten)
-			{
-				ProtocolPacketHeader packetHeader;
-				packetHeader.packetType = static_cast<ProtocolPacketType>(rawData[dataIndex + 0]);
-				packetHeader.packetID = rawData[dataIndex + 1];
-				packetHeader.dataLength = rawData[dataIndex + 2] | rawData[dataIndex + 3] << 8;
-				dataIndex += 4;
-
-				if(packetHeader.packetType == ProtocolPacketTypeConnectRequest)
-				{
-					RNDebug("Received connect request from " << senderUserID);
-					if(packetHeader.packetID == 0)
-					{
-						//This is handled in OnConnectionRequestCallback
-						//TODO: Maybe move some of it here instead to not require delayed delivery for the response
-					}
-					else
-					{
-						RNDebug("Malformed connect request");
-					}
-					dataIndex += packetHeader.dataLength; //Should be 0
-					continue;
-				}
-
-				if(packetHeader.packetType == ProtocolPacketTypeConnectResponse)
-				{
-					if(packetHeader.packetID == 0 && packetHeader.dataLength == 2)
-					{
-						uint8 remoteClientID = rawData[dataIndex]; //Client id of sender
-						uint8 ownClientID = rawData[dataIndex + 1]; //Client id sender has assigned to receiver
-						RNDebug("Received connect response from " << senderUserID << " with client ID " << remoteClientID << " and own client ID " << ownClientID);
-
-						//Received remote user ID. Do this first to add peer for client id broadcasting
-						bool didConnect = false;
-						if(_peers[senderUserID].clientID == CLIENT_ID_NONE && remoteClientID != CLIENT_ID_NONE)
-						{
-							_peers[senderUserID].clientID = remoteClientID;
-							_idMap[remoteClientID] = senderUserID;
-							didConnect = true;
-						}
-
-						//Received own client ID from server
-						if(_clientID == CLIENT_ID_NONE && ownClientID != CLIENT_ID_NONE && remoteClientID != CLIENT_ID_NONE)
-						{
-							_hostClientID = remoteClientID;
-							AssignClientID(ownClientID); //Broadcasts freshly assigned id to peers
-							_status = Connected;
-						}
-
-						LogPeers();
-
-						//Handle connection after the server client id was set
-						if(didConnect)
-						{
-							Unlock();
-							HandleDidConnect(remoteClientID);
-							Lock();
-						}
-					}
-					else
-					{
-						RNDebug("Malformed connect response");
-					}
-					
-					dataIndex += packetHeader.dataLength;
-					continue;
-				}
-
-				if(!IsPacketInOrder(packetHeader.packetType, senderUserID, packetHeader.packetID, channel))
-				{
-					dataIndex += packetHeader.dataLength;
-					continue;
-				}
-
-				//Get data object from the packet without protocol header
-				Data *data = Data::WithBytes(&rawData[dataIndex], packetHeader.dataLength);
-				dataIndex += packetHeader.dataLength;
-
-				Unlock();
-				ReceivedPacket(data, senderID, channel);
-				Lock();
-			}
-		}
-		
+		bool didCompleteHostMigration = TryCompleteHostMigration();
 		Unlock();
+
+		if(result.multipartProgress && senderID != CLIENT_ID_NONE) HandleReliableMultipartProgress(senderID, channel);
+		if(result.lostReliableData && senderID != CLIENT_ID_NONE)
+		{
+			Retain();
+			HandleReliablePacketLoss(senderID);
+			for(Data *packet : receivedPackets) packet->Release();
+			for(const DecodedPacket &packet : result.packets) packet.data->Release();
+			Release();
+			return;
+		}
+		if(didConnectLocalClient) HandleDidConnect(_clientID);
+		for(EOSClientID clientID : connectedPeers) HandleDidConnect(clientID);
+		if(didCompleteHostMigration) HandleHostMigration();
+		for(Data *packet : receivedPackets)
+		{
+			ReceivedPacket(packet, senderID, channel);
+			packet->Release();
+		}
+		for(const DecodedPacket &packet : result.packets) packet.data->Release();
 	}
 
 	void EOSP2PClient::Update(float delta)
 	{
+		Retain();
 		EOSHost::Update(delta); //This sends regular pings and handles sending of scheduled packets
 
-		Retain();
 		Lock();
 		if(_status == Connecting)
 		{
@@ -558,7 +396,7 @@ namespace RN
 			return;
 		}
 
-		std::vector<uint8> peersToDisconnect;
+		std::vector<EOSClientID> peersToDisconnect;
 		for(auto &pair : _peers)
 		{
 			if(pair.second._wantsDisconnect)
@@ -571,22 +409,9 @@ namespace RN
 			}
 		}
 
-		for(uint8 clientID : peersToDisconnect)
-		{
-			DisconnectClient(clientID);
-		}
-
 		Unlock();
+		for(EOSClientID clientID : peersToDisconnect) DisconnectClient(clientID);
 		Release();
-	}
-
-	void EOSP2PClient::LogPeers() const
-	{
-		RNDebug("Peers known: " << _peers.size());
-		for(auto peer : _peers)
-		{
-			RNDebug("Peer: " << peer.first << " | client id: " << peer.second.clientID);
-		}
 	}
 
 	void EOSP2PClient::OnConnectionRequestCallback(const EOS_P2P_OnIncomingConnectionRequestInfo *Data)
@@ -600,65 +425,71 @@ namespace RN
 		acceptOptions.RemoteUserId = Data->RemoteUserId;
 		acceptOptions.SocketId = Data->SocketId;
 
-		EOS_P2P_AcceptConnection(EOSWorld::GetInstance()->GetP2PHandle(), &acceptOptions);
+		if(EOS_P2P_AcceptConnection(world->GetP2PHandle(), &acceptOptions) != EOS_EResult::EOS_Success)
+		{
+			RNWarning("Failed to accept connection request from " << Data->RemoteUserId);
+			return;
+		}
+
+		client->Lock();
+		Peer *peer = client->BindPeerLocked(Data->RemoteUserId);
+		if(!peer)
+		{
+			client->Unlock();
+			RNWarning("EOS product user ID collision from " << Data->RemoteUserId << "; disconnecting the P2P session");
+			client->Disconnect();
+			return;
+		}
+		peer->_isConnectionActive = true;
+		client->Unlock();
 
 		RNDebug("Accepted connection request from " << Data->RemoteUserId);
 
-		ProtocolPacketHeader packetHeader;
-		packetHeader.packetType = ProtocolPacketTypeConnectResponse;
-		packetHeader.packetID = 0;
-		packetHeader.dataLength = 2;
-
-		RN::Data *packetData = new RN::Data();
-		packetData->Append(&packetHeader, 4);
-		packetData->Append(&client->_clientID, sizeof(uint8));
-		uint8 remoteClientID = client->IsHost() ? client->GetUnusedClientID() : CLIENT_ID_NONE;
-		packetData->Append(&remoteClientID, sizeof(uint8));
-
-		const Peer &peer = client->CreatePeer(remoteClientID, Data->RemoteUserId);
-		client->_peers.insert(std::pair(Data->RemoteUserId, peer));
-
-		//If hosting the session, assign a new client user id, else ask for user id by sending connection request
-		if(client->IsHost())
+		if(!client->SendConnectRequest(Data->RemoteUserId))
 		{
-			RNDebug("Assigning client id " << peer.clientID);
-			client->_idMap[remoteClientID] = Data->RemoteUserId;
-			client->HandleDidConnect(peer.clientID);
+			RNWarning("Failed to send connection response to " << Data->RemoteUserId);
 		}
-		else
-		{
-			RNDebug("Requesting user id from " << Data->RemoteUserId);
-			client->Connect(Data->RemoteUserId); //Request client id
-		}
-
-		client->LogPeers();
-
-		EOS_P2P_SendPacketOptions sendPacketOptions = {};
-		sendPacketOptions.ApiVersion = EOS_P2P_SENDPACKET_API_LATEST;
-		sendPacketOptions.SocketId = Data->SocketId;
-		sendPacketOptions.LocalUserId = world->GetUserID();
-		sendPacketOptions.RemoteUserId = Data->RemoteUserId;
-		sendPacketOptions.Channel = 0;
-		sendPacketOptions.Reliability = EOS_EPacketReliability::EOS_PR_ReliableOrdered;
-		sendPacketOptions.bAllowDelayedDelivery = true;
-		sendPacketOptions.DataLengthBytes = packetData->GetLength();
-		sendPacketOptions.Data = packetData->GetBytes();
-
-		EOS_P2P_SendPacket(world->GetP2PHandle(), &sendPacketOptions);
-		
-		packetData->Release();
 	}
 
 	void EOSP2PClient::OnConnectionClosedCallback(const EOS_P2P_OnRemoteConnectionClosedInfo *Data)
 	{
 		EOSP2PClient *client = static_cast<EOSP2PClient *>(Data->ClientData);
-		if(client->_peers.find(Data->RemoteUserId) == client->_peers.end()) return;
-		
-		uint8 id = client->_peers[Data->RemoteUserId].clientID;
-		client->_idMap.erase(id);
-		client->_peers.erase(Data->RemoteUserId);
-		RNDebug("Peer disconnected. peer id: " << id << " | product ID: " << Data->RemoteUserId);
+		if(!client) return;
 
-		client->HandleDidDisconnect(id, static_cast<uint8>(Data->Reason));
+		client->Lock();
+		auto peer = client->_peers.find(Data->RemoteUserId);
+		if(peer == client->_peers.end())
+		{
+			client->Unlock();
+			return;
+		}
+
+		client->Unlock();
+		client->FinalizePeerDisconnect(Data->RemoteUserId, static_cast<uint16>(Data->Reason));
+	}
+
+	void EOSP2PClient::FinalizePeerDisconnect(EOS_ProductUserId productUserID, uint16 reason)
+	{
+		Lock();
+		auto peer = _peers.find(productUserID);
+		if(peer == _peers.end())
+		{
+			Unlock();
+			return;
+		}
+
+		EOSClientID clientID = peer->second.clientID;
+		bool didNotifyConnection = peer->second._didNotifyConnection;
+		ClearPeerData(peer->second);
+		auto idIterator = _idMap.find(clientID);
+		if(idIterator != _idMap.end() && idIterator->second == productUserID) _idMap.erase(idIterator);
+		_peers.erase(peer);
+
+		bool didCompleteHostMigration = TryCompleteHostMigration();
+		Unlock();
+
+		RNDebug("Peer disconnected. peer id: " << clientID << " | product ID: " << productUserID);
+		if(didNotifyConnection) HandleDidDisconnect(clientID, reason);
+		if(didCompleteHostMigration) HandleHostMigration();
 	}
 } // namespace RN
