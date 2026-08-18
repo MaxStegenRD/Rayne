@@ -21,6 +21,9 @@
 namespace RN
 {
 	constexpr size_t EOSMaxSendBytesPerPeerPerUpdate = 128 * 1024;
+	constexpr size_t EOSMaxScheduledBytesPerPeer = 32 * 1024 * 1024;
+	constexpr float EOSMultipartTimeout = 10.0f;
+	constexpr size_t EOSMaxMultipartChannelsPerPeer = 4;
 
 	RNDefineMeta(EOSHost, Object)
 
@@ -96,12 +99,30 @@ namespace RN
 			Unlock();
 			return; //Don't allow sending more data to users that are about to be disconnected.
 		}
+		bool exceedsQueueLimit = packetLength > EOSMaxScheduledBytesPerPeer || peer->second._scheduledPacketBytes > EOSMaxScheduledBytesPerPeer - packetLength;
+		if(exceedsQueueLimit)
+		{
+			EOSClientID clientID = peer->second.clientID;
+			Unlock();
+			if(reliable)
+			{
+				RNWarning("Disconnecting after the reliable EOS send queue reached its memory limit");
+				HandleReliablePacketLoss(clientID);
+			}
+			else
+			{
+				RNWarning("Dropping an unreliable EOS packet because the peer send queue reached its memory limit");
+			}
+			return;
+		}
+
 		if(peer->second._scheduledPackets.find(channel) == peer->second._scheduledPackets.end())
 		{
 			peer->second._scheduledPackets.insert(std::pair(channel, std::queue<Packet>()));
 		}
 
 		peer->second._scheduledPackets[channel].push({reliable, data->Retain()});
+		peer->second._scheduledPacketBytes += packetLength;
 
 		Unlock();
 	}
@@ -200,7 +221,7 @@ namespace RN
 
 		if(assembly == peer._multipartAssemblies.end())
 		{
-			if(packetHeader.dataPart != 0)
+			if(packetHeader.dataPart != 0 || peer._multipartAssemblies.size() >= EOSMaxMultipartChannelsPerPeer)
 			{
 				result.lostData = true;
 				return result;
@@ -212,6 +233,7 @@ namespace RN
 			assembly->second.currentPart = packetHeader.dataPart;
 		}
 		assembly->second.age = 0.0f;
+
 		size_t packetPayloadLength = bytesWritten - sizeof(ProtocolPacketHeaderMultipart);
 		Data *multipartData = assembly->second.data;
 		if(packetPayloadLength > MaximumReassembledPacketSize - multipartData->GetLength())
@@ -325,6 +347,7 @@ namespace RN
 			packet.multipartNextPart += 1;
 		}
 
+		peer._scheduledPacketBytes -= packet.data->GetLength();
 		packet.data->Release();
 		scheduledPackets.pop();
 		return true;
@@ -375,6 +398,7 @@ namespace RN
 			if(didSend) remainingSendBytes -= encodedPacket->GetLength();
 			for(Packet &packet : packets)
 			{
+				peer._scheduledPacketBytes -= packet.data->GetLength();
 				packet.data->Release();
 			}
 		}
@@ -385,6 +409,7 @@ namespace RN
 	void EOSHost::Update(float delta)
 	{
 		std::vector<EOS_ProductUserId> pingTargets;
+		std::vector<EOSClientID> peersWithExpiredMultipartPackets;
 		Lock();
 		EOSWorld *world = EOSWorld::GetInstance();
 		if(!world || !world->GetP2PHandle())
@@ -406,6 +431,20 @@ namespace RN
 		for(auto &peerPair : _peers)
 		{
 			Peer &peer = peerPair.second;
+			bool didExpireMultipartPacket = false;
+			std::vector<uint32> expiredChannels;
+			for(auto &assembly : peer._multipartAssemblies)
+			{
+				assembly.second.age += std::max(delta, 0.0f);
+				if(assembly.second.age >= EOSMultipartTimeout) expiredChannels.push_back(assembly.first);
+			}
+			for(uint32 channel : expiredChannels)
+			{
+				ClearMultipartPacket(peer, channel);
+				didExpireMultipartPacket = true;
+			}
+			if(didExpireMultipartPacket && peer.clientID != CLIENT_ID_NONE) peersWithExpiredMultipartPackets.push_back(peer.clientID);
+
 			size_t remainingSendBytes = EOSMaxSendBytesPerPeerPerUpdate;
 			for(auto channel = peer._scheduledPackets.begin(); channel != peer._scheduledPackets.end();)
 			{
@@ -424,6 +463,7 @@ namespace RN
 		Unlock();
 
 		for(EOS_ProductUserId peerID : pingTargets) SendPing(peerID, false, 0);
+		for(EOSClientID clientID : peersWithExpiredMultipartPackets) HandleReliablePacketLoss(clientID);
 	}
 
 	EOSHost::Peer EOSHost::CreatePeer(EOSClientID clientID, EOS_ProductUserId internalID)
@@ -463,6 +503,7 @@ namespace RN
 			}
 		}
 		peer._scheduledPackets.clear();
+		peer._scheduledPacketBytes = 0;
 	}
 
 	void EOSHost::HandleReliablePacketLoss(EOSClientID clientID)

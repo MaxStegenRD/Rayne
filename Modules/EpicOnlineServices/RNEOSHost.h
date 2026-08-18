@@ -101,6 +101,7 @@ namespace RN
 			bool _didNotifyConnection = false;
 
 			std::map<uint32, std::queue<Packet>> _scheduledPackets;
+			size_t _scheduledPacketBytes = 0;
 			std::map<uint32, MultipartAssembly> _multipartAssemblies;
 		};
 
