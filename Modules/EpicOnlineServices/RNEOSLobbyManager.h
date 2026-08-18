@@ -94,6 +94,7 @@ namespace RN
 		
 		std::vector<EOS_ProductUserId> GetRemoteClientIDs() const { return _remotePeers; }
 		EOSAPI EOS_ProductUserId GetLobbyOwnerID() const;
+		EOSAPI bool HasRemoteMember(EOS_ProductUserId productUserID) const;
 		
 		String *GetLobbyID() const { return _lobbyID; }
 		

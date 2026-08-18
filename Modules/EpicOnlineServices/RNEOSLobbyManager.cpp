@@ -282,6 +282,16 @@ namespace RN
 		return EOS_LobbyDetails_GetLobbyOwner(_lobbyDetails, &getLobbyOwnerOptions);
 	}
 
+	bool EOSConnectedLobbyInfo::HasRemoteMember(EOS_ProductUserId productUserID) const
+	{
+		if(!productUserID || _status != Status::Connected) return false;
+		if(productUserID == GetLobbyOwnerID()) return true;
+		for(EOS_ProductUserId peer : _remotePeers)
+		{
+			if(peer == productUserID) return true;
+		}
+		return false;
+	}
 
 	EOSLobbySearchParameter::EOSLobbySearchParameter(String *name, Comparator comparator) :
 		_name(SafeRetain(name)), _comparator(comparator)
