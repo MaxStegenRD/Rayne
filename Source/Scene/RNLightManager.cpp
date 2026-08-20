@@ -8,6 +8,7 @@
 
 #include "RNLightManager.h"
 #include "../Rendering/RNRenderer.h"
+#include "../Threads/RNWorkGroup.h"
 
 namespace RN
 {
@@ -548,143 +549,172 @@ namespace RN
 		};
 
 		// Reuse scratch buffers to avoid per-frame per-cluster allocations.
-		const size_t perClusterCapacity = static_cast<size_t>(_maxLightsPerCluster);
-		const size_t totalScratchCapacity = static_cast<size_t>(clusterCount) * perClusterCapacity;
-		_clusterPointScratch.resize(totalScratchCapacity);
-		_clusterSpotScratch.resize(totalScratchCapacity);
+		const size_t pointClusterCapacity = std::min(static_cast<size_t>(_maxLightsPerCluster), _packedPointLights.size());
+		const size_t spotClusterCapacity = std::min(static_cast<size_t>(_maxLightsPerCluster), _packedSpotLights.size());
+		_clusterPointScratch.resize(static_cast<size_t>(clusterCount) * pointClusterCapacity);
+		_clusterSpotScratch.resize(static_cast<size_t>(clusterCount) * spotClusterCapacity);
 		_clusterPointCountsScratch.assign(clusterCount, 0);
 		_clusterSpotCountsScratch.assign(clusterCount, 0);
 		_clusterOffsetsScratch.resize(clusterCount);
 		_clusterLightIndices.clear();
 
-		// Second pass: actually fill using separate write cursors
 		const uint32 sliceStride = tilesX * tilesY;
 		const uint32 rowStride = tilesX;
+		std::vector<ClusterSpan> pointSpans;
+		pointSpans.reserve(_packedPointLights.size());
 		for(uint32 li = 0; li < _packedPointLights.size(); ++li)
 		{
 			const PointLightPacked &pl = _packedPointLights[li];
-			const uint16_t lightIndex = static_cast<uint16_t>(std::min<uint32>(li, 0xffffu));
-
 			const Vector3 position(pl.positionRange.x, pl.positionRange.y, pl.positionRange.z);
-			const float range = pl.positionRange.w;
-			const ClusterSpan span = computePointClusterSpan(position, range);
-
-			for(uint32 z = span.zMin; z <= span.zMax; ++z)
-			{
-				const uint32 zBase = z * sliceStride;
-				for(uint32 y = span.y0; y <= span.y1; ++y)
-				{
-					uint32 idx = zBase + y * rowStride + span.x0;
-					for(uint32 x = span.x0; x <= span.x1; ++x, ++idx)
-					{
-						uint8_t &count = _clusterPointCountsScratch[idx];
-						if(count < _maxLightsPerCluster)
-						{
-							const size_t writeIndex = static_cast<size_t>(idx) * perClusterCapacity + count;
-							_clusterPointScratch[writeIndex] = lightIndex;
-							++count;
-						}
-					}
-				}
-			}
+			pointSpans.push_back(computePointClusterSpan(position, pl.positionRange.w));
 		}
 
-		std::vector<Vector3> spotDirectionVSByEye(viewCount);
-		std::vector<uint8_t> spotDirectionValidByEye(viewCount, 0);
-		std::vector<Vector3> spotPositionVSByEye(viewCount);
+		struct SpotWork
+		{
+			ClusterSpan span;
+			float sideExpandFactor;
+		};
+		struct SpotEyeWork
+		{
+			Vector3 direction;
+			Vector3 position;
+			bool directionValid = false;
+		};
+		std::vector<SpotWork> spotWork;
+		std::vector<SpotEyeWork> spotEyeWork(_packedSpotLights.size() * viewCount);
+		spotWork.reserve(_packedSpotLights.size());
 		for(uint32 li = 0; li < _packedSpotLights.size(); ++li)
 		{
 			const SpotLightPacked &pl = _packedSpotLights[li];
-			const uint16_t lightIndex = static_cast<uint16_t>(std::min<uint32>(li, 0xffffu));
 			const Vector3 position(pl.positionRange.x, pl.positionRange.y, pl.positionRange.z);
-			const float range = pl.positionRange.w;
 			const SpotLightCullData &cullData = _spotLightCullData[li];
-			const Vector3 directionWS = cullData.forward;
-			const float spotTanHalfAngle = cullData.tanHalfAngle;
-			const float spotSideExpandFactor = std::sqrt(1.0f + spotTanHalfAngle * spotTanHalfAngle);
-			const Vector3 cullCenter = cullData.center;
-			const float cullRadius = cullData.radius;
-			const ClusterSpan span = computeClusterSpan(cullCenter, cullRadius, [&](size_t vi, float depthv, float &rNdcXv, float &rNdcYv) {
-				const float denom = std::max(depthv * depthv - cullRadius * cullRadius, 1e-6f);
-				const float rSil = cullRadius / std::sqrt(denom);
+			const ClusterSpan span = computeClusterSpan(cullData.center, cullData.radius, [&](size_t vi, float depthv, float &rNdcXv, float &rNdcYv) {
+				const float denom = std::max(depthv * depthv - cullData.radius * cullData.radius, 1e-6f);
+				const float rSil = cullData.radius / std::sqrt(denom);
 				rNdcXv = projAbsX[vi] * rSil;
 				rNdcYv = projAbsY[vi] * rSil;
 			});
-			std::fill(spotDirectionValidByEye.begin(), spotDirectionValidByEye.end(), 0);
+			spotWork.push_back({span, std::sqrt(1.0f + cullData.tanHalfAngle * cullData.tanHalfAngle)});
+
+			const size_t eyeBase = static_cast<size_t>(li) * viewCount;
 			for(size_t vi = 0; vi < viewCount; ++vi)
 			{
-				const Vector4 directionVS4 = views[vi] * Vector4(directionWS, 0.0f);
-				Vector3 directionVS(directionVS4.x, directionVS4.y, directionVS4.z);
-				const float dirLenSq = directionVS.GetSquaredLength();
+				SpotEyeWork &eyeWork = spotEyeWork[eyeBase + vi];
+				const Vector4 directionVS4 = views[vi] * Vector4(cullData.forward, 0.0f);
+				Vector3 direction(directionVS4.x, directionVS4.y, directionVS4.z);
+				const float dirLenSq = direction.GetSquaredLength();
 				if(std::isfinite(dirLenSq) && dirLenSq > 1e-12f)
 				{
-					directionVS *= 1.0f / std::sqrt(dirLenSq);
-					spotDirectionVSByEye[vi] = directionVS;
-					spotDirectionValidByEye[vi] = 1;
+					direction *= 1.0f / std::sqrt(dirLenSq);
+					eyeWork.direction = direction;
+					eyeWork.directionValid = true;
 				}
 				const Vector4 positionVS4 = views[vi] * Vector4(position, 1.0f);
-				spotPositionVSByEye[vi] = Vector3(positionVS4.x, positionVS4.y, positionVS4.z);
+				eyeWork.position = Vector3(positionVS4.x, positionVS4.y, positionVS4.z);
 			}
+		}
 
-			for(uint32 z = span.zMin; z <= span.zMax; ++z)
+		auto assignLightsToSlices = [&](uint32 firstSlice, uint32 endSlice) {
+			RN_PROFILE_SCOPE_N("Assign Light Clusters");
+			for(uint32 li = 0; li < pointSpans.size(); ++li)
 			{
-				const uint32 zBase = z * sliceStride;
-				for(uint32 y = span.y0; y <= span.y1; ++y)
+				const ClusterSpan &span = pointSpans[li];
+				if(span.zMax < firstSlice || span.zMin >= endSlice) continue;
+				const uint16 lightIndex = static_cast<uint16>(li);
+				const uint32 lightFirstSlice = std::max(span.zMin, firstSlice);
+				const uint32 lightEndSlice = std::min(span.zMax + 1u, endSlice);
+				for(uint32 z = lightFirstSlice; z < lightEndSlice; ++z)
 				{
-					uint32 idx = zBase + y * rowStride + span.x0;
-					for(uint32 x = span.x0; x <= span.x1; ++x, ++idx)
+					const uint32 zBase = z * sliceStride;
+					for(uint32 y = span.y0; y <= span.y1; ++y)
 					{
-						bool passesAnyEye = false;
-						for(size_t vi = 0; vi < viewCount; ++vi)
+						uint32 idx = zBase + y * rowStride + span.x0;
+						for(uint32 x = span.x0; x <= span.x1; ++x, ++idx)
 						{
-							// Fail-open: if spotlight axis is invalid in this eye, keep this cluster.
-							if(spotDirectionValidByEye[vi] == 0) { passesAnyEye = true; break; }
-
-							const SpotClusterBound &clusterBounds = (*clusterConeBoundsByEye)[vi * static_cast<size_t>(clusterCount) + static_cast<size_t>(idx)];
-							const Vector3 toCluster = clusterBounds.center - spotPositionVSByEye[vi];
-							const float clusterRadius = clusterBounds.radius;
-
-							const float axial = spotDirectionVSByEye[vi].GetDotProduct(toCluster);
-							if(!std::isfinite(axial)) { passesAnyEye = true; break; }
-							if(axial < -clusterRadius) continue;
-							if(axial > range + clusterRadius) continue;
-
-							const Vector3 radialVector = toCluster - (spotDirectionVSByEye[vi] * axial);
-							const float radialSq = radialVector.GetSquaredLength();
-							if(!std::isfinite(radialSq)) { passesAnyEye = true; break; }
-
-							const float sideExpand = clusterRadius * spotSideExpandFactor;
-							if(axial > range)
-							{
-								// End-cap reject: outside cone base radius (expanded by cluster sphere support term).
-								const float capLimit = range * spotTanHalfAngle + sideExpand;
-								const float capLimitSq = capLimit * capLimit;
-								if(!std::isfinite(capLimitSq)) { passesAnyEye = true; break; }
-								if(radialSq > capLimitSq) continue;
-							}
-							else
-							{
-								const float sideLimit = std::max(axial, 0.0f) * spotTanHalfAngle + sideExpand;
-								const float sideLimitSq = sideLimit * sideLimit;
-								if(!std::isfinite(sideLimitSq)) { passesAnyEye = true; break; }
-								if(radialSq > sideLimitSq) continue;
-							}
-
-							passesAnyEye = true;
-							break;
-						}
-						if(!passesAnyEye) continue;
-
-						uint8_t &count = _clusterSpotCountsScratch[idx];
-						if(count < _maxLightsPerCluster)
-						{
-							const size_t writeIndex = static_cast<size_t>(idx) * perClusterCapacity + count;
-							_clusterSpotScratch[writeIndex] = lightIndex;
+							uint8_t &count = _clusterPointCountsScratch[idx];
+							if(count >= _maxLightsPerCluster) continue;
+							_clusterPointScratch[static_cast<size_t>(idx) * pointClusterCapacity + count] = lightIndex;
 							++count;
 						}
 					}
 				}
 			}
+
+			for(uint32 li = 0; li < spotWork.size(); ++li)
+			{
+				const SpotWork &work = spotWork[li];
+				const ClusterSpan &span = work.span;
+				if(span.zMax < firstSlice || span.zMin >= endSlice) continue;
+				const SpotLightPacked &pl = _packedSpotLights[li];
+				const SpotLightCullData &cullData = _spotLightCullData[li];
+				const uint16 lightIndex = static_cast<uint16>(li);
+				const size_t eyeBase = static_cast<size_t>(li) * viewCount;
+				const uint32 lightFirstSlice = std::max(span.zMin, firstSlice);
+				const uint32 lightEndSlice = std::min(span.zMax + 1u, endSlice);
+				for(uint32 z = lightFirstSlice; z < lightEndSlice; ++z)
+				{
+					const uint32 zBase = z * sliceStride;
+					for(uint32 y = span.y0; y <= span.y1; ++y)
+					{
+						uint32 idx = zBase + y * rowStride + span.x0;
+						for(uint32 x = span.x0; x <= span.x1; ++x, ++idx)
+						{
+							bool passesAnyEye = false;
+							for(size_t vi = 0; vi < viewCount; ++vi)
+							{
+								const SpotEyeWork &eyeWork = spotEyeWork[eyeBase + vi];
+								if(!eyeWork.directionValid) { passesAnyEye = true; break; }
+
+								const SpotClusterBound &clusterBounds = (*clusterConeBoundsByEye)[vi * static_cast<size_t>(clusterCount) + idx];
+								const Vector3 toCluster = clusterBounds.center - eyeWork.position;
+								const float axial = eyeWork.direction.GetDotProduct(toCluster);
+								if(!std::isfinite(axial)) { passesAnyEye = true; break; }
+								if(axial < -clusterBounds.radius || axial > pl.positionRange.w + clusterBounds.radius) continue;
+
+								const float radialSq = (toCluster - eyeWork.direction * axial).GetSquaredLength();
+								if(!std::isfinite(radialSq)) { passesAnyEye = true; break; }
+
+								const float coneDistance = (axial > pl.positionRange.w) ? pl.positionRange.w : std::max(axial, 0.0f);
+								const float radialLimit = coneDistance * cullData.tanHalfAngle + clusterBounds.radius * work.sideExpandFactor;
+								const float radialLimitSq = radialLimit * radialLimit;
+								if(!std::isfinite(radialLimitSq)) { passesAnyEye = true; break; }
+								if(radialSq <= radialLimitSq) { passesAnyEye = true; break; }
+							}
+							if(!passesAnyEye) continue;
+
+							uint8_t &count = _clusterSpotCountsScratch[idx];
+							if(count >= _maxLightsPerCluster) continue;
+							_clusterSpotScratch[static_cast<size_t>(idx) * spotClusterCapacity + count] = lightIndex;
+							++count;
+						}
+					}
+				}
+			}
+		};
+
+		const uint32 laneCount = std::min(2u, tilesZ);
+		const size_t workerCount = laneCount - 1u;
+		WorkGroup *workGroup = nullptr;
+		if(workerCount > 0)
+		{
+			workGroup = new WorkGroup();
+			WorkQueue *queue = WorkQueue::GetGlobalQueue(WorkQueue::Priority::High);
+			for(uint32 lane = 1; lane < laneCount; ++lane)
+			{
+				const uint32 firstSlice = lane * tilesZ / laneCount;
+				const uint32 endSlice = (lane + 1u) * tilesZ / laneCount;
+				workGroup->Perform(queue, [&, firstSlice, endSlice] {
+					assignLightsToSlices(firstSlice, endSlice);
+				}, workerCount);
+			}
+		}
+
+		assignLightsToSlices(0, tilesZ / laneCount);
+		if(workGroup)
+		{
+			RN_PROFILE_SCOPE_N("Wait for Light Clusters");
+			workGroup->Wait();
+			workGroup->Release();
 		}
 
 		// Build per-cluster counts and offsets
@@ -705,13 +735,13 @@ namespace RN
 			const uint8_t scount = _clusterSpotCountsScratch[i];
 			if(pcount)
 			{
-				const size_t src = static_cast<size_t>(i) * perClusterCapacity;
+				const size_t src = static_cast<size_t>(i) * pointClusterCapacity;
 				memcpy(_clusterLightIndices.data() + offset, _clusterPointScratch.data() + src, static_cast<size_t>(pcount) * sizeof(uint16_t));
 				offset += pcount;
 			}
 			if(scount)
 			{
-				const size_t src = static_cast<size_t>(i) * perClusterCapacity;
+				const size_t src = static_cast<size_t>(i) * spotClusterCapacity;
 				memcpy(_clusterLightIndices.data() + offset, _clusterSpotScratch.data() + src, static_cast<size_t>(scount) * sizeof(uint16_t));
 				offset += scount;
 			}
