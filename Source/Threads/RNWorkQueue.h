@@ -43,6 +43,8 @@ namespace RN
 		RNAPI static WorkQueue *GetCurrentWorkQueue();
 
 		RNAPI void Perform(Function &&function);
+		// Ensures that a concurrent queue has at least this many workers available for the submitted work.
+		RNAPI void Perform(Function &&function, size_t concurrencyHint);
 		RNAPI void PerformBarrier(Function &&function);
 		RNAPI void PerformSynchronous(Function &&function);
 		RNAPI void PerformSynchronousBarrier(Function &&function);
@@ -151,7 +153,7 @@ namespace RN
 		static void InitializeQueues();
 		static void TearDownQueues();
 
-		WorkSource *PerformWithFlags(Function &&function, WorkSource::Flags flags);
+		WorkSource *PerformWithFlags(Function &&function, WorkSource::Flags flags, size_t concurrencyHint = 0);
 
 		RNAPI void __Yield();
 
@@ -159,7 +161,7 @@ namespace RN
 		bool PerformWorkWithTimeout(uint32 timeout);
 		bool PerformWork();
 
-		void ReCalculateWidth();
+		void ReCalculateWidth(size_t concurrencyHint = 0);
 
 		String *_identifier;
 		Flags _flags;

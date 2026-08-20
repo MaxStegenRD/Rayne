@@ -179,7 +179,11 @@ namespace RN
 
 	void WorkQueue::Perform(Function &&function)
 	{
-		PerformWithFlags(std::move(function), 0);
+		Perform(std::move(function), 0);
+	}
+	void WorkQueue::Perform(Function &&function, size_t concurrencyHint)
+	{
+		PerformWithFlags(std::move(function), 0, concurrencyHint);
 	}
 	void WorkQueue::PerformBarrier(Function &&function)
 	{
@@ -215,7 +219,7 @@ namespace RN
 		source->Relinquish();
 	}
 
-	WorkSource *WorkQueue::PerformWithFlags(Function &&function, WorkSource::Flags flags)
+	WorkSource *WorkQueue::PerformWithFlags(Function &&function, WorkSource::Flags flags, size_t concurrencyHint)
 	{
 		WorkSource *source = WorkSource::DequeueWorkSource(std::move(function), flags);
 
@@ -237,7 +241,7 @@ namespace RN
 			}
 		}
 
-		ReCalculateWidth();
+		ReCalculateWidth(concurrencyHint);
 
 		// Assure wake up
 		if(_sleeping.load(std::memory_order_acquire) && _suspended.load(std::memory_order_acquire) == 0)
@@ -419,7 +423,7 @@ namespace RN
 		}
 	}
 
-	void WorkQueue::ReCalculateWidth()
+	void WorkQueue::ReCalculateWidth(size_t concurrencyHint)
 	{
 		if(_flags & kRNWorkQueueFlagMainThread)
 			return;
@@ -433,6 +437,8 @@ namespace RN
 
 			if(_open.load(std::memory_order_acquire) > 0)
 				width = std::max(width, static_cast<size_t>(1));
+
+			width = std::max(width, std::min(concurrencyHint, _concurrency));
 		}
 		else
 		{

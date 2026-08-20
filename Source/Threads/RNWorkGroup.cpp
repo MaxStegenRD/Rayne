@@ -27,6 +27,10 @@ namespace RN
 
 	void WorkGroup::Perform(WorkQueue *queue, Function &&function)
 	{
+		Perform(queue, std::move(function), 0);
+	}
+	void WorkGroup::Perform(WorkQueue *queue, Function &&function, size_t concurrencyHint)
+	{
 		Enter();
 
 		queue->Perform([this, f = std::move(function)]() mutable {
@@ -34,7 +38,7 @@ namespace RN
 			func();
 
 			Leave();
-		});
+		}, concurrencyHint);
 	}
 
 	void WorkGroup::Enter()
