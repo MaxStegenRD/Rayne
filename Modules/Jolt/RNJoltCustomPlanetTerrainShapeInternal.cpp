@@ -324,7 +324,7 @@ private:
 	static constexpr uint SampledGridVertexCacheSize = 8192;
 	static constexpr uint32 SampledGridVertexCacheMask = SampledGridVertexCacheSize - 1u;
 	static constexpr float MinimumTriangleNormalLengthSq = 1.0e-12f;
-	static constexpr float MinimumSolidRecoverySupportDepth = 0.05f;
+	static constexpr float MinimumSolidRecoverySupportDepth = 0.005f;
 	static constexpr float InactiveEdgeNormalRejectDotThreshold = 0.5f;
 	static constexpr float AboveSurfaceQueryMargin = 4.0f;
 
