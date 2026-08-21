@@ -119,7 +119,7 @@ namespace RN
 		float GetAngle() const { return _angle; }
 		float GetAngleCos() const { return _angleCos; }
 		float GetIntensity() const { return _intensity; }
-		Vector3 GetForward() const override;
+		RNAPI Vector3 GetForward() const override;
 		float GetTanHalfAngle() const { return _tanHalfAngle; }
 
 		ShadowParameter GetShadowParameters() const { return _shadowParameter; }
