@@ -574,8 +574,10 @@ namespace RN
 		for(auto result : results.mHits)
 		{
 			JoltContactInfo hit;
-			hit.distance = 0.0f;
+			JPH::Vec3 normal = -result.mPenetrationAxis.NormalizedOr(JPH::Vec3::sZero());
+			hit.distance = result.mPenetrationDepth;
 			hit.position = globalPosition;
+			hit.normal = JoltConversions::ToEngineVector(normal);
 			hit.node = nullptr;
 			hit.collisionObject = nullptr;
 

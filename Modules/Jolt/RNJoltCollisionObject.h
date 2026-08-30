@@ -32,7 +32,7 @@ namespace RN
 		Vector3 linearVelocity;
 		Vector3 otherLinearVelocity;
 		Vector3 relativeContactVelocity;
-		float distance = 0.0f;
+		float distance = 0.0f; // Ray/sweep distance, or penetration depth for overlap queries.
 		float contactPatchRadius = 0.0f;
 		uint64 subShapeUserData = 0;
 		uint32 compoundChildIndex = 0xffffffffU;
