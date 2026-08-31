@@ -24,8 +24,6 @@ namespace RN
 		enum class PendingAction
 		{
 			None,
-			Seek,
-			Asset,
 			Stop,
 			Pause,
 			Play
@@ -84,8 +82,8 @@ namespace RN
 
 	private:
 		void UpdateDistanceModel();
-		void SubmitPendingAction(PendingAction action);
-		void ProcessPendingActionsQueue();
+		static AudioAsset *GetNullAssetSentinel() { return reinterpret_cast<AudioAsset *>(static_cast<uintptr_t>(1)); }
+		void ConsumePendingState();
 		bool ProcessPendingActions();
 
 		bool _isRegisteredInWorld;
@@ -121,12 +119,13 @@ namespace RN
 		int32 _fadeSamples; // >0 fade-in, <0 fade-out, 0 none
 		uint32_t _controlBits;
 		PendingAction _finalAction;
+		double _nextSeekTime;
+		AudioAsset *_nextAsset;
 
 		//Used to sync between threads
 		std::atomic<double> _pendingSeekTime;
 		std::atomic<AudioAsset*> _pendingAsset;
-		std::vector<PendingAction> _pendingActionsBuffer[2];
-		std::atomic<std::vector<PendingAction>*> _pendingActionsWrite;
+		std::atomic<PendingAction> _pendingFinalAction;
 
 		// Cached on audio thread to use on other threads
 		std::atomic<bool> _cachedHasAsset;

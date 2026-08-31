@@ -129,11 +129,13 @@ namespace RN
 		_currentTime(0.0f),
 		_currentPitch(1.0f),
 		_fadeSamples(0),
-		_pendingSeekTime(0.0),
-		_pendingAsset(nullptr),
 		_controlBits(0),
 		_finalAction(PendingAction::None),
-		_pendingActionsWrite(&_pendingActionsBuffer[0]),
+		_nextSeekTime(0.0),
+		_nextAsset(nullptr),
+		_pendingSeekTime(-1.0),
+		_pendingAsset(nullptr),
+		_pendingFinalAction(PendingAction::None),
 		_cachedHasAsset(asset != nullptr),
 		_cachedTotalTime(asset ? _sampler->GetTotalTime() : 0.0),
 		_cachedIsPlaying(false),
@@ -158,7 +160,8 @@ namespace RN
 	ResonanceAudioSource::~ResonanceAudioSource()
 	{
 		AudioAsset *pendingAsset = _pendingAsset.exchange(nullptr, std::memory_order_acq_rel);
-		SafeRelease(pendingAsset);
+		if(pendingAsset != GetNullAssetSentinel()) SafeRelease(pendingAsset);
+		SafeRelease(_nextAsset);
 		if(_isRegisteredInWorld)
 		{
 			ResonanceAudioWorld::_instance->RemoveAudioSource(this);
@@ -170,11 +173,9 @@ namespace RN
 
 	void ResonanceAudioSource::SetAudioAsset(AudioAsset *asset)
 	{
-		AudioAsset* retained = asset ? SafeRetain(asset) : nullptr;
+		AudioAsset* retained = asset ? SafeRetain(asset) : GetNullAssetSentinel();
 		AudioAsset* old = _pendingAsset.exchange(retained, std::memory_order_acq_rel);
-		SafeRelease(old);
-
-		SubmitPendingAction(PendingAction::Asset);
+		if(old != GetNullAssetSentinel()) SafeRelease(old);
 	}
 
 	void ResonanceAudioSource::SetRepeat(bool repeat)
@@ -245,23 +246,23 @@ namespace RN
 
 	void ResonanceAudioSource::Play()
 	{
-		SubmitPendingAction(PendingAction::Play);
+		_pendingFinalAction.store(PendingAction::Play, std::memory_order_release);
 	}
 
 	void ResonanceAudioSource::Stop()
 	{
-		SubmitPendingAction(PendingAction::Stop);
+		_pendingSeekTime.store(0.0, std::memory_order_release);
+		_pendingFinalAction.store(PendingAction::Stop, std::memory_order_release);
 	}
 
 	void ResonanceAudioSource::Pause()
 	{
-		SubmitPendingAction(PendingAction::Pause);
+		_pendingFinalAction.store(PendingAction::Pause, std::memory_order_release);
 	}
 
 	void ResonanceAudioSource::Seek(double time)
 	{
-		_pendingSeekTime.store(time, std::memory_order_relaxed);
-		SubmitPendingAction(PendingAction::Seek);
+		_pendingSeekTime.store(std::max(time, 0.0), std::memory_order_release);
 	}
 
 	bool ResonanceAudioSource::HasEnded() const
@@ -276,7 +277,7 @@ namespace RN
 
 	bool ResonanceAudioSource::Update(double frameLength, uint32 sampleCount, float **outputBuffer, uint8 channelCount)
 	{
-		ProcessPendingActionsQueue(); //Only needs to happen once per frame
+		ConsumePendingState(); //Only needs to happen once per frame
 		ProcessPendingActions(); //Needs to happen once per sample, but also here to actually be able to change assets while playing
 
 		AudioAsset *asset = _sampler->GetAsset();
@@ -387,7 +388,7 @@ namespace RN
 	{
 		if(!_isPlaying)
 		{
-			ProcessPendingActionsQueue();
+			ConsumePendingState();
 			ProcessPendingActions();
 		}
 		
@@ -450,88 +451,50 @@ namespace RN
 		}
 	}
 
-	void ResonanceAudioSource::SubmitPendingAction(PendingAction action)
+	void ResonanceAudioSource::ConsumePendingState()
 	{
-		std::vector<PendingAction> *writeBuffer = _pendingActionsWrite.load(std::memory_order_acquire);
-		if(writeBuffer) writeBuffer->push_back(action);
-	}
+		// Acquire the action first so preceding asset and seek updates from the
+		// same producer are consumed with it.
+		PendingAction finalAction = _pendingFinalAction.exchange(PendingAction::None, std::memory_order_acq_rel);
 
-	void ResonanceAudioSource::ProcessPendingActionsQueue()
-	{
-		// Swap write buffer pointer to get current buffer for processing
-		std::vector<PendingAction> *writeBuffer = _pendingActionsWrite.load(std::memory_order_acquire);
-		if(!writeBuffer) return;
-		
-		std::vector<PendingAction> *readBuffer = _pendingActionsWrite.exchange(
-			writeBuffer == &_pendingActionsBuffer[0] ? &_pendingActionsBuffer[1] : &_pendingActionsBuffer[0],
-			std::memory_order_acq_rel);
-		if(!readBuffer) return;
-		
-		// Process each action and set control bits/final action based on current state
-		if(!readBuffer->empty())
+		double pendingSeekTime = _pendingSeekTime.exchange(-1.0, std::memory_order_acq_rel);
+		if(pendingSeekTime >= 0.0)
 		{
-			for(PendingAction action : *readBuffer)
-			{
-				switch(action)
+			_nextSeekTime = pendingSeekTime;
+			_controlBits |= static_cast<uint32_t>(ControlBits::kWantSeek);
+			if(_isPlaying) _controlBits |= static_cast<uint32_t>(ControlBits::kWantFadeOut) | static_cast<uint32_t>(ControlBits::kWantFadeIn);
+		}
+
+		AudioAsset *pendingAsset = _pendingAsset.exchange(nullptr, std::memory_order_acq_rel);
+		if(pendingAsset)
+		{
+			AudioAsset *nextAsset = pendingAsset == GetNullAssetSentinel() ? nullptr : pendingAsset;
+			SafeRelease(_nextAsset);
+			_nextAsset = nextAsset;
+			_controlBits |= static_cast<uint32_t>(ControlBits::kWantAssetChange);
+			if(_isPlaying && _sampler->GetAsset() != nextAsset)
+				_controlBits |= static_cast<uint32_t>(ControlBits::kWantFadeOut) | static_cast<uint32_t>(ControlBits::kWantFadeIn);
+		}
+
+		switch(finalAction)
+		{
+			case PendingAction::Stop:
+			case PendingAction::Pause:
+				if(_isPlaying)
 				{
-					case PendingAction::Seek:
-					{
-						_controlBits |= static_cast<uint32_t>(ControlBits::kWantSeek);
-						if(_isPlaying) _controlBits |= static_cast<uint32_t>(ControlBits::kWantFadeOut) | static_cast<uint32_t>(ControlBits::kWantFadeIn);
-						break;
-					}
-
-					case PendingAction::Asset:
-					{
-						// Asset swap while playing should be guarded by fades
-						_controlBits |= static_cast<uint32_t>(ControlBits::kWantAssetChange);
-						if(_isPlaying && _sampler->GetAsset() != _pendingAsset.load(std::memory_order_relaxed)) _controlBits |= static_cast<uint32_t>(ControlBits::kWantFadeOut) | static_cast<uint32_t>(ControlBits::kWantFadeIn);
-						break;
-					}
-
-					case PendingAction::Stop:
-					{
-						if(_currentTime > 0.0)
-						{
-							_pendingSeekTime.store(0.0, std::memory_order_relaxed);
-							_controlBits |= static_cast<uint32_t>(ControlBits::kWantSeek);
-						}
-						
-						if(_isPlaying)
-						{
-							_finalAction = action;
-							_controlBits |= static_cast<uint32_t>(ControlBits::kWantFadeOut);
-						}
-
-						_controlBits &= ~static_cast<uint32_t>(ControlBits::kWantFadeIn);
-						break;
-					}
-
-					case PendingAction::Pause:
-					{
-						if(_isPlaying)
-						{
-							_finalAction = action;
-							_controlBits |= static_cast<uint32_t>(ControlBits::kWantFadeOut);
-						}
-						_controlBits &= ~static_cast<uint32_t>(ControlBits::kWantFadeIn);
-						break;
-					}
-
-					case PendingAction::Play:
-					{
-						_finalAction = action;
-						_controlBits |= static_cast<uint32_t>(ControlBits::kWantFadeIn);
-						break;
-					}
-
-					default:
-						break;
+					_finalAction = finalAction;
+					_controlBits |= static_cast<uint32_t>(ControlBits::kWantFadeOut);
 				}
-			}
-			
-			// Clear the read buffer for next time
-			readBuffer->clear();
+				_controlBits &= ~static_cast<uint32_t>(ControlBits::kWantFadeIn);
+				break;
+
+			case PendingAction::Play:
+				_finalAction = finalAction;
+				_controlBits |= static_cast<uint32_t>(ControlBits::kWantFadeIn);
+				break;
+
+			default:
+				break;
 		}
 	}
 
@@ -549,7 +512,8 @@ namespace RN
 
 		if(_controlBits & static_cast<uint32_t>(ControlBits::kWantAssetChange))
 		{
-			AudioAsset *pendingAsset = _pendingAsset.exchange(nullptr, std::memory_order_acq_rel);
+			AudioAsset *pendingAsset = _nextAsset;
+			_nextAsset = nullptr;
 			if(pendingAsset != _sampler->GetAsset())
 			{
 				_sampler->SetAudioAsset(pendingAsset);
@@ -571,9 +535,9 @@ namespace RN
 			_controlBits &= ~static_cast<uint32_t>(ControlBits::kWantAssetChange);
 		}
 
-		if(_controlBits & static_cast<uint32_t>(ControlBits::kWantSeek) && !isSeeking)
+		if(_controlBits & static_cast<uint32_t>(ControlBits::kWantSeek))
 		{
-			_currentTime = _pendingSeekTime.load(std::memory_order_relaxed);
+			_currentTime = _nextSeekTime;
 			_cachedCurrentTime.store(_currentTime, std::memory_order_relaxed);
 			isSeeking = true;
 			_controlBits &= ~static_cast<uint32_t>(ControlBits::kWantSeek);
