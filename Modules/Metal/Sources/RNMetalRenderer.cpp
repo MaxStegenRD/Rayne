@@ -1158,10 +1158,13 @@ namespace RN
 			}
 		};
 
-		auto appendPreparedDrawItem = [](MetalPreparedRenderPass &preparedPass, const RenderFrame::DrawItem &drawItem, const MetalDrawable::RenderResources &renderResources, RenderFrame::CameraStatistics &statistics) {
+		auto appendPreparedDrawItem = [](MetalPreparedRenderPass &preparedPass, const RenderFrame::DrawItem &drawItem, MetalDrawable::RenderResources &renderResources, RenderFrame::CameraStatistics &statistics) {
 			MetalPreparedDrawItem preparedDrawItem;
 			preparedDrawItem.drawItem = &drawItem;
 			preparedDrawItem.renderResources = &renderResources;
+			preparedDrawItem.instancingSortKey.submissionIndex = preparedPass.drawItems.size();
+			preparedDrawItem.instancingSortKey.renderPriority = drawItem.GetRenderPriority();
+			preparedDrawItem.PrepareInstancing();
 			preparedPass.drawItems.push_back(preparedDrawItem);
 
 			statistics.numberOfDrawables += 1;
@@ -1228,9 +1231,6 @@ namespace RN
 
 			preparedPass.drawItems.reserve(drawItemIndices.size());
 
-			const RenderFrame::DrawItem *currentInstanceDrawItem = nullptr;
-			const MetalRenderingState *currentPipelineState = nullptr;
-			const MetalDrawable::RenderResources *currentInstanceRenderResources = nullptr;
 			RenderFrame::CameraStatistics &statistics = submission.renderFrame.GetCameraStatistics(renderPass.frameStatisticsIndex);
 
 			for(size_t drawItemIndex : drawItemIndices)
@@ -1252,52 +1252,27 @@ namespace RN
 					drawable->UpdateRenderingState(renderResources, this, state, pipelineKey);
 				}
 
-				Shader *vertexShader = renderResources.pipelineState->vertexShader;
-				Shader *fragmentShader = renderResources.pipelineState->fragmentShader;
-				bool canUseInstancing = vertexShader && fragmentShader && vertexShader->GetHasInstancing() && fragmentShader->GetHasInstancing();
-				const RenderFrame::DrawItem *instanceDrawItem = currentInstanceDrawItem;
-				const MetalDrawable::RenderResources *instanceRenderResources = currentInstanceRenderResources;
+				appendPreparedDrawItem(preparedPass, drawItem, renderResources, statistics);
+			}
 
-				if(canUseInstancing && instanceRenderResources)
-				{
-					if(renderResources.vertexShaderUniformBuffers.size() != instanceRenderResources->vertexShaderUniformBuffers.size() || renderResources.fragmentShaderUniformBuffers.size() != instanceRenderResources->fragmentShaderUniformBuffers.size())
-					{
-						canUseInstancing = false;
-					}
-					else
-					{
-						for(int i = 0; i < renderResources.vertexShaderUniformBuffers.size() && canUseInstancing; i++)
-						{
-							if(renderResources.vertexShaderUniformBuffers[i]->uniformBuffer != instanceRenderResources->vertexShaderUniformBuffers[i]->uniformBuffer)
-							{
-								canUseInstancing = false;
-							}
-						}
+			if(framePass.GetCameraSnapshot().GetSortInstancable())
+			{
+				std::sort(preparedPass.drawItems.begin(), preparedPass.drawItems.end(), [](const MetalPreparedDrawItem &a, const MetalPreparedDrawItem &b) { return a.instancingSortKey < b.instancingSortKey; });
+			}
 
-						for(int i = 0; i < renderResources.fragmentShaderUniformBuffers.size() && canUseInstancing; i++)
-						{
-							if(renderResources.fragmentShaderUniformBuffers[i]->uniformBuffer != instanceRenderResources->fragmentShaderUniformBuffers[i]->uniformBuffer)
-							{
-								canUseInstancing = false;
-							}
-						}
-					}
-				}
-
-				if(canUseInstancing && currentPipelineState == renderResources.pipelineState && instanceRenderResources && drawItem.CanInstanceWith(*instanceDrawItem) && renderResources.mergedMaterialSnapshot.IsTextureSetEqual(instanceRenderResources->mergedMaterialSnapshot))
+			const MetalPreparedDrawItem *currentInstanceDrawItem = nullptr;
+			for(const MetalPreparedDrawItem &preparedDrawItem : preparedPass.drawItems)
+			{
+				const bool isCompatible = currentInstanceDrawItem && preparedDrawItem.instancingSortKey.CanInstanceWith(currentInstanceDrawItem->instancingSortKey);
+				if(isCompatible)
 				{
 					preparedPass.instanceSteps.back() += 1;
-				}
-				else
-				{
-					currentPipelineState = renderResources.pipelineState;
-					currentInstanceRenderResources = &renderResources;
-					currentInstanceDrawItem = &drawItem;
-					preparedPass.instanceSteps.push_back(1);
-					statistics.numberOfDrawCalls += 1;
+					continue;
 				}
 
-				appendPreparedDrawItem(preparedPass, drawItem, renderResources, statistics);
+				currentInstanceDrawItem = &preparedDrawItem;
+				preparedPass.instanceSteps.push_back(1);
+				statistics.numberOfDrawCalls += 1;
 			}
 		};
 
@@ -1315,9 +1290,9 @@ namespace RN
 		SubmitDrawable(GetActiveFrameSubmission(), drawable, node);
 	}
 
-	void MetalRenderer::SubmitDrawable(Drawable *drawable, const Matrix &modelMatrix, const Matrix &inverseModelMatrix, uint16 renderGroup, uint64 sourceNodeUID)
+	void MetalRenderer::SubmitDrawable(Drawable *drawable, const Matrix &modelMatrix, const Matrix &inverseModelMatrix, uint16 renderGroup, uint64 sourceNodeUID, int32 renderPriority)
 	{
-		SubmitDrawable(GetActiveFrameSubmission(), drawable, modelMatrix, inverseModelMatrix, renderGroup, sourceNodeUID);
+		SubmitDrawable(GetActiveFrameSubmission(), drawable, modelMatrix, inverseModelMatrix, renderGroup, sourceNodeUID, renderPriority);
 	}
 
 	void MetalRenderer::SubmitDrawable(MetalFrameSubmission &frameSubmission, Drawable *sourceDrawable, const SceneNode *node)
@@ -1344,7 +1319,7 @@ namespace RN
 		}
 	}
 
-	void MetalRenderer::SubmitDrawable(MetalFrameSubmission &frameSubmission, Drawable *sourceDrawable, const Matrix &modelMatrix, const Matrix &inverseModelMatrix, uint16 renderGroup, uint64 sourceNodeUID)
+	void MetalRenderer::SubmitDrawable(MetalFrameSubmission &frameSubmission, Drawable *sourceDrawable, const Matrix &modelMatrix, const Matrix &inverseModelMatrix, uint16 renderGroup, uint64 sourceNodeUID, int32 renderPriority)
 	{
 		RN_PROFILE_SCOPE();
 		MetalDrawable *drawable = static_cast<MetalDrawable *>(sourceDrawable);
@@ -1362,7 +1337,7 @@ namespace RN
 			if((renderGroup & passDrawSnapshot.GetRenderGroupMask()) == 0) continue;
 
 			if(drawItemIndex == RenderFrame::InvalidDrawItemIndex)
-				drawItemIndex = frameSubmission.renderFrame.AddDrawItem(drawable, modelMatrix, inverseModelMatrix, sourceNodeUID);
+				drawItemIndex = frameSubmission.renderFrame.AddDrawItem(drawable, modelMatrix, inverseModelMatrix, sourceNodeUID, renderPriority);
 			framePass.AddDrawItemIndex(drawItemIndex);
 		}
 	}

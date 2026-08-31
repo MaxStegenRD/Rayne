@@ -10,6 +10,7 @@
 #define __RAYNE_VULKANINTERNALS_H__
 
 #include "RNVulkan.h"
+#include "RNVulkanDynamicGPUBuffer.h"
 #include "RNVulkanStateCoordinator.h"
 #include "RNVulkanRenderer.h"
 #include "RNVulkanSwapChain.h"
@@ -141,6 +142,8 @@ namespace RN
 			VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
 			Drawable::PipelineKey pipelineKey;
 			Drawable::MergedMaterialSnapshot mergedMaterialSnapshot;
+			Drawable::InstancingHashCache instancingHashCache;
+			size_t maxInstanceCount = 1;
 		};
 
 		~VulkanDrawable()
@@ -177,6 +180,12 @@ namespace RN
 		{
 			resources.pipelineState = pipelineState;
 			resources.pipelineKey = pipelineKey;
+			resources.instancingHashCache.Invalidate();
+			Shader *vertexShader = pipelineState->descriptor.vertexShader;
+			Shader *fragmentShader = pipelineState->descriptor.fragmentShader;
+			resources.maxInstanceCount = (!vertexShader || vertexShader->GetHasInstancing()) && (!fragmentShader || fragmentShader->GetHasInstancing()) ?
+				(vertexShader ? vertexShader->GetMaxInstanceCount() : static_cast<size_t>(-1)) : 1;
+			if(fragmentShader) resources.maxInstanceCount = std::min(resources.maxInstanceCount, fragmentShader->GetMaxInstanceCount());
 			VulkanUniformState *oldUniformState = resources.uniformState;
 			if(oldUniformState)
 			{
@@ -237,7 +246,40 @@ namespace RN
 	struct VulkanPreparedDrawItem
 	{
 		const RenderFrame::DrawItem *drawItem = nullptr;
-		const VulkanDrawable::RenderResources *renderResources = nullptr;
+		VulkanDrawable::RenderResources *renderResources = nullptr;
+		RenderFrame::InstancingSortKey instancingSortKey;
+
+		void PrepareInstancing()
+		{
+			instancingSortKey.isSupported = renderResources->maxInstanceCount > 1 && !drawItem->HasIndirectDraw();
+			if(!instancingSortKey.isSupported) return;
+
+			const size_t meshHash = drawItem->GetMeshInstancingHash();
+			const size_t textureSetHash = renderResources->mergedMaterialSnapshot.GetTextureSetHash();
+			if(renderResources->instancingHashCache.TryGet(meshHash, textureSetHash, instancingSortKey.hash)) return;
+
+			instancingSortKey.hash = meshHash;
+			HashCombine(instancingSortKey.hash, renderResources->pipelineState);
+			HashCombine(instancingSortKey.hash, textureSetHash);
+
+			const std::vector<VulkanDynamicBufferReference *> &vertexBuffers = renderResources->uniformState->vertexConstantBuffers;
+			const std::vector<VulkanDynamicBufferReference *> &fragmentBuffers = renderResources->uniformState->fragmentConstantBuffers;
+			bool hasBackingBuffers = true;
+			HashCombine(instancingSortKey.hash, vertexBuffers.size());
+			for(VulkanDynamicBufferReference *buffer : vertexBuffers)
+			{
+				HashCombine(instancingSortKey.hash, buffer->dynamicBuffer);
+				hasBackingBuffers &= buffer->dynamicBuffer != nullptr;
+			}
+			HashCombine(instancingSortKey.hash, fragmentBuffers.size());
+			for(VulkanDynamicBufferReference *buffer : fragmentBuffers)
+			{
+				HashCombine(instancingSortKey.hash, buffer->dynamicBuffer);
+				hasBackingBuffers &= buffer->dynamicBuffer != nullptr;
+			}
+
+			if(hasBackingBuffers) renderResources->instancingHashCache.Store(meshHash, textureSetHash, instancingSortKey.hash);
+		}
 	};
 
 	struct VulkanPreparedRenderPass

@@ -73,14 +73,44 @@ namespace RN
 			bool operator!=(const PipelineKey &other) const { return !(*this == other); }
 		};
 
+		struct InstancingHashCache
+		{
+			bool TryGet(size_t meshHash, size_t textureSetHash, size_t &hash)
+			{
+				if(!_isValid || _meshHash != meshHash || _textureSetHash != textureSetHash)
+				{
+					_isValid = false;
+					return false;
+				}
+
+				hash = _hash;
+				return true;
+			}
+
+			void Store(size_t meshHash, size_t textureSetHash, size_t hash)
+			{
+				_meshHash = meshHash;
+				_textureSetHash = textureSetHash;
+				_hash = hash;
+				_isValid = true;
+			}
+
+			void Invalidate() { _isValid = false; }
+
+		private:
+			size_t _meshHash = 0;
+			size_t _textureSetHash = 0;
+			size_t _hash = 0;
+			bool _isValid = false;
+		};
+
 		struct MergedMaterialSnapshot
 		{
 			RNAPI void Update(const Material::DrawSnapshot &material, uint64 materialSnapshotVersion, Shader::UsageHint shaderHint, const Material::DrawSnapshot *overrideMaterialSnapshot, uint64 overrideMaterialSnapshotIdentity, uint64 overrideMaterialSnapshotVersion);
-			RNAPI bool IsTextureSetEqual(const MergedMaterialSnapshot &other) const;
-			RNAPI bool IsTextureSetEqualLite(const MergedMaterialSnapshot &other) const;
 			Shader *GetVertexShader() const { return _vertexShader; }
 			Shader *GetFragmentShader() const { return _fragmentShader; }
 			const Array *GetTextures() const { return _textures; }
+			size_t GetTextureSetHash() const { return _textureSetHash; }
 			const Material::Properties &GetProperties() const { return _properties; }
 			const Material::PipelineProperties &GetPipelineProperties() const { return _pipelineProperties; }
 
@@ -93,6 +123,7 @@ namespace RN
 			Shader *_vertexShader = nullptr;
 			Shader *_fragmentShader = nullptr;
 			const Array *_textures = nullptr;
+			size_t _textureSetHash = 0;
 			Material::Properties _properties;
 			Material::PipelineProperties _pipelineProperties;
 		};

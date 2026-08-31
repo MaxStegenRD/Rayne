@@ -45,6 +45,24 @@ namespace RN
 			uint64 numberOfIndices = 0;
 		};
 
+		struct InstancingSortKey
+		{
+			bool CanInstanceWith(const InstancingSortKey &other) const { return isSupported && other.isSupported && hash == other.hash; }
+			bool operator<(const InstancingSortKey &other) const
+			{
+				if(renderPriority != other.renderPriority) return renderPriority < other.renderPriority;
+				if(renderPriority >= SceneNode::RenderSky) return submissionIndex < other.submissionIndex;
+				if(isSupported != other.isSupported) return isSupported;
+				if(!isSupported || hash == other.hash) return submissionIndex < other.submissionIndex;
+				return hash < other.hash;
+			}
+
+			size_t hash = 0;
+			size_t submissionIndex = 0;
+			int32 renderPriority = SceneNode::RenderNormal;
+			bool isSupported = false;
+		};
+
 		class CameraSnapshot
 		{
 		public:
@@ -54,13 +72,15 @@ namespace RN
 			CameraSnapshot() :
 				_renderOrigin(),
 				_sourceCameraUID(InvalidSourceCameraUID),
+				_sortInstancable(false),
 				_tag(0)
 			{}
 
 		private:
-			CameraSnapshot(const PositionType &renderOrigin, uint64 sourceCameraUID, const Matrix &viewMatrix, const Matrix &inverseViewMatrix, const Matrix &projectionMatrix, const Matrix &inverseProjectionMatrix, const Matrix &projectionViewMatrix, const Matrix &inverseProjectionViewMatrix, const Vector4 *frustumPlanes, const Color &ambientColor, const Vector4 &customData, const Color &fogColor0, const Color &fogColor1, const Vector2 &clipDistance, const Vector2 &fogDistance, int32 tag, const Rect &frame) :
+			CameraSnapshot(const PositionType &renderOrigin, uint64 sourceCameraUID, bool sortInstancable, const Matrix &viewMatrix, const Matrix &inverseViewMatrix, const Matrix &projectionMatrix, const Matrix &inverseProjectionMatrix, const Matrix &projectionViewMatrix, const Matrix &inverseProjectionViewMatrix, const Vector4 *frustumPlanes, const Color &ambientColor, const Vector4 &customData, const Color &fogColor0, const Color &fogColor1, const Vector2 &clipDistance, const Vector2 &fogDistance, int32 tag, const Rect &frame) :
 				_renderOrigin(renderOrigin),
 				_sourceCameraUID(sourceCameraUID),
+				_sortInstancable(sortInstancable),
 				_viewMatrix(viewMatrix),
 				_inverseViewMatrix(inverseViewMatrix),
 				_projectionMatrix(projectionMatrix),
@@ -98,6 +118,7 @@ namespace RN
 			Vector3 GetViewPosition() const { return Vector3(_inverseViewMatrix.m[12], _inverseViewMatrix.m[13], _inverseViewMatrix.m[14]); }
 			const PositionType &GetRenderOrigin() const { return _renderOrigin; }
 			uint64 GetSourceCameraUID() const { return _sourceCameraUID; }
+			bool GetSortInstancable() const { return _sortInstancable; }
 			const Matrix &GetViewMatrix() const { return _viewMatrix; }
 			const Matrix &GetInverseViewMatrix() const { return _inverseViewMatrix; }
 			const Matrix &GetProjectionMatrix() const { return _projectionMatrix; }
@@ -122,11 +143,12 @@ namespace RN
 				Matrix inverseProjectionMatrix = projectionMatrix.GetInverse();
 				Vector4 frustumPlanes[FrustumPlaneCount];
 				camera->GetFrustumPlanes(frustumPlanes);
-				return CameraSnapshot(camera->GetRenderOrigin(), camera->GetUID(), viewMatrix, inverseViewMatrix, projectionMatrix, inverseProjectionMatrix, projectionMatrix * viewMatrix, inverseViewMatrix * inverseProjectionMatrix, frustumPlanes, camera->GetAmbientColor(), camera->GetCustomData(), camera->GetFogColor0(), camera->GetFogColor1(), Vector2(camera->GetClipNear(), camera->GetClipFar()), Vector2(camera->GetFogNear(), camera->GetFogFar()), camera->GetTag(), frame);
+				return CameraSnapshot(camera->GetRenderOrigin(), camera->GetUID(), static_cast<bool>(camera->GetFlags() & Camera::Flags::SortInstancable), viewMatrix, inverseViewMatrix, projectionMatrix, inverseProjectionMatrix, projectionMatrix * viewMatrix, inverseViewMatrix * inverseProjectionMatrix, frustumPlanes, camera->GetAmbientColor(), camera->GetCustomData(), camera->GetFogColor0(), camera->GetFogColor1(), Vector2(camera->GetClipNear(), camera->GetClipFar()), Vector2(camera->GetFogNear(), camera->GetFogFar()), camera->GetTag(), frame);
 			}
 
 			PositionType _renderOrigin;
 			uint64 _sourceCameraUID;
+			bool _sortInstancable;
 			Matrix _viewMatrix;
 			Matrix _inverseViewMatrix;
 			Matrix _projectionMatrix;
@@ -196,15 +218,23 @@ namespace RN
 		class DrawItem
 		{
 		public:
-			DrawItem(Drawable *sourceDrawable, const Drawable::DrawSnapshotBundle &drawSnapshot, const Matrix &modelMatrix, const Matrix &inverseModelMatrix, uint64 sourceNodeUID) :
+			DrawItem(Drawable *sourceDrawable, const Drawable::DrawSnapshotBundle &drawSnapshot, const Matrix &modelMatrix, const Matrix &inverseModelMatrix, uint64 sourceNodeUID, int32 renderPriority) :
 				_sourceDrawable(sourceDrawable),
 				_drawSnapshot(drawSnapshot),
 				_modelMatrix(modelMatrix),
 				_inverseModelMatrix(inverseModelMatrix),
-				_sourceNodeUID(sourceNodeUID)
+				_sourceNodeUID(sourceNodeUID),
+				_renderPriority(renderPriority),
+				_meshInstancingHash(0)
 			{
 				sourceDrawable->GetMeshBufferSnapshot(_meshBuffers);
 				_indirectDrawSnapshot = sourceDrawable->GetIndirectDrawSnapshot();
+				HashCombine(_meshInstancingHash, GetMesh().GetVerticesCount());
+				HashCombine(_meshInstancingHash, GetMesh().GetIndicesCount());
+				HashCombine(_meshInstancingHash, GetMesh().GetPipelineHash());
+				HashCombine(_meshInstancingHash, static_cast<uint32>(GetMesh().GetIndexType()));
+				HashCombine(_meshInstancingHash, _meshBuffers.GetVertexBuffer());
+				HashCombine(_meshInstancingHash, _meshBuffers.GetIndicesBuffer());
 			}
 
 			Drawable *GetSourceDrawableForPreparation() const { return _sourceDrawable; }
@@ -215,10 +245,11 @@ namespace RN
 			const Matrix &GetModelMatrix() const { return _modelMatrix; }
 			const Matrix &GetInverseModelMatrix() const { return _inverseModelMatrix; }
 			uint64 GetSourceNodeUID() const { return _sourceNodeUID; }
+			int32 GetRenderPriority() const { return _renderPriority; }
+			size_t GetMeshInstancingHash() const { return _meshInstancingHash; }
 			uint64 GetMaterialSnapshotVersion() const { return _drawSnapshot.GetMaterialSnapshotVersion(); }
 			const Drawable::IndirectDrawSnapshot &GetIndirectDrawSnapshot() const { return _indirectDrawSnapshot; }
 			bool HasIndirectDraw() const { return _indirectDrawSnapshot.IsValid(); }
-			bool CanInstanceWith(const DrawItem &other) const { return !HasIndirectDraw() && !other.HasIndirectDraw() && GetMesh().CanInstanceWith(other.GetMesh()) && _meshBuffers.CanInstanceWith(other._meshBuffers); }
 
 		private:
 			Drawable *_sourceDrawable;
@@ -228,6 +259,8 @@ namespace RN
 			Matrix _modelMatrix;
 			Matrix _inverseModelMatrix;
 			uint64 _sourceNodeUID;
+			int32 _renderPriority;
+			size_t _meshInstancingHash;
 		};
 
 		class Pass
@@ -536,10 +569,10 @@ namespace RN
 			const PositionType &renderOrigin = pass.GetCameraSnapshot().GetRenderOrigin();
 			const Matrix modelMatrix = node ? node->GetWorldTransform(renderOrigin) : Matrix();
 			const Matrix inverseModelMatrix = node ? node->GetInverseWorldTransform(renderOrigin) : Matrix();
-			return AddDrawItem(sourceDrawable, modelMatrix, inverseModelMatrix, node ? node->GetUID() : InvalidSourceNodeUID);
+			return AddDrawItem(sourceDrawable, modelMatrix, inverseModelMatrix, node ? node->GetUID() : InvalidSourceNodeUID, node ? node->GetRenderPriority() : SceneNode::RenderNormal);
 		}
 
-		size_t AddDrawItem(Drawable *sourceDrawable, const Matrix &modelMatrix, const Matrix &inverseModelMatrix, uint64 sourceNodeUID = InvalidSourceNodeUID)
+		size_t AddDrawItem(Drawable *sourceDrawable, const Matrix &modelMatrix, const Matrix &inverseModelMatrix, uint64 sourceNodeUID = InvalidSourceNodeUID, int32 renderPriority = SceneNode::RenderNormal)
 		{
 			if(_drawItems.size() == _drawItems.capacity())
 			{
@@ -548,7 +581,7 @@ namespace RN
 			}
 
 			Drawable::DrawSnapshotBundle drawSnapshot = sourceDrawable->GetDrawSnapshotBundleForFrame(_frameID);
-			_drawItems.emplace_back(sourceDrawable, drawSnapshot, modelMatrix, inverseModelMatrix, sourceNodeUID);
+			_drawItems.emplace_back(sourceDrawable, drawSnapshot, modelMatrix, inverseModelMatrix, sourceNodeUID, renderPriority);
 			return _drawItems.size() - 1;
 		}
 

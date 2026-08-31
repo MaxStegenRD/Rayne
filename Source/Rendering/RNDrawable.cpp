@@ -42,25 +42,17 @@ namespace RN
 		_fragmentShader = material.GetSelectedFragmentShader(hint, overrideMaterialSnapshot);
 		const Array *overrideTextures = overrideMaterialSnapshot ? overrideMaterialSnapshot->GetTextures() : nullptr;
 		_textures = (overrideTextures && overrideTextures->GetCount() > 0) ? overrideTextures : material.GetTextures();
+		const size_t textureCount = _textures ? _textures->GetCount() : 0;
+		_textureSetHash = 0;
+		HashCombine(_textureSetHash, _textures != nullptr);
+		HashCombine(_textureSetHash, textureCount);
+		for(size_t i = 0; i < textureCount; i += 1)
+		{
+			HashCombine(_textureSetHash, _textures->GetObjectAtIndex(i));
+		}
 		material.GetMergedProperties(overrideMaterialSnapshot, _properties);
 		material.GetMergedPipelineProperties(overrideMaterialSnapshot, _pipelineProperties);
 		_isValid = true;
-	}
-
-	bool Drawable::MergedMaterialSnapshot::IsTextureSetEqual(const MergedMaterialSnapshot &other) const
-	{
-		if(_textures == other._textures) return true;
-		if(!_textures || !other._textures) return false;
-
-		return _textures->IsEqual(other._textures);
-	}
-
-	bool Drawable::MergedMaterialSnapshot::IsTextureSetEqualLite(const MergedMaterialSnapshot &other) const
-	{
-		if(_textures == other._textures) return true;
-		if(!_textures || !other._textures) return false;
-
-		return _textures->IsEqualLite(other._textures);
 	}
 
 	void Drawable::SetSources(Mesh *mesh, Material *material, Skeleton *skeleton)

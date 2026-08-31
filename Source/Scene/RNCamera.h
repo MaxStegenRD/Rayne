@@ -33,6 +33,7 @@ namespace RN
 				   NoRender = (1 << 7),
 				   NoDepthWrite = (1 << 8),
 				   NoOcclusionCulling = (1 << 9),
+				   SortInstancable = (1 << 10),
 
 				   InheritPosition = (1 << 12),
 				   InheritFrame = (1 << 13),

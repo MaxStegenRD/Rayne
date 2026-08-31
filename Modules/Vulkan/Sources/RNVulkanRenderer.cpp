@@ -1908,10 +1908,13 @@ namespace RN
 			}
 		};
 
-		auto appendPreparedDrawItem = [](VulkanPreparedRenderPass &preparedPass, const RenderFrame::DrawItem &drawItem, const VulkanDrawable::RenderResources &renderResources, RenderFrame::CameraStatistics &statistics) {
+		auto appendPreparedDrawItem = [](VulkanPreparedRenderPass &preparedPass, const RenderFrame::DrawItem &drawItem, VulkanDrawable::RenderResources &renderResources, RenderFrame::CameraStatistics &statistics) {
 			VulkanPreparedDrawItem preparedDrawItem;
 			preparedDrawItem.drawItem = &drawItem;
 			preparedDrawItem.renderResources = &renderResources;
+			preparedDrawItem.instancingSortKey.submissionIndex = preparedPass.drawItems.size();
+			preparedDrawItem.instancingSortKey.renderPriority = drawItem.GetRenderPriority();
+			preparedDrawItem.PrepareInstancing();
 			preparedPass.drawItems.push_back(preparedDrawItem);
 
 			statistics.numberOfDrawables += 1;
@@ -1985,9 +1988,6 @@ namespace RN
 
 			preparedPass.drawItems.reserve(drawItemIndices.size());
 
-			const RenderFrame::DrawItem *currentInstanceDrawItem = nullptr;
-			const VulkanPipelineState *currentPipelineState = nullptr;
-			VulkanDrawable::RenderResources *currentInstanceRenderResources = nullptr;
 			RenderFrame::CameraStatistics &statistics = submission.renderFrame.GetCameraStatistics(renderSubPass.frameStatisticsIndex);
 
 			for(size_t drawItemIndex : drawItemIndices)
@@ -2009,72 +2009,30 @@ namespace RN
 					drawable->UpdateRenderingState(renderResources, pipelineState, uniformState, pipelineKey);
 				}
 
-				//Vertex and fragment shaders need to explicitly be marked to support instancing in the shader library json
-				RN::Shader *vertexShader = renderResources.pipelineState->descriptor.vertexShader;
-				RN::Shader *fragmentShader = renderResources.pipelineState->descriptor.fragmentShader;
-				bool canUseInstancing = (!vertexShader || vertexShader->GetHasInstancing()) && (!fragmentShader || fragmentShader->GetHasInstancing());
-				if(drawItem.HasIndirectDraw() || (currentInstanceDrawItem && currentInstanceDrawItem->HasIndirectDraw()))
-				{
-					canUseInstancing = false;
-				}
-
-				auto *vertexConstantBuffers = renderResources.uniformState->vertexConstantBuffers.data();
-				auto *fragmentConstantBuffers = renderResources.uniformState->fragmentConstantBuffers.data();
-				size_t vertexConstantBuffersCount = renderResources.uniformState->vertexConstantBuffers.size();
-				size_t fragmentConstantBuffersCount = renderResources.uniformState->fragmentConstantBuffers.size();
-				const RenderFrame::DrawItem *instanceDrawItem = currentInstanceDrawItem;
-				auto *instanceRenderResources = currentInstanceRenderResources;
-
-				//TODO: Use binding and type arrays in vulkan root signatures pipeline layout instead
-				//Check if uniform buffers are the same, the object can't be part of the same instanced draw call if it doesn't share the same buffers (because they are full for example)
-				if(canUseInstancing && instanceRenderResources)
-				{
-					if(vertexConstantBuffersCount != instanceRenderResources->uniformState->vertexConstantBuffers.size() || fragmentConstantBuffersCount != instanceRenderResources->uniformState->fragmentConstantBuffers.size())
-					{
-						canUseInstancing = false;
-					}
-					else
-					{
-						for(int i = 0; i < vertexConstantBuffersCount && canUseInstancing; i++)
-						{
-							if(vertexConstantBuffers[i]->dynamicBuffer != instanceRenderResources->uniformState->vertexConstantBuffers[i]->dynamicBuffer)
-							{
-								canUseInstancing = false;
-							}
-						}
-
-						for(int i = 0; i < fragmentConstantBuffersCount && canUseInstancing; i++)
-						{
-							if(fragmentConstantBuffers[i]->dynamicBuffer != instanceRenderResources->uniformState->fragmentConstantBuffers[i]->dynamicBuffer)
-							{
-								canUseInstancing = false;
-							}
-						}
-					}
-				}
-
-				if(canUseInstancing && preparedPass.instanceSteps.size() > 0 && preparedPass.instanceSteps.back() >= std::min(vertexShader->GetMaxInstanceCount(), fragmentShader ? fragmentShader->GetMaxInstanceCount() : -1))
-				{
-					canUseInstancing = false;
-				}
-
-				if(canUseInstancing && currentPipelineState == renderResources.pipelineState && instanceRenderResources && drawItem.CanInstanceWith(*instanceDrawItem) && renderResources.mergedMaterialSnapshot.IsTextureSetEqualLite(instanceRenderResources->mergedMaterialSnapshot))
-				{
-					preparedPass.instanceSteps.back() += 1; //Increase counter if the rendering state is the same
-				}
-				else
-				{
-					currentPipelineState = renderResources.pipelineState;
-					currentInstanceRenderResources = &renderResources;
-					currentInstanceDrawItem = &drawItem;
-					preparedPass.instanceSteps.push_back(1); //Add new entry if the rendering state changed
-					statistics.numberOfDrawCalls += 1;
-
-					//This stuff should only be needed per draw call and not for any additional instances... hopefully
-					renderResources.descriptorSet = _internals->descriptorPool.Allocate(this, renderResources.pipelineState->rootSignature->descriptorSetLayout);
-				}
-
 				appendPreparedDrawItem(preparedPass, drawItem, renderResources, statistics);
+			}
+
+			if(framePass.GetCameraSnapshot().GetSortInstancable())
+			{
+				std::sort(preparedPass.drawItems.begin(), preparedPass.drawItems.end(), [](const VulkanPreparedDrawItem &a, const VulkanPreparedDrawItem &b) { return a.instancingSortKey < b.instancingSortKey; });
+			}
+
+			const VulkanPreparedDrawItem *currentInstanceDrawItem = nullptr;
+			for(VulkanPreparedDrawItem &preparedDrawItem : preparedPass.drawItems)
+			{
+				const bool isCompatible = currentInstanceDrawItem && preparedDrawItem.instancingSortKey.CanInstanceWith(currentInstanceDrawItem->instancingSortKey);
+				const bool hasInstanceCapacity = currentInstanceDrawItem && preparedPass.instanceSteps.back() < preparedDrawItem.renderResources->maxInstanceCount;
+				if(hasInstanceCapacity && isCompatible)
+				{
+					preparedPass.instanceSteps.back() += 1;
+					continue;
+				}
+
+				currentInstanceDrawItem = &preparedDrawItem;
+				preparedPass.instanceSteps.push_back(1);
+				statistics.numberOfDrawCalls += 1;
+				VulkanDrawable::RenderResources &renderResources = *preparedDrawItem.renderResources;
+				renderResources.descriptorSet = _internals->descriptorPool.Allocate(this, renderResources.pipelineState->rootSignature->descriptorSetLayout);
 			}
 		};
 
@@ -2109,9 +2067,9 @@ namespace RN
 		SubmitDrawable(GetActiveFrameSubmission(), drawable, node);
 	}
 
-	void VulkanRenderer::SubmitDrawable(Drawable *drawable, const Matrix &modelMatrix, const Matrix &inverseModelMatrix, uint16 renderGroup, uint64 sourceNodeUID)
+	void VulkanRenderer::SubmitDrawable(Drawable *drawable, const Matrix &modelMatrix, const Matrix &inverseModelMatrix, uint16 renderGroup, uint64 sourceNodeUID, int32 renderPriority)
 	{
-		SubmitDrawable(GetActiveFrameSubmission(), drawable, modelMatrix, inverseModelMatrix, renderGroup, sourceNodeUID);
+		SubmitDrawable(GetActiveFrameSubmission(), drawable, modelMatrix, inverseModelMatrix, renderGroup, sourceNodeUID, renderPriority);
 	}
 
 	void VulkanRenderer::SubmitDrawable(VulkanFrameSubmission &frameSubmission, Drawable *sourceDrawable, const SceneNode *node)
@@ -2158,7 +2116,7 @@ namespace RN
 		}
 	}
 
-	void VulkanRenderer::SubmitDrawable(VulkanFrameSubmission &frameSubmission, Drawable *sourceDrawable, const Matrix &modelMatrix, const Matrix &inverseModelMatrix, uint16 renderGroup, uint64 sourceNodeUID)
+	void VulkanRenderer::SubmitDrawable(VulkanFrameSubmission &frameSubmission, Drawable *sourceDrawable, const Matrix &modelMatrix, const Matrix &inverseModelMatrix, uint16 renderGroup, uint64 sourceNodeUID, int32 renderPriority)
 	{
 		VulkanDrawable *drawable = static_cast<VulkanDrawable *>(sourceDrawable);
 		size_t drawItemIndex = RenderFrame::InvalidDrawItemIndex;
@@ -2176,7 +2134,7 @@ namespace RN
 				return;
 
 			if(drawItemIndex == RenderFrame::InvalidDrawItemIndex)
-				drawItemIndex = frameSubmission.renderFrame.AddDrawItem(drawable, modelMatrix, inverseModelMatrix, sourceNodeUID);
+				drawItemIndex = frameSubmission.renderFrame.AddDrawItem(drawable, modelMatrix, inverseModelMatrix, sourceNodeUID, renderPriority);
 			framePass.AddDrawItemIndex(drawItemIndex);
 		};
 

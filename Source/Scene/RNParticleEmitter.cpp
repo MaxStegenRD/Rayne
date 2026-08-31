@@ -480,7 +480,7 @@ namespace RN
 		else if(_hasParticleOrigin)
 		{
 			const Vector3 renderPosition(_particleOrigin - camera->GetRenderOrigin());
-			renderer->SubmitDrawable(_drawable, Matrix::WithTranslation(renderPosition), Matrix::WithTranslation(renderPosition * -1.0f), 0xffff);
+			renderer->SubmitDrawable(_drawable, Matrix::WithTranslation(renderPosition), Matrix::WithTranslation(renderPosition * -1.0f), 0xffff, GetUID(), GetRenderPriority());
 		}
 		else
 		{

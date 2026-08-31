@@ -142,6 +142,7 @@ namespace RN
 	void Camera::SetFlags(Flags flags)
 	{
 		RN_DEBUG_ASSERT(!(flags & Flags::Orthogonal) || !isinf(_clipFar), "Orthogonal cameras do not support an infinite far clip plane");
+		RN_ASSERT(!(flags & Flags::SortFrontToBack) || !(flags & Flags::SortInstancable), "SortFrontToBack and SortInstancable cannot be enabled together");
 		const bool orthogonalChanged = static_cast<bool>(_flags & Flags::Orthogonal) != static_cast<bool>(flags & Flags::Orthogonal);
 		const bool simpleCullingChanged = static_cast<bool>(_flags & Flags::UseSimpleCulling) != static_cast<bool>(flags & Flags::UseSimpleCulling);
 		_flags = flags;

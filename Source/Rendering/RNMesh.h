@@ -212,13 +212,6 @@ namespace RN
 			size_t GetPipelineHash() const { return _pipelineHash; }
 			DrawMode GetDrawMode() const { return _drawMode; }
 			PrimitiveType GetIndexType() const { return _indexType; }
-			bool CanInstanceWith(const DrawSnapshot &other) const
-			{
-				return _verticesCount == other._verticesCount &&
-					_indicesCount == other._indicesCount &&
-					_pipelineHash == other._pipelineHash &&
-					_indexType == other._indexType;
-			}
 
 		private:
 			friend class Mesh;
@@ -251,11 +244,6 @@ namespace RN
 
 			GPUBuffer *GetVertexBuffer() const { return _vertexBuffer; }
 			GPUBuffer *GetIndicesBuffer() const { return _indicesBuffer; }
-			bool CanInstanceWith(const BufferSnapshot &other) const
-			{
-				return _vertexBuffer == other._vertexBuffer &&
-					_indicesBuffer == other._indicesBuffer;
-			}
 
 		private:
 			friend class Mesh;

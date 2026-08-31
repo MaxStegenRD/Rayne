@@ -99,7 +99,7 @@ namespace RN
 		RNAPI virtual Drawable *CreateDrawable() = 0;
 		RNAPI virtual void DeleteDrawable(Drawable *drawable) = 0;
 		RNAPI virtual void SubmitDrawable(Drawable *drawable, const SceneNode *node) = 0;
-		RNAPI virtual void SubmitDrawable(Drawable *drawable, const Matrix &modelMatrix, const Matrix &inverseModelMatrix, uint16 renderGroup, uint64 sourceNodeUID = RenderFrame::InvalidSourceNodeUID) = 0;
+		RNAPI virtual void SubmitDrawable(Drawable *drawable, const Matrix &modelMatrix, const Matrix &inverseModelMatrix, uint16 renderGroup, uint64 sourceNodeUID = RenderFrame::InvalidSourceNodeUID, int32 renderPriority = SceneNode::RenderNormal) = 0;
 		RNAPI virtual RenderPassResources *CreateRenderPassResources();
 		RNAPI virtual void DeleteRenderPassResources(RenderPassResources *resources);
 

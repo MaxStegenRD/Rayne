@@ -68,6 +68,8 @@ namespace RN
 			const MetalRenderingState *pipelineState = nullptr;
 			Drawable::PipelineKey pipelineKey;
 			Drawable::MergedMaterialSnapshot mergedMaterialSnapshot;
+			Drawable::InstancingHashCache instancingHashCache;
+			bool supportsInstancing = false;
 
 			std::vector<Shader::ArgumentBuffer*> argumentBufferToUniformBufferMapping;
 			std::vector<MetalUniformBufferReference*> vertexShaderUniformBuffers;
@@ -107,6 +109,8 @@ namespace RN
 		{
 			resources.pipelineState = state;
 			resources.pipelineKey = pipelineKey;
+			resources.instancingHashCache.Invalidate();
+			resources.supportsInstancing = state->vertexShader->GetHasInstancing() && state->fragmentShader->GetHasInstancing();
 
 			for(Shader::ArgumentBuffer *buffer : resources.argumentBufferToUniformBufferMapping)
 				buffer->Release();
@@ -194,7 +198,38 @@ namespace RN
 	struct MetalPreparedDrawItem
 	{
 		const RenderFrame::DrawItem *drawItem = nullptr;
-		const MetalDrawable::RenderResources *renderResources = nullptr;
+		MetalDrawable::RenderResources *renderResources = nullptr;
+		RenderFrame::InstancingSortKey instancingSortKey;
+
+		void PrepareInstancing()
+		{
+			instancingSortKey.isSupported = renderResources->supportsInstancing && !drawItem->HasIndirectDraw();
+			if(!instancingSortKey.isSupported) return;
+
+			const size_t meshHash = drawItem->GetMeshInstancingHash();
+			const size_t textureSetHash = renderResources->mergedMaterialSnapshot.GetTextureSetHash();
+			if(renderResources->instancingHashCache.TryGet(meshHash, textureSetHash, instancingSortKey.hash)) return;
+
+			instancingSortKey.hash = meshHash;
+			HashCombine(instancingSortKey.hash, renderResources->pipelineState);
+			HashCombine(instancingSortKey.hash, textureSetHash);
+
+			bool hasBackingBuffers = true;
+			HashCombine(instancingSortKey.hash, renderResources->vertexShaderUniformBuffers.size());
+			for(MetalUniformBufferReference *buffer : renderResources->vertexShaderUniformBuffers)
+			{
+				HashCombine(instancingSortKey.hash, buffer->uniformBuffer);
+				hasBackingBuffers &= buffer->uniformBuffer != nullptr;
+			}
+			HashCombine(instancingSortKey.hash, renderResources->fragmentShaderUniformBuffers.size());
+			for(MetalUniformBufferReference *buffer : renderResources->fragmentShaderUniformBuffers)
+			{
+				HashCombine(instancingSortKey.hash, buffer->uniformBuffer);
+				hasBackingBuffers &= buffer->uniformBuffer != nullptr;
+			}
+
+			if(hasBackingBuffers) renderResources->instancingHashCache.Store(meshHash, textureSetHash, instancingSortKey.hash);
+		}
 	};
 
 	struct MetalPreparedRenderPass
