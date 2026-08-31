@@ -181,6 +181,7 @@ namespace RN
 		_renderPriority = RenderPriority::RenderNormal;
 		_renderGroup = 1;
 		_collisionGroup = 0;
+		_needsRenderPreparation = false;
 		_maximumRenderDistance = 0.0f;
 	}
 

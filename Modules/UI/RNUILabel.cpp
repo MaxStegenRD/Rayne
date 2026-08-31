@@ -39,7 +39,7 @@ namespace RN
 
 			SafeRelease(_attributedText);
 			_attributedText = new AttributedString(text);
-			_needsMeshUpdate = true;
+			SetNeedsRenderPreparation();
 			Unlock();
 			NotifyIntrinsicSizeChanged();
 		}
@@ -50,7 +50,7 @@ namespace RN
 			SafeRelease(_attributedText);
 			_attributedText = text;
 			SafeRetain(_attributedText);
-			_needsMeshUpdate = true;
+			SetNeedsRenderPreparation();
 			Unlock();
 			NotifyIntrinsicSizeChanged();
 		}
@@ -59,7 +59,7 @@ namespace RN
 		{
 			Lock();
 			_defaultAttributes = attributes;
-			_needsMeshUpdate = true;
+			SetNeedsRenderPreparation();
 			Unlock();
 			NotifyIntrinsicSizeChanged();
 		}
@@ -74,7 +74,7 @@ namespace RN
 			}
 
 			_defaultAttributes.SetColor(color);
-			_needsMeshUpdate = true;
+			SetNeedsRenderPreparation();
 			Unlock();
 		}
 
@@ -82,7 +82,7 @@ namespace RN
 		{
 			Lock();
 			_verticalAlignment = alignment;
-			_needsMeshUpdate = true;
+			SetNeedsRenderPreparation();
 			Unlock();
 		}
 
@@ -90,7 +90,7 @@ namespace RN
 		{
 			Lock();
 			_additionalLineHeight = lineHeight;
-			_needsMeshUpdate = true;
+			SetNeedsRenderPreparation();
 			Unlock();
 		}
 

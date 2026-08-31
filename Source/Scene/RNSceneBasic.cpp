@@ -469,6 +469,11 @@ namespace RN
 							nodeMember = nodeMember->GetNext();
 							continue;
 						}
+						if(node->GetMaximumRenderDistance() > 0.0f && !node->CanRender(renderer, camera))
+						{
+							nodeMember = nodeMember->GetNext();
+							continue;
+						}
 
 						if(node->GetRenderPriority() == SceneNode::RenderTransparent)
 						{
@@ -554,7 +559,6 @@ namespace RN
 				}
 
 				//RNInfo("Number of objects: " << sceneNodesToRender.size());
-
 				renderer->SubmitCamera(camera, [&] {
 					RN_PROFILE_SCOPE_N("Submit Drawables");
 					//TODO: Add back some multithreading while not breaking the priorities.
@@ -584,6 +588,7 @@ namespace RN
 					//Submit all drawables for rendering
 					for(SceneNode *node : sceneNodesToRender)
 					{
+						node->PrepareForRenderIfNeeded();
 						node->Render(renderer, camera);
 					}
 				});

@@ -105,10 +105,9 @@ namespace RN
 			UIAPI Vector4 GetClippingRect() const;
 
 			UIAPI virtual void UpdateModel();
+			UIAPI void PrepareForRender() override;
 
 			UIAPI void WillUpdate(ChangeSet changeSet) override;
-
-			bool _needsMeshUpdate;
 
 			bool _inheritRenderSettings; //If this is set, the values below will be overwritten when adding to the parent
 			int32 _renderPriorityOverride;

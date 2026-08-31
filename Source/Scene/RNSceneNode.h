@@ -177,6 +177,14 @@ namespace RN
 
 		RNAPI virtual bool CanRender(Renderer *renderer, Camera *camera) const;
 		RNAPI virtual void Render(Renderer *renderer, Camera *camera) const;
+		void PrepareForRenderIfNeeded()
+		{
+			if(RN_EXPECT_FALSE(_needsRenderPreparation))
+			{
+				_needsRenderPreparation = false;
+				PrepareForRender();
+			}
+		}
 
 		RNAPI virtual void Update(float delta);
 
@@ -199,6 +207,8 @@ namespace RN
 
 		//Can be used by other classes for basic checks, like the being in the camera frustum and not hidden
 		RNAPI virtual bool CanRenderUtil(Renderer *renderer, Camera *camera) const;
+		virtual void PrepareForRender() {}
+		void SetNeedsRenderPreparation() { _needsRenderPreparation = true; }
 
 	private:
 		void Initialize();
@@ -224,6 +234,7 @@ namespace RN
 
 		uint16 _renderGroup;
 		uint8 _collisionGroup;
+		bool _needsRenderPreparation;
 		float _maximumRenderDistance;
 
 		uint64 _uid;

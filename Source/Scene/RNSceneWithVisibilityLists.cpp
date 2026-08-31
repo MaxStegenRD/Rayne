@@ -124,7 +124,10 @@ namespace RN
 		for(SceneNode *node : volume->nodes)
 		{
 			if(node->CanRender(renderer, camera))
+			{
+				node->PrepareForRenderIfNeeded();
 				node->Render(renderer, camera);
+			}
 		}
 	}
 

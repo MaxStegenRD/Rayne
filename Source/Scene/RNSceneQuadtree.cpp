@@ -523,7 +523,6 @@ namespace RN
 				}*/
 
 				//RNInfo("Number of objects: " << sceneNodesToRender.size());
-
 				renderer->SubmitCamera(camera, [&] {
 					RN_PROFILE_SCOPE_N("Submit Drawables");
 					//TODO: Add back some multithreading while not breaking the priorities.
@@ -553,6 +552,7 @@ namespace RN
 					//Submit all drawables for rendering
 					for(SceneNode *node : sceneNodesToRender)
 					{
+						node->PrepareForRenderIfNeeded();
 						node->Render(renderer, camera);
 					}
 				});
@@ -608,6 +608,9 @@ namespace RN
 					continue;
 
 				if(object->HasFlags(SceneNode::Flags::Hidden))
+					continue;
+
+				if(object->GetMaximumRenderDistance() > 0.0f && !object->HasFlags(SceneNode::Flags::NoCulling) && !camera->InFrustum(object->GetBoundingSphere(), object->GetMaximumRenderDistance()))
 					continue;
 
 				sceneNodesToRender.push_back(object);

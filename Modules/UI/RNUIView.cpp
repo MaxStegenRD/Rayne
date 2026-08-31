@@ -181,7 +181,6 @@ namespace RN
 			_isClippingEnabled(true),
 			_isHidden(false),
 			_isHiddenByParent(false),
-			_needsMeshUpdate(true),
 			_subviews(new Array()),
 			_superview(nullptr),
 			_backgroundColor {Color::ClearColor(), Color::ClearColor(), Color::ClearColor(), Color::ClearColor()},
@@ -215,6 +214,7 @@ namespace RN
 		{
 			SetRenderGroup(1 << 7);
 			SetRenderPriority(SceneNode::RenderPriority::RenderUI);
+			SetNeedsRenderPreparation();
 		}
 
 		View::View(const Rect &frame) :
@@ -565,7 +565,6 @@ namespace RN
 
 			Lock();
 			_bounds = bounds;
-			//_needsMeshUpdate = true;
 
 			size_t count = _subviews->GetCount();
 			for(size_t i = 0; i < count; i++)
@@ -688,7 +687,7 @@ namespace RN
 			
 			_mirrorU = mirrorU;
 			_mirrorV = mirrorV;
-			_needsMeshUpdate = true;
+			SetNeedsRenderPreparation();
 			Unlock();
 		}
 	
@@ -703,7 +702,7 @@ namespace RN
 			
 			_uvOffset = offset;
 			_uvScale = scale;
-			_needsMeshUpdate = true;
+			SetNeedsRenderPreparation();
 			Unlock();
 		}
 
@@ -758,7 +757,7 @@ namespace RN
 			if(radius == _cornerRadius) return;
 
 			_cornerRadius = radius;
-			_needsMeshUpdate = true;
+			SetNeedsRenderPreparation();
 		}
 
 		void View::SetClipToBounds(bool enabled)
@@ -872,7 +871,7 @@ namespace RN
 			_hasOutline = true;
 			_outlineColor = color;
 
-			if(thickness != _outlineThickness) _needsMeshUpdate = true;
+			if(thickness != _outlineThickness) SetNeedsRenderPreparation();
 			_outlineThickness = thickness;
 
 			if(model)
@@ -1645,6 +1644,11 @@ namespace RN
 			Unlock();
 		}
 
+		void View::PrepareForRender()
+		{
+			UpdateModel();
+		}
+
 		// ---------------------
 		// MARK: -
 		// MARK: Drawing
@@ -1665,15 +1669,11 @@ namespace RN
 				//Update mesh if the frame size changed
 				if(_oldFrameSize.GetSquaredDistance(_frame.GetSize()) > k::EpsilonFloat)
 				{
-					_needsMeshUpdate = true;
+					SetNeedsRenderPreparation();
 					_oldFrameSize = _frame.GetSize();
 				}
 
-				if(_needsMeshUpdate)
-				{
-					UpdateModel();
-					_needsMeshUpdate = false;
-				}
+				if(!GetModel()) PrepareForRenderIfNeeded();
 			}
 
 			// Draw all children
