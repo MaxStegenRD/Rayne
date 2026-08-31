@@ -83,6 +83,7 @@ namespace RN
 		ResonanceAudioSampler *GetSampler() const { return _sampler; }
 
 	private:
+		void UpdateDistanceModel();
 		void SubmitPendingAction(PendingAction action);
 		void ProcessPendingActionsQueue();
 		bool ProcessPendingActions();

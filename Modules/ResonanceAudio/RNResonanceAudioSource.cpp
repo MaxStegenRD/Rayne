@@ -206,19 +206,25 @@ namespace RN
 		ResonanceAudioWorld::_instance->GetAudioAPI()->SetSourceVolume(_sourceID, volume);
 	}
 
+	void ResonanceAudioSource::UpdateDistanceModel()
+	{
+		const float minimumDistance = std::max(0.001f, _minMaxRange.x);
+		const float maximumDistanceOrRolloff = _rolloffModel == DistanceRolloffModel::Inverse ?
+			std::max(0.0f, _minMaxRange.y) : std::max(minimumDistance, _minMaxRange.y);
+
+		ResonanceAudioWorld::_instance->GetAudioAPI()->SetSourceDistanceModel(
+			_sourceID, MapRolloffModel(_rolloffModel), minimumDistance, maximumDistanceOrRolloff);
+	}
+
 	void ResonanceAudioSource::SetRange(RN::Vector2 minMaxRange)
 	{
 		if(!_isPositional) return;
+		minMaxRange.x = std::max(0.001f, minMaxRange.x);
+		minMaxRange.y = std::max(0.0f, minMaxRange.y);
 		if(_minMaxRange == minMaxRange) return;
-		
+
 		_minMaxRange = minMaxRange;
-
-		// Clamp to sane positives to avoid API errors
-		const float minDistance = std::max(0.001f, _minMaxRange.x);
-		const float maxDistance = std::max(minDistance, _minMaxRange.y);
-		_minMaxRange = RN::Vector2(minDistance, maxDistance);
-
-		ResonanceAudioWorld::_instance->GetAudioAPI()->SetSourceDistanceModel(_sourceID, MapRolloffModel(_rolloffModel), minDistance, maxDistance);
+		UpdateDistanceModel();
 	}
 
 	void ResonanceAudioSource::SetSelfdestruct(bool selfdestruct)
@@ -232,10 +238,7 @@ namespace RN
 		if(_rolloffModel == rolloffModel) return;
 
 		_rolloffModel = rolloffModel;
-
-		const float minDistance = std::max(0.001f, _minMaxRange.x);
-		const float maxDistance = std::max(minDistance, _minMaxRange.y);
-		ResonanceAudioWorld::_instance->GetAudioAPI()->SetSourceDistanceModel(_sourceID, MapRolloffModel(_rolloffModel), minDistance, maxDistance);
+		UpdateDistanceModel();
 	}
 
 
