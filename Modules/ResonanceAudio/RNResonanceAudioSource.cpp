@@ -127,6 +127,7 @@ namespace RN
 		_minMaxRange(RN::Vector2(0.2f, 200.0f)),
 		_rolloffModel(DistanceRolloffModel::Logarithmic),
 		_currentTime(0.0f),
+		_currentPitch(1.0f),
 		_fadeSamples(0),
 		_pendingSeekTime(0.0),
 		_pendingAsset(nullptr),
@@ -320,12 +321,14 @@ namespace RN
 		double localTime = _currentTime;
 		bool isRepeating = _isRepeating.load(std::memory_order_relaxed);
 		uint8 channel = _channel.load(std::memory_order_relaxed);
-		float pitch = _pitch.load(std::memory_order_relaxed);
+		float targetPitch = _pitch.load(std::memory_order_relaxed);
 		// Do not apply Doppler to ringbuffer-backed sources (typically streaming/voice).
 		if(_isPositional && asset && asset->GetType() != AudioAsset::Type::Ringbuffer)
 		{
-			pitch *= _dopplerPitchMultiplier.load(std::memory_order_relaxed);
+			targetPitch *= _dopplerPitchMultiplier.load(std::memory_order_relaxed);
 		}
+		float pitch = _currentPitch;
+		float pitchStep = sampleCount > 0 ? (targetPitch - pitch) / static_cast<float>(sampleCount) : 0.0f;
 		float volume = _isPositional ? 1.0f : _volume.load(std::memory_order_relaxed);
 		bool isMonoAsset = _sampler->GetAsset()->GetChannels() == 1;
 		
@@ -353,6 +356,7 @@ namespace RN
 				targetBuffer[i * channelCount + j] = value * gain;
 			}
 			if(_isPlaying) localTime += sampleLength * pitch;
+			pitch += pitchStep;
 
 			if(_fadeSamples == 0)
 			{
@@ -363,6 +367,15 @@ namespace RN
 			}
 		}
 
+		if(isRepeating)
+		{
+			const double totalTime = _sampler->GetTotalTime();
+			if(totalTime > 0.0 && localTime >= totalTime)
+			{
+				localTime = fmod(localTime, totalTime);
+			}
+		}
+		_currentPitch = targetPitch;
 		_currentTime = localTime;
 		_cachedCurrentTime.store(_currentTime, std::memory_order_relaxed);
 

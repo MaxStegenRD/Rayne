@@ -117,6 +117,7 @@ namespace RN
 		//Only used on audio thread
 		bool _isPlaying;
 		double _currentTime;
+		float _currentPitch;
 		int32 _fadeSamples; // >0 fade-in, <0 fade-out, 0 none
 		uint32_t _controlBits;
 		PendingAction _finalAction;
