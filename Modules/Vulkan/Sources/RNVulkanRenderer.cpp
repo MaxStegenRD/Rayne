@@ -675,24 +675,33 @@ namespace RN
 		//Free other frame resources such as unused framebuffers and imageviews
 		std::vector<std::function<void()>> finishedCallbacks;
 		Lock();
-		for(int i = _internals->frameResources.size()-1; i >= 0; i--)
+		std::vector<VulkanFrameResource> &frameResources = _internals->frameResources;
+		size_t retainedResourceCount = 0;
+		for(size_t i = 0; i < frameResources.size(); i++)
 		{
-			VulkanFrameResource &frameResource = _internals->frameResources[i];
+			VulkanFrameResource &frameResource = frameResources[i];
 			if(frameResource.frame < frame) //Might be added to the frame resources just before this call, without finishing using them, so just using < here to keep around for one more frame
 			{
 				if(frameResource.finishedCallback)
 				{
-					finishedCallbacks.push_back(frameResource.finishedCallback);
+					finishedCallbacks.push_back(std::move(frameResource.finishedCallback));
 				}
-
-				_internals->frameResources.erase(_internals->frameResources.begin() + i);
+			}
+			else
+			{
+				if(retainedResourceCount != i)
+				{
+					frameResources[retainedResourceCount] = std::move(frameResource);
+				}
+				retainedResourceCount++;
 			}
 		}
+		frameResources.erase(frameResources.begin() + retainedResourceCount, frameResources.end());
 		Unlock();
 
-		for(std::function<void()> &callback : finishedCallbacks)
+		for(auto iterator = finishedCallbacks.rbegin(); iterator != finishedCallbacks.rend(); iterator++)
 		{
-			callback();
+			(*iterator)();
 		}
 	}
 
