@@ -82,6 +82,7 @@ namespace RN
 
 	private:
 		void UpdateDistanceModel();
+		void SetSpatialPosition(const Vector3 &position);
 		static AudioAsset *GetNullAssetSentinel() { return reinterpret_cast<AudioAsset *>(static_cast<uintptr_t>(1)); }
 		void ConsumePendingState();
 		bool ProcessPendingActions();
@@ -116,6 +117,8 @@ namespace RN
 		bool _isPlaying;
 		double _currentTime;
 		float _currentPitch;
+		float _currentVolume;
+		uint32 _currentSpatialSequence;
 		int32 _fadeSamples; // >0 fade-in, <0 fade-out, 0 none
 		uint32_t _controlBits;
 		PendingAction _finalAction;
@@ -123,6 +126,10 @@ namespace RN
 		AudioAsset *_nextAsset;
 
 		//Used to sync between threads
+		std::atomic<uint32> _spatialSequence;
+		std::atomic<float> _spatialPositionX;
+		std::atomic<float> _spatialPositionY;
+		std::atomic<float> _spatialPositionZ;
 		std::atomic<double> _pendingSeekTime;
 		std::atomic<AudioAsset*> _pendingAsset;
 		std::atomic<PendingAction> _pendingFinalAction;

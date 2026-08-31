@@ -128,11 +128,17 @@ namespace RN
 		_rolloffModel(DistanceRolloffModel::Logarithmic),
 		_currentTime(0.0f),
 		_currentPitch(1.0f),
+		_currentVolume(-1.0f),
+		_currentSpatialSequence(0),
 		_fadeSamples(0),
 		_controlBits(0),
 		_finalAction(PendingAction::None),
 		_nextSeekTime(0.0),
 		_nextAsset(nullptr),
+		_spatialSequence(0),
+		_spatialPositionX(0.0f),
+		_spatialPositionY(0.0f),
+		_spatialPositionZ(0.0f),
 		_pendingSeekTime(-1.0),
 		_pendingAsset(nullptr),
 		_pendingFinalAction(PendingAction::None),
@@ -151,7 +157,6 @@ namespace RN
 
 		if(_isPositional)
 		{
-			//TODO: Make quality adjustable
 			_sourceID = ResonanceAudioWorld::_instance->GetAudioAPI()->CreateSoundObjectSource(vraudio::RenderingMode::kBinauralHighQuality);
 			ResonanceAudioWorld::_instance->GetAudioAPI()->SetSourceDistanceModel(_sourceID, MapRolloffModel(_rolloffModel), _minMaxRange.x, _minMaxRange.y);
 		}
@@ -204,8 +209,6 @@ namespace RN
 	void ResonanceAudioSource::SetVolume(float volume)
 	{
 		_volume.store(volume, std::memory_order_relaxed);
-		if(!_isPositional) return;
-		ResonanceAudioWorld::_instance->GetAudioAPI()->SetSourceVolume(_sourceID, volume);
 	}
 
 	void ResonanceAudioSource::UpdateDistanceModel()
@@ -216,6 +219,15 @@ namespace RN
 
 		ResonanceAudioWorld::_instance->GetAudioAPI()->SetSourceDistanceModel(
 			_sourceID, MapRolloffModel(_rolloffModel), minimumDistance, maximumDistanceOrRolloff);
+	}
+
+	void ResonanceAudioSource::SetSpatialPosition(const Vector3 &position)
+	{
+		_spatialSequence.fetch_add(1, std::memory_order_acq_rel);
+		_spatialPositionX.store(position.x, std::memory_order_relaxed);
+		_spatialPositionY.store(position.y, std::memory_order_relaxed);
+		_spatialPositionZ.store(position.z, std::memory_order_relaxed);
+		_spatialSequence.fetch_add(1, std::memory_order_release);
 	}
 
 	void ResonanceAudioSource::SetRange(RN::Vector2 minMaxRange)
@@ -386,6 +398,29 @@ namespace RN
 
 	void ResonanceAudioSource::Update()
 	{
+		if(_isPositional)
+		{
+			const uint32 spatialSequence = _spatialSequence.load(std::memory_order_acquire);
+			if(!(spatialSequence & 1U) && spatialSequence != _currentSpatialSequence)
+			{
+				const float positionX = _spatialPositionX.load(std::memory_order_relaxed);
+				const float positionY = _spatialPositionY.load(std::memory_order_relaxed);
+				const float positionZ = _spatialPositionZ.load(std::memory_order_relaxed);
+				if(_spatialSequence.load(std::memory_order_acquire) == spatialSequence)
+				{
+					ResonanceAudioWorld::_instance->GetAudioAPI()->SetSourcePosition(_sourceID, positionX, positionY, positionZ);
+					_currentSpatialSequence = spatialSequence;
+				}
+			}
+
+			float volume = _volume.load(std::memory_order_relaxed);
+			if(volume != _currentVolume)
+			{
+				ResonanceAudioWorld::_instance->GetAudioAPI()->SetSourceVolume(_sourceID, volume);
+				_currentVolume = volume;
+			}
+		}
+
 		if(!_isPlaying)
 		{
 			ConsumePendingState();
@@ -439,16 +474,6 @@ namespace RN
 			}
 		}
 
-		if(changeSet & SceneNode::ChangeSet::Position || changeSet & SceneNode::ChangeSet::Parent || changeSet & SceneNode::ChangeSet::World || changeSet & SceneNode::ChangeSet::Attachments)
-		{
-			ResonanceAudioListenerContext *listenerContext = ResonanceAudioWorld::_instance->GetListenerContext();
-			const ResonanceAudioListenerState listenerState = listenerContext ? listenerContext->GetListenerState() : ResonanceAudioListenerState();
-			const PositionType listenerPosition = listenerState.isValid ? listenerState.position : PositionType();
-			RN::Vector3 position(GetWorldPosition() - listenerPosition);
-			RN::Quaternion rotation = GetWorldRotation();
-			ResonanceAudioWorld::_instance->GetAudioAPI()->SetSourcePosition(_sourceID, position.x, position.y, position.z);
-			ResonanceAudioWorld::_instance->GetAudioAPI()->SetSourceRotation(_sourceID, rotation.x, rotation.y, rotation.z, rotation.w);
-		}
 	}
 
 	void ResonanceAudioSource::ConsumePendingState()

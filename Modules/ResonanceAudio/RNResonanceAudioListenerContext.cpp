@@ -240,7 +240,7 @@ namespace RN
 
 			const PositionType sourceWorldPosition = source->GetWorldPosition();
 			Vector3 sourcePosition(sourceWorldPosition - listenerPosition);
-			_audioAPI->SetSourcePosition(source->_sourceID, sourcePosition.x, sourcePosition.y, sourcePosition.z);
+			source->SetSpatialPosition(sourcePosition);
 			if(!_roomEnabled) continue;
 
 			vraudio::WorldPosition audioSourcePosition;
