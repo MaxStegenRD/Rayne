@@ -93,6 +93,7 @@ namespace RN
 
 		RNAPI virtual bool InFrustum(const PositionType &position, float radius);
 		RNAPI virtual bool InFrustum(const Sphere &sphere);
+		RNAPI bool InFrustum(const Sphere &sphere, float maximumRenderDistance);
 		RNAPI virtual bool InFrustum(const AABB &aabb);
 
 		RNAPI const Vector3 &GetFrustumCenter();
@@ -148,7 +149,7 @@ namespace RN
 		void UpdateFrustum();
 		void EnsureFrustumUpdated();
 		void PrepareRender(const PositionType &renderOrigin);
-		bool InRenderFrustum(const Vector3 &position, float radius) const;
+		bool InRenderFrustum(const Vector3 &position, float radius, float maximumRenderDistance) const;
 
 		Vector3 __ToRender(const Vector3 &dir);
 		PositionType ResolveRenderOrigin() const;

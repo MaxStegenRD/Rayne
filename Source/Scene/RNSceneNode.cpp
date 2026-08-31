@@ -60,6 +60,7 @@ namespace RN
 
 		_renderGroup = other->_renderGroup;
 		_collisionGroup = other->_collisionGroup;
+		_maximumRenderDistance = other->_maximumRenderDistance;
 
 		_updatePriority = other->_updatePriority;
 		_renderPriority = other->_renderPriority;
@@ -180,6 +181,7 @@ namespace RN
 		_renderPriority = RenderPriority::RenderNormal;
 		_renderGroup = 1;
 		_collisionGroup = 0;
+		_maximumRenderDistance = 0.0f;
 	}
 
 
@@ -210,6 +212,11 @@ namespace RN
 	void SceneNode::SetCollisionGroup(uint8 group)
 	{
 		_collisionGroup = group;
+	}
+
+	void SceneNode::SetMaximumRenderDistance(float distance)
+	{
+		_maximumRenderDistance = distance > 0.0f ? distance : 0.0f;
 	}
 
 	void SceneNode::SetUpdatePriority(UpdatePriority priority)
@@ -538,7 +545,7 @@ namespace RN
 		if(flags & Flags::NoCulling)
 			return true;
 
-		return camera->InFrustum(GetBoundingSphere());
+		return camera->InFrustum(GetBoundingSphere(), _maximumRenderDistance);
 	}
 
 	bool SceneNode::CanRender(Renderer *renderer, Camera *camera) const

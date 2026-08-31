@@ -100,6 +100,7 @@ namespace RN
 
 		RNAPI void SetRenderGroup(uint16 group);
 		RNAPI void SetCollisionGroup(uint8 group);
+		RNAPI void SetMaximumRenderDistance(float distance);
 
 		virtual void SetPosition(const PositionType &pos);
 		virtual void SetScale(const Vector3 &scal);
@@ -164,6 +165,7 @@ namespace RN
 
 		uint16 GetRenderGroup() const { return _renderGroup; };
 		uint8 GetCollisionGroup() const { return _collisionGroup; };
+		float GetMaximumRenderDistance() const { return _maximumRenderDistance; }
 
 		RNAPI const Array *GetAttachments() const;
 		RNAPI const Array *GetChildren() const;
@@ -222,6 +224,7 @@ namespace RN
 
 		uint16 _renderGroup;
 		uint8 _collisionGroup;
+		float _maximumRenderDistance;
 
 		uint64 _uid;
 		uint64 _lid;

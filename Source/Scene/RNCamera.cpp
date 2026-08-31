@@ -593,15 +593,31 @@ namespace RN
 	bool Camera::InFrustum(const PositionType &position, float radius)
 	{
 		EnsureFrustumUpdated();
-		return InRenderFrustum(Vector3(position - _renderOrigin), radius);
+		return InRenderFrustum(Vector3(position - _renderOrigin), radius, 0.0f);
 	}
 
-	bool Camera::InRenderFrustum(const Vector3 &position, float radius) const
+	bool Camera::InRenderFrustum(const Vector3 &position, float radius, float maximumRenderDistance) const
 	{
 		//if(_hasCustomNearClipPlane) return true;
 
-		if(_frustumCenter.GetDistance(position) > _frustumRadius + radius)
-			return false;
+		if(maximumRenderDistance > 0.0f)
+		{
+			// Reuse the near-plane distance as forward view depth for the optional per-node far limit.
+			const float nearDistance = frustums._frustumNear.GetDistance(position);
+			if(nearDistance < -radius)
+				return false;
+
+			const float nearClip = std::min(_clipNear, _clipFar);
+			if(nearDistance > maximumRenderDistance + radius - nearClip)
+				return false;
+		}
+
+		if(!isinf(_clipFar))
+		{
+			const float combinedRadius = _frustumRadius + radius;
+			if(_frustumCenter.GetSquaredDistance(position) > combinedRadius * combinedRadius)
+				return false;
+		}
 
 		if(_flags & Flags::UseSimpleCulling)
 			return true;
@@ -618,7 +634,7 @@ namespace RN
 		if(frustums._frustumBottom.GetDistance(position) < -radius)
 			return false;
 
-		if(frustums._frustumNear.GetDistance(position) < -radius)
+		if(maximumRenderDistance <= 0.0f && frustums._frustumNear.GetDistance(position) < -radius)
 			return false;
 
 		if(!isinf(_clipFar) && frustums._frustumFar.GetDistance(position) < -radius)
@@ -629,8 +645,13 @@ namespace RN
 
 	bool Camera::InFrustum(const Sphere &sphere)
 	{
+		return InFrustum(sphere, 0.0f);
+	}
+
+	bool Camera::InFrustum(const Sphere &sphere, float maximumRenderDistance)
+	{
 		EnsureFrustumUpdated();
-		return InRenderFrustum(Vector3(sphere.position - _renderOrigin) + sphere.offset, sphere.radius);
+		return InRenderFrustum(Vector3(sphere.position - _renderOrigin) + sphere.offset, sphere.radius, maximumRenderDistance);
 	}
 
 	bool Camera::InFrustum(const AABB &aabb)
