@@ -601,17 +601,8 @@ namespace RN
 	{
 		//if(_hasCustomNearClipPlane) return true;
 
-		if(maximumRenderDistance > 0.0f)
-		{
-			// Reuse the near-plane distance as forward view depth for the optional per-node far limit.
-			const float nearDistance = frustums._frustumNear.GetDistance(position);
-			if(nearDistance < -radius)
-				return false;
-
-			const float nearClip = std::min(_clipNear, _clipFar);
-			if(nearDistance > maximumRenderDistance + radius - nearClip)
-				return false;
-		}
+		if(maximumRenderDistance > 0.0f && !IsWithinRenderDistance(position, radius, maximumRenderDistance))
+			return false;
 
 		if(!isinf(_clipFar))
 		{
@@ -644,6 +635,17 @@ namespace RN
 		return true;
 	}
 
+	bool Camera::IsWithinRenderDistance(const Vector3 &position, float radius, float maximumRenderDistance) const
+	{
+		// The near-plane distance is forward view depth, offset by the near clip distance.
+		const float nearDistance = frustums._frustumNear.GetDistance(position);
+		if(nearDistance < -radius)
+			return false;
+
+		const float nearClip = std::min(_clipNear, _clipFar);
+		return nearDistance <= maximumRenderDistance + radius - nearClip;
+	}
+
 	bool Camera::InFrustum(const Sphere &sphere)
 	{
 		return InFrustum(sphere, 0.0f);
@@ -652,7 +654,17 @@ namespace RN
 	bool Camera::InFrustum(const Sphere &sphere, float maximumRenderDistance)
 	{
 		EnsureFrustumUpdated();
-		return InRenderFrustum(Vector3(sphere.position - _renderOrigin) + sphere.offset, sphere.radius, maximumRenderDistance);
+		const Vector3 renderPosition = Vector3(sphere.position - _renderOrigin) + sphere.offset;
+		Camera *distanceCamera = GetLODCamera();
+		if(maximumRenderDistance <= 0.0f || distanceCamera == this)
+			return InRenderFrustum(renderPosition, sphere.radius, maximumRenderDistance);
+
+		if(!InRenderFrustum(renderPosition, sphere.radius, 0.0f))
+			return false;
+
+		distanceCamera->EnsureFrustumUpdated();
+		const Vector3 distancePosition = Vector3(sphere.position - distanceCamera->_renderOrigin) + sphere.offset;
+		return distanceCamera->IsWithinRenderDistance(distancePosition, sphere.radius, maximumRenderDistance);
 	}
 
 	bool Camera::InFrustum(const AABB &aabb)

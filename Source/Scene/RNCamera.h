@@ -150,6 +150,7 @@ namespace RN
 		void UpdateFrustum();
 		void EnsureFrustumUpdated();
 		void PrepareRender(const PositionType &renderOrigin);
+		bool IsWithinRenderDistance(const Vector3 &position, float radius, float maximumRenderDistance) const;
 		bool InRenderFrustum(const Vector3 &position, float radius, float maximumRenderDistance) const;
 
 		Vector3 __ToRender(const Vector3 &dir);
