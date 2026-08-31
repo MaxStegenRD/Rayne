@@ -60,11 +60,13 @@ namespace RN
 
 		if(isRepeating || _asset->GetType() == AudioAsset::Type::Ringbuffer)
 		{
+			if(_totalTime <= 0.0) return 0.0f;
+
 			if(time < 0.0f)
 			{
 				time = _totalTime - fmod(-time, _totalTime);
 			}
-			else
+			else if(time >= _totalTime)
 			{
 				time = fmod(time, _totalTime);
 			}
@@ -79,41 +81,26 @@ namespace RN
 
 		uint32 sampleRate = _asset->GetSampleRate();
 		uint8 channelCount = _asset->GetChannels();
+		double fractionalSamplePosition = time * sampleRate;
+		int64 sampleFrame = static_cast<int64>(std::floor(fractionalSamplePosition));
+		float interpolationFactor = static_cast<float>(fractionalSamplePosition - sampleFrame);
+		int64 sampleFrames[4] = {sampleFrame - 1, sampleFrame, sampleFrame + 1, sampleFrame + 2};
 		uint64 samplePositions[4];
-		samplePositions[0] = time * sampleRate + 2;
-		samplePositions[1] = time * sampleRate + 1;
-		samplePositions[2] = time * sampleRate - 0;
-		samplePositions[3] = time * sampleRate - 1;
-		double interpolationFactor = (static_cast<double>(samplePositions[1]) / static_cast<double>(sampleRate) - time) * static_cast<double>(sampleRate);
+		int64 frameCount = static_cast<int64>(_asset->GetData()->GetLength() / _asset->GetBytesPerSample());
+		if(frameCount <= 0) return 0.0f;
 
-		uint64 maxSamplePosition = _asset->GetData()->GetLength() / (_asset->GetBytesPerSample() / channelCount);
 		for(int i = 0; i < 4; i++)
 		{
-			samplePositions[i] = samplePositions[i] * channelCount + channel;
-
-			if(samplePositions[i] >= maxSamplePosition)
+			if(isRepeating || _asset->GetType() == AudioAsset::Type::Ringbuffer)
 			{
-				if(isRepeating || _asset->GetType() == AudioAsset::Type::Ringbuffer)
-				{
-					samplePositions[i] %= maxSamplePosition;
-				}
-				else
-				{
-					samplePositions[i] = maxSamplePosition - channelCount + channel;
-				}
+				sampleFrames[i] %= frameCount;
+				if(sampleFrames[i] < 0) sampleFrames[i] += frameCount;
 			}
-			else if(samplePositions[i] < 0)
+			else
 			{
-				if(isRepeating || _asset->GetType() == AudioAsset::Type::Ringbuffer)
-				{
-					int64 moduloresult = samplePositions[i] % maxSamplePosition;
-					samplePositions[i] = maxSamplePosition + moduloresult;
-				}
-				else
-				{
-					samplePositions[i] = channel;
-				}
+				sampleFrames[i] = std::max<int64>(0, std::min<int64>(sampleFrames[i], frameCount - 1));
 			}
+			samplePositions[i] = static_cast<uint64>(sampleFrames[i]) * channelCount + channel;
 		}
 
 		float valuesToInterpolate[4] = {0.0f, 0.0f, 0.0f, 0.0f};
