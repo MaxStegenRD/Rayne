@@ -386,13 +386,15 @@ namespace RN
 				copy1(texcoordsPtr, stride, Vector2(1.0f, 1.0f));
 
 				Vector2 halfSize = particle.size / 2.0f * scale;
+				float cosine = Math::Cos(particle.rotation);
+				float sine = Math::Sin(particle.rotation);
 				Vector2 halfDirectionTop;
-				halfDirectionTop.x = Math::Cos(particle.rotation) * halfSize.x - Math::Sin(particle.rotation) * halfSize.y;
-				halfDirectionTop.y = Math::Sin(particle.rotation) * halfSize.x + Math::Cos(particle.rotation) * halfSize.y;
+				halfDirectionTop.x = cosine * halfSize.x - sine * halfSize.y;
+				halfDirectionTop.y = sine * halfSize.x + cosine * halfSize.y;
 
 				Vector2 halfDirectionBottom;
-				halfDirectionBottom.x = Math::Cos(particle.rotation) * halfSize.x + Math::Sin(particle.rotation) * halfSize.y;
-				halfDirectionBottom.y = Math::Sin(particle.rotation) * halfSize.x - Math::Cos(particle.rotation) * halfSize.y;
+				halfDirectionBottom.x = cosine * halfSize.x + sine * halfSize.y;
+				halfDirectionBottom.y = sine * halfSize.x - cosine * halfSize.y;
 
 				copy1(sizePtr, stride, -halfDirectionTop);
 				copy1(sizePtr, stride, halfDirectionBottom);
